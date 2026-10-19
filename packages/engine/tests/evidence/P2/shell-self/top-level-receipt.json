@@ -1,0 +1,176 @@
+{
+ "checks": [
+  {
+   "check": "desktop: the boot splash stands on the cover's backdrop",
+   "ok": true
+  },
+  {
+   "check": "desktop: the hand-off code left the address bar, the game's fragment stayed",
+   "ok": true
+  },
+  {
+   "check": "desktop: the hello carried the code in its body and no bearer",
+   "ok": true
+  },
+  {
+   "check": "desktop: no URL the browser fetched names the code",
+   "ok": true
+  },
+  {
+   "check": "desktop: og.platform's store.get went to /__player/v2/…/call with the redeemed credential",
+   "ok": true
+  },
+  {
+   "check": "desktop: the account credential is in no storage, the Player's marker is set",
+   "ok": true
+  },
+  {
+   "check": "desktop: nothing is reported before the gate",
+   "ok": true
+  },
+  {
+   "check": "desktop: the shell draws Back and the cover's backdrop; the page says og-player frame page",
+   "ok": true
+  },
+  {
+   "check": "desktop: the gate's tap starts play",
+   "ok": true
+  },
+  {
+   "check": "desktop: the play origin's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "desktop: start is reported first, then ready, with UUID v7 ids",
+   "ok": true
+  },
+  {
+   "check": "desktop: the release's service worker is active",
+   "ok": true
+  },
+  {
+   "check": "desktop: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "desktop: the second open is under the service worker and still gets the platform's entry",
+   "ok": true
+  },
+  {
+   "check": "desktop: the second open redeems its own code and takes it out of the address",
+   "ok": true
+  },
+  {
+   "check": "phone: the boot splash stands on the cover's backdrop",
+   "ok": true
+  },
+  {
+   "check": "phone: the hand-off code left the address bar, the game's fragment stayed",
+   "ok": true
+  },
+  {
+   "check": "phone: the hello carried the code in its body and no bearer",
+   "ok": true
+  },
+  {
+   "check": "phone: no URL the browser fetched names the code",
+   "ok": true
+  },
+  {
+   "check": "phone: og.platform's store.get went to /__player/v2/…/call with the redeemed credential",
+   "ok": true
+  },
+  {
+   "check": "phone: the account credential is in no storage, the Player's marker is set",
+   "ok": true
+  },
+  {
+   "check": "phone: nothing is reported before the gate",
+   "ok": true
+  },
+  {
+   "check": "phone: the shell draws Back and the cover's backdrop; the page says og-player frame page",
+   "ok": true
+  },
+  {
+   "check": "phone: the gate's tap starts play",
+   "ok": true
+  },
+  {
+   "check": "phone: the play origin's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "phone: start is reported first, then ready, with UUID v7 ids",
+   "ok": true
+  },
+  {
+   "check": "phone: the release's service worker is active",
+   "ok": true
+  },
+  {
+   "check": "phone: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "phone: the second open is under the service worker and still gets the platform's entry",
+   "ok": true
+  },
+  {
+   "check": "phone: the second open redeems its own code and takes it out of the address",
+   "ok": true
+  }
+ ],
+ "top": {
+  "desktop": {
+   "address": "/play/runner01/release_page01/?level=2#lvl=3",
+   "best": 777,
+   "reports": [
+    "start",
+    "ready",
+    "sample"
+   ],
+   "chrome": {
+    "back": true,
+    "backdrop": "http://127.0.0.1:61804/cover.png",
+    "meta": "frame page",
+    "iso": true
+   },
+   "revisit": {
+    "controlled": true,
+    "game": true,
+    "address": "/play/runner01/release_page01/?level=2"
+   }
+  },
+  "phone": {
+   "address": "/play/runner01/release_page01/?level=2#lvl=3",
+   "best": 777,
+   "reports": [
+    "start",
+    "ready",
+    "sample"
+   ],
+   "chrome": {
+    "back": true,
+    "backdrop": "http://127.0.0.1:61804/cover.png",
+    "meta": "frame page",
+    "iso": true
+   },
+   "revisit": {
+    "controlled": true,
+    "game": true,
+    "address": "/play/runner01/release_page01/?level=2"
+   }
+  }
+ },
+ "shots": [
+  "tests/evidence/P2/shell-self/top-level-desktop-boot.png",
+  "tests/evidence/P2/shell-self/top-level-desktop-gate.png",
+  "tests/evidence/P2/shell-self/top-level-desktop-playing.png",
+  "tests/evidence/P2/shell-self/top-level-desktop-revisit-gate.png",
+  "tests/evidence/P2/shell-self/top-level-phone-boot.png",
+  "tests/evidence/P2/shell-self/top-level-phone-gate.png",
+  "tests/evidence/P2/shell-self/top-level-phone-playing.png",
+  "tests/evidence/P2/shell-self/top-level-phone-revisit-gate.png"
+ ]
+}

@@ -14,26 +14,37 @@ struct TerrainOut {
   @location(0) world: vec3<f32>,
   @location(1) cur_clip: vec4<f32>,
   @location(2) prev_clip: vec4<f32>,
+  // The point in the terrain's space (its maps are laid out there).
+  @location(3) local: vec3<f32>,
 };
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
-  let p = terrain_vertex(vi);
+  let local = terrain_local_vertex(vi);
+  let p = terrain_world(local);
   var o: TerrainOut;
   o.clip = frame.view_proj * vec4<f32>(p, 1.0);
   o.world = p;
+  o.local = local;
   o.cur_clip = terrain.view_proj * vec4<f32>(p, 1.0);
   o.prev_clip = terrain.prev_view_proj * vec4<f32>(p, 1.0);
   return o;
 }
 
-// The terrain's normal at world xz, from the normal map (x and z).
-fn terrain_normal_at(p: vec2<f32>) -> vec3<f32> {
-  let n = terrain.extent.zw;
-  let cell = terrain.extent.xy / max(n - 1.0, vec2<f32>(1.0));
-  let uv = ((p - terrain_min()) / cell + 0.5) / n;
-  let xz = textureSample(terrain_normals, map_sampler, uv).rg;
-  return normalize(vec3<f32>(xz.x, sqrt(max(1.0 - dot(xz, xz), 0.0)), xz.y));
+// The terrain's maps at a point of its space: its world normal and the
+// control map's channels, from the finest resident tile.
+struct TerrainPoint {
+  normal: vec3<f32>,
+  control: vec4<f32>,
+};
+
+fn terrain_point(local: vec3<f32>) -> TerrainPoint {
+  let s = (local.xz - terrain_min()) / terrain_cell();
+  let m = terrain_maps_at(s, dpdx(s), dpdy(s));
+  var o: TerrainPoint;
+  o.normal = normalize(terrain.normal * m.normal);
+  o.control = m.control;
+  return o;
 }
 
 fn layer_albedo(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
@@ -113,14 +124,10 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
 }
 
 // The layers' weights at a point (summing to 1): control map times the
-// slope and altitude rules, sharpened by the layers' heights.
-fn layer_weights(p: vec3<f32>, n: vec3<f32>, heights_of: vec4<f32>) -> vec4<f32> {
+// slope and altitude rules, sharpened by the layers' heights. `p` and `n`
+// are in the world, `c` the control map's channels there.
+fn layer_weights(p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, heights_of: vec4<f32>) -> vec4<f32> {
   let count = u32(terrain.origin.w);
-  var c = vec4<f32>(1.0);
-  if (terrain.params.y > 0.5) {
-    let uv = (p.xz - terrain_min()) / terrain.extent.xy;
-    c = textureSample(control_map, map_sampler, uv);
-  }
   let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
   let altitude = p.y - terrain.origin.y;
   var w = vec4<f32>(0.0);
@@ -168,7 +175,8 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let p = in.world;
   let dpx = dpdx(p);
   let dpy = dpdy(p);
-  let n_geo = terrain_normal_at(p.xz);
+  let point = terrain_point(in.local);
+  let n_geo = point.normal;
   let count = u32(terrain.origin.w);
   // Each layer's colour and normal (layers of weight 0 skip their maps).
   var samples: array<LayerSample, 4>;
@@ -179,7 +187,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
       heights_of[i] = samples[i].albedo.a;
     }
   }
-  let w = layer_weights(p, n_geo, heights_of);
+  let w = layer_weights(p, n_geo, point.control, heights_of);
   var albedo = vec3<f32>(0.0);
   var normal = vec3<f32>(0.0);
   var roughness = 0.0;
@@ -247,7 +255,7 @@ struct TerrainPrepass {
 
 @fragment
 fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
-  let n = terrain_normal_at(in.world.xz);
+  let n = terrain_point(in.local).normal;
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: TerrainPrepass;

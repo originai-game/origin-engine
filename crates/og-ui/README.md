@@ -7,8 +7,8 @@ Clay-style, themed by the platform's design tokens
 MSDF text batches, and addressable by the probe through stable string ids
 (`touch_move_to`, `move_to_text`, `dump_ui`).
 
-It depends on og-core, og-ecs, og-input, og-render and og-probe (no
-default features) only. No layout or GUI library: the layout is ~600 lines in `src/layout.rs`.
+It depends on og-core, og-ecs, og-input, og-render, og-probe (no
+default features), og-tween (its spring), og-i18n and rustybuzz only. No layout or GUI library: the layout is ~600 lines in `src/layout.rs`.
 
 ![The sample screen](references/metal/sample-screen.png)
 
@@ -47,7 +47,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 |---|---|---|
 | `open(id, Element)` / `close() -> Response` | a container (`row`, `column`, `container` take a closure) | — |
 | `panel(id, PanelDesc, f)` | a card: `surface`, `radius.card`, `space.lg` padding, `space.md` gap, a column unless `row` | — |
-| `scroll(id, ScrollDesc, f)` | a vertical scroll column: wheel or drag scrolls it, it clips its content, a capsule indicator shows the position | — |
+| `scroll(id, ScrollDesc, f)` | a scroll column, vertical by default, horizontal or both ways by `ScrollDesc::axes` (`Element::scroll_x` for any container): the wheel (both axes) or a drag scrolls it, a released drag keeps its momentum, it clips its content, a capsule scrollbar per scrolling axis shows the position and a press on one grabs it; nested containers hand off (§Scrolling) | — |
 | `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp | the text |
 | `button(id, text, ButtonDesc) -> Response` | a capsule of `h-control-sm/md/lg`; `Secondary` (neutral fill, default), `Primary` (amber, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture | — |
@@ -55,6 +55,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `slider(id, &mut f32, SliderDesc) -> Response` | track, amber fill, thumb; a press anywhere on it sets the value, dragging follows; `min`/`max`/`step` | — |
 | `toggle(id, &mut bool, label) -> Response` | a switch (amber on) with a label; a click flips it | the label |
 | `text_field(id, &mut String, &FieldDesc) -> Response` | one line: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace/Delete/←/→/Home/End edit, Enter submits and leaves, Escape leaves, a press elsewhere blurs; placeholder; `max_chars`; focus ring in `focus` | the text, or the placeholder while empty |
+| `rich_text(id, markup, RichTextDesc) -> RichTextResponse` | one paragraph of inline spans from markup (`src/markup.rs`: `[b]`, `[color=…]`, `[size=…]`, `[font=…]`, `[icon=…]`, `[link=…]`, `[wave]`, `[shake]`, `[pulse]`; `[[` is a literal `[`): lines break between the spans' words (a word split across spans stays whole), every span on one baseline, each line as tall as its tallest span; bold thickens the glyphs in the MSDF shader (as far as the field reaches) and draws a second copy a device pixel right; links are child elements (kind `link`) that focus and press like buttons; shaped and right-to-left pieces are drawn shaped in visual order; a bad tag stays as text and warns | the plain text (links: their text) |
 | `tooltip(text)` | for the element just built: shown below it (above without room, clamped to the safe area) once the pointer has rested on it for `motion.duration.slow`; drawn over everything | the text |
 
 Any container with `interactive: true` reports its response from `close()`.
@@ -98,6 +99,35 @@ release over another row or cell answers `Response::dropped = Some(source)`
 there, and `dragging(id)` answers the source while the press is held; the
 cell under a drag shows the focus ring.
 
+## Scrolling (`src/scroll.rs`)
+
+A container scrolls vertically (`Element::scroll`), horizontally
+(`Element::scroll_x`; a horizontal scroller never shrinks its children) or
+both ways. Its offsets are UI state, clamped by the layout to its content.
+
+- **The wheel** (`InputFrame::wheel`, both axes) goes to the innermost
+  scroll container under the pointer; what it cannot take, because it has
+  reached its end or does not scroll that way, goes to the container
+  around it, and so on outwards (nested scroll handoff). A drag on a
+  container that holds the press (one started on it, not on a control)
+  moves it the same way, so a sideways strip in a vertical page scrolls the
+  page when dragged up and down.
+- **Momentum.** A drag released while moving keeps its velocity (a running
+  average of the last ticks' movement) as a fling, which slows by
+  `1 − 1/(ticks per second × motion.spring.momentum's response)` a tick
+  (arithmetic only) and stops below 0.1 px a tick, on an axis as it reaches
+  the content's end, or at the next press. Not under reduced motion.
+- **Scrollbars.** A capsule on each scrolling axis (`fill-strong`, at the
+  right edge and the bottom), as long as the view is of the content
+  (at least `space.xl`); a press within 12 px of the edge grabs the bar
+  (the press goes to no control under it) and dragging moves it through
+  the range.
+- Keyboard and gamepad focus moving to a control outside a container's view
+  scrolls it in on both axes.
+
+`tests/widgets.rs` `scroll_views_scroll_both_ways_hand_off_fling_and_grab`
+covers each (and a restore).
+
 ## Layers
 
 Elements outside the tree, laid out after it and drawn over it in rank order:
@@ -108,6 +138,33 @@ select's menu, rank 3), the toast stack (rank 4) and tooltips (rank 5). A
 layer's probe path is its own id. Anchored groups sit at one of nine points of
 the safe area (`Anchor::TopLeft` … `BottomRight`, `Center`), inset by the
 density's gutter (or `margin`), moved by `offset`.
+
+## Accessibility tree (`src/a11y.rs`)
+
+Every frame builds the accessibility tree from the nodes it draws and
+takes input on, so it cannot drift from the screen. Each element has a
+**role** (`button`, `link`, `text`, `heading`, `image`, `checkbox`,
+`radio`, `switch`, `slider`, `spinbutton`, `textbox`, `combobox`,
+`listbox`, `option`, `tab`, `tablist`, `radiogroup`, `progressbar`,
+`meter`, `timer`, `status`, `dialog`, `tooltip`, `separator`, `group`; none
+for layout containers, spacers and unnamed pictures), a **name** (its text;
+or what the widget gives it: an icon's name, a dialog's title, Decrease and
+Increase for a stepper's buttons, a field's placeholder; a control showing
+no text of its own is named by the text inside it, then by its id), a
+**value** (a slider's or stepper's number, a progress's percent, a meter's
+amount, a field's text, a select's choice, a cooldown's remaining share)
+and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,
+`expanded`, `pressed`, `busy`; `offscreen` in the tree for a control a
+scroll container cuts out of view). The probe's `dump_ui` carries them on
+every element; `Ui::a11y()` (`og.ui.a11y()`) answers the tree of the
+elements with a role, with full paths, nearest-ancestor parents, whole
+bounds, the focus order and the focused path, for a shell to mirror into
+the page. Focus order is the tree's order (the drawing order: the page,
+then each layer over it): Tab and the pads walk exactly the nodes marked
+`focusable`, within the topmost dialog while one is open.
+`tests/a11y.rs` checks the roles, names, values and states of every
+widget and that Tab walks `focus_order`; the kit's `a11y` playtest checks
+that every screen names every control and gives every text a role.
 
 ## Focus navigation (`src/nav.rs`)
 
@@ -141,6 +198,22 @@ the left stick) on both hosts. The browser shell still maps a pad's buttons
 to keys too (A Space, B Escape, d-pad and stick arrows, Back Tab, Start
 Enter) as the fallback for a page without the resource; an intent that
 arrives both ways in one tick is taken once (`nav.rs`).
+
+**Several pads (local multiplayer).** `Ui::set_players(n)` (declared each
+tick, like `set_navigation`) gives pads 1 to `n - 1` (`InputFrame::extra_pads`,
+read from `og.Gamepad`) a focus of their own among the same controls: the
+d-pad and the stick move it (its first move lands on the control nearest the
+surface's centre), its A presses the control under it, its ring is drawn
+outside pad 0's in the player's colour (`info`, `success`, `warn`), and a
+dialog's scope holds it inside as it holds pad 0's. `Response::pad` names
+the pad whose A pressed a control (`None` for the pointer and the keyboard)
+and `Response::focused_by` has a bit per pad whose focus is on it;
+`Ui::focus_path(pad)` answers where each pad's focus is. Pad 0 keeps sharing
+its focus with the keyboard and the pointer; Back and adjusting a slider
+stay pad 0's. The pads' focus and sticks are in the UI state
+(`tests/widgets.rs` `pads_beyond_the_first_move_their_own_focus_and_press`;
+the kit's `players` screen and playtest). The probe's `gamepad` command
+addresses them with `@1` to `@3` after the buttons (`gamepad:a@2`).
 
 **Several touches.** `InputFrame::pointers` is og-input's `og.Pointers`
 (pointer 0 is `og.Input`'s pointer; 1 to 4 are further touches). The touch
@@ -185,15 +258,21 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 | `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |
 | `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
 | `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
-| `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`) |
-| `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift (eased over `instant`) |
+| `glass <part> blur fill [tint]` | the part is glass: og-render's blurred frame under it (`DrawCmd::Glass`, `og_render::Glass`: the scene behind the overlay blurred by `blur` CSS px, tinted by the part's fill colour at `tint`, default 0.25), under its nine-slice drawn at `fill` of its opacity. The scifi pack's dialogs are glass (`glass panel 16 0.85 0.15`) |
+| `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`); the text glow is og-render's distance-field halo (`Text::glow`, one instance per glyph under its ink) reaching twice `size` CSS px, as far as the font's distance range allows: cook a glowing role's font with a wider `px_range` (the neon and scifi packs' display and numeric fonts take 12) |
+| `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift, each on a damped spring (og-tween's `Spring`, arithmetic only, in the UI state): the hover on `motion.hoverSpring` (default the tokens' `motion.spring.default`, damping 1 and 350 ms: no overshoot), the press on `motion.pressSpring` (default damping 0.55 over `motion.duration.instant`: in at once, a small bounce past rest on release) |
 | `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and the CJK `fallback`: a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
-| `motion { enter stagger toast progress shake pop }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop |
+| `motion { enter stagger toast progress shake pop hoverSpring pressSpring }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance; only seen: a control takes input once the panel has arrived, wherever it is drawn), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop, and the hover and press springs (`<damping ratio> <response ms>`) |
 | `sound <event> "<id>"` | UI sounds (below) |
 
 Six packs to start from live in `templates/ui-kit/assets/skins/` (pixel,
 cartoon, fantasy, scifi, paper, neon), drawn by
-`templates/ui-kit/tools/make-skins.py`; `tests/packs.rs` holds each to 4.5:1
+`templates/ui-kit/tools/make-skins.py`; art drawn by hand is packed by
+`og skin pack <dir>` (og-cli's `src/skin.rs`: `<part>.9.png` nine-patches,
+whose one-pixel border marks what stretches, and plain PNGs for ornaments,
+into `atlas.png` and the skin file's atlas, slice, soft and ornament-region
+lines, every other line kept; `crates/og-cli/tests/cli.rs` packs
+`tests/fixtures/skin-pack`); `tests/packs.rs` holds each to 4.5:1
 for every ink a template puts on a skinned surface, measured over the frame
 art really under the text.
 
@@ -219,13 +298,17 @@ art really under the text.
 ## UI sounds
 
 The UI queues an event when the skin (or `UiDesc.sounds` through the host)
-has a sound for it: `Hover` (the pointer reaches a navigable control),
-`Press`, `Open` and `Close` (a dialog's first tick each way), `Success`
+has a sound for it: `Hover` (the pointer reaches a navigable control, or
+keyboard or gamepad focus moves to one), `Press` (by the pointer, Enter,
+Space or the pad's A), `Open` and `Close` (a dialog's first tick each way), `Success`
 (a success toast), `Error` (a danger toast or a refused press).
 `Ui::take_sounds()` hands them to the host; the runtime's `og.ui.sound`
-system (after `og.audio`) plays each through og-audio on the `ui` bus, one
-voice per event kept in the UI state (`Ui::voices_mut`), restarted on a
-repeat. The source starts in og-audio's next pass, one tick after the input.
+system (after the physics step, before `og.audio`) plays each through
+og-audio on the `ui` bus, one voice per event kept in the UI state
+(`Ui::voices_mut`), restarted on a repeat. So `og.audio` turns it into the
+same tick's commands and the sound's first sample lies in the tick of the
+input that caused it (`packages/engine/tests/ui-sound.test.ts` reads it
+from the mix `og run --audio` renders).
 
 ## Responsive layout and the safe area
 
@@ -280,6 +363,11 @@ One layout per frame, in five walks over the tree (`src/layout.rs`):
 5. positions (alignment, scroll offsets clamped to the content), clip
    rectangles (the intersection of every scrolling ancestor), and device-pixel
    snapping of every rectangle (`Viewport::dpr`).
+
+Text is measured and drawn with its type step's tracking (`tracking_em`,
+og-render's `Text::tracking`: the tokens tighten `xl` and up by 0.01 to
+0.035 em, and a skin's ramp line may set its own); tracking is Latin
+tracking, so a text with CJK characters or a shaped script takes none.
 
 Everything is in CSS pixels of the play surface (origin top left, y down),
 the unit of `og.Input` and the probe. The root is the viewport, padded by
@@ -475,27 +563,27 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
 
 ## What phase 2 owes
 
-- **Rich text**: inline runs of colour, weight and size; the display and
-  rounded faces cooked as their own atlases; tracking from the type ramp
-  (needs per-glyph spacing in og-render's `Text`); kerning and shaping
-  (rustybuzz, with og-render); RTL; ellipsis truncation; selection in fields;
-  multi-line text areas; IME composition.
-- **Animations**: springs (`SPRING_DEFAULT`) for the skin's hover and press
-  (eased curves today); momentum scrolling on `SPRING_MOMENTUM`; caret blink.
-- **Skins**: per-glyph tracking from a skin's ramp; text glows are four
-  offset copies (a real blur needs an MSDF outline in og-render).
-  (Overlay entry and exit, toasts, meters and typing run on the token
-  easings by the tick since the kit round.)
-- **Accessibility**: an accessibility tree mirrored to the shell (roles,
-  names, values, states) so screen readers and the DOM can read the canvas
-  UI; `prefers-reduced-motion` and `prefers-contrast` read from the shell
-  into `UiDesc` (the theme flags exist; nothing sets them from the page yet).
-- Materials: glass (blur needs a render-graph pass) and the dark edge
-  light (skins have shadows and glows); icons (iconoir) as an MTSDF atlas.
-- Layout: horizontal and two-axis scrolling, nested scroll chaining,
-  aspect-ratio images.
-- **Input**: pads beyond the first; several touches for widgets other than
-  the touch controls (two-finger scroll, pinch).
+- **Text**: the display and rounded faces cooked as their own atlases;
+  kerning; bidirectional runs inside one rich-text span; ellipsis
+  truncation; selection in fields; multi-line text areas; IME composition.
+  (Rich text, inline spans from markup, landed in the phase 2 UI round.)
+- **Animations**: caret blink. (The skin's hover and press move on springs
+  since the phase 2 UI round.)
+- (Skins: the ramp's tracking and a distance-field text glow landed in the
+  phase 2 UI round.)
+- **Accessibility**: the shell mirroring `og.ui.a11y()` into the page (ARIA
+  nodes over the canvas, live regions for toasts) so screen readers can read
+  the canvas UI; `prefers-reduced-motion` and `prefers-contrast` read from
+  the shell into `UiDesc` (the theme flags exist; nothing sets them from the
+  page yet). (The tree itself landed in the phase 2 UI round.)
+- Materials: the dark edge light (skins have shadows and glows); glass
+  over other overlay content (it blurs the scene only); icons (iconoir) as
+  an MTSDF atlas. (Glass landed in the phase 2 UI round.)
+- Layout: aspect-ratio images. (Two-axis scrolling, nested handoff,
+  momentum and draggable scrollbars landed in the phase 2 UI round.)
+- **Input**: several touches for widgets other than the touch controls
+  (two-finger scroll, pinch). (Pads beyond the first landed in the phase 2
+  UI round.)
 - `vulkan-cpu` references for og-ui's own scenes (`sample-screen`,
   `widget-set`) and the kit templates: only `metal` exists, other tiers
   compare with it.

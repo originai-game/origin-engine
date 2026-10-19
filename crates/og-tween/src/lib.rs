@@ -17,8 +17,10 @@
 mod codec;
 mod ease;
 pub mod presets;
+mod spring;
 
 pub use ease::{EASE_NAMES, EASES, Ease};
+pub use spring::{Spring, SpringState};
 
 use og_core::reflect::FieldType;
 use og_core::{Error, ErrorKind, Reflect, Result, Schema};

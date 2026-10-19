@@ -34,6 +34,7 @@ mod effects;
 mod fluid3d;
 mod frame;
 mod fx;
+mod glass;
 pub mod graph;
 mod hooks;
 mod ibl;
@@ -46,11 +47,13 @@ pub mod particles;
 mod particles_gpu;
 mod post;
 mod ribbons;
+mod scatter;
 mod scene;
 pub mod shapes;
 mod skin;
 mod sprites;
 mod terrain;
+mod terrain_tiles;
 mod texture;
 mod water;
 mod weather;
@@ -79,13 +82,18 @@ pub use particles::{
     ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet,
 };
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
+pub use scatter::ScatterDraw;
 pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use terrain::{
-    MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl,
-    TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
+    DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
+    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler, TerrainScatter,
+};
+pub use terrain_tiles::{
+    ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
+    TerrainTile, TerrainView, terrain_tiles_wanted, tile_heights,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
@@ -481,6 +489,16 @@ pub struct FrameStats {
     pub terrain_draws: u32,
     pub terrain_triangles: u64,
     pub terrain_shadow_draws: u32,
+    /// Terrain tiles resident on the GPU after this frame, and those
+    /// uploaded for it (phase 3 streaming).
+    pub terrain_tiles: u32,
+    pub terrain_uploads: u32,
+    /// Scattered copies' chunk draws in the main pass, the copies in them
+    /// (before the distance drops the farthest) and the chunks built for
+    /// this frame.
+    pub scatter_draws: u32,
+    pub scatter_copies: u32,
+    pub scatter_built: u32,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
@@ -551,6 +569,16 @@ struct GpuTexture {
     bytes: u64,
 }
 
+/// What an RGBA8 texture allocates on the GPU, every level.
+fn rgba_texture_bytes(texture: &TextureData) -> u64 {
+    match texture.mips {
+        Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
+            .map(|l| TextureFormat::Rgba8.level_bytes(texture.width, texture.height, l) as u64)
+            .sum(),
+        Mips::None => texture.rgba.len() as u64,
+    }
+}
+
 struct GpuFont {
     layout: FontLayout,
     bind_group: wgpu::BindGroup,
@@ -571,6 +599,8 @@ struct SceneCache {
     hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
+    /// The scene's revision of each texture when it was uploaded.
+    texture_revisions: Vec<u64>,
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
     sprite_groups: Vec<Option<wgpu::BindGroup>>,
@@ -756,6 +786,7 @@ pub struct Renderer {
     water: water::WaterRenderer,
     fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
+    scatter: scatter::ScatterRenderer,
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
@@ -795,6 +826,9 @@ pub struct Renderer {
     instance_buffer: wgpu::Buffer,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
+    /// The overlay's glass: its passes, and its textures for the output's size.
+    glass: glass::GlassPasses,
+    glass_targets: Option<glass::GlassTargets>,
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
@@ -1726,6 +1760,7 @@ impl Renderer {
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
         let terrain = terrain::TerrainRenderer::new(
             &device,
+            &queue,
             terrain::TerrainPipelines {
                 frame_layout: &frame_layout,
                 shadow_layout: &shadow_bind_layout,
@@ -1735,6 +1770,28 @@ impl Renderer {
                 samples,
                 white: default_white.clone(),
                 flat_normal: default_normal.clone(),
+            },
+        );
+        let scatter = scatter::ScatterRenderer::new(
+            &device,
+            scatter::ScatterPipelines {
+                frame_layout: &frame_layout,
+                material_layout: &material_layout,
+                shadow_layout: &shadow_bind_layout,
+                lit_wgsl: format!(
+                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{LIGHTING_WGSL}{}{}",
+                    light_tables.wgsl(),
+                    particles_gpu::NOISE_WGSL,
+                    include_str!("../shaders/scatter_common.wgsl"),
+                    include_str!("../shaders/scatter.wgsl")
+                ),
+                shadow_wgsl: format!(
+                    "{}{MATERIAL_WGSL}{}{}",
+                    particles_gpu::NOISE_WGSL,
+                    include_str!("../shaders/scatter_common.wgsl"),
+                    include_str!("../shaders/scatter_shadow.wgsl")
+                ),
+                samples,
             },
         );
         let vertex_buffer = |label: &str, size: u64| {
@@ -1775,6 +1832,7 @@ impl Renderer {
             offscreen_linear.or(surface_linear),
             &sprite_layout,
         );
+        let glass = glass::GlassPasses::new(&device, output_format);
 
         Ok(Renderer {
             device,
@@ -1821,6 +1879,7 @@ impl Renderer {
             water,
             fluid3d,
             terrain,
+            scatter,
             metaballs,
             ibl,
             sprite_pipeline,
@@ -1851,6 +1910,8 @@ impl Renderer {
             instance_buffer,
             sprite_buffer,
             overlay,
+            glass,
+            glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
             desc_particles: desc.particles,
@@ -2031,33 +2092,62 @@ impl Renderer {
                     TextureSource::Rgba(texture) => GpuTexture {
                         view: self.upload_texture(texture, &mut encoder)?,
                         format: TextureFormat::Rgba8,
-                        bytes: match texture.mips {
-                            Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
-                                .map(|l| {
-                                    TextureFormat::Rgba8.level_bytes(
-                                        texture.width,
-                                        texture.height,
-                                        l,
-                                    ) as u64
-                                })
-                                .sum(),
-                            Mips::None => texture.rgba.len() as u64,
-                        },
+                        bytes: rgba_texture_bytes(texture),
                     },
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
                 self.cache.textures.push(gpu);
+                self.cache
+                    .texture_revisions
+                    .push(scene.texture_revisions()[index]);
                 self.cache.sprite_groups.push(None);
                 self.cache.ribbon_groups.push(None);
             }
             self.queue.submit(Some(encoder.finish()));
         }
+        // Replaced textures: uploaded again, and everything bound to the old
+        // view (materials, sprite and trail groups, fonts, the effect
+        // groups' decal atlas, terrain layers) made again.
+        let replaced: Vec<usize> = (0..self.cache.textures.len())
+            .filter(|&i| self.cache.texture_revisions[i] != scene.texture_revisions()[i])
+            .collect();
+        if !replaced.is_empty() {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("texture replace"),
+                });
+            for &index in &replaced {
+                let gpu = match &scene.textures()[index] {
+                    TextureSource::Rgba(texture) => GpuTexture {
+                        view: self.upload_texture(texture, &mut encoder)?,
+                        format: TextureFormat::Rgba8,
+                        bytes: rgba_texture_bytes(texture),
+                    },
+                    TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
+                };
+                self.cache.textures[index] = gpu;
+                self.cache.texture_revisions[index] = scene.texture_revisions()[index];
+                self.cache.sprite_groups[index] = None;
+                self.cache.ribbon_groups[index] = None;
+            }
+            self.queue.submit(Some(encoder.finish()));
+            self.fx_groups = None;
+            self.terrain.forget_groups();
+        }
+        let samples_replaced = |m: &StandardMaterial| {
+            m.textures()
+                .iter()
+                .flatten()
+                .any(|h| replaced.contains(&h.index()))
+        };
         for (i, (material, revision)) in scene.materials().enumerate() {
             if self
                 .cache
                 .materials
                 .get(i)
                 .is_some_and(|m| m.revision == revision)
+                && !samples_replaced(material)
             {
                 continue;
             }
@@ -2081,6 +2171,12 @@ impl Renderer {
                 self.cache.materials.push(gpu);
             }
         }
+        let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
+            .filter(|&i| replaced.contains(&scene.fonts()[i].atlas.index()))
+            .collect();
+        self.cache
+            .fonts
+            .truncate(stale_fonts.first().copied().unwrap_or(usize::MAX));
         for (i, font) in scene.fonts()[self.cache.fonts.len()..].iter().enumerate() {
             let index = self.cache.fonts.len() + i;
             let atlas = font.atlas.index();
@@ -2971,6 +3067,23 @@ impl Renderer {
                 self.sprite_group(t);
             }
         }
+        // Glass: the tonemap renders into the glass source, which becomes
+        // the output and the blur pyramid after the post passes.
+        let glass_on = scene.overlay.as_ref().is_some_and(|o| !o.glass.is_empty());
+        if glass_on
+            && self
+                .glass_targets
+                .as_ref()
+                .is_none_or(|g| g.size != (self.width, self.height))
+        {
+            self.glass_targets = Some(self.glass.targets(
+                &self.device,
+                self.output_format,
+                self.width,
+                self.height,
+                &self.sprite_layout,
+            ));
+        }
         let mut ribbon_frame = self
             .trails
             .build(
@@ -3123,15 +3236,42 @@ impl Renderer {
         let terrain_draws = self.terrain.prepare(
             &self.device,
             &self.queue,
-            &mut self.mips,
             scene,
             camera.position,
             camera.far,
+            self.height,
             cam.view_proj,
             prev_view_proj,
             |h| textures.get(h.index()).map(|t| &t.view),
         )?;
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
+        // Scattered copies: the chunks this frame needs built, what to draw.
+        let scatter_batches = {
+            let materials = &self.cache.materials;
+            let meshes = &self.cache.meshes;
+            self.scatter.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                camera.position,
+                cam.view_proj,
+                prev_view_proj,
+                |m| materials.get(m).map(|g| g.side),
+                |m| {
+                    meshes
+                        .get(m)
+                        .filter(|g| g.index_count > 0)
+                        .map(|g| g.bounds.map_or(1.0, |(c, e)| c.length() + e.length()))
+                },
+            )
+        };
+        let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
+        let scatter_mesh = |m: usize| {
+            self.cache
+                .meshes
+                .get(m)
+                .map(|g| (&g.vertices, &g.indices, g.index_count))
+        };
 
         // The directional light's cascades.
         let light = &scene.light;
@@ -3713,6 +3853,9 @@ impl Renderer {
 
         let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
+            terrain_tiles: self.terrain.resident,
+            terrain_uploads: self.terrain.uploads,
+            scatter_built: self.scatter.built,
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,
@@ -4091,6 +4234,15 @@ impl Renderer {
                 stats.draw_calls += n;
                 stats.terrain_shadow_draws += n;
             }
+            let (n, _) = self.scatter.draw(
+                &mut pass,
+                scatter::ScatterPass::Shadow,
+                &scatter_batches,
+                scatter_material,
+                scatter_mesh,
+                |c, r| frustum.intersects_sphere(c, r),
+            );
+            stats.draw_calls += n;
         };
         for &pass in self.graph.order() {
             match pass {
@@ -4192,6 +4344,15 @@ impl Renderer {
                             });
                         stats.prepass_draws += n;
                     }
+                    let (n, _) = self.scatter.draw(
+                        &mut p,
+                        scatter::ScatterPass::Prepass,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| view_frustum.intersects_sphere(c, r),
+                    );
+                    stats.prepass_draws += n;
                     stats.draw_calls += stats.prepass_draws;
                 }
                 FramePass::Particles => {
@@ -4417,6 +4578,21 @@ impl Renderer {
                         stats.terrain_triangles += tris;
                         stats.triangles += tris;
                     }
+                    let (n, copies) = self.scatter.draw(
+                        &mut pass,
+                        scatter::ScatterPass::Lit,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| view_frustum.intersects_sphere(c, r),
+                    );
+                    if n > 0 {
+                        // The copies' group 2 is theirs: the effects' back for what follows.
+                        pass.set_bind_group(2, fx_group, &[]);
+                    }
+                    stats.draw_calls += n;
+                    stats.scatter_draws += n;
+                    stats.scatter_copies += copies;
                     let sky = match scene.environment.background {
                         Background::Sky => Some(&self.sky_pipeline),
                         Background::Procedural { .. } => Some(&self.sky_look_pipeline),
@@ -4547,6 +4723,7 @@ impl Renderer {
                             RunSource::Strip(..) | RunSource::Metaballs(_) => {
                                 unreachable!("drawn above")
                             }
+                            RunSource::Glass => unreachable!("glass is the overlay's only"),
                             RunSource::Sprite(blend, None) => {
                                 (false, blend, &self.white_sprite_group)
                             }
@@ -4621,17 +4798,30 @@ impl Renderer {
                     }
                 }
                 post_pass => {
+                    let post_output = match (&self.glass_targets, glass_on) {
+                        (Some(g), true) => &g.source_view,
+                        _ => output,
+                    };
                     stats.draw_calls += self.graph.encode_post(
                         &mut encoder,
                         &self.post,
                         &self.persistent,
                         post_pass,
                         slot,
-                        output,
+                        post_output,
                         gtao,
                     );
                 }
             }
+        }
+        if let (Some(g), true) = (&self.glass_targets, glass_on) {
+            stats.draw_calls += self.glass.encode(
+                &self.queue,
+                &mut encoder,
+                g,
+                output,
+                !self.output_format.is_srgb(),
+            );
         }
         // The overlay: over the finished frame, in the output (or its sRGB view).
         if let Some(of) = overlay_frame.as_ref().filter(|f| !f.runs.is_empty()) {
@@ -4660,28 +4850,37 @@ impl Renderer {
                 multiview_mask: None,
             });
             pass.set_bind_group(0, &self.overlay.group, &[]);
-            let mut msdf_bound: Option<bool> = None;
+            let mut bound: Option<u8> = None;
             for run in &of.runs {
-                let (msdf, group) = match run.source {
-                    RunSource::Sprite(_, None) => (false, &self.white_sprite_group),
+                // 0 sprite, 1 MSDF text, 2 glass.
+                let (kind, group) = match run.source {
+                    RunSource::Sprite(_, None) => (0u8, &self.white_sprite_group),
                     RunSource::Sprite(_, Some(t)) => (
-                        false,
+                        0,
                         self.cache.sprite_groups[t.index()]
                             .as_ref()
                             .expect("made before the pass"),
                     ),
-                    RunSource::Font(f) => (true, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Font(f) => (1, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Glass => (
+                        2,
+                        &self
+                            .glass_targets
+                            .as_ref()
+                            .expect("made with the overlay's glass")
+                            .overlay_group,
+                    ),
                     RunSource::Strip(..) | RunSource::Metaballs(_) => {
                         unreachable!("the overlay has no strips or fluids")
                     }
                 };
-                if msdf_bound != Some(msdf) {
-                    pass.set_pipeline(if msdf {
-                        &pipelines.msdf
-                    } else {
-                        &pipelines.sprite
+                if bound != Some(kind) {
+                    pass.set_pipeline(match kind {
+                        0 => &pipelines.sprite,
+                        1 => &pipelines.msdf,
+                        _ => &pipelines.glass,
                     });
-                    msdf_bound = Some(msdf);
+                    bound = Some(kind);
                 }
                 pass.set_bind_group(1, group, &[]);
                 let start = run.first as u64 * overlay::OVERLAY_STRIDE;

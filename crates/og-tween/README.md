@@ -31,6 +31,7 @@ Dependencies: og-core, og-ecs. No serde, builds for `wasm32-unknown-unknown`.
 | `Ease`, `EASES`, `EASE_NAMES` | linear and quad, cubic, quart, expo, back, elastic, bounce × in, out, inOut (Penner's curves over og-core's deterministic `pow` and `sin`) |
 | `presets::squash(scale_target, &Squash { impact, rest, duration, ease })` | the scale jumps to rest × impact (default 1.25 × 0.8) and eases back (backOut, 0.18 s) |
 | `presets::flash(amount_target, colour_target, &Flash { color, amount, duration, ease })` | the colour set at once, the amount from `amount` to 0 (quadIn, 0.12 s) |
+| `Spring { damping, response_ms }`, `step(SpringState { value, velocity }, target, dt)` | a damped spring by the tick, the design tokens' `motion.spring.*` pair (stiffness `(2π/response)²`, damping `2ζ·2π/response`), four semi-implicit Euler substeps of `+ − × ÷` only, snapped to rest within `1e-3` and `1e-2`/s: og-ui's hover lift and press squash move on it |
 | `TweenCompleted { tween, entity, tag }` | sent when a started tween or group ends on its own; never for a cancelled one or one whose target went away |
 
 ## Invariants

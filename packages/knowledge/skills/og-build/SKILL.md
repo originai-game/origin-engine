@@ -26,7 +26,7 @@ needs a browser or a Rust toolchain. The command channel is
    Core actions: `screenshot[:path][:full|:N]`, `listen[:path][:seconds]`,
    `touch_move_to:<ui id>`, `move_to_text:[=]text[@N]`, `touch_move:x,y`,
    `touch_start`, `touch_end`, `touch:<id>:<down|move|up>:<x,y | ui id>`
-   (a second finger), `gamepad:<a+b+...|->[:lx,ly][:lt,rt]`, `scroll:dx,dy`,
+   (a second finger), `gamepad:<a+b+...|->[@pad][:lx,ly][:lt,rt]`, `scroll:dx,dy`,
    `key_down:<Key>`, `key_up:<Key>`, `type:<text>`,
    `teleport:<entity>:x,y,z`, `frame_entity:<entity>`, `dump_world[:path]`,
    `dump_entity:<entity>[:path]`, `dump_ui[:path]`,
@@ -37,7 +37,8 @@ needs a browser or a Rust toolchain. The command channel is
    `set:Game.coins=10`), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
    `quit`, and `help` for the list. Modules add their own: `dump_ai` and
    `dump_nav` (og-ai §5), `dump_platform` (og-platform-sdk §4), `locale:<tag>`
-   (og-i18n §6). Unknown actions warn and the script continues; read the
+   (og-i18n §6), `dump_stream` and `terrain_stream:<stream|resident>[:<MiB>]`
+   (og-game §6 and §11). Unknown actions warn and the script continues; read the
    warnings.
 3. **Read what it wrote.** Screenshots are PNG files, dumps are JSON files
    (`<action>-<tick>.png|json` unless the step names a path); `og run`
@@ -75,7 +76,10 @@ starts.
 script through `og run --headless --commands`. A playtest asserts on what the
 game exposes (dumps, `state()` facts, entity fields, `get` answers), never on
 how the code is written. A test that ran no checks fails. Run it before
-claiming a change works.
+claiming a change works. A playtest runs with the host clock at
+2026-01-01 00:00 UTC (`clock` to change it) and a fresh store; `store:
+"keep"` with `then: [{ commands, clock }]` runs further processes over the
+same store, for a relaunch (og-platform-sdk §4).
 
 ## 4. Evidence discipline
 

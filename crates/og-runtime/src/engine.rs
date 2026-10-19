@@ -80,6 +80,18 @@ pub trait Hooks {
             Err(e) => Fetch::Failed(e.to_string()),
         }
     }
+    /// Starts inflating zlib bytes away from the engine's thread (the web
+    /// host's DecompressionStream), answered later by
+    /// [`Hooks::inflate_take`] under `key`. `false`: this host cannot, and
+    /// the runtime inflates on its own (a worker thread natively).
+    fn inflate_start(&self, key: u64, zlib: &[u8]) -> bool {
+        let _ = (key, zlib);
+        false
+    }
+    /// The bytes a started inflate answered, once (`Pending` until then).
+    fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("inflate {key} was never started"))
+    }
 }
 
 pub use super::extract::RenderBackend;
@@ -282,6 +294,9 @@ pub(crate) struct State {
     pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
+    /// Undeclared accesses already logged (`system access name`), so each is
+    /// logged once per system (`api::undeclared`).
+    pub undeclared_logged: BTreeSet<String>,
     /// og-anim on this world, and its assets (replayed into a reload's world).
     pub anim: Option<og_anim::AnimationSystem>,
     pub anim_assets: super::anim::AnimAssets,
@@ -647,6 +662,7 @@ pub(crate) fn assemble(
             || REGISTERED_BY_MODULES.contains(&decl.schema)
             || super::anim::REGISTERED_BY_ANIM.contains(&decl.schema)
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
+            || decl.schema == super::stream::EVENT
         {
             continue;
         }
@@ -673,6 +689,15 @@ pub(crate) fn assemble(
     {
         world.register::<og_anim::FlipbookEvent>().map_err(err)?;
         let id = world.id_by_name("og.FlipbookEvent").map_err(err)?;
+        let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
+        layouts.insert(layout.schema.clone(), layout);
+    }
+    // og.stream's event (its group is a str64), registered as it is sent.
+    {
+        world
+            .register::<super::stream::StreamEvent>()
+            .map_err(err)?;
+        let id = world.id_by_name(super::stream::EVENT).map_err(err)?;
         let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
         layouts.insert(layout.schema.clone(), layout);
     }
@@ -722,6 +747,7 @@ pub(crate) fn assemble(
     let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
     let physics = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts.keys().cloned().collect();
+    super::terrain::mount(&mut world, engine_id)?;
     super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
 
     // Systems: the game's, ordered.
@@ -911,6 +937,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics_meshes: BTreeMap::new(),
         physics_heightfields: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
+        undeclared_logged: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),
         feel: Some(a.feel.clone()),
@@ -1057,6 +1084,7 @@ pub fn render_options(id: u32) -> Value {
 /// At a tick boundary: pending bundles, a scene waiting for its bundle.
 fn tick_boundary(eng: &Engine) {
     eng.assets.borrow_mut().poll();
+    super::stream::update(eng);
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }
@@ -1144,10 +1172,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    let behind = eng.state.borrow().accumulator_ms;
     let probe = eng.probe.borrow();
+    // `behind`: real time the accumulator holds that no tick has simulated
+    // yet, so a host can place an input event within the next tick.
     json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
-        "paused": probe.paused(), "quit": probe.quit_requested(),
+        "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
     })
     .to_string()
 }
@@ -1390,6 +1421,13 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
                 .find(|fl| fl.readonly && value.get(&fl.name).is_some())
             {
                 return Err(format!("{resource}.{} is read only", field.name));
+            }
+            let declared = eng.state.borrow().systems[f.system]
+                .writes
+                .iter()
+                .any(|w| w == resource);
+            if !declared {
+                return Err(super::api::undeclared(&eng, f.system, "write", resource));
             }
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };

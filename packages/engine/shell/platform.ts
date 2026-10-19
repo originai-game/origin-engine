@@ -1,7 +1,9 @@
 // og.platform on the web: the shell's answer to the engine Worker's
 // platform calls. With a Player framing the page, each call goes to it over
 // Player protocol 2 (./player.ts, origin-checked postMessage; the Player
-// owns every credential), as its hello's capabilities allow; without one, or
+// owns every credential; or the Stage overlay in the page's own document),
+// as its hello's capabilities allow; an answer's `time` (the Player's clock)
+// passes on to og.platform; without one, or
 // where the Player answers no such method, the browser's own storage answers
 // (../src/platform-local.ts over localStorage). The mapping:
 // docs/web-export.md §Platform services.
@@ -42,11 +44,14 @@ function asSave(data: unknown): Save {
   return data && typeof data === "object" && !Array.isArray(data) ? (data as Save) : {};
 }
 
-/** The Player's answer as og.platform's (a conflict keeps the revision it names). */
+/** The Player's `time` on an answer, when it stamped one: og.platform's clock is then the Player's. */
+const stamp = (r: PlayerResult | undefined): { time?: number } => (typeof r?.time === "number" ? { time: r.time } : {});
+
+/** The Player's answer as og.platform's (a conflict keeps the revision it names; the Player's `time` passes on). */
 const fromPlayer = (r: PlayerResult, data: (d: unknown) => unknown): PlatformAnswer =>
   r.ok
-    ? { ok: true, data: data(r.data) }
-    : { ok: false, error: { code: r.error.code, message: r.error.message, retryable: r.error.retryable, ...(typeof r.error.revision === "number" ? { revision: r.error.revision } : {}) } };
+    ? { ok: true, data: data(r.data), ...stamp(r) }
+    : { ok: false, error: { code: r.error.code, message: r.error.message, retryable: r.error.retryable, ...(typeof r.error.revision === "number" ? { revision: r.error.revision } : {}) }, ...stamp(r) };
 
 const STORE = ["store.get", "store.set", "store.list"];
 type Entry = { rank: number; name: string; score: number; me?: boolean };
@@ -101,13 +106,13 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     const save = asSave(at.data);
     const doc: LocalDocument = { version: 1, player: "", store: { ...(save.store ?? {}) }, boards: {}, points: { balance: 0, grants: [] }, marks: [], events: [] };
     const answer = answerLocally(doc, call);
-    if (call.method !== "store.set" || !answer?.ok) return answer;
+    if (call.method !== "store.set" || !answer?.ok) return answer && { ...answer, ...stamp(got) };
     // Written back at the revision it was read at: a write from another device in between is a conflict.
     const revision = typeof at.revision === "number" ? at.revision : undefined;
     const put = await player.request("save.set", { data: { ...save, store: doc.store }, ...(revision === undefined ? {} : { revision }) });
     if (!put.ok) return fromPlayer(put, () => null);
     const queued = (put.data as { queued?: boolean } | null)?.queued === true;
-    return { ok: true, data: { ...(answer.data as object), ...(queued ? { queued: true } : {}) } };
+    return { ok: true, data: { ...(answer.data as object), ...(queued ? { queued: true } : {}) }, ...stamp(put.time === undefined ? got : put) };
   };
 
   const one = async (call: PlatformCall): Promise<PlatformAnswer | null> => {

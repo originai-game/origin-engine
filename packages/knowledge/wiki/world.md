@@ -313,7 +313,7 @@ fn set {
 
 #### `World.resource`
 
-A resource's live value. Inside a system, the resource must be among the system's reads or writes.
+A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.
 
 ```ts
 World.resource<R extends AnyResource>(resource: R): Result<Value<R>>
@@ -323,16 +323,16 @@ World.resource<R extends AnyResource>(resource: R): Result<Value<R>>
 |---|---|---|---|
 | `resource` | `R` | no | The resource token. |
 
-**Returns** `Result<Value<R>>`: Refused for an unregistered resource or one the running system did not declare.
+**Returns** `Result<Value<R>>`: Refused for an unregistered resource (or, in a publish build, one the running system did not declare).
 
 Binding symbol `og_world_resource` · publish builds: kept
 
 ```ogt
 fn resource {
-  doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes."
+  doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
   generic R AnyResource
   param resource R "The resource token."
-  returns Result.Value.R "Refused for an unregistered resource or one the running system did not declare."
+  returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
 }
 ```
 
@@ -426,7 +426,7 @@ fn query {
 
 #### `World.events`
 
-The events of one type emitted during the previous tick and this one, oldest first.
+The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once).
 
 ```ts
 World.events<E extends AnyEvent>(event: E): readonly Value<E>[]
@@ -442,7 +442,7 @@ Binding symbol `og_world_events` · publish builds: kept
 
 ```ogt
 fn events {
-  doc "The events of one type emitted during the previous tick and this one, oldest first."
+  doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
   generic E AnyEvent
   param event E "The event token."
   returns List.Value.E
@@ -455,7 +455,7 @@ fn events {
 
 #### `World.emit`
 
-Emit an event; readers see it this tick and the next.
+Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once).
 
 ```ts
 World.emit<E extends AnyEvent>(event: E, payload: Value<E>): Result<void>
@@ -472,7 +472,7 @@ Binding symbol `og_world_emit` · publish builds: kept
 
 ```ogt
 fn emit {
-  doc "Emit an event; readers see it this tick and the next."
+  doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
   generic E AnyEvent
   param event E "The event token."
   param payload Value.E "The event's fields."

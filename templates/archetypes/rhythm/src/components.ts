@@ -70,6 +70,7 @@ export const Game = defineResource("Game", {
   over: bool(false, { doc: "The play is over: the Ui system shows the results." }),
   stopBand: bool(false, { doc: "Stop every stem this tick (a pause, a fail, the title)." }),
   bandFrom: u32(0, { doc: "A start or a resume: the bar the Band starts at Game.countTo, after the count-in's clicks (0 none)." }),
+  bandBeat: f64(0, { doc: "Where in the song (beats from bar 1) the Band starts at Game.countTo: a bar line after a start, the beat it paused on after a resume, so the bar's stems start part-way (AudioSource.startOffset)." }),
   noteTexture: f64(0, { doc: "The note's texture handle." }),
   sfx: u32(0),
   laneW: f32(1.5, { unit: "m", doc: "A lane's width (src/ui.ts sets the layout for the surface)." }),

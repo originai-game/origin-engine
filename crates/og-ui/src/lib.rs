@@ -20,14 +20,18 @@
 //! the unit of `og.Input` and the probe. README.md has the widget set, the
 //! layout rules, the id grammar, the theme generation and the probe contract.
 
+mod a11y;
 mod draw;
 mod id;
 mod input;
 mod juice;
 mod layout;
+pub mod markup;
 mod motion;
 mod nav;
 mod probe;
+mod rich;
+mod scroll;
 pub mod shape;
 pub mod skin;
 mod style;
@@ -37,6 +41,7 @@ pub mod theme;
 mod ui;
 mod widgets;
 
+pub use a11y::{A11yNode, A11yTree};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, atlas_texture};
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
@@ -49,6 +54,7 @@ pub use layout::{
 };
 pub use motion::{TransitionKind, cubic_bezier, ease_exit, ease_out};
 pub use probe::{SharedUi, UiProbe};
+pub use rich::{RichTextDesc, RichTextResponse};
 pub use skin::{Skin, SkinFile, SkinPart, Slice, SliceFill, UiSound, parse_skin};
 pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, HueName, Hues, Palette, Radius, Scheme,
@@ -57,7 +63,8 @@ pub use style::{
 pub use text::{FontMetrics, UiFont};
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
-    PanelDesc, ProgressDesc, Response, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame, Viewport,
+    PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame,
+    Viewport,
 };
 pub use widgets::{
     ActionButtonDesc, AnchorDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc,

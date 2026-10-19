@@ -22,6 +22,10 @@
 //! - the mixer's output depends on anything but the stream, or `listen`
 //!   returns other frames than the ones rendered →
 //!   `the_mix_is_the_same_twice_and_listen_returns_its_last_second`
+//! - a source with a startOffset starts from the clip's beginning, a frame
+//!   off, fades in over the first samples, loses its startAt inside the
+//!   tick, or ends on another tick than the rest of the clip does →
+//!   `a_start_part_way_plays_the_clip_from_its_offset_to_the_sample`
 
 mod support;
 
@@ -704,4 +708,157 @@ fn the_mix_is_the_same_twice_and_listen_returns_its_last_second() {
         ),
     )
     .unwrap();
+}
+
+/// A streamed sound's stand-in: silent until its group arrives, with the
+/// real sound's rate and length from the start (the tick side never sees
+/// residency), then the real samples in the voice that was already
+/// playing, and silent again when the group unloads. Ways this could fail:
+/// the stand-in plays noise, a voice keeps the silence it started with,
+/// a replacement of another shape is accepted (and would move SoundEnded),
+/// or a silenced handle stops existing.
+#[test]
+fn a_silent_stand_in_becomes_its_sound_in_the_voice_already_playing() {
+    let bank = SoundBank::new();
+    let samples = synth(RATE as usize, 1, sine(440.0, 0.5));
+    let qoa_bytes = og_audio::qoa::encode(&samples, 1, RATE).expect("encode");
+    let stand = bank
+        .insert_silent("ambience", RATE, 1, RATE as u64)
+        .expect("stand-in");
+    assert_eq!(bank.info(stand), Some((RATE, RATE as u64)));
+    assert!(!bank.audible(stand));
+    let (mut world, link) = world_with(&bank, |_| {});
+    world.spawn((looped(stand, Bus::Sfx, 1.0),)).unwrap();
+    let mut sink = capture(&mut world, &link);
+    step(&mut world, &mut sink, 30);
+    let silent = window(sink.pcm(), 12_000, 24_000);
+    assert!(silent.iter().all(|&x| x == 0.0), "the stand-in is silent");
+
+    let short = og_audio::qoa::encode(&samples[..RATE as usize / 2], 1, RATE).expect("encode");
+    assert!(
+        bank.replace_qoa(stand, "ambience", &short).is_err(),
+        "another length is refused"
+    );
+    assert!(
+        bank.replace_qoa(stand, "ambience", &qoa_bytes)
+            .expect("replace")
+    );
+    assert!(bank.audible(stand));
+    assert_eq!(bank.info(stand), Some((RATE, RATE as u64)));
+    step(&mut world, &mut sink, 30);
+    let loud = window(sink.pcm(), 36_000, 48_000);
+    assert!(
+        tone(&loud, 440.0) > 0.2,
+        "the playing voice continues with the samples: {}",
+        tone(&loud, 440.0)
+    );
+
+    assert!(bank.silence(stand));
+    assert!(!bank.audible(stand));
+    assert_eq!(bank.info(stand), Some((RATE, RATE as u64)));
+    let missing = bank.insert_pcm("gone", RATE, 1, &[0; 4]).expect("pcm");
+    assert!(bank.remove(missing));
+    assert!(
+        !bank
+            .replace_qoa(missing, "gone", &qoa_bytes)
+            .expect("no handle")
+    );
+}
+
+/// A capture of `source` alone for `ticks` ticks: the PCM and the tick its SoundEnded was sent in.
+fn render_alone(bank: &SoundBank, source: AudioSource, ticks: u64) -> (Vec<f32>, Option<u64>) {
+    let (mut world, link) = world_with(bank, |_| {});
+    world.spawn((source,)).unwrap();
+    let mut sink = capture(&mut world, &link);
+    let mut ended = None;
+    for _ in 0..ticks {
+        world.step().unwrap();
+        sink.pump();
+        if ended.is_none() && !world.pending_events::<SoundEnded>().unwrap().is_empty() {
+            ended = Some(world.time().tick);
+        }
+    }
+    (sink.pcm().to_vec(), ended)
+}
+
+#[test]
+fn a_start_part_way_plays_the_clip_from_its_offset_to_the_sample() {
+    let bank = SoundBank::new();
+    // Noise, so a frame's offset cannot hide in a period (0.3: under the limiter's knee).
+    let mut state = 0x2545_f491_u32;
+    let noise: Vec<i16> = (0..RATE as usize)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            ((f64::from(state) / f64::from(u32::MAX) * 2.0 - 1.0) * 0.3 * 32767.0) as i16
+        })
+        .collect();
+    let clip = insert(&bank, "noise", 1, &noise);
+    let whole = AudioSource {
+        bus: Bus::Music as u32,
+        ..AudioSource::new(clip)
+    };
+    let (full, full_end) = render_alone(&bank, whole, 90);
+    // From 0.3125 s in (15,000 frames), started at once.
+    let skip = 15_000usize;
+    let offset = skip as f64 / f64::from(RATE);
+    let (part, part_end) = render_alone(
+        &bank,
+        AudioSource {
+            start_offset: offset,
+            ..whole
+        },
+        90,
+    );
+    let f = |pcm: &[f32], i: usize| pcm[i * 2];
+    assert!(
+        f(&full, skip).abs() > 0.0,
+        "the clip sounds where the offset lands"
+    );
+    for i in 0..(RATE as usize - skip) {
+        assert_eq!(
+            f(&part, i),
+            f(&full, i + skip),
+            "frame {i} of the part-way start is frame {} of the clip",
+            i + skip
+        );
+    }
+    assert!(
+        part[(RATE as usize - skip) * 2..].iter().all(|x| *x == 0.0),
+        "and it stops where the clip ends"
+    );
+    // The clip ends in tick 59 (48,000 frames at 800 a tick); from 15,000 in
+    // its rest of 33,000 frames ends in tick 41.
+    assert_eq!(full_end, Some(60));
+    assert_eq!(
+        part_end,
+        Some(42),
+        "its SoundEnded comes with the rest's end"
+    );
+
+    // Started inside a tick (startAt 1.0 s + 123 samples) from the same offset.
+    let at = 1.0 + 123.0 / f64::from(RATE);
+    let (late, _) = render_alone(
+        &bank,
+        AudioSource {
+            start_at: at,
+            start_offset: offset,
+            ..whole
+        },
+        150,
+    );
+    let start = RATE as usize + 123;
+    assert!(
+        late[..start * 2].iter().all(|x| *x == 0.0),
+        "silent until its startAt"
+    );
+    for i in 0..(RATE as usize - skip) {
+        assert_eq!(
+            f(&late, start + i),
+            f(&full, skip + i),
+            "frame {i} after its startAt is frame {} of the clip",
+            skip + i
+        );
+    }
 }

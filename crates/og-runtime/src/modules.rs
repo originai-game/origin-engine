@@ -12,7 +12,8 @@
 //! 3. the game's systems (declaration order, then `after`/`before`);
 //! 4. `og.ui.end`: lays the frame out (the probe and the renderer read it);
 //! 5. `og.physics`: steps the simulation and writes the dynamic bodies back;
-//! 6. `og.audio`: turns the tick's AudioSource changes into commands.
+//! 6. `og.ui.sound`: starts a voice for each UI event of the tick;
+//! 7. `og.audio`: turns the tick's AudioSource changes into commands.
 //!
 //! The UI's interaction state is the `og.ui` state block, so snapshots and
 //! the world hash carry it with the physics world (`og.physics`) and the
@@ -46,7 +47,8 @@ pub const UI_BEGIN: &str = "og.ui.begin";
 pub const UI_END: &str = "og.ui.end";
 /// The state block that carries the UI's interaction state.
 pub const UI_STATE: &str = "og.ui";
-/// The system that plays the UI's event sounds (after og.audio).
+/// The system that plays the UI's event sounds (before og.audio, so they
+/// start in the tick of their input).
 pub const UI_SOUND: &str = "og.ui.sound";
 /// The sprite layer the UI's painter level 0 draws on: above game sprites.
 pub const UI_LAYER: i32 = 1 << 20;
@@ -165,18 +167,11 @@ pub(crate) fn mount_back(
         .map_err(err)?;
     super::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
     physics.schedule(world).map_err(err)?;
-    let audio = og_audio::install(
-        world,
-        &og_audio::AudioDesc {
-            link,
-            occluder: Some(super::e6::occluder(&physics)),
-            ..og_audio::AudioDesc::default()
-        },
-    )
-    .map_err(err)?;
-    // UI sounds: the events og.ui.end queued, played on the ui bus. A
-    // voice per event (its entity kept in the UI state) restarts on a
-    // repeat; the sources start in og.audio's next pass, one tick on.
+    // UI sounds: the events this tick's UI queued (its begin, from the
+    // input, and its widgets), played on the ui bus. A voice per event
+    // (its entity kept in the UI state) restarts on a repeat. This runs
+    // before og.audio, so og.audio turns the new sources into this tick's
+    // commands: the sound starts in the tick of the input that caused it.
     let shared = ui.clone();
     world
         .add_system(
@@ -205,6 +200,15 @@ pub(crate) fn mount_back(
             },
         )
         .map_err(err)?;
+    let audio = og_audio::install(
+        world,
+        &og_audio::AudioDesc {
+            link,
+            occluder: Some(super::e6::occluder(&physics)),
+            ..og_audio::AudioDesc::default()
+        },
+    )
+    .map_err(err)?;
     world
         .add_state_block(UI_STATE, Box::new(UiState(ui.clone())))
         .map_err(err)?;
@@ -717,6 +721,7 @@ fn element(theme: &Theme, d: &Value) -> Element {
         cross: cross(&d["cross"]),
         wrap: d["wrap"].as_bool().unwrap_or(false),
         scroll: d["scroll"].as_bool().unwrap_or(false),
+        scroll_x: d["scrollX"].as_bool().unwrap_or(false),
         interactive: d["interactive"].as_bool().unwrap_or(false),
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
@@ -750,7 +755,7 @@ fn response(r: Response) -> Value {
     json!({
         "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
         "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
-        "dropped": r.dropped,
+        "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by,
     })
 }
 
@@ -1146,6 +1151,11 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
             height: size_or(&d["height"], Size::fit()),
             padding: insets(&d["padding"]),
             gap: f(&d, "gap", 0.0),
+            axes: match d["axes"].as_str() {
+                Some("horizontal") => og_ui::ScrollAxes::Horizontal,
+                Some("both") => og_ui::ScrollAxes::Both,
+                _ => og_ui::ScrollAxes::Vertical,
+            },
         };
         ui.open_scroll(id.as_str(), s)
     });
@@ -1178,6 +1188,32 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
         };
         ui.label(id.as_str(), &text, l)
     });
+}
+
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.richText", |ui| {
+        let t = *ui.theme();
+        let desc = og_ui::RichTextDesc {
+            step: d["step"].as_str().and_then(|s| step(&t, s)),
+            color: paint(&t, &d["color"]),
+            align: match d["align"].as_str() {
+                Some("center") => TextAlign::Center,
+                Some("end") => TextAlign::End,
+                _ => TextAlign::Start,
+            },
+            nowrap: d["nowrap"].as_bool().unwrap_or(false),
+            width: size_or(&d["width"], Size::fit()),
+            font: match d["font"].as_str() {
+                Some("display") => FontRole::Display,
+                Some("mono") => FontRole::Mono,
+                _ => FontRole::Body,
+            },
+        };
+        ui.rich_text(id.as_str(), &markup, desc)
+    })
+    .unwrap_or_default();
+    json!({ "response": response(r.response), "link": r.link, "hovered": r.hovered }).to_string()
 }
 
 pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
@@ -2028,6 +2064,34 @@ pub fn og_ui_back() -> bool {
 
 pub fn og_ui_set_navigation(on: bool) {
     with_ui("og.ui.setNavigation", |ui| ui.set_navigation(on));
+}
+
+pub fn og_ui_set_players(count: u32) {
+    with_ui("og.ui.setPlayers", |ui| ui.set_players(count));
+}
+
+pub fn og_ui_focus(pad: u32) -> String {
+    with_ui("og.ui.focus", |ui| ui.focus_path(pad).to_string()).unwrap_or_default()
+}
+
+pub fn og_ui_a11y() -> String {
+    with_ui("og.ui.a11y", |ui| {
+        let t = ui.a11y();
+        let nodes: Vec<serde_json::Value> = t
+            .nodes
+            .iter()
+            .map(|n| {
+                serde_json::json!({
+                    "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
+                    "value": n.value, "states": n.states,
+                    "x": n.x, "y": n.y, "width": n.width, "height": n.height,
+                })
+            })
+            .collect();
+        serde_json::json!({"nodes": nodes, "focusOrder": t.focus_order, "focused": t.focused})
+            .to_string()
+    })
+    .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
 }
 
 pub fn og_ui_memory(id: String, initial: f64) -> f64 {

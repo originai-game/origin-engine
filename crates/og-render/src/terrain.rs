@@ -32,7 +32,13 @@
 //! or triplanar (cliffs), with an optional normal map.
 
 use crate::scene::{TerrainHandle, TextureHandle};
+use crate::terrain_tiles::{
+    ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
+    TerrainTile, TerrainView, terrain_tiles_wanted,
+};
 use glam::{Mat4, Vec2, Vec3};
+
+pub use crate::scatter::{MAX_SCATTER_INSTANCES, TerrainScatter};
 use std::sync::Arc;
 
 /// The most layers a [`Terrain`] blends.
@@ -123,10 +129,62 @@ impl TerrainData {
         Ok(())
     }
 
-    fn sample(&self, c: u32, r: u32) -> f32 {
-        let c = c.min(self.columns - 1);
-        let r = r.min(self.rows - 1);
-        self.heights[(r * self.columns + c) as usize]
+    /// The height at `local` (x and z relative to the terrain's centre) on
+    /// the triangles the renderer draws at its finest level and physics
+    /// collides with: each cell split along its (-x, -z) to (+x, +z)
+    /// diagonal; clamped to the edge.
+    pub fn height(&self, local: Vec2) -> f32 {
+        TerrainSampler::of(self).height(local)
+    }
+
+    /// The surface normal at `local`: the samples' normals (central
+    /// differences, as the renderer's normal map) interpolated bilinearly.
+    pub fn normal(&self, local: Vec2) -> Vec3 {
+        TerrainSampler::of(self).normal(local)
+    }
+
+    /// The lowest and highest height.
+    pub fn range(&self) -> (f32, f32) {
+        self.heights
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), &h| (lo.min(h), hi.max(h)))
+    }
+}
+
+/// [`TerrainData::height`] and [`TerrainData::normal`] over a field read
+/// sample by sample (`sample(column, row)`, both in range): the runtime
+/// samples a streamed terrain's decoded tiles with it, and gets the same
+/// answers as from the whole field.
+pub struct TerrainSampler<F: Fn(u32, u32) -> f32> {
+    pub size: Vec2,
+    pub columns: u32,
+    pub rows: u32,
+    pub sample: F,
+}
+
+impl TerrainSampler<fn(u32, u32) -> f32> {
+    /// A sampler over a field in memory.
+    pub fn of(d: &TerrainData) -> TerrainSampler<impl Fn(u32, u32) -> f32 + '_> {
+        TerrainSampler {
+            size: d.size,
+            columns: d.columns,
+            rows: d.rows,
+            sample: move |c: u32, r: u32| d.heights[(r * d.columns + c) as usize],
+        }
+    }
+}
+
+impl<F: Fn(u32, u32) -> f32> TerrainSampler<F> {
+    fn at(&self, c: u32, r: u32) -> f32 {
+        (self.sample)(c.min(self.columns - 1), r.min(self.rows - 1))
+    }
+
+    fn cell(&self) -> Vec2 {
+        self.size
+            / Vec2::new(
+                self.columns.max(2) as f32 - 1.0,
+                self.rows.max(2) as f32 - 1.0,
+            )
     }
 
     /// Sample coordinates of a point given relative to the terrain's centre.
@@ -138,10 +196,7 @@ impl TerrainData {
         )
     }
 
-    /// The height at `local` (x and z relative to the terrain's centre) on
-    /// the triangles the renderer draws at its finest level and physics
-    /// collides with: each cell split along its (-x, -z) to (+x, +z)
-    /// diagonal; clamped to the edge.
+    /// As [`TerrainData::height`].
     pub fn height(&self, local: Vec2) -> f32 {
         let t = self.grid(local);
         let i = t
@@ -149,10 +204,10 @@ impl TerrainData {
             .min(Vec2::new(self.columns as f32 - 2.0, self.rows as f32 - 2.0));
         let f = (t - i).clamp(Vec2::ZERO, Vec2::ONE);
         let (c, r) = (i.x as u32, i.y as u32);
-        let h00 = self.sample(c, r);
-        let h10 = self.sample(c + 1, r);
-        let h01 = self.sample(c, r + 1);
-        let h11 = self.sample(c + 1, r + 1);
+        let h00 = self.at(c, r);
+        let h10 = self.at(c + 1, r);
+        let h01 = self.at(c, r + 1);
+        let h11 = self.at(c + 1, r + 1);
         if f.y >= f.x {
             h00 + (h11 - h01) * f.x + (h01 - h00) * f.y
         } else {
@@ -164,13 +219,12 @@ impl TerrainData {
         let cell = self.cell();
         let (c0, c1) = (c.saturating_sub(1), (c + 1).min(self.columns - 1));
         let (r0, r1) = (r.saturating_sub(1), (r + 1).min(self.rows - 1));
-        let hx = (self.sample(c1, r) - self.sample(c0, r)) / ((c1 - c0).max(1) as f32 * cell.x);
-        let hz = (self.sample(c, r1) - self.sample(c, r0)) / ((r1 - r0).max(1) as f32 * cell.y);
+        let hx = (self.at(c1, r) - self.at(c0, r)) / ((c1 - c0).max(1) as f32 * cell.x);
+        let hz = (self.at(c, r1) - self.at(c, r0)) / ((r1 - r0).max(1) as f32 * cell.y);
         Vec3::new(-hx, 1.0, -hz).normalize()
     }
 
-    /// The surface normal at `local`: the samples' normals (central
-    /// differences, as the renderer's normal map) interpolated bilinearly.
+    /// As [`TerrainData::normal`].
     pub fn normal(&self, local: Vec2) -> Vec3 {
         let t = self.grid(local);
         let i = t
@@ -185,13 +239,6 @@ impl TerrainData {
             .sample_normal(c, r + 1)
             .lerp(self.sample_normal(c + 1, r + 1), f.x);
         lo.lerp(hi, f.y).normalize_or(Vec3::Y)
-    }
-
-    /// The lowest and highest height.
-    pub fn range(&self) -> (f32, f32) {
-        self.heights
-            .iter()
-            .fold((f32::MAX, f32::MIN), |(lo, hi), &h| (lo.min(h), hi.max(h)))
     }
 }
 
@@ -247,21 +294,40 @@ pub struct TerrainLod {
     /// Quads per side of every level (0: 64; rounded to a multiple of 4,
     /// 16 to 256). More quads push each level's detail further out.
     pub ring: u32,
+    /// GPU bytes for its resident tiles (0: [`DEFAULT_TERRAIN_BUDGET`]):
+    /// how many tiles it keeps, at least 8.
+    pub budget: u64,
 }
 
+/// A terrain's tile budget when its lod gives none: 16 MiB.
+pub const DEFAULT_TERRAIN_BUDGET: u64 = 16 << 20;
+
 impl TerrainLod {
-    fn ring(&self) -> u32 {
+    /// Quads per side of every level, as drawn.
+    pub fn ring_quads(&self) -> u32 {
         let r = if self.ring == 0 { 64 } else { self.ring };
         (r.clamp(16, 256) / 4) * 4
     }
+
+    /// GPU bytes for resident tiles, as drawn.
+    pub fn budget(&self) -> u64 {
+        if self.budget == 0 {
+            DEFAULT_TERRAIN_BUDGET
+        } else {
+            self.budget
+        }
+    }
 }
 
-/// A terrain drawn this frame: its data at `origin` (the centre of the
-/// height field at height 0) with its layers.
+/// A terrain drawn this frame: its data placed by `transform` (from the
+/// terrain's own space, whose origin is the centre of the height field at
+/// height 0 with x and z along its sides, to the world) with its layers.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Terrain {
     pub terrain: TerrainHandle,
-    pub origin: Vec3,
+    /// Rotation, scale and translation of the height field (identity: centred
+    /// on the world origin along world x and z).
+    pub transform: Mat4,
     /// Up to [`MAX_TERRAIN_LAYERS`] layers (more are ignored).
     pub layers: Vec<TerrainLayer>,
     /// How much the layers' heights (their albedo's alpha) sharpen their
@@ -269,17 +335,21 @@ pub struct Terrain {
     pub height_blend: f32,
     pub cast_shadows: bool,
     pub lod: TerrainLod,
+    /// Streamed tiles fade in over their parents as they arrive; `false`
+    /// shows what has arrived at once (a capture after the tiles settled).
+    pub fade_in: bool,
 }
 
 impl Terrain {
     pub fn new(terrain: TerrainHandle) -> Terrain {
         Terrain {
             terrain,
-            origin: Vec3::ZERO,
+            transform: Mat4::IDENTITY,
             layers: vec![TerrainLayer::default()],
             height_blend: 0.0,
             cast_shadows: true,
             lod: TerrainLod::default(),
+            fade_in: true,
         }
     }
 }
@@ -298,11 +368,18 @@ struct LayerGpu {
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct TerrainGpu {
+    /// The terrain's space to the world.
+    model: [[f32; 4]; 4],
+    /// Normals from the terrain's space to the world (the inverse transpose
+    /// of `model`'s upper 3×3, as three padded columns).
+    normal: [[f32; 4]; 3],
     origin: [f32; 4],
     extent: [f32; 4],
     params: [f32; 4],
+    tiles: [f32; 4],
     view_proj: [[f32; 4]; 4],
     prev_view_proj: [[f32; 4]; 4],
+    pyramid: [[f32; 4]; MAX_TERRAIN_PYRAMID as usize],
     layers: [LayerGpu; MAX_TERRAIN_LAYERS],
 }
 
@@ -426,51 +503,119 @@ fn ring_indices(n: u32) -> (Vec<u32>, [std::ops::Range<u32>; 5]) {
     (idx, ranges)
 }
 
+/// Where a terrain's tiles come from: a whole field in memory (its tiles
+/// made when drawn), or tiles handed over one by one (streaming).
+#[derive(Clone, Debug)]
+pub(crate) enum TerrainSource {
+    Data(TerrainData),
+    Stream {
+        layout: TerrainLayout,
+        range: (f32, f32),
+        tiles: std::collections::BTreeMap<u32, Arc<TerrainTile>>,
+    },
+}
+
+impl TerrainSource {
+    /// The tile size a field in memory is drawn with: [`TERRAIN_TILE`], or
+    /// larger for a field too big for the tile table.
+    pub(crate) fn layout(&self) -> Result<TerrainLayout, String> {
+        match self {
+            TerrainSource::Stream { layout, .. } => Ok(*layout),
+            TerrainSource::Data(d) => {
+                d.check()?;
+                let mut tile = TERRAIN_TILE;
+                loop {
+                    match d.layout(tile) {
+                        Ok(l) => return Ok(l),
+                        Err(e) if tile >= 1024 => return Err(e),
+                        Err(_) => tile *= 2,
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn range(&self) -> (f32, f32) {
+        match self {
+            TerrainSource::Stream { range, .. } => *range,
+            TerrainSource::Data(d) => d.range(),
+        }
+    }
+}
+
+/// Frames a streamed tile takes to fade in over its parent.
+const FADE_FRAMES: f32 = 12.0;
+
+/// One resident tile: its index and data, and how far it has faded in.
+struct SlotTile {
+    tile: u32,
+    data: Arc<TerrainTile>,
+    fade: f32,
+}
+
+/// One terrain data's GPU state: the tile arrays (one layer per slot), the
+/// tile table, and what each slot holds.
 struct GpuData {
     revision: u64,
+    layout: TerrainLayout,
+    capacity: u32,
+    /// Bumped whenever the arrays are made again (bind groups name it).
+    generation: u64,
     heights: wgpu::Texture,
     heights_view: wgpu::TextureView,
     normals: wgpu::Texture,
     normals_view: wgpu::TextureView,
-    normals_group: wgpu::BindGroup,
-    normals_uniform: wgpu::Buffer,
-    control: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
-    columns: u32,
-    rows: u32,
-    size: Vec2,
+    control: Option<(wgpu::Texture, wgpu::TextureView)>,
+    table: wgpu::Buffer,
+    table_cpu: Vec<f32>,
+    slots: Vec<Option<SlotTile>>,
+    by_tile: std::collections::HashMap<u32, usize>,
+    /// A field in memory's control map resampled for its tiles.
+    pyramid: Option<ControlPyramid>,
     range: (f32, f32),
+    streamed: bool,
+    /// Drawn in an earlier frame: tiles arriving now fade in.
+    drawn: bool,
 }
 
 struct Slot {
     uniform: wgpu::Buffer,
     levels: wgpu::Buffer,
     /// The bind group and what it was made from: (data index, data
-    /// revision, the layers' textures).
+    /// generation, the layers' textures).
     group: Option<(GroupKey, wgpu::BindGroup)>,
 }
 
 type GroupKey = (usize, u64, [Option<TextureHandle>; 2 * MAX_TERRAIN_LAYERS]);
 
-/// Draws [`Terrain`]s: the pipelines, each data's textures, a uniform and
+/// Draws [`Terrain`]s: the pipelines, each data's tiles, a uniform and
 /// level buffer per drawn terrain, kept across frames.
 pub(crate) struct TerrainRenderer {
     layout: wgpu::BindGroupLayout,
     pub lit: wgpu::RenderPipeline,
     pub prepass: wgpu::RenderPipeline,
     pub shadow: wgpu::RenderPipeline,
-    normals_layout: wgpu::BindGroupLayout,
-    normals_pipeline: wgpu::RenderPipeline,
     layer_sampler: wgpu::Sampler,
     map_sampler: wgpu::Sampler,
     white: wgpu::TextureView,
     flat_normal: wgpu::TextureView,
+    /// A one-layer white array for terrains without a control map.
+    white_array: wgpu::TextureView,
     indices: Option<(u32, wgpu::Buffer, [std::ops::Range<u32>; 5])>,
     scene: u64,
     datas: Vec<Option<GpuData>>,
     slots: Vec<Slot>,
+    generations: u64,
+    max_layers: u32,
+    /// Tiles uploaded in the last prepare and resident after it.
+    pub uploads: u32,
+    pub resident: u32,
 }
 
 pub(crate) const NORMALS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+
+/// The tile table's size: one f32 per tile, four to a vector.
+const TABLE_BYTES: u64 = MAX_TERRAIN_TILES as u64 * 4;
 
 /// What [`TerrainRenderer::new`] builds its pipelines from.
 pub(crate) struct TerrainPipelines<'a> {
@@ -486,14 +631,26 @@ pub(crate) struct TerrainPipelines<'a> {
 }
 
 impl TerrainRenderer {
-    pub(crate) fn new(device: &wgpu::Device, p: TerrainPipelines) -> TerrainRenderer {
+    /// Drops every terrain's bind group (a layer texture was replaced):
+    /// the next prepare makes them again from the current views.
+    pub(crate) fn forget_groups(&mut self) {
+        for slot in &mut self.slots {
+            slot.group = None;
+        }
+    }
+
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        p: TerrainPipelines,
+    ) -> TerrainRenderer {
         let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
-        let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
+        let tex = |binding, filterable, dim| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: vf,
             ty: wgpu::BindingType::Texture {
                 sample_type: wgpu::TextureSampleType::Float { filterable },
-                view_dimension: wgpu::TextureViewDimension::D2,
+                view_dimension: dim,
                 multisampled: false,
             },
             count: None,
@@ -514,9 +671,17 @@ impl TerrainRenderer {
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
         };
-        let mut entries = vec![uniform(0, false), uniform(1, true), tex(2, false)];
-        entries.extend((3..13).map(|b| tex(b, true)));
-        entries.extend([sampler(13), sampler(14)]);
+        let array = wgpu::TextureViewDimension::D2Array;
+        let d2 = wgpu::TextureViewDimension::D2;
+        let mut entries = vec![
+            uniform(0, false),
+            uniform(1, true),
+            tex(2, false, array),
+            tex(3, true, array),
+            tex(4, true, array),
+        ];
+        entries.extend((5..13).map(|b| tex(b, true, d2)));
+        entries.extend([sampler(13), sampler(14), uniform(15, false)]);
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("terrain"),
             entries: &entries,
@@ -638,38 +803,6 @@ impl TerrainRenderer {
             multiview_mask: None,
             cache: None,
         });
-        let normals_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("terrain normals"),
-            entries: &[uniform(0, false), tex(1, false)],
-        });
-        let normals_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("terrain normals"),
-            source: wgpu::ShaderSource::Wgsl(
-                include_str!("../shaders/terrain_normals.wgsl").into(),
-            ),
-        });
-        let normals_pl = pl("terrain normals", &[&normals_layout]);
-        let normals_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("terrain normals"),
-            layout: Some(&normals_pl),
-            vertex: wgpu::VertexState {
-                module: &normals_module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &normals_module,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[target(NORMALS_FORMAT)],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
         let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("terrain layers"),
             address_mode_u: wgpu::AddressMode::Repeat,
@@ -689,21 +822,56 @@ impl TerrainRenderer {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
+        let white_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("terrain no control"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            white_tex.as_image_copy(),
+            &[255; 4],
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4),
+                rows_per_image: None,
+            },
+            wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+        );
+        let white_array = white_tex.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        });
         TerrainRenderer {
             layout,
             lit,
             prepass,
             shadow,
-            normals_layout,
-            normals_pipeline,
             layer_sampler,
             map_sampler,
             white: p.white,
             flat_normal: p.flat_normal,
+            white_array,
             indices: None,
             scene: 0,
             datas: Vec::new(),
             slots: Vec::new(),
+            generations: 0,
+            max_layers: device.limits().max_texture_array_layers.min(256),
+            uploads: 0,
+            resident: 0,
         }
     }
 
@@ -712,15 +880,164 @@ impl TerrainRenderer {
         self.indices.as_ref().map(|(_, b, _)| b)
     }
 
-    /// Uploads new or edited terrain data (heights, then the normal map
-    /// and the mips, recorded into `encoder`).
+    /// The tile arrays for `layout` with `capacity` slots.
+    fn make_data(
+        &mut self,
+        device: &wgpu::Device,
+        layout: TerrainLayout,
+        capacity: u32,
+        revision: u64,
+        range: (f32, f32),
+        streamed: bool,
+    ) -> GpuData {
+        let array = |label, side: u32, mips: u32, format| {
+            let t = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width: side,
+                    height: side,
+                    depth_or_array_layers: capacity,
+                },
+                mip_level_count: mips,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            let v = t.create_view(&wgpu::TextureViewDescriptor {
+                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                ..Default::default()
+            });
+            (t, v)
+        };
+        let (heights, heights_view) = array(
+            "terrain heights",
+            layout.heights_side(),
+            1,
+            wgpu::TextureFormat::R32Float,
+        );
+        let ns = layout.normals_side();
+        let (normals, normals_view) = array(
+            "terrain normals",
+            ns,
+            crate::mips::mip_count(ns, ns),
+            NORMALS_FORMAT,
+        );
+        let control = (layout.control > 0).then(|| {
+            let cs = layout.control_side();
+            array(
+                "terrain control",
+                cs,
+                crate::mips::mip_count(cs, cs),
+                wgpu::TextureFormat::Rgba8Unorm,
+            )
+        });
+        let table = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("terrain tiles"),
+            size: TABLE_BYTES,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.generations += 1;
+        GpuData {
+            revision,
+            layout,
+            capacity,
+            generation: self.generations,
+            heights,
+            heights_view,
+            normals,
+            normals_view,
+            control,
+            table,
+            table_cpu: vec![-1.0; MAX_TERRAIN_TILES as usize],
+            slots: (0..capacity).map(|_| None).collect(),
+            by_tile: Default::default(),
+            pyramid: None,
+            range,
+            streamed,
+            drawn: false,
+        }
+    }
+
+    /// Writes one tile into slot `slot`.
+    fn upload_tile(queue: &wgpu::Queue, gpu: &GpuData, slot: u32, tile: &TerrainTile) {
+        fn layer(texture: &wgpu::Texture, mip: u32, slot: u32) -> wgpu::TexelCopyTextureInfo<'_> {
+            wgpu::TexelCopyTextureInfo {
+                texture,
+                mip_level: mip,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: slot,
+                },
+                aspect: wgpu::TextureAspect::All,
+            }
+        }
+        let size = |side: u32| wgpu::Extent3d {
+            width: side,
+            height: side,
+            depth_or_array_layers: 1,
+        };
+        let row = |side: u32, bytes: u32| wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(side * bytes),
+            rows_per_image: None,
+        };
+        let hs = gpu.layout.heights_side();
+        queue.write_texture(
+            layer(&gpu.heights, 0, slot),
+            bytemuck::cast_slice(&tile.heights),
+            row(hs, 4),
+            size(hs),
+        );
+        let mut at = 0usize;
+        for (mip, side) in crate::terrain_tiles::mip_sides(gpu.layout.normals_side())
+            .into_iter()
+            .enumerate()
+        {
+            let n = (side * side * 2) as usize;
+            if let Some(texels) = tile.normals.get(at..at + n) {
+                queue.write_texture(
+                    layer(&gpu.normals, mip as u32, slot),
+                    bytemuck::cast_slice(texels),
+                    row(side, 4),
+                    size(side),
+                );
+            }
+            at += n;
+        }
+        if let (Some((texture, _)), Some(control)) = (&gpu.control, &tile.control) {
+            let mut at = 0usize;
+            for (mip, side) in crate::terrain_tiles::mip_sides(gpu.layout.control_side())
+                .into_iter()
+                .enumerate()
+            {
+                let n = (side * side * 4) as usize;
+                if let Some(texels) = control.get(at..at + n) {
+                    queue.write_texture(
+                        layer(texture, mip as u32, slot),
+                        texels,
+                        row(side, 4),
+                        size(side),
+                    );
+                }
+                at += n;
+            }
+        }
+    }
+
+    /// Brings every drawn data's slots to this frame's tiles: the tiles
+    /// each terrain wants around the camera (made from a field in memory,
+    /// or taken from those handed over), uploaded into free slots, the
+    /// others evicted; streamed tiles fade in over their parents.
     fn sync(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
-        mips: &mut crate::mips::MipGenerator,
         scene: &crate::RenderScene,
+        view: TerrainView,
     ) -> Result<(), crate::RenderError> {
         if self.scene != scene.id() {
             self.scene = scene.id();
@@ -729,201 +1046,178 @@ impl TerrainRenderer {
                 s.group = None;
             }
         }
-        let (datas, revisions) = scene.terrain_datas();
-        self.datas.resize_with(datas.len(), || None);
-        // Only the data a terrain draws this frame is uploaded.
-        let wanted: std::collections::BTreeSet<usize> =
-            scene.terrains.iter().map(|t| t.terrain.index()).collect();
-        for &i in &wanted {
-            let Some(data) = datas.get(i) else { continue };
-            if self.datas[i]
-                .as_ref()
-                .is_some_and(|g| g.revision == revisions[i])
-            {
+        self.uploads = 0;
+        self.resident = 0;
+        let (sources, revisions) = scene.terrain_sources();
+        self.datas.resize_with(sources.len(), || None);
+        // Each data's wanted tiles, over every terrain drawing it, best first.
+        let mut wanted: std::collections::BTreeMap<usize, (Vec<u32>, u32)> = Default::default();
+        for (ti, t) in scene.terrains.iter().enumerate() {
+            let i = t.terrain.index();
+            let Some(source) = sources.get(i) else {
                 continue;
-            }
-            data.check()
+            };
+            let layout = source
+                .layout()
                 .map_err(|e| crate::RenderError::InvalidData(format!("terrain {i}: {e}")))?;
-            let reuse = self.datas[i]
+            let capacity = (t.lod.budget() / layout.slot_bytes().max(1))
+                .clamp(8, self.max_layers as u64)
+                .min(layout.tile_count() as u64) as u32;
+            let view = TerrainView {
+                detail: scene.scatter_detail(ti),
+                ..view
+            };
+            let list = terrain_tiles_wanted(&layout, t, source.range(), &view, capacity as usize);
+            let entry = wanted.entry(i).or_insert((Vec::new(), capacity));
+            entry.1 = entry.1.max(capacity);
+            for tile in list {
+                if !entry.0.contains(&tile) {
+                    entry.0.push(tile);
+                }
+            }
+        }
+        for (i, (list, capacity)) in wanted {
+            let source = &sources[i];
+            let layout = source.layout().map_err(crate::RenderError::InvalidData)?;
+            let streamed = matches!(source, TerrainSource::Stream { .. });
+            let keep = self.datas[i]
                 .take()
-                .filter(|g| g.columns == data.columns && g.rows == data.rows);
-            let gpu = self.upload(device, queue, encoder, mips, data, revisions[i], reuse);
+                .filter(|g| g.layout == layout && g.capacity == capacity);
+            let mut gpu = match keep {
+                Some(mut g) if g.revision == revisions[i] => {
+                    g.streamed = streamed;
+                    g
+                }
+                Some(mut g) => {
+                    // Edited or replaced: every slot is stale.
+                    g.revision = revisions[i];
+                    g.slots.iter_mut().for_each(|s| *s = None);
+                    g.by_tile.clear();
+                    g.pyramid = None;
+                    g.range = source.range();
+                    g.streamed = streamed;
+                    g
+                }
+                None => self.make_data(
+                    device,
+                    layout,
+                    capacity,
+                    revisions[i],
+                    source.range(),
+                    streamed,
+                ),
+            };
+            gpu.range = source.range();
+            // The tiles to hold, best first: every one after its parent.
+            let mut target: Vec<(u32, Arc<TerrainTile>)> = Vec::new();
+            let mut chosen = std::collections::HashSet::new();
+            for &tile in list.iter().take(capacity as usize) {
+                if let Some(p) = layout.parent(tile)
+                    && !chosen.contains(&p)
+                {
+                    continue;
+                }
+                let data = match source {
+                    TerrainSource::Stream { tiles, .. } => match tiles.get(&tile) {
+                        Some(t) => t.clone(),
+                        None => continue,
+                    },
+                    TerrainSource::Data(d) => match gpu.by_tile.get(&tile) {
+                        Some(&s) => gpu.slots[s].as_ref().expect("held").data.clone(),
+                        None => {
+                            if gpu.pyramid.is_none()
+                                && let Some(c) = &d.control
+                            {
+                                gpu.pyramid = ControlPyramid::new(&layout, c);
+                            }
+                            Arc::new(d.tile(&layout, tile, gpu.pyramid.as_ref()))
+                        }
+                    },
+                };
+                chosen.insert(tile);
+                target.push((tile, data));
+            }
+            // Evict what is not held this frame, or was replaced.
+            for s in 0..gpu.slots.len() {
+                let stale = match &gpu.slots[s] {
+                    Some(st) => !target
+                        .iter()
+                        .any(|(t, d)| *t == st.tile && Arc::ptr_eq(d, &st.data)),
+                    None => false,
+                };
+                if stale {
+                    let st = gpu.slots[s].take().expect("held");
+                    gpu.by_tile.remove(&st.tile);
+                }
+            }
+            let fade_in = scene
+                .terrains
+                .iter()
+                .filter(|t| t.terrain.index() == i)
+                .all(|t| t.fade_in);
+            let fresh_fade = if streamed && gpu.drawn && fade_in {
+                0.0
+            } else {
+                1.0
+            };
+            if !fade_in {
+                for st in gpu.slots.iter_mut().flatten() {
+                    st.fade = 1.0;
+                }
+            }
+            for (tile, data) in &target {
+                if gpu.by_tile.contains_key(tile) {
+                    continue;
+                }
+                let Some(slot) = gpu.slots.iter().position(Option::is_none) else {
+                    break;
+                };
+                Self::upload_tile(queue, &gpu, slot as u32, data);
+                gpu.slots[slot] = Some(SlotTile {
+                    tile: *tile,
+                    data: data.clone(),
+                    fade: fresh_fade,
+                });
+                gpu.by_tile.insert(*tile, slot);
+                self.uploads += 1;
+            }
+            // Fades advance once their parent has fully faded in.
+            let parents_in: Vec<bool> = gpu
+                .slots
+                .iter()
+                .map(|s| match s {
+                    Some(st) => layout.parent(st.tile).is_none_or(|p| {
+                        gpu.by_tile
+                            .get(&p)
+                            .and_then(|&ps| gpu.slots[ps].as_ref())
+                            .is_some_and(|ps| ps.fade >= 1.0)
+                    }),
+                    None => false,
+                })
+                .collect();
+            for (s, parent_in) in gpu.slots.iter_mut().zip(parents_in) {
+                if let Some(st) = s
+                    && st.fade < 1.0
+                    && parent_in
+                {
+                    st.fade = (st.fade + 1.0 / FADE_FRAMES).min(1.0);
+                }
+            }
+            let mut table = vec![0.0f32; MAX_TERRAIN_TILES as usize];
+            for (s, st) in gpu.slots.iter().enumerate() {
+                if let Some(st) = st {
+                    table[st.tile as usize] = (s as f32 + 1.0) * 256.0 + (st.fade * 255.0).round();
+                }
+            }
+            if table != gpu.table_cpu {
+                queue.write_buffer(&gpu.table, 0, bytemuck::cast_slice(&table));
+                gpu.table_cpu = table;
+            }
+            gpu.drawn = true;
+            self.resident += gpu.by_tile.len() as u32;
             self.datas[i] = Some(gpu);
         }
         Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn upload(
-        &self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
-        mips: &mut crate::mips::MipGenerator,
-        data: &TerrainData,
-        revision: u64,
-        reuse: Option<GpuData>,
-    ) -> GpuData {
-        let size = wgpu::Extent3d {
-            width: data.columns,
-            height: data.rows,
-            depth_or_array_layers: 1,
-        };
-        let levels = crate::mips::mip_count(data.columns, data.rows);
-        let mut gpu = match reuse {
-            Some(g) => g,
-            None => {
-                let heights = device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("terrain heights"),
-                    size,
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::R32Float,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                    view_formats: &[],
-                });
-                let normals = device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("terrain normals"),
-                    size,
-                    mip_level_count: levels,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: NORMALS_FORMAT,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING
-                        | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                    view_formats: &[],
-                });
-                let heights_view = heights.create_view(&Default::default());
-                let normals_view = normals.create_view(&Default::default());
-                let normals_uniform = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("terrain normals"),
-                    size: 16,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
-                let normals_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("terrain normals"),
-                    layout: &self.normals_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: normals_uniform.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::TextureView(&heights_view),
-                        },
-                    ],
-                });
-                GpuData {
-                    revision,
-                    heights,
-                    heights_view,
-                    normals,
-                    normals_view,
-                    normals_group,
-                    normals_uniform,
-                    control: None,
-                    columns: data.columns,
-                    rows: data.rows,
-                    size: data.size,
-                    range: (0.0, 0.0),
-                }
-            }
-        };
-        gpu.revision = revision;
-        gpu.size = data.size;
-        gpu.range = data.range();
-        queue.write_texture(
-            gpu.heights.as_image_copy(),
-            bytemuck::cast_slice(&data.heights),
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(data.columns * 4),
-                rows_per_image: None,
-            },
-            size,
-        );
-        queue.write_buffer(
-            &gpu.normals_uniform,
-            0,
-            bytemuck::cast_slice(&[
-                data.size.x,
-                data.size.y,
-                data.columns as f32,
-                data.rows as f32,
-            ]),
-        );
-        {
-            let target = gpu.normals.create_view(&wgpu::TextureViewDescriptor {
-                base_mip_level: 0,
-                mip_level_count: Some(1),
-                ..Default::default()
-            });
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("terrain normals"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &target,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            pass.set_pipeline(&self.normals_pipeline);
-            pass.set_bind_group(0, &gpu.normals_group, &[]);
-            pass.draw(0..3, 0..1);
-        }
-        mips.generate(device, encoder, &gpu.normals);
-        gpu.control = match &data.control {
-            None => None,
-            Some(c) => {
-                let csize = wgpu::Extent3d {
-                    width: c.width,
-                    height: c.height,
-                    depth_or_array_layers: 1,
-                };
-                let (tex, view) = match gpu.control.take() {
-                    Some((w, h, t, v)) if (w, h) == (c.width, c.height) => (t, v),
-                    _ => {
-                        let t = device.create_texture(&wgpu::TextureDescriptor {
-                            label: Some("terrain control"),
-                            size: csize,
-                            mip_level_count: crate::mips::mip_count(c.width, c.height),
-                            sample_count: 1,
-                            dimension: wgpu::TextureDimension::D2,
-                            format: wgpu::TextureFormat::Rgba8Unorm,
-                            usage: wgpu::TextureUsages::TEXTURE_BINDING
-                                | wgpu::TextureUsages::COPY_DST
-                                | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                            view_formats: &[],
-                        });
-                        let v = t.create_view(&Default::default());
-                        (t, v)
-                    }
-                };
-                queue.write_texture(
-                    tex.as_image_copy(),
-                    &c.rgba,
-                    wgpu::TexelCopyBufferLayout {
-                        offset: 0,
-                        bytes_per_row: Some(c.width * 4),
-                        rows_per_image: None,
-                    },
-                    csize,
-                );
-                mips.generate(device, encoder, &tex);
-                Some((c.width, c.height, tex, view))
-            }
-        };
-        gpu
     }
 
     /// Uploads what changed and lays out this frame's levels for every
@@ -934,26 +1228,29 @@ impl TerrainRenderer {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        mips: &mut crate::mips::MipGenerator,
         scene: &crate::RenderScene,
         camera: Vec3,
         far: f32,
+        target_height: u32,
         view_proj: Mat4,
         prev_view_proj: Mat4,
         textures: impl Fn(TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) -> Result<Vec<TerrainDraw>, crate::RenderError> {
         if scene.terrains.is_empty() {
+            self.uploads = 0;
+            self.resident = 0;
             return Ok(Vec::new());
         }
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("terrain upload"),
-        });
-        self.sync(device, queue, &mut encoder, mips, scene)?;
-        queue.submit([encoder.finish()]);
+        let view = TerrainView {
+            camera,
+            far,
+            ..TerrainView::of(&scene.camera, target_height)
+        };
+        self.sync(device, queue, scene, view)?;
         let ring = scene
             .terrains
             .iter()
-            .map(|t| t.lod.ring())
+            .map(|t| t.lod.ring_quads())
             .max()
             .unwrap_or(64);
         if self.indices.as_ref().is_none_or(|(n, ..)| *n != ring) {
@@ -990,6 +1287,15 @@ impl TerrainRenderer {
             let Some(Some(data)) = self.datas.get(di) else {
                 return Err(crate::RenderError::InvalidHandle(format!("terrain {di}")));
             };
+            let top = data.layout.levels - 1;
+            let (ttx, ttz) = data.layout.tiles(top);
+            let top_in = (0..ttz).all(|z| {
+                (0..ttx).all(|x| data.by_tile.contains_key(&data.layout.index(top, x, z)))
+            });
+            if !top_in {
+                // A streamed terrain whose top level has not arrived: nothing to draw yet.
+                continue;
+            }
             let mut layers = [LayerGpu::default(); MAX_TERRAIN_LAYERS];
             let mut handles = [None; 2 * MAX_TERRAIN_LAYERS];
             let count = t.layers.len().min(MAX_TERRAIN_LAYERS);
@@ -1018,39 +1324,53 @@ impl TerrainRenderer {
                     altitude: [l.altitude[0], l.altitude[1], l.altitude_fade.max(0.0), 0.0],
                 };
             }
+            let lay = data.layout;
+            let model = t.transform;
+            let n3 = glam::Mat3::from_mat4(model).inverse().transpose();
+            let mut pyramid = [[0.0f32; 4]; MAX_TERRAIN_PYRAMID as usize];
+            for k in 0..lay.levels {
+                let (x, z) = lay.tiles(k);
+                pyramid[k as usize] = [lay.first(k) as f32, x as f32, z as f32, 0.0];
+            }
             let gpu = TerrainGpu {
-                origin: t.origin.extend(count as f32).to_array(),
-                extent: [
-                    data.size.x,
-                    data.size.y,
-                    data.columns as f32,
-                    data.rows as f32,
+                model: model.to_cols_array_2d(),
+                normal: [
+                    n3.x_axis.extend(0.0).to_array(),
+                    n3.y_axis.extend(0.0).to_array(),
+                    n3.z_axis.extend(0.0).to_array(),
                 ],
+                origin: model.w_axis.truncate().extend(count as f32).to_array(),
+                extent: [lay.size.x, lay.size.y, lay.columns as f32, lay.rows as f32],
                 params: [
                     t.height_blend.max(0.0),
-                    f32::from(data.control.is_some()),
+                    f32::from(lay.control > 0),
                     0.0,
                     0.0,
                 ],
+                tiles: [lay.tile as f32, lay.control as f32, lay.levels as f32, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
+                pyramid,
                 layers,
             };
             let slot = &mut self.slots[ti];
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
 
-            // The levels around the camera, in grid units.
-            let cell = data.size / Vec2::new(data.columns as f32 - 1.0, data.rows as f32 - 1.0);
+            // The levels are laid out in the terrain's own space: the camera
+            // brought into it, the far plane by the terrain's horizontal scale.
+            let cell = lay.cell();
             let unit = if t.lod.spacing > 0.0 {
                 t.lod.spacing
             } else {
                 cell.x.min(cell.y)
             };
-            let lo = Vec2::new(t.origin.x, t.origin.z) - data.size * 0.5;
-            let cam = (Vec2::new(camera.x, camera.z) - lo) / unit;
-            let extent = data.size / unit;
-            let n = t.lod.ring();
-            let list = levels(cam, extent, n, (far / unit) as f64);
+            let local_camera = model.inverse().transform_point3(camera);
+            let lo = -lay.size * 0.5;
+            let cam = (Vec2::new(local_camera.x, local_camera.z) - lo) / unit;
+            let extent = lay.size / unit;
+            let n = t.lod.ring_quads();
+            let along = horizontal_scale(model);
+            let list = levels(cam, extent, n, (far / along / unit) as f64);
             let morph_width = (n / 8).max(2) as f32;
             let morph_start = n as f32 * 0.5 - 2.0 - morph_width;
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
@@ -1086,20 +1406,21 @@ impl TerrainRenderer {
                     ((l.center[1] - half).max(0.0) * unit as f64) as f32,
                 );
                 let b = Vec2::new(
-                    ((l.center[0] + half) * unit as f64).min(data.size.x as f64) as f32,
-                    ((l.center[1] + half) * unit as f64).min(data.size.y as f64) as f32,
+                    ((l.center[0] + half) * unit as f64).min(lay.size.x as f64) as f32,
+                    ((l.center[1] + half) * unit as f64).min(lay.size.y as f64) as f32,
                 );
-                let box_min = Vec3::new(lo.x + a.x, t.origin.y + hmin, lo.y + a.y);
-                let box_max = Vec3::new(lo.x + b.x, t.origin.y + hmax, lo.y + b.y);
+                let box_min = Vec3::new(lo.x + a.x, hmin, lo.y + a.y);
+                let box_max = Vec3::new(lo.x + b.x, hmax, lo.y + b.y);
+                let (center, radius) = world_sphere(model, box_min, box_max);
                 out.push(LevelDraw {
                     offset: (k as u64 * LEVEL_STRIDE) as u32,
                     indices,
-                    center: (box_min + box_max) * 0.5,
-                    radius: (box_max - box_min).length() * 0.5,
+                    center,
+                    radius,
                 });
             }
             queue.write_buffer(&slot.levels, 0, &level_bytes);
-            let key: GroupKey = (di, data.revision, handles);
+            let key: GroupKey = (di, data.generation, handles);
             if slot.group.as_ref().is_none_or(|(k, _)| *k != key) {
                 let white = &self.white;
                 let flat = &self.flat_normal;
@@ -1107,7 +1428,7 @@ impl TerrainRenderer {
                     Some(h) => textures(h).unwrap_or(fallback),
                     None => fallback,
                 };
-                let control = data.control.as_ref().map_or(white, |c| &c.3);
+                let control = data.control.as_ref().map_or(&self.white_array, |c| &c.1);
                 let mut resources = vec![
                     slot.uniform.as_entire_binding(),
                     wgpu::BindingResource::Buffer(wgpu::BufferBinding {
@@ -1127,6 +1448,7 @@ impl TerrainRenderer {
                 }
                 resources.push(wgpu::BindingResource::Sampler(&self.layer_sampler));
                 resources.push(wgpu::BindingResource::Sampler(&self.map_sampler));
+                resources.push(data.table.as_entire_binding());
                 let entries: Vec<_> = resources
                     .into_iter()
                     .enumerate()
@@ -1159,20 +1481,40 @@ impl TerrainRenderer {
             .iter()
             .filter_map(|t| {
                 let d = self.datas.get(t.terrain.index())?.as_ref()?;
-                let lo = Vec3::new(
-                    t.origin.x - d.size.x * 0.5,
-                    t.origin.y + d.range.0,
-                    t.origin.z - d.size.y * 0.5,
-                );
-                let hi = Vec3::new(
-                    t.origin.x + d.size.x * 0.5,
-                    t.origin.y + d.range.1,
-                    t.origin.z + d.size.y * 0.5,
-                );
-                Some(((lo + hi) * 0.5, (hi - lo).length() * 0.5))
+                let s = d.layout.size;
+                let lo = Vec3::new(-s.x * 0.5, d.range.0, -s.y * 0.5);
+                let hi = Vec3::new(s.x * 0.5, d.range.1, s.y * 0.5);
+                Some(world_sphere(t.transform, lo, hi))
             })
             .collect()
     }
+}
+
+/// How far one metre along the terrain's x and z reaches in the world (the
+/// larger of the two): what the far plane is divided by in its own space.
+pub(crate) fn horizontal_scale(model: Mat4) -> f32 {
+    model
+        .x_axis
+        .truncate()
+        .length()
+        .max(model.z_axis.truncate().length())
+        .max(1e-6)
+}
+
+/// The world bounding sphere (centre, radius) of a box in the terrain's
+/// space.
+pub(crate) fn world_sphere(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, f32) {
+    let center = model.transform_point3((lo + hi) * 0.5);
+    let mut radius: f32 = 0.0;
+    for i in 0..8 {
+        let corner = Vec3::new(
+            if i & 1 == 0 { lo.x } else { hi.x },
+            if i & 2 == 0 { lo.y } else { hi.y },
+            if i & 4 == 0 { lo.z } else { hi.z },
+        );
+        radius = radius.max(model.transform_point3(corner).distance(center));
+    }
+    (center, radius)
 }
 
 /// Draws the levels of `draws` that touch `visible` (group 1: the terrain;
@@ -1252,208 +1594,5 @@ mod tests {
                 }
             }
         }
-    }
-}
-
-// ── scatter ─────────────────────────────────────────────────────────────────
-
-/// The most instances one [`TerrainScatter`] places in a frame.
-pub const MAX_SCATTER_INSTANCES: usize = 65_536;
-
-/// Detail meshes (grass, flowers, stones) scattered over a terrain where
-/// one of its layers shows, near the camera: [`Terrain::scatter`] places
-/// them on a jittered grid fixed to the terrain, so an instance keeps its
-/// place, size and turn as the camera moves, and each cell grows one with
-/// the probability of the layer's weight there. Instances shrink away over
-/// the outer `fade` of `distance`.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TerrainScatter {
-    /// The layer whose weight (control map, slope and altitude rules,
-    /// normalised over the layers) places the instances.
-    pub layer: u32,
-    /// Instances per square metre where the layer's weight is 1.
-    pub density: f32,
-    /// How far from the camera (along x and z) instances are placed.
-    pub distance: f32,
-    /// The outer part of `distance` over which they shrink to nothing (0..1).
-    pub fade: f32,
-    /// The range of their uniform scale.
-    pub scale: [f32; 2],
-    /// How far they lean with the ground: 0 upright, 1 along its normal.
-    pub align: f32,
-    pub seed: u32,
-}
-
-impl Default for TerrainScatter {
-    fn default() -> Self {
-        TerrainScatter {
-            layer: 0,
-            density: 2.0,
-            distance: 40.0,
-            fade: 0.3,
-            scale: [0.8, 1.2],
-            align: 0.0,
-            seed: 1,
-        }
-    }
-}
-
-fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
-    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
-/// `band` in terrain_lit.wgsl.
-fn band(x: f32, lo: f32, hi: f32, fade: f32) -> f32 {
-    let f = fade.max(1e-4);
-    smoothstep(lo - f, lo, x) * (1.0 - smoothstep(hi, hi + f, x))
-}
-
-/// A 32-bit integer hash (lowbias32).
-fn hash(mut x: u32) -> u32 {
-    x ^= x >> 16;
-    x = x.wrapping_mul(0x7feb_352d);
-    x ^= x >> 15;
-    x = x.wrapping_mul(0x846c_a68b);
-    x ^ (x >> 16)
-}
-
-fn unit(x: u32) -> f32 {
-    (x >> 8) as f32 / 16_777_216.0
-}
-
-impl TerrainData {
-    /// The control map's RGBA at `local`, bilinear between texel centres
-    /// (as the renderer's linear sampler reads it), 0..1; all 1 without one.
-    pub fn control_at(&self, local: Vec2) -> [f32; 4] {
-        let Some(c) = &self.control else {
-            return [1.0; 4];
-        };
-        let uv = ((local + self.size * 0.5) / self.size).clamp(Vec2::ZERO, Vec2::ONE);
-        let t = uv * Vec2::new(c.width as f32, c.height as f32) - 0.5;
-        let i = t.floor();
-        let f = t - i;
-        let texel = |x: f32, y: f32| {
-            let x = (x as i64).clamp(0, c.width as i64 - 1) as usize;
-            let y = (y as i64).clamp(0, c.height as i64 - 1) as usize;
-            let at = (y * c.width as usize + x) * 4;
-            [0, 1, 2, 3].map(|k| c.rgba[at + k] as f32 / 255.0)
-        };
-        let (a, b) = (texel(i.x, i.y), texel(i.x + 1.0, i.y));
-        let (d, e) = (texel(i.x, i.y + 1.0), texel(i.x + 1.0, i.y + 1.0));
-        [0, 1, 2, 3].map(|k| {
-            let lo = a[k] + (b[k] - a[k]) * f.x;
-            let hi = d[k] + (e[k] - d[k]) * f.x;
-            lo + (hi - lo) * f.y
-        })
-    }
-}
-
-impl Terrain {
-    /// The layers' weights at `local` (summing to 1), as the renderer weighs
-    /// them before the height blend: control map times the slope and
-    /// altitude rules; the first layer where every weight is 0.
-    pub fn layer_weights(&self, data: &TerrainData, local: Vec2) -> [f32; MAX_TERRAIN_LAYERS] {
-        let c = data.control_at(local);
-        let n = data.normal(local);
-        let angle = n.y.clamp(-1.0, 1.0).acos().to_degrees();
-        let altitude = data.height(local);
-        let mut w = [0.0f32; MAX_TERRAIN_LAYERS];
-        for (i, l) in self.layers.iter().take(MAX_TERRAIN_LAYERS).enumerate() {
-            w[i] = c[i]
-                * band(angle, l.slope[0], l.slope[1], l.slope_fade)
-                * band(altitude, l.altitude[0], l.altitude[1], l.altitude_fade);
-        }
-        let sum: f32 = w.iter().sum();
-        if sum < 1e-4 {
-            return [1.0, 0.0, 0.0, 0.0];
-        }
-        w.map(|x| x / sum)
-    }
-
-    /// Places `s`'s instances for a camera at `camera`: each a cell key
-    /// (stable while the cell is in range: for per-object motion) and its
-    /// local-to-world transform, at most [`MAX_SCATTER_INSTANCES`], nearest
-    /// rows first. `data` is this terrain's data.
-    pub fn scatter(
-        &self,
-        data: &TerrainData,
-        s: &TerrainScatter,
-        camera: Vec3,
-    ) -> Vec<(u32, Mat4)> {
-        let mut out = Vec::new();
-        if (s.layer as usize) >= self.layers.len().min(MAX_TERRAIN_LAYERS)
-            || s.density.is_nan()
-            || s.density <= 0.0
-            || s.distance.is_nan()
-            || s.distance <= 0.0
-        {
-            return out;
-        }
-        let cell = 1.0 / s.density.clamp(1e-4, 400.0).sqrt();
-        let half = data.size * 0.5;
-        let eye = Vec2::new(camera.x - self.origin.x, camera.z - self.origin.z);
-        let cells = (data.size / cell).ceil();
-        let lo = ((eye - s.distance + half) / cell).floor().max(Vec2::ZERO);
-        let hi = ((eye + s.distance + half) / cell).ceil().min(cells);
-        if lo.x >= hi.x || lo.y >= hi.y {
-            return out;
-        }
-        let (x0, x1, z0, z1) = (lo.x as u32, hi.x as u32, lo.y as u32, hi.y as u32);
-        let fade_from = s.distance * (1.0 - s.fade.clamp(0.0, 1.0));
-        let seed = hash(s.seed ^ 0x9e37_79b9);
-        // Rows outwards from the camera's, so the cap drops the farthest.
-        let centre =
-            (((eye.y + half.y) / cell).floor() as i64).clamp(z0 as i64, z1 as i64 - 1) as u32;
-        let rows = (0..(z1 - z0)).map(|k| {
-            let step = (k as i64 + 1) / 2;
-            if k % 2 == 0 {
-                centre as i64 + step
-            } else {
-                centre as i64 - step
-            }
-        });
-        for z in rows
-            .filter(|&z| z >= z0 as i64 && z < z1 as i64)
-            .map(|z| z as u32)
-        {
-            for x in x0..x1 {
-                let key = z.wrapping_mul(cells.x as u32).wrapping_add(x);
-                let h0 = hash(key ^ seed);
-                let (h1, h2, h3, h4) = (hash(h0), hash(h0 ^ 1), hash(h0 ^ 2), hash(h0 ^ 3));
-                let p = Vec2::new(x as f32 + unit(h1), z as f32 + unit(h2)) * cell - half;
-                if p.x > half.x || p.y > half.y {
-                    continue;
-                }
-                let d = (p - eye).length();
-                if d > s.distance {
-                    continue;
-                }
-                let shrink = if s.distance > fade_from {
-                    1.0 - smoothstep(fade_from, s.distance, d)
-                } else {
-                    1.0
-                };
-                if shrink <= 0.01 || unit(h3) >= self.layer_weights(data, p)[s.layer as usize] {
-                    continue;
-                }
-                let t = unit(h4);
-                let size = (s.scale[0] + (s.scale[1] - s.scale[0]) * t) * shrink;
-                let up = Vec3::Y
-                    .lerp(data.normal(p), s.align.clamp(0.0, 1.0))
-                    .normalize_or(Vec3::Y);
-                let turn = glam::Quat::from_rotation_y(unit(hash(h0 ^ 4)) * std::f32::consts::TAU);
-                let rotation = glam::Quat::from_rotation_arc(Vec3::Y, up) * turn;
-                let at = self.origin + Vec3::new(p.x, data.height(p), p.y);
-                out.push((
-                    key,
-                    Mat4::from_scale_rotation_translation(Vec3::splat(size), rotation, at),
-                ));
-                if out.len() >= MAX_SCATTER_INSTANCES {
-                    return out;
-                }
-            }
-        }
-        out
     }
 }

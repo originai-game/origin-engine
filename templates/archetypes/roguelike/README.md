@@ -32,7 +32,8 @@ og build . --publish         # dist/: the play page as it ships
   foes and finds in the others) is a pure function of an `og.Rng` stream
   forked with the dive's seed and the floor (`fork("dive-<seed>-floor-<n>")`),
   so the three systems that need it compute the same plan and a dive
-  replays from its seed. A new dive draws its seed from the world's
+  replays from its seed. Foes and Loot only fork, so they declare
+  `og.Rng` among their reads: a fork reads the seed and moves no stream. A new dive draws its seed from the world's
   `og.Rng`.
 - **Turns on a tilemap** (og-game §8): `assets/maps/dive.ogt` is all stone;
   each floor is carved at run time with `og.tilemap.setTile` on its ground,

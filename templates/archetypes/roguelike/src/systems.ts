@@ -306,7 +306,7 @@ export function stats(t: TuneV, kind: number): { hp: number; attack: number } {
  */
 export const FoeTurn = defineSystem(
   "Foes",
-  { reads: [Tuning], writes: [Game, Foes, Foe, og.Rng, og.Transform, og.Sprite, og.Flipbook, og.AiAgent, og.Perception], after: ["Hero"] },
+  { reads: [Tuning, og.Rng], writes: [Game, Foes, Foe, og.Transform, og.Sprite, og.Flipbook, og.AiAgent, og.Perception], after: ["Hero"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const foes = world.resource(Foes);
@@ -419,7 +419,7 @@ function strike(world: World, g: GameV, f: View<typeof Foe>, i: number, me: Enti
 /** Finds: placed when a floor is carved, taken when the lamp-bearer steps on them, shown where the lamp lights. */
 export const LootTurn = defineSystem(
   "Loot",
-  { writes: [Game, Loot, og.Rng, og.Transform, og.Sprite, og.Flipbook], after: ["Foes"] },
+  { reads: [og.Rng], writes: [Game, Loot, og.Transform, og.Sprite, og.Flipbook], after: ["Foes"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const rngR = world.resource(og.Rng);

@@ -927,6 +927,12 @@ pub fn og_tilemap_cell_center(env: Env, world: u32, entity: f64, x: u32, y: u32)
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
 }
 
+#[napi(js_name = "og_audio_output_latency")]
+pub fn og_audio_output_latency(env: Env, world: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AudioApi>::og_audio_output_latency(&Host, world)
+}
+
 #[napi(js_name = "og_nav_grid")]
 pub fn og_nav_grid(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1119,6 +1125,12 @@ pub fn og_platform_info(env: Env, world: u32) -> String {
     <Host as PlatformApi>::og_platform_info(&Host, world)
 }
 
+#[napi(js_name = "og_platform_now")]
+pub fn og_platform_now(env: Env, world: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_now(&Host, world)
+}
+
 #[napi(js_name = "og_i18n_load")]
 pub fn og_i18n_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1189,6 +1201,12 @@ pub fn og_ui_open_scroll(env: Env, id: String, desc: Option<String>) {
 pub fn og_ui_close(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_close(&Host)
+}
+
+#[napi(js_name = "og_ui_rich_text")]
+pub fn og_ui_rich_text(env: Env, id: String, markup: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
 }
 
 #[napi(js_name = "og_ui_label")]
@@ -1491,6 +1509,24 @@ pub fn og_ui_back(env: Env) -> bool {
     <Host as UiApi>::og_ui_back(&Host)
 }
 
+#[napi(js_name = "og_ui_set_players")]
+pub fn og_ui_set_players(env: Env, count: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[napi(js_name = "og_ui_focus")]
+pub fn og_ui_focus(env: Env, pad: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[napi(js_name = "og_ui_a11y")]
+pub fn og_ui_a11y(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_a11y(&Host)
+}
+
 #[napi(js_name = "og_ui_set_navigation")]
 pub fn og_ui_set_navigation(env: Env, on: bool) {
     let _env = crate::EnvScope::enter(&env);
@@ -1732,9 +1768,9 @@ pub fn og_terrain_sample(env: Env, world: u32, desc: Option<String>) -> String {
 }
 
 #[napi(js_name = "og_terrain_bounds")]
-pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>) -> String {
+pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin, quaternion, scale)
 }
 
 #[napi(js_name = "og_terrain_edit")]
@@ -1753,4 +1789,34 @@ pub fn og_terrain_layer(env: Env, world: u32, data: f64, index: u32) -> String {
 pub fn og_terrain_set_layer(env: Env, world: u32, data: f64, index: u32, layer: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
+}
+
+#[napi(js_name = "og_stream_status")]
+pub fn og_stream_status(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_status(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_request")]
+pub fn og_stream_request(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_request(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_release")]
+pub fn og_stream_release(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_release(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_budget")]
+pub fn og_stream_budget(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_budget(&Host, world)
+}
+
+#[napi(js_name = "og_stream_set_budget")]
+pub fn og_stream_set_budget(env: Env, world: u32, bytes: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
 }

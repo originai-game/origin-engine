@@ -17,7 +17,8 @@ use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
 use og_render::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
-    TextureData, TextureDesc, TextureFormat, TextureFormats, TextureSource, TextureUpload, Vertex,
+    TextureData, TextureDesc, TextureFormat, TextureFormats, TextureHandle, TextureSource,
+    TextureUpload, Vertex,
 };
 use std::collections::BTreeMap;
 use std::fmt;
@@ -89,6 +90,55 @@ pub struct ManifestOutput {
     /// FNV-1a of the file's bytes.
     pub hash: u64,
     pub bytes: u64,
+    /// The streaming group its asset belongs to (`None`: the first group,
+    /// loaded at boot).
+    pub group: Option<String>,
+}
+
+/// What loads a streaming group.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StreamTrigger {
+    /// Only `og.stream.request`.
+    Manual,
+    /// The camera within `radius` of `anchor`; unloaded past `unload`.
+    Distance {
+        anchor: [f32; 3],
+        radius: f32,
+        unload: f32,
+    },
+    /// The camera inside the named entity's box (its position ± half its scale).
+    Volume(String),
+}
+
+/// One streaming group as the manifest records it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ManifestStream {
+    pub name: String,
+    /// The scene that declares it.
+    pub scene: String,
+    pub trigger: StreamTrigger,
+    /// Higher loads first and unloads last.
+    pub priority: i32,
+    /// Its pack under `cooked/` (`stream/<name>.ogb`), its size and hash.
+    pub file: String,
+    pub bytes: u64,
+    pub hash: u64,
+    /// What its assets take once loaded (GPU textures and meshes, audio).
+    pub memory: u64,
+    /// Its asset ids.
+    pub assets: Vec<String>,
+    /// Its sounds' lengths, so a sound plays as silence of the same length
+    /// (and the same ticks see it end) while the group is not resident.
+    pub sounds: Vec<StreamSound>,
+}
+
+/// A grouped sound's shape: what plays as silence until its group loads.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StreamSound {
+    pub id: String,
+    pub sample_rate: u32,
+    pub channels: u32,
+    pub frames: u64,
 }
 
 /// One source asset as the manifest records it.
@@ -104,13 +154,15 @@ pub struct ManifestAsset {
 }
 
 /// `cooked/.cook.ogt`: what was cooked from what.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Manifest {
     pub cooker: String,
     /// Per asset kind, the option text its stamps cover.
     pub options: BTreeMap<String, String>,
     /// Sorted by source path.
     pub assets: Vec<ManifestAsset>,
+    /// The streaming groups, by name.
+    pub streams: Vec<ManifestStream>,
 }
 
 fn hex(v: u64) -> String {
@@ -198,9 +250,94 @@ impl Manifest {
                     stamp: hexf(ob, "stamp", o.line)?,
                     hash: hexf(ob, "hash", o.line)?,
                     bytes: num(ob, "bytes", o.line)?,
+                    group: ob
+                        .get("group")
+                        .map(|_| field(ob, "group", o.line))
+                        .transpose()?,
                 });
             }
             m.assets.push(asset);
+        }
+        for st in doc.body.get_all("stream") {
+            let b = st
+                .block
+                .as_ref()
+                .ok_or_else(|| bad(format!("line {}: stream without a block", st.line)))?;
+            let t = b
+                .get("trigger")
+                .ok_or_else(|| bad(format!("line {}: stream without a trigger", st.line)))?;
+            let nums = |from: usize| -> Vec<f32> {
+                t.values[from.min(t.values.len())..]
+                    .iter()
+                    .filter_map(|v| v.as_number().map(|n| n.as_f32()))
+                    .collect()
+            };
+            let trigger = match t.values.first().and_then(|v| v.as_word()) {
+                Some("manual") => StreamTrigger::Manual,
+                Some("volume") => StreamTrigger::Volume(
+                    t.string(1)
+                        .map_err(|_| bad(format!("line {}: volume without a name", t.line)))?
+                        .to_string(),
+                ),
+                Some("distance") => match nums(1)[..] {
+                    [x, y, z, radius, unload] => StreamTrigger::Distance {
+                        anchor: [x, y, z],
+                        radius,
+                        unload,
+                    },
+                    _ => {
+                        return Err(bad(format!(
+                            "line {}: distance x y z radius unload",
+                            t.line
+                        )));
+                    }
+                },
+                _ => return Err(bad(format!("line {}: an unknown trigger", t.line))),
+            };
+            m.streams.push(ManifestStream {
+                name: st.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                scene: field(b, "scene", st.line)?,
+                trigger,
+                priority: field(b, "priority", st.line)?
+                    .parse()
+                    .map_err(|_| bad(format!("line {}: 'priority' is not a number", st.line)))?,
+                file: field(b, "file", st.line)?,
+                bytes: num(b, "bytes", st.line)?,
+                hash: hexf(b, "hash", st.line)?,
+                memory: num(b, "memory", st.line)?,
+                assets: b
+                    .get_all("asset")
+                    .map(|a| {
+                        a.string(0)
+                            .map(str::to_string)
+                            .map_err(|e| bad(e.to_string()))
+                    })
+                    .collect::<Result<_, _>>()?,
+                sounds: b
+                    .get_all("sound")
+                    .map(|a| {
+                        let n = |i: usize| {
+                            a.values
+                                .get(i)
+                                .and_then(|v| v.as_number())
+                                .map(|n| n.as_f64())
+                                .filter(|v| *v >= 0.0 && v.fract() == 0.0)
+                                .ok_or_else(|| {
+                                    bad(format!(
+                                        "line {}: sound \"<id>\" rate channels frames",
+                                        a.line
+                                    ))
+                                })
+                        };
+                        Ok(StreamSound {
+                            id: a.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                            sample_rate: n(1)? as u32,
+                            channels: n(2)? as u32,
+                            frames: n(3)? as u64,
+                        })
+                    })
+                    .collect::<Result<_, LoadError>>()?,
+            });
         }
         Ok(m)
     }
@@ -230,10 +367,54 @@ impl Manifest {
                     .with(Entry::new("stamp").with(s(&hex(o.stamp))))
                     .with(Entry::new("hash").with(s(&hex(o.hash))))
                     .with(Entry::new("bytes").with(n(o.bytes)));
+                let ob = match &o.group {
+                    Some(g) => ob.with(Entry::new("group").with(s(g))),
+                    None => ob,
+                };
                 b.push(Entry::new("output").with(s(&o.id)).with_block(ob));
             }
             doc.body
                 .push(Entry::new("asset").with(s(&a.source)).with_block(b));
+        }
+        let f = |v: f32| Value::Number(Number::from_f32(v).unwrap_or_else(|_| Number::from(0u32)));
+        for g in &self.streams {
+            let trigger = match &g.trigger {
+                StreamTrigger::Manual => Entry::new("trigger").with(w("manual")),
+                StreamTrigger::Volume(e) => Entry::new("trigger").with(w("volume")).with(s(e)),
+                StreamTrigger::Distance {
+                    anchor,
+                    radius,
+                    unload,
+                } => Entry::new("trigger")
+                    .with(w("distance"))
+                    .with(f(anchor[0]))
+                    .with(f(anchor[1]))
+                    .with(f(anchor[2]))
+                    .with(f(*radius))
+                    .with(f(*unload)),
+            };
+            let mut b = Block::new()
+                .with(Entry::new("scene").with(s(&g.scene)))
+                .with(trigger)
+                .with(Entry::new("priority").with(Value::Number(Number::from(g.priority))))
+                .with(Entry::new("file").with(s(&g.file)))
+                .with(Entry::new("bytes").with(n(g.bytes)))
+                .with(Entry::new("hash").with(s(&hex(g.hash))))
+                .with(Entry::new("memory").with(n(g.memory)));
+            for a in &g.assets {
+                b.push(Entry::new("asset").with(s(a)));
+            }
+            for x in &g.sounds {
+                b.push(
+                    Entry::new("sound")
+                        .with(s(&x.id))
+                        .with(n(u64::from(x.sample_rate)))
+                        .with(n(u64::from(x.channels)))
+                        .with(n(x.frames)),
+                );
+            }
+            doc.body
+                .push(Entry::new("stream").with(s(&g.name)).with_block(b));
         }
         doc.to_text()
             .expect("manifest keys and words are identifiers")
@@ -294,6 +475,11 @@ impl Bundle {
 
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    /// The streaming groups (phase 3), by name.
+    pub fn streams(&self) -> &[ManifestStream] {
+        &self.manifest.streams
     }
 
     /// The manifest entry of an asset id.
@@ -890,6 +1076,33 @@ impl CookedModel {
         out
     }
 
+    /// Material `index` as the renderer draws it, sampling `textures` (the
+    /// handles of [`CookedModel::textures`], in order; a missing one is
+    /// drawn without its texture). A streamed model's full material over
+    /// its proxy's.
+    pub fn material(&self, index: usize, textures: &[TextureHandle]) -> Material {
+        let m = &self.materials[index];
+        let tex = |i: Option<usize>| i.and_then(|i| textures.get(i).copied());
+        Material {
+            base_color: m.base_color,
+            base_color_texture: tex(m.base_color_texture),
+            metallic: m.metallic,
+            roughness: m.roughness,
+            metallic_roughness_texture: tex(m.metallic_roughness_texture),
+            normal_texture: tex(m.normal_texture),
+            normal_scale: m.normal_scale,
+            emissive: m.emissive,
+            emissive_texture: tex(m.emissive_texture),
+            alpha_mode: if m.alpha_mode == alpha::MASK {
+                AlphaMode::Mask {
+                    cutoff: m.alpha_cutoff,
+                }
+            } else {
+                AlphaMode::Opaque
+            },
+        }
+    }
+
     /// Adds the model's textures, materials and LOD-0 meshes to `scene` and
     /// returns the parts of its default scene (every mesh node's primitives
     /// with the node's transform). `textures` are the decoded
@@ -906,30 +1119,8 @@ impl CookedModel {
             .iter()
             .map(|t| scene.add_texture_source(t.clone()))
             .collect();
-        let tex = |i: Option<usize>| i.and_then(|i| handles.get(i).copied());
-        let materials: Vec<MaterialHandle> = self
-            .materials
-            .iter()
-            .map(|m| {
-                scene.add_material(Material {
-                    base_color: m.base_color,
-                    base_color_texture: tex(m.base_color_texture),
-                    metallic: m.metallic,
-                    roughness: m.roughness,
-                    metallic_roughness_texture: tex(m.metallic_roughness_texture),
-                    normal_texture: tex(m.normal_texture),
-                    normal_scale: m.normal_scale,
-                    emissive: m.emissive,
-                    emissive_texture: tex(m.emissive_texture),
-                    alpha_mode: if m.alpha_mode == alpha::MASK {
-                        AlphaMode::Mask {
-                            cutoff: m.alpha_cutoff,
-                        }
-                    } else {
-                        AlphaMode::Opaque
-                    },
-                })
-            })
+        let materials: Vec<MaterialHandle> = (0..self.materials.len())
+            .map(|i| scene.add_material(self.material(i, &handles)))
             .collect();
         let meshes: Vec<MeshHandle> = self
             .primitives
@@ -1915,78 +2106,260 @@ pub struct CookedTerrainLayer {
     pub layer: og_render::TerrainLayer,
 }
 
-/// A cooked terrain (`og.Terrain`): the heights in metres (decoded from its
-/// tiles) and the control map as og-render takes them, its layers and its
-/// settings.
-#[derive(Clone, Debug, PartialEq)]
+/// A cooked terrain (`og.Terrain`): og-render's tile layout, the range of
+/// its heights, its layers and settings, and its tiles still compressed,
+/// each decoded on its own ([`CookedTerrain::tile`], or inflated elsewhere
+/// and finished by [`CookedTerrain::tile_from`]): a streamer decodes the
+/// tiles a camera needs, physics the whole field ([`CookedTerrain::field`]).
+/// Cloning shares the compressed tiles.
+#[derive(Clone, Debug)]
 pub struct CookedTerrain {
-    pub data: og_render::TerrainData,
+    /// The asset id.
+    pub id: String,
+    pub layout: og_render::TerrainLayout,
+    /// The lowest and highest height (metres above the origin).
+    pub range: (f32, f32),
     pub layers: Vec<CookedTerrainLayer>,
     pub height_blend: f32,
     pub lod: og_render::TerrainLod,
     pub cast_shadows: bool,
     /// Whether the game gets a height-field collider for it.
     pub collision: bool,
-    /// The tiles it was cooked into (`tiles_x`, `tiles_z`).
-    pub tiles: (u32, u32),
+    tiles: std::sync::Arc<TerrainTiles>,
+}
+
+#[derive(Debug)]
+struct TerrainTiles {
+    rows: Vec<format::TerrainTileRow>,
+    heights: Vec<u8>,
+    control: Vec<u8>,
+}
+
+impl CookedTerrain {
+    fn bad(&self, reason: impl Into<String>) -> LoadError {
+        LoadError::Invalid {
+            path: self.id.clone(),
+            reason: reason.into(),
+        }
+    }
+
+    /// The compressed bytes of a tile: its zlib'd 16-bit heights and, with
+    /// a control map, its zlib'd texels (for an inflater elsewhere: the
+    /// web host's DecompressionStream).
+    pub fn tile_zlib(&self, index: u32) -> Option<(&[u8], Option<&[u8]>)> {
+        let t = self.tiles.rows.get(index as usize)?;
+        let h = self
+            .tiles
+            .heights
+            .get(t.offset as usize..(t.offset + t.bytes) as usize)?;
+        let c =
+            if self.layout.control > 0 {
+                Some(self.tiles.control.get(
+                    t.control_offset as usize..(t.control_offset + t.control_bytes) as usize,
+                )?)
+            } else {
+                None
+            };
+        Some((h, c))
+    }
+
+    /// A tile's heights in metres from its inflated 16-bit values.
+    pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
+        let side = self.layout.heights_side() as usize;
+        if raw.len() != side * side * 2 {
+            return Err(self.bad(format!("tile {index} holds the wrong number of heights")));
+        }
+        let (lo, hi) = self.range;
+        let span = hi - lo;
+        Ok(raw
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|v| lo + u16::from_le_bytes(*v) as f32 / 65535.0 * span)
+            .collect())
+    }
+
+    /// A tile ready to draw from its inflated bytes (normals and mips
+    /// built here).
+    pub fn tile_from(
+        &self,
+        index: u32,
+        heights: &[u8],
+        control: Option<&[u8]>,
+    ) -> Result<og_render::TerrainTile, LoadError> {
+        let h = self.heights_from(index, heights)?;
+        let c = match (self.layout.control, control) {
+            (0, _) => None,
+            (_, Some(c)) => {
+                let side = self.layout.control_side() as usize;
+                if c.len() != side * side * 4 {
+                    return Err(
+                        self.bad(format!("tile {index}'s control texels are the wrong size"))
+                    );
+                }
+                Some(c.to_vec())
+            }
+            (_, None) => return Err(self.bad(format!("tile {index} has no control texels"))),
+        };
+        Ok(og_render::TerrainTile::build(&self.layout, index, h, c))
+    }
+
+    fn inflate(&self, index: u32) -> Result<(Vec<u8>, Option<Vec<u8>>), LoadError> {
+        let (h, c) = self
+            .tile_zlib(index)
+            .ok_or_else(|| self.bad(format!("tile {index} is out of range")))?;
+        let side = self.layout.heights_side() as usize;
+        let h = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(h, side * side * 2)
+            .map_err(|_| self.bad(format!("tile {index} does not inflate")))?;
+        let c = match c {
+            None => None,
+            Some(c) => {
+                let side = self.layout.control_side() as usize;
+                Some(
+                    miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(c, side * side * 4)
+                        .map_err(|_| {
+                            self.bad(format!("tile {index}'s control does not inflate"))
+                        })?,
+                )
+            }
+        };
+        Ok((h, c))
+    }
+
+    /// Inflates and decodes a tile.
+    pub fn tile(&self, index: u32) -> Result<og_render::TerrainTile, LoadError> {
+        let (h, c) = self.inflate(index)?;
+        self.tile_from(index, &h, c.as_deref())
+    }
+
+    /// A tile's `(tile + 3)²` heights in metres (no normals, no control).
+    pub fn tile_heights(&self, index: u32) -> Result<Vec<f32>, LoadError> {
+        let (h, _) = self.inflate(index)?;
+        self.heights_from(index, &h)
+    }
+
+    /// The whole field from its level-0 tiles: every height, and the
+    /// control map at the tiles' resolution.
+    pub fn field(&self) -> Result<og_render::TerrainData, LoadError> {
+        let l = &self.layout;
+        let (cols, rows) = (l.columns as usize, l.rows as usize);
+        let t = l.tile as usize;
+        let side = l.heights_side() as usize;
+        let (tx, tz) = l.tiles(0);
+        let mut heights = vec![0.0f32; cols * rows];
+        let c = l.control as usize;
+        let cside = l.control_side() as usize;
+        let (cw, ch) = (c * tx as usize, c * tz as usize);
+        let mut rgba = vec![0u8; cw * ch * 4];
+        for z in 0..tz as usize {
+            for x in 0..tx as usize {
+                let index = l.index(0, x as u32, z as u32);
+                let (h, cz) = self.inflate(index)?;
+                let h = self.heights_from(index, &h)?;
+                for j in 0..=t {
+                    let r = z * t + j;
+                    if r >= rows {
+                        break;
+                    }
+                    for i in 0..=t {
+                        let col = x * t + i;
+                        if col >= cols {
+                            break;
+                        }
+                        heights[r * cols + col] = h[(j + 1) * side + i + 1];
+                    }
+                }
+                if let Some(cz) = cz {
+                    for j in 0..c {
+                        for i in 0..c {
+                            let src = ((j + 1) * cside + i + 1) * 4;
+                            let dst = ((z * c + j) * cw + x * c + i) * 4;
+                            rgba[dst..dst + 4].copy_from_slice(&cz[src..src + 4]);
+                        }
+                    }
+                }
+            }
+        }
+        // The tiles' control texels cover whole tiles, which may reach past
+        // the terrain: the map is their texels over its own extent.
+        let control = (c > 0).then(|| {
+            let quads = ((l.columns - 1) as f32, (l.rows - 1) as f32);
+            let per = c as f32 / t as f32;
+            let w = ((quads.0 * per).round() as usize).max(1);
+            let hgt = ((quads.1 * per).round() as usize).max(1);
+            let texel = |x: i64, y: i64, k: usize| {
+                let x = x.clamp(0, cw as i64 - 1) as usize;
+                let y = y.clamp(0, ch as i64 - 1) as usize;
+                rgba[(y * cw + x) * 4 + k] as f32
+            };
+            let mut out = vec![0u8; w * hgt * 4];
+            for j in 0..hgt {
+                for i in 0..w {
+                    let gx = (i as f32 + 0.5) / w as f32 * quads.0 * per - 0.5;
+                    let gy = (j as f32 + 0.5) / hgt as f32 * quads.1 * per - 0.5;
+                    let (x0, y0) = (gx.floor(), gy.floor());
+                    let (fx, fy) = (gx - x0, gy - y0);
+                    let (x0, y0) = (x0 as i64, y0 as i64);
+                    for k in 0..4 {
+                        let a = texel(x0, y0, k) + (texel(x0 + 1, y0, k) - texel(x0, y0, k)) * fx;
+                        let b = texel(x0, y0 + 1, k)
+                            + (texel(x0 + 1, y0 + 1, k) - texel(x0, y0 + 1, k)) * fx;
+                        out[(j * w + i) * 4 + k] =
+                            (a + (b - a) * fy).round().clamp(0.0, 255.0) as u8;
+                    }
+                }
+            }
+            og_render::TerrainControl {
+                width: w as u32,
+                height: hgt as u32,
+                rgba: out.into(),
+            }
+        });
+        let data = og_render::TerrainData {
+            size: l.size,
+            columns: l.columns,
+            rows: l.rows,
+            heights: heights.into(),
+            control,
+        };
+        data.check().map_err(|e| self.bad(e))?;
+        Ok(data)
+    }
 }
 
 impl Bundle {
-    /// Decodes a terrain blob: every tile inflated and dequantised into
-    /// one height field, the control map inflated.
+    /// Reads a terrain blob: its layout, layers and settings, and its tiles
+    /// still compressed (each checked to lie inside the blob).
     pub fn terrain(&self, id: &str, bytes: &[u8]) -> Result<CookedTerrain, LoadError> {
         let blob = self.blob::<format::Terrain>(id, bytes)?;
         let m = one::<format::TerrainMeta>(&blob)?;
         let tiles = table::<format::TerrainTileRow>(&blob, "tiles")?;
         let layers = table::<format::TerrainLayerRow>(&blob, "layers")?;
         let strings = blob.raw("strings")?;
-        let packed = blob.raw("heights")?;
-        let (columns, rows) = (m.columns, m.rows);
-        if columns < 2 || rows < 2 || tiles.len() != (m.tiles_x * m.tiles_z) as usize {
-            return Err(invalid(&blob, "the tiles do not cover the height field"));
+        let heights = blob.raw("heights")?.to_vec();
+        let control = blob.raw("control")?.to_vec();
+        let control_size = (m.control_width > 0).then_some((m.control_width, m.control_height));
+        let layout = og_render::TerrainLayout::new(
+            glam::Vec2::new(m.size_x, m.size_z),
+            m.columns,
+            m.rows,
+            m.tile,
+            control_size,
+        )
+        .map_err(|e| invalid(&blob, e))?;
+        if layout.control != m.control || layout.levels != m.levels {
+            return Err(invalid(&blob, "the tile layout does not match its cook"));
         }
-        let mut heights = vec![0.0f32; (columns * rows) as usize];
-        let mut covered = 0u64;
-        for t in &tiles {
-            if t.column + t.columns > columns || t.row + t.rows > rows {
-                return Err(invalid(&blob, "a tile lies outside the height field"));
-            }
-            let z = packed
-                .get(t.offset as usize..(t.offset + t.bytes) as usize)
-                .ok_or_else(|| invalid(&blob, "a tile's bytes are out of range"))?;
-            let n = (t.columns * t.rows) as usize;
-            let q = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(z, n * 2)
-                .map_err(|_| invalid(&blob, "a tile does not inflate"))?;
-            if q.len() != n * 2 {
-                return Err(invalid(&blob, "a tile holds the wrong number of heights"));
-            }
-            let span = t.max - t.min;
-            for (k, v) in q.as_chunks::<2>().0.iter().enumerate() {
-                let (c, r) = (k as u32 % t.columns, k as u32 / t.columns);
-                let at = ((t.row + r) * columns + t.column + c) as usize;
-                heights[at] = t.min + u16::from_le_bytes(*v) as f32 / 65535.0 * span;
-            }
-            covered += n as u64;
+        if tiles.len() != layout.tile_count() as usize {
+            return Err(invalid(&blob, "the tiles do not cover the pyramid"));
         }
-        if covered != (columns as u64) * (rows as u64) {
-            return Err(invalid(&blob, "the tiles do not cover the height field"));
-        }
-        let control = if m.control_width > 0 {
-            let n = (m.control_width * m.control_height * 4) as usize;
-            let rgba =
-                miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(blob.raw("control")?, n)
-                    .map_err(|_| invalid(&blob, "the control map does not inflate"))?;
-            if rgba.len() != n {
-                return Err(invalid(&blob, "the control map is the wrong size"));
+        for (i, t) in tiles.iter().enumerate() {
+            let inside = (t.offset as usize + t.bytes as usize) <= heights.len()
+                && (t.control_offset as usize + t.control_bytes as usize) <= control.len();
+            if t.index != i as u32 || !inside {
+                return Err(invalid(&blob, format!("tile {i} is out of place or range")));
             }
-            Some(og_render::TerrainControl {
-                width: m.control_width,
-                height: m.control_height,
-                rgba: rgba.into(),
-            })
-        } else {
-            None
-        };
+        }
         let text = |at: u32, len: u32| -> Result<Option<String>, LoadError> {
             if at == format::NONE {
                 return Ok(None);
@@ -2017,25 +2390,24 @@ impl Bundle {
                 },
             });
         }
-        let data = og_render::TerrainData {
-            size: glam::Vec2::new(m.size_x, m.size_z),
-            columns,
-            rows,
-            heights: heights.into(),
-            control,
-        };
-        data.check().map_err(|e| invalid(&blob, &e))?;
         Ok(CookedTerrain {
-            data,
+            id: id.to_string(),
+            layout,
+            range: (m.height_min, m.height_max),
             layers: out,
             height_blend: m.height_blend,
             lod: og_render::TerrainLod {
                 spacing: m.lod_spacing,
                 ring: m.lod_ring,
+                budget: 0,
             },
             cast_shadows: m.cast_shadows != 0,
             collision: m.collision != 0,
-            tiles: (m.tiles_x, m.tiles_z),
+            tiles: std::sync::Arc::new(TerrainTiles {
+                rows: tiles,
+                heights,
+                control,
+            }),
         })
     }
 
@@ -2044,4 +2416,33 @@ impl Bundle {
     pub fn load_terrain(&self, id: &str) -> Result<CookedTerrain, LoadError> {
         self.terrain(id, &self.read(id)?)
     }
+}
+
+// ── phase 3: streaming groups ────────────────────────────────────────────
+
+/// The files of a streaming group's pack (`cooked/stream/<group>.ogb`):
+/// each path under `cooked/` with its bytes, in the pack's order.
+pub fn unpack(bytes: &[u8]) -> Result<Vec<(String, Vec<u8>)>, LoadError> {
+    let words = og_blob::AlignedBytes::from_slice(bytes);
+    let expect = Expect {
+        type_hash: format::StreamPack::type_hash(),
+        schema_version: format::StreamPack::schema_version(),
+        stamp: None,
+    };
+    let blob = Blob::open(words.as_slice(), "stream pack", &expect)?;
+    let files = table::<format::StreamFileRow>(&blob, "files")?;
+    let names = blob.raw("names")?;
+    let data = blob.raw("data")?;
+    let mut out = Vec::with_capacity(files.len());
+    for f in &files {
+        let name = names
+            .get(f.name_at as usize..(f.name_at + f.name_len) as usize)
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .ok_or_else(|| invalid(&blob, "a file's name is out of range"))?;
+        let bytes = data
+            .get(f.data_at as usize..f.data_at as usize + f.data_len as usize)
+            .ok_or_else(|| invalid(&blob, "a file's bytes are out of range"))?;
+        out.push((name.to_string(), bytes.to_vec()));
+    }
+    Ok(out)
 }

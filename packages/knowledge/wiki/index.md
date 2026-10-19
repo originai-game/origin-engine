@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 27 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 28 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -36,6 +36,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
+| [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
 
 ### `og-feel`
 
@@ -50,7 +51,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 
 | Module | TypeScript | Publish builds | Summary |
 |---|---|---|---|
-| [`audio`](audio.md) | types and tokens | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
+| [`audio`](audio.md) | `og.audio.*` | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
 
 ### `og-ai`
 
@@ -111,10 +112,12 @@ Field units the docs and Tune use.
 
 ## Every name
 
-820 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+845 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
+| [`A11yNode`](ui.md#type-A11yNode) | struct | ui | — |
+| [`A11yTree`](ui.md#type-A11yTree) | struct | ui | — |
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
@@ -394,6 +397,7 @@ Field units the docs and Tune use.
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
+| [`og.audio.outputLatency`](audio.md#fn-outputLatency) | function | audio | `og_audio_output_latency` |
 | [`og.AudioBusFx`](audio.md#record-AudioBusFx) | component | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
@@ -506,6 +510,7 @@ Field units the docs and Tune use.
 | [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
 | [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
 | [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
+| [`og.platform.now`](platform.md#fn-now) | function | platform | `og_platform_now` |
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
 | [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
@@ -550,6 +555,12 @@ Field units the docs and Tune use.
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
+| [`og.stream.budget`](stream.md#fn-budget) | function | stream | `og_stream_budget` |
+| [`og.stream.release`](stream.md#fn-release) | function | stream | `og_stream_release` |
+| [`og.stream.request`](stream.md#fn-request) | function | stream | `og_stream_request` |
+| [`og.stream.setBudget`](stream.md#fn-setBudget) | function | stream | `og_stream_set_budget` |
+| [`og.stream.status`](stream.md#fn-status) | function | stream | `og_stream_status` |
+| [`og.StreamEvent`](stream.md#record-StreamEvent) | event | stream | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
 | [`og.Terrain`](terrain.md#record-Terrain) | component | terrain | — |
 | [`og.terrain.bounds`](terrain.md#fn-bounds) | function | terrain | `og_terrain_bounds` |
@@ -582,6 +593,7 @@ Field units the docs and Tune use.
 | [`og.tween.squash`](tween.md#fn-squash) | function | tween | `og_tween_squash` |
 | [`og.tween.to`](tween.md#fn-to) | function | tween | `og_tween_to` |
 | [`og.TweenCompleted`](tween.md#record-TweenCompleted) | event | tween | — |
+| [`og.ui.a11y`](ui.md#fn-a11y) | function | ui | `og_ui_a11y` |
 | [`og.ui.actionButton`](ui.md#fn-actionButton) | function | ui | `og_ui_action_button` |
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |
@@ -608,6 +620,7 @@ Field units the docs and Tune use.
 | [`og.ui.divider`](ui.md#fn-divider) | function | ui | `og_ui_divider` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
@@ -650,12 +663,14 @@ Field units the docs and Tune use.
 | [`og.ui.radio`](ui.md#fn-radio) | function | ui | `og_ui_radio` |
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
+| [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
 | [`og.ui.screenTransition`](ui.md#fn-screenTransition) | function | ui | `og_ui_screen_transition` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
+| [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |
@@ -754,6 +769,8 @@ Field units the docs and Tune use.
 | [`RetargetDesc`](anim.md#type-RetargetDesc) | desc struct | anim | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
+| [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
+| [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rig`](anim.md#type-Rig) | handle | anim | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
@@ -787,6 +804,7 @@ Field units the docs and Tune use.
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |
+| [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |
@@ -842,6 +860,14 @@ Field units the docs and Tune use.
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
+| [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
+| [`STREAM_LOADING`](stream.md#const-STREAM_LOADING) | constant | stream | — |
+| [`STREAM_QUEUED`](stream.md#const-STREAM_QUEUED) | constant | stream | — |
+| [`STREAM_RESIDENT`](stream.md#const-STREAM_RESIDENT) | constant | stream | — |
+| [`STREAM_UNLOADED`](stream.md#const-STREAM_UNLOADED) | constant | stream | — |
+| [`StreamBudget`](stream.md#type-StreamBudget) | struct | stream | — |
+| [`StreamState`](stream.md#type-StreamState) | enum | stream | — |
+| [`StreamStatus`](stream.md#type-StreamStatus) | struct | stream | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |

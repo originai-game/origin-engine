@@ -17,13 +17,13 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 
 | Path | What it is |
 |---|---|
-| `index.html` | The player shell: the canvas, the boot splash, the play gate, the error card, the install hint, the badge. Carries `<meta name="og-engine" content="<engine version>">`, `og-build` (`publish`/`dev`) and `og-profile`, the inlined CSS (brand tokens and only the `genesis`, `progress` and `drift` motion rules) and the page configuration (`<script type="application/json" id="og-config">`). |
+| `index.html` | The player shell: the canvas, the boot splash (with the cover's backdrop on a platform page), the play gate, the error card, the install hint, Back, the badge. Carries `<meta name="og-engine" content="<engine version>">`, `og-build` (`publish`/`dev`), `og-profile` and `og-player` (`frame page`: the Player transports the shell speaks, what the platform reads to open the page at the top level), the inlined CSS (brand tokens and only the `genesis`, `progress` and `drift` motion rules) and the page configuration (`<script type="application/json" id="og-config">`). |
 | `play.js` | The shell (`packages/engine/shell/page.ts`, bundled). |
 | `game.js` | The engine Worker: the runtime and the game. |
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host. `--publish` takes `dist/web-publish` (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`). |
 | `basis/` | Binomial's Basis transcoder and its licence. |
-| `cooked/` | The project's cooked bundle (`og cook`, run by `og build`). |
+| `cooked/` | The project's cooked bundle (`og cook`, run by `og build`), split by streaming group: the first group (everything no scene's `stream` block holds, the `#proxy` stand-ins included) and one pack per streaming group, `cooked/stream/<name>.ogb`. A grouped output's own file is left out, because the engine reads it from its pack. |
 | `icons/` | `publish.icon` as `icons/icon.png`, or the brand tile at 192 and 512 px. |
 | `og-build.json` | The build manifest (below). |
 | `_headers` | For static hosts (Netlify and Cloudflare Pages format): `Cross-Origin-Resource-Policy: cross-origin` and `X-Content-Type-Options: nosniff` on everything, COOP `same-origin` and COEP `require-corp` unless `isolation off`, `Cache-Control: no-cache` on `/`, `index.html`, `sw.js` and `og-build.json`, and the `.wasm` and `manifest.webmanifest` content types. |
@@ -53,9 +53,11 @@ dates, no absolute paths, files in sorted order
   "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "source": "brand" },
             { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "source": "brand" }],
   "pwa": { "manifest": "manifest.webmanifest", "serviceWorker": "sw.js" },
+  "player": { "protocol": 2, "transports": ["frame", "page"] },
   "version": "<sha256 over every file's path and sha256>",
   "files": [{ "path": "index.html", "bytes": 12519, "sha256": "…" }],
-  "total": { "files": 45, "bytes": 12477811 }
+  "total": { "files": 45, "bytes": 12477811 },
+  "stream": null
 }
 ```
 
@@ -71,9 +73,37 @@ dates, no absolute paths, files in sorted order
   `version` is the sha256 over the path and sha256 of each of them except
   `sw.js`, so it is the same before and after `sw.js` is written; the
   service worker's cache name is `og-` and its first 16 hex digits.
+- `player` is the Player protocol the shell speaks and its transports, in
+  dev and publish builds alike: `frame` (protocol 2 over `postMessage` to a
+  framing Player) and `page` (protocol 2 over same-origin HTTP when the
+  platform opens the page itself at the top level; §The top-level page).
+  `index.html`'s `<meta name="og-player">` says the same.
 - `probe.build` is what the copied wasm's `hello` reports: `publish` for a
   `--publish` build, `release` for a dev build (the web host is a release
   wasm either way; the top-level `build` is what says `dev`).
+- `stream` is `null` for a bundle without streaming groups. Otherwise it is
+  `{ "first": { "files", "bytes" }, "groups": [{ "name", "file", "bytes",
+  "sha256", "priority", "memory", "assets" }] }`. `first` is what the boot
+  fetches and the service worker precaches (the cooked manifest included).
+  Each group is its pack under `cooked/stream/`, with the memory its assets
+  take once loaded (what `og.stream`'s budget counts) and its asset ids.
+  The packs are in `files` too.
+
+### Streaming groups
+
+The Worker fetches the first group before the engine starts: the manifest,
+every output no group holds, and their Basis textures transcoded. A
+streaming group's pack is fetched only when the runtime admits the group
+(its trigger wants it and it fits the budget, IDL module `stream`). Before
+the pack is handed to the engine, the Worker transcodes its Basis textures
+to the encodings the renderer takes, as for the first group
+(`og_web_pack_ktx2`), so the whole group goes in place at once. Until then
+its models draw their proxies, its textures are 1x1 placeholders and its
+sounds play as silence of their own length. The boot's progress (`expect.cooked`) counts
+only the first group. `packages/engine/tests/asset-stream.test.ts` checks
+the split, and `packages/engine/tests/web/stream.ts` plays it in Chrome: no
+pack at boot, each pack fetched once when its group is wanted, the
+textures transcoded, and the visited groups loading offline.
 
 ## Hosting
 
@@ -161,11 +191,21 @@ player members and a dev build every member, whatever it says.
   Reload and Copy report; the brand symbol switches to `drift`.
 - **PWA** (publish builds, in a secure context): the service worker
   precaches `./` and every file of the build except `og-build.json`,
-  `_headers`, `origingame.runtime.json`, licence and README files and itself
-  under `og-<version>` (a failed install keeps the old build), drops the
-  scope's other `og-*` caches on activation,
+  `_headers`, `origingame.runtime.json`, licence and README files, the
+  streaming groups' packs and itself under `og-<version>` (a failed install
+  keeps the old build), drops the scope's other `og-*` caches on activation,
   serves the page from the network first (so a host's additions to it are
   current) and from the cache offline, and every other file from the cache.
+  The network page is the browser's own navigation request (navigation
+  preload, enabled when the worker activates): a worker's own
+  `fetch(event.request)` of a navigation leaves as `Sec-Fetch-Dest: empty`,
+  and a host that answers documents differently (the platform gives its
+  derived entry, with `window.__OG_GAME`, only to a document or frame load)
+  would hand a revisit its stored bytes; the worker fetches the page itself
+  only where the browser has no navigation preload.
+  A pack is not precached. It comes from the cache, or from the network into
+  the same cache the first time the engine fetches it, so a place the player
+  has already visited also plays offline.
   The install hint appears only when the criteria hold: not framed, not
   installed, a manifest and a service worker, and either Chromium's
   `beforeinstallprompt` (an Install button) or iOS Safari (Share, then Add to
@@ -189,12 +229,39 @@ frame (or two seconds after the boot when nothing renders), `fail`
 (`engine_start`, retryable) before it, `crash` (`EngineCrash` and a
 fingerprint of the message, nothing else) after it, and one `sample` with
 `renderer` (the tier) and `timings.firstFrame` and `timings.boot`. A framed
-page waits 300 ms for a Player's `hello` before drawing its own gate; under
+page (and the Stage overlay's own document, below) waits 300 ms for a
+Player's `hello` before drawing its own gate; under
 a Player that answered, the shell draws no gate: it plays on `start` (or a
 hello with `started: true`), pauses on `pause`, resumes on `resume`, and
 resumes its AudioContext on `gesture`. It posts only to `window.parent` at
 its own origin and hears only `window.parent` at its own origin with
-`og: "player", protocol: 2`; an unframed page sends and hears nothing.
+`og: "player", protocol: 2`.
+
+Who the shell speaks protocol 2 to, in order:
+
+1. framed: `window.parent` (above);
+2. top level with the platform's `window.__OG_GAME`: its play origin over
+   HTTP (§The top-level page);
+3. top level, no `__OG_GAME`, and told its own origin as the Stage host
+   (`window.__OG_STAGE_HOST__ === location.origin`, decided exactly as the
+   og-probe wire decides it, `shell/wire.ts` `stageInPage`): **its own
+   window**. That is a Stage build opened as its own document with the
+   platform's Stage overlay injected into it, and the overlay is its
+   Player. The shell posts to `window` at its own origin and hears only
+   `window` at its own origin; since every post in one window reaches
+   every listener, a `hello` that names a `substrate` or lists no
+   `capabilities` (the shell's own) is not taken for the Player's. The
+   hello repeats every 250 ms until the overlay answers (at most six), in
+   case the overlay's listener comes up after the shell. The overlay's
+   answers are the Player's: its `hello` with `started: true` starts play
+   (no gate of the shell's), its `pause`, `resume` and `gesture` count, and
+   og.platform's calls go to it as below. On the Stage nothing of
+   og.platform's goes to the browser's storage: where the overlay answers
+   nothing (no hello within 1.5 s, or a method it does not list), the
+   page's memory does, for that load. No service worker is registered
+   there (the shared Stage origin installs none);
+4. otherwise no one: the page sends and hears nothing and plays alone on
+   the browser's storage.
 
 ### Platform services over protocol 2 (E6)
 
@@ -202,8 +269,9 @@ its own origin and hears only `window.parent` at its own origin with
 Player through the same channel. The engine Worker hands each tick's calls
 to the page (`{ type: "platform", calls }`); the page answers them
 (`platform-answer`) and the answers are applied at the start of the next
-tick. A framed page holds its first calls (the tick behind the gate) until
-the Player's `hello`, or 1.5 s, so they never reach the wrong store. The
+tick. A framed page (or one with the Stage overlay in its own document)
+holds its first calls (the tick behind the gate) until the Player's
+`hello`, or 1.5 s, so they never reach the wrong store. The
 messages the shell now sends and hears:
 
 | Shell → Player | When | Answered by |
@@ -233,11 +301,101 @@ does not list answers `unavailable`; and where the Player keeps no store
 (`og.platform:<path>`) does (a verification run lists `store.*` from a
 throwaway store of its own). Unframed, every call is answered from there
 (the native host's local platform, `src/platform-local.ts`). Errors keep
-the Player's codes, `retryable` and a conflict's `revision`.
+the Player's codes, `retryable` and a conflict's `revision`. The Stage
+overlay in the page's own document is answered the same way (from its
+hello's capabilities), with the page's memory instead of `localStorage`
+behind it.
 `tests/platform-player.test.ts` runs the bridge against a stand-in Player
 that answers the protocol's calls (and an older one, and none);
 `tests/web/player.ts` checks the `store.get` round trip in Chrome (the
-runner's stored best becomes its best).
+runner's stored best becomes its best). `tests/platform-stage.test.ts`
+runs the own-window path against a stand-in overlay answering in the same
+window (one hello, never the shell's echo; the store and its `time`;
+storage untouched; foreign windows and origins ignored; the precedence),
+and `tests/web/player.ts` opens the runner's publish build as a Stage
+build with an in-document stand-in overlay in Chrome, at desktop and
+phone sizes.
+
+The host's clock (`og.platform.now`, every answer's `time`, Phase 2 core
+round) is the Worker's `Date.now()` when the platform attaches and when an
+answer arrives, between ticks, and `og.platform.info(world).clock` reads
+`browser`: protocol 2's `hello` and `result` carry no time today
+(`docs/platform-asks.md` #9). A `result` that carries a numeric `time`
+(UTC ms) has it passed on by the bridge, from the framed Player, the HTTP
+transport and the Stage overlay alike, as that answer's `time` (a store
+kept in the save takes the time of the call that settled it: `save.set`'s,
+else `save.read`'s), and the Worker takes it as the Player's (`clock` then
+reads `player`).
+
+### The top-level page (Player protocol 2 over HTTP)
+
+The platform opens a published page whose build says `og-player` … `page`
+as the top-level document on the game's own origin (origingame
+`docs/player-protocol.md` §The top-level engine page): no Player page
+frames it. The shell (`shell/transport.ts`) then speaks protocol 2 to its
+play origin itself, when the page is not framed and carries the
+platform's `window.__OG_GAME` (`{ id, releaseId, protocol: 2 }`, added to
+the entry at publication). A framed page keeps the `postMessage` path
+above, and a top-level page without `__OG_GAME` (any other static host)
+plays alone on the browser's storage, as before.
+
+- **Requests.** `POST /__player/v2/<id>/<releaseId>/hello`, `call` and
+  `report`, same origin, `credentials: "omit"`, one at a time through one
+  queue (so the page mints at most one guest), each with
+  `Authorization: Bearer` once the page holds a credential. A `call` is the
+  protocol-2 `call` message and its answer the `result`; 15 s without an
+  answer is `timeout`, a failed fetch `offline` (both retryable), any other
+  status the protocol's code for it (`404` `not_found`, `429`
+  `rate_limited`, `5xx` `unavailable`). og.platform's mapping is the
+  framed one, from the HTTP hello's `capabilities`.
+- **Identity.** The Portal's hand-off code (`#og-h=<code>`) is removed from
+  the address before anything else (`history.replaceState`; the rest of the
+  fragment stays the game's) and sent only in the hello's body. The answer's
+  `player { token, guest }` (from the hello, or from any call or report that
+  minted a guest or replaced a rejected credential) is the credential: a
+  guest's is kept in memory and under `og_token_<id>`, an account's in
+  memory only with the `og_portal_<id>` marker, the framed Player's keys and
+  rule (a later open without a code resumes no account). Before a code is
+  redeemed both keys are removed. The credential is never in og.platform's
+  storage, a URL, the error card or a report.
+- **The outbox.** An unconditional `save.set` and a `leaderboard.submit`
+  that fail retryably are kept under `og_outbox_<id>` (`{ save?: { data },
+  scores, at }`, 7 days, the latest save, the last 20 scores in order) and
+  answered `{ ok: true, queued: true }` / `{ ok: true, rank: null, queued:
+  true }`; they are delivered after the next answered call and after the
+  next hello. Store writes and conditional writes are never queued.
+- **Reports.** Nothing before the person starts play at the shell's own
+  gate (the hello says `started: false`: the page owns its gate). Then
+  `start`, what was held (`ready`, `fail`, the `sample`), and after it
+  `crash`, the game's telemetry as `event` `game.custom.<name>`, a
+  `heartbeat` every 60 s once ready and `end` on `pagehide` (`keepalive`,
+  with `durationMs`, `ready` and `failed`). Each message is a protocol-2
+  message with `id` (a UUID v7), `at` (epoch ms) and `ms` (ms since
+  navigation start); a report carries `session` (`game_session_<32 hex>`,
+  per load) and `device` (`device_<32 hex>` from `og_device_<id>`, 30
+  days, the Player's). A report that fails is kept (at most 200 messages)
+  and sent with the next.
+- **The brand surface** is the shell's at the top level (design §4, §9):
+  the boot splash on ink with the cover's 32 px derivative upscaled and
+  blurred behind it (the hello's `page.backdrop`, `crossorigin="anonymous"`
+  on an isolated page), the play gate (one gesture: audio unlock,
+  fullscreen when `fullscreen gesture`, the orientation lock, wake lock),
+  `100dvh` and the safe-area insets, the PWA install hint, the badge, and
+  **Back** (top left inside the safe area; full on the boot splash, the gate
+  and the error card, a small handle while playing): `history.back()` when
+  the referrer is on the hello's `page.portal` and there is history, else
+  `page.back`, the game's page on the site. There is no purchase hand-off:
+  protocol 2 has no commerce store.
+
+`tests/platform-page.test.ts` runs the transport against a stand-in play
+origin (the code stripped and sent only in the body; an account kept out of
+storage and a stored one never resumed without a code; one guest for two
+concurrent first calls; a rejected credential replaced; a conflict's
+revision; offline scores queued then delivered in order; a timeout;
+nothing reported before start, UUID v7 ids, one session and device, the
+end with keepalive; og.platform's store, telemetry and scores through it).
+`tests/web/player.ts` opens the runner's publish build at the top level in
+Chrome against a stand-in play origin, at desktop and phone sizes.
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 
@@ -247,6 +405,11 @@ which lives in the Worker and answers asynchronously:
 - It answers `{og: "probe", v: 1, kind: "call"}` only from `window.parent`
   (else `window.opener`) at the origin in `window.__OG_STAGE_HOST__`; a page
   told no origin, or another origin, or a call of another `v`, gets nothing.
+  A top-level page told its own origin also answers its own window, replying
+  to it (and speaks Player protocol 2 to it, §Player protocol 2): that is the
+  platform's Stage overlay drawn in the engine's document
+  (a Stage build with `og-player` … `page` is opened as its own top-level
+  document with the overlay injected), which posts its calls to `window`.
   Every post names that origin. It posts `hello` on load, when the told
   origin or the probe's availability changes, and after a `hello` call.
 - Shapes: `hello` `{protocol: 5, substrate: "origin-engine"}` (both `null`
@@ -276,7 +439,8 @@ which lives in the Worker and answers asynchronously:
 
 Proven in headless Chrome 150 by `bun run test:browser` in
 `packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:
-120 checks), `tests/web/player.ts` (12, with og.platform's `save.get`) and `tests/web/export.ts` (40;
+120 checks), `tests/web/player.ts` (the framed Player, then the top-level page at
+desktop and phone sizes) and `tests/web/export.ts` (40;
 transcripts in `tests/evidence/E1/web-*`). These need a Chrome and are not
 in the gate; `tests/web-export.test.ts` (layout, manifest, determinism,
 icons) is.

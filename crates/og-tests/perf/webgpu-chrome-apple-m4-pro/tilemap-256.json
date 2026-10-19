@@ -1,0 +1,26 @@
+{
+  "scene": "tilemap-256",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    0.23,
+    0.232,
+    0.238,
+    0.238,
+    0.24,
+    0.242,
+    0.244
+  ],
+  "frame_ms": 0.23,
+  "submit_median_ms": 0.1,
+  "load": [
+    160,
+    67.5,
+    42.9
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

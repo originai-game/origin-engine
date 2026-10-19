@@ -541,10 +541,10 @@ export interface World {
    */
   set<C extends AnyComponent>(entity: Entity, component: C, value: Partial<Value<C>>): Result<void>;
   /**
-   * A resource's live value. Inside a system, the resource must be among the system's reads or writes.
+   * A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.
    *
    * @param resource The resource token.
-   * @returns Refused for an unregistered resource or one the running system did not declare.
+   * @returns Refused for an unregistered resource (or, in a publish build, one the running system did not declare).
    */
   resource<R extends AnyResource>(resource: R): Result<Value<R>>;
   /**
@@ -568,13 +568,13 @@ export interface World {
    */
   query(desc?: QueryDesc): Result<Query>;
   /**
-   * The events of one type emitted during the previous tick and this one, oldest first.
+   * The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once).
    *
    * @param event The event token.
    */
   events<E extends AnyEvent>(event: E): readonly Value<E>[];
   /**
-   * Emit an event; readers see it this tick and the next.
+   * Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once).
    *
    * @param event The event token.
    * @param payload The event's fields.
@@ -633,6 +633,7 @@ export interface ArchetypeView {
 // ── system ──────────────────────────────────────────────────────
 // Systems: functions the engine calls once per tick with their matched archetypes.
 // A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
+// Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
 
 /**
  * A system's declared access and order.
@@ -935,6 +936,7 @@ export interface Time {
 
 // ── rng ─────────────────────────────────────────────────────────
 // Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.
+// Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.
 
 /**
  * One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence.
@@ -1013,7 +1015,7 @@ export interface Rng {
    */
   chance(p: number): boolean;
   /**
-   * A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone.
+   * A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough.
    *
    * @param label The subsystem's name, such as `spawner`.
    */
@@ -1112,6 +1114,12 @@ export interface KeyInput {
   readonly action: KeyAction;
   /** Held modifiers; omitted means none. */
   readonly modifiers?: Modifiers;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.
+   *
+   * @range -1..1
+   */
+  readonly at?: number;
 }
 
 /** A pointer event at a point in CSS pixels of the play surface. */
@@ -1138,6 +1146,12 @@ export interface PointerInput {
    * @range ..4
    */
   readonly id?: number;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.
+   *
+   * @range -1..1
+   */
+  readonly at?: number;
 }
 
 /**
@@ -1740,6 +1754,12 @@ export interface KeyDown {
   readonly key: string;
   /** Whether this is an auto-repeat. */
   readonly repeat: boolean;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -1750,6 +1770,12 @@ export interface KeyDown {
 export interface KeyUp {
   /** The physical key code. */
   readonly key: string;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -1766,6 +1792,12 @@ export interface PointerDown {
   readonly button: PointerButton;
   /** Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). */
   readonly id: number;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -1782,6 +1814,12 @@ export interface PointerUp {
   readonly button: PointerButton;
   /** Which pointer: 0 the primary one, 1 to 4 further touches. */
   readonly id: number;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -8893,6 +8931,13 @@ export interface AudioSource {
    */
   startAt: number;
   /**
+   * Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  startOffset: number;
+  /**
    * Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.
    *
    * @range 0..30
@@ -8996,6 +9041,14 @@ export interface Audio {
    * @tunable
    */
   reverbDamping: number;
+  /**
+   * Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly outputLatency: number;
 }
 
 /**
@@ -9226,6 +9279,7 @@ export interface SoundEnded {
    */
   readonly reason: number;
 }
+
 
 // ── nav ─────────────────────────────────────────────────────────
 // Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
@@ -10307,6 +10361,12 @@ export interface PlatformResult {
   readonly error?: PlatformError;
   /** The tick it was answered at. */
   readonly tick: number;
+  /**
+   * The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly time: number;
 }
 
 /** What answers platform calls here. */
@@ -10321,7 +10381,12 @@ export interface PlatformInfo {
   readonly capabilities: readonly string[];
   /** Calls not answered yet. */
   readonly pending: number;
+  /**
+   * Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`.
+   */
+  readonly clock: string;
 }
+
 
 
 
@@ -10678,6 +10743,12 @@ export interface ElementDesc {
    */
   readonly scroll?: boolean;
   /**
+   * Scroll its content horizontally and clip it (with scroll: both ways).
+   *
+   * @default false
+   */
+  readonly scrollX?: boolean;
+  /**
    * Report a Response from close(), as a button does.
    *
    * @default false
@@ -10843,7 +10914,15 @@ export interface PanelDesc {
 }
 
 /**
- * A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.
+ * Which ways a scroll container scrolls.
+ * - `"vertical"`: Up and down (the default).
+ * - `"horizontal"`: Left and right.
+ * - `"both"`: Both ways.
+ */
+export type ScrollAxes = "vertical" | "horizontal" | "both";
+
+/**
+ * A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -10873,6 +10952,12 @@ export interface ScrollDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly gap?: number;
+  /**
+   * Which ways it scrolls.
+   *
+   * @default "vertical"
+   */
+  readonly axes?: ScrollAxes;
 }
 
 /**
@@ -11008,6 +11093,14 @@ export interface Response {
    * A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop).
    */
   readonly dropped: number | null;
+  /**
+   * The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer).
+   */
+  readonly pad: number | null;
+  /**
+   * Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads).
+   */
+  readonly focusedBy: number;
 }
 
 /** A slider's response and its value after this tick's input. */
@@ -11155,13 +11248,13 @@ export interface UiDesc {
  */
 export interface UiSounds {
   /**
-   * The pointer reaches a control.
+   * The pointer reaches a control, or keyboard or gamepad focus moves to one.
    *
    * @default null
    */
   readonly hover?: Sound | null;
   /**
-   * A control is pressed.
+   * A control is pressed: by the pointer, Enter, Space or the gamepad's A.
    *
    * @default null
    */
@@ -11311,6 +11404,61 @@ export type UiBuild = () => void;
 
 
 
+
+
+/**
+ * How a rich text paragraph draws: its defaults, which its markup's spans override.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RichTextDesc {
+  /**
+   * The type step; null is body.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * The ink; null is fg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How the lines align.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * Keep to one line (breaking only at `\n`).
+   *
+   * @default false
+   */
+  readonly nowrap?: boolean;
+  /**
+   * Its width; null fits the text.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Which font.
+   *
+   * @default "body"
+   */
+  readonly font?: FontRole;
+}
+
+/** What a rich text's links did this tick. */
+export interface RichTextResult {
+  /** Its links together: hovered while one is, clicked when one was. */
+  readonly response: Response;
+  /** The link clicked this tick: its `[link=…]` id. */
+  readonly link: string | null;
+  /** The link under the pointer. */
+  readonly hovered: string | null;
+}
 
 
 
@@ -12405,6 +12553,71 @@ export type UiItemBuild = (index: number) => void;
 
 
 
+
+
+
+
+/**
+ * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
+ */
+export interface A11yNode {
+  /** Its path, as touch_move_to and og.ui.focus name it. */
+  readonly path: string;
+  /** The path of the nearest node above it in the tree; empty at the top. */
+  readonly parent: string;
+  /**
+   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
+   */
+  readonly role: string;
+  /** Its accessible name: what a screen reader says it is. */
+  readonly name: string;
+  /**
+   * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view).
+   */
+  readonly states: readonly string[];
+  /**
+   * Left edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Top edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+}
+
+/**
+ * The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.
+ */
+export interface A11yTree {
+  /** The nodes, in tree order: the page, then each layer over it (a dialog after the page). */
+  readonly nodes: readonly A11yNode[];
+  /**
+   * The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open.
+   */
+  readonly focusOrder: readonly string[];
+  /** The path keyboard and pad 0's focus is on; empty for none. */
+  readonly focused: string;
+}
 
 
 
@@ -13567,6 +13780,10 @@ export interface ShopDesc {
 export interface ShopResult {
   /** The item bought this tick: take the price and grant it. */
   readonly bought: string | null;
+  /**
+   * The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought.
+   */
+  readonly refused: string | null;
   /** Close was pressed (or Back). */
   readonly closed: boolean;
 }
@@ -14035,7 +14252,7 @@ export interface ConfirmDesc {
    */
   readonly title?: string;
   /**
-   * What will happen.
+   * What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.
    *
    * @default ""
    */
@@ -14087,7 +14304,7 @@ export interface AlertDesc {
    */
   readonly title?: string;
   /**
-   * The message.
+   * The message, as rich text markup (og.ui.richText).
    *
    * @default ""
    */
@@ -14135,7 +14352,7 @@ export interface AlertDesc {
  * - `"touch_end"`: `touch_end`: release the pointer.
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
  * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
- * - `"gamepad"`: `gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.
+ * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
  * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
  * - `"key_up"`: `key_up:<Key>`: release a key.
  * - `"type"`: `type:<text>`: type text, one key press per character.
@@ -14648,6 +14865,22 @@ export interface UiElement {
   /** The text it shows, if any. */
   readonly text: string;
   /**
+   * Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer).
+   */
+  readonly role: string;
+  /**
+   * Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id.
+   */
+  readonly name: string;
+  /**
+   * Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy.
+   */
+  readonly states: readonly string[];
+  /**
    * Left edge.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
@@ -14846,7 +15079,8 @@ export interface EngineProbe extends RuntimeProbe {
 
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
+// Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
 
 /**
  * A loaded terrain: its heights, control map and layers.
@@ -14875,7 +15109,7 @@ export declare function TerrainData(value?: TerrainData, options?: FieldOptions)
 export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint";
 
 /**
- * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+ * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
  *
  * The value of the `Terrain` component (token `og.Terrain`).
  */
@@ -14905,7 +15139,7 @@ export interface Terrain {
 }
 
 /**
- * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+ * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
  *
  * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
  */
@@ -14940,7 +15174,7 @@ export interface TerrainScatter {
    */
   distance: number;
   /**
-   * The outer part of `distance` over which copies shrink to nothing.
+   * The outer part of `distance` over which copies thin out to nothing.
    *
    * @default 0.3
    * @range 0..1
@@ -15031,12 +15265,24 @@ export interface TerrainSampleDesc {
    */
   readonly data?: TerrainData;
   /**
-   * Where it stands: its og.Terrain entity's position.
+   * Where it stands: its og.Terrain entity's world position.
    *
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
   readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z).
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
   /**
    * The world x.
    *
@@ -15056,7 +15302,7 @@ export interface TerrainSampleDesc {
 /** The terrain under a point. */
 export interface TerrainSample {
   /**
-   * The world y of the surface: the triangles drawn at the finest level and collided with.
+   * The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y.
    *
    * @unit m (metres)
    */
@@ -15102,12 +15348,24 @@ export interface TerrainBrush {
    */
   readonly mode?: TerrainBrushMode;
   /**
-   * Where the terrain stands: its og.Terrain entity's position.
+   * Where the terrain stands: its og.Terrain entity's world position.
    *
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
   readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
   /**
    * The brush's centre in world space; its y is flatten's target height.
    *
@@ -15116,7 +15374,7 @@ export interface TerrainBrush {
    */
   readonly center?: Vector3;
   /**
-   * The brush's radius.
+   * The brush's radius in world metres (across the terrain's surface).
    *
    * @default 8
    * @range 0.01..
@@ -15124,7 +15382,7 @@ export interface TerrainBrush {
    */
   readonly radius?: number;
   /**
-   * Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
+   * World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
    *
    * @default 1
    * @range 0..
@@ -15253,6 +15511,117 @@ export interface TerrainLayerDesc {
   readonly altitudeFade?: number;
 }
 
+
+
+
+
+
+
+// ── stream ──────────────────────────────────────────────────────
+// Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+// At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+// Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.
+
+/**
+ * Where a streaming group is.
+ * - `"unloaded"`: Not wanted; its assets draw and play their stand-ins.
+ * - `"queued"`: Wanted, waiting for room in the memory budget.
+ * - `"loading"`: Admitted: its pack is being read (its memory already counts).
+ * - `"resident"`: Its assets are in place of their stand-ins.
+ * - `"failed"`: Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which).
+ */
+export type StreamState = "unloaded" | "queued" | "loading" | "resident" | "failed";
+
+/** `StreamEvent.state`: the group is unloaded (StreamState unloaded). */
+export declare const STREAM_UNLOADED: 0;
+
+/** `StreamEvent.state`: the group waits for room in the budget (StreamState queued). */
+export declare const STREAM_QUEUED: 1;
+
+/** `StreamEvent.state`: the group's pack is being read (StreamState loading). */
+export declare const STREAM_LOADING: 2;
+
+/** `StreamEvent.state`: the group's assets are in place (StreamState resident). */
+export declare const STREAM_RESIDENT: 3;
+
+/** `StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why). */
+export declare const STREAM_FAILED: 4;
+
+/**
+ * A group changed state: sent by og.stream at the start of the tick after the change.
+ *
+ * The payload of the `StreamEvent` event (token `og.StreamEvent`).
+ */
+export interface StreamEvent {
+  /** The group's name (at most 63 bytes). */
+  readonly group: string;
+  /**
+   * Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order).
+   */
+  readonly state: number;
+}
+
+/** One streaming group. */
+export interface StreamStatus {
+  /** Its name. */
+  readonly name: string;
+  /** The scene that declares it. */
+  readonly scene: string;
+  /** Where it is. */
+  readonly state: StreamState;
+  /** Whether its trigger or a request wants it now. */
+  readonly wanted: boolean;
+  /** Whether og.stream.request asked for it (until og.stream.release). */
+  readonly requested: boolean;
+  /** Higher loads first and is evicted last. */
+  readonly priority: number;
+  /** manual, distance or volume. */
+  readonly trigger: string;
+  /**
+   * What its assets take once loaded, in bytes.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly memory: number;
+  /**
+   * Its pack's size, in bytes.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytes: number;
+  /** Its asset ids. */
+  readonly assets: readonly string[];
+  /** Why it is queued or failed; empty otherwise. */
+  readonly reason: string;
+  /** The tick of its last change. */
+  readonly since: number;
+  /** How many times it became resident. */
+  readonly loads: number;
+}
+
+/** The streaming memory budget and every group. */
+export interface StreamBudget {
+  /**
+   * The bytes resident and loading groups may take.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly budget: number;
+  /**
+   * The bytes they take now.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly used: number;
+  /**
+   * The most they ever took (never above the budget at the time).
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+  /** Every group, by name. */
+  readonly groups: readonly StreamStatus[];
+}
 
 
 
@@ -16205,13 +16574,13 @@ export declare namespace og {
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
    * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
    */
-  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly fade: FieldSpec<"f32"> }, AudioSource>;
+  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32"> }, AudioSource>;
   /**
    * Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used.
    */
   const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32"> }, AudioListener>;
   /** Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. */
-  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32"> }, Audio>;
+  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32">; readonly outputLatency: FieldSpec<"f64"> }, Audio>;
   /**
    * A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.
    * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
@@ -16229,6 +16598,21 @@ export declare namespace og {
   const SoundStarted: EventType<SoundStarted>;
   /** A sound ended, sent in the tick it happens (systems read it the tick after). */
   const SoundEnded: EventType<SoundEnded>;
+  /**
+   * Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
+   * The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
+   * Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).
+   */
+  namespace audio {
+    /**
+     * How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).
+     * Inside a system og.Audio must be among its reads or writes.
+     *
+     * @param world The world.
+     * @returns Seconds; 0 headless.
+     */
+    function outputLatency(world: World): number;
+  }
   /**
    * An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents.
    */
@@ -16537,6 +16921,13 @@ export declare namespace og {
      * @param world The world.
      */
     function info(world: World): PlatformInfo;
+    /**
+     * The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time).
+     *
+     * @param world The world.
+     * @returns UTC milliseconds; 0 until a host has told the time (`none`).
+     */
+    function now(world: World): number;
   }
   /**
    * Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).
@@ -16667,6 +17058,14 @@ export declare namespace og {
      * @param build Makes its children.
      */
     function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
+    /**
+     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
+     *
+     * @param id Its id.
+     * @param markup The markup.
+     * @param desc Defaults for its spans: type step, ink, alignment, wrapping, width and font.
+     */
+    function richText(id: string, markup: string, desc?: RichTextDesc): RichTextResult;
     /**
      * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
      *
@@ -17067,6 +17466,22 @@ export declare namespace og {
      */
     function back(): boolean;
     /**
+     * Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it.
+     *
+     * @param count Players, 1 to 4 (clamped).
+     */
+    function setPlayers(count: number): void;
+    /**
+     * The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.
+     *
+     * @param pad The pad, 0 to 3; past 3 answers empty.
+     */
+    function focus(pad: number): string;
+    /**
+     * The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.
+     */
+    function a11y(): A11yTree;
+    /**
      * Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
      *
      * @param on On or off.
@@ -17297,16 +17712,17 @@ export declare namespace og {
     function schedule(world: World, script: string): Result<CommandsReport>;
   }
   /**
-   * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+   * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
   const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
-   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
+   * Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
    */
   namespace terrain {
     /**
@@ -17326,14 +17742,16 @@ export declare namespace og {
      */
     function sample(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>;
     /**
-     * A terrain's box in world space when it stands at `origin`.
+     * A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners.
      *
      * @param world The world.
      * @param data The terrain.
      * @param origin Where it stands.
+     * @param quaternion How it is turned.
+     * @param scale How it is scaled.
      * @returns Refused for an unknown terrain.
      */
-    function bounds(world: World, data: TerrainData, origin?: Vector3): Result<TerrainBounds>;
+    function bounds(world: World, data: TerrainData, origin?: Vector3, quaternion?: Quaternion, scale?: Vector3): Result<TerrainBounds>;
     /**
      * Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).
      *
@@ -17362,5 +17780,53 @@ export declare namespace og {
      * @returns Refused for an unknown terrain or layer.
      */
     function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
+  }
+  /** A group changed state: sent by og.stream at the start of the tick after the change. */
+  const StreamEvent: EventType<StreamEvent>;
+  /**
+   * Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+   * At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+   * Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.
+   */
+  namespace stream {
+    /**
+     * One streaming group's state.
+     *
+     * @param world The world.
+     * @param group The group's name, as its scene declares it.
+     * @returns Refused for a group no scene declares.
+     */
+    function status(world: World, group: string): Result<StreamStatus>;
+    /**
+     * Ask for a group (any trigger) until og.stream.release: it loads from the next tick boundary, within the budget by its priority.
+     *
+     * @param world The world.
+     * @param group The group's name.
+     * @returns Refused for a group no scene declares.
+     */
+    function request(world: World, group: string): Result<void>;
+    /**
+     * Stop asking for a group; it unloads at the next tick boundary unless its trigger still wants it.
+     *
+     * @param world The world.
+     * @param group The group's name.
+     * @returns Refused for a group no scene declares.
+     */
+    function release(world: World, group: string): Result<void>;
+    /**
+     * The memory budget, what the groups take now, the peak and every group.
+     *
+     * @param world The world.
+     * @returns The budget and the groups; refused only for a world that does not exist.
+     */
+    function budget(world: World): Result<StreamBudget>;
+    /**
+     * Set the memory budget from the next tick boundary; a lower one evicts the lowest-priority groups until the rest fit.
+     *
+     * @param world The world.
+     * @param bytes The bytes resident groups may take.
+     * @returns Refused for a negative or non-finite size.
+     */
+    function setBudget(world: World, bytes: number): Result<void>;
   }
 }

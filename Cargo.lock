@@ -1683,10 +1683,12 @@ dependencies = [
 name = "og-cli"
 version = "0.0.1"
 dependencies = [
+ "image",
  "og-api",
  "og-cook",
  "og-core",
  "og-idl",
+ "og-ui",
  "serde_json",
  "tungstenite",
 ]
@@ -1895,6 +1897,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-tests-web"
+version = "0.0.1"
+dependencies = [
+ "js-sys",
+ "og-render",
+ "og-tests",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+]
+
+[[package]]
 name = "og-tilemap"
 version = "0.0.1"
 dependencies = [
@@ -1921,6 +1936,7 @@ dependencies = [
  "og-input",
  "og-probe",
  "og-render",
+ "og-tween",
  "rustybuzz",
  "serde_json",
 ]

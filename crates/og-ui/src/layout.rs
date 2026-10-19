@@ -255,6 +255,8 @@ pub struct Element {
     pub wrap: bool,
     /// Scrolls its content vertically and clips it.
     pub scroll: bool,
+    /// Scrolls its content horizontally and clips it (with `scroll`: both ways).
+    pub scroll_x: bool,
     /// Reports hover, press and click through `Ui::close`.
     pub interactive: bool,
     pub background: Option<Srgba>,
@@ -470,6 +472,12 @@ pub(crate) struct TextContent {
 }
 
 impl TextContent {
+    /// The type step's tracking, in em: Latin tracking, so none for text
+    /// with CJK characters or a shaped script (whose joins it would break).
+    pub fn tracking(&self) -> f32 {
+        step_tracking(&self.step, &self.text)
+    }
+
     pub fn line_height(&self) -> f32 {
         if self.text.chars().any(is_cjk) {
             self.step.cjk_line_height
@@ -479,10 +487,21 @@ impl TextContent {
     }
 }
 
+/// A step's tracking for `text`: none with CJK or a shaped script.
+pub(crate) fn step_tracking(step: &TypeStep, text: &str) -> f32 {
+    if text.chars().any(|c| is_cjk(c) || og_i18n::needs_shaping(c)) {
+        0.0
+    } else {
+        step.tracking_em
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Content {
     None,
     Text(TextContent),
+    /// A paragraph of rich text spans (`crate::rich`).
+    Rich(crate::rich::RichContent),
     Image {
         texture: Option<TextureHandle>,
         uv: [f32; 4],
@@ -496,6 +515,8 @@ pub(crate) enum Widget {
     None,
     Button {
         pressed: bool,
+        /// How far in the press is on the skin's spring (0 rest, 1 held).
+        press: f32,
     },
     Progress {
         value: f32,
@@ -554,6 +575,8 @@ pub(crate) struct Node {
     pub adjust: bool,
     /// Draw the focus ring (focused by keyboard or gamepad).
     pub ring: bool,
+    /// Bit k: pad k + 1's focus is on it (its ring in that player's colour).
+    pub pad_rings: u8,
     /// Built but not shown (a closed dialog's slot): no layout, drawing or input.
     pub hidden: bool,
     /// A modal backdrop: takes the pointer, never focus.
@@ -566,6 +589,8 @@ pub(crate) struct Node {
     pub aux: [f32; 3],
     /// A heading label: the skin's flourish frames it.
     pub heading: bool,
+    /// What it tells the accessibility tree beyond its kind.
+    pub a11y: crate::a11y::A11y,
     /// Its descendants enter one after another (a skin's stagger).
     pub stagger: Option<Stagger>,
     // Computed by the frame.
@@ -584,7 +609,13 @@ pub(crate) struct Node {
     pub x: f32,
     pub y: f32,
     pub content_h: f32,
+    /// The content's width (its children's extent), for horizontal scrolling.
+    pub content_w: f32,
     pub lines: Vec<Line>,
+    /// A rich text's lines.
+    pub rich_lines: Vec<crate::rich::RichLine>,
+    /// A rich text's links, by id, in order.
+    pub links: Vec<String>,
     /// A wrapping row's lines: ranges of `children`.
     pub rows: Vec<(usize, usize)>,
     pub clip: Rect,
@@ -610,12 +641,14 @@ impl Node {
             nav: false,
             adjust: false,
             ring: false,
+            pad_rings: 0,
             hidden: false,
             backdrop: false,
             scope: false,
             shapes: Vec::new(),
             aux: [0.0; 3],
             heading: false,
+            a11y: crate::a11y::A11y::default(),
             stagger: None,
             alpha: 1.0,
             scale: 1.0,
@@ -630,7 +663,10 @@ impl Node {
             x: 0.0,
             y: 0.0,
             content_h: 0.0,
+            content_w: 0.0,
             lines: Vec::new(),
+            rich_lines: Vec::new(),
+            links: Vec::new(),
             rows: Vec::new(),
             clip: Rect::default(),
             rect: Rect::default(),
@@ -639,7 +675,23 @@ impl Node {
 
     /// The scroll range: how far the content overflows the inner height.
     pub fn max_scroll(&self) -> f32 {
+        if !self.el.scroll {
+            return 0.0;
+        }
         (self.content_h - (self.h - self.el.padding.vertical())).max(0.0)
+    }
+
+    /// The horizontal scroll range: how far the content overflows the inner width.
+    pub fn max_scroll_x(&self) -> f32 {
+        if !self.el.scroll_x {
+            return 0.0;
+        }
+        (self.content_w - (self.w - self.el.padding.horizontal())).max(0.0)
+    }
+
+    /// Scrolls either way.
+    pub fn scrolls(&self) -> bool {
+        self.el.scroll || self.el.scroll_x
     }
 }
 
@@ -768,14 +820,15 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
     let (pref, min) = match &n.content {
         Content::Text(t) => {
             let m = fonts.metrics_for(t.font, &t.text);
-            let pref = widest_line(&t.text, m, t.step.size);
+            let pref = widest_line(&t.text, m, t.step.size, t.tracking());
             let min = if t.wrap {
-                longest_word(&t.text, m, t.step.size)
+                longest_word(&t.text, m, t.step.size, t.tracking())
             } else {
                 pref
             };
             (pref, min)
         }
+        Content::Rich(rc) => crate::rich::rich_widths(rc, fonts),
         Content::Image { .. } => (0.0, 0.0),
         Content::None => {
             let k = n.children.len();
@@ -798,6 +851,8 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         }
     };
     let pad = n.el.padding.horizontal();
+    // A horizontal scroller never shrinks its content: it overflows and scrolls.
+    let min = if n.el.scroll_x { 0.0 } else { min };
     let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
     nodes[i].pref_w = p;
     nodes[i].min_w = m;
@@ -864,8 +919,19 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         let m = fonts.metrics_for(t.font, &t.text);
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.
-        let lines = break_lines(&t.text, m, t.step.size, t.wrap.then_some(inner + 0.5));
+        let lines = break_lines(
+            &t.text,
+            m,
+            t.step.size,
+            t.tracking(),
+            t.wrap.then_some(inner + 0.5),
+        );
         nodes[i].lines = lines;
+        return;
+    }
+    if let Content::Rich(rc) = &nodes[i].content {
+        let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5));
+        nodes[i].rich_lines = lines;
         return;
     }
     let el = nodes[i].el;
@@ -884,12 +950,17 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
                     inner,
                     el.cross == Cross::Stretch,
                 );
+                // In a horizontal scroller a fitting child keeps its width.
+                let w = match n.el.width {
+                    Size::Fit { .. } if el.scroll_x => w.max(n.pref_w),
+                    _ => w,
+                };
                 nodes[c].w = w;
             }
         }
         Direction::Row if !el.wrap => {
             let avail = inner - gaps(el.gap, kids.len());
-            let sizes = main_sizes(nodes, &kids, true, inner, avail, true);
+            let sizes = main_sizes(nodes, &kids, true, inner, avail, !el.scroll_x);
             for (&c, w) in kids.iter().zip(sizes) {
                 nodes[c].w = w;
             }
@@ -944,6 +1015,10 @@ fn size_h(nodes: &mut [Node], i: usize) {
     let (pref, min) = match &n.content {
         Content::Text(t) => {
             let h = n.lines.len().max(1) as f32 * t.line_height();
+            (h, h)
+        }
+        Content::Rich(_) => {
+            let h: f32 = n.rich_lines.iter().map(|l| l.height).sum();
             (h, h)
         }
         Content::Image { .. } => (0.0, 0.0),
@@ -1068,15 +1143,42 @@ fn cross_offset(cross: Cross, room: f32, size: f32) -> f32 {
     }
 }
 
-fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> f32) {
+fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
+    // The content's extent along x, before the offsets (the horizontal range).
+    let content_w = {
+        let n = &nodes[i];
+        let kids = &n.children;
+        match n.el.direction {
+            Direction::Column => kids.iter().map(|&c| nodes[c].w).fold(0.0, f32::max),
+            Direction::Row if n.el.wrap && !n.rows.is_empty() => n
+                .rows
+                .iter()
+                .map(|&(s, e)| {
+                    kids[s..e].iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(n.el.gap, e - s)
+                })
+                .fold(0.0, f32::max),
+            Direction::Row => {
+                kids.iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(n.el.gap, kids.len())
+            }
+        }
+    };
+    nodes[i].content_w = content_w;
     let n = &nodes[i];
     let el = n.el;
     let inner_w = n.w - el.padding.horizontal();
     let inner_h = n.h - el.padding.vertical();
-    let x0 = n.x + el.padding.left;
+    let mut x0 = n.x + el.padding.left;
     let mut y0 = n.y + el.padding.top;
+    let (sx, sy) = if el.scroll || el.scroll_x {
+        scroll(n.key)
+    } else {
+        (0.0, 0.0)
+    };
     if el.scroll {
-        y0 -= scroll(n.key).clamp(0.0, n.max_scroll());
+        y0 -= sy.clamp(0.0, n.max_scroll());
+    }
+    if el.scroll_x {
+        x0 -= sx.clamp(0.0, n.max_scroll_x());
     }
     let kids = n.children.clone();
     let rows = if el.direction == Direction::Row && el.wrap && !n.rows.is_empty() {
@@ -1091,7 +1193,11 @@ fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> f32) {
         match el.direction {
             Direction::Row => {
                 let used: f32 = line.iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(el.gap, k);
-                let (start, between) = main_offsets(el.align, inner_w - used, k);
+                let mut free = inner_w - used;
+                if el.scroll_x {
+                    free = free.max(0.0);
+                }
+                let (start, between) = main_offsets(el.align, free, k);
                 let room = if el.wrap {
                     line.iter().map(|&c| nodes[c].h).fold(0.0, f32::max)
                 } else {
@@ -1117,7 +1223,8 @@ fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> f32) {
                 for &c in line {
                     let (w, h) = (nodes[c].w, nodes[c].h);
                     nodes[c].y = y;
-                    nodes[c].x = x0 + cross_offset(el.cross, inner_w, w);
+                    nodes[c].x = x0
+                        + cross_offset(el.cross, inner_w.max(if el.scroll_x { w } else { 0.0 }), w);
                     y += h + el.gap + between;
                 }
             }
@@ -1132,7 +1239,7 @@ pub(crate) fn layout(
     root: usize,
     area: Rect,
     fonts: &dyn Metrics,
-    scroll: &dyn Fn(u64) -> f32,
+    scroll: &dyn Fn(u64) -> (f32, f32),
     dpr: f32,
     clip: Rect,
 ) {
@@ -1180,7 +1287,7 @@ pub(crate) fn layout(
             (clip, NONE)
         } else {
             let p = &nodes[n.parent];
-            if p.el.scroll {
+            if p.el.scroll || p.el.scroll_x {
                 (p.clip.intersect(&p.rect), n.parent)
             } else {
                 (p.clip, p.clip_src)

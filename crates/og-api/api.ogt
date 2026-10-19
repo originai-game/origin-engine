@@ -297,10 +297,10 @@ module world {
     }
 
     fn resource {
-      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes."
+      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
       generic R AnyResource
       param resource R "The resource token."
-      returns Result.Value.R "Refused for an unregistered resource or one the running system did not declare."
+      returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
     }
 
     fn find {
@@ -322,14 +322,14 @@ module world {
     }
 
     fn events {
-      doc "The events of one type emitted during the previous tick and this one, oldest first."
+      doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
       returns List.Value.E
     }
 
     fn emit {
-      doc "Emit an event; readers see it this tick and the next."
+      doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
       param payload Value.E "The event's fields."
@@ -389,6 +389,7 @@ module system {
   skill og-core
   doc "Systems: functions the engine calls once per tick with their matched archetypes."
   doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
+  doc "Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes."
   place top
 
   struct SystemDesc {
@@ -609,6 +610,7 @@ module time {
 module rng {
   skill og-core
   doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
+  doc "Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from."
 
   interface RngStream {
     doc "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence."
@@ -671,7 +673,7 @@ module rng {
       returns bool
     }
     fn fork {
-      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone."
+      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
       param label String "The subsystem's name, such as `spawner`."
       returns RngStream
     }
@@ -758,6 +760,11 @@ module input {
     field modifiers Modifiers "Held modifiers; omitted means none." {
       optional true
     }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
+      optional true
+    }
   }
 
   struct PointerInput {
@@ -772,6 +779,11 @@ module input {
     field button PointerButton "The button; `none` for a hover move."
     field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
       max 4
+      optional true
+    }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
       optional true
     }
   }
@@ -1150,11 +1162,19 @@ module input {
     doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event KeyUp {
     doc "A key went up."
     field key String "The physical key code."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerDown {
@@ -1163,6 +1183,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerUp {
@@ -1171,6 +1195,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerMove {
@@ -5713,6 +5741,10 @@ module audio {
       min 0
       unit s
     }
+    field startOffset f64 "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region." {
+      min 0
+      unit s
+    }
     field fade f32 "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms." {
       min 0
       max 30
@@ -5786,6 +5818,11 @@ module audio {
       min 0
       max 1
       tunable true
+    }
+    field outputLatency f64 "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency)." {
+      min 0
+      unit s
+      readonly true
     }
   }
 
@@ -5933,6 +5970,13 @@ module audio {
     field sound Sound "The sound."
     field voice u32 "The voice id in the command stream."
     field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+  }
+
+  fn outputLatency {
+    doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand)."
+    doc "Inside a system og.Audio must be among its reads or writes."
+    param world World "The world."
+    returns f64 "Seconds; 0 headless."
   }
 }
 
@@ -6708,6 +6752,9 @@ module platform {
       optional true
     }
     field tick u32 "The tick it was answered at."
+    field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+      unit ms
+    }
   }
 
   struct PlatformInfo {
@@ -6715,6 +6762,7 @@ module platform {
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
     field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
     field pending u32 "Calls not answered yet."
+    field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
   }
 
   fn storeGet {
@@ -6806,6 +6854,12 @@ module platform {
     doc "What answers platform calls here, and what it answers."
     param world World "The world."
     returns PlatformInfo
+  }
+
+  fn now {
+    doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time)."
+    param world World "The world."
+    returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
   }
 }
 
@@ -7087,6 +7141,7 @@ module ui {
     field cross Cross "Where children sit across it."
     field wrap bool "Break a row into lines at its inner width."
     field scroll bool "Scroll its content vertically and clip it."
+    field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
     field interactive bool "Report a Response from close(), as a button does."
     field background Option.Paint "Its fill; null draws none."
     field radius f32 "Corner radius." {
@@ -7129,8 +7184,15 @@ module ui {
     field background Option.Paint "Its fill; null is surface."
   }
 
+  enum ScrollAxes {
+    doc "Which ways a scroll container scrolls."
+    variant vertical "Up and down (the default)."
+    variant horizontal "Left and right."
+    variant both "Both ways."
+  }
+
   struct ScrollDesc {
-    doc "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position."
+    doc "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it."
     desc true
     field width Option.Size "Its width; null fits the content."
     field height Option.Size "Its height; null fits the content."
@@ -7138,6 +7200,7 @@ module ui {
     field gap f32 "Space between children." {
       unit cssPx
     }
+    field axes ScrollAxes "Which ways it scrolls."
   }
 
   struct ImageDesc {
@@ -7184,6 +7247,8 @@ module ui {
     field focused bool "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
     field submitted bool "Enter was pressed in it (text field)."
     field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+    field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+    field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
   }
 
   struct SliderResult {
@@ -7241,8 +7306,8 @@ module ui {
   struct UiSounds {
     doc "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent."
     desc true
-    field hover Option.Sound "The pointer reaches a control."
-    field press Option.Sound "A control is pressed."
+    field hover Option.Sound "The pointer reaches a control, or keyboard or gamepad focus moves to one."
+    field press Option.Sound "A control is pressed: by the pointer, Enter, Space or the gamepad's A."
     field open Option.Sound "A dialog opens."
     field close Option.Sound "A dialog closes."
     field success Option.Sound "A success toast."
@@ -7395,6 +7460,32 @@ module ui {
     param desc ScrollDesc "Its size and spacing."
     param build UiBuild "Makes its children."
     returns Void
+  }
+
+  struct RichTextDesc {
+    doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is fg."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+  }
+
+  struct RichTextResult {
+    doc "What a rich text's links did this tick."
+    field response Response "Its links together: hovered while one is, clicked when one was."
+    field link Option.String "The link clicked this tick: its `[link=…]` id."
+    field hovered Option.String "The link under the pointer."
+  }
+
+  fn richText {
+    doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
+    param id String "Its id."
+    param markup String "The markup."
+    param desc RichTextDesc "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+    returns RichTextResult
   }
 
   fn label {
@@ -8279,6 +8370,52 @@ module ui {
     returns bool
   }
 
+  fn setPlayers {
+    doc "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it."
+    param count u32 "Players, 1 to 4 (clamped)."
+    returns Void
+  }
+
+  fn focus {
+    doc "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none."
+    param pad u32 "The pad, 0 to 3; past 3 answers empty."
+    returns String
+  }
+
+  struct A11yNode {
+    doc "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out)."
+    field path String "Its path, as touch_move_to and og.ui.focus name it."
+    field parent String "The path of the nearest node above it in the tree; empty at the top."
+    field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+    field name String "Its accessible name: what a screen reader says it is."
+    field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field x f32 "Left edge of the whole element." {
+      unit cssPx
+    }
+    field y f32 "Top edge of the whole element." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct A11yTree {
+    doc "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on."
+    field nodes List.A11yNode "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+    field focusOrder List.String "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+    field focused String "The path keyboard and pad 0's focus is on; empty for none."
+  }
+
+  fn a11y {
+    doc "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements."
+    returns A11yTree
+  }
+
   fn setNavigation {
     doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
     param on bool "On or off."
@@ -8753,6 +8890,7 @@ module ui {
   struct ShopResult {
     doc "A shop's answer this tick."
     field bought Option.String "The item bought this tick: take the price and grant it."
+    field refused Option.String "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
     field closed bool "Close was pressed (or Back)."
   }
 
@@ -8923,7 +9061,7 @@ module ui {
     desc true
     field open bool "Whether it is open."
     field title String "The question."
-    field message String "What will happen."
+    field message String "What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis."
     field confirmLabel String "The action's label." {
       default "Confirm"
     }
@@ -8944,7 +9082,7 @@ module ui {
     desc true
     field open bool "Whether it is open."
     field title String "The title."
-    field message String "The message."
+    field message String "The message, as rich text markup (og.ui.richText)."
     field okLabel String "The button's label." {
       default "OK"
     }
@@ -9122,7 +9260,7 @@ module commands {
     variant touch_end "`touch_end`: release the pointer."
     variant scroll "`scroll:dx,dy`: scroll at the pointer."
     variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
-    variant gamepad "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it."
+    variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
     variant key_down "`key_down:<Key>`: hold a key by its code."
     variant key_up "`key_up:<Key>`: release a key."
     variant type "`type:<text>`: type text, one key press per character."
@@ -9460,6 +9598,10 @@ module probe {
     field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
     field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
     field text String "The text it shows, if any."
+    field role String "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+    field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+    field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+    field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
     field x f32 "Left edge." {
       unit cssPx
     }
@@ -9644,7 +9786,8 @@ module probe {
 module terrain {
   skill og-game
   doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry."
-  doc "Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is."
+  doc "Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike)."
+  doc "Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached."
 
   handle TerrainData "A loaded terrain: its heights, control map and layers."
 
@@ -9665,7 +9808,7 @@ module terrain {
   }
 
   component Terrain {
-    doc "Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
+    doc "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field castShadows bool "Cast the directional and local lights' shadows (it always receives them)." {
       default true
@@ -9683,7 +9826,7 @@ module terrain {
   }
 
   component TerrainScatter {
-    doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities."
+    doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities."
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field geometry Geometry "The mesh, its origin at its root."
     field material Material "Its material."
@@ -9703,7 +9846,7 @@ module terrain {
       unit m
       tunable true
     }
-    field fade f32 "The outer part of `distance` over which copies shrink to nothing." {
+    field fade f32 "The outer part of `distance` over which copies thin out to nothing." {
       default 0.3
       min 0
       max 1
@@ -9755,8 +9898,12 @@ module terrain {
     doc "Where og.terrain.sample looks."
     desc true
     field data TerrainData "The terrain."
-    field origin Vector3 "Where it stands: its og.Terrain entity's position." {
+    field origin Vector3 "Where it stands: its og.Terrain entity's world position." {
       unit m
+    }
+    field quaternion Quaternion "How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z)."
+    field scale Vector3 "How it is scaled: its og.Terrain entity's world scale." {
+      default 1 1 1
     }
     field x f32 "The world x." {
       unit m
@@ -9768,7 +9915,7 @@ module terrain {
 
   struct TerrainSample {
     doc "The terrain under a point."
-    field height f32 "The world y of the surface: the triangles drawn at the finest level and collided with." {
+    field height f32 "The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y." {
       unit m
     }
     field normal Vector3 "The surface normal, smoothed between samples as the renderer shades it."
@@ -9792,18 +9939,22 @@ module terrain {
     doc "One runtime edit of a terrain (og.terrain.edit)."
     desc true
     field mode TerrainBrushMode "What it does."
-    field origin Vector3 "Where the terrain stands: its og.Terrain entity's position." {
+    field origin Vector3 "Where the terrain stands: its og.Terrain entity's world position." {
       unit m
+    }
+    field quaternion Quaternion "How it is turned: its og.Terrain entity's world rotation."
+    field scale Vector3 "How it is scaled: its og.Terrain entity's world scale." {
+      default 1 1 1
     }
     field center Vector3 "The brush's centre in world space; its y is flatten's target height." {
       unit m
     }
-    field radius f32 "The brush's radius." {
+    field radius f32 "The brush's radius in world metres (across the terrain's surface)." {
       default 8
       min 0.01
       unit m
     }
-    field strength f32 "Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint)." {
+    field strength f32 "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint)." {
       default 1
       min 0
     }
@@ -9899,10 +10050,16 @@ module terrain {
   }
 
   fn bounds {
-    doc "A terrain's box in world space when it stands at `origin`."
+    doc "A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners."
     param world World "The world."
     param data TerrainData "The terrain."
     param origin Vector3 "Where it stands." {
+      optional true
+    }
+    param quaternion Quaternion "How it is turned." {
+      optional true
+    }
+    param scale Vector3 "How it is scaled." {
       optional true
     }
     returns Result.TerrainBounds "Refused for an unknown terrain."
@@ -9931,5 +10088,104 @@ module terrain {
     param index u32 "The layer, from 0."
     param layer TerrainLayerDesc "The layer."
     returns Result.Void "Refused for an unknown terrain or layer."
+  }
+}
+
+# ── stream ────────────────────────────────────────────────────────────────
+
+module stream {
+  skill og-game
+  doc "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads."
+  doc "At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not."
+  doc "Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles."
+
+  enum StreamState {
+    doc "Where a streaming group is."
+    variant unloaded "Not wanted; its assets draw and play their stand-ins."
+    variant queued "Wanted, waiting for room in the memory budget."
+    variant loading "Admitted: its pack is being read (its memory already counts)."
+    variant resident "Its assets are in place of their stand-ins."
+    variant failed "Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which)."
+  }
+
+  const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
+  const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
+  const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
+  const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
+  const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
+
+  event StreamEvent {
+    doc "A group changed state: sent by og.stream at the start of the tick after the change."
+    field group String "The group's name (at most 63 bytes)."
+    field state u32 "Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order)."
+  }
+
+  struct StreamStatus {
+    doc "One streaming group."
+    field name String "Its name."
+    field scene String "The scene that declares it."
+    field state StreamState "Where it is."
+    field wanted bool "Whether its trigger or a request wants it now."
+    field requested bool "Whether og.stream.request asked for it (until og.stream.release)."
+    field priority i32 "Higher loads first and is evicted last."
+    field trigger String "manual, distance or volume."
+    field memory f64 "What its assets take once loaded, in bytes." {
+      unit bytes
+    }
+    field bytes f64 "Its pack's size, in bytes." {
+      unit bytes
+    }
+    field assets List.String "Its asset ids."
+    field reason String "Why it is queued or failed; empty otherwise."
+    field since f64 "The tick of its last change."
+    field loads u32 "How many times it became resident."
+  }
+
+  struct StreamBudget {
+    doc "The streaming memory budget and every group."
+    field budget f64 "The bytes resident and loading groups may take." {
+      unit bytes
+    }
+    field used f64 "The bytes they take now." {
+      unit bytes
+    }
+    field peak f64 "The most they ever took (never above the budget at the time)." {
+      unit bytes
+    }
+    field groups List.StreamStatus "Every group, by name."
+  }
+
+  fn status {
+    doc "One streaming group's state."
+    param world World "The world."
+    param group String "The group's name, as its scene declares it."
+    returns Result.StreamStatus "Refused for a group no scene declares."
+  }
+
+  fn request {
+    doc "Ask for a group (any trigger) until og.stream.release: it loads from the next tick boundary, within the budget by its priority."
+    param world World "The world."
+    param group String "The group's name."
+    returns Result.Void "Refused for a group no scene declares."
+  }
+
+  fn release {
+    doc "Stop asking for a group; it unloads at the next tick boundary unless its trigger still wants it."
+    param world World "The world."
+    param group String "The group's name."
+    returns Result.Void "Refused for a group no scene declares."
+  }
+
+  fn budget {
+    doc "The memory budget, what the groups take now, the peak and every group."
+    param world World "The world."
+    returns Result.StreamBudget "The budget and the groups; refused only for a world that does not exist."
+  }
+
+  fn setBudget {
+    doc "Set the memory budget from the next tick boundary; a lower one evicts the lowest-priority groups until the rest fit."
+    param world World "The world."
+    param bytes f64 "The bytes resident groups may take."
+    returns Result.Void "Refused for a negative or non-finite size."
   }
 }

@@ -19,7 +19,7 @@ the world → scene extraction belongs to the layer above.
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain` → handles; `set_material` and `set_terrain` replace one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
@@ -31,10 +31,10 @@ the world → scene extraction belongs to the layer above.
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
-| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
+| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip, tracking, weight, glow }` lays out left to right with `\n`, each glyph advancing by its advance plus `tracking` em (CSS `letter-spacing`); missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. `weight` (a faux bold, CSS px of the distance field) and `glow` (`TextGlow { color, radius }`) are the overlay's (below). |
 | `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
 | `TerrainData`, `TerrainControl`, `TerrainHandle` | A terrain's geometry: `columns` × `rows` heights (m) over a `size` rectangle centred on its origin, row-major from -z and -x, and an optional RGBA8 control map (one channel per layer). `height(local)` (on the triangles the renderer and physics use), `normal(local)`, `range()`, `cell()`, `check()`. See [Terrain](#phase-2-terrain). |
-| `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, `origin`, up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
+| `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, its `transform` (rotation, scale and translation from the terrain's own space, centred on the height field at height 0, to the world), up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
 | `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes`, `frame`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
 | `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
@@ -171,7 +171,32 @@ values. Positions are CSS pixels from the top-left corner, scaled by
 `Overlay::scale` (0: the output's height over `Overlay::height`). Sprites and
 text are sorted by (layer, texture or font) into instanced runs (stable
 within a run); each instance carries an optional clip rectangle tested per
-pixel, so a scrolled list cuts a glyph in half instead of dropping it. Every
+pixel, so a scrolled list cuts a glyph in half instead of dropping it.
+Overlay text also takes `weight` (the fill's edge moved out by that many CSS
+pixels of the distance field: a faux bold) and `glow`: a soft halo read from
+the font's distance field in the same MSDF pipeline, drawn as one extra
+instance per glyph, every glyph's glow before every fill so no halo lies
+over ink. The distance is the MTSDF's true field in alpha (round past
+corners), or the median for a plain MSDF; it falls off quadratically to
+`radius`, capped where the field ends (half the font's `distance_range` in
+atlas pixels at the size drawn, so a font cooked with `px_range 12` glows
+three times as far as one with 4); og-ui's skins use it for `textGlow`
+(og-ui's `tests/gfx.rs` `a_text_glow_is_a_halo_from_the_distance_field`
+and `references/<tier>/text-glow.png`; the cost is
+`tests/evidence/P2/ui/text-glow-cost.md`). The weight stays within the
+field's reach too, so a thin field never fills the glyph's quad.
+`Overlay::glass` holds glass panels (`Glass`: a rounded rectangle, a blur
+radius, a tint and its share, an opacity, a layer and a clip): a frame with
+any renders its tonemap into a texture of its own (`src/glass.rs`), copies
+it into the output exactly, and downsamples it into a six-level
+`Rgba16Float` pyramid of 13-tap blurs (decoding an sRGB-encoded source);
+each panel samples the level its blur asks for, trilinear between levels,
+tints it and masks it to its rounded rectangle, sorted with the overlay's
+other runs at its layer. It blurs the scene under the overlay, not other
+overlay content; the pyramid is a render target of `Rgba16Float`, which WebGL2 renders to only with `EXT_color_buffer_float` (WebGPU, Metal, Vulkan and DX12 always); a frame without glass pays nothing (og-ui's `tests/gfx.rs`
+`a_glass_panel_blurs_the_frame_under_it_and_nothing_else` and
+`references/<tier>/glass.png`; the cost is
+`tests/evidence/P2/ui/glass-cost.md`). Every
 tier runs it (render passes only); screenshots, `capture` and
 `read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
 `overlay_glyphs` and `overlay_draws`. Tests: `tests/gfx.rs`
@@ -515,18 +540,39 @@ level as allocated. Measured on the template's textures:
 
 ## Phase 2: terrain
 
-`src/terrain.rs`, `shaders/terrain.wgsl` (the clipmap vertex),
-`terrain_lit.wgsl` (shading, the prepass), `terrain_shadow.wgsl`,
-`terrain_normals.wgsl`. Off unless `RenderScene::terrains` names one:
-every earlier reference frame is unchanged.
+`src/terrain.rs`, `src/terrain_tiles.rs` (the tile pyramid),
+`shaders/terrain.wgsl` (the clipmap vertex, the tile lookups),
+`terrain_lit.wgsl` (shading, the prepass), `terrain_shadow.wgsl`. Off
+unless `RenderScene::terrains` names one: every earlier reference frame is
+unchanged.
 
-- **Data.** `add_terrain(TerrainData)` once; `set_terrain` replaces it (a
-  runtime edit), and the renderer uploads it again before the next frame
-  that draws it. Heights go to an `R32Float` texture read with
-  `textureLoad` in the vertex shader and filtered there (WebGL2 cannot
-  filter it); a fullscreen pass builds the normal map (`Rg16Float`, x and
-  z of the normal, y rebuilt) from the heights and the mip generator
-  fills its levels; the control map is an `Rgba8Unorm` with mips.
+- **Data.** `add_terrain(TerrainData)` once (a field in memory);
+  `set_terrain` replaces it (a runtime edit). Or streamed:
+  `add_terrain_stream(TerrainLayout, range)` and `set_terrain_tile(handle,
+  index, Some(Arc<TerrainTile>) | None)` as tiles arrive or leave (phase
+  3); `set_terrain_stream` starts it over.
+- **Tiles (phase 3).** A terrain is drawn from a pyramid of tiles
+  (`TerrainLayout`: level `k` every `2^k`-th sample of the field, cut into
+  tiles of `tile` quads, 128 by default; the last level one tile).
+  A `TerrainTile` holds `(tile + 3)²` heights (a border of one), the normal
+  map of its `tile + 1` samples as half floats with every mip (built on the
+  CPU, one-sided at the terrain's edge), and `(control + 2)²` control
+  texels with mips (`ControlPyramid`: the map resampled to `control`
+  texels per level-0 tile, halved per level). Tiles live in three texture
+  arrays (`R32Float` heights, `Rg16Float` normals, `Rgba8Unorm` control),
+  one layer per slot; a 16 KiB uniform table gives every tile its slot and
+  fade. `terrain_tiles_wanted(layout, terrain, range, TerrainView,
+  capacity)` ranks what a frame needs: from the top level down, the tile
+  whose samples look largest on screen is refined into its four children
+  until every sample is under a pixel or `TerrainLod::budget` (16 MiB by
+  default, at least 8 slots) is spent, the level-0 tiles within
+  `TerrainView::detail` first; each after its parent. A field in memory
+  makes its wanted tiles at once; a streamed one draws those of them it
+  holds. A vertex and a pixel read the finest resident tile at their point,
+  so a tile that has not arrived shows its parent; a streamed tile fades in
+  over twelve frames once its parent has. Levels are decimations of the
+  field, so heights agree wherever two of them meet: no cracks with any
+  set of resident tiles (`FrameStats::terrain_tiles`, `terrain_uploads`).
 - **The clipmap.** Level `l` is `ring` × `ring` quads (64 by default) of
   `spacing · 2^l` around the camera, its centre snapped to twice its
   spacing so vertices never move in the world. One index buffer holds the
@@ -554,18 +600,28 @@ every earlier reference frame is unchanged.
   volume) and receives them; its bounds join `ShadowBounds::Auto`.
 - **Prepass.** Drawn into the depth-normal prepass (water's depth below,
   AO, outlines, depth of field, particles' collision).
-- **Scatter.** `Terrain::scatter(data, TerrainScatter, camera)` answers
-  the transforms of detail meshes (grass, stones) for the caller to add
-  as instances: one candidate per cell of a grid fixed to the terrain
+- **Scatter.** Detail meshes (grass, stones) over a terrain where a layer
+  shows: one candidate per cell of a grid fixed to the terrain
   (`1 / sqrt(density)` m), jittered, turned and sized by a hash of the
   cell and the seed, kept with the probability of its layer's weight there
-  (`layer_weights`: the shader's weights before the height blend), within
-  `distance` of the camera along x and z, shrinking to nothing over the
-  outer `fade`, upright or leaning with the ground by `align`; nearest
-  rows first, at most 65,536. A copy keeps its place, size and turn while
-  its cell is in range, and its key (the cell) lets motion vectors follow
-  it. CPU only: the instances are drawn, shadowed and batched like any
-  others.
+  (`layer_weights`: the shader's weights before the height blend), upright
+  or leaning with the ground by `align`. `RenderScene::scatters`
+  (`ScatterDraw { terrain, mesh, material, scatter }`, phase 3) has the
+  renderer place them itself (`src/scatter.rs`, `shaders/scatter*.wgsl`),
+  32 × 32 cells at a time: a chunk's transforms are built once when it
+  comes within `distance` (again only when its terrain data, placement,
+  layers or settings change; a streamed terrain's once its level-0 tiles
+  are resident, sixteen a frame), kept in an instance buffer of its own
+  while in use, culled per pass and drawn with one instanced draw. The
+  vertex shader drops copies past `distance` and the fragment shader thins
+  them out over the outer `fade` with an interleaved-gradient dither, at
+  full size, in the lit, prepass and shadow passes alike. The copies take
+  their StandardMaterial's colour (factor, texture, vertex colours),
+  cut-off, metalness, roughness, emissive, unlit and flat modes; not its
+  normal map or effects. `Terrain::scatter(data, TerrainScatter, camera)`
+  answers the same copies within `distance` on the CPU (tests, tools):
+  nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
+  `scatter_copies`, `scatter_built`.
 
 Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
 

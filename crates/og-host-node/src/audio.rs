@@ -7,7 +7,11 @@
 //! - `capture`: renders the stream with a driven mixer up to the world's
 //!   tick into memory; `og_node_audio_wav` returns it as a 16-bit WAV;
 //! - `device` (feature `native-audio`): the default output device through
-//!   cpal; the device callback drains the link and pulls the mixer itself.
+//!   cpal; the device callback drains the link and pulls the mixer itself,
+//!   and measures the device's latency (its playback instant less its
+//!   callback instant), which every pump reports to og.Audio.outputLatency
+//!   with the mixer's own buffer. The null and capture sinks are driven to
+//!   the tick: their latency is 0.
 //!
 //! Every member answers wire JSON (`{ok, value}` / `{ok:false, reason}`)
 //! except `og_node_audio_wav` (a Buffer, empty when nothing was captured)
@@ -128,7 +132,11 @@ pub fn og_node_audio_pump(engine: u32) -> String {
             ok(headless_stats(engine, h))
         }
         #[cfg(feature = "native-audio")]
-        Some(Sink::Device(d)) => ok(d.stats_json()),
+        Some(Sink::Device(d)) => {
+            // The device's latency reaches og.Audio.outputLatency between ticks, as host input.
+            let _ = og_runtime::set_audio_latency(engine, d.latency());
+            ok(d.stats_json())
+        }
         None => refuse(&format!(
             "engine {engine} has no open audio sink (og_node_audio_open)"
         )),
@@ -194,6 +202,7 @@ mod device {
 
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use og_audio::{AudioLink, Clock, Mixer};
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::{Arc, Mutex};
 
     pub struct DeviceSink {
@@ -202,6 +211,19 @@ mod device {
         link: AudioLink,
         sample_rate: u32,
         name: String,
+        /// The device's own latency in seconds (f64 bits), measured each callback.
+        device_latency: Arc<AtomicU64>,
+        /// The free mixer's buffer in front of the device, in frames.
+        buffer_frames: u32,
+    }
+
+    /// The seconds a callback's samples wait before they play: its playback
+    /// instant less its callback instant (0 when the host cannot tell).
+    fn callback_latency(info: &cpal::OutputCallbackInfo) -> f64 {
+        let t = info.timestamp();
+        t.playback
+            .duration_since(&t.callback)
+            .map_or(0.0, |d| d.as_secs_f64())
     }
 
     fn fill<T: cpal::SizedSample + cpal::FromSample<f32>>(
@@ -250,27 +272,36 @@ mod device {
             let channels = usize::from(config.channels);
             let sample_rate = config.sample_rate;
             // 40 ms of latency absorbs the engine thread's frame jitter.
+            let buffer_frames = sample_rate / 25;
             let mixer = Arc::new(Mutex::new(Mixer::for_link(
                 link,
                 sample_rate,
                 Clock::Free {
-                    latency_frames: sample_rate / 25,
+                    latency_frames: buffer_frames,
                 },
             )));
+            let device_latency = Arc::new(AtomicU64::new(0f64.to_bits()));
             link.attach();
             let err = |e: cpal::StreamError| eprintln!("og-audio: output stream error: {e}");
             let (m, l) = (mixer.clone(), link.clone());
+            let (lat_f, lat_i) = (device_latency.clone(), device_latency.clone());
             let mut scratch = Vec::new();
             let stream = match supported.sample_format() {
                 cpal::SampleFormat::F32 => device.build_output_stream::<f32, _, _>(
                     &config,
-                    move |out, _| fill(out, channels, &m, &l, &mut scratch),
+                    move |out, info| {
+                        lat_f.store(callback_latency(info).to_bits(), Ordering::Relaxed);
+                        fill(out, channels, &m, &l, &mut scratch)
+                    },
                     err,
                     None,
                 ),
                 cpal::SampleFormat::I16 => device.build_output_stream::<i16, _, _>(
                     &config,
-                    move |out, _| fill(out, channels, &m, &l, &mut scratch),
+                    move |out, info| {
+                        lat_i.store(callback_latency(info).to_bits(), Ordering::Relaxed);
+                        fill(out, channels, &m, &l, &mut scratch)
+                    },
                     err,
                     None,
                 ),
@@ -284,7 +315,15 @@ mod device {
                 link: link.clone(),
                 sample_rate,
                 name,
+                device_latency,
+                buffer_frames,
             })
+        }
+
+        /// Seconds from a sample's tick to the speaker: the mixer's buffer and the device's latency.
+        pub fn latency(&self) -> f64 {
+            f64::from(self.buffer_frames) / f64::from(self.sample_rate.max(1))
+                + f64::from_bits(self.device_latency.load(Ordering::Relaxed))
         }
 
         pub fn stats_json(&self) -> String {

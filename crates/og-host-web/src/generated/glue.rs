@@ -774,6 +774,11 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
 }
 
 #[wasm_bindgen]
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    <Host as AudioApi>::og_audio_output_latency(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
     <Host as NavApi>::og_nav_grid(&Host, world, desc)
 }
@@ -934,6 +939,11 @@ pub fn og_platform_info(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_now(world: u32) -> f64 {
+    <Host as PlatformApi>::og_platform_now(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_i18n_load(world: u32, path: String) -> String {
     <Host as I18nApi>::og_i18n_load(&Host, world, path)
 }
@@ -991,6 +1001,11 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
 #[wasm_bindgen]
 pub fn og_ui_close() -> String {
     <Host as UiApi>::og_ui_close(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
 }
 
 #[wasm_bindgen]
@@ -1244,6 +1259,21 @@ pub fn og_ui_back() -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_set_players(count: u32) {
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_focus(pad: u32) -> String {
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_a11y() -> String {
+    <Host as UiApi>::og_ui_a11y(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_navigation(on: bool) {
     <Host as UiApi>::og_ui_set_navigation(&Host, on)
 }
@@ -1447,8 +1477,8 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>) -> String {
-    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin, quaternion, scale)
 }
 
 #[wasm_bindgen]
@@ -1464,4 +1494,29 @@ pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
 #[wasm_bindgen]
 pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<String>) -> String {
     <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_status(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_status(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_request(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_request(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_release(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_release(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_budget(world: u32) -> String {
+    <Host as StreamApi>::og_stream_budget(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
+    <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
 }

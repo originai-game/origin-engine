@@ -1,4 +1,4 @@
-//! Phase 2's modules' trait implementations (TerrainApi): every member is
+//! Phase 2's modules' trait implementations (TerrainApi, StreamApi, AudioApi): every member is
 //! the host-neutral runtime's.
 
 use crate::NodeHost;
@@ -12,8 +12,15 @@ impl TerrainApi for NodeHost {
     fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String {
         rt::og_terrain_sample(world, desc)
     }
-    fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>) -> String {
-        rt::og_terrain_bounds(world, data, origin)
+    fn og_terrain_bounds(
+        &self,
+        world: u32,
+        data: f64,
+        origin: Option<String>,
+        quaternion: Option<String>,
+        scale: Option<String>,
+    ) -> String {
+        rt::og_terrain_bounds(world, data, origin, quaternion, scale)
     }
     fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String {
         rt::og_terrain_edit(world, data, brush)
@@ -29,5 +36,29 @@ impl TerrainApi for NodeHost {
         layer: Option<String>,
     ) -> String {
         rt::og_terrain_set_layer(world, data, index, layer)
+    }
+}
+
+impl StreamApi for NodeHost {
+    fn og_stream_status(&self, world: u32, group: String) -> String {
+        rt::og_stream_status(world, group)
+    }
+    fn og_stream_request(&self, world: u32, group: String) -> String {
+        rt::og_stream_request(world, group)
+    }
+    fn og_stream_release(&self, world: u32, group: String) -> String {
+        rt::og_stream_release(world, group)
+    }
+    fn og_stream_budget(&self, world: u32) -> String {
+        rt::og_stream_budget(world)
+    }
+    fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String {
+        rt::og_stream_set_budget(world, bytes)
+    }
+}
+
+impl AudioApi for NodeHost {
+    fn og_audio_output_latency(&self, world: u32) -> f64 {
+        rt::og_audio_output_latency(world)
     }
 }

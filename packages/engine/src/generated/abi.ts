@@ -313,6 +313,8 @@ export interface HostAbi<A, V> {
   og_tilemap_cell_at(world: number, entity: number, point: string): string;
   /** `og.tilemap.cellCenter` */
   og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
+  /** `og.audio.outputLatency` */
+  og_audio_output_latency(world: number): number;
   /** `og.nav.grid` */
   og_nav_grid(world: number, desc: string | undefined): string;
   /** `og.nav.gridFromTilemap` */
@@ -377,6 +379,8 @@ export interface HostAbi<A, V> {
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
   og_platform_info(world: number): string;
+  /** `og.platform.now` */
+  og_platform_now(world: number): number;
   /** `og.i18n.load` */
   og_i18n_load(world: number, path: string): string;
   /** `og.i18n.setLocale` */
@@ -401,6 +405,8 @@ export interface HostAbi<A, V> {
   og_ui_open_scroll(id: string, desc: string | undefined): void;
   /** `og.ui.close` */
   og_ui_close(): string;
+  /** `og.ui.richText` */
+  og_ui_rich_text(id: string, markup: string, desc: string | undefined): string;
   /** `og.ui.label` */
   og_ui_label(id: string, text: string, desc: string | undefined): void;
   /** `og.ui.button` */
@@ -501,6 +507,12 @@ export interface HostAbi<A, V> {
   og_ui_navigate(world: number, intent: string): void;
   /** `og.ui.back` */
   og_ui_back(): boolean;
+  /** `og.ui.setPlayers` */
+  og_ui_set_players(count: number): void;
+  /** `og.ui.focus` */
+  og_ui_focus(pad: number): string;
+  /** `og.ui.a11y` */
+  og_ui_a11y(): string;
   /** `og.ui.setNavigation` */
   og_ui_set_navigation(on: boolean): void;
   /** `og.ui.memory` */
@@ -576,13 +588,23 @@ export interface HostAbi<A, V> {
   /** `og.terrain.sample` */
   og_terrain_sample(world: number, desc: string | undefined): string;
   /** `og.terrain.bounds` */
-  og_terrain_bounds(world: number, data: number, origin: string | undefined): string;
+  og_terrain_bounds(world: number, data: number, origin: string | undefined, quaternion: string | undefined, scale: string | undefined): string;
   /** `og.terrain.edit` */
   og_terrain_edit(world: number, data: number, brush: string | undefined): string;
   /** `og.terrain.layer` */
   og_terrain_layer(world: number, data: number, index: number): string;
   /** `og.terrain.setLayer` */
   og_terrain_set_layer(world: number, data: number, index: number, layer: string | undefined): string;
+  /** `og.stream.status` */
+  og_stream_status(world: number, group: string): string;
+  /** `og.stream.request` */
+  og_stream_request(world: number, group: string): string;
+  /** `og.stream.release` */
+  og_stream_release(world: number, group: string): string;
+  /** `og.stream.budget` */
+  og_stream_budget(world: number): string;
+  /** `og.stream.setBudget` */
+  og_stream_set_budget(world: number, bytes: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -726,6 +748,7 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",
+  "og_audio_output_latency",
   "og_nav_grid",
   "og_nav_grid_from_tilemap",
   "og_nav_set_cost",
@@ -758,6 +781,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_save_settings",
   "og_platform_result",
   "og_platform_info",
+  "og_platform_now",
   "og_i18n_load",
   "og_i18n_set_locale",
   "og_i18n_locale",
@@ -770,6 +794,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_open_panel",
   "og_ui_open_scroll",
   "og_ui_close",
+  "og_ui_rich_text",
   "og_ui_label",
   "og_ui_button",
   "og_ui_image",
@@ -820,6 +845,9 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_dismiss_toast",
   "og_ui_navigate",
   "og_ui_back",
+  "og_ui_set_players",
+  "og_ui_focus",
+  "og_ui_a11y",
   "og_ui_set_navigation",
   "og_ui_memory",
   "og_ui_remember",
@@ -861,6 +889,11 @@ export const SYMBOLS: readonly string[] = [
   "og_terrain_edit",
   "og_terrain_layer",
   "og_terrain_set_layer",
+  "og_stream_status",
+  "og_stream_request",
+  "og_stream_release",
+  "og_stream_budget",
+  "og_stream_set_budget",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

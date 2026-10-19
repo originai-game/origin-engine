@@ -747,6 +747,19 @@ impl UiApi for NodeHost {
     fn og_ui_set_navigation(&self, on: bool) {
         rt::og_ui_set_navigation(on)
     }
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String {
+        rt::og_ui_rich_text(id, markup, desc)
+    }
+    fn og_ui_set_players(&self, count: u32) {
+        rt::og_ui_set_players(count)
+    }
+    fn og_ui_focus(&self, pad: u32) -> String {
+        rt::og_ui_focus(pad)
+    }
+
+    fn og_ui_a11y(&self) -> String {
+        rt::og_ui_a11y()
+    }
     fn og_ui_memory(&self, id: String, initial: f64) -> f64 {
         rt::og_ui_memory(id, initial)
     }

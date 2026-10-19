@@ -6,7 +6,7 @@
 // an edit raises the ground under the renderer, physics and sample alike;
 // a layer reads back and retunes; og.Terrain draws it; og.TerrainScatter
 // grows copies of a mesh over it near the camera; refusals name the fix.
-import { beforeAll, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,12 +21,14 @@ declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8
 
 const fixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "terrain");
 
-beforeAll(() => {
+// At module level, not in a hook: a hook's 5 s would not cover a cook on a
+// loaded machine (b2532cd's gate).
+{
   loadNativeHost();
   const cooked = Bun.spawnSync([ogBin(), "cook", fixture]);
   if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
   if (!existsSync(join(fixture, "cooked"))) throw new Error(`og cook ${fixture} wrote no cooked/`);
-});
+}
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -101,6 +103,60 @@ test("og.terrain.load answers the terrain, and sample its surface", () => {
   expect(box.max.y).toBeCloseTo(7.02, 1);
 });
 
+test("a turned and scaled terrain: sample, bounds, edit and physics follow its entity's transform", () => {
+  // A quarter turn about y and (3, 1.5, 1): the hill's x runs along world -z, three times as long, half again as tall.
+  const turn = { x: 0, y: Math.SQRT1_2, z: 0, w: Math.SQRT1_2 };
+  const place = { origin: { x: 5, y: 1, z: -3 }, quaternion: turn, scale: { x: 3, y: 1.5, z: 1 } };
+  let info: Info | undefined;
+  const game = og.game({
+    start(world: World) {
+      info = must(og.terrain.load(world, "terrain/hill.ogt")) as unknown as Info;
+      const e = must(world.spawn({ name: "hill", position: place.origin, quaternion: turn, scale: place.scale }));
+      world.insert(e, og.Terrain, { data: info.data as never });
+      world.insert(e, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry as never });
+    },
+  });
+  const r = createEngine(game as GameToken, { root: fixture });
+  if (!r.ok) throw new Error(r.reason);
+  const engine = r.value;
+  expect(engine.advance(1).ok).toBeTrue();
+  const w = engine.world;
+  const data = info!.data as never;
+  // World (x, z) to the terrain's own space: undo the turn, then the scale.
+  const local = (x: number, z: number) => ({ x: -(z - place.origin.z) / 3, z: x - place.origin.x });
+  const expected = (x: number, z: number) => {
+    const l = local(x, z);
+    return place.origin.y + 1.5 * ground(l.x, l.z);
+  };
+  const at = (x: number, z: number) => must(og.terrain.sample(w, { data, ...place, x, z }));
+  expect(at(5, -3).height).toBeCloseTo(expected(5, -3), 1);
+  // 60 m along world -z is 20 m along the hill's x: on it, turned; 60 m along world x is off it.
+  const along = at(5, -63);
+  expect(along.inside).toBeTrue();
+  expect(along.height).toBeCloseTo(expected(5, -63), 1);
+  expect(at(65, -3).inside).toBeFalse();
+  // The flank 7 m along the hill's x falls away towards it: in the world, towards -z.
+  const flank = at(5 + 3, -3 - 21);
+  expect(flank.height).toBeCloseTo(expected(5 + 3, -3 - 21), 1);
+  expect(flank.normal.z).toBeLessThan(-0.05);
+  // The box around the turned corners.
+  const box = must(og.terrain.bounds(w, data, place.origin, turn, place.scale));
+  expect(box.min.x).toBeCloseTo(-27, 3);
+  expect(box.max.x).toBeCloseTo(37, 3);
+  expect(box.min.z).toBeCloseTo(-99, 3);
+  expect(box.max.z).toBeCloseTo(93, 3);
+  expect(box.max.y).toBeCloseTo(1 + 1.5 * info!.maxHeight, 2);
+  // Physics collides with the same turned and scaled surface.
+  const hit = must(og.physics.raycast(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
+  expect(hit?.point.y).toBeCloseTo(expected(5, -63), 1);
+  // An edit raises 3 world metres at a world point.
+  must(og.terrain.edit(w, data, { ...place, mode: "raise" as never, center: { x: 5, y: 0, z: -63 }, radius: 6, strength: 3, falloff: 0.5 }));
+  expect(at(5, -63).height).toBeCloseTo(expected(5, -63) + 3, 1);
+  expect(engine.advance(1).ok).toBeTrue();
+  const raised = must(og.physics.raycast(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
+  expect(raised?.point.y).toBeCloseTo(expected(5, -63) + 3, 1);
+});
+
 test("a ball rests on the terrain and a character walks up the hill", () => {
   const { engine } = start();
   const w = engine.world;
@@ -159,6 +215,39 @@ test("an edit raises the ground for sample, physics and the renderer", () => {
   // Flattening it back to the old height.
   must(og.terrain.edit(w, info.data as never, { mode: "flatten" as never, center: { x: 20, y: h0, z: 20 }, radius: 8, strength: 1, falloff: 0 }));
   expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0, 1);
+});
+
+test("terrain edits are world state: a snapshot keeps them and a restore brings the ground back", () => {
+  const { engine, info } = start();
+  const w = engine.world;
+  const data = info.data as never;
+  const spot = { data, origin: { x: 0, y: 0, z: 0 }, x: 20, z: 20 };
+  const ray = () => must(og.physics.raycast(w, { origin: { x: 20, y: 50, z: 20 }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
+  const h0 = must(og.terrain.sample(w, spot)).height;
+  const untouched = engine.probe.snapshot() as { id: string; hash: string };
+  must(og.terrain.edit(w, data, { mode: "raise" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 3 }));
+  expect(engine.hash()).not.toBe(untouched.hash); // the edit is in the world's state
+  const raised = engine.probe.snapshot() as { id: string; hash: string };
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 + 3, 1);
+  // More edits, then back to the raised ground.
+  must(og.terrain.edit(w, data, { mode: "lower" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 5 }));
+  must(og.terrain.edit(w, data, { mode: "paint" as never, layer: 0, center: { x: 0, y: 0, z: 0 }, radius: 4 }));
+  expect(engine.advance(2).ok).toBeTrue();
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 - 2, 1);
+  expect(engine.probe.restore(raised.id)).toBeTrue();
+  expect(engine.hash()).toBe(raised.hash);
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 + 3, 1);
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(ray()).toBeCloseTo(h0 + 3, 1); // physics stands on the restored ground too
+  // Before any edit: the ground as cooked.
+  expect(engine.probe.restore(untouched.id)).toBeTrue();
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0, 3);
+  expect(ray()).toBeCloseTo(h0, 1);
+  // The same edits on two runs give the same world.
+  const replay = start();
+  must(og.terrain.edit(replay.engine.world, replay.info.data as never, { mode: "raise" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 3 }));
+  expect(replay.engine.hash()).toBe(raised.hash);
 });
 
 test("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
