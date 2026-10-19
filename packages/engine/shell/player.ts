@@ -9,13 +9,25 @@
 //
 // Rules: post only to `window.parent`, naming this page's own origin (the
 // Player and its releases share the play origin); accept only messages from
-// `window.parent` at this origin with `og: "player", protocol: 2`. Without
-// a frame nothing is sent and nothing is heard.
+// `window.parent` at this origin with `og: "player", protocol: 2`.
+//
+// A top-level page with no `window.__OG_GAME` that was told its own origin
+// as the Stage host (`window.__OG_STAGE_HOST__`, decided as the og-probe
+// wire decides it: ./wire.ts `stageInPage`) has the platform's Stage overlay
+// drawn in its own document, and that overlay is its Player: the shell posts
+// to its own window at its own origin and hears only its own window at that
+// origin. Every post there reaches the shell too, so a `hello` that names a
+// `substrate` or lists no `capabilities` (the shell's own) is not the
+// Player's. The hello repeats every 250 ms until the overlay answers (or
+// HELLO_WAIT_MS passes), in case its listener comes up after the shell.
+// Any other unframed page sends nothing and hears nothing.
 //
 // This is the `frame` transport. A top-level page the platform published
 // (`window.__OG_GAME`) speaks the same protocol to its play origin over
 // same-origin HTTP instead (`page`, ./transport.ts); og build declares both
 // in `<meta name="og-player" content="frame page">`.
+
+import { stageInPage } from "./wire.ts";
 
 export const PLAYER_WIRE = "player";
 export const PLAYER_WIRE_PROTOCOL = 2;
@@ -40,16 +52,27 @@ export function fingerprint(message: string): string {
   return `oe-${h.toString(16).padStart(8, "0")}`;
 }
 
-/** A `result`: the data, or the Player's error. */
+/** A `result`: the data, or the Player's error; `time` when the Player stamped it (UTC ms, its clock). */
 export type PlayerResult =
-  | { readonly ok: true; readonly data: unknown }
-  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly status?: number; readonly revision?: number } };
+  | { readonly ok: true; readonly data: unknown; readonly time?: number }
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly status?: number; readonly revision?: number }; readonly time?: number };
+
+/** A message's `time` field, when it is a finite number. */
+export const timeOf = (m: Record<string, unknown>): { time?: number } =>
+  typeof m["time"] === "number" && Number.isFinite(m["time"]) ? { time: m["time"] } : {};
 
 /** How long a call waits for its `result` before it fails with `timeout`. */
 export const CALL_TIMEOUT_MS = 15_000;
 
+/** Who the bridge speaks to: the framing Player, the Stage overlay in this document, or no one. */
+export type PlayerPeer = "parent" | "self" | null;
+
+/** How long the shell repeats its hello to the Stage overlay in its own document. */
+const SELF_HELLO_EVERY_MS = 250;
+const SELF_HELLO_TRIES = 6;
+
 export function connectPlayer(events: PlayerEvents) {
-  const w = globalThis as unknown as Window;
+  const w = globalThis as unknown as Window & Record<string, unknown>;
   const framed = (() => {
     try {
       return w.parent !== w;
@@ -57,6 +80,8 @@ export function connectPlayer(events: PlayerEvents) {
       return true;
     }
   })();
+  const peer: PlayerPeer = framed ? "parent" : w["__OG_GAME"] === undefined && stageInPage(w) ? "self" : null;
+  const target = (): Window => (peer === "self" ? w : w.parent);
   const origin = w.location.origin;
   let lastValue = -1;
   let readySent = false;
@@ -68,20 +93,22 @@ export function connectPlayer(events: PlayerEvents) {
   const calls = new Map<string, (r: PlayerResult) => void>();
 
   const post = (kind: string, fields: Record<string, unknown> = {}) => {
-    if (!framed || !origin || origin === "null") return;
+    if (!peer || !origin || origin === "null") return;
     try {
-      w.parent.postMessage({ og: PLAYER_WIRE, protocol: PLAYER_WIRE_PROTOCOL, kind, ...fields }, origin);
+      target().postMessage({ og: PLAYER_WIRE, protocol: PLAYER_WIRE_PROTOCOL, kind, ...fields }, origin);
     } catch {
       /* a cross-origin parent is not our Player */
     }
   };
 
   const onMessage = (e: MessageEvent) => {
-    if (!framed || e.source !== w.parent || e.origin !== origin) return;
+    if (!peer || e.source !== target() || e.origin !== origin) return;
     const m = e.data as Record<string, unknown> | null;
     if (!m || typeof m !== "object" || m["og"] !== PLAYER_WIRE || m["protocol"] !== PLAYER_WIRE_PROTOCOL) return;
     switch (m["kind"]) {
       case "hello":
+        // In one window the shell hears its own hello: only the Player's lists capabilities.
+        if (peer === "self" && ("substrate" in m || !Array.isArray(m["capabilities"]))) break;
         heard = true;
         if (m["started"] === true) started = true;
         paused = m["paused"] === true;
@@ -93,7 +120,7 @@ export function connectPlayer(events: PlayerEvents) {
         const done = typeof id === "string" ? calls.get(id) : undefined;
         if (!done) break;
         calls.delete(id as string);
-        if (m["ok"] === true) done({ ok: true, data: m["data"] ?? null });
+        if (m["ok"] === true) done({ ok: true, data: m["data"] ?? null, ...timeOf(m) });
         else {
           const e = (m["error"] ?? {}) as Record<string, unknown>;
           const code = typeof e["code"] === "string" ? e["code"] : "failed";
@@ -106,6 +133,7 @@ export function connectPlayer(events: PlayerEvents) {
               ...(typeof e["status"] === "number" ? { status: e["status"] } : {}),
               ...(typeof e["revision"] === "number" ? { revision: e["revision"] } : {}),
             },
+            ...timeOf(m),
           });
         }
         break;
@@ -128,12 +156,21 @@ export function connectPlayer(events: PlayerEvents) {
         break;
     }
   };
-  if (framed) addEventListener("message", onMessage);
+  if (peer) addEventListener("message", onMessage);
   post("hello", { substrate: "origin-engine" });
+  if (peer === "self") {
+    let tries = 1;
+    const again = setInterval(() => {
+      if (heard || tries++ >= SELF_HELLO_TRIES) clearInterval(again);
+      else post("hello", { substrate: "origin-engine" });
+    }, SELF_HELLO_EVERY_MS);
+  }
 
   return {
     /** Whether the page is framed (a Player may be listening). */
     framed,
+    /** Who answers: the framing Player (`parent`), the Stage overlay in this document (`self`), or no one. */
+    peer,
     /** Whether a Player answered hello (or sent start). */
     get hosted(): boolean {
       return heard;
@@ -146,7 +183,7 @@ export function connectPlayer(events: PlayerEvents) {
     get paused(): boolean {
       return paused;
     },
-    /** The methods the Player's hello said it answers (empty before it, or unframed). */
+    /** The methods the Player's hello said it answers (empty before it, or with no Player). */
     get capabilities(): readonly string[] {
       return capabilities;
     },
@@ -178,9 +215,9 @@ export function connectPlayer(events: PlayerEvents) {
     event(name: string, attrs?: Record<string, string | number | boolean | null>) {
       post("event", { name, ...(attrs ? { attrs } : {}) });
     },
-    /** One `call`, answered by its `result` (or `timeout` after CALL_TIMEOUT_MS; `unavailable` unframed). */
+    /** One `call`, answered by its `result` (or `timeout` after CALL_TIMEOUT_MS; `unavailable` with no Player). */
     request(method: string, args?: Record<string, unknown>, timeoutMs = CALL_TIMEOUT_MS): Promise<PlayerResult> {
-      if (!framed) return Promise.resolve({ ok: false, error: { code: "unavailable", message: "no Player frames this page", retryable: false } });
+      if (!peer) return Promise.resolve({ ok: false, error: { code: "unavailable", message: "no Player frames this page", retryable: false } });
       const id = `oe-${nextCall++}`;
       return new Promise((resolve) => {
         const timer = setTimeout(() => {

@@ -30,7 +30,7 @@ import { mountWire } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
 import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, storagePersistence } from "./platform.ts";
-import { localPlatform, type PlatformHost } from "../src/platform-local.ts";
+import { localPlatform, memoryPersistence, type PlatformHost } from "../src/platform-local.ts";
 
 /** The page's configuration (`<script type="application/json" id="og-config">`, written by og build). */
 export interface ShellConfig {
@@ -173,7 +173,8 @@ export async function play(): Promise<PlayHandle> {
   const playerEvents: import("./player.ts").PlayerEvents = {};
   // A top-level page the platform published (`window.__OG_GAME`) speaks Player protocol 2 to
   // its play origin over HTTP (./transport.ts); a framed page to its Player over postMessage;
-  // any other page plays alone.
+  // a top-level Stage build told its own origin (the Stage overlay in this document) to its
+  // own window over postMessage (./player.ts); any other page plays alone.
   const top = (() => {
     try {
       return window.parent === window;
@@ -205,7 +206,11 @@ export async function play(): Promise<PlayHandle> {
         random: (n) => crypto.getRandomValues(new Uint8Array(n)),
       }, playerEvents)
     : null;
-  const player = page ?? connectPlayer(playerEvents);
+  const own = page ? null : connectPlayer(playerEvents);
+  const player = page ?? own!;
+  // A Player answers over postMessage: the one framing the page, or the Stage overlay in it.
+  const linked = !!own?.peer;
+  const stageSelf = own?.peer === "self";
   const canvas = $<HTMLCanvasElement>("og-canvas") ?? document.body.appendChild(document.createElement("canvas"));
   const boot = $("og-boot");
   const mark = boot?.querySelector<SVGSVGElement>(".og-mark") ?? null;
@@ -361,13 +366,15 @@ export async function play(): Promise<PlayHandle> {
 
   // og.platform: a framed page's calls wait for the Player's hello (then the Player answers,
   // falling back to this browser's storage where it cannot); unframed, the browser's storage.
-  const platformStore = storagePersistence(`og.platform:${location.pathname}`);
+  // On the Stage (the overlay in this document) nothing goes to the shared Stage origin's
+  // storage: where the overlay answers nothing, this load's memory does.
+  const platformStore = stageSelf ? memoryPersistence() : storagePersistence(`og.platform:${location.pathname}`);
   let platformReady: (h: PlatformHost) => void = () => {};
   const hostReady = new Promise<PlatformHost>((r) => (platformReady = r));
   const helloForPlatform = () => platformReady(playerPlatform(player, platformStore));
   playerEvents.hello = helloForPlatform;
   if (player.hosted) helloForPlatform();
-  else if (player.framed) setTimeout(() => platformReady(localPlatform(platformStore)), HELLO_WAIT_MS);
+  else if (linked) setTimeout(() => platformReady(localPlatform(platformStore)), HELLO_WAIT_MS);
   // A top-level platform page's calls wait for its play origin's hello; without one, the browser's storage.
   if (page)
     void page.hello.then((ok) => {
@@ -376,7 +383,7 @@ export async function play(): Promise<PlayHandle> {
       // The cover and Back as soon as the play origin names them, while the engine still loads.
       if (page.page) paintPage(page.page);
     });
-  const platform = player.framed || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
+  const platform = linked || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
 
   let firstFrameAt = 0;
   let shell: Shell;
@@ -529,8 +536,8 @@ export async function play(): Promise<PlayHandle> {
     pauseFor(false);
   };
   pausedByPlayer = player.paused;
-  // A framed page waits briefly for a Player's hello before drawing its own gate.
-  if (player.framed && !byPlayer) await new Promise((r) => setTimeout(r, 300));
+  // A framed page (or the Stage overlay's own document) waits briefly for a Player's hello before drawing its own gate.
+  if (linked && !byPlayer) await new Promise((r) => setTimeout(r, 300));
 
   // ── ready: reveal, then the gate ─────────────────────────────────────
   setProgress(1);
@@ -577,7 +584,8 @@ export async function play(): Promise<PlayHandle> {
   }
 
   // ── PWA ──────────────────────────────────────────────────────────────
-  if (config.serviceWorker && !harness) void installPwa(player.framed, log);
+  // The shared Stage origin installs no service worker.
+  if (config.serviceWorker && !harness && !stageSelf) void installPwa(player.framed, log);
   return { shell, config };
 }
 

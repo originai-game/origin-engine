@@ -202,12 +202,39 @@ frame (or two seconds after the boot when nothing renders), `fail`
 (`engine_start`, retryable) before it, `crash` (`EngineCrash` and a
 fingerprint of the message, nothing else) after it, and one `sample` with
 `renderer` (the tier) and `timings.firstFrame` and `timings.boot`. A framed
-page waits 300 ms for a Player's `hello` before drawing its own gate; under
+page (and the Stage overlay's own document, below) waits 300 ms for a
+Player's `hello` before drawing its own gate; under
 a Player that answered, the shell draws no gate: it plays on `start` (or a
 hello with `started: true`), pauses on `pause`, resumes on `resume`, and
 resumes its AudioContext on `gesture`. It posts only to `window.parent` at
 its own origin and hears only `window.parent` at its own origin with
-`og: "player", protocol: 2`; an unframed page sends and hears nothing.
+`og: "player", protocol: 2`.
+
+Who the shell speaks protocol 2 to, in order:
+
+1. framed: `window.parent` (above);
+2. top level with the platform's `window.__OG_GAME`: its play origin over
+   HTTP (§The top-level page);
+3. top level, no `__OG_GAME`, and told its own origin as the Stage host
+   (`window.__OG_STAGE_HOST__ === location.origin`, decided exactly as the
+   og-probe wire decides it, `shell/wire.ts` `stageInPage`): **its own
+   window**. That is a Stage build opened as its own document with the
+   platform's Stage overlay injected into it, and the overlay is its
+   Player. The shell posts to `window` at its own origin and hears only
+   `window` at its own origin; since every post in one window reaches
+   every listener, a `hello` that names a `substrate` or lists no
+   `capabilities` (the shell's own) is not taken for the Player's. The
+   hello repeats every 250 ms until the overlay answers (at most six), in
+   case the overlay's listener comes up after the shell. The overlay's
+   answers are the Player's: its `hello` with `started: true` starts play
+   (no gate of the shell's), its `pause`, `resume` and `gesture` count, and
+   og.platform's calls go to it as below. On the Stage nothing of
+   og.platform's goes to the browser's storage: where the overlay answers
+   nothing (no hello within 1.5 s, or a method it does not list), the
+   page's memory does, for that load. No service worker is registered
+   there (the shared Stage origin installs none);
+4. otherwise no one: the page sends and hears nothing and plays alone on
+   the browser's storage.
 
 ### Platform services over protocol 2 (E6)
 
@@ -215,8 +242,9 @@ its own origin and hears only `window.parent` at its own origin with
 Player through the same channel. The engine Worker hands each tick's calls
 to the page (`{ type: "platform", calls }`); the page answers them
 (`platform-answer`) and the answers are applied at the start of the next
-tick. A framed page holds its first calls (the tick behind the gate) until
-the Player's `hello`, or 1.5 s, so they never reach the wrong store. The
+tick. A framed page (or one with the Stage overlay in its own document)
+holds its first calls (the tick behind the gate) until the Player's
+`hello`, or 1.5 s, so they never reach the wrong store. The
 messages the shell now sends and hears:
 
 | Shell → Player | When | Answered by |
@@ -246,19 +274,31 @@ does not list answers `unavailable`; and where the Player keeps no store
 (`og.platform:<path>`) does (a verification run lists `store.*` from a
 throwaway store of its own). Unframed, every call is answered from there
 (the native host's local platform, `src/platform-local.ts`). Errors keep
-the Player's codes, `retryable` and a conflict's `revision`.
+the Player's codes, `retryable` and a conflict's `revision`. The Stage
+overlay in the page's own document is answered the same way (from its
+hello's capabilities), with the page's memory instead of `localStorage`
+behind it.
 `tests/platform-player.test.ts` runs the bridge against a stand-in Player
 that answers the protocol's calls (and an older one, and none);
 `tests/web/player.ts` checks the `store.get` round trip in Chrome (the
-runner's stored best becomes its best).
+runner's stored best becomes its best). `tests/platform-stage.test.ts`
+runs the own-window path against a stand-in overlay answering in the same
+window (one hello, never the shell's echo; the store and its `time`;
+storage untouched; foreign windows and origins ignored; the precedence),
+and `tests/web/player.ts` opens the runner's publish build as a Stage
+build with an in-document stand-in overlay in Chrome, at desktop and
+phone sizes.
 
 The host's clock (`og.platform.now`, every answer's `time`, Phase 2 core
 round) is the Worker's `Date.now()` when the platform attaches and when an
 answer arrives, between ticks, and `og.platform.info(world).clock` reads
-`browser`: protocol 2's `hello` and `result` carry no time
-(`docs/platform-asks.md` #9). An answer the page hands back with its own
-`time` is taken as the Player's (`clock` then reads `player`), so when the
-ask lands the shell's bridge only passes the field on.
+`browser`: protocol 2's `hello` and `result` carry no time today
+(`docs/platform-asks.md` #9). A `result` that carries a numeric `time`
+(UTC ms) has it passed on by the bridge, from the framed Player, the HTTP
+transport and the Stage overlay alike, as that answer's `time` (a store
+kept in the save takes the time of the call that settled it: `save.set`'s,
+else `save.read`'s), and the Worker takes it as the Player's (`clock` then
+reads `player`).
 
 ### The top-level page (Player protocol 2 over HTTP)
 
@@ -339,7 +379,8 @@ which lives in the Worker and answers asynchronously:
   (else `window.opener`) at the origin in `window.__OG_STAGE_HOST__`; a page
   told no origin, or another origin, or a call of another `v`, gets nothing.
   A top-level page told its own origin also answers its own window, replying
-  to it: that is the platform's Stage overlay drawn in the engine's document
+  to it (and speaks Player protocol 2 to it, §Player protocol 2): that is the
+  platform's Stage overlay drawn in the engine's document
   (a Stage build with `og-player` … `page` is opened as its own top-level
   document with the overlay injected), which posts its calls to `window`.
   Every post names that origin. It posts `hello` on load, when the told
