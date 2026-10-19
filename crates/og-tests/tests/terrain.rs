@@ -977,3 +977,217 @@ fn a_terrain_honours_its_transform() {
         );
     }
 }
+
+/// The root-mean-square difference of two frames' colours, 0 to 1.
+fn rmse(a: &RgbaImage, b: &RgbaImage) -> f32 {
+    let mut sum = 0.0f64;
+    for (x, y) in a.pixels.chunks(4).zip(b.pixels.chunks(4)) {
+        for k in 0..3 {
+            let d = (x[k] as f64 - y[k] as f64) / 255.0;
+            sum += d * d;
+        }
+    }
+    (sum / (a.pixels.len() / 4 * 3) as f64).sqrt() as f32
+}
+
+/// Counts magenta background pixels below row `from` (the terrain covers them).
+fn holes(img: &RgbaImage, from: u32) -> u32 {
+    let mut n = 0;
+    for y in from..img.height {
+        for x in 0..img.width {
+            let p = px(img, x, y);
+            if p[0] > 220.0 && p[1] < 40.0 && p[2] > 220.0 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// The island over magenta, unfogged, from 300 m over its mountains.
+fn crack_view(mut scene: RenderScene) -> RenderScene {
+    scene.fog = None;
+    scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
+    scene.post.tonemap = Tonemap::None;
+    scene.camera = Camera {
+        position: Vec3::new(-150.0, 300.0, 110.0),
+        target: Vec3::new(-150.0, 40.0, -270.0),
+        near: 0.5,
+        far: 6000.0,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The tiles a frame wants come best first and every one after its parent;
+/// the top level is always first; the capacity caps them; a camera far
+/// above wants fewer than one on the ground; the detail distance brings
+/// the finest tiles around the camera whatever their size on screen.
+#[test]
+fn wanted_tiles_are_ranked_and_closed_under_their_parents() {
+    let data = ts::island();
+    let layout = data.layout(128).expect("layout");
+    assert_eq!(
+        layout.levels, 4,
+        "1024 quads in tiles of 128: 8, 4, 2, 1 per side"
+    );
+    let scene = ts::island_view("near");
+    let t = &scene.terrains[0];
+    let view = og_render::TerrainView::of(&scene.camera, 720);
+    let near = og_render::terrain_tiles_wanted(&layout, t, data.range(), &view, 1000);
+    let top = layout.index(layout.levels - 1, 0, 0);
+    assert_eq!(near[0], top);
+    for (i, tile) in near.iter().enumerate() {
+        if let Some(p) = layout.parent(*tile) {
+            let at = near.iter().position(|x| *x == p).expect("parent wanted");
+            assert!(at < i, "tile {tile} before its parent {p}");
+        }
+    }
+    let unique: std::collections::HashSet<_> = near.iter().collect();
+    assert_eq!(unique.len(), near.len(), "a tile twice");
+    // The camera's own level-0 tile is wanted.
+    let eye = Vec2::new(scene.camera.position.x, scene.camera.position.z) + layout.size * 0.5;
+    let own = (eye / (layout.cell() * 128.0)).floor();
+    assert!(near.contains(&layout.index(0, own.x as u32, own.y as u32)));
+    let capped = og_render::terrain_tiles_wanted(&layout, t, data.range(), &view, 6);
+    assert_eq!(capped.len(), 6);
+    assert_eq!(&capped[..], &near[..6], "the cap keeps the best");
+    let mut high = view;
+    high.camera = Vec3::new(0.0, 4000.0, 0.0);
+    let from_high = og_render::terrain_tiles_wanted(&layout, t, data.range(), &high, 1000);
+    assert!(
+        from_high.len() < near.len(),
+        "{} from 4 km, {} on the ground",
+        from_high.len(),
+        near.len()
+    );
+    // 300 m of detail from 4 km up: the level-0 tiles under the camera come too.
+    high.detail = 300.0;
+    let detailed = og_render::terrain_tiles_wanted(&layout, t, data.range(), &high, 1000);
+    let level0 = |l: &[u32]| {
+        l.iter()
+            .filter(|i| layout.locate(**i).unwrap().0 == 0)
+            .count()
+    };
+    assert!(level0(&detailed) >= 4 && level0(&detailed) > level0(&from_high));
+}
+
+/// The renderer keeps the tiles a frame wants within its terrain's budget,
+/// and with fewer than it wants (eight slots) the terrain still covers the
+/// view without a crack: what has no tile reads its parent's.
+#[test]
+fn a_tile_budget_keeps_the_terrain_whole() {
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let full = crack_view(ts::island_scene());
+    let s_full = r.render(&full, &RenderTarget::Offscreen).expect("render");
+    let img_full = r.read_offscreen().expect("capture");
+    assert_eq!(holes(&img_full, 260), 0);
+    let mut tight = crack_view(ts::island_scene());
+    tight.terrains[0].lod.budget = 8 * ts::island().layout(128).unwrap().slot_bytes();
+    let mut r2 = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let s_tight = r2.render(&tight, &RenderTarget::Offscreen).expect("render");
+    let img_tight = r2.read_offscreen().expect("capture");
+    keep("budget-8", &img_tight);
+    assert_eq!(s_tight.terrain_tiles, 8, "{s_tight:?}");
+    assert!(s_full.terrain_tiles > 8, "{s_full:?}");
+    assert_eq!(
+        holes(&img_tight, 260),
+        0,
+        "background through the terrain on 8 tiles"
+    );
+    // Moving on, tiles are swapped in place: never more than the budget.
+    for step in 1..5 {
+        tight.camera.position.x += 60.0;
+        tight.camera.target.x += 60.0;
+        let s = r2.render(&tight, &RenderTarget::Offscreen).expect("render");
+        assert_eq!(s.terrain_tiles, 8);
+        assert_eq!(holes(&r2.read_offscreen().unwrap(), 260), 0, "step {step}");
+    }
+}
+
+/// A streamed terrain draws what has arrived: with only its top tile it
+/// covers the view at the coarse level; tiles handed over later fade in
+/// over a dozen frames and then draw exactly what the field in memory
+/// draws; a tile dropped falls back to its parent. Half the tiles at random
+/// (each with its parent) leave no crack.
+#[test]
+fn a_streamed_terrain_draws_what_has_arrived() {
+    let data = ts::island();
+    let layout = data.layout(128).expect("layout");
+    let control = og_render::ControlPyramid::new(&layout, data.control.as_ref().unwrap());
+    let tile = |i: u32| Arc::new(data.tile(&layout, i, control.as_ref()));
+    let memory = crack_view(ts::island_scene());
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    r.render(&memory, &RenderTarget::Offscreen).expect("render");
+    let reference = r.read_offscreen().expect("capture");
+
+    let mut streamed = crack_view(ts::island_scene());
+    let h = streamed.add_terrain_stream(layout, data.range());
+    streamed.terrains[0].terrain = h;
+    let top = layout.index(layout.levels - 1, 0, 0);
+    assert!(streamed.set_terrain_tile(h, top, Some(tile(top))));
+    let mut rs = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let s = rs
+        .render(&streamed, &RenderTarget::Offscreen)
+        .expect("render");
+    let coarse = rs.read_offscreen().expect("capture");
+    keep("stream-top-only", &coarse);
+    assert_eq!(s.terrain_tiles, 1);
+    assert_eq!(holes(&coarse, 260), 0, "the top tile alone covers the view");
+    assert!(
+        rmse(&coarse, &reference) > 0.005,
+        "the top tile alone is coarser"
+    );
+    // Everything it wants arrives: a few frames in it is fading.
+    let view = og_render::TerrainView::of(&streamed.camera, 720);
+    let wanted =
+        og_render::terrain_tiles_wanted(&layout, &streamed.terrains[0], data.range(), &view, 1000);
+    for &i in wanted.iter().filter(|i| **i != top) {
+        streamed.set_terrain_tile(h, i, Some(tile(i)));
+    }
+    let s = rs
+        .render(&streamed, &RenderTarget::Offscreen)
+        .expect("render");
+    assert_eq!(
+        s.terrain_uploads as usize,
+        wanted.len() - 1,
+        "one upload per new tile"
+    );
+    for _ in 0..3 {
+        rs.render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+    }
+    let fading = rs.read_offscreen().expect("capture");
+    assert_eq!(holes(&fading, 260), 0, "no crack while fading");
+    for _ in 0..60 {
+        let s = rs
+            .render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+        assert_eq!(s.terrain_uploads, 0, "nothing uploaded twice");
+    }
+    let arrived = rs.read_offscreen().expect("capture");
+    keep("stream-arrived", &arrived);
+    let e = rmse(&arrived, &reference);
+    assert!(e < 1e-4, "streamed {e} against the field in memory");
+    assert!(rmse(&fading, &reference) > rmse(&arrived, &reference));
+    // Half the tiles at random, each with its parent: no crack.
+    let mut kept = std::collections::HashSet::new();
+    let mut seed = 7u32;
+    for &i in &wanted {
+        seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let parent_in = layout.parent(i).is_none_or(|p| kept.contains(&p));
+        if parent_in && (seed >> 16).is_multiple_of(2) || i == top {
+            kept.insert(i);
+        } else {
+            streamed.set_terrain_tile(h, i, None);
+        }
+    }
+    for _ in 0..2 {
+        rs.render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+    }
+    let half = rs.read_offscreen().expect("capture");
+    keep("stream-half", &half);
+    assert_eq!(holes(&half, 260), 0, "background through half the tiles");
+}

@@ -1889,6 +1889,7 @@ impl Bundle {
             lod: og_render::TerrainLod {
                 spacing: m.lod_spacing,
                 ring: m.lod_ring,
+                budget: 0,
             },
             cast_shadows: m.cast_shadows != 0,
             collision: m.collision != 0,

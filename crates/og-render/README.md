@@ -19,7 +19,7 @@ the world → scene extraction belongs to the layer above.
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font`, `add_terrain` → handles; `set_material` and `set_terrain` replace one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists; RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
@@ -414,18 +414,39 @@ weather-rain,weather-snow}.png`, with behaviour tests in
 
 ## Phase 2: terrain
 
-`src/terrain.rs`, `shaders/terrain.wgsl` (the clipmap vertex),
-`terrain_lit.wgsl` (shading, the prepass), `terrain_shadow.wgsl`,
-`terrain_normals.wgsl`. Off unless `RenderScene::terrains` names one:
-every earlier reference frame is unchanged.
+`src/terrain.rs`, `src/terrain_tiles.rs` (the tile pyramid),
+`shaders/terrain.wgsl` (the clipmap vertex, the tile lookups),
+`terrain_lit.wgsl` (shading, the prepass), `terrain_shadow.wgsl`. Off
+unless `RenderScene::terrains` names one: every earlier reference frame is
+unchanged.
 
-- **Data.** `add_terrain(TerrainData)` once; `set_terrain` replaces it (a
-  runtime edit), and the renderer uploads it again before the next frame
-  that draws it. Heights go to an `R32Float` texture read with
-  `textureLoad` in the vertex shader and filtered there (WebGL2 cannot
-  filter it); a fullscreen pass builds the normal map (`Rg16Float`, x and
-  z of the normal, y rebuilt) from the heights and the mip generator
-  fills its levels; the control map is an `Rgba8Unorm` with mips.
+- **Data.** `add_terrain(TerrainData)` once (a field in memory);
+  `set_terrain` replaces it (a runtime edit). Or streamed:
+  `add_terrain_stream(TerrainLayout, range)` and `set_terrain_tile(handle,
+  index, Some(Arc<TerrainTile>) | None)` as tiles arrive or leave (phase
+  3); `set_terrain_stream` starts it over.
+- **Tiles (phase 3).** A terrain is drawn from a pyramid of tiles
+  (`TerrainLayout`: level `k` every `2^k`-th sample of the field, cut into
+  tiles of `tile` quads, 128 by default; the last level one tile).
+  A `TerrainTile` holds `(tile + 3)²` heights (a border of one), the normal
+  map of its `tile + 1` samples as half floats with every mip (built on the
+  CPU, one-sided at the terrain's edge), and `(control + 2)²` control
+  texels with mips (`ControlPyramid`: the map resampled to `control`
+  texels per level-0 tile, halved per level). Tiles live in three texture
+  arrays (`R32Float` heights, `Rg16Float` normals, `Rgba8Unorm` control),
+  one layer per slot; a 16 KiB uniform table gives every tile its slot and
+  fade. `terrain_tiles_wanted(layout, terrain, range, TerrainView,
+  capacity)` ranks what a frame needs: from the top level down, the tile
+  whose samples look largest on screen is refined into its four children
+  until every sample is under a pixel or `TerrainLod::budget` (16 MiB by
+  default, at least 8 slots) is spent, the level-0 tiles within
+  `TerrainView::detail` first; each after its parent. A field in memory
+  makes its wanted tiles at once; a streamed one draws those of them it
+  holds. A vertex and a pixel read the finest resident tile at their point,
+  so a tile that has not arrived shows its parent; a streamed tile fades in
+  over twelve frames once its parent has. Levels are decimations of the
+  field, so heights agree wherever two of them meet: no cracks with any
+  set of resident tiles (`FrameStats::terrain_tiles`, `terrain_uploads`).
 - **The clipmap.** Level `l` is `ring` × `ring` quads (64 by default) of
   `spacing · 2^l` around the camera, its centre snapped to twice its
   spacing so vertices never move in the world. One index buffer holds the

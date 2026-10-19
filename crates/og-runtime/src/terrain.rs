@@ -535,6 +535,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     t.lod.spacing
                 },
                 ring: if ring > 0 { ring } else { t.lod.ring },
+                budget: t.lod.budget,
             },
         });
     }

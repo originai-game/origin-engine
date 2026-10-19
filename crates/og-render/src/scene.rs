@@ -736,7 +736,7 @@ pub struct RenderScene {
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
     trail_styles: Vec<TrailStyle>,
-    terrain_data: Vec<crate::TerrainData>,
+    terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
     terrain_revisions: Vec<u64>,
     /// Objects to draw this frame, in any order.
@@ -934,9 +934,98 @@ impl RenderScene {
     /// with a [`crate::Terrain`] in [`RenderScene::terrains`]. Checked at
     /// its first frame ([`crate::RenderError::InvalidData`]).
     pub fn add_terrain(&mut self, data: crate::TerrainData) -> TerrainHandle {
-        self.terrain_data.push(data);
+        self.terrain_data
+            .push(crate::terrain::TerrainSource::Data(data));
         self.terrain_revisions.push(0);
         TerrainHandle(self.terrain_data.len() as u32 - 1)
+    }
+
+    /// Adds a streamed terrain: its tiles arrive one by one with
+    /// [`RenderScene::set_terrain_tile`] (the top level's before it draws),
+    /// `range` the lowest and highest height. A tile that has not arrived
+    /// shows its parent's.
+    pub fn add_terrain_stream(
+        &mut self,
+        layout: crate::TerrainLayout,
+        range: (f32, f32),
+    ) -> TerrainHandle {
+        self.terrain_data
+            .push(crate::terrain::TerrainSource::Stream {
+                layout,
+                range,
+                tiles: Default::default(),
+            });
+        self.terrain_revisions.push(0);
+        TerrainHandle(self.terrain_data.len() as u32 - 1)
+    }
+
+    /// Makes a terrain streamed again from the start (no tile resident),
+    /// as after [`RenderScene::add_terrain_stream`]. `false` for a handle
+    /// of another scene.
+    pub fn set_terrain_stream(
+        &mut self,
+        handle: TerrainHandle,
+        layout: crate::TerrainLayout,
+        range: (f32, f32),
+    ) -> bool {
+        match self.terrain_data.get_mut(handle.index()) {
+            Some(d) => {
+                *d = crate::terrain::TerrainSource::Stream {
+                    layout,
+                    range,
+                    tiles: Default::default(),
+                };
+                self.terrain_revisions[handle.index()] += 1;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Hands a streamed terrain one of its tiles (`None`: drops it). The
+    /// renderer draws what it holds of the tiles it wants. `false` for a
+    /// handle of another scene, a terrain in memory or a tile index beyond
+    /// its layout.
+    pub fn set_terrain_tile(
+        &mut self,
+        handle: TerrainHandle,
+        index: u32,
+        tile: Option<std::sync::Arc<crate::TerrainTile>>,
+    ) -> bool {
+        match self.terrain_data.get_mut(handle.index()) {
+            Some(crate::terrain::TerrainSource::Stream { layout, tiles, .. })
+                if index < layout.tile_count() =>
+            {
+                match tile {
+                    Some(t) => {
+                        tiles.insert(index, t);
+                    }
+                    None => {
+                        tiles.remove(&index);
+                    }
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// The tiles a streamed terrain holds now (`None` for a terrain in
+    /// memory).
+    pub fn terrain_tiles(
+        &self,
+        handle: TerrainHandle,
+    ) -> Option<&std::collections::BTreeMap<u32, std::sync::Arc<crate::TerrainTile>>> {
+        match self.terrain_data.get(handle.index())? {
+            crate::terrain::TerrainSource::Stream { tiles, .. } => Some(tiles),
+            crate::terrain::TerrainSource::Data(_) => None,
+        }
+    }
+
+    /// The layout a terrain is drawn with (a field in memory's is chosen
+    /// by the renderer: tiles of [`crate::TERRAIN_TILE`] quads, or larger).
+    pub fn terrain_layout(&self, handle: TerrainHandle) -> Option<crate::TerrainLayout> {
+        self.terrain_data.get(handle.index())?.layout().ok()
     }
 
     /// Replaces a terrain's data (a runtime edit of its heights or its
@@ -945,7 +1034,7 @@ impl RenderScene {
     pub fn set_terrain(&mut self, handle: TerrainHandle, data: crate::TerrainData) -> bool {
         match self.terrain_data.get_mut(handle.index()) {
             Some(d) => {
-                *d = data;
+                *d = crate::terrain::TerrainSource::Data(data);
                 self.terrain_revisions[handle.index()] += 1;
                 true
             }
@@ -953,12 +1042,22 @@ impl RenderScene {
         }
     }
 
+    /// A terrain's field in memory (`None` for a streamed one).
     pub fn terrain(&self, handle: TerrainHandle) -> Option<&crate::TerrainData> {
-        self.terrain_data.get(handle.index())
+        match self.terrain_data.get(handle.index())? {
+            crate::terrain::TerrainSource::Data(d) => Some(d),
+            crate::terrain::TerrainSource::Stream { .. } => None,
+        }
     }
 
-    pub(crate) fn terrain_datas(&self) -> (&[crate::TerrainData], &[u64]) {
+    pub(crate) fn terrain_sources(&self) -> (&[crate::terrain::TerrainSource], &[u64]) {
         (&self.terrain_data, &self.terrain_revisions)
+    }
+
+    /// How far from the camera terrain `index` (of [`RenderScene::terrains`])
+    /// needs its finest tiles for the copies scattered over it.
+    pub(crate) fn scatter_detail(&self, _index: usize) -> f32 {
+        0.0
     }
 
     /// Adds a particle emitter description (an asset).

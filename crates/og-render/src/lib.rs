@@ -49,6 +49,7 @@ pub mod shapes;
 mod skin;
 mod sprites;
 mod terrain;
+mod terrain_tiles;
 mod texture;
 mod water;
 mod weather;
@@ -80,8 +81,12 @@ pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use terrain::{
-    MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl,
-    TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
+    DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
+    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
+};
+pub use terrain_tiles::{
+    ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
+    TerrainTile, TerrainView, terrain_tiles_wanted, tile_heights,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
@@ -428,6 +433,10 @@ pub struct FrameStats {
     pub terrain_draws: u32,
     pub terrain_triangles: u64,
     pub terrain_shadow_draws: u32,
+    /// Terrain tiles resident on the GPU after this frame, and those
+    /// uploaded for it (phase 3 streaming).
+    pub terrain_tiles: u32,
+    pub terrain_uploads: u32,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
@@ -1629,6 +1638,7 @@ impl Renderer {
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
         let terrain = terrain::TerrainRenderer::new(
             &device,
+            &queue,
             terrain::TerrainPipelines {
                 frame_layout: &frame_layout,
                 shadow_layout: &shadow_bind_layout,
@@ -2943,10 +2953,10 @@ impl Renderer {
         let terrain_draws = self.terrain.prepare(
             &self.device,
             &self.queue,
-            &mut self.mips,
             scene,
             camera.position,
             camera.far,
+            self.height,
             cam.view_proj,
             prev_view_proj,
             |h| textures.get(h.index()).map(|t| &t.view),
@@ -3468,6 +3478,8 @@ impl Renderer {
 
         let lights = scene.lights.len().min(MAX_LIGHTS) as u32;
         let mut stats = FrameStats {
+            terrain_tiles: self.terrain.resident,
+            terrain_uploads: self.terrain.uploads,
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,
