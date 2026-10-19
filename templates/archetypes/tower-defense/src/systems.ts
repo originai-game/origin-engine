@@ -602,9 +602,9 @@ function leak(world: World, g: GameV, t: TuneV, v: View<typeof Visitor>, i: numb
   const goal = cellCenter(DOOR.x, DOOR.y);
   float(world, say(world, "float.leak", { n: k.harm }), goal.x, goal.y + 0.8, RED, true, 0.5);
   must(og.time.hitStop(world, t.leakStop));
-  const k = feel(world);
-  must(og.camera.shake(world, t.leakShake * k));
-  must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.15 * k));
+  const feelK = feel(world);
+  must(og.camera.shake(world, t.leakShake * feelK));
+  must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.15 * feelK));
   const lantern = world.find("lantern");
   if (lantern !== null) {
     must(og.tween.flash(world, { entity: lantern, color: RED, duration: 0.25 }));
