@@ -31,6 +31,12 @@ export const LANE_COLOURS = [
 ] as const;
 const JUDGE_COLOURS = [{ r: 1, g: 0.9, b: 0.35 }, { r: 0.4, g: 0.95, b: 1 }, { r: 0.85, g: 0.9, b: 1 }, { r: 1, g: 0.35, b: 0.4 }] as const;
 
+/** The camera feel's scale: 0.3 under reduced motion (og-feel), 1 otherwise. */
+export function feel(world: World): number {
+  const p = world.resource(Prefs);
+  return p.ok && p.value.reducedMotion ? 0.3 : 1;
+}
+
 export function must(r: { ok: true } | { ok: false; reason: string }): void {
   if (!r.ok) throw new Error(r.reason);
 }
@@ -313,7 +319,7 @@ function judge(world: World, g: GameV, t: TuneV, j: number, lane: number, ms: nu
     const left = g.groove - t.grooveLoss;
     g.groove = left < 1e-3 ? 0 : left;
     must(og.render.floatingText(world, { text: say(world, "judge.miss"), position: { x, y, z: 0 }, size: 0.42, color: JUDGE_COLOURS[3]!, rise: 0.6, lifetime: 0.6 }));
-    must(og.camera.shake(world, 0.18));
+    must(og.camera.shake(world, 0.18 * feel(world)));
     if (g.groove <= 0 && !g.failed) {
       g.failed = true;
       g.endAt = worldTime(world) + 1.2;
@@ -339,8 +345,9 @@ function judge(world: World, g: GameV, t: TuneV, j: number, lane: number, ms: nu
     must(og.render.floatingText(world, { text: say(world, ms < 0 ? "judge.early" : "judge.late"), position: { x, y: y - 0.45, z: 0 }, size: 0.26, color: { r: 0.75, g: 0.85, b: 0.95 }, rise: 0.4, lifetime: 0.45 }));
   }
   // A combo of every comboStep raises the multiplier: a punch on the beat.
-  if (g.combo % t.comboStep === 0 && g.combo <= t.comboStep * 3) must(og.camera.punch(world, 0.03));
-  must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.04));
+  const k = feel(world);
+  if (g.combo % t.comboStep === 0 && g.combo <= t.comboStep * 3) must(og.camera.punch(world, 0.03 * k));
+  must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.04 * k));
 }
 
 /** The song's og.Music clock follows Game.songStart and Song's tempo (the Ui and the commands move it). */

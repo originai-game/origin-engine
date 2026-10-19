@@ -15,7 +15,7 @@ import type { Entity, RngStream, Value, View, World } from "@origingame/engine";
 import { clipOf, TILE } from "./art.ts";
 import { floorStream, H, planFloor, W } from "./dive.ts";
 import type { Plan } from "./dive.ts";
-import { Foe, FoeKind, FOE_SLOTS, FOES, Foes, Game, Hero, Loot, LOOT, LootKind, Phase, Sfx, Sound, Tuning } from "./components.ts";
+import { Foe, FoeKind, FOE_SLOTS, FOES, Foes, Game, Hero, Loot, LOOT, LootKind, Phase, Prefs, Sfx, Sound, Tuning } from "./components.ts";
 import { say } from "./ui.ts";
 
 type GameV = Value<typeof Game>;
@@ -30,6 +30,12 @@ const EMBER = { r: 1, g: 0.6, b: 0.3 };
 const PARK = { x: -60, y: -60, z: 0 } as const;
 /** Ticks a card waits after the lamp goes out or the relic is taken. */
 export const OVER_DELAY = 50;
+
+/** The camera feel's scale: 0.3 under reduced motion (og-feel), 1 otherwise. */
+export function feel(world: World): number {
+  const p = world.resource(Prefs);
+  return p.ok && p.value.reducedMotion ? 0.3 : 1;
+}
 
 export function must(r: { ok: true } | { ok: false; reason: string }): void {
   if (!r.ok) throw new Error(r.reason);
@@ -119,7 +125,7 @@ const STEP = [null, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y:
  */
 export const HeroTurn = defineSystem(
   "Hero",
-  { reads: [og.Input, og.Gamepad, og.Camera, Foes, Tuning], writes: [Game, Hero, og.Transform, og.Sprite, og.Rng], after: ["Ui"] },
+  { reads: [og.Input, og.Gamepad, og.Camera, Foes, Tuning, Prefs], writes: [Game, Hero, og.Transform, og.Sprite, og.Rng], after: ["Ui"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const input = world.resource(og.Input);
@@ -252,7 +258,7 @@ export const HeroTurn = defineSystem(
           g.build = true;
           g.sfx |= Sound.Stairs;
           float(world, say(world, "float.floor", { n: g.floor }), to.x, to.y + 0.8, GOLD, true);
-          must(og.camera.punch(world, 0.1));
+          must(og.camera.punch(world, 0.1 * feel(world)));
           // The foes of the floor left behind take no turn.
           endTurn(world, g, t);
           g.foesTurn = false;
@@ -306,7 +312,7 @@ export function stats(t: TuneV, kind: number): { hp: number; attack: number } {
  */
 export const FoeTurn = defineSystem(
   "Foes",
-  { reads: [Tuning, og.Rng], writes: [Game, Foes, Foe, og.Transform, og.Sprite, og.Flipbook, og.AiAgent, og.Perception], after: ["Hero"] },
+  { reads: [Tuning, Prefs, og.Rng], writes: [Game, Foes, Foe, og.Transform, og.Sprite, og.Flipbook, og.AiAgent, og.Perception], after: ["Hero"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const foes = world.resource(Foes);
@@ -400,8 +406,9 @@ function strike(world: World, g: GameV, f: View<typeof Foe>, i: number, me: Enti
   must(og.tween.squash(world, { entity: me, impact: { x: 1.3, y: 0.7 }, duration: 0.2 }));
   const t = lazyTuning(world);
   must(og.time.hitStop(world, t.hitStop + (crit ? 2 : 0)));
-  must(og.camera.shake(world, kind === FoeKind.Guardian ? 0.3 : 0.15));
-  must(og.camera.kick(world, { x: x - (g.heroX + 0.5), y: y - (H - g.heroY - 0.5), z: 0 }, 0.1));
+  const k = feel(world);
+  must(og.camera.shake(world, (kind === FoeKind.Guardian ? 0.3 : 0.15) * k));
+  must(og.camera.kick(world, { x: x - (g.heroX + 0.5), y: y - (H - g.heroY - 0.5), z: 0 }, 0.1 * k));
   if (hp === 0) {
     f.active[i] = 0;
     f.dying[i] = 24;
@@ -409,7 +416,7 @@ function strike(world: World, g: GameV, f: View<typeof Foe>, i: number, me: Enti
     g.sfx |= kind === FoeKind.Guardian ? Sound.Roar : Sound.Kill;
     if (kind === FoeKind.Guardian) {
       must(og.time.hitStop(world, 12));
-      must(og.camera.shake(world, 0.6));
+      must(og.camera.shake(world, 0.6 * feel(world)));
     }
     must(og.tween.to(world, { entity: me, field: "scale", to: [1.6, 0, 1], duration: 0.3, delay: 0.05, ease: "backIn" }));
     must(og.tween.to(world, { entity: me, component: og.Sprite, field: "opacity", to: [0], duration: 0.3, delay: 0.05, ease: "quadIn" }));
@@ -419,7 +426,7 @@ function strike(world: World, g: GameV, f: View<typeof Foe>, i: number, me: Enti
 /** Finds: placed when a floor is carved, taken when the lamp-bearer steps on them, shown where the lamp lights. */
 export const LootTurn = defineSystem(
   "Loot",
-  { reads: [og.Rng], writes: [Game, Loot, og.Transform, og.Sprite, og.Flipbook], after: ["Foes"] },
+  { reads: [Prefs, og.Rng], writes: [Game, Loot, og.Transform, og.Sprite, og.Flipbook], after: ["Foes"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const rngR = world.resource(og.Rng);
@@ -516,7 +523,7 @@ function take(world: World, g: GameV, kind: number, amount: number, x: number, y
       g.overTicks = 0;
       g.sfx |= Sound.Won;
       say1("item.relic");
-      must(og.camera.punch(world, 0.15));
+      must(og.camera.punch(world, 0.15 * feel(world)));
       break;
   }
 }

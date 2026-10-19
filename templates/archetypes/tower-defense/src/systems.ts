@@ -15,7 +15,7 @@
 
 import { og, defineSystem, NAV_ARRIVED } from "@origingame/engine";
 import type { Entity, Value, View, World } from "@origingame/engine";
-import { Bed, Cursor, Game, Phase, Plant, PLANTS, Refusal, Sfx, Shot, Sound, Tuning, Visitor } from "./components.ts";
+import { Bed, Cursor, Game, Phase, Plant, PLANTS, Prefs, Refusal, Sfx, Shot, Sound, Tuning, Visitor } from "./components.ts";
 import { clipOf } from "./art.ts";
 import { say } from "./ui.ts";
 
@@ -51,6 +51,12 @@ const FROSTED = { r: 0.55, g: 0.8, b: 1 };
 
 type GameV = Value<typeof Game>;
 type TuneV = Value<typeof Tuning>;
+
+/** The camera feel's scale: 0.3 under reduced motion (og-feel), 1 otherwise. */
+export function feel(world: World): number {
+  const p = world.resource(Prefs);
+  return p.ok && p.value.reducedMotion ? 0.3 : 1;
+}
 
 function must(r: { ok: true } | { ok: false; reason: string }): void {
   if (!r.ok) throw new Error(r.reason);
@@ -388,7 +394,7 @@ export function fire(world: World, args: readonly string[]): void {
 export const Visitors = defineSystem(
   "Visitors",
   {
-    reads: [Tuning, og.TweenCompleted],
+    reads: [Tuning, Prefs, og.TweenCompleted],
     writes: [Game, Visitor, og.Transform, og.Sprite, og.NavAgent, og.Flipbook, og.ParticleSystem],
     after: ["Plants"],
   },
@@ -596,8 +602,9 @@ function leak(world: World, g: GameV, t: TuneV, v: View<typeof Visitor>, i: numb
   const goal = cellCenter(DOOR.x, DOOR.y);
   float(world, say(world, "float.leak", { n: k.harm }), goal.x, goal.y + 0.8, RED, true, 0.5);
   must(og.time.hitStop(world, t.leakStop));
-  must(og.camera.shake(world, t.leakShake));
-  must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.15));
+  const k = feel(world);
+  must(og.camera.shake(world, t.leakShake * k));
+  must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.15 * k));
   const lantern = world.find("lantern");
   if (lantern !== null) {
     must(og.tween.flash(world, { entity: lantern, color: RED, duration: 0.25 }));
