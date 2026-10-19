@@ -1,0 +1,37 @@
+{
+  "scene": "city-street",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "culling": "cpu",
+  "last_frame": {
+    "gpu_culling": false,
+    "draws": 70,
+    "instances": 40001,
+    "culled": 36889,
+    "occluded": 0,
+    "triangles": 37334,
+    "shadow_casters": 5232,
+    "counts_lag": 0
+  },
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 120,
+  "runs_ms": [
+    1.712,
+    1.743,
+    1.762,
+    1.787,
+    1.802,
+    1.817,
+    1.823
+  ],
+  "frame_ms": 1.712,
+  "submit_median_ms": 1.7,
+  "load": [
+    37.6,
+    81.2,
+    107.8
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

@@ -17,7 +17,7 @@
 // WebGPU: scenes::Applies) is listed as not applying, not rendered.
 // --record writes the frames as references/<tier>/ instead of comparing.
 // --time <n> then times the scenes og-tests' perf suite times natively
-// (crates/og-tests/tests/perf.rs): after the capture, 5 runs of n frames,
+// (crates/og-tests/tests/perf.rs): after the capture, 7 runs of n frames,
 // each run ending in a capture whose readback waits for the GPU to finish
 // them; the best run per frame lands in
 // crates/og-tests/perf/<tier>-chrome-<adapter>/<scene>.json beside the
