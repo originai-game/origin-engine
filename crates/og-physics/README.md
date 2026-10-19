@@ -93,20 +93,61 @@ reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
 | `og.CharacterController` | a kinematic capsule moved by `move` after the step: slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies; writes `grounded`, `velocity`, `ground` |
 | `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms; sends `og.CharacterEvent` |
 | `og.Vehicle` | 3D: rapier's raycast vehicle with a top-speed fade and reverse braking; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing |
-| `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; `rope_points`, `cloth_points` |
-| `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; `fluid_particles` |
+| `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
+| `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
-| `og.Ragdoll` | capsule bones with limited ball joints from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton), following targets kinematically at weight 0 (og-runtime's `og.ragdollTargets` system hands it the animation's pose each tick, between og.anim and og.physics), simulated above it, `blend` moving to `weight` over `blend_time` |
+| `og.Ragdoll` | capsule bones from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton) on limited ball joints in 3D and on limited hinges about z in 2D (rapier2d bodies, the bones in the xy plane at their animated z: a planar skeleton), following targets kinematically at weight 0 (og-runtime's `og.ragdollTargets` system hands it the animation's pose each tick, between og.anim and og.physics), simulated above it, `blend` moving to `weight` over `blend_time` |
 
 Everything simulates with + − × ÷ and square roots (og_core::math for the
 rest), in entity order, inside the state block: `tests/beyond_determinism.rs`
 runs a 3D and a 2D world with every feature 1200 ticks twice to the same
 hash and snapshot, and a restore at tick 600 ends in the same world and the
 same ropes, cloth, fluid, water, wheels and bones. Rigs are assets like
-meshes. Not attempted: 3D SPH (the 3D water is the height field); cloth
-self-collision; ragdolls in 2D. CPU costs per feature:
-`cargo run --release -p og-physics --example soft_costs`
-(`tests/evidence/E5/feature-costs.md`).
+meshes. Not attempted: 3D SPH (the 3D water is the height field). CPU costs
+per feature: `cargo run --release -p og-physics --example soft_costs`
+(`tests/evidence/E5/feature-costs.md`) and, for the phase 2 round's,
+`--example anim_physics_costs` (`tests/evidence/P2/anim-physics/costs.md`).
+
+### Phase 2: cloth self-collision, fluid groups, 2D ragdolls
+
+- **Cloth self-collision** (`og.Cloth.thickness`, 0 off): each substep
+  finds, from a grid of cell 1.5 × `thickness` sorted by cell and index,
+  the pairs of points closer than 1.5 × `thickness` whose rest distance is
+  at least `thickness` (nearer neighbours are the links' business), and
+  every constraint pass pushes those closer than `thickness` apart, in pair
+  order, by inverse mass (pins do not move); a point moves at most half the
+  thickness a substep, so it cannot step through a layer. `substeps`
+  (default 1) splits the tick, the damping spread over them; `friction`
+  (default 0) takes part of the slide of a point resting on a solid, so a
+  cloth lowered onto the floor folds instead of spreading. With
+  `thickness` 0, `substeps` 1 and `friction` 0 the step is the E5 one.
+  `tests/self_collision.rs`: a 20 × 20 sheet lowered onto the floor piles up
+  in layers and no two of its points that are not near neighbours come
+  closer than 0.99 × the thickness at any tick (without it, they meet and
+  the sheet lies in one layer).
+- **Fluid groups** (`og.Fluid2D.group`, `density`, `mixing`): fluids
+  sharing a nonzero group (four at most, in entity order; their lanes) step
+  as one particle set. Each particle weighs its fluid's `density` (by its
+  mix); pressure comes from every neighbour (number density) against each
+  particle's own rest density and stiffness; a pair's displacement and
+  viscous impulse are shared in inverse proportion to the masses, so the
+  lighter particle moves more and a heavier fluid sinks; unmixed particles
+  of different fluids are held apart at the boundary by an extra near
+  pressure that `mixing` takes away; touching particles even out their mix
+  (`mixing` × 0.25 a tick at full overlap, conserving each fluid's amount)
+  and their mass follows. `fluid_mix(entity)` reads a member's lane and its
+  particles' mix (og-runtime draws a group as one metaball surface whose
+  colour follows it). A fluid alone (group 0, or the only one of its group)
+  steps exactly as before. `tests/fluid_groups.rs`: a heavy fluid poured on
+  a light one sinks under it (397 of 400 heavy particles below the light
+  fluid's median), with `mixing` 1 the two blend (each particle's share
+  within ±0.005 of a half, the amounts kept to 1e-3).
+- **2D ragdolls**: the 3D ragdoll's code (`src/ragdoll.rs`) built for both
+  profiles, each with its joint: a hinge about z with ±`jointLimit` in 2D.
+  `tests/ragdoll.rs`: a 2D figure follows its targets at their z, goes limp
+  and is knocked along +x, its bones turn only about z, the knee stays
+  within the limit (1.12 rad at most landing under the body's weight; 3.03
+  without a limit), and it recovers.
 
 ## Tests
 

@@ -131,6 +131,20 @@ fn perf_sprites_20k() {
     perf("sprites-20k");
 }
 
+/// Phase 2's Forward+ pair: the night scene's seven lights and the
+/// 256-light plaza.
+#[test]
+#[ignore]
+fn perf_point_spot_lights() {
+    perf("point-spot-lights");
+}
+
+#[test]
+#[ignore]
+fn perf_lights_256() {
+    perf("lights-256");
+}
+
 #[test]
 #[ignore]
 fn perf_showcase() {

@@ -258,6 +258,10 @@ pub fn load_glb(bytes: &[u8]) -> Result<GltfModel, RenderError> {
                     .read_tex_coords(0)
                     .map(|u| u.into_f32().collect())
                     .unwrap_or_default();
+                let tangents: Vec<[f32; 4]> = reader
+                    .read_tangents()
+                    .map(|t| t.collect())
+                    .unwrap_or_default();
                 let colors: Vec<[f32; 4]> = reader
                     .read_colors(0)
                     .map(|c| c.into_rgba_f32().collect())
@@ -279,7 +283,13 @@ pub fn load_glb(bytes: &[u8]) -> Result<GltfModel, RenderError> {
                                 normals.get(i).copied().unwrap_or([0.0, 1.0, 0.0]),
                             ))
                             .normalize_or_zero();
+                        // The file's tangent, or none (generated at upload).
+                        let tangent = tangents.get(i).map_or([0.0; 4], |t| {
+                            let v = world.transform_vector3(Vec3::new(t[0], t[1], t[2]));
+                            v.normalize_or_zero().extend(t[3]).to_array()
+                        });
                         Vertex {
+                            tangent,
                             position: position.to_array(),
                             normal: normal.to_array(),
                             uv: uvs.get(i).copied().unwrap_or([0.0, 0.0]),

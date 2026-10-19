@@ -1,8 +1,8 @@
 //! Origin Engine renderer (`docs/design.md` §2.6, `crates/og-render/README.md`).
 //!
-//! A wgpu forward renderer: PBR metallic-roughness, one directional light with
-//! three cascaded shadow maps, up to eight point and spot lights (two of them
-//! shadowed), split-sum image-based lighting generated from a procedural sky,
+//! A wgpu Forward+ renderer: PBR metallic-roughness, one directional light
+//! with three cascaded shadow maps, up to 256 point and spot lights in view,
+//! clustered (`clusters.rs`; two of them shadowed), split-sum image-based lighting generated from a procedural sky,
 //! antialiasing by tier (TAA on WebGPU-class backends, 4x MSAA on WebGL2),
 //! bloom, manual or metered exposure, ACES tonemapping, and a 2D batch of
 //! sprites and MSDF text. It runs natively (Metal, Vulkan; headless for
@@ -29,6 +29,7 @@
 
 mod atmosphere;
 mod capture;
+mod clusters;
 mod effects;
 mod frame;
 mod fx;
@@ -49,6 +50,7 @@ mod scene;
 pub mod shapes;
 mod skin;
 mod sprites;
+mod terrain;
 mod texture;
 mod water;
 mod weather;
@@ -60,6 +62,7 @@ mod headless;
 
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
+pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
@@ -68,7 +71,7 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
 };
 pub use material::{Side, StandardMaterial};
-pub use metaballs::{MAX_FLUIDS, Metaballs};
+pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
     ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
@@ -78,6 +81,10 @@ pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailS
 pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
+};
+pub use terrain::{
+    MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl,
+    TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
@@ -114,29 +121,52 @@ pub const MSAA_SAMPLES: u32 = 4;
 
 const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
 const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
+/// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
+pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
 
-/// The lit shader's source with `hooks` (`hooks.rs`) and the joint palette
-/// read as `palette`.
-fn lit_source_with(hooks: &str, palette: skin::PaletteMode) -> String {
+/// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
+/// read as `palette` and the light tables as `tables`.
+fn lit_source_with(
+    hooks: &str,
+    palette: skin::PaletteMode,
+    tables: clusters::LightTables,
+) -> String {
     format!(
-        "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{hooks}{PBR_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}",
+        tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
     )
 }
 
-/// [`lit_source_with`] for a tier (`full`: the storage-buffer palette).
+/// [`lit_source_with`] for a tier (`full`: storage buffers for the palette
+/// and the light tables).
 pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
-    lit_source_with(
-        hooks,
-        if full {
-            skin::PaletteMode::Storage
-        } else {
-            skin::PaletteMode::Texture
-        },
-    )
+    if full {
+        lit_source_with(
+            hooks,
+            skin::PaletteMode::Storage,
+            clusters::LightTables::Storage,
+        )
+    } else {
+        lit_source_with(
+            hooks,
+            skin::PaletteMode::Texture,
+            clusters::LightTables::Uniform,
+        )
+    }
 }
 const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
+
+/// The shadow shader's source with `hooks` (a material shader's, or the
+/// built-in identities) and the joint palette read as `palette`.
+fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{}{hooks}{SHADOW_WGSL}",
+        particles_gpu::NOISE_WGSL,
+        palette.wgsl(2)
+    )
+}
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
 const MATERIAL_WGSL: &str = include_str!("../shaders/material.wgsl");
@@ -323,25 +353,43 @@ pub struct RenderInfo {
 
 impl RenderInfo {
     /// Whether the adapter is a software rasterizer (lavapipe, llvmpipe,
-    /// SwiftShader): the `vulkan-cpu` tier.
+    /// SwiftShader): the `vulkan-cpu` tier ([`is_software_adapter`]).
     pub fn software(&self) -> bool {
-        self.device_type == wgpu::DeviceType::Cpu
+        is_software_adapter(self.device_type, &self.adapter)
     }
 
-    /// The name gfx reference frames are filed under: `metal`, `vulkan`,
-    /// `vulkan-cpu` (lavapipe/llvmpipe), `webgpu`, `webgl2`, `gl`, `dx12`.
+    /// The name gfx reference frames are filed under, and the tier the probe
+    /// and `og polish` report ([`tier_name`]).
     pub fn backend_tier(&self) -> String {
-        let cpu = self.device_type == wgpu::DeviceType::Cpu;
-        match self.backend {
-            wgpu::Backend::Metal => "metal".into(),
-            wgpu::Backend::Vulkan if cpu => "vulkan-cpu".into(),
-            wgpu::Backend::Vulkan => "vulkan".into(),
-            wgpu::Backend::BrowserWebGpu => "webgpu".into(),
-            wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
-            wgpu::Backend::Gl => "gl".into(),
-            wgpu::Backend::Dx12 => "dx12".into(),
-            other => format!("{other:?}").to_lowercase(),
-        }
+        tier_name(self.backend, self.device_type, &self.adapter)
+    }
+}
+
+/// Whether an adapter rasterizes on the CPU: wgpu reports a CPU device type,
+/// or its name is one of the software rasterizers (Mesa's lavapipe and
+/// llvmpipe, SwiftShader), which some drivers report as another type.
+pub fn is_software_adapter(device_type: wgpu::DeviceType, name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    device_type == wgpu::DeviceType::Cpu
+        || ["llvmpipe", "lavapipe", "swiftshader"]
+            .iter()
+            .any(|s| name.contains(s))
+}
+
+/// The tier name of an adapter: `metal`, `vulkan`, `vulkan-cpu` (a software
+/// rasterizer), `webgpu`, `webgl2`, `gl`, `dx12`. It names the reference-frame
+/// directories and is the probe's `RenderTier`, so a frame time measured on
+/// a CPU rasterizer is never read as a GPU's.
+pub fn tier_name(backend: wgpu::Backend, device_type: wgpu::DeviceType, adapter: &str) -> String {
+    match backend {
+        wgpu::Backend::Metal => "metal".into(),
+        wgpu::Backend::Vulkan if is_software_adapter(device_type, adapter) => "vulkan-cpu".into(),
+        wgpu::Backend::Vulkan => "vulkan".into(),
+        wgpu::Backend::BrowserWebGpu => "webgpu".into(),
+        wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
+        wgpu::Backend::Gl => "gl".into(),
+        wgpu::Backend::Dx12 => "dx12".into(),
+        other => format!("{other:?}").to_lowercase(),
     }
 }
 
@@ -375,9 +423,16 @@ pub struct FrameStats {
     pub shadow_casters: u32,
     /// Shadow passes (cascades plus local light faces).
     pub shadow_passes: u32,
-    /// Local lights drawn, and those beyond [`MAX_LIGHTS`] that were not.
+    /// Local lights drawn; those in view beyond [`MAX_LIGHTS`] that were
+    /// not (the least important); those outside the view.
     pub lights: u32,
     pub lights_dropped: u32,
+    pub lights_culled: u32,
+    /// Light references the clusters held, and those dropped from clusters
+    /// past [`MAX_CLUSTER_LIGHTS`] (or the tier's total, [`UNIFORM_LIGHT_REFS`]
+    /// on WebGL2).
+    pub cluster_lights: u32,
+    pub cluster_lights_dropped: u32,
     /// Sprites and glyphs drawn, and the draws they took.
     pub sprites: u32,
     pub glyphs: u32,
@@ -417,6 +472,16 @@ pub struct FrameStats {
     /// Skinned instances drawn and the joints of the frame's palettes.
     pub skinned_instances: u32,
     pub joints: u32,
+    /// GPU memory of the scene's textures (every mip level, as allocated:
+    /// RGBA8 with its generated chain, or the encoded levels as uploaded).
+    pub texture_bytes: u64,
+    /// Terrain clipmap levels drawn in the main pass, their triangles
+    /// (also in `triangles`), and the levels drawn into shadow maps.
+    pub terrain_draws: u32,
+    pub terrain_triangles: u64,
+    pub terrain_shadow_draws: u32,
+    /// Draws of the planar reflection pass (0: it did not run).
+    pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
     pub frame: u64,
 }
@@ -434,7 +499,9 @@ pub struct RgbaImage {
 struct ShadowPassUniform {
     view_proj: [[f32; 4]; 4],
     light: [f32; 4],
-    pad: [f32; 44],
+    /// x: the scene clock in seconds (a material shader's `h.time`).
+    time: [f32; 4],
+    pad: [f32; 40],
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
@@ -442,7 +509,7 @@ const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
 const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<Vertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4, 15 => Float32x4],
 };
 
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -479,6 +546,8 @@ struct GpuMaterial {
 struct GpuTexture {
     view: wgpu::TextureView,
     format: TextureFormat,
+    /// Bytes allocated, every level.
+    bytes: u64,
 }
 
 struct GpuFont {
@@ -493,8 +562,13 @@ struct SceneCache {
     meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.
     shaders: Vec<wgpu::ShaderModule>,
-    /// Their pipelines by (shader, side, blended, effects).
-    hook_pipelines: HashMap<(usize, Side, bool, bool), wgpu::RenderPipeline>,
+    /// The shadow shader with each of them.
+    shadow_shaders: Vec<wgpu::ShaderModule>,
+    /// Their lit pipelines by (shader, side, blended, effects, skinned).
+    hook_pipelines: HashMap<(usize, Side, bool, bool, bool), wgpu::RenderPipeline>,
+    /// Their shadow and prepass pipelines by (shader, side, skinned).
+    hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
@@ -526,7 +600,7 @@ struct Batch {
     dissolve: bool,
     /// Needs the effect shader (its material's or the frame's effects).
     effects: bool,
-    /// Its material's shader (never for skinned batches).
+    /// Its material's shader.
     shader: Option<usize>,
 }
 
@@ -651,6 +725,17 @@ pub struct Renderer {
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
+    /// The local lights, the cluster table and its light references (`clusters.rs`).
+    light_tables: clusters::LightTables,
+    light_buffers: [wgpu::Buffer; 3],
+    clusters: clusters::ClusterBuilder,
+    /// The frame uniform of the planar reflection's mirrored camera.
+    reflection_buffer: wgpu::Buffer,
+    /// Its effect uniform (decals; no screen-space AO).
+    reflection_fx_buffer: wgpu::Buffer,
+    /// Its cluster table and references, over the main view's light records.
+    reflection_light_buffers: [wgpu::Buffer; 3],
+    reflection_clusters: clusters::ClusterBuilder,
     shadow_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
@@ -668,6 +753,7 @@ pub struct Renderer {
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
     water: water::WaterRenderer,
+    terrain: terrain::TerrainRenderer,
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
@@ -695,7 +781,12 @@ pub struct Renderer {
     mips: mips::MipGenerator,
     /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
     /// (the sky cube) for the sky they were generated from.
-    environment: Option<(ProceduralSky, wgpu::BindGroup, wgpu::BindGroup)>,
+    environment: Option<(
+        ProceduralSky,
+        wgpu::BindGroup,
+        wgpu::BindGroup,
+        wgpu::BindGroup,
+    )>,
     default_white: wgpu::TextureView,
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
@@ -1023,12 +1114,15 @@ fn prepass_pipeline(
     })
 }
 
-/// The shadow pipeline for casters drawn with (side, skinned, dissolve).
+/// The shadow pipeline for casters drawn with (side, skinned, dissolve);
+/// `hooked`: with the module's material shader (its vertex offset and
+/// surface colour, the material bound).
 fn shadow_pipeline(
     device: &wgpu::Device,
     layouts: &[wgpu::PipelineLayout; 3],
     module: &wgpu::ShaderModule,
     (side, skinned, dissolve): ShadowKey,
+    hooked: bool,
 ) -> wgpu::RenderPipeline {
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let skin = [
@@ -1036,7 +1130,7 @@ fn shadow_pipeline(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    let layout = match (skinned, dissolve) {
+    let layout = match (skinned, dissolve || hooked) {
         (true, _) => &layouts[2],
         (false, true) => &layouts[1],
         (false, false) => &layouts[0],
@@ -1046,7 +1140,12 @@ fn shadow_pipeline(
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module,
-            entry_point: Some(if skinned { "vs_skinned" } else { "vs" }),
+            entry_point: Some(match (skinned, hooked) {
+                (true, true) => "vs_skinned_hooked",
+                (true, false) => "vs_skinned",
+                (false, true) => "vs_hooked",
+                (false, false) => "vs",
+            }),
             compilation_options: Default::default(),
             buffers: if skinned { &skin } else { &plain },
         },
@@ -1072,7 +1171,11 @@ fn shadow_pipeline(
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module,
-            entry_point: Some(if dissolve { "fs_dissolve" } else { "fs" }),
+            entry_point: Some(match (hooked, dissolve) {
+                (true, _) => "fs_hooked",
+                (false, true) => "fs_dissolve",
+                (false, false) => "fs",
+            }),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::R32Float,
@@ -1208,6 +1311,11 @@ impl Renderer {
         } else {
             skin::PaletteMode::Texture
         };
+        let light_tables = if tier == Tier::Full {
+            clusters::LightTables::Storage
+        } else {
+            clusters::LightTables::Uniform
+        };
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
@@ -1251,6 +1359,7 @@ impl Renderer {
         let (width, height) = (desc.width.max(1), desc.height.max(1));
 
         // Layouts.
+        let [lights_entry, table_entry, refs_entry] = light_tables.layout_entries();
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
             entries: &[
@@ -1261,6 +1370,11 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 tex2d(5),
                 sampler_entry(6, wgpu::SamplerBindingType::Filtering),
+                // The local lights and their clusters: buffers, so WebGL2's
+                // skinned lit pipeline keeps its sixteen texture slots.
+                lights_entry,
+                table_entry,
+                refs_entry,
             ],
         });
         // The sky cube, bound by the sky pass alone: in the frame group it
@@ -1373,6 +1487,20 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let light_buffers = light_tables.buffers(&device);
+        let reflection_light_buffers = light_tables.buffers(&device);
+        let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("frame (planar reflection)"),
+            size: std::mem::size_of::<frame::FrameUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let reflection_fx_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fx (planar reflection)"),
+            size: std::mem::size_of::<fx::FxUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shadow passes"),
             size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
@@ -1396,7 +1524,7 @@ impl Renderer {
         let pbr_shader = shader(
             &device,
             "pbr",
-            lit_source_with(&hooks::default_hooks(), palette_mode),
+            lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
         let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
         let sprite_shader = shader(&device, "sprite", format!("{FRAME_WGSL}{SPRITE_WGSL}"));
@@ -1404,11 +1532,7 @@ impl Renderer {
         let shadow_shader = shader(
             &device,
             "shadow",
-            format!(
-                "{}{MATERIAL_WGSL}{}{SHADOW_WGSL}",
-                particles_gpu::NOISE_WGSL,
-                palette_mode.wgsl(2)
-            ),
+            shadow_source(&hooks::default_hooks(), palette_mode),
         );
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
@@ -1453,7 +1577,7 @@ impl Renderer {
         let key = (Side::Front, false, false);
         shadow_pipelines.insert(
             key,
-            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key),
+            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
         let sky_state = |fs| HdrPipeline {
@@ -1472,7 +1596,8 @@ impl Renderer {
         let sky_pipeline = hdr_pipeline(&device, sky_state("fs_sky"));
         let sky_look_pipeline = hdr_pipeline(&device, sky_state("fs_sky_look"));
         let ibl = ibl::IblGenerator::new(&device);
-        let water = water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
+        let water =
+            water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
         let additive = wgpu::BlendState {
@@ -1594,6 +1719,19 @@ impl Renderer {
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
+        let terrain = terrain::TerrainRenderer::new(
+            &device,
+            terrain::TerrainPipelines {
+                frame_layout: &frame_layout,
+                shadow_layout: &shadow_bind_layout,
+                frame_wgsl: FRAME_WGSL,
+                lighting_wgsl: LIGHTING_WGSL,
+                light_tables_wgsl: &light_tables.wgsl(),
+                samples,
+                white: default_white.clone(),
+                flat_normal: default_normal.clone(),
+            },
+        );
         let vertex_buffer = |label: &str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
@@ -1657,6 +1795,13 @@ impl Renderer {
             material_layout,
             sprite_layout,
             frame_buffer,
+            light_tables,
+            light_buffers,
+            clusters: clusters::ClusterBuilder::default(),
+            reflection_buffer,
+            reflection_fx_buffer,
+            reflection_light_buffers,
+            reflection_clusters: clusters::ClusterBuilder::default(),
             shadow_buffer,
             shadow_bind_group,
             pbr_layout,
@@ -1670,6 +1815,7 @@ impl Renderer {
             sky_pipeline,
             sky_look_pipeline,
             water,
+            terrain,
             metaballs,
             ibl,
             sprite_pipeline,
@@ -1775,9 +1921,15 @@ impl Renderer {
             let module = shader(
                 &self.device,
                 "pbr (material shader)",
-                lit_source_with(&hooks, self.palette.mode()),
+                lit_source_with(&hooks, self.palette.mode(), self.light_tables),
             );
             self.cache.shaders.push(module);
+            let module = shader(
+                &self.device,
+                "shadow (material shader)",
+                shadow_source(&hooks, self.palette.mode()),
+            );
+            self.cache.shadow_shaders.push(module);
         }
         self.refresh_meshes(scene);
         for index in self.cache.meshes.len()..scene.meshes().len() {
@@ -1876,6 +2028,18 @@ impl Renderer {
                     TextureSource::Rgba(texture) => GpuTexture {
                         view: self.upload_texture(texture, &mut encoder)?,
                         format: TextureFormat::Rgba8,
+                        bytes: match texture.mips {
+                            Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
+                                .map(|l| {
+                                    TextureFormat::Rgba8.level_bytes(
+                                        texture.width,
+                                        texture.height,
+                                        l,
+                                    ) as u64
+                                })
+                                .sum(),
+                            Mips::None => texture.rgba.len() as u64,
+                        },
                     },
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
@@ -1942,6 +2106,15 @@ impl Renderer {
     }
 
     fn upload_mesh(&self, mesh: &MeshData) -> GpuMesh {
+        let tangents;
+        let mesh = if mesh.lacks_tangents() {
+            let mut m = mesh.clone();
+            m.generate_tangents();
+            tangents = m;
+            &tangents
+        } else {
+            mesh
+        };
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
         let bytes = |b: &[u8]| {
             if b.is_empty() {
@@ -1990,7 +2163,16 @@ impl Renderer {
             if gpu.revision == revision {
                 continue;
             }
-            let mesh = &scene.meshes()[i];
+            let source = &scene.meshes()[i];
+            let tangents;
+            let mesh = if source.lacks_tangents() {
+                let mut m = source.clone();
+                m.generate_tangents();
+                tangents = m;
+                &tangents
+            } else {
+                source
+            };
             let vb: &[u8] = bytemuck::cast_slice(&mesh.vertices);
             let ib: &[u8] = bytemuck::cast_slice(&mesh.indices);
             if !vb.is_empty()
@@ -2116,6 +2298,7 @@ impl Renderer {
         Ok(GpuTexture {
             view: texture.create_view(&Default::default()),
             format: desc.format,
+            bytes: upload.levels.iter().map(|l| l.len() as u64).sum(),
         })
     }
 
@@ -2213,15 +2396,28 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&ibl.prefiltered),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),
             wgpu::BindingResource::Sampler(&ibl.sampler),
+            self.light_buffers[0].as_entire_binding(),
+            self.light_buffers[1].as_entire_binding(),
+            self.light_buffers[2].as_entire_binding(),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
+        let mut reflected = entries.clone();
+        reflected[0] = self.reflection_buffer.as_entire_binding();
+        reflected[8] = self.reflection_light_buffers[1].as_entire_binding();
+        reflected[9] = self.reflection_light_buffers[2].as_entire_binding();
+        let reflection_group = bind_group(
+            &self.device,
+            "frame (planar reflection)",
+            &self.frame_layout,
+            &reflected,
+        );
         let sky_group = bind_group(
             &self.device,
             "sky",
             &self.sky_layout,
             &[wgpu::BindingResource::TextureView(&ibl.sky)],
         );
-        self.environment = Some((*sky, group, sky_group));
+        self.environment = Some((*sky, group, sky_group, reflection_group));
     }
 
     /// Sorts the instances into (mesh, material) batches; returns the batches,
@@ -2433,16 +2629,41 @@ impl Renderer {
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
             if let Some(sh) = b.shader {
-                let key = (sh, b.side, b.transparent, b.effects);
+                let key = (sh, b.side, b.transparent, b.effects, is_skinned);
                 if !self.cache.hook_pipelines.contains_key(&key) {
                     let p = pbr_pipeline(
                         &self.device,
                         (&self.pbr_layout, &self.pbr_skinned_layout),
                         &self.cache.shaders[sh],
-                        (b.side, b.transparent, false, b.effects),
+                        (b.side, b.transparent, is_skinned, b.effects),
                         self.samples,
                     );
                     self.cache.hook_pipelines.insert(key, p);
+                }
+                // Shadows and the prepass see the material shader's offset.
+                let key = (sh, b.side, is_skinned);
+                if !self.cache.hook_shadow_pipelines.contains_key(&key) {
+                    let p = shadow_pipeline(
+                        &self.device,
+                        &self.shadow_layouts,
+                        &self.cache.shadow_shaders[sh],
+                        (b.side, is_skinned, b.dissolve),
+                        true,
+                    );
+                    self.cache.hook_shadow_pipelines.insert(key, p);
+                }
+                if prepass
+                    && !b.transparent
+                    && !self.cache.hook_prepass_pipelines.contains_key(&key)
+                {
+                    let p = prepass_pipeline(
+                        &self.device,
+                        (&self.pbr_layout, &self.pbr_skinned_layout),
+                        &self.cache.shaders[sh],
+                        b.side,
+                        is_skinned,
+                    );
+                    self.cache.hook_prepass_pipelines.insert(key, p);
                 }
             }
             let key = (b.side, b.transparent, is_skinned, b.effects);
@@ -2458,8 +2679,13 @@ impl Renderer {
             }
             let key = (b.side, is_skinned, b.dissolve);
             if !self.shadow_pipelines.contains_key(&key) {
-                let p =
-                    shadow_pipeline(&self.device, &self.shadow_layouts, &self.shadow_shader, key);
+                let p = shadow_pipeline(
+                    &self.device,
+                    &self.shadow_layouts,
+                    &self.shadow_shader,
+                    key,
+                    false,
+                );
                 self.shadow_pipelines.insert(key, p);
             }
             if prepass
@@ -2543,7 +2769,7 @@ impl Renderer {
                         transparent: m.transparent,
                         dissolve: m.dissolve,
                         effects: m.effects,
-                        shader: None,
+                        shader: m.shader,
                     });
                 }
             }
@@ -2651,6 +2877,35 @@ impl Renderer {
         let camera = shaken_camera(&scene.camera, scene.shake);
         let cam = frame::camera_frame(&camera, aspect, jitter);
         let view_frustum = Frustum::from_view_proj(cam.view_proj);
+        // Water: the surface the camera is under (its fog replaces the
+        // frame's), and the one drawn with a planar reflection (the camera
+        // mirrored in it, clipped at the surface by an oblique near plane).
+        let under = water::underwater(&scene.water, camera.position);
+        let frame_fog = match under {
+            Some(i) => Some(water::underwater_fog(&scene.water[i])),
+            None => scene.fog,
+        };
+        let planar = match (under, cam.orthographic) {
+            (None, false) => scene.water.iter().position(|w| {
+                let (n, at) = water::plane(w);
+                w.planar_reflection > 0.0 && (camera.position - at).dot(n) > 0.0
+            }),
+            _ => None,
+        };
+        let reflection = planar.map(|i| {
+            let w = &scene.water[i];
+            let (n, at) = water::plane(w);
+            let mirrored = water::mirrored_camera(&camera, n, at);
+            let f = frame::camera_frame(&mirrored, aspect, Vec2::ZERO);
+            let proj = f.view_proj * f.view.inverse();
+            let view_proj = water::oblique(proj, f.view, n, at, 0.02) * f.view;
+            let scale = w.planar_reflection.clamp(0.1, 1.0);
+            let size = (
+                ((self.width as f32 * scale) as u32).max(1),
+                ((self.height as f32 * scale) as u32).max(1),
+            );
+            (i, mirrored, f, view_proj, size)
+        });
         let (mut skinned_visible, skinned_culled) = Self::cull_skinned(&mut skinned, &view_frustum);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         let skinned_data = std::mem::take(&mut skinned.data);
@@ -2797,14 +3052,16 @@ impl Renderer {
             &scene.metaballs,
             (self.width, self.height),
         );
-        layered.extend(metaballs::layers(&scene.metaballs).map(|(i, layer)| {
-            sprites::LayeredStrip {
-                layer,
-                source: RunSource::Metaballs(i as u8),
-                first: 0,
-                count: 1,
-            }
-        }));
+        layered.extend(
+            metaballs::layers(&scene.metaballs)
+                .into_iter()
+                .map(|(i, layer)| sprites::LayeredStrip {
+                    layer,
+                    source: RunSource::Metaballs(i as u8),
+                    first: 0,
+                    count: 1,
+                }),
+        );
         let fonts = &self.cache.fonts;
         let sprite_frame = sprites::build(
             scene,
@@ -2860,12 +3117,39 @@ impl Renderer {
             cam.forward,
         );
         culled += blended_culled + skinned_culled;
+        let reflection_list = reflection.as_ref().map(|r| {
+            self.cull(
+                &batches,
+                &spheres,
+                &mut transforms,
+                &mut origins,
+                &Frustum::from_view_proj(r.3),
+                |b| !b.transparent,
+            )
+            .0
+        });
+
+        // Terrains: new or edited data uploaded, this frame's clipmap levels.
+        let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
+        let textures = &self.cache.textures;
+        let terrain_draws = self.terrain.prepare(
+            &self.device,
+            &self.queue,
+            &mut self.mips,
+            scene,
+            camera.position,
+            camera.far,
+            cam.view_proj,
+            prev_view_proj,
+            |h| textures.get(h.index()).map(|t| &t.view),
+        )?;
+        let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
 
         // The directional light's cascades.
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
-        let has_casters = !batches.is_empty() || !skinned_batches.is_empty();
+        let has_casters = !batches.is_empty() || !skinned_batches.is_empty() || terrain_casters;
         let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
@@ -2877,6 +3161,7 @@ impl Renderer {
                             .map_or(1.0, |(_, e)| e.length() * 2.0);
                         (s.transform.w_axis.truncate(), r)
                     }));
+                    all.extend(self.terrain.bounds(scene));
                     Self::instance_bounds(&all)
                 }
             };
@@ -2908,12 +3193,73 @@ impl Renderer {
             })
             .collect();
 
-        // Local lights and their shadow faces.
-        let (lights_gpu, local_shadows) = frame::local_lights(&scene.lights, LOCAL_SHADOW_SIZE);
+        // Local lights: the clusters they reach, their records, their shadow faces.
+        self.clusters.build(
+            &scene.lights,
+            &clusters::ClusterView {
+                camera: &cam,
+                frustum: &view_frustum,
+                position: camera.position,
+                near: camera.near,
+                far: camera.far,
+                width: self.width,
+                height: self.height,
+            },
+            self.light_tables.ref_capacity(),
+        );
+        let (lights_gpu, local_shadows) =
+            frame::local_lights(&scene.lights, &self.clusters.kept, LOCAL_SHADOW_SIZE);
+        if !lights_gpu.is_empty() {
+            self.queue
+                .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
+            self.queue.write_buffer(
+                &self.light_buffers[1],
+                0,
+                bytemuck::cast_slice(&self.clusters.table),
+            );
+            self.queue.write_buffer(
+                &self.light_buffers[2],
+                0,
+                bytemuck::cast_slice(&self.clusters.ref_words()),
+            );
+        }
+        // The planar reflection's clusters: the same light records seen by
+        // the mirrored camera (its oblique projection moves only depth).
+        if let Some((_, mirrored, f, _, (rw, rh))) = &reflection {
+            self.reflection_clusters.build_kept(
+                &scene.lights,
+                &self.clusters.kept,
+                &clusters::ClusterView {
+                    camera: f,
+                    frustum: &Frustum::from_view_proj(f.view_proj),
+                    position: mirrored.position,
+                    near: mirrored.near,
+                    far: mirrored.far,
+                    width: *rw,
+                    height: *rh,
+                },
+                self.light_tables.ref_capacity(),
+            );
+            if !lights_gpu.is_empty() {
+                self.queue.write_buffer(
+                    &self.reflection_light_buffers[1],
+                    0,
+                    bytemuck::cast_slice(&self.reflection_clusters.table),
+                );
+                self.queue.write_buffer(
+                    &self.reflection_light_buffers[2],
+                    0,
+                    bytemuck::cast_slice(&self.reflection_clusters.ref_words()),
+                );
+            }
+        }
         let mut local_lists: Vec<Option<DrawList>> =
+            (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
+        let mut local_frustums: Vec<Option<Frustum>> =
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
         for ls in &local_shadows {
             for (face, (_, f)) in ls.faces.iter().enumerate() {
+                local_frustums[ls.slot * 6 + face] = Some(f.clone());
                 let list = self
                     .cull(&batches, &spheres, &mut transforms, &mut origins, f, |_| {
                         true
@@ -3025,7 +3371,7 @@ impl Renderer {
             params: [
                 scene.environment.intensity,
                 (ibl::PREFILTER_MIPS - 1) as f32,
-                scene.lights.len().min(MAX_LIGHTS) as f32,
+                lights_gpu.len() as f32,
                 1.0 / shadow_size as f32,
             ],
             view_forward: cam
@@ -3034,10 +3380,10 @@ impl Renderer {
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
-            lights: lights_gpu,
+            cluster: self.clusters.params,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
-                scene.fog.as_ref(),
+                frame_fog.as_ref(),
                 match scene.environment.background {
                     Background::Procedural {
                         sun_direction,
@@ -3057,6 +3403,7 @@ impl Renderer {
                 scene.tick,
                 scene.tick_rate,
             ),
+            caustics: water::caustics(&scene.water),
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
@@ -3065,7 +3412,8 @@ impl Renderer {
             shadow_slots[i] = ShadowPassUniform {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
-                pad: [0.0; 44],
+                time: uniform.atmosphere.time,
+                pad: [0.0; 40],
             };
         }
         for ls in &local_shadows {
@@ -3075,12 +3423,26 @@ impl Renderer {
                 shadow_slots[CASCADES + layer] = ShadowPassUniform {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
-                    pad: [0.0; 44],
+                    time: uniform.atmosphere.time,
+                    pad: [0.0; 40],
                 };
             }
         }
         self.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
+        if let Some((_, mirrored, f, view_proj, _)) = &reflection {
+            let mut u = uniform;
+            u.view_proj = view_proj.to_cols_array_2d();
+            // The sky's view rays: the mirrored camera's own projection
+            // (the oblique one tilts its far plane through the sky).
+            u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
+            u.view_pos = mirrored.position.extend(0.0).to_array();
+            u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
+            u.caustics = [[0.0; 4]; 2];
+            u.cluster = self.reflection_clusters.params;
+            self.queue
+                .write_buffer(&self.reflection_buffer, 0, bytemuck::bytes_of(&u));
+        }
         self.queue
             .write_buffer(&self.shadow_buffer, 0, bytemuck::cast_slice(&shadow_slots));
 
@@ -3098,7 +3460,6 @@ impl Renderer {
             god_rays.is_some(),
             scene.tick,
         );
-        let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
         let mut fx_uniform =
             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
         let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
@@ -3109,6 +3470,15 @@ impl Renderer {
         }
         self.queue
             .write_buffer(&self.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
+        if let Some((_, _, _, view_proj, (rw, rh))) = &reflection {
+            let mut u = fx_uniform;
+            u.ao = [0.0; 4];
+            u.view_proj_unjittered = view_proj.to_cols_array_2d();
+            u.prev_view_proj = view_proj.to_cols_array_2d();
+            u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
+            self.queue
+                .write_buffer(&self.reflection_fx_buffer, 0, bytemuck::bytes_of(&u));
+        }
         let proj = cam.view_proj * cam.view.inverse();
         let global_outline = post_fx.outline;
         let fxp = post::FxPostUniform {
@@ -3237,6 +3607,9 @@ impl Renderer {
         if fluids > 0 {
             passes.push(FramePass::Metaballs);
         }
+        if reflection.is_some() {
+            passes.push(FramePass::Reflection);
+        }
         passes.push(FramePass::Main);
         if glow {
             passes.push(FramePass::Glow);
@@ -3293,6 +3666,8 @@ impl Renderer {
                     ),
                     gtao,
                     water: !scene.water.is_empty(),
+                    fluid_fields: fluids as u32,
+                    reflection: reflection.as_ref().map(|r| r.4),
                 },
                 &self.post,
                 &self.persistent,
@@ -3345,14 +3720,18 @@ impl Renderer {
             RenderTarget::View(_) => None,
         };
 
-        let lights = scene.lights.len().min(MAX_LIGHTS) as u32;
+        let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,
             triangles: main_list.triangles + blended_list.triangles,
-            lights,
-            lights_dropped: scene.lights.len() as u32 - lights,
+            lights: self.clusters.kept.len() as u32,
+            lights_dropped: cluster_stats.dropped,
+            lights_culled: cluster_stats.culled,
+            cluster_lights: cluster_stats.refs,
+            cluster_lights_dropped: cluster_stats.refs_dropped,
+            texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum(),
             sprites: sprite_frame.sprites,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
@@ -3447,7 +3826,7 @@ impl Renderer {
             };
             self.fx_groups = Some(groups);
         }
-        let (_, frame_bind_group, sky_group) = self
+        let (_, frame_bind_group, sky_group, reflection_frame_group) = self
             .environment
             .as_ref()
             .expect("environment generated above");
@@ -3459,10 +3838,12 @@ impl Renderer {
             .unwrap_or(&self.post.far_depth);
         let particle_group = (!particle_frame.systems.is_empty())
             .then(|| self.particles.draw_group(&self.device, scene_depth));
-        let metaball_group = self
-            .graph
-            .try_view("metaballs")
-            .map(|v| self.metaballs.group(&self.device, v));
+        let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
+            .iter()
+            .map_while(|name| self.graph.try_view(name))
+            .map(|v| self.metaballs.group(&self.device, v))
+            .collect();
+        let reflection_view = self.graph.try_view("reflection");
         let water_draws = match self.graph.try_view("scene-copy") {
             Some(copy) if !scene.water.is_empty() => self.water.prepare(
                 &self.device,
@@ -3472,9 +3853,28 @@ impl Renderer {
                 self.info.tier == Tier::Full,
                 copy,
                 scene_depth,
+                planar.zip(reflection_view),
+                &self.post.white,
             ),
             _ => Vec::new(),
         };
+        // The planar reflection's effect group: its decals, no AO.
+        let reflection_fx_group = reflection.as_ref().map(|_| {
+            let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                &self.cache.textures[t.index()].view
+            });
+            bind_group(
+                &self.device,
+                "fx (planar reflection)",
+                &self.fx_layout,
+                &[
+                    self.reflection_fx_buffer.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(&self.post.white),
+                    wgpu::BindingResource::TextureView(atlas_view),
+                    wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                ],
+            )
+        });
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -3483,18 +3883,29 @@ impl Renderer {
         let palette_group = self.palette.bind_group.as_ref();
         let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
             .iter()
-            .map(|b| &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)])
+            .map(|b| match b.shader {
+                Some(sh) => {
+                    &self.cache.hook_pipelines[&(sh, b.side, b.transparent, b.effects, true)]
+                }
+                None => &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)],
+            })
             .collect();
         let shadow_skinned: Vec<&wgpu::RenderPipeline> = skinned_batches
             .iter()
-            .map(|b| &self.shadow_pipelines[&(b.side, true, b.dissolve)])
+            .map(|b| match b.shader {
+                Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, b.side, true)],
+                None => &self.shadow_pipelines[&(b.side, true, b.dissolve)],
+            })
             .collect();
         let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
             skinned_visible
                 .iter()
                 .map(|b| {
-                    self.prepass_pipelines
-                        .get(&(b.side, true))
+                    let hooked = b
+                        .shader
+                        .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
+                    hooked
+                        .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
                         .unwrap_or(lit_skinned[0])
                 })
                 .collect()
@@ -3509,7 +3920,7 @@ impl Renderer {
              list: &DrawList,
              lit: bool,
              current: &mut Option<(Side, bool, bool, Option<usize>)>| {
-                let mut shadow_key: Option<ShadowKey> = None;
+                let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
                     if lit {
@@ -3518,7 +3929,7 @@ impl Renderer {
                             pass.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_pipelines
-                                        [&(sh, batch.side, batch.transparent, batch.effects)]
+                                        [&(sh, batch.side, batch.transparent, batch.effects, false)]
                                 }
                                 None => {
                                     &self.pbr_pipelines
@@ -3533,12 +3944,17 @@ impl Renderer {
                             &[],
                         );
                     } else {
-                        let key = (batch.side, false, batch.dissolve);
+                        let key = ((batch.side, false, batch.dissolve), batch.shader);
                         if shadow_key != Some(key) {
-                            pass.set_pipeline(&self.shadow_pipelines[&key]);
+                            pass.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)]
+                                }
+                                None => &self.shadow_pipelines[&key.0],
+                            });
                             shadow_key = Some(key);
                         }
-                        if batch.dissolve {
+                        if batch.dissolve || batch.shader.is_some() {
                             pass.set_bind_group(
                                 1,
                                 &self.cache.materials[batch.material].bind_group,
@@ -3602,11 +4018,13 @@ impl Renderer {
             draws
         };
         // One shadow pass: a cascade or a local light's face.
+        let terrain_indices = self.terrain.index_buffer();
         let shadow_pass = |encoder: &mut wgpu::CommandEncoder,
                            color: &wgpu::TextureView,
                            depth: &wgpu::TextureView,
                            slot: usize,
                            list: &DrawList,
+                           frustum: &Frustum,
                            stats: &mut FrameStats| {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow"),
@@ -3655,6 +4073,18 @@ impl Renderer {
                 .filter(|b| !b.transparent)
                 .map(|b| b.count)
                 .sum::<u32>();
+            // Terrain levels that reach into the pass's volume.
+            if let Some(indices) = terrain_indices
+                && terrain_casters
+            {
+                pass.set_pipeline(&self.terrain.shadow);
+                let (n, _) =
+                    terrain::draw_levels(&mut pass, &terrain_draws, indices, true, |c, r| {
+                        frustum.intersects_sphere(c, r)
+                    });
+                stats.draw_calls += n;
+                stats.terrain_shadow_draws += n;
+            }
         };
         for &pass in self.graph.order() {
             match pass {
@@ -3664,6 +4094,7 @@ impl Renderer {
                     &self.cascade_map.depth,
                     i as usize,
                     &cascade_lists[i as usize],
+                    &cascades[i as usize].frustum,
                     &mut stats,
                 ),
                 FramePass::LocalFace(layer) => shadow_pass(
@@ -3674,6 +4105,9 @@ impl Renderer {
                     local_lists[layer as usize]
                         .as_ref()
                         .expect("a list per shadowed face"),
+                    local_frustums[layer as usize]
+                        .as_ref()
+                        .expect("a frustum per shadowed face"),
                     &mut stats,
                 ),
                 FramePass::Prepass => {
@@ -3722,9 +4156,14 @@ impl Renderer {
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
                         let batch = &batches[b as usize];
-                        if current != Some(batch.side) {
-                            p.set_pipeline(&self.prepass_pipelines[&(batch.side, false)]);
-                            current = Some(batch.side);
+                        if current != Some((batch.side, batch.shader)) {
+                            p.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_prepass_pipelines[&(sh, batch.side, false)]
+                                }
+                                None => &self.prepass_pipelines[&(batch.side, false)],
+                            });
+                            current = Some((batch.side, batch.shader));
                         }
                         p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
                         let mesh = &self.cache.meshes[batch.mesh];
@@ -3739,6 +4178,14 @@ impl Renderer {
                     }
                     stats.prepass_draws +=
                         draw_skinned(&mut p, &skinned_visible, false, 1, 3, &prepass_skinned);
+                    if let Some(indices) = terrain_indices {
+                        p.set_pipeline(&self.terrain.prepass);
+                        let (n, _) =
+                            terrain::draw_levels(&mut p, &terrain_draws, indices, false, |c, r| {
+                                view_frustum.intersects_sphere(c, r)
+                            });
+                        stats.prepass_draws += n;
+                    }
                     stats.draw_calls += stats.prepass_draws;
                 }
                 FramePass::Particles => {
@@ -3751,18 +4198,111 @@ impl Renderer {
                     );
                 }
                 FramePass::Metaballs => {
-                    self.metaballs.encode_field(
-                        &mut encoder,
-                        self.graph.view("metaballs"),
-                        frame_bind_group,
-                    );
-                    stats.draw_calls += 1;
+                    let fields: Vec<&wgpu::TextureView> = post::FIELD_NAMES
+                        .iter()
+                        .map_while(|name| self.graph.try_view(name))
+                        .collect();
+                    self.metaballs
+                        .encode_field(&mut encoder, &fields, frame_bind_group);
+                    stats.draw_calls += fields.len() as u32;
                 }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
                     self.lights_2d
                         .encode(&mut encoder, self.graph.view("lightmap"), ambient);
                     stats.draw_calls += (lights_2d > 0) as u32;
+                }
+                FramePass::Reflection => {
+                    let clear = match scene.environment.background {
+                        Background::Color(c) => wgpu::Color {
+                            r: c.x as f64,
+                            g: c.y as f64,
+                            b: c.z as f64,
+                            a: 1.0,
+                        },
+                        Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
+                    };
+                    let target = self.graph.view("reflection");
+                    let (view, resolve_target) = if self.samples > 1 {
+                        (self.graph.view("reflection-msaa"), Some(target))
+                    } else {
+                        (target, None)
+                    };
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("planar reflection"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view,
+                            depth_slice: None,
+                            resolve_target,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(clear),
+                                store: if resolve_target.is_some() {
+                                    wgpu::StoreOp::Discard
+                                } else {
+                                    wgpu::StoreOp::Store
+                                },
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: self.graph.view("reflection-depth"),
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Discard,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
+                    pass.set_bind_group(0, reflection_frame_group, &[]);
+                    pass.set_bind_group(
+                        2,
+                        reflection_fx_group
+                            .as_ref()
+                            .expect("made with the reflection"),
+                        &[],
+                    );
+                    let list = reflection_list
+                        .as_ref()
+                        .expect("culled with the reflection");
+                    draw_list(
+                        &mut pass,
+                        list,
+                        true,
+                        &mut Some((Side::Front, false, false, None)),
+                    );
+                    stats.draw_calls += list.ranges.len() as u32;
+                    stats.reflection_draws += list.ranges.len() as u32;
+                    let n = draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
+                    stats.draw_calls += n;
+                    stats.reflection_draws += n;
+                    if let (Some(indices), Some(r)) = (terrain_indices, &reflection) {
+                        pass.set_pipeline(&self.terrain.lit);
+                        let frustum = Frustum::from_view_proj(r.3);
+                        let (n, _) = terrain::draw_levels(
+                            &mut pass,
+                            &terrain_draws,
+                            indices,
+                            false,
+                            |c, rad| frustum.intersects_sphere(c, rad),
+                        );
+                        stats.draw_calls += n;
+                        stats.reflection_draws += n;
+                    }
+                    let sky = match scene.environment.background {
+                        Background::Sky => Some(&self.sky_pipeline),
+                        Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+                        Background::Color(_) => None,
+                    };
+                    if let Some(sky) = sky {
+                        pass.set_pipeline(sky);
+                        pass.set_bind_group(1, sky_group, &[]);
+                        pass.draw(0..3, 0..1);
+                        stats.draw_calls += 1;
+                        stats.reflection_draws += 1;
+                    }
                 }
                 FramePass::Main => {
                     let clear = match scene.environment.background {
@@ -3848,6 +4388,20 @@ impl Renderer {
                     stats.draw_calls += main_list.ranges.len() as u32;
                     stats.draw_calls +=
                         draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
+                    if let Some(indices) = terrain_indices {
+                        pass.set_pipeline(&self.terrain.lit);
+                        let (n, tris) = terrain::draw_levels(
+                            &mut pass,
+                            &terrain_draws,
+                            indices,
+                            false,
+                            |c, r| view_frustum.intersects_sphere(c, r),
+                        );
+                        stats.draw_calls += n;
+                        stats.terrain_draws += n;
+                        stats.terrain_triangles += tris;
+                        stats.triangles += tris;
+                    }
                     let sky = match scene.environment.background {
                         Background::Sky => Some(&self.sky_pipeline),
                         Background::Procedural { .. } => Some(&self.sky_look_pipeline),
@@ -3930,8 +4484,11 @@ impl Renderer {
                     pass.set_bind_group(2, sprite_fx_group, &[]);
                     let mut current: Option<(bool, SpriteBlend)> = None;
                     for run in &sprite_frame.runs {
-                        if let (RunSource::Metaballs(i), Some(group)) =
-                            (run.source, &metaball_group)
+                        if let RunSource::Metaballs(i) = run.source
+                            && let Some(group) = self
+                                .metaballs
+                                .field_of(i)
+                                .and_then(|f| metaball_groups.get(f))
                         {
                             self.metaballs.composite(&mut pass, group, i);
                             stats.draw_calls += 1;

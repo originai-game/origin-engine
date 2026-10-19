@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 26 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 27 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -35,6 +35,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
+| [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
 
 ### `og-feel`
 
@@ -110,7 +111,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-798 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+827 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -275,6 +276,9 @@ Field units the docs and Tune use.
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
 | [`HueName`](ui.md#type-HueName) | enum | ui | — |
+| [`HumanBone`](anim.md#type-HumanBone) | struct | anim | — |
+| [`Humanoid`](anim.md#type-Humanoid) | struct | anim | — |
+| [`HumanoidDesc`](anim.md#type-HumanoidDesc) | desc struct | anim | — |
 | [`i32()`](reflect.md#column-i32) | column kind | reflect | — |
 | [`IconAtlasDesc`](ui.md#type-IconAtlasDesc) | desc struct | ui | — |
 | [`IconDesc`](ui.md#type-IconDesc) | desc struct | ui | — |
@@ -339,6 +343,7 @@ Field units the docs and Tune use.
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
+| [`MAX_CLUSTER_LIGHTS`](render.md#const-MAX_CLUSTER_LIGHTS) | constant | render | — |
 | [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
 | [`MAX_POINTERS`](input.md#const-MAX_POINTERS) | constant | input | — |
@@ -382,6 +387,8 @@ Field units the docs and Tune use.
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
+| [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
+| [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
@@ -446,6 +453,7 @@ Field units the docs and Tune use.
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
+| [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
 | [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
@@ -520,6 +528,7 @@ Field units the docs and Tune use.
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
+| [`og.render.setMaterialShader`](render.md#fn-setMaterialShader) | function | render | `og_render_set_material_shader` |
 | [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |
 | [`og.render.shaderMaterial`](render.md#fn-shaderMaterial) | function | render | `og_render_shader_material` |
 | [`og.render.sphereGeometry`](render.md#fn-sphereGeometry) | function | render | `og_render_sphere_geometry` |
@@ -542,6 +551,14 @@ Field units the docs and Tune use.
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
+| [`og.Terrain`](terrain.md#record-Terrain) | component | terrain | — |
+| [`og.terrain.bounds`](terrain.md#fn-bounds) | function | terrain | `og_terrain_bounds` |
+| [`og.terrain.edit`](terrain.md#fn-edit) | function | terrain | `og_terrain_edit` |
+| [`og.terrain.layer`](terrain.md#fn-layer) | function | terrain | `og_terrain_layer` |
+| [`og.terrain.load`](terrain.md#fn-load) | function | terrain | `og_terrain_load` |
+| [`og.terrain.sample`](terrain.md#fn-sample) | function | terrain | `og_terrain_sample` |
+| [`og.terrain.setLayer`](terrain.md#fn-setLayer) | function | terrain | `og_terrain_set_layer` |
+| [`og.TerrainScatter`](terrain.md#record-TerrainScatter) | component | terrain | — |
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
 | [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |
@@ -738,10 +755,12 @@ Field units the docs and Tune use.
 | [`REPLAY_SEED_PARAM`](probe.md#const-REPLAY_SEED_PARAM) | constant | probe | — |
 | [`Response`](ui.md#type-Response) | struct | ui | — |
 | [`ResultsDesc`](ui.md#type-ResultsDesc) | desc struct | ui | — |
+| [`RetargetDesc`](anim.md#type-RetargetDesc) | desc struct | anim | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
 | [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
+| [`Rig`](anim.md#type-Rig) | handle | anim | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
 | [`Rng.integer`](rng.md#member-Rng-integer) | method | rng | `og_rng_integer` |
@@ -787,6 +806,7 @@ Field units the docs and Tune use.
 | [`SHAPE_CAPSULE`](physics.md#const-SHAPE_CAPSULE) | constant | physics | — |
 | [`SHAPE_CONVEX`](physics.md#const-SHAPE_CONVEX) | constant | physics | — |
 | [`SHAPE_CYLINDER`](physics.md#const-SHAPE_CYLINDER) | constant | physics | — |
+| [`SHAPE_HEIGHTFIELD`](physics.md#const-SHAPE_HEIGHTFIELD) | constant | physics | — |
 | [`SHAPE_SPHERE`](physics.md#const-SHAPE_SPHERE) | constant | physics | — |
 | [`SHAPE_TRIMESH`](physics.md#const-SHAPE_TRIMESH) | constant | physics | — |
 | [`ShapeCastDesc`](physics.md#type-ShapeCastDesc) | desc struct | physics | — |
@@ -842,6 +862,16 @@ Field units the docs and Tune use.
 | [`SystemDump`](probe.md#type-SystemDump) | struct | probe | — |
 | [`SystemRun`](system.md#type-SystemRun) | callback | system | — |
 | [`TabsDesc`](ui.md#type-TabsDesc) | desc struct | ui | — |
+| [`TerrainBounds`](terrain.md#type-TerrainBounds) | struct | terrain | — |
+| [`TerrainBrush`](terrain.md#type-TerrainBrush) | desc struct | terrain | — |
+| [`TerrainBrushMode`](terrain.md#type-TerrainBrushMode) | enum | terrain | — |
+| [`TerrainData`](terrain.md#type-TerrainData) | handle | terrain | — |
+| [`TerrainData()`](terrain.md#column-TerrainData) | column kind | terrain | — |
+| [`TerrainEdit`](terrain.md#type-TerrainEdit) | struct | terrain | — |
+| [`TerrainInfo`](terrain.md#type-TerrainInfo) | struct | terrain | — |
+| [`TerrainLayerDesc`](terrain.md#type-TerrainLayerDesc) | desc struct | terrain | — |
+| [`TerrainSample`](terrain.md#type-TerrainSample) | struct | terrain | — |
+| [`TerrainSampleDesc`](terrain.md#type-TerrainSampleDesc) | desc struct | terrain | — |
 | [`TextAlign`](ui.md#type-TextAlign) | enum | ui | — |
 | [`TextDesc`](render.md#type-TextDesc) | desc struct | render | — |
 | [`TextMeasureDesc`](render.md#type-TextMeasureDesc) | desc struct | render | — |

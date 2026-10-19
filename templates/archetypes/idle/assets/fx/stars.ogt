@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# The night's stars: faint, slow, twinkling in and out across the sky.
+maxParticles 90
+shape box 22 14 0
+rate 9
+lifetime 6 10
+speed 0 0.03
+size 0.04 0.1
+sizeOverLife 0 0.6 0.5 1 1 0.6
+colorOverLife {
+  key 0 0.8 0.85 1 0
+  key 0.25 0.85 0.9 1 0.8
+  key 0.75 1 0.95 0.9 0.6
+  key 1 1 0.95 0.9 0
+}
+texture "sprites/spark.png"
+blend additive
+render sprite 0

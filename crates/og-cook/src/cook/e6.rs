@@ -26,6 +26,10 @@
 //! model "models/crate.glb" {    # models placed by code
 //!   position 2 0 1
 //! }
+//! terrain "terrain/island.ogt" {  # a terrain's surface (phase 2), standing at
+//!   position 0 0 0                #   its og.Terrain entity's position
+//!   step 2                        #   every 2nd sample (default 1)
+//! }
 //! bounds {                      # optional: bake only inside
 //!   min -15 -1 -15
 //!   max 15 4 15
@@ -131,7 +135,8 @@ fn f32_of(b: Option<&Block>, key: &str, default: f32) -> f32 {
 }
 
 /// The files a navmesh depends on (its scene and the models it and the
-/// scene name), with their hashes, for the cook stamp.
+/// scene name, its terrains and their heightmaps), with their hashes, for
+/// the cook stamp.
 pub(super) fn navmesh_dependencies(s: &Source) -> String {
     let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
@@ -149,6 +154,14 @@ pub(super) fn navmesh_dependencies(s: &Source) -> String {
     for m in doc.body.get_all("model") {
         if let Some(p) = m.values.first().and_then(|v| v.as_str()) {
             files.push(p.to_string());
+        }
+    }
+    for t in doc.body.get_all("terrain") {
+        if let Some(p) = t.values.first().and_then(|v| v.as_str()) {
+            files.push(p.to_string());
+            if let Ok(text) = std::fs::read_to_string(root.join(p)) {
+                files.extend(super::terrain::terrain_files(p, &root, &text));
+            }
         }
     }
     files.sort();
@@ -281,6 +294,57 @@ fn scene_triangles(
     Ok(())
 }
 
+/// A terrain's surface as triangles (every `step`th sample, each cell
+/// split along the renderer's diagonal), standing at `position`, only the
+/// cells reaching into `bounds` when given. Returns how many it added.
+fn terrain_triangles(
+    root: &Path,
+    rel: &str,
+    position: Vec3,
+    step: usize,
+    bounds: Option<(Vec3, Vec3)>,
+    out: &mut Vec<[Vec3; 3]>,
+) -> Result<usize, String> {
+    let text = std::fs::read_to_string(root.join(rel))
+        .map_err(|_| "does not exist under assets/".to_string())?;
+    let doc = super::terrain::parse(rel, root, &text)?;
+    let bytes = std::fs::read(root.join(&doc.heightmap))
+        .map_err(|_| format!("its heightmap '{}' does not exist", doc.heightmap))?;
+    let map = super::terrain::decode_heightmap(&doc.heightmap, &bytes)?;
+    let heights = super::terrain::heights(&doc, &map);
+    let (cols, rows) = (map.columns as usize, map.rows as usize);
+    let size = doc.size.unwrap_or([(cols - 1) as f32, (rows - 1) as f32]);
+    let cell = (size[0] / (cols - 1) as f32, size[1] / (rows - 1) as f32);
+    let at = |c: usize, r: usize| {
+        let (c, r) = (c.min(cols - 1), r.min(rows - 1));
+        Vec3::new(
+            position.x - size[0] * 0.5 + c as f32 * cell.0,
+            position.y + heights[r * cols + c],
+            position.z - size[1] * 0.5 + r as f32 * cell.1,
+        )
+    };
+    let before = out.len();
+    let mut r = 0;
+    while r + 1 < rows {
+        let mut c = 0;
+        while c + 1 < cols {
+            let (p00, p10) = (at(c, r), at(c + step, r));
+            let (p01, p11) = (at(c, r + step), at(c + step, r + step));
+            let inside = bounds.is_none_or(|(lo, hi)| {
+                p11.x >= lo.x && p00.x <= hi.x && p11.z >= lo.z && p00.z <= hi.z
+            });
+            if inside {
+                // Counter-clockwise seen from above: (c, r), (c, r+1), (c+1, r+1); (c, r), (c+1, r+1), (c+1, r).
+                out.push([p00, p01, p11]);
+                out.push([p00, p11, p10]);
+            }
+            c += step;
+        }
+        r += step;
+    }
+    Ok(out.len() - before)
+}
+
 fn entry_block(e: &Entry) -> Option<&Block> {
     e.block.as_ref()
 }
@@ -300,12 +364,13 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             "maxError",
             "box",
             "model",
+            "terrain",
             "bounds",
         ]
         .contains(&e.key.as_str())
         {
             return Err(CookError(format!(
-                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model or bounds",
+                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain or bounds",
                 e.line, e.key
             )));
         }
@@ -365,6 +430,25 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             vec3_of(Some(b), "max", Vec3::splat(10.0)),
         )
     });
+    for e in body.get_all("terrain") {
+        let p = e
+            .values
+            .first()
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| CookError(format!("line {}: terrain takes a path", e.line)))?;
+        let tb = e.block.as_ref();
+        let step = f32_of(tb, "step", 1.0).max(1.0) as usize;
+        let n = terrain_triangles(
+            &root,
+            p,
+            vec3_of(tb, "position", Vec3::ZERO),
+            step,
+            bounds,
+            &mut tris,
+        )
+        .map_err(|e| CookError(format!("terrain '{p}': {e}")))?;
+        notes.push(format!("terrain '{p}': {n} triangles"));
+    }
     let field = og_nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
     let mesh = og_nav::NavMesh::build(field.clone());
     let meta = format::NavMeshMeta {

@@ -58,16 +58,42 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.max_element()),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x.max(s.z)),
         SHAPE_CYLINDER => rp::SharedShape::cylinder(c.height * 0.5 * s.y, c.radius * s.x.max(s.z)),
-        SHAPE_CONVEX | SHAPE_TRIMESH => return Ok(None),
+        SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => return Ok(None),
         other => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh)"
+                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh, 6 height field)"
                 ),
             ));
         }
     }))
+}
+
+/// A height field's shape, scaled: parry's heights by row (z) and column
+/// (x), each cell split along the (-x, -z) to (+x, +z) diagonal (its zig-zag
+/// subdivision), the triangles og-render draws.
+pub(crate) fn from_heightfield(f: &crate::HeightfieldDesc, s: Vec3) -> Result<rp::SharedShape> {
+    use rapier3d::parry::shape::{HeightField, HeightFieldCellStatus};
+    use rapier3d::parry::utils::Array2;
+    let (rows, cols) = (f.rows as usize, f.columns as usize);
+    // Column-major: element (row, column) at row + column · rows.
+    let mut data = vec![0.0; rows * cols];
+    for r in 0..rows {
+        for c in 0..cols {
+            data[r + c * rows] = f.heights[r * cols + c];
+        }
+    }
+    let mut field = HeightField::new(
+        Array2::new(rows, cols, data),
+        rp::Vector::new(f.size.x * s.x, s.y, f.size.y * s.z),
+    );
+    for r in 0..rows - 1 {
+        for c in 0..cols - 1 {
+            field.set_cell_status(r, c, HeightFieldCellStatus::ZIGZAG_SUBDIVISION);
+        }
+    }
+    Ok(rp::SharedShape::new(field))
 }
 
 /// A shape built from a registered mesh, scaled.
@@ -96,6 +122,26 @@ pub(crate) const DIM: usize = 3;
 pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
     let q = crate::arc(Vec3::X, axis.normalize_or(Vec3::X));
     rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
+}
+
+/// A rotation as the profile's: here the quaternion itself, as it is (a
+/// capsule's frame from `arc`, already unit: renormalising it would move
+/// its last bits, and the E5 ragdolls with them).
+pub(crate) fn rot(q: Quat) -> rp::Rotation {
+    rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
+}
+
+/// A ragdoll bone's joint to its parent: a ball joint (contacts off) with
+/// `limit` of swing about x and z and half that of twist about y.
+pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
+    rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_SPHERICAL_AXES)
+        .local_frame1(frame1)
+        .local_frame2(rp::Pose::IDENTITY)
+        .contacts_enabled(false)
+        .limits(rp::JointAxis::AngX, [-limit, limit])
+        .limits(rp::JointAxis::AngY, [-limit * 0.5, limit * 0.5])
+        .limits(rp::JointAxis::AngZ, [-limit, limit])
+        .build()
 }
 
 /// The axes a ball joint locks.
@@ -145,6 +191,7 @@ mod ext;
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};
 
-#[path = "ragdoll3.rs"]
+#[allow(clippy::duplicate_mod)]
+#[path = "ragdoll.rs"]
 mod ragdoll;
 pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};

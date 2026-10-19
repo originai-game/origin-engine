@@ -1,0 +1,10 @@
+{
+  "scene": "lights-256",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.546, 0.547, 0.574, 0.578, 0.583, 0.618, 0.619],
+  "frame_ms": 0.546
+}

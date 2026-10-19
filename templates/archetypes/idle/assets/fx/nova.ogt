@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# The supernova: the orb bursts in every direction.
+maxParticles 240
+shape sphere 0.6
+spread 180
+burst 0 200
+duration 0.15
+lifetime 0.8 1.6
+speed 4 11
+size 0.15 0.4
+sizeOverLife 0 1 0.6 0.8 1 0
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.3 1 0.8 0.4 1
+  key 1 0.7 0.3 1 0
+}
+drag 1.4
+texture "sprites/spark.png"
+blend additive
+render sprite 22

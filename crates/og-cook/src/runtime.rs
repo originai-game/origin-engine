@@ -17,7 +17,7 @@ use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
 use og_render::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
-    TextureData, Vertex,
+    TextureData, TextureDesc, TextureFormat, TextureFormats, TextureSource, TextureUpload, Vertex,
 };
 use std::collections::BTreeMap;
 use std::fmt;
@@ -895,9 +895,16 @@ impl CookedModel {
     /// with the node's transform). `textures` are the decoded
     /// [`CookedModel::textures`], in order.
     pub fn add_to(&self, scene: &mut RenderScene, textures: &[TextureData]) -> ModelParts {
+        let sources: Vec<_> = textures.iter().cloned().map(TextureSource::Rgba).collect();
+        self.add_to_with(scene, &sources)
+    }
+
+    /// [`CookedModel::add_to`] with textures of either kind (transcoded to
+    /// the device's format: [`CookedTexture::to_texture_source`]).
+    pub fn add_to_with(&self, scene: &mut RenderScene, textures: &[TextureSource]) -> ModelParts {
         let handles: Vec<_> = textures
             .iter()
-            .map(|t| scene.add_texture(t.clone()))
+            .map(|t| scene.add_texture_source(t.clone()))
             .collect();
         let tex = |i: Option<usize>| i.and_then(|i| handles.get(i).copied());
         let materials: Vec<MaterialHandle> = self
@@ -985,12 +992,16 @@ fn dequantize(p: &PrimitiveRow, raw: &[u8]) -> (Vec<Vertex>, Vec<[f32; 4]>) {
             }
             at += 4;
         }
+        // The cook's MikkTSpace tangent, or none (the renderer generates one).
+        let mut tangent = [0.0f32; 4];
         if p.attributes & attr::TANGENT != 0 {
             let t = oct_decode(snorm(i16_at(v, at)), snorm(i16_at(v, at + 2)));
             let w = if i16_at(v, at + 4) < 0 { -1.0 } else { 1.0 };
-            tangents.push([t.x, t.y, t.z, w]);
+            tangent = [t.x, t.y, t.z, w];
+            tangents.push(tangent);
         }
         verts.push(Vertex {
+            tangent,
             position,
             normal,
             uv,
@@ -1047,6 +1058,113 @@ impl CookedTexture {
             color_space,
             mips: Mips::Generate,
         })
+    }
+
+    /// The encoding this texture should reach a device that takes `formats`
+    /// in: its kind's (normal maps `normal`, or `color` for a map cooked
+    /// without y in alpha, linear data `data`, colour `color`), or RGBA8 for pixel art, distance fields, lossless cooks, a
+    /// size not in whole 4x4 blocks, or no renderer yet (`None`).
+    pub fn target_format(&self, formats: Option<&TextureFormats>) -> TextureFormat {
+        let Some(f) = formats else {
+            return TextureFormat::Rgba8;
+        };
+        let lossless = self.meta.codec == codec::RGBA8;
+        let blocks = self.meta.width.is_multiple_of(4) && self.meta.height.is_multiple_of(4);
+        if lossless || !blocks {
+            return TextureFormat::Rgba8;
+        }
+        match self.meta.kind {
+            // A two-channel format takes y from alpha: cooks before phase 2
+            // left alpha opaque there, so their maps go as colour.
+            crate::format::kind::NORMAL if f.normal.two_channel() && self.meta.has_alpha == 0 => {
+                f.color
+            }
+            crate::format::kind::NORMAL => f.normal,
+            crate::format::kind::LINEAR => f.data,
+            crate::format::kind::COLOR => f.color,
+            _ => TextureFormat::Rgba8,
+        }
+    }
+
+    /// The texture for og-render on a device that takes `formats`
+    /// (`RenderInfo::texture_formats`): every cooked mip level transcoded
+    /// to [`CookedTexture::target_format`] (BC7 and BC5 on desktop GPUs,
+    /// ASTC 4x4 on Apple and most Android, ETC2 and EAC elsewhere), or
+    /// RGBA8 level 0 as [`CookedTexture::to_texture_data`] gives it when the
+    /// target is RGBA8. Native transcoding needs the `transcode` feature.
+    pub fn to_texture_source(
+        &self,
+        formats: Option<&TextureFormats>,
+    ) -> Result<TextureSource, LoadError> {
+        let target = self.target_format(formats);
+        if target == TextureFormat::Rgba8 {
+            return self.to_texture_data().map(TextureSource::Rgba);
+        }
+        let bad = |reason: String| LoadError::Invalid {
+            path: self.id.clone(),
+            reason,
+        };
+        let levels = self.transcode_levels(target).map_err(bad)?;
+        let color_space = if self.meta.color_space == 0 && !target.two_channel() {
+            ColorSpace::Srgb
+        } else {
+            ColorSpace::Linear
+        };
+        let upload = TextureUpload {
+            desc: TextureDesc {
+                width: self.meta.width,
+                height: self.meta.height,
+                format: target,
+                mip_levels: levels.len() as u32,
+                color_space,
+            },
+            levels,
+        };
+        upload.desc.validate(&upload.levels).map_err(bad)?;
+        Ok(TextureSource::Encoded(upload))
+    }
+
+    /// Every mip level transcoded to `format` (a block format).
+    #[cfg(feature = "transcode")]
+    fn transcode_levels(&self, format: TextureFormat) -> Result<Vec<Vec<u8>>, String> {
+        use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat as T};
+        let to = match format {
+            TextureFormat::Bc7 => T::BC7_RGBA,
+            TextureFormat::Bc5 => T::BC5_RG,
+            TextureFormat::Astc4x4 => T::ASTC_4x4_RGBA,
+            TextureFormat::Etc2Rgba8 => T::ETC2_RGBA,
+            TextureFormat::EacRg11 => T::ETC2_EAC_RG11,
+            TextureFormat::Rgba8 => T::RGBA32,
+        };
+        let basis = ktx2::to_basis(&self.ktx2)?;
+        let mut t = Transcoder::new();
+        t.prepare_transcoding(&basis)
+            .map_err(|_| "basisu refused the texture".to_string())?;
+        let count = t.image_level_count(&basis, 0);
+        let mut levels = Vec::with_capacity(count as usize);
+        for level_index in 0..count {
+            let data = t
+                .transcode_image_level(
+                    &basis,
+                    to,
+                    TranscodeParameters {
+                        image_index: 0,
+                        level_index,
+                        ..Default::default()
+                    },
+                )
+                .map_err(|e| format!("basisu transcode of level {level_index} failed: {e:?}"))?;
+            levels.push(data);
+        }
+        t.end_transcoding();
+        Ok(levels)
+    }
+
+    #[cfg(not(feature = "transcode"))]
+    fn transcode_levels(&self, format: TextureFormat) -> Result<Vec<Vec<u8>>, String> {
+        Err(format!(
+            "transcoding to {format:?} needs og-cook's `transcode` feature (native) or the web host's transcoder"
+        ))
     }
 
     #[cfg(feature = "transcode")]
@@ -1291,6 +1409,19 @@ impl CookedAnimation {
     /// The clip called `name`.
     pub fn clip(&self, name: &str) -> Option<&og_anim::ClipAsset> {
         self.clips.iter().find(|c| c.name == name)
+    }
+
+    /// Decodes an animation blob from its bytes alone, without a manifest
+    /// (the cook reads back the blobs it retargets from and onto).
+    pub fn from_bytes(id: &str, bytes: &[u8]) -> Result<CookedAnimation, LoadError> {
+        let aligned = og_blob::AlignedBytes::from_slice(bytes);
+        let expect = Expect {
+            type_hash: format::Animation::type_hash(),
+            schema_version: format::Animation::schema_version(),
+            stamp: None,
+        };
+        let blob = Blob::open(aligned.as_slice(), id, &expect)?;
+        CookedAnimation::decode(asset_id(id), &blob)
     }
 
     fn decode(id: &str, blob: &Blob) -> Result<CookedAnimation, LoadError> {
@@ -1657,6 +1788,18 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
     }
 
+    /// The humanoid map of a rig blob (`og.Rig`).
+    pub fn rig(&self, id: &str, bytes: &[u8]) -> Result<og_anim::RigAsset, LoadError> {
+        let blob = self.blob::<format::Rig>(id, bytes)?;
+        let meta = one::<format::RigMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
+        og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
+    }
+
     /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
     /// the cook built (link them with `og_nav::NavMesh::from_tiles`).
     pub fn navmesh(
@@ -1757,5 +1900,148 @@ impl Bundle {
             .and_then(|t| std::str::from_utf8(t).ok())
             .map(str::to_string)
             .ok_or_else(|| invalid(&blob, "the string table is cut short or not UTF-8"))
+    }
+}
+
+// ── phase 2: terrain ─────────────────────────────────────────────────────
+
+/// One layer of a cooked terrain: its textures (asset ids, loaded by the
+/// host) and the rest of og-render's layer.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTerrainLayer {
+    pub albedo: Option<String>,
+    pub normal: Option<String>,
+    /// The layer without its textures (`albedo` and `normal` are `None`).
+    pub layer: og_render::TerrainLayer,
+}
+
+/// A cooked terrain (`og.Terrain`): the heights in metres (decoded from its
+/// tiles) and the control map as og-render takes them, its layers and its
+/// settings.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTerrain {
+    pub data: og_render::TerrainData,
+    pub layers: Vec<CookedTerrainLayer>,
+    pub height_blend: f32,
+    pub lod: og_render::TerrainLod,
+    pub cast_shadows: bool,
+    /// Whether the game gets a height-field collider for it.
+    pub collision: bool,
+    /// The tiles it was cooked into (`tiles_x`, `tiles_z`).
+    pub tiles: (u32, u32),
+}
+
+impl Bundle {
+    /// Decodes a terrain blob: every tile inflated and dequantised into
+    /// one height field, the control map inflated.
+    pub fn terrain(&self, id: &str, bytes: &[u8]) -> Result<CookedTerrain, LoadError> {
+        let blob = self.blob::<format::Terrain>(id, bytes)?;
+        let m = one::<format::TerrainMeta>(&blob)?;
+        let tiles = table::<format::TerrainTileRow>(&blob, "tiles")?;
+        let layers = table::<format::TerrainLayerRow>(&blob, "layers")?;
+        let strings = blob.raw("strings")?;
+        let packed = blob.raw("heights")?;
+        let (columns, rows) = (m.columns, m.rows);
+        if columns < 2 || rows < 2 || tiles.len() != (m.tiles_x * m.tiles_z) as usize {
+            return Err(invalid(&blob, "the tiles do not cover the height field"));
+        }
+        let mut heights = vec![0.0f32; (columns * rows) as usize];
+        let mut covered = 0u64;
+        for t in &tiles {
+            if t.column + t.columns > columns || t.row + t.rows > rows {
+                return Err(invalid(&blob, "a tile lies outside the height field"));
+            }
+            let z = packed
+                .get(t.offset as usize..(t.offset + t.bytes) as usize)
+                .ok_or_else(|| invalid(&blob, "a tile's bytes are out of range"))?;
+            let n = (t.columns * t.rows) as usize;
+            let q = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(z, n * 2)
+                .map_err(|_| invalid(&blob, "a tile does not inflate"))?;
+            if q.len() != n * 2 {
+                return Err(invalid(&blob, "a tile holds the wrong number of heights"));
+            }
+            let span = t.max - t.min;
+            for (k, v) in q.as_chunks::<2>().0.iter().enumerate() {
+                let (c, r) = (k as u32 % t.columns, k as u32 / t.columns);
+                let at = ((t.row + r) * columns + t.column + c) as usize;
+                heights[at] = t.min + u16::from_le_bytes(*v) as f32 / 65535.0 * span;
+            }
+            covered += n as u64;
+        }
+        if covered != (columns as u64) * (rows as u64) {
+            return Err(invalid(&blob, "the tiles do not cover the height field"));
+        }
+        let control = if m.control_width > 0 {
+            let n = (m.control_width * m.control_height * 4) as usize;
+            let rgba =
+                miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(blob.raw("control")?, n)
+                    .map_err(|_| invalid(&blob, "the control map does not inflate"))?;
+            if rgba.len() != n {
+                return Err(invalid(&blob, "the control map is the wrong size"));
+            }
+            Some(og_render::TerrainControl {
+                width: m.control_width,
+                height: m.control_height,
+                rgba: rgba.into(),
+            })
+        } else {
+            None
+        };
+        let text = |at: u32, len: u32| -> Result<Option<String>, LoadError> {
+            if at == format::NONE {
+                return Ok(None);
+            }
+            strings
+                .get(at as usize..(at + len) as usize)
+                .and_then(|b| std::str::from_utf8(b).ok())
+                .map(|s| Some(s.to_string()))
+                .ok_or_else(|| invalid(&blob, "a layer's texture name is out of range"))
+        };
+        let mut out = Vec::with_capacity(layers.len());
+        for l in &layers {
+            out.push(CookedTerrainLayer {
+                albedo: text(l.albedo_at, l.albedo_len)?,
+                normal: text(l.normal_at, l.normal_len)?,
+                layer: og_render::TerrainLayer {
+                    albedo: None,
+                    normal: None,
+                    color: glam::Vec3::new(l.r, l.g, l.b),
+                    roughness: l.roughness,
+                    tile: l.tile,
+                    triplanar: l.triplanar != 0,
+                    normal_strength: l.normal_strength,
+                    slope: [l.slope_min, l.slope_max],
+                    slope_fade: l.slope_fade,
+                    altitude: [l.altitude_min, l.altitude_max],
+                    altitude_fade: l.altitude_fade,
+                },
+            });
+        }
+        let data = og_render::TerrainData {
+            size: glam::Vec2::new(m.size_x, m.size_z),
+            columns,
+            rows,
+            heights: heights.into(),
+            control,
+        };
+        data.check().map_err(|e| invalid(&blob, &e))?;
+        Ok(CookedTerrain {
+            data,
+            layers: out,
+            height_blend: m.height_blend,
+            lod: og_render::TerrainLod {
+                spacing: m.lod_spacing,
+                ring: m.lod_ring,
+            },
+            cast_shadows: m.cast_shadows != 0,
+            collision: m.collision != 0,
+            tiles: (m.tiles_x, m.tiles_z),
+        })
+    }
+
+    /// Reads and decodes a terrain (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_terrain(&self, id: &str) -> Result<CookedTerrain, LoadError> {
+        self.terrain(id, &self.read(id)?)
     }
 }

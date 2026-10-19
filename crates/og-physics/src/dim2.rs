@@ -86,7 +86,7 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.x.max(s.y)),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x),
         SHAPE_CONVEX => return Ok(None),
-        SHAPE_CYLINDER | SHAPE_TRIMESH => {
+        SHAPE_CYLINDER | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
@@ -107,6 +107,14 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
 }
 
 /// The convex polygon of a registered mesh's xy, scaled.
+/// Height fields are 3D only (refused by [`primitive`] before this).
+pub(crate) fn from_heightfield(_f: &crate::HeightfieldDesc, _s: Vec3) -> Result<rp::SharedShape> {
+    Err(Error::new(
+        ErrorKind::Invalid,
+        "og.Collider.shape 6 (a height field) is 3D only",
+    ))
+}
+
 pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
     let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
     rp::SharedShape::convex_hull(&points).ok_or_else(|| {
@@ -141,18 +149,25 @@ pub(crate) fn hinge_angle(f1: &rp::Pose, f2: &rp::Pose) -> f32 {
     og_core::math::atan2(r.im, r.re)
 }
 
-/// Ragdolls are 3D only: the 2D profile keeps nothing for them.
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub(crate) struct RagdollState;
+/// A ragdoll bone's joint to its parent: a hinge about z (contacts off)
+/// bending `limit` either way from the pose it was made in.
+pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
+    rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_REVOLUTE_AXES)
+        .local_frame1(frame1)
+        .local_frame2(rp::Pose::IDENTITY)
+        .contacts_enabled(false)
+        .limits(rp::JointAxis::AngX, [-limit, limit])
+        .build()
+}
 
 pub(crate) fn ragdolls(
-    _scene: &crate::gather::Scene,
-    _dt: f32,
-    _sim: &mut Sim,
-    _shared: &Shared,
-    _out: &mut crate::StepOut,
+    scene: &crate::gather::Scene,
+    dt: f32,
+    sim: &mut Sim,
+    shared: &Shared,
+    out: &mut crate::StepOut,
 ) -> Result<()> {
-    Ok(())
+    ragdoll::ragdolls(scene, dt, sim, &shared.rigs, &shared.ragdoll_targets, out)
 }
 
 #[allow(clippy::duplicate_mod)]
@@ -171,3 +186,8 @@ pub(crate) use platformer::platformers;
 #[path = "vehicle2.rs"]
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};
+
+#[allow(clippy::duplicate_mod)]
+#[path = "ragdoll.rs"]
+mod ragdoll;
+pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};

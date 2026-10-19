@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# Latin-1, CJK punctuation and every character of assets/strings/zh-CN.ogt (tools/make-assets.py).
+font {
+  charset latin cjk-punct
+  chars "、。一三不与个中串乐了任会体你佳偏停偿八再冲准减出击分到动向听咔哒回声备失好始字完对少就已应延开录很律得态总意成或打拍效文新方早晚暂曲最条来果标校次歌每毫测溜点率的看确种秒符第简纪继续置美脉节虹补言设语误走轨返连迟道都重量错键霓音题高！（），；"
+  em_px 32
+  px_range 4
+}

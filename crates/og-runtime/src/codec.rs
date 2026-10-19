@@ -55,6 +55,8 @@ impl Kind {
             "FlipbookSheet" | "TilemapAsset" | "Tween" => Kind::Asset,
             // The E6 handles: navigation (grids, navmeshes, flow fields) and behaviours.
             "Navigation" | "Behaviour" => Kind::Asset,
+            // Phase 2: terrains.
+            "TerrainData" => Kind::Asset,
             "String" => Kind::Str,
             _ => return None,
         })

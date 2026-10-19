@@ -1,13 +1,14 @@
-//! Ragdolls (the 3D profile only): a capsule body per bone of the rig the
-//! host registered for the entity (`PhysicsSystem::set_ragdoll_rig`), ball
-//! joints with limits between a bone and its parent, following the
-//! animation's bone poses (`set_ragdoll_targets`, each tick) kinematically
-//! while `weight` is 0 and simulated while it is above 0. `blend` moves
-//! towards `weight` over `blendTime`; the host draws the animation's pose
-//! blended towards the bodies' by it.
+//! Ragdolls, in both profiles: a capsule body per bone of the rig the host
+//! registered for the entity (`PhysicsSystem::set_ragdoll_rig`), joints
+//! with limits between a bone and its parent (ball joints with a cone in
+//! 3D; in 2D hinges about z, the bones in the xy plane at their animated
+//! z), following the animation's bone poses (`set_ragdoll_targets`, each
+//! tick) kinematically while `weight` is 0 and simulated while it is above
+//! 0. `blend` moves towards `weight` over `blendTime`; the host draws the
+//! animation's pose blended towards the bodies' by it.
 
 use super::sim::Sim;
-use super::{pose, rp, unv, v};
+use super::{pose, ragdoll_joint, rot, rp, unpose, v};
 use crate::gather::Scene;
 use crate::schema_ext::*;
 use crate::{RagdollRig, StepOut};
@@ -55,11 +56,7 @@ fn capsule(axis: Vec3, length: f32, thickness: f32) -> (rp::Pose, f32, f32) {
     let radius = (len * thickness).clamp(0.01, len * 0.5);
     let half = (len * 0.5 - radius).max(0.001);
     let dir = axis.normalize_or(Vec3::Y);
-    let r = crate::arc(Vec3::Y, dir);
-    let p = rp::Pose::from_parts(
-        v(dir * (len * 0.5)),
-        rp::Rotation::from_xyzw(r.x, r.y, r.z, r.w),
-    );
+    let p = rp::Pose::from_parts(v(dir * (len * 0.5)), rot(crate::arc(Vec3::Y, dir)));
     (p, half, radius)
 }
 
@@ -121,14 +118,7 @@ fn build(
         // The joint sits at the child's origin, framed as the bones are now.
         let anchor1 = p_pose.inverse_transform_point(v(cp));
         let rel = (p_pose.inverse() * c_pose).rotation;
-        let joint = rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_SPHERICAL_AXES)
-            .local_frame1(rp::Pose::from_parts(anchor1, rel))
-            .local_frame2(rp::Pose::IDENTITY)
-            .contacts_enabled(false)
-            .limits(rp::JointAxis::AngX, [-limit, limit])
-            .limits(rp::JointAxis::AngY, [-limit * 0.5, limit * 0.5])
-            .limits(rp::JointAxis::AngZ, [-limit, limit])
-            .build();
+        let joint = ragdoll_joint(rp::Pose::from_parts(anchor1, rel), limit);
         joints.push(
             w.impulse_joints
                 .insert(bones[parent], bones[i], joint, true),
@@ -245,18 +235,16 @@ pub(crate) fn ragdolls(
     Ok(())
 }
 
-/// The bones' poses after the step, in rig order.
+/// The bones' poses after the step, in rig order (in 2D at the z their
+/// targets last had).
 pub(crate) fn pose_of(sim: &Sim, entity: u64) -> Option<Vec<(Vec3, Quat)>> {
     let s = sim.ragdolls.get(&entity)?;
     Some(
         s.bones
             .iter()
-            .filter_map(|&h| sim.world.bodies.get(h))
-            .map(|rb| {
-                let p = rb.position();
-                let r = p.rotation;
-                (unv(p.translation), Quat::from_xyzw(r.x, r.y, r.z, r.w))
-            })
+            .zip(&s.last)
+            .filter_map(|(&h, last)| Some((sim.world.bodies.get(h)?, last.0)))
+            .map(|(rb, at)| unpose(rb.position(), at))
             .collect(),
     )
 }

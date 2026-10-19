@@ -18,8 +18,8 @@ given and taken, pickups, a door, a death, a win and a loss, every UI press.
   a `Voices` system that plays each requested one: systems set bits of a
   game resource (`Sounds.sfx |= Sound.Jump`), Voices sets `playing` on the
   matching voice (a voice already playing is stopped this tick and
-  restarted the next). `templates/archetypes/runner`, `match3` and
-  `topdown` all do this; copy their `Voices`.
+  restarted the next). Every archetype in `templates/archetypes` does
+  this; copy a `Voices`.
 - Vary repeated sounds: `pitch` 0.92–1.08 from the world's `og.Rng` for
   footsteps, hits and coins, so a stream of them does not machine-gun.
 - A hit's sound starts on the hit's tick, with its hit stop and flash
@@ -76,6 +76,12 @@ at 1.0 is a mix bug, not loudness.
   `nextBeat` are world times, so `startAt: music.nextBar` starts a stinger
   or the next section on the bar line, sample-accurately, and `og.MusicBeat`
   events drive beat-synced visuals.
+- Bar-length stems started bar by bar: on the last beat of each bar
+  `og.MusicBeat` brings, start the next bar's stems at that event's `time`
+  plus a beat. og.audio runs on the world's ticks, which keep going at
+  time scale 0, so a pause stops the stems and a resume starts them again
+  on a bar line. `templates/archetypes/rhythm` (its `Band` system, and
+  `tests/band.og.ts`, which asserts every `startAt`) does this.
 - A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
   `playing: false` with the same `fade`.
 

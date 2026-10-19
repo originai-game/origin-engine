@@ -30,7 +30,8 @@ pub struct Pick {
 /// building the frame from the world as of the current tick. Rendering never
 /// feeds back into the world, so `capture` takes it shared.
 pub trait Capture {
-    /// The backend: `webgpu`, `webgl2`, `vulkan` or `metal` (IDL `RenderTier`).
+    /// The backend: `webgpu`, `webgl2`, `vulkan`, `vulkan-cpu` (a software
+    /// rasterizer) or `metal` (IDL `RenderTier`).
     fn tier(&self) -> &str;
     /// The render target's size in pixels.
     fn target_size(&self) -> (u32, u32);

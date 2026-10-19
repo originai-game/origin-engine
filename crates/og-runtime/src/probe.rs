@@ -281,14 +281,19 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.ui = Some(a.mounted.ui.clone());
         st.anim = Some(a.anim.clone());
         st.feel = Some(a.feel.clone());
-        st.physics_meshes.clone()
+        (st.physics_meshes.clone(), st.physics_heightfields.clone())
     };
+    let (meshes, heightfields) = meshes;
     // Animation assets too: the new og.anim gets every skeleton, clip and graph.
     eng.state.borrow().anim_assets.replay(&a.anim);
     eng.state.borrow().feel_assets.replay(&a.feel);
     // Meshes are assets: the new physics gets every one the old one had.
     for (handle, mesh) in meshes {
         let _ = a.mounted.physics.set_mesh(handle, mesh);
+    }
+    // And terrains' height fields.
+    for (handle, field) in heightfields {
+        let _ = a.mounted.physics.set_heightfield(handle, field);
     }
     // So are ragdoll rigs.
     for (&e, kept) in &eng.render.borrow().atmo.rigs {
@@ -351,16 +356,8 @@ pub(crate) fn attach(eng: &Engine, backend: Option<Box<dyn super::RenderBackend>
     if let (Some(tier), Ok(mut probe)) = (tier, eng.probe.try_borrow_mut()) {
         probe.set_capture(Box::new(RuntimeCapture {
             render: eng.render.clone(),
-            tier: ide_tier(&tier),
+            tier,
         }));
-    }
-}
-
-/// The IDL `RenderTier` of a backend tier name (`vulkan-cpu` is `vulkan`).
-fn ide_tier(tier: &str) -> String {
-    match tier {
-        "vulkan-cpu" => "vulkan".into(),
-        t => t.into(),
     }
 }
 

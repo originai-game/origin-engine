@@ -18,6 +18,7 @@ mod font;
 mod model;
 mod scene;
 pub mod sfx;
+mod terrain;
 mod texture;
 pub mod tilemap;
 
@@ -74,7 +75,7 @@ impl Default for MeshOptions {
 impl MeshOptions {
     fn describe(&self) -> String {
         format!(
-            "lods {} ratio {} error {} overdraw {} tangents {} quantize 16/oct16/uv16/rgba8 codec meshopt-v1",
+            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1",
             self.lod_levels,
             self.lod_ratio,
             self.lod_max_error,
@@ -116,7 +117,7 @@ impl Default for TextureOptions {
 impl TextureOptions {
     fn describe(&self) -> String {
         format!(
-            "etc1s {} uastc {} rdo {} zstd {} mips {}",
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha",
             self.etc1s_quality,
             self.uastc_level,
             self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),
@@ -397,6 +398,8 @@ enum Kind {
     Behaviour,
     NavMesh,
     Strings,
+    Rig,
+    Terrain,
 }
 
 impl Kind {
@@ -417,6 +420,8 @@ impl Kind {
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
+            Kind::Rig => "rig",
+            Kind::Terrain => "terrain",
         }
     }
 }
@@ -448,6 +453,8 @@ enum Work<'a> {
     Behaviour(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
+    Rig(&'a Source),
+    Terrain(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -527,36 +534,16 @@ fn texture_kind(s: &Source) -> Result<u32, String> {
 }
 
 fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
-    let mut a = anim::AnimSettings::default();
-    if let Some(b) = settings_block(s, "animation") {
-        for e in &b.entries {
-            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
-            match e.key.as_str() {
-                "rate" => {
-                    let r = e.f32(0).map_err(err)?;
-                    if !(1.0..=120.0).contains(&r) {
-                        return Err(format!(
-                            "line {}: animation rate must be 1..=120 Hz",
-                            e.line
-                        ));
-                    }
-                    a.rate = Some(r);
-                }
-                "event" => a.events.push((
-                    e.string(0).map_err(err)?.to_string(),
-                    e.string(1).map_err(err)?.to_string(),
-                    e.f32(2).map_err(err)?,
-                )),
-                k => {
-                    return Err(format!(
-                        "line {}: unknown animation setting '{k}' (rate, event)",
-                        e.line
-                    ));
-                }
-            }
-        }
+    anim::AnimSettings::parse(settings_block(s, "animation"))
+}
+
+/// `assets/`, from a source's path and its path under it.
+fn assets_root(s: &Source) -> PathBuf {
+    let mut root = s.path.clone();
+    for _ in s.rel.split('/') {
+        root.pop();
     }
-    Ok(a)
+    root
 }
 
 fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
@@ -650,12 +637,14 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
+                    Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
+                    Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, sfx, strings or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -720,8 +709,19 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         }
         s.hash = h.finish();
     }
+    // A terrain's heightmap and control map are part of the terrain.
+    for s in &sources {
+        if s.kind == Kind::Terrain {
+            consumed.extend(terrain::terrain_files(
+                &s.rel,
+                &assets_dir,
+                &String::from_utf8_lossy(&s.bytes),
+            ));
+        }
+    }
     // Files a .gltf references are part of that model, not assets of their own.
     sources.retain(|s| !consumed.contains(&s.rel));
+    ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
     let schemas: BTreeMap<String, Schema> = options
         .schemas
@@ -789,11 +789,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 if anim::wanted(g) {
                     match anim_settings(s) {
                         Ok(a) => {
+                            let deps = anim::dependencies(&assets_root(s), &a);
                             let st = stamp(&[
                                 b"animation",
                                 mesh_desc.as_bytes(),
                                 a.describe().as_bytes(),
                                 &hash,
+                                deps.as_bytes(),
                             ]);
                             outs.insert(
                                 1,
@@ -906,6 +908,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Strings => {
                 let st = stamp(&[b"strings", &hash]);
                 outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
+            }
+            Kind::Rig => {
+                let st = stamp(&[b"rig", &hash]);
+                outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
+            }
+            Kind::Terrain => {
+                let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
+                let st = stamp(&[b"terrain", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
@@ -1146,7 +1157,7 @@ fn run(
         }
         Work::Animation(s, a) => {
             let g = s.gltf.as_ref().expect("loaded");
-            anim::cook(g, &s.bytes, &options.mesh, a, p.stamp)
+            anim::cook(g, &s.bytes, &options.mesh, a, p.stamp, &assets_root(s))
         }
         Work::GltfTexture(s, image, k) => {
             let g = s.gltf.as_ref().expect("loaded");
@@ -1306,7 +1317,9 @@ fn run(
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
+        Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
+        Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }
