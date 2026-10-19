@@ -51,3 +51,10 @@ near the edge keep their full size where it asserted they had shrunk
 | Broken | Edit | Failed |
 |---|---|---|
 | the proxy's group | `og-cook/src/cook/mod.rs` `output_group`: only `#anim` kept out of its asset's group (a `#proxy` packed with what it stands in for) | `groups_are_packed_listed_and_stood_in_for`: `models/house-a.glb#proxy` left `Some("village")`, right `None` |
+
+## Streamed resources in place: textures and sounds
+
+| Broken | Edit | Failed |
+|---|---|---|
+| a replaced texture | `og-render/src/lib.rs` `sync`: materials rebuilt only when their own revision changed, and the sprite and trail groups of a replaced texture kept | `a_replaced_texture_reaches_the_sprites_that_draw_it` ("the replacement is drawn": left `[255, 0, 0]`, right `[0, 0, 255]`) and `a_replaced_texture_reaches_the_materials_that_sample_it` (still red) |
+| a silent stand-in's handoff | `og-audio/src/sound.rs` `Reader::frame`: the stand-in's cell never read (`cell.get().filter(\|_\| false)`) | `a_silent_stand_in_becomes_its_sound_in_the_voice_already_playing`: "the playing voice continues with the samples" (0.0) |

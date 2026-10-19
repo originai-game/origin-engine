@@ -9,7 +9,7 @@
 
 use crate::qoa;
 use og_core::{Error, ErrorKind, Handle, Pool, Result};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
 
 /// Samples per channel in a full QOA frame.
 pub const QOA_FRAME_LEN: u64 = 5120;
@@ -24,6 +24,11 @@ enum Storage {
         qoa: Vec<u8>,
         frames: Vec<(usize, usize)>,
     },
+    /// No samples: a streamed asset's stand-in until its group loads (the
+    /// same rate and length, so the tick side times it the same). The cell
+    /// receives the real sound when it arrives, and voices already playing
+    /// the stand-in switch to it at the frame they are on.
+    Silent(Arc<OnceLock<Arc<SoundData>>>),
 }
 
 /// A sound in the bank.
@@ -184,6 +189,102 @@ impl SoundBank {
     /// (`og_cook::runtime::CookedSound { id, qoa, .. }` →
     /// `insert_qoa(&cooked.id, &cooked.qoa)`). Returns its handle (never 0).
     pub fn insert_qoa(&self, id: &str, bytes: &[u8]) -> Result<u64> {
+        let data = self.decode_qoa(id, bytes)?;
+        Ok(self.put(data))
+    }
+
+    /// A silent sound of a given shape (a streamed sound before its group
+    /// is resident): voices play it as silence and the tick side reads the
+    /// same rate and length the real one has.
+    pub fn insert_silent(
+        &self,
+        id: &str,
+        sample_rate: u32,
+        channels: usize,
+        frames: u64,
+    ) -> Result<u64> {
+        if channels == 0 || sample_rate == 0 {
+            return Err(invalid(id, "needs 1+ channels and a rate"));
+        }
+        Ok(self.put(SoundData {
+            id: id.to_string(),
+            sample_rate,
+            channels,
+            frames,
+            storage: Storage::Silent(Arc::default()),
+        }))
+    }
+
+    /// Puts a QOA file's samples behind an existing handle (its group
+    /// loaded). The file must have the handle's rate, channels and length,
+    /// so nothing the tick side reads changes; voices playing the silent
+    /// stand-in continue with the real samples from where they are. False
+    /// for a handle not in the bank.
+    pub fn replace_qoa(&self, handle: u64, id: &str, bytes: &[u8]) -> Result<bool> {
+        let Some(old) = self.get(handle) else {
+            return Ok(false);
+        };
+        let data = self.decode_qoa(id, bytes)?;
+        if (data.sample_rate, data.channels, data.frames)
+            != (old.sample_rate, old.channels, old.frames)
+        {
+            return Err(invalid(
+                id,
+                format!(
+                    "{} Hz x{} for {} frames replaces {} Hz x{} for {}",
+                    data.sample_rate,
+                    data.channels,
+                    data.frames,
+                    old.sample_rate,
+                    old.channels,
+                    old.frames
+                ),
+            ));
+        }
+        let data = Arc::new(data);
+        if let Storage::Silent(cell) = &old.storage {
+            let _ = cell.set(data.clone());
+        }
+        Ok(self.swap(handle, data))
+    }
+
+    /// Makes a sound silent again, keeping its handle and shape (its group
+    /// unloaded); voices already playing it finish with its samples. False
+    /// for a handle not in the bank.
+    pub fn silence(&self, handle: u64) -> bool {
+        let Some(old) = self.get(handle) else {
+            return false;
+        };
+        self.swap(
+            handle,
+            Arc::new(SoundData {
+                id: old.id.clone(),
+                sample_rate: old.sample_rate,
+                channels: old.channels,
+                frames: old.frames,
+                storage: Storage::Silent(Arc::default()),
+            }),
+        )
+    }
+
+    fn swap(&self, handle: u64, data: Arc<SoundData>) -> bool {
+        let mut bank = self.inner.write().expect("sound bank lock");
+        match bank.pool.get_mut(Handle::from_bits(handle)) {
+            Ok(slot) => {
+                *slot = data;
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
+    /// Whether a handle's sound has samples (not a silent stand-in).
+    pub fn audible(&self, handle: u64) -> bool {
+        self.get(handle)
+            .is_some_and(|s| !matches!(s.storage, Storage::Silent(_)))
+    }
+
+    fn decode_qoa(&self, id: &str, bytes: &[u8]) -> Result<SoundData> {
         let (channels, sample_rate, frames, index) =
             index_qoa(bytes).map_err(|e| invalid(id, e))?;
         if sample_rate == 0 {
@@ -199,13 +300,13 @@ impl SoundBank {
                 frames: index,
             }
         };
-        Ok(self.put(SoundData {
+        Ok(SoundData {
             id: id.to_string(),
             sample_rate,
             channels,
             frames,
             storage,
-        }))
+        })
     }
 
     /// Adds interleaved 16-bit PCM, always resident (generated tones, tests).
@@ -286,6 +387,14 @@ impl Reader {
         }
         let (buf, at): (&[i16], usize) = match &self.data.storage {
             Storage::Resident(s) => (s, i as usize * ch),
+            Storage::Silent(cell) => match cell.get() {
+                Some(real) => {
+                    self.data = real.clone();
+                    self.slots = [(EMPTY, Vec::new()), (EMPTY, Vec::new())];
+                    return self.frame(i);
+                }
+                None => return (0.0, 0.0),
+            },
             Storage::Streamed { .. } => {
                 let k = (i / QOA_FRAME_LEN) as usize;
                 let off = (i % QOA_FRAME_LEN) as usize * ch;
