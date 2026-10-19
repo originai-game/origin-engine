@@ -76,7 +76,7 @@ packages/engine/types packages/engine/schema packages/engine/src/generated \
 crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
 }
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/ui-kit $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/ui-kit templates/archetypes/third-person $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -418,11 +418,13 @@ step_bun_quick() {
 }
 
 # The webgpu and webgl2 tiers of templates/fx-showcase, of og-tests' own
-# gfx scenes and og-ui's (crates/og-tests-web) and of og-ui's kit frames
-# (templates/ui-kit) in headless Chrome (docs/ci.md §Browser reference
-# tiers; `make web-reference`). In no lane: CI has no Chrome for Testing.
+# gfx scenes and og-ui's (crates/og-tests-web), of og-ui's kit frames
+# (templates/ui-kit) and of Ember Vale's frames
+# (templates/archetypes/third-person) in headless Chrome (docs/ci.md
+# §Browser reference tiers; `make web-reference`). In no lane: CI has no
+# Chrome for Testing.
 step_web_reference() {
-  local a b c d e f g h
+  local a b c d e f g h i j
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
@@ -436,7 +438,14 @@ step_web_reference() {
   # og-ui's kit frames, each reference playtest a fresh run like its own.
   (cd packages/engine && bun tests/web/reference-ui.ts); g=$?
   (cd packages/engine && bun tests/web/reference-ui.ts --webgl); h=$?
-  return $((a | b | c | d | e | f | g | h))
+  # Ember Vale's three frames: tests/frames.og.ts's commands without its
+  # screenshots and quit, each shot at its screenshot's tick (60 t).
+  local tp=(--project templates/archetypes/third-person --out dist/test-reference/third-person
+    --script "1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3"
+    --shots title@54,beacon@204,dawn@432)
+  (cd packages/engine && bun tests/web/reference.ts "${tp[@]}"); i=$?
+  (cd packages/engine && bun tests/web/reference.ts --webgl "${tp[@]}"); j=$?
+  return $((a | b | c | d | e | f | g | h | i | j))
 }
 
 # --- Scheduling ---------------------------------------------------------------
