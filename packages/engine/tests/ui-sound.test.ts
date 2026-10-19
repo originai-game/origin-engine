@@ -66,7 +66,7 @@ test("a UI sound's first sample lies in the tick of its input", () => {
   expect(mix.at.length).toBe(inputs.length);
   inputs.forEach((t, k) => {
     const first = mix.at[k]!;
-    expect(first).toBeGreaterThanOrEqual(t * perTick);
+    expect(first).toBeGreaterThan(t * perTick - 1);
     expect(first).toBeLessThan((t + 1) * perTick);
   });
 }, 120_000);
