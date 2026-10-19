@@ -21,6 +21,7 @@ pub fn sphere(segments: u32, rings: u32) -> MeshData {
                 theta.sin() * phi.sin(),
             );
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: (n * 0.5).to_array(),
                 normal: n.to_array(),
                 uv: [u, v],
@@ -43,6 +44,7 @@ pub fn sphere(segments: u32, rings: u32) -> MeshData {
 pub fn plane(size: f32, uv_repeat: f32) -> MeshData {
     let h = size / 2.0;
     let v = |x: f32, z: f32, u: f32, w: f32| Vertex {
+        tangent: [0.0; 4],
         position: [x, 0.0, z],
         normal: [0.0, 1.0, 0.0],
         uv: [u * uv_repeat, w * uv_repeat],
@@ -79,6 +81,7 @@ pub fn cuboid(size: Vec3) -> MeshData {
         for (cu, cv) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
             let p = (n + u * cu + v * cv) * h;
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: p.to_array(),
                 normal: n.to_array(),
                 uv: [(cu + 1.0) * 0.5, (1.0 - cv) * 0.5],

@@ -1342,6 +1342,8 @@ pub(crate) fn material(
     set!(dissolveScale, num("dissolveScale"));
     set!(outlineColor, rgb("outlineColor"));
     set!(outlineWidth, num("outlineWidth"));
+    set!(clearcoat, num("clearcoat"));
+    set!(clearcoatRoughness, num("clearcoatRoughness"));
     Ok(m)
 }
 
@@ -1539,6 +1541,7 @@ pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
             size_of(&d, "height", 1.0)? / 2.0,
         );
         let v = |x: f32, y: f32, u: f32, t: f32| og_render::Vertex {
+            tangent: [0.0; 4],
             position: [x, y, 0.0],
             normal: [0.0, 0.0, 1.0],
             uv: [u, t],

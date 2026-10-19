@@ -54,6 +54,8 @@ pub const SCENES: &[&str] = &[
     "weather-snow",
     "lights-256",
     "atmosphere-moon",
+    "materials",
+    "skinned-hooks",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -255,6 +257,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "lights-256" => g.scene = crate::p2_scenes::many_lights(256),
         // Phase 2: the night colonnade with a waxing gibbous moon in view.
         "atmosphere-moon" => g.scene = crate::p2_scenes::moon_scene(0.35, 2.4),
+        // Phase 2: every M6 material feature (metalness, roughness,
+        // emissive, normal maps, clearcoat, alpha mask and blend,
+        // double-sided, unlit, a non-uniformly scaled ellipsoid).
+        "materials" => g.scene = crate::p2_scenes::materials_scene(),
+        // Phase 2: skinned meshes drawn with a material shader that ripples,
+        // bands and lifts them, their shadows and prepass displaced too.
+        "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
         // Weather presets over the colonnade: particles, fog, dimmed light.
         "weather-rain" | "weather-snow" => {
             g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {

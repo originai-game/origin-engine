@@ -407,6 +407,7 @@ pub fn blade(height: f32, width: f32) -> MeshData {
         let w = width * (1.0 - t * 0.85) * 0.5;
         for side in [-1.0f32, 1.0] {
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: [side * w, t * height, 0.0],
                 normal: [0.0, 0.3, 1.0],
                 uv: [side * 0.5 + 0.5, 1.0 - t],

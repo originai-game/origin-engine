@@ -40,7 +40,7 @@ impl Side {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 2)]
+#[reflect(name = "og.StandardMaterial", version = 3)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -145,6 +145,14 @@ pub struct StandardMaterial {
     /// `PostEffects::outline`, if any). Turns the outline pass on.
     #[reflect(min = 0.0, max = 31.0, default = 0.0, tunable)]
     pub outlineWidth: f32,
+    /// A clear lacquer over the surface (three.js `MeshPhysicalMaterial`
+    /// `clearcoat`): a second specular layer, 4 % reflective, on the
+    /// surface's normal before the normal map. 0: none.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub clearcoat: f32,
+    /// How rough the coat is.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub clearcoatRoughness: f32,
 }
 
 impl Default for StandardMaterial {
@@ -184,6 +192,8 @@ impl Default for StandardMaterial {
             dissolveScale: 4.0,
             outlineColor: Vec3::ZERO,
             outlineWidth: 0.0,
+            clearcoat: 0.0,
+            clearcoatRoughness: 0.0,
         }
     }
 }
@@ -296,6 +306,8 @@ pub(crate) struct MaterialUniform {
     pub dissolve: [f32; 4],
     /// rgb: outline colour, w: outline width in pixels.
     pub outline: [f32; 4],
+    /// x: clearcoat, y: clearcoat roughness.
+    pub coat: [f32; 4],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
 }
@@ -364,6 +376,12 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             m.outlineColor.y,
             m.outlineColor.z,
             m.outlineWidth.clamp(0.0, 31.0),
+        ],
+        coat: [
+            m.clearcoat.clamp(0.0, 1.0),
+            m.clearcoatRoughness.clamp(0.0, 1.0),
+            0.0,
+            0.0,
         ],
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
     }

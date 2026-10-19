@@ -440,6 +440,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
         vertices: [(x - w, -1.0), (x + w, -1.0), (x + w, 1.0), (x - w, 1.0)]
             .iter()
             .map(|&(px, py)| og_render::Vertex {
+                tangent: [0.0; 4],
                 position: [px, py, 0.0],
                 normal: [0.0, 0.0, 1.0],
                 ..Default::default()

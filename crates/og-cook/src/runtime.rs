@@ -985,12 +985,16 @@ fn dequantize(p: &PrimitiveRow, raw: &[u8]) -> (Vec<Vertex>, Vec<[f32; 4]>) {
             }
             at += 4;
         }
+        // The cook's MikkTSpace tangent, or none (the renderer generates one).
+        let mut tangent = [0.0f32; 4];
         if p.attributes & attr::TANGENT != 0 {
             let t = oct_decode(snorm(i16_at(v, at)), snorm(i16_at(v, at + 2)));
             let w = if i16_at(v, at + 4) < 0 { -1.0 } else { 1.0 };
-            tangents.push([t.x, t.y, t.z, w]);
+            tangent = [t.x, t.y, t.z, w];
+            tangents.push(tangent);
         }
         verts.push(Vertex {
+            tangent,
             position,
             normal,
             uv,

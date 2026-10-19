@@ -459,6 +459,7 @@ fn cloth_mesh(columns: u32, rows: u32, points: &[Vec3]) -> MeshData {
             let dy = at(x, (y + 1).min(ht - 1)) - at(x, y.saturating_sub(1));
             let n = dy.cross(dx).normalize_or(Vec3::Z);
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: at(x, y).to_array(),
                 normal: n.to_array(),
                 uv: [x as f32 / (w - 1) as f32, y as f32 / (ht - 1) as f32],
@@ -554,6 +555,34 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
     }
 }
 
+/// og.render.setMaterialShader: `shader` is the JSON of a shader handle or null.
+pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
+    let r = (|| -> Result<(), String> {
+        let eng = engine(world)?;
+        let shader: Value = serde_json::from_str(&shader).unwrap_or(Value::Null);
+        let mut rs = eng.render.borrow_mut();
+        let h = super::assets::index_of(material)
+            .and_then(|i| rs.materials.get(i).copied())
+            .ok_or_else(|| format!("material {material} is not alive"))?;
+        let s = match shader.as_f64() {
+            None => None,
+            Some(handle) => Some(
+                super::assets::index_of(handle)
+                    .and_then(|i| rs.atmo.shaders.get(i).copied())
+                    .ok_or_else(|| format!("shader {handle} is not loaded in this world"))?,
+            ),
+        };
+        if !rs.scene.set_material_shader(h, s) {
+            return Err(format!("material {material} is not a standard material"));
+        }
+        Ok(())
+    })();
+    match r {
+        Ok(()) => ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
 pub fn og_render_set_shader_param(
     world: u32,
     material: f64,
@@ -573,7 +602,7 @@ pub fn og_render_set_shader_param(
             .ok_or_else(|| format!("material {material} is not alive"))?;
         if rs.scene.material_shader(h).is_none() {
             return Err(format!(
-                "material {material} has no shader (make it with og.render.shaderMaterial)"
+                "material {material} has no shader (make it with og.render.shaderMaterial or give it one with og.render.setMaterialShader)"
             ));
         }
         if !rs.scene.set_shader_param(h, &name, &value) {

@@ -14,3 +14,12 @@ covers, failed, and passed again once the code was restored.
 | `moon.rs` `the_moon_sets_below_the_horizon` | the disc and halo drawn without the horizon factors | 40 pixels of the set moon showed |
 | `moon.rs` `the_size_sets_the_disc` | the disc's coordinates divided by a fixed `sin(0.04)` instead of its radius | area ratio 1.00 |
 | `og-render/tests/tier.rs` `software_rasterizers_are_known_by_name_too` | `is_software_adapter` by device type alone | llvmpipe reported as `Other` was not `vulkan-cpu` |
+| `materials.rs` `a_non_uniform_scale_bends_normals_correctly` | normals through the model matrix (the old `normalize(model * n)`) | 21,644 pixels apart, RMSE 0.043 |
+| `materials.rs` `normal_maps_follow_the_vertex_tangent_frame` | the frame from screen derivatives instead of the vertex tangents | coarse 1,663 steps against 1,257 on the fine sphere |
+| `materials.rs` `mirrored_uvs_keep_the_map_the_right_way_round` | the same derivative frame (it was inverted in a y-down framebuffer) | plain 57, mirrored 222 |
+| `materials.rs` `generate_tangents_follows_the_uvs`, `a_normal_maps_green_points_up_the_image` | `generate_tangents` with the bitangent along +v | the quad's w wrong; green up 41 against green down 222 |
+| `materials.rs` `clearcoat_adds_a_glossy_layer` | the coat ignored in the shader | no highlight added |
+| `hooks.rs` `an_offset_mesh_…`, `an_offset_skinned_mesh_…` | the shadow pass's `vs_hooked` without the material shader's offset | 7,066 and 18,613 pixels apart (the shadows where the mesh was) |
+| the same two | hooked batches drawn by the plain prepass (no offset in the depth, AO and outline) | 3,937 and 12,926 pixels apart |
+| `hooks.rs` `an_offset_skinned_mesh_…`, `skinned_hooks_match_their_reference` | skinned batches without their material shader (the old behaviour) | 70,545 pixels apart; the reference off by RMSE 0.087 |
+| fx-showcase `tests/skinned.og.ts` | `og.render.setMaterialShader` answering ok without giving the material its shader | no gold bands; the frame off its reference |

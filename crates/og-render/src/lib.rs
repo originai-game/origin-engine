@@ -149,6 +149,16 @@ pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
     }
 }
 const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
+
+/// The shadow shader's source with `hooks` (a material shader's, or the
+/// built-in identities) and the joint palette read as `palette`.
+fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{}{hooks}{SHADOW_WGSL}",
+        particles_gpu::NOISE_WGSL,
+        palette.wgsl(2)
+    )
+}
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
 const MATERIAL_WGSL: &str = include_str!("../shaders/material.wgsl");
@@ -471,7 +481,9 @@ pub struct RgbaImage {
 struct ShadowPassUniform {
     view_proj: [[f32; 4]; 4],
     light: [f32; 4],
-    pad: [f32; 44],
+    /// x: the scene clock in seconds (a material shader's `h.time`).
+    time: [f32; 4],
+    pad: [f32; 40],
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
@@ -479,7 +491,7 @@ const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
 const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<Vertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4, 15 => Float32x4],
 };
 
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -530,8 +542,13 @@ struct SceneCache {
     meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.
     shaders: Vec<wgpu::ShaderModule>,
-    /// Their pipelines by (shader, side, blended, effects).
-    hook_pipelines: HashMap<(usize, Side, bool, bool), wgpu::RenderPipeline>,
+    /// The shadow shader with each of them.
+    shadow_shaders: Vec<wgpu::ShaderModule>,
+    /// Their lit pipelines by (shader, side, blended, effects, skinned).
+    hook_pipelines: HashMap<(usize, Side, bool, bool, bool), wgpu::RenderPipeline>,
+    /// Their shadow and prepass pipelines by (shader, side, skinned).
+    hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
@@ -563,7 +580,7 @@ struct Batch {
     dissolve: bool,
     /// Needs the effect shader (its material's or the frame's effects).
     effects: bool,
-    /// Its material's shader (never for skinned batches).
+    /// Its material's shader.
     shader: Option<usize>,
 }
 
@@ -1061,12 +1078,15 @@ fn prepass_pipeline(
     })
 }
 
-/// The shadow pipeline for casters drawn with (side, skinned, dissolve).
+/// The shadow pipeline for casters drawn with (side, skinned, dissolve);
+/// `hooked`: with the module's material shader (its vertex offset and
+/// surface colour, the material bound).
 fn shadow_pipeline(
     device: &wgpu::Device,
     layouts: &[wgpu::PipelineLayout; 3],
     module: &wgpu::ShaderModule,
     (side, skinned, dissolve): ShadowKey,
+    hooked: bool,
 ) -> wgpu::RenderPipeline {
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let skin = [
@@ -1074,7 +1094,7 @@ fn shadow_pipeline(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    let layout = match (skinned, dissolve) {
+    let layout = match (skinned, dissolve || hooked) {
         (true, _) => &layouts[2],
         (false, true) => &layouts[1],
         (false, false) => &layouts[0],
@@ -1084,7 +1104,12 @@ fn shadow_pipeline(
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module,
-            entry_point: Some(if skinned { "vs_skinned" } else { "vs" }),
+            entry_point: Some(match (skinned, hooked) {
+                (true, true) => "vs_skinned_hooked",
+                (true, false) => "vs_skinned",
+                (false, true) => "vs_hooked",
+                (false, false) => "vs",
+            }),
             compilation_options: Default::default(),
             buffers: if skinned { &skin } else { &plain },
         },
@@ -1110,7 +1135,11 @@ fn shadow_pipeline(
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module,
-            entry_point: Some(if dissolve { "fs_dissolve" } else { "fs" }),
+            entry_point: Some(match (hooked, dissolve) {
+                (true, _) => "fs_hooked",
+                (false, true) => "fs_dissolve",
+                (false, false) => "fs",
+            }),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::R32Float,
@@ -1454,11 +1483,7 @@ impl Renderer {
         let shadow_shader = shader(
             &device,
             "shadow",
-            format!(
-                "{}{MATERIAL_WGSL}{}{SHADOW_WGSL}",
-                particles_gpu::NOISE_WGSL,
-                palette_mode.wgsl(2)
-            ),
+            shadow_source(&hooks::default_hooks(), palette_mode),
         );
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
@@ -1503,7 +1528,7 @@ impl Renderer {
         let key = (Side::Front, false, false);
         shadow_pipelines.insert(
             key,
-            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key),
+            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
         let sky_state = |fs| HdrPipeline {
@@ -1828,6 +1853,12 @@ impl Renderer {
                 lit_source_with(&hooks, self.palette.mode(), self.light_tables),
             );
             self.cache.shaders.push(module);
+            let module = shader(
+                &self.device,
+                "shadow (material shader)",
+                shadow_source(&hooks, self.palette.mode()),
+            );
+            self.cache.shadow_shaders.push(module);
         }
         self.refresh_meshes(scene);
         for index in self.cache.meshes.len()..scene.meshes().len() {
@@ -1992,6 +2023,15 @@ impl Renderer {
     }
 
     fn upload_mesh(&self, mesh: &MeshData) -> GpuMesh {
+        let tangents;
+        let mesh = if mesh.lacks_tangents() {
+            let mut m = mesh.clone();
+            m.generate_tangents();
+            tangents = m;
+            &tangents
+        } else {
+            mesh
+        };
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
         let bytes = |b: &[u8]| {
             if b.is_empty() {
@@ -2040,7 +2080,16 @@ impl Renderer {
             if gpu.revision == revision {
                 continue;
             }
-            let mesh = &scene.meshes()[i];
+            let source = &scene.meshes()[i];
+            let tangents;
+            let mesh = if source.lacks_tangents() {
+                let mut m = source.clone();
+                m.generate_tangents();
+                tangents = m;
+                &tangents
+            } else {
+                source
+            };
             let vb: &[u8] = bytemuck::cast_slice(&mesh.vertices);
             let ib: &[u8] = bytemuck::cast_slice(&mesh.indices);
             if !vb.is_empty()
@@ -2486,16 +2535,41 @@ impl Renderer {
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
             if let Some(sh) = b.shader {
-                let key = (sh, b.side, b.transparent, b.effects);
+                let key = (sh, b.side, b.transparent, b.effects, is_skinned);
                 if !self.cache.hook_pipelines.contains_key(&key) {
                     let p = pbr_pipeline(
                         &self.device,
                         (&self.pbr_layout, &self.pbr_skinned_layout),
                         &self.cache.shaders[sh],
-                        (b.side, b.transparent, false, b.effects),
+                        (b.side, b.transparent, is_skinned, b.effects),
                         self.samples,
                     );
                     self.cache.hook_pipelines.insert(key, p);
+                }
+                // Shadows and the prepass see the material shader's offset.
+                let key = (sh, b.side, is_skinned);
+                if !self.cache.hook_shadow_pipelines.contains_key(&key) {
+                    let p = shadow_pipeline(
+                        &self.device,
+                        &self.shadow_layouts,
+                        &self.cache.shadow_shaders[sh],
+                        (b.side, is_skinned, b.dissolve),
+                        true,
+                    );
+                    self.cache.hook_shadow_pipelines.insert(key, p);
+                }
+                if prepass
+                    && !b.transparent
+                    && !self.cache.hook_prepass_pipelines.contains_key(&key)
+                {
+                    let p = prepass_pipeline(
+                        &self.device,
+                        (&self.pbr_layout, &self.pbr_skinned_layout),
+                        &self.cache.shaders[sh],
+                        b.side,
+                        is_skinned,
+                    );
+                    self.cache.hook_prepass_pipelines.insert(key, p);
                 }
             }
             let key = (b.side, b.transparent, is_skinned, b.effects);
@@ -2511,8 +2585,13 @@ impl Renderer {
             }
             let key = (b.side, is_skinned, b.dissolve);
             if !self.shadow_pipelines.contains_key(&key) {
-                let p =
-                    shadow_pipeline(&self.device, &self.shadow_layouts, &self.shadow_shader, key);
+                let p = shadow_pipeline(
+                    &self.device,
+                    &self.shadow_layouts,
+                    &self.shadow_shader,
+                    key,
+                    false,
+                );
                 self.shadow_pipelines.insert(key, p);
             }
             if prepass
@@ -2596,7 +2675,7 @@ impl Renderer {
                         transparent: m.transparent,
                         dissolve: m.dissolve,
                         effects: m.effects,
-                        shader: None,
+                        shader: m.shader,
                     });
                 }
             }
@@ -3129,7 +3208,8 @@ impl Renderer {
             shadow_slots[i] = ShadowPassUniform {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
-                pad: [0.0; 44],
+                time: uniform.atmosphere.time,
+                pad: [0.0; 40],
             };
         }
         for ls in &local_shadows {
@@ -3139,7 +3219,8 @@ impl Renderer {
                 shadow_slots[CASCADES + layer] = ShadowPassUniform {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
-                    pad: [0.0; 44],
+                    time: uniform.atmosphere.time,
+                    pad: [0.0; 40],
                 };
             }
         }
@@ -3550,18 +3631,29 @@ impl Renderer {
         let palette_group = self.palette.bind_group.as_ref();
         let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
             .iter()
-            .map(|b| &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)])
+            .map(|b| match b.shader {
+                Some(sh) => {
+                    &self.cache.hook_pipelines[&(sh, b.side, b.transparent, b.effects, true)]
+                }
+                None => &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)],
+            })
             .collect();
         let shadow_skinned: Vec<&wgpu::RenderPipeline> = skinned_batches
             .iter()
-            .map(|b| &self.shadow_pipelines[&(b.side, true, b.dissolve)])
+            .map(|b| match b.shader {
+                Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, b.side, true)],
+                None => &self.shadow_pipelines[&(b.side, true, b.dissolve)],
+            })
             .collect();
         let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
             skinned_visible
                 .iter()
                 .map(|b| {
-                    self.prepass_pipelines
-                        .get(&(b.side, true))
+                    let hooked = b
+                        .shader
+                        .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
+                    hooked
+                        .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
                         .unwrap_or(lit_skinned[0])
                 })
                 .collect()
@@ -3576,7 +3668,7 @@ impl Renderer {
              list: &DrawList,
              lit: bool,
              current: &mut Option<(Side, bool, bool, Option<usize>)>| {
-                let mut shadow_key: Option<ShadowKey> = None;
+                let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
                     if lit {
@@ -3585,7 +3677,7 @@ impl Renderer {
                             pass.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_pipelines
-                                        [&(sh, batch.side, batch.transparent, batch.effects)]
+                                        [&(sh, batch.side, batch.transparent, batch.effects, false)]
                                 }
                                 None => {
                                     &self.pbr_pipelines
@@ -3600,12 +3692,17 @@ impl Renderer {
                             &[],
                         );
                     } else {
-                        let key = (batch.side, false, batch.dissolve);
+                        let key = ((batch.side, false, batch.dissolve), batch.shader);
                         if shadow_key != Some(key) {
-                            pass.set_pipeline(&self.shadow_pipelines[&key]);
+                            pass.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)]
+                                }
+                                None => &self.shadow_pipelines[&key.0],
+                            });
                             shadow_key = Some(key);
                         }
-                        if batch.dissolve {
+                        if batch.dissolve || batch.shader.is_some() {
                             pass.set_bind_group(
                                 1,
                                 &self.cache.materials[batch.material].bind_group,
@@ -3789,9 +3886,14 @@ impl Renderer {
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
                         let batch = &batches[b as usize];
-                        if current != Some(batch.side) {
-                            p.set_pipeline(&self.prepass_pipelines[&(batch.side, false)]);
-                            current = Some(batch.side);
+                        if current != Some((batch.side, batch.shader)) {
+                            p.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_prepass_pipelines[&(sh, batch.side, false)]
+                                }
+                                None => &self.prepass_pipelines[&(batch.side, false)],
+                            });
+                            current = Some((batch.side, batch.shader));
                         }
                         p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
                         let mesh = &self.cache.meshes[batch.mesh];

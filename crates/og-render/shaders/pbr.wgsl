@@ -39,6 +39,8 @@ struct VertexIn {
   @location(1) normal: vec3<f32>,
   @location(2) uv: vec2<f32>,
   @location(3) color: vec4<f32>,
+  // xyz along +u, w the bitangent's sign (0: none).
+  @location(15) tangent: vec4<f32>,
 };
 
 struct InstanceIn {
@@ -79,6 +81,8 @@ struct VertexOut {
   @location(2) uv: vec2<f32>,
   @location(3) color: vec4<f32>,
   @location(4) local_pos: vec3<f32>,
+  // The world tangent and the bitangent's sign (w 0: none).
+  @location(5) tangent: vec4<f32>,
 };
 
 struct PrepassOut {
@@ -92,10 +96,21 @@ struct PrepassOut {
   @location(6) prev_clip: vec4<f32>,
 };
 
+// A normal's world direction: through the inverse transpose of the model's
+// upper 3x3 (its cofactor matrix, flipped for a mirroring transform), so a
+// non-uniform scale bends normals the right way.
+fn world_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
+  let a = model[0].xyz;
+  let b = model[1].xyz;
+  let c = model[2].xyz;
+  let cofactor = mat3x3<f32>(cross(b, c), cross(c, a), cross(a, b));
+  let mirrored = dot(a, cross(b, c)) < 0.0;
+  return normalize(cofactor * n) * select(1.0, -1.0, mirrored);
+}
+
 fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   var world = model * vec4<f32>(v.position, 1.0);
-  // Normal through the model's upper 3x3; instances carry uniform scale, so no inverse-transpose.
-  let n = normalize((model * vec4<f32>(v.normal, 0.0)).xyz);
+  let n = world_normal(model, v.normal);
   // A material shader's vertex offset (none with the built-in hooks).
   var h: Hook;
   h.world = world.xyz;
@@ -112,6 +127,9 @@ fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   o.uv = v.uv;
   o.color = v.color;
   o.local_pos = v.position;
+  // A tangent follows the surface: through the model itself.
+  let t = (model * vec4<f32>(v.tangent.xyz, 0.0)).xyz;
+  o.tangent = vec4<f32>(select(vec3<f32>(0.0), normalize(t), dot(t, t) > 1e-20), v.tangent.w);
   return o;
 }
 
@@ -226,21 +244,6 @@ fn f_schlick_roughness(cos_theta: f32, f0: vec3<f32>, roughness: f32) -> vec3<f3
   return f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - cos_theta, 5.0);
 }
 
-// Cotangent frame from derivatives (no vertex tangents needed).
-fn perturb_normal(n: vec3<f32>, p: vec3<f32>, uv: vec2<f32>, map: vec3<f32>) -> vec3<f32> {
-  let dp1 = dpdx(p);
-  let dp2 = dpdy(p);
-  let duv1 = dpdx(uv);
-  let duv2 = dpdy(uv);
-  let dp2perp = cross(dp2, n);
-  let dp1perp = cross(n, dp1);
-  let t = dp2perp * duv1.x + dp1perp * duv2.x;
-  let b = dp2perp * duv1.y + dp1perp * duv2.y;
-  let invmax = inverseSqrt(max(dot(t, t), dot(b, b)) + 1e-12);
-  let tbn = mat3x3<f32>(t * invmax, b * invmax, n);
-  return normalize(tbn * map);
-}
-
 // Bilinear PCF over one layer of an R32Float array: the four texels around
 // the sample compared explicitly (ref <= stored means lit) and blended by the
 // sample's position between them, as a hardware comparison sampler with
@@ -323,6 +326,11 @@ struct Surface {
   metallic: f32,
   roughness: f32,
   f0: vec3<f32>,
+  // Clearcoat: a clear specular layer over the base (0: none), its
+  // roughness and its normal (the surface's before the normal map).
+  coat: f32,
+  coat_roughness: f32,
+  coat_normal: vec3<f32>,
 };
 
 fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
@@ -337,7 +345,17 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let f = f_schlick(h_dot_v, s.f0);
   let spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
-  return (kd * s.albedo / PI + spec) * n_dot_l;
+  let base = (kd * s.albedo / PI + spec) * n_dot_l;
+  if (s.coat <= 0.0) { return base; }
+  // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and
+  // Kelemen's visibility; what it reflects never reaches the base.
+  let nc = s.coat_normal;
+  let c_dot_l = max(dot(nc, l), 0.0);
+  let ac = s.coat_roughness * s.coat_roughness;
+  let fc = f_schlick(h_dot_v, vec3<f32>(0.04)).x * s.coat;
+  let dc = d_ggx(max(dot(nc, h), 0.0), ac);
+  let vc = 0.25 / max(h_dot_v * h_dot_v, 1e-4);
+  return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
 }
 
 // The toon ramp: N·L (times shadow) to the light received, from the
@@ -471,7 +489,9 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
   // Perspective: towards the eye; orthographic: against the view direction.
   let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
-  if (dot(n, v) < 0.0) { n = -n; }
+  let n_vertex = n;
+  let face = select(1.0, -1.0, dot(n, v) < 0.0);
+  n = n * face;
   var decal_emissive = vec3<f32>(0.0);
   if (EFFECTS && fx.decal_info.x > 0.5) {
     let d = apply_decals(in.world_pos, n, s.albedo, s.roughness, dpx, dpy);
@@ -488,9 +508,20 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
       map.z = sqrt(max(1.0 - dot(map.xy, map.xy), 0.0));
     }
     map = vec3<f32>(map.xy * material.mr.zw, map.z);
-    n = perturb_normal(n, in.world_pos, in.uv, map);
+    // The vertex tangent frame (glTF's: the file's tangents, the cook's
+    // MikkTSpace ones, or generated at upload; scene.rs Vertex::tangent).
+    var t = in.tangent.xyz - n_vertex * dot(n_vertex, in.tangent.xyz);
+    if (dot(t, t) > 1e-12) {
+      t = normalize(t);
+      let b = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
+      // A back face flips the whole frame with its normal.
+      n = normalize(mat3x3<f32>(t, b, n_vertex) * map) * face;
+    }
   }
   n = surface_normal(hook, params, n);
+  s.coat = material.coat.x;
+  s.coat_roughness = clamp(material.coat.y, 0.04, 1.0);
+  s.coat_normal = n_vertex * face;
 
   // The directional light.
   let l = normalize(frame.light_dir.xyz);
@@ -536,7 +567,17 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     let ssao_sample = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     ibl_scale *= mix(1.0, ssao_sample, fx.ao.y);
   }
-  color += (kd_ibl * diffuse_ibl + specular_ibl) * ibl_scale;
+  var ibl = kd_ibl * diffuse_ibl + specular_ibl;
+  if (s.coat > 0.0) {
+    // The coat's reflection of the environment, and what it takes from the base.
+    let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
+    let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
+    let rc = reflect(-v, s.coat_normal);
+    let coat_env = textureSampleLevel(prefiltered_map, ibl_sampler, rc, s.coat_roughness * frame.params.y).rgb;
+    let coat_lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness)).rg;
+    ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+  }
+  color += ibl * ibl_scale;
 
   color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
@@ -585,7 +626,15 @@ struct PrepassTargets {
 @fragment
 fn fs_prepass(in: PrepassOut) -> PrepassTargets {
   let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
-  let base = material.base_color * base_sample * in.color;
+  // A material shader's colour (and alpha cut) as in the lit pass.
+  var hook: Hook;
+  hook.world = in.world_pos;
+  hook.local = in.local_pos;
+  hook.normal = in.normal;
+  hook.uv = in.uv;
+  hook.color = in.color;
+  hook.time = frame.time.x;
+  let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) {
     discard;

@@ -20,7 +20,7 @@ the world → scene extraction belongs to the layer above.
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
 | `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font` → handles; `set_material` replaces one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
-| `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists; RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
+| `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev }`: the frame's log-average luminance brought to 0.18, from the current frame only, so the same frame always gets the same exposure. |
@@ -255,6 +255,9 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `sky-only` | The sky with the sun in view: 2 draws. | all |
 | `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the tier's antialiasing. | all |
 | `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). | all |
+| `atmosphere-moon` | The night colonnade with a waxing gibbous moon in view. | all |
+| `materials` | Every M6 material feature: metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. | all |
+| `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. | all |
 
 Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
 debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
@@ -433,9 +436,11 @@ it drew before (every earlier reference is unchanged).
   defining any of `vertex_offset`, `surface_color`, `surface_normal`,
   `surface_emissive`, with up to eight declared parameters read from the
   material uniform; `RenderScene::add_shader`, `set_material_shader`,
-  `set_shader_param`. A material with a shader draws with its own lit
-  pipeline (non-skinned meshes; shadows and the prepass use the default),
-  every other material with the built-in identity hooks.
+  `set_shader_param`. A material with a shader draws with its own lit,
+  shadow and prepass pipelines, static and skinned (phase 2, owed row 23:
+  shadows and the depth prepass are displaced by `vertex_offset` and cut
+  by `surface_color`'s alpha; the shadow pass's uniform carries the clock
+  for `h.time`), every other material with the built-in identity hooks.
   `lit_module_source` is the module og-cook compiles with naga for every
   back end.
 - **Mesh replacement** (`RenderScene::set_mesh`): cloth and other generated
@@ -447,6 +452,29 @@ weather-rain,weather-snow}.png`, with behaviour tests in
 `og-tests/tests/atmosphere.rs`; the moon's `atmosphere-moon` (a waxing
 gibbous moon over the night colonnade) with `og-tests/tests/moon.rs`
 (phases, size, the horizon). Costs: `tests/evidence/E5/feature-costs.md`.
+
+## Phase 2 materials
+
+Owed row 31 (`og-tests/tests/materials.rs`, the `materials` reference):
+
+- **Normals under a non-uniform scale** go through the inverse transpose of
+  the model's upper 3×3 (its cofactor matrix, flipped for a mirroring
+  transform), for static and skinned meshes and the shadow hooks alike.
+- **Vertex tangents.** `Vertex::tangent` (`xyz` along +u, `w` the
+  bitangent's sign) in glTF's frame: the bitangent cross(normal, tangent) ×
+  w points up the image (towards −v), so a normal map's red tilts towards
+  +u and its green up the image. It comes from the file (the glTF bridge
+  reads `TANGENT`), from the cook (MikkTSpace on v flipped, so cooked and
+  exported tangents agree), or is generated at upload for a mesh without
+  (`MeshData::generate_tangents`, Lengyel's method). The old frame from
+  screen derivatives is gone: in a y-down framebuffer it had turned both
+  tangent axes round, so every normal map read inverted.
+- **Clearcoat** (`StandardMaterial::clearcoat`, `clearcoatRoughness`, three.js
+  `MeshPhysicalMaterial` names): Filament's clear coat, a GGX lobe with 4 %
+  reflectance and Kelemen's visibility on the surface's normal before the
+  normal map, over the base it dims by its Fresnel, for the lights and the
+  image-based light. No clearcoat maps: WebGL2's skinned lit pipeline has no
+  texture slot left.
 
 ## What phase 2 owes
 
@@ -471,11 +499,7 @@ with their mips, chosen per tier and reported in
   The browser runner (`make web-reference`) covers `templates/fx-showcase`
   on `webgpu` and `webgl2`, which draws every E1 effect, skinning and the
   overlay.
-- **Materials**: a normal matrix for non-uniform scale (normals still go
-  through the model's upper 3×3); vertex tangents (the tangent frame comes
-  from screen derivatives); clearcoat. No gfx reference scene covers the M6
-  material features yet (transparency, double-sided, unlit are asserted on
-  pixels in `og-tests/tests/render.rs` only).
+- **Materials**: clearcoat, sheen, transmission and iridescence maps.
 - Shadows: cascade blending at split boundaries, PCSS/soft shadows, point
   shadows by tier (dual-paraboloid on WebGL2 if cube faces cost too much),
   more than two shadowed local lights.
