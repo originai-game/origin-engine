@@ -2,8 +2,9 @@
 // it: the build's own `_headers` applied (COOP/COEP/CORP when `isolate`),
 // content types, and two test-only knobs: `throttle` streams the wasm and
 // the cooked files slowly so the boot's splash and progress can be seen,
-// and `told` injects `window.__OG_STAGE_HOST__` (what the Stage proxy does)
-// into index.html. Also serves `extra` pages by path and a `/result` sink,
+// `told` injects `window.__OG_STAGE_HOST__` (what the Stage proxy does)
+// into index.html, and `headers` adds headers to every response (a host's
+// Content-Security-Policy). Also serves `extra` pages by path and a `/result` sink,
 // and tells `onRequest` every path asked for.
 
 import { existsSync, readFileSync } from "node:fs";
@@ -43,6 +44,8 @@ export interface ServeOptions {
   readonly onResult?: (body: unknown) => void;
   /** Called with the path of every request the server answers. */
   readonly onRequest?: (path: string) => void;
+  /** Added to every response, after the build's own headers (names in lower case). */
+  readonly headers?: Record<string, string>;
 }
 
 /** The `_headers` of a build, as path pattern → headers (Netlify/Cloudflare format, `*` suffixes). */
@@ -81,7 +84,7 @@ export function serve(o: ServeOptions): { port: number; stop(): void } {
         return new Response("ok", { headers });
       }
       const page = o.extra?.[url.pathname];
-      if (page !== undefined) return new Response(page, { headers: { ...headers, ...isolation, "content-type": TYPES[".html"]! } });
+      if (page !== undefined) return new Response(page, { headers: { ...headers, ...isolation, ...o.headers, "content-type": TYPES[".html"]! } });
       if (!url.pathname.startsWith("/game/")) return new Response("not found", { status: 404, headers });
       let rel = normalize(decodeURIComponent(url.pathname.slice("/game".length)));
       if (rel.endsWith("/")) rel += "index.html";
@@ -94,6 +97,7 @@ export function serve(o: ServeOptions): { port: number; stop(): void } {
         delete headers["cross-origin-embedder-policy"];
       }
       headers["cache-control"] = "no-store";
+      Object.assign(headers, o.headers);
       const ext = rel.slice(rel.lastIndexOf("."));
       headers["content-type"] = TYPES[ext] ?? "application/octet-stream";
       if (rel === "/index.html" && o.told) {

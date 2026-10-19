@@ -644,14 +644,21 @@ export function startWorker(game: GameToken): void {
         let lanes: { on: boolean; threads: number; why: string } = { on: false, threads: 1, why: data.lanesWhy ?? "the page offered no lanes variant" };
         let glue: WebGlue & WebExtras & WebAudioGlue | null = null;
         if (data.lanes) {
+          // The bar's total counts the lanes wasm in place of the
+          // single-threaded one; after a failure it counts what the lanes
+          // wasm downloaded plus the single-threaded wasm, once on every path.
+          const total = received.total;
+          const loaded = received.loaded;
+          const lanesBytes = data.lanes.bytes ?? data.expect?.wasm;
           try {
             const g = (await import(data.lanes.glue)) as WebGlue & WebExtras & WebAudioGlue;
-            if (data.expect) received.total += (data.lanes.bytes ?? 0) - (data.expect.wasm ?? 0);
-            await loadWebHost(g, await counted(data.lanes.wasm, data.lanes.bytes ?? data.expect?.wasm), data.lanes.threads);
+            if (data.expect) received.total = total + (lanesBytes ?? 0) - (data.expect.wasm ?? 0);
+            await loadWebHost(g, await counted(data.lanes.wasm, lanesBytes), data.lanes.threads);
             glue = g;
             lanes = { on: true, threads: data.lanes.threads, why: "" };
           } catch (e) {
-            if (data.expect) received.total += data.expect.wasm ?? 0;
+            // The lanes glue is discarded: loadWebHost bound nothing and told the engine nothing.
+            if (data.expect) received.total = total + (received.loaded - loaded);
             lanes = { on: false, threads: 1, why: `the lanes variant did not start (${e instanceof Error ? e.message : String(e)}); single-threaded` };
           }
         }
