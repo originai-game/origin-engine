@@ -28,7 +28,7 @@ module camera {
 | [`og.Follow2D`](#record-Follow2D) | component | Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in. |
 | [`og.CameraZone`](#record-CameraZone) | component | A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it. |
 | [`og.CameraRail`](#record-CameraRail) | component | Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems. |
-| [`og.camera.shake`](#fn-shake) | function | Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick. |
+| [`og.camera.shake`](#fn-shake) | function | Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.1-0.2 is a light hit, 0.25-0.4 a medium one, 0.5-0.8 an explosion or a boss slam; 1 is almost never right (nauseating). Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick. |
 | [`og.camera.punch`](#fn-punch) | function | A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only. |
 | [`og.camera.kick`](#fn-kick) | function | A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only. |
 
@@ -38,7 +38,7 @@ module camera {
 
 ### `og.camera.shake`
 
-Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
+Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.1-0.2 is a light hit, 0.25-0.4 a medium one, 0.5-0.8 an explosion or a boss slam; 1 is almost never right (nauseating). Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
 
 ```ts
 og.camera.shake(world: World, trauma: number): Result<void>
@@ -55,7 +55,7 @@ Binding symbol `og_camera_shake` · publish builds: kept
 
 ```ogt
 fn shake {
-  doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
+  doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.1-0.2 is a light hit, 0.25-0.4 a medium one, 0.5-0.8 an explosion or a boss slam; 1 is almost never right (nauseating). Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
   param world World "The world."
   param trauma f32 "Trauma to add, 0 to 1."
   returns Result.Void

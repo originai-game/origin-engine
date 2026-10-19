@@ -15699,7 +15699,7 @@ export declare namespace og {
      */
     function setScale(world: World, scale: number): Result<void>;
     /**
-     * Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values: 2-3 ticks for a light hit, 5-8 heavy, 10-15 a finishing blow.
+     * Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values at 60 Hz: 2-3 ticks for a light hit, 4-6 medium, 8-12 heavy, 12-20 a finishing blow (paired with slow motion).
      *
      * @param world The world.
      * @param ticks Ticks to hold.
@@ -15771,7 +15771,7 @@ export declare namespace og {
    */
   namespace camera {
     /**
-     * Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
+     * Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.1-0.2 is a light hit, 0.25-0.4 a medium one, 0.5-0.8 an explosion or a boss slam; 1 is almost never right (nauseating). Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
      *
      * @param world The world.
      * @param trauma Trauma to add, 0 to 1.
