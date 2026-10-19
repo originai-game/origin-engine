@@ -41,8 +41,10 @@ og build . --publish         # dist/: the play page as it ships
   it is read back and the time away credited at half the rate (capped at
   eight hours) with a welcome back; a write refused as stale (another
   device played meanwhile) is read again and the save with more lifetime
-  sparks kept and written back. The time away is the host's to give: see
-  Known limits.
+  sparks kept and written back. The time away is the host's to give: the
+  save carries `og.platform.now` when it was written, and the store
+  answer's `time` (the host's clock, as host input like a key press) less
+  that is how long the game was closed.
 - **Big numbers in the locale's words** (og-i18n §1–§5): `big` in
   `src/numbers.ts` reads the unit size and the units from the string
   tables, so English groups by thousands (`9,999`, `12.3K`, `1.20M`,
@@ -178,7 +180,7 @@ pure functions, the stars come from an og.Rng stream forked by name, and
 | `sparks:<n>` | sets the sparks (the rise counts as made this run) |
 | `own:<generator 0-3>:<n>` | sets how many of a generator are owned |
 | `supernova` | collapses now, as Collapse does (refused under one stardust) |
-| `relaunch:<seconds>` | closes and reopens the game that much later: the save read again, the time away credited |
+| `relaunch:<seconds>` | closes and reopens the game that much later in this process (for tests; a real launch reads the time away from the host's clock): the save read again, the time away credited |
 | `stale_save` | another device writes a save with more progress |
 | `viewport:<desktop\|phone>` | lays the UI out for a phone in portrait (390 × 844 at 3×) |
 | `language:<en\|zh-CN>` | switches the language |
@@ -198,6 +200,7 @@ values from the `Game` resource with `get:Game`.
 | `tests/milestone.og.ts` | the tenth Storm doubles storms (36 → 80 a second); the wallet reads `1.23M` |
 | `tests/nova.og.ts` | N asks, Not yet keeps everything, Supernova and Collapse reset the run for one stardust, the card shows the run, Ignite again runs 10 % stronger; the telemetry and the save |
 | `tests/offline.og.ts` | Escape saves; `relaunch:7200` reads it back with Continue on the title and a welcome back of 64.8K sparks for two hours at half of 18 a second; a stale write is merged, the other device's progress kept |
+| `tests/away.og.ts` | two processes over one kept store (`store: "keep"`): ten embers and two storms saved by Escape at the first run's host time; the second launches two hours later by its own clock, offers Continue and welcomes back two hours at half of 18 a second, with no relaunch command |
 | `tests/pause.og.ts` | Escape holds the orb (time scale 0); settings switch to 简体中文 and move the music; Done saves; numbers read `1.23亿` and `每秒 +2`; Resume |
 | `tests/pad.og.ts` | a gamepad alone plays, taps, chooses, buys, is refused, asks for and declines the supernova, pauses and resumes |
 | `tests/phone.og.ts` | 390 × 844 at 3×: the wallet and Pause below the notch, the generators above the home bar with touch-sized buttons, taps on the orb, a card bought |
@@ -218,13 +221,6 @@ lists them; the skin's are in `assets/skins/sparkorb/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 
-- **No time away from the host.** Game code never reads the wall clock,
-  and og.platform's answers carry no time: `storeGet` answers
-  `{ key, value, revision }`. So a launch cannot know how long the game was
-  closed, and `Game.away` is set only by `relaunch:<seconds>`, which stands
-  in for the host. The game is written for the day the host gives it (a
-  store answer's write time and the host's now, as host input like a key
-  press); until then a player's relaunch credits nothing.
 - og.ui's `idleHud` writes `Lv` and `/s` and formats numbers in English of
   its own, and fills a 340 px panel, so this game builds its HUD from
   widgets to keep every word and number in its tables.
