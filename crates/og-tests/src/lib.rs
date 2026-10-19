@@ -9,3 +9,4 @@ pub mod fx_scenes;
 pub mod gfx;
 pub mod p2_scenes;
 pub mod scenes;
+pub mod terrain_scenes;

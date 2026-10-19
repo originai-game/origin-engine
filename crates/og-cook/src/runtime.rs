@@ -1411,6 +1411,19 @@ impl CookedAnimation {
         self.clips.iter().find(|c| c.name == name)
     }
 
+    /// Decodes an animation blob from its bytes alone, without a manifest
+    /// (the cook reads back the blobs it retargets from and onto).
+    pub fn from_bytes(id: &str, bytes: &[u8]) -> Result<CookedAnimation, LoadError> {
+        let aligned = og_blob::AlignedBytes::from_slice(bytes);
+        let expect = Expect {
+            type_hash: format::Animation::type_hash(),
+            schema_version: format::Animation::schema_version(),
+            stamp: None,
+        };
+        let blob = Blob::open(aligned.as_slice(), id, &expect)?;
+        CookedAnimation::decode(asset_id(id), &blob)
+    }
+
     fn decode(id: &str, blob: &Blob) -> Result<CookedAnimation, LoadError> {
         let bad = |r: String| invalid(blob, r);
         let meta = one::<AnimMeta>(blob)?;
@@ -1775,6 +1788,18 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
     }
 
+    /// The humanoid map of a rig blob (`og.Rig`).
+    pub fn rig(&self, id: &str, bytes: &[u8]) -> Result<og_anim::RigAsset, LoadError> {
+        let blob = self.blob::<format::Rig>(id, bytes)?;
+        let meta = one::<format::RigMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
+        og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
+    }
+
     /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
     /// the cook built (link them with `og_nav::NavMesh::from_tiles`).
     pub fn navmesh(
@@ -1875,5 +1900,148 @@ impl Bundle {
             .and_then(|t| std::str::from_utf8(t).ok())
             .map(str::to_string)
             .ok_or_else(|| invalid(&blob, "the string table is cut short or not UTF-8"))
+    }
+}
+
+// ── phase 2: terrain ─────────────────────────────────────────────────────
+
+/// One layer of a cooked terrain: its textures (asset ids, loaded by the
+/// host) and the rest of og-render's layer.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTerrainLayer {
+    pub albedo: Option<String>,
+    pub normal: Option<String>,
+    /// The layer without its textures (`albedo` and `normal` are `None`).
+    pub layer: og_render::TerrainLayer,
+}
+
+/// A cooked terrain (`og.Terrain`): the heights in metres (decoded from its
+/// tiles) and the control map as og-render takes them, its layers and its
+/// settings.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTerrain {
+    pub data: og_render::TerrainData,
+    pub layers: Vec<CookedTerrainLayer>,
+    pub height_blend: f32,
+    pub lod: og_render::TerrainLod,
+    pub cast_shadows: bool,
+    /// Whether the game gets a height-field collider for it.
+    pub collision: bool,
+    /// The tiles it was cooked into (`tiles_x`, `tiles_z`).
+    pub tiles: (u32, u32),
+}
+
+impl Bundle {
+    /// Decodes a terrain blob: every tile inflated and dequantised into
+    /// one height field, the control map inflated.
+    pub fn terrain(&self, id: &str, bytes: &[u8]) -> Result<CookedTerrain, LoadError> {
+        let blob = self.blob::<format::Terrain>(id, bytes)?;
+        let m = one::<format::TerrainMeta>(&blob)?;
+        let tiles = table::<format::TerrainTileRow>(&blob, "tiles")?;
+        let layers = table::<format::TerrainLayerRow>(&blob, "layers")?;
+        let strings = blob.raw("strings")?;
+        let packed = blob.raw("heights")?;
+        let (columns, rows) = (m.columns, m.rows);
+        if columns < 2 || rows < 2 || tiles.len() != (m.tiles_x * m.tiles_z) as usize {
+            return Err(invalid(&blob, "the tiles do not cover the height field"));
+        }
+        let mut heights = vec![0.0f32; (columns * rows) as usize];
+        let mut covered = 0u64;
+        for t in &tiles {
+            if t.column + t.columns > columns || t.row + t.rows > rows {
+                return Err(invalid(&blob, "a tile lies outside the height field"));
+            }
+            let z = packed
+                .get(t.offset as usize..(t.offset + t.bytes) as usize)
+                .ok_or_else(|| invalid(&blob, "a tile's bytes are out of range"))?;
+            let n = (t.columns * t.rows) as usize;
+            let q = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(z, n * 2)
+                .map_err(|_| invalid(&blob, "a tile does not inflate"))?;
+            if q.len() != n * 2 {
+                return Err(invalid(&blob, "a tile holds the wrong number of heights"));
+            }
+            let span = t.max - t.min;
+            for (k, v) in q.as_chunks::<2>().0.iter().enumerate() {
+                let (c, r) = (k as u32 % t.columns, k as u32 / t.columns);
+                let at = ((t.row + r) * columns + t.column + c) as usize;
+                heights[at] = t.min + u16::from_le_bytes(*v) as f32 / 65535.0 * span;
+            }
+            covered += n as u64;
+        }
+        if covered != (columns as u64) * (rows as u64) {
+            return Err(invalid(&blob, "the tiles do not cover the height field"));
+        }
+        let control = if m.control_width > 0 {
+            let n = (m.control_width * m.control_height * 4) as usize;
+            let rgba =
+                miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(blob.raw("control")?, n)
+                    .map_err(|_| invalid(&blob, "the control map does not inflate"))?;
+            if rgba.len() != n {
+                return Err(invalid(&blob, "the control map is the wrong size"));
+            }
+            Some(og_render::TerrainControl {
+                width: m.control_width,
+                height: m.control_height,
+                rgba: rgba.into(),
+            })
+        } else {
+            None
+        };
+        let text = |at: u32, len: u32| -> Result<Option<String>, LoadError> {
+            if at == format::NONE {
+                return Ok(None);
+            }
+            strings
+                .get(at as usize..(at + len) as usize)
+                .and_then(|b| std::str::from_utf8(b).ok())
+                .map(|s| Some(s.to_string()))
+                .ok_or_else(|| invalid(&blob, "a layer's texture name is out of range"))
+        };
+        let mut out = Vec::with_capacity(layers.len());
+        for l in &layers {
+            out.push(CookedTerrainLayer {
+                albedo: text(l.albedo_at, l.albedo_len)?,
+                normal: text(l.normal_at, l.normal_len)?,
+                layer: og_render::TerrainLayer {
+                    albedo: None,
+                    normal: None,
+                    color: glam::Vec3::new(l.r, l.g, l.b),
+                    roughness: l.roughness,
+                    tile: l.tile,
+                    triplanar: l.triplanar != 0,
+                    normal_strength: l.normal_strength,
+                    slope: [l.slope_min, l.slope_max],
+                    slope_fade: l.slope_fade,
+                    altitude: [l.altitude_min, l.altitude_max],
+                    altitude_fade: l.altitude_fade,
+                },
+            });
+        }
+        let data = og_render::TerrainData {
+            size: glam::Vec2::new(m.size_x, m.size_z),
+            columns,
+            rows,
+            heights: heights.into(),
+            control,
+        };
+        data.check().map_err(|e| invalid(&blob, &e))?;
+        Ok(CookedTerrain {
+            data,
+            layers: out,
+            height_blend: m.height_blend,
+            lod: og_render::TerrainLod {
+                spacing: m.lod_spacing,
+                ring: m.lod_ring,
+            },
+            cast_shadows: m.cast_shadows != 0,
+            collision: m.collision != 0,
+            tiles: (m.tiles_x, m.tiles_z),
+        })
+    }
+
+    /// Reads and decodes a terrain (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_terrain(&self, id: &str) -> Result<CookedTerrain, LoadError> {
+        self.terrain(id, &self.read(id)?)
     }
 }

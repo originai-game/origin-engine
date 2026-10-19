@@ -6,7 +6,7 @@ Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#
 
 Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
 
-Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,7 +18,7 @@ module anim {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4626</sub>
+<sub>`api.ogt` line 4692</sub>
 
 ## Contents
 
@@ -48,6 +48,13 @@ module anim {
 | [`Animation`](#type-Animation) | struct | What og.load.animation registered from a model's `#anim` blob. |
 | [`GraphDesc`](#type-GraphDesc) | desc struct | A blend-tree graph to register. |
 | [`og.anim.graph`](#fn-graph) | function | Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`. |
+| [`Rig`](#type-Rig) | handle | A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright. |
+| [`HumanBone`](#type-HumanBone) | struct | One standard humanoid bone of a skeleton. |
+| [`Humanoid`](#type-Humanoid) | struct | Which node of a skeleton is each standard humanoid bone (what retargeting maps). |
+| [`HumanoidDesc`](#type-HumanoidDesc) | desc struct | A skeleton and, optionally, the rig that says how its bones are named. |
+| [`og.anim.humanoid`](#fn-humanoid) | function | The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it. |
+| [`RetargetDesc`](#type-RetargetDesc) | desc struct | A clip made for one skeleton, to play on another (other proportions, rest pose or bone names). |
+| [`og.anim.retarget`](#fn-retarget) | function | A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time. |
 | [`FlipbookSheet`](#type-FlipbookSheet) | handle | A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook. |
 | [`FlipbookSheet()`](#column-FlipbookSheet) | column kind | A FlipbookSheet handle field. |
 | [`FlipMode`](#type-FlipMode) | enum | How a flipbook clip runs past its last frame. |
@@ -87,7 +94,67 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 4936</sub>
+<sub>`api.ogt` line 5002</sub>
+
+<a id="fn-humanoid"></a>
+
+### `og.anim.humanoid`
+
+The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it.
+
+```ts
+og.anim.humanoid(world: World, desc?: HumanoidDesc): Result<Humanoid>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation owns the skeleton. |
+| `desc` | `HumanoidDesc` | yes | The skeleton and its rig. |
+
+**Returns** `Result<Humanoid>`: Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks.
+
+Binding symbol `og_anim_humanoid` · publish builds: kept
+
+```ogt
+fn humanoid {
+  doc "The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it."
+  param world World "The world whose animation owns the skeleton."
+  param desc HumanoidDesc "The skeleton and its rig."
+  returns Result.Humanoid "Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks."
+}
+```
+
+<sub>`api.ogt` line 5030</sub>
+
+<a id="fn-retarget"></a>
+
+### `og.anim.retarget`
+
+A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
+
+```ts
+og.anim.retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation owns the skeletons and the clip. |
+| `desc` | `RetargetDesc` | yes | The clip, the two skeletons and their rigs. |
+
+**Returns** `Result<ClipInfo>`: The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
+
+Binding symbol `og_anim_retarget` · publish builds: kept
+
+```ogt
+fn retarget {
+  doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
+  param world World "The world whose animation owns the skeletons and the clip."
+  param desc RetargetDesc "The clip, the two skeletons and their rigs."
+  returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
+}
+```
+
+<sub>`api.ogt` line 5050</sub>
 
 <a id="fn-clip"></a>
 
@@ -118,7 +185,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 5020</sub>
+<sub>`api.ogt` line 5134</sub>
 
 ## Components, resources and events
 
@@ -155,7 +222,7 @@ component Skeleton {
 }
 ```
 
-<sub>`api.ogt` line 4710</sub>
+<sub>`api.ogt` line 4776</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -211,7 +278,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 4725</sub>
+<sub>`api.ogt` line 4791</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -287,7 +354,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 4759</sub>
+<sub>`api.ogt` line 4825</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -360,7 +427,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 4807</sub>
+<sub>`api.ogt` line 4873</sub>
 
 <a id="record-IkChain"></a>
 
@@ -431,7 +498,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 4855</sub>
+<sub>`api.ogt` line 4921</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -462,7 +529,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 4899</sub>
+<sub>`api.ogt` line 4965</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -518,7 +585,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 4959</sub>
+<sub>`api.ogt` line 5073</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -545,7 +612,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 4990</sub>
+<sub>`api.ogt` line 5104</sub>
 
 ## Types
 
@@ -561,7 +628,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
 ```
 
-<sub>`api.ogt` line 4632</sub>
+<sub>`api.ogt` line 4698</sub>
 
 <a id="type-ClipAsset"></a>
 
@@ -575,7 +642,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
 ```
 
-<sub>`api.ogt` line 4633</sub>
+<sub>`api.ogt` line 4699</sub>
 
 <a id="type-GraphAsset"></a>
 
@@ -589,7 +656,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
 ```
 
-<sub>`api.ogt` line 4634</sub>
+<sub>`api.ogt` line 4700</sub>
 
 <a id="type-RootMotion"></a>
 
@@ -614,7 +681,7 @@ enum RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 4657</sub>
+<sub>`api.ogt` line 4723</sub>
 
 <a id="type-BlendshapeSource"></a>
 
@@ -637,7 +704,7 @@ enum BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 4671</sub>
+<sub>`api.ogt` line 4737</sub>
 
 <a id="type-IkSolver"></a>
 
@@ -660,7 +727,7 @@ enum IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 4684</sub>
+<sub>`api.ogt` line 4750</sub>
 
 <a id="type-IkSpace"></a>
 
@@ -683,7 +750,7 @@ enum IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 4697</sub>
+<sub>`api.ogt` line 4763</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -710,7 +777,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 4910</sub>
+<sub>`api.ogt` line 4976</sub>
 
 <a id="type-Animation"></a>
 
@@ -737,7 +804,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 4920</sub>
+<sub>`api.ogt` line 4986</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -761,7 +828,121 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 4929</sub>
+<sub>`api.ogt` line 4995</sub>
+
+<a id="type-Rig"></a>
+
+### `Rig` (handle)
+
+A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
+```
+
+<sub>`api.ogt` line 5009</sub>
+
+<a id="type-HumanBone"></a>
+
+### `HumanBone` (struct)
+
+One standard humanoid bone of a skeleton.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `bone` | `string` | `""` | — | — | — | The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg. |
+| `node` | `string` | `""` | — | — | — | The skeleton node that is that bone. |
+
+```ogt
+struct HumanBone {
+  doc "One standard humanoid bone of a skeleton."
+  field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+  field node String "The skeleton node that is that bone."
+}
+```
+
+<sub>`api.ogt` line 5011</sub>
+
+<a id="type-Humanoid"></a>
+
+### `Humanoid` (struct)
+
+Which node of a skeleton is each standard humanoid bone (what retargeting maps).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `scheme` | `string` | `""` | — | — | — | The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched. |
+| `bones` | `readonly HumanBone[]` | `[]` | — | — | — | The bones found, in the standard order (hips first). |
+
+```ogt
+struct Humanoid {
+  doc "Which node of a skeleton is each standard humanoid bone (what retargeting maps)."
+  field scheme String "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+  field bones List.HumanBone "The bones found, in the standard order (hips first)."
+}
+```
+
+<sub>`api.ogt` line 5017</sub>
+
+<a id="type-HumanoidDesc"></a>
+
+### `HumanoidDesc` (desc struct)
+
+A skeleton and, optionally, the rig that says how its bones are named.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `SkeletonAsset` | `0` | — | — | — | The skeleton (og.load.animation's `skeleton`). |
+| `rig` | `Rig` | `0` | — | — | — | A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names). |
+
+```ogt
+struct HumanoidDesc {
+  doc "A skeleton and, optionally, the rig that says how its bones are named."
+  desc true
+  field skeleton SkeletonAsset "The skeleton (og.load.animation's `skeleton`)."
+  field rig Rig "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names)."
+}
+```
+
+<sub>`api.ogt` line 5023</sub>
+
+<a id="type-RetargetDesc"></a>
+
+### `RetargetDesc` (desc struct)
+
+A clip made for one skeleton, to play on another (other proportions, rest pose or bone names).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `clip` | `ClipAsset` | `0` | — | — | — | The clip, made for `source`. |
+| `source` | `SkeletonAsset` | `0` | — | — | — | The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's). |
+| `target` | `SkeletonAsset` | `0` | — | — | — | The skeleton that will play it. |
+| `sourceRig` | `Rig` | `0` | — | — | — | How the source's bones are named (og.load.rig); 0 detects them. |
+| `targetRig` | `Rig` | `0` | — | — | — | How the target's bones are named; 0 detects them. |
+| `footIk` | `boolean` | `true` | — | — | — | Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach). |
+
+```ogt
+struct RetargetDesc {
+  doc "A clip made for one skeleton, to play on another (other proportions, rest pose or bone names)."
+  desc true
+  field clip ClipAsset "The clip, made for `source`."
+  field source SkeletonAsset "The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's)."
+  field target SkeletonAsset "The skeleton that will play it."
+  field sourceRig Rig "How the source's bones are named (og.load.rig); 0 detects them."
+  field targetRig Rig "How the target's bones are named; 0 detects them."
+  field footIk bool "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach)." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 5037</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -775,7 +956,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 4943</sub>
+<sub>`api.ogt` line 5057</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -800,7 +981,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 4952</sub>
+<sub>`api.ogt` line 5066</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -831,7 +1012,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 4998</sub>
+<sub>`api.ogt` line 5112</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -860,7 +1041,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5010</sub>
+<sub>`api.ogt` line 5124</sub>
 
 ## Column kinds
 
@@ -886,7 +1067,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 4636</sub>
+<sub>`api.ogt` line 4702</sub>
 
 ```ogt
 column ClipAsset {
@@ -897,7 +1078,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 4643</sub>
+<sub>`api.ogt` line 4709</sub>
 
 ```ogt
 column GraphAsset {
@@ -908,7 +1089,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 4650</sub>
+<sub>`api.ogt` line 4716</sub>
 
 ```ogt
 column RootMotion {
@@ -919,7 +1100,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 4664</sub>
+<sub>`api.ogt` line 4730</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -930,7 +1111,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 4677</sub>
+<sub>`api.ogt` line 4743</sub>
 
 ```ogt
 column IkSolver {
@@ -941,7 +1122,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 4690</sub>
+<sub>`api.ogt` line 4756</sub>
 
 ```ogt
 column IkSpace {
@@ -952,7 +1133,7 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 4703</sub>
+<sub>`api.ogt` line 4769</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -963,4 +1144,4 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 4945</sub>
+<sub>`api.ogt` line 5059</sub>

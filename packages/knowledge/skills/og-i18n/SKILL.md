@@ -46,6 +46,10 @@ string "results.time" "タイム {time}"
 | select | `"{g, select, f {She won} m {He won} other {They won}}"` |
 | a literal brace or quote | `'{'`, `''` |
 
+- Big numbers in a locale's own units (K, M, B in English; 万, 亿 in
+  Chinese) are table data too: a key for how many digits a unit spans and
+  a key per unit, read by one formatter (`templates/archetypes/idle`'s
+  `big` in `src/numbers.ts`).
 - Whole sentences per key, never concatenated pieces: word order differs
   (Japanese puts the verb last, Arabic reads right to left).
 - Plurals in every table, even where the language has one form

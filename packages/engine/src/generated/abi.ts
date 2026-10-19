@@ -249,6 +249,8 @@ export interface HostAbi<A, V> {
   og_load_gltf_info(world: number, asset: number): string;
   /** `og.load.animation` */
   og_load_animation(world: number, path: string): string;
+  /** `og.load.rig` */
+  og_load_rig(world: number, path: string): string;
   /** `og.load.flipbook` */
   og_load_flipbook(world: number, path: string): string;
   /** `og.load.tilemap` */
@@ -281,6 +283,10 @@ export interface HostAbi<A, V> {
   og_atmosphere_time_of_day(world: number): number;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
+  /** `og.anim.humanoid` */
+  og_anim_humanoid(world: number, desc: string | undefined): string;
+  /** `og.anim.retarget` */
+  og_anim_retarget(world: number, desc: string | undefined): string;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
   /** `og.tween.sequence` */
@@ -563,6 +569,18 @@ export interface HostAbi<A, V> {
   og_engine_probe_commands(engine_probe: number, script: string): string;
   /** `EngineProbe.listen` */
   og_engine_probe_listen(engine_probe: number, seconds: number | undefined): string;
+  /** `og.terrain.load` */
+  og_terrain_load(world: number, path: string): string;
+  /** `og.terrain.sample` */
+  og_terrain_sample(world: number, desc: string | undefined): string;
+  /** `og.terrain.bounds` */
+  og_terrain_bounds(world: number, data: number, origin: string | undefined): string;
+  /** `og.terrain.edit` */
+  og_terrain_edit(world: number, data: number, brush: string | undefined): string;
+  /** `og.terrain.layer` */
+  og_terrain_layer(world: number, data: number, index: number): string;
+  /** `og.terrain.setLayer` */
+  og_terrain_set_layer(world: number, data: number, index: number, layer: string | undefined): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -674,6 +692,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_error",
   "og_load_gltf_info",
   "og_load_animation",
+  "og_load_rig",
   "og_load_flipbook",
   "og_load_tilemap",
   "og_physics_raycast",
@@ -690,6 +709,8 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_ragdoll_pose",
   "og_atmosphere_time_of_day",
   "og_anim_graph",
+  "og_anim_humanoid",
+  "og_anim_retarget",
   "og_tween_to",
   "og_tween_sequence",
   "og_tween_parallel",
@@ -831,6 +852,12 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_dump",
   "og_engine_probe_commands",
   "og_engine_probe_listen",
+  "og_terrain_load",
+  "og_terrain_sample",
+  "og_terrain_bounds",
+  "og_terrain_edit",
+  "og_terrain_layer",
+  "og_terrain_set_layer",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

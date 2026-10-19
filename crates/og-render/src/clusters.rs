@@ -214,24 +214,28 @@ impl ClusterBuilder {
     /// capacity ([`LightTables::ref_capacity`]).
     pub fn build(&mut self, lights: &[Light], view: &ClusterView, capacity: usize) {
         self.stats = ClusterStats::default();
-        let near = view.near.max(1e-4);
-        let far = view.far.max(near * 1.0001);
-        let gz = CLUSTER_GRID[2] as f32;
-        let (scale, bias) = if view.camera.orthographic {
-            let scale = gz / (far - near);
-            (scale, -near * scale)
-        } else {
-            let scale = gz / (far / near).log2();
-            (scale, -near.log2() * scale)
-        };
-        self.params = [
-            CLUSTER_GRID[0] as f32 / view.width.max(1) as f32,
-            CLUSTER_GRID[1] as f32 / view.height.max(1) as f32,
-            scale,
-            bias,
-        ];
+        self.select(lights, view);
+        self.assign(lights, view, capacity);
+    }
 
-        // Visible lights, then the most important MAX_LIGHTS of them.
+    /// Assigns `kept` (another view's [`ClusterBuilder::kept`], whose light
+    /// records are shared) to this view's clusters: the planar reflection's
+    /// mirrored camera shades the main view's lights.
+    pub fn build_kept(
+        &mut self,
+        lights: &[Light],
+        kept: &[usize],
+        view: &ClusterView,
+        capacity: usize,
+    ) {
+        self.stats = ClusterStats::default();
+        self.kept.clear();
+        self.kept.extend_from_slice(kept);
+        self.assign(lights, view, capacity);
+    }
+
+    /// The visible lights, then the most important [`MAX_LIGHTS`] of them.
+    fn select(&mut self, lights: &[Light], view: &ClusterView) {
         self.kept.clear();
         for (i, l) in lights.iter().enumerate() {
             if view
@@ -263,6 +267,26 @@ impl ClusterBuilder {
                 keep[k - 1]
             });
         }
+    }
+
+    /// The kept lights' clusters, capped, in the tables.
+    fn assign(&mut self, lights: &[Light], view: &ClusterView, capacity: usize) {
+        let near = view.near.max(1e-4);
+        let far = view.far.max(near * 1.0001);
+        let gz = CLUSTER_GRID[2] as f32;
+        let (scale, bias) = if view.camera.orthographic {
+            let scale = gz / (far - near);
+            (scale, -near * scale)
+        } else {
+            let scale = gz / (far / near).log2();
+            (scale, -near.log2() * scale)
+        };
+        self.params = [
+            CLUSTER_GRID[0] as f32 / view.width.max(1) as f32,
+            CLUSTER_GRID[1] as f32 / view.height.max(1) as f32,
+            scale,
+            bias,
+        ];
 
         // Each kept light's cluster box.
         self.boxes.clear();

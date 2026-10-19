@@ -614,6 +614,11 @@ pub fn og_load_animation(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_rig(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_rig(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_flipbook(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_flipbook(&Host, world, path)
 }
@@ -691,6 +696,16 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
 #[wasm_bindgen]
 pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_humanoid(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
 }
 
 #[wasm_bindgen]
@@ -1414,4 +1429,34 @@ pub fn og_engine_probe_commands(engine_probe: u32, script: String) -> String {
 #[wasm_bindgen]
 pub fn og_engine_probe_listen(engine_probe: u32, seconds: Option<f64>) -> String {
     <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_load(world: u32, path: String) -> String {
+    <Host as TerrainApi>::og_terrain_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_sample(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_edit(&Host, world, data, brush)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
+    <Host as TerrainApi>::og_terrain_layer(&Host, world, data, index)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
 }

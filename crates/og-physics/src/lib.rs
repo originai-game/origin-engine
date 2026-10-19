@@ -15,7 +15,7 @@
 //! | [`Rope`], [`Cloth`] | Verlet ropes and cloth pinned to entities, colliding with solids; [`PhysicsSystem::rope_points`], [`PhysicsSystem::cloth_points`] |
 //! | [`Fluid2D`] | a 2D particle fluid (double density relaxation); [`PhysicsSystem::fluid_particles`] |
 //! | [`WaterSurface`], [`WaterLine`], [`Splash`] | height-field water (3D) and a 2D spring line, splashed by and floating bodies |
-//! | [`Ragdoll`], [`RagdollRig`] | capsule bones and ball joints from a host-registered rig, blended between animation and physics |
+//! | [`Ragdoll`], [`RagdollRig`] | capsule bones and joints (ball joints in 3D, hinges about z in 2D) from a host-registered rig, blended between animation and physics |
 //!
 //! Everything beyond rigid bodies lives in the same rapier world and the
 //! same state block: joints and the wheel and bone bodies in rapier's
@@ -80,6 +80,19 @@ pub struct MeshDesc {
     pub positions: Vec<Vec3>,
     /// Triangles as indices into `positions` (a convex hull ignores them).
     pub indices: Vec<[u32; 3]>,
+}
+
+/// A height field for [`SHAPE_HEIGHTFIELD`] colliders, registered under the
+/// handle the colliders name ([`Collider::mesh`]): `columns` × `rows`
+/// heights over a `size` rectangle centred on the collider, row-major from
+/// -z to +z and -x to +x (og-render's `TerrainData`). Each cell is split
+/// along its (-x, -z) to (+x, +z) diagonal, as the renderer draws it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeightfieldDesc {
+    pub columns: u32,
+    pub rows: u32,
+    pub size: Vec2,
+    pub heights: Arc<[f32]>,
 }
 
 /// The shape of a shape cast or an overlap test: the shape fields of a
@@ -208,6 +221,8 @@ pub(crate) struct Shared {
     /// built from them are rebuilt.
     pub stale_meshes: BTreeSet<u64>,
     pub meshes: BTreeMap<u64, Arc<MeshDesc>>,
+    /// Height fields by handle (assets, like meshes).
+    pub heightfields: BTreeMap<u64, Arc<HeightfieldDesc>>,
     #[cfg(feature = "physics3d")]
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     #[cfg(feature = "physics2d")]
@@ -592,10 +607,61 @@ impl PhysicsSystem {
         Ok(())
     }
 
+    /// Registers (or replaces) the height field `handle` that
+    /// [`SHAPE_HEIGHTFIELD`] colliders name (a terrain; 3D only). An asset
+    /// like a mesh: a world restored into a fresh engine needs it
+    /// registered again. New heights (a terrain edit) rebuild the colliders
+    /// made from it at the next step; the same heights change nothing.
+    pub fn set_heightfield(&self, handle: u64, field: HeightfieldDesc) -> Result<()> {
+        if field.columns < 2 || field.rows < 2 {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "height field {handle} needs at least 2 × 2 heights, got {} × {}",
+                    field.columns, field.rows
+                ),
+            ));
+        }
+        if field.heights.len() != (field.columns * field.rows) as usize {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "height field {handle}: {} × {} needs {} heights, got {}",
+                    field.columns,
+                    field.rows,
+                    field.columns * field.rows,
+                    field.heights.len()
+                ),
+            ));
+        }
+        if !(field.size.x > 0.0 && field.size.y > 0.0 && field.size.is_finite())
+            || field.heights.iter().any(|h| !h.is_finite())
+        {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("height field {handle}: its size must be positive and its heights finite"),
+            ));
+        }
+        let mut shared = lock(&self.shared);
+        if shared
+            .heightfields
+            .get(&handle)
+            .is_some_and(|f| **f == field)
+        {
+            return Ok(());
+        }
+        shared.heightfields.insert(handle, Arc::new(field));
+        shared.stale_meshes.insert(handle);
+        #[cfg(feature = "physics3d")]
+        shared.shapes3.retain(|k, _| k.mesh != handle);
+        Ok(())
+    }
+
     /// Removes mesh `handle`; colliders still naming it fail the next step.
     pub fn remove_mesh(&self, handle: u64) {
         let mut shared = lock(&self.shared);
         shared.meshes.remove(&handle);
+        shared.heightfields.remove(&handle);
         shared.stale_meshes.insert(handle);
         #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);
@@ -666,6 +732,17 @@ impl PhysicsSystem {
             .map(|f| f.positions.clone()))
     }
 
+    /// The mix of the og.Fluid2D on `entity` when it shares a group: its
+    /// lane in the group (entity order) and, per particle, how much of it
+    /// is each lane's fluid (summing to 1). `None` for a fluid alone.
+    pub fn fluid_mix(&self, entity: Entity) -> Option<(u32, Vec<[f32; 4]>)> {
+        with_sim!(self.shared, |s| s
+            .fluids
+            .get(&entity.to_bits())
+            .filter(|f| f.slot != u32::MAX)
+            .map(|f| (f.slot, f.mix.clone())))
+    }
+
     /// The heights of the og.WaterSurface on `entity`.
     pub fn water_heights(&self, entity: Entity) -> Option<WaterHeights> {
         with_sim!(self.shared, |s| s.surfaces.get(&entity.to_bits()).map(
@@ -703,12 +780,17 @@ impl PhysicsSystem {
     }
 
     /// The bones of the og.Ragdoll on `entity` as the bodies hold them
-    /// (rig order, world space); `None` before its first step or in 2D.
+    /// (rig order, world space; in 2D at their targets' z); `None` before
+    /// its first step.
     pub fn ragdoll_pose(&self, entity: Entity) -> Option<Vec<(Vec3, Quat)>> {
         let shared = lock(&self.shared);
         #[cfg(feature = "physics3d")]
         if let Some(s) = shared.sim3.as_deref() {
             return dim3::ragdoll_pose(s, entity.to_bits());
+        }
+        #[cfg(feature = "physics2d")]
+        if let Some(s) = shared.sim2.as_deref() {
+            return dim2::ragdoll_pose(s, entity.to_bits());
         }
         None
     }

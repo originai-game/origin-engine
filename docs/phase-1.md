@@ -49,11 +49,201 @@ matches fx-showcase's five frames and twelve stations on WebGPU and WebGL2;
 game template (2). The publish wasm is **2,958,860 B brotli, 70.5 %** of the
 budget (2,943,180 B before the round, +15,680 B).
 
+After merging main (9c9d6d3: terrain and water, the archetypes, animation
+and physics), terrain's lit shader and the water reflection pass use the
+clusters too (the reflection builds its own over the main view's kept
+lights), and the render stations moved to `src/render.ts` as 19-22 at x
+2100-2300; the moon frame was re-recorded on every tier for the move
+(`fx-showcase-moon-relocated-before-after.png`). `OG_GATE_JOBS=2
+scripts/check.sh --all` on the merge **PASSED, 9 of 9 steps in 291 s**:
+fmt 4 s, clippy 2 s, wasm-build 19 s, test 225 s, wasm-opt 202 s,
+size-gate 42 s, drift 10 s, bun-test 35 s, determinism 28 s.
+`scripts/check.sh web-reference` matches all 17 stations on WebGPU and
+WebGL2; `og test` passes fx-showcase (18 suites) on metal and lavapipe.
+The publish wasm is **3,028,729 B brotli, 72.2 %** (main recorded
+3,013,367 B, +15,362 B).
+
 Left out: clearcoat maps (WebGL2's skinned lit pipeline has no texture slot
 left), a compute cluster build (the CPU build costs tens of microseconds),
 upload timings in the browser (the Worker's transcoding is timed, the GPU
 upload natively), and ASTC and ETC2 frames off Apple silicon (lavapipe and
 desktop Chrome take BC).
+
+## Phase 2, terrain and water round (2026-10-19)
+
+Branch `p2-terrain-water`, 0ee78f1..HEAD on 2dae5fa. Closes owed row 24.
+
+- **Terrain** (0ee78f1, 290f4a4, 9a9d6da, 5be9281): a `type terrain`
+  .ogt (a 16-bit grey PNG or an EXR heightmap, an RGBA control map, up to
+  four layers with slope and altitude rules) cooked into zlib'd 16-bit
+  tiles of 128 samples, deterministically; drawn by og-render as a
+  geometry clipmap (nested `ring` × `ring` levels snapped to twice their
+  spacing, the finer level's hole cut from one index buffer, CDLOD's morph
+  at the edges: no cracks at six camera positions, fewer levels from afar),
+  normals built on the GPU, layers planar or triplanar weighted by control
+  map × slope × altitude and sharpened by their heights, casting and
+  receiving cascaded and local shadows under the fog; a rapier height
+  field (SHAPE_HEIGHTFIELD, split along the renderer's diagonal) that the
+  character controller walks on; a navmesh `.ogt`'s `terrain` entry bakes
+  its walkable slopes. IDL module `terrain`: og.Terrain, og.terrain.load,
+  sample, bounds, edit (raise, lower, flatten, smooth, paint, seen by the
+  renderer, physics and sample), layer, setLayer; og-game §11 and
+  `wiki/terrain.md`.
+- **Water** (row 24; 0ee78f1, 5be9281): og.Water's planarReflection (the
+  camera mirrored in the surface, an oblique near plane at the water,
+  0.25 to 1 of the resolution, cheaper than the screen-space march it
+  replaces), shadows (0 to 1), caustics on what lies below, and the
+  underwater view (the water's fog, Snell's window from below).
+- **Scatter** (b35a73b, fd4456d): og.TerrainScatter grows instanced copies
+  of a mesh over a layer near the camera, fixed to a grid on the terrain,
+  shrinking away with distance; og-tests' terrain-grass scene.
+- **fx-showcase** (15ff230): the `terrain` station, a 256 m valley with a
+  path painted in the control map, a lake with a planar reflection of the
+  mountain, and a character walking up a knoll, on all four tiers.
+- **References**: og-tests terrain-near, -mid, -far, -grass,
+  water-planar, -shadows, -underwater on metal and vulkan-cpu (reproduced
+  at RMSE 0; every earlier vulkan-cpu reference still passes); the
+  fx-showcase station on metal, vulkan-cpu, webgpu and webgl2.
+- **Costs and frame times** (`tests/evidence/P2/terrain-water/`): terrain
+  +0.1 to +0.55 ms on the M4 Pro, its shadow passes +0.2 to +0.35 ms,
+  water shadows and caustics within noise, the underwater view +0.4 ms,
+  the 36,000-tuft grass +4.1 to +4.5 ms, all CPU submit. Every scene draws
+  in under 2.5 ms on metal (grass 4.3 ms); the terrain station's median
+  frame is 1.34 ms on Chrome WebGPU and 2.43 ms on WebGL2, under the
+  8.3 ms desktop budget.
+- **Gate**: `OG_GATE_JOBS=2 scripts/check.sh --all` at ad06e6e,
+  2026-10-19, Apple M4 Pro shared with four other agents' work:
+  **PASSED, 9 of 9 steps in 559 s** (9 min 19 s): fmt 3 s, clippy 14 s,
+  wasm-build 184 s, test 219 s, wasm-opt 200 s, size-gate 61 s, drift 6 s,
+  bun-test 150 s, determinism 2 s.
+- **Wasm**: publish wasm 2,978,461 B brotli, 71.0 % of the budget
+  (+35,281 B over 2,943,180). The terrain's load-time decoding lives in
+  og-cook and miniz_oxide, both at opt-level z in `[profile.wasm]`.
+- **Not done**: terrains are decoded whole at load, not streamed tile by
+  tile; a terrain lies along world x and z (its entity's rotation and
+  scale are ignored); edits are asset changes and are not in snapshots;
+  scattered copies draw without per-copy alpha fade (they shrink) and the
+  scatter is rebuilt on the CPU every frame (4.3 ms for 36,000 copies; a
+  GPU placement pass would remove it); lavapipe draws no shore foam on
+  `terrain-far`'s 24 km single-quad sea (not investigated).
+
+## Status 2026-10-19, Phase 2, archetypes round
+
+The four Discover archetypes still owed are built on the engine (branch
+`p2-archetypes`): `templates/archetypes/tower-defense` (Path Guard),
+`roguelike` (Lamp Dive), `idle` (Spark Orb) and `rhythm` (Three-Lane Beat).
+Each is a complete small game with a title, pause, settings (volumes,
+language, reduced motion; the rhythm's offset), an end card, keyboard,
+gamepad and touch, safe areas and a phone layout, an og-ui HUD on a
+recoloured style pack, en and zh-CN tables, synthesised sounds (CC0, by
+its `tools/make-assets.py`, byte-for-byte deterministic, as is the cook),
+Metal reference frames and a README naming the skill sections it
+exercises. The create CLI scaffolds all seven archetypes
+(`--archetype`), and the knowledge skills (og-ai, og-audio, og-feel,
+og-game, og-i18n, og-platform-sdk) point at them.
+
+| Archetype | Playtests (`og test`) | `og polish` taste / feel | Publish archive (zip) | The game's own content |
+|---|---|---|---|---|
+| tower-defense | 9 of 9 | 99 / 100 | 5,738,666 B | 1,386,864 B |
+| roguelike | 9 of 9 | 99 / 100 | 5,620,824 B | 1,295,752 B |
+| idle | 9 of 9 | 97 / 94 | 6,151,017 B | 1,803,759 B |
+| rhythm | 10 of 10 | 99 / 99 | 6,039,807 B | 1,822,905 B |
+
+The archive is `og build . --publish`'s `dist/` zipped, most of it the
+engine's wasm and web runtime; the game's own content (`cooked/` and
+`game.js`) is under the Discover prototypes' 2 MB asset budget in each.
+The polish reports (`tests/evidence/P2/archetypes/<name>/`) were made with
+og and the native addon built release from this checkout: on this machine
+(load 15 to 70 from other agents' work) frame time's p95 follows the load,
+not the games, whose median step and render are 1–3 ms
+(`tests/evidence/P2/archetypes/frame-time.md`, with a per-tick series).
+`tests/evidence/P2/archetypes/break-and-restore.md` breaks one check of
+each.
+
+Gate: `OG_GATE_JOBS=2 scripts/check.sh --all` on 3c5c7d4 with this
+commit's documents and skill pointers, 2026-10-19, load 11–35: **PASSED,
+9 of 9 steps in 99 s** (fmt 1 s, clippy 0 s, wasm-build 6 s, test 59 s,
+wasm-opt 62 s, size-gate 28 s, drift 1 s, bun-test 22 s, determinism
+1 s; the publish wasm 2,943,180 B brotli, 70 % of the budget). The four
+archetypes' `og test` runs (9, 9, 9 and 10 suites) pass beside it.
+
+Engine gaps the games work around, each in its README's Known limits:
+og.platform's answers carry no time, so the idle game cannot know how long
+it was closed (`relaunch:<seconds>` stands in for the host); og.audio
+reports no output latency and og.Input no time within the tick, so the
+rhythm game calibrates the whole chain from the player's taps; an
+AudioSource cannot start part-way (a resume restarts the two-bar phrase);
+og.ui's `settingsScreen`, `resultsScreen` and `idleHud` carry English
+words and number formats of their own, so the settings, end cards and the
+idle HUD are built from widgets; `og polish` reads og.ui's phone title
+menu (a bottom sheet) as HUD. Two engine defects met on the way: a system
+with `og.Rng` in `reads` only gets streams that answer NaN
+(`world.resource(og.Rng).value.fork("x").next()`; declared in `writes`
+it answers 0.6868…), so the roguelike's systems declare it written; and a
+system that reads a resource it did not declare gets a refusal it can
+only notice by checking `ok`.
+
+## Status 2026-10-19, phase 2, animation and physics round
+
+Branch `p2-anim-physics` (evidence: `tests/evidence/P2/anim-physics/`,
+`NOTES.md` there indexes it). Owed rows 25, 26 and 27 are done; 29 (3D SPH)
+was not started and is left for the next round.
+
+- **Animation retargeting** (aaea84c, 707b6b2): og-anim maps a humanoid's
+  22 bones from its names (Mixamo, VRM, Unity, Rigify, Unreal, Blender
+  detected; a `type rig` .ogt overrides the scheme or any bone) and
+  retargets a clip onto another rig: rotations moved in model space with
+  each bone's rest corrected, the hips' travel and height scaled by the
+  legs' ratio (root motion kept), planted feet held on the ground by
+  two-bone leg IK, lowering the hips where a leg cannot reach. The cook
+  writes an animation library's clips into a model retargeted
+  (`animation { rig library footIk }` in its import settings, re-cooked
+  when the rig or the library changes); `og.anim.retarget`,
+  `og.anim.humanoid` and `og.load.rig` do it at run time, cached. Feet stay
+  planted with zero height error and slide on rigs at 1.267 and 0.689 times
+  the library's legs (11.5 mm off with forward kinematics alone).
+- **2D ragdolls** (row 27; bf15ab1, 53331df): og.Ragdoll in the 2D profile,
+  rapier2d capsules on hinges about z limited by `jointLimit`, following
+  the animation at weight 0 and blending as in 3D; `og.Physics.profile` can
+  now be set at run time.
+- **Cloth self-collision** (row 26; bf15ab1): `og.Cloth.thickness` (a
+  sorted spatial hash, pairs pushed apart every pass, a point moving at
+  most half the thickness a step), `substeps` and `friction`. It costs 5 to
+  6 times the plain cloth: about 0.5 ms a tick for a 20 x 20 sheet, 2.4 ms
+  at 32 x 32.
+- **Fluids** (row 25; bf15ab1, 53fa607): up to sixteen metaball fluids a
+  frame, packed four to a field; `og.Fluid2D.group`, `density` and
+  `mixing`: fluids of one group (four at most) step as one particle set,
+  heavier ones sinking, held apart at their boundary unless they mix, their
+  mix evening out where they touch and drawn as one surface whose colour
+  follows it. A group costs one fluid of all its particles plus 7 to 14 %.
+- **fx-showcase** gains four stations, retarget, ragdoll2d, cloth and
+  fluids (4a716f7), each with a playtest and references on metal,
+  vulkan-cpu, webgpu and webgl2 (f7a0d88, f270817).
+- **Determinism**: `tools/wasm-determinism` (the gate's determinism step)
+  now hashes og-physics' beyond-rigid-bodies scenario with the new cloth,
+  fluid group and 2D ragdoll in 3D and 2D, and og-anim's walk with its
+  retargeting; host debug and release and wasm32 scalar and simd128 agree
+  (ca02ca3). f37a586 restores the E5 joints station's 3D ragdoll bit for
+  bit after the 2D ragdoll refactor.
+- **og-ui** (cf932f8, done here at the coordinator's request though it is
+  og-ui's): the platform's new danger tokens, the danger button on the
+  danger tint, a contrast test of every button role (row 43), and the og-ui
+  and ui-kit references the colour touched, re-recorded.
+
+### Gate and wasm
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on 5d982db, 2026-10-19, with other
+agents' builds on the machine: **PASSED, 9 of 9 steps in 743 s**: fmt 5 s,
+clippy 21 s, drift 5 s, determinism 46 s, wasm-build 235 s, wasm-opt
+305 s, test 347 s, size-gate 92 s, bun-test 154 s. The publish wasm is
+**2,975,644 B brotli, 70.9 % of the 4,194,304 B budget**, 32,464 B
+(0.8 points) more than the E7 round's 2,943,180 B.
+After merging main (11d6820, the terrain and water round and the
+archetypes) in 00238f6, `OG_GATE_JOBS=2 scripts/check.sh --all` on 00238f6
+**PASSED, 9 of 9 steps in 123 s** (incremental after the path-aware run),
+with the publish wasm at **3,013,367 B brotli, 71.8 %** for both rounds
+together.
 
 ## Status 2026-10-19, E7 round
 
@@ -125,6 +315,9 @@ wasm at 70.2 %, not under 65 %), and open 25 for the engine's phase 2
 (15–35, 41, 42, 45, 46), 3 for the platform (36, 38, 43) and 3 for the
 owner (39, 40, 44).
 
+After the phase 2 animation and physics round: rows 25, 26, 27 and 43 done
+too; 29 (3D SPH) still open.
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -157,12 +350,12 @@ resource only the owner can give.
 | 21 | Pads beyond the first in og-ui | E2 | M | engine, phase 2 | open |
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | open |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | done, 12e93b5, 49dfd0d (`og.render.setMaterialShader`), aa81258 |
-| 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | open |
-| 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | open |
-| 26 | Cloth self-collision | E5 | M | engine, phase 2 | open |
-| 27 | 2D ragdolls | E5 | M | engine, phase 2 | open |
+| 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | done, 0ee78f1 (og-render), 5be9281 (og.Water fields), 15ff230 (fx-showcase terrain station) |
+| 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | done, bf15ab1, 53fa607, 4a716f7 (sixteen a frame, groups that layer by density and blend by mixing) |
+| 26 | Cloth self-collision | E5 | M | engine, phase 2 | done, bf15ab1, 4a716f7 |
+| 27 | 2D ragdolls | E5 | M | engine, phase 2 | done, bf15ab1, 53331df, 4a716f7 |
 | 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | done, 1df9797, 9037875, a5cdb89 |
-| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open |
+| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open (not started in the animation and physics round: left for the next) |
 | 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | done, a061113, 1296a02, f381a66 |
 | 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | done, 12e93b5, 49dfd0d, eb869b8, aa81258 |
 | 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | done, 028c2fc |
@@ -176,7 +369,7 @@ resource only the owner can give.
 | 40 | Mobile measurements: the iPhone first frame and frame times (Safari, WebGPU), the mid-range Android view benchmark | M6, E1 | S | owner (devices) | open |
 | 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, phase 2 | open |
 | 42 | The kit's small type: the shop cards' item names (`caption`, 7 CSS px of ink), the idle HUD's generator names and the `meta` units, under og polish's 9 px | E7 | S | engine, phase 2 | open |
-| 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | open |
+| 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | done: the platform's tokens of b71ae8fac, og-ui synced with the danger tint in cf932f8 (every role 4.5:1 or more, `crates/og-ui/tests/button_contrast.rs`) |
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, phase 2 | open |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, phase 2 | open |

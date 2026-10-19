@@ -1,0 +1,26 @@
+type behaviour
+version 1
+---
+# The moss-faced guardian (og.ai): it never leaves the relic's room. On the
+# foes' turn, next to the lamp-bearer it strikes (a charged strike every
+# third turn, telegraphed the turn before: src/foes.ts); seeing it, it
+# steps toward it; otherwise it holds its ground.
+name "guardian"
+tree {
+  sequence turn {
+    check Game.foesTurn
+    selector act {
+      sequence strike {
+        check sees
+        check targetDistance atMost 1.05
+        command strike
+      }
+      sequence close {
+        check sees
+        check targetDistance atMost 4
+        command hunt
+      }
+      command brace
+    }
+  }
+}

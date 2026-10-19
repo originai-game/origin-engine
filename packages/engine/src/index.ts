@@ -25,6 +25,7 @@ import {
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, platform } from "./e6.ts";
+import { terrain } from "./p2.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
@@ -92,6 +93,7 @@ export const SHAPE_CAPSULE: typeof Api.SHAPE_CAPSULE = 2;
 export const SHAPE_CYLINDER: typeof Api.SHAPE_CYLINDER = 3;
 export const SHAPE_CONVEX: typeof Api.SHAPE_CONVEX = 4;
 export const SHAPE_TRIMESH: typeof Api.SHAPE_TRIMESH = 5;
+export const SHAPE_HEIGHTFIELD: typeof Api.SHAPE_HEIGHTFIELD = 6;
 export const PROFILE_2D: typeof Api.PROFILE_2D = 2;
 export const PROFILE_3D: typeof Api.PROFILE_3D = 3;
 export const SOUND_FINISHED: typeof Api.SOUND_FINISHED = 0;
@@ -154,6 +156,7 @@ export const og: typeof Api.og = Object.freeze({
   ai,
   platform,
   i18n,
+  terrain,
   ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

@@ -276,6 +276,10 @@ handle!(
     /// An MSDF font added to a [`RenderScene`].
     FontHandle
 );
+handle!(
+    /// Terrain data added to a [`RenderScene`] ([`RenderScene::add_terrain`]).
+    TerrainHandle
+);
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
@@ -805,6 +809,9 @@ pub struct RenderScene {
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
     trail_styles: Vec<TrailStyle>,
+    terrain_data: Vec<crate::TerrainData>,
+    /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
+    terrain_revisions: Vec<u64>,
     /// Objects to draw this frame, in any order.
     pub instances: Vec<Instance>,
     pub camera: Camera,
@@ -853,10 +860,12 @@ pub struct RenderScene {
     pub fog: Option<crate::Fog>,
     /// Planar 3D water surfaces, drawn after the opaque scene and the sky.
     pub water: Vec<crate::Water>,
+    /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
+    pub terrains: Vec<crate::Terrain>,
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first
-    /// [`crate::MAX_FLUIDS`]).
+    /// [`crate::MAX_FLUIDS`]; fluids of one group are one surface).
     pub metaballs: Vec<crate::Metaballs>,
     /// Sort keys of single sprites within their layer (top-down y sorting):
     /// a layer draws its sprites by ascending key, then texture, then
@@ -907,6 +916,8 @@ impl RenderScene {
             emitters: Vec::new(),
             luts: Vec::new(),
             trail_styles: Vec::new(),
+            terrain_data: Vec::new(),
+            terrain_revisions: Vec::new(),
             tick: 0,
             tick_rate: 60.0,
             particles: Vec::new(),
@@ -926,6 +937,7 @@ impl RenderScene {
             overlay: None,
             fog: None,
             water: Vec::new(),
+            terrains: Vec::new(),
             water_2d: Vec::new(),
             metaballs: Vec::new(),
             sprite_order: Vec::new(),
@@ -989,6 +1001,37 @@ impl RenderScene {
 
     pub fn skin(&self, handle: MeshHandle) -> Option<&SkinData> {
         self.skins.get(handle.index())?.as_ref()
+    }
+
+    /// Adds terrain data (heights and a control map, an asset); draw it
+    /// with a [`crate::Terrain`] in [`RenderScene::terrains`]. Checked at
+    /// its first frame ([`crate::RenderError::InvalidData`]).
+    pub fn add_terrain(&mut self, data: crate::TerrainData) -> TerrainHandle {
+        self.terrain_data.push(data);
+        self.terrain_revisions.push(0);
+        TerrainHandle(self.terrain_data.len() as u32 - 1)
+    }
+
+    /// Replaces a terrain's data (a runtime edit of its heights or its
+    /// control map); the renderer uploads it again before the next frame
+    /// that draws it. `false` for a handle of another scene.
+    pub fn set_terrain(&mut self, handle: TerrainHandle, data: crate::TerrainData) -> bool {
+        match self.terrain_data.get_mut(handle.index()) {
+            Some(d) => {
+                *d = data;
+                self.terrain_revisions[handle.index()] += 1;
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn terrain(&self, handle: TerrainHandle) -> Option<&crate::TerrainData> {
+        self.terrain_data.get(handle.index())
+    }
+
+    pub(crate) fn terrain_datas(&self) -> (&[crate::TerrainData], &[u64]) {
+        (&self.terrain_data, &self.terrain_revisions)
     }
 
     /// Adds a particle emitter description (an asset).

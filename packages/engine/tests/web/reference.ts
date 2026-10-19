@@ -25,11 +25,11 @@
 // --shots name@tick,... (the ticks its screenshots run at); the script runs
 // as it is and each shot is compared with <dir>/references/<tier>/<name>.png.
 //
-// --time N then times N more frames after the last shot (one tick and one
-// render each, as above) and ends them with a capture, whose readback waits
-// for the GPU: reference-<tier>.json gets the frames' milliseconds per
-// frame (the whole run over N, GPU included) and the median of the frame
-// calls themselves (the CPU side: tick, extraction and submission).
+// --time <n> then drives n more frames after the last shot and reports the
+// wall time of each `frame` call (one tick, one render submitted: median and
+// p95) and of the n frames plus one capture, whose readback waits for the
+// GPU to finish them (the frame time with the GPU's work, amortised), in
+// reference-<tier>.json's `frameMs`.
 //
 // --record writes the frames as references/<tier>/ instead of comparing.
 // Writes <out>/<tier>/<station>.png, <station>.diff.rgba on a mismatch (raw
@@ -82,7 +82,6 @@ const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = SHOT
       { name: "2d", at: 4.1, tick: 300 },
       { name: "stylised", at: 5.1, tick: 420 },
     ];
-const TIME = Number(opt("--time") ?? 0);
 const SCRIPT = opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
 
 /** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`). */
@@ -175,24 +174,26 @@ try {
   result["ticks"] = frames;
   // The engine's own log (wgpu's validation errors land there).
   result["engine"] = (await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-40);
-  if (TIME > 0) {
-    const timing = await tab.eval<{ perFrameMs: number; medianCallMs: number; frames: number }>(`(async () => {
+  const timed = Number(opt("--time") ?? 0);
+  if (timed > 0) {
+    const t = await tab.eval<{ each: number[]; total: number }>(`(async () => {
       const shell = globalThis.__og_shell__;
-      const calls = [];
-      const t0 = performance.now();
-      for (let i = 0; i < ${TIME}; i++) {
-        const c0 = performance.now();
+      const each = [];
+      const start = performance.now();
+      for (let i = 0; i < ${timed}; i++) {
+        const t = performance.now();
         const answer = await shell.call("frame", 1000 / ${TICK_RATE});
         if (!answer || answer.ok === false) throw new Error("frame refused: " + JSON.stringify(answer));
-        calls.push(performance.now() - c0);
+        each.push(performance.now() - t);
       }
       await shell.probe("capture", { width: ${WIDTH}, height: ${HEIGHT} });
-      const total = performance.now() - t0;
-      calls.sort((a, b) => a - b);
-      return { perFrameMs: total / ${TIME}, medianCallMs: calls[calls.length >> 1], frames: ${TIME} };
+      return { each, total: performance.now() - start };
     })()`);
-    result["timing"] = timing;
-    console.log(`time ${tier}: ${timing.frames} frames, ${timing.perFrameMs.toFixed(3)} ms per frame with the GPU, median frame call ${timing.medianCallMs.toFixed(3)} ms`);
+    const sorted = [...t.each].sort((a, b) => a - b);
+    const at = (q: number) => +sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]!.toFixed(2);
+    const frameMs = { frames: timed, median: at(0.5), p95: at(0.95), withGpu: +(t.total / timed).toFixed(2) };
+    result["frameMs"] = frameMs;
+    console.log(`frame time (${tier}, ${timed} frames after tick ${frames}): median ${frameMs.median} ms, p95 ${frameMs.p95} ms, ${frameMs.withGpu} ms each with the GPU's work (the frames and one capture)`);
   }
   const shots = await tab.eval<Array<{ png: string; width: number; height: number; tick: number } | null>>("globalThis.__og_shots__");
   for (const [i, s] of STATIONS.entries()) {

@@ -70,7 +70,9 @@ trying.
 
 - `dump_platform[:file]` lists every call with its method, arguments, tick,
   state and answer, and what answers them: assert on it in a playtest
-  (`templates/archetypes/runner/tests/records.og.ts`).
+  (`templates/archetypes/runner/tests/records.og.ts`; a stale write read
+  again and merged: `templates/archetypes/idle/tests/offline.og.ts` and
+  `templates/archetypes/roguelike/tests/win.og.ts`).
 - `og run --platform-store save.json` keeps the local store in a file, so
   a second run sees the first's save; without it the store is in memory
   for the run.

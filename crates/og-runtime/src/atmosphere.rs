@@ -2,8 +2,8 @@
 //! drawing of the physics that has a look): og.Fog, og.Sky, og.DayNight
 //! and og.Weather into the scene's fog, sky, light and particles; og.Water
 //! (with an og.WaterSurface's heights), og.Water2D over an og.WaterLine,
-//! og.Fluid2D as metaballs, visible og.Rope and og.Cloth; and the material
-//! shaders (`og.load.shader`, `og.render.shaderMaterial`,
+//! og.Fluid2D as metaballs (a group as one surface), visible og.Rope and
+//! og.Cloth; and the material shaders (`og.load.shader`, `og.render.shaderMaterial`,
 //! `og.render.setShaderParam`). Like the rest of extraction it reads the
 //! world (and the physics' last step) and never writes either.
 
@@ -313,6 +313,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 size: w.size,
                 heights: Arc::from(w.heights),
             }),
+            planar_reflection: f(&v, "planarReflection", 0.0),
+            shadows: f(&v, "shadows", 0.0),
+            underwater_color: color(&v["underwaterColor"], Vec3::new(0.03, 0.16, 0.2)),
+            underwater_density: f(&v, "underwaterDensity", 0.09),
+            caustics: f(&v, "caustics", 0.0),
+            caustics_scale: f(&v, "causticsScale", 0.6),
         });
     }
     // 2D water over its spring line.
@@ -353,6 +359,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let Some(particles) = physics.fluid_particles(Entity::from_bits(e)) else {
             continue;
         };
+        // A fluid sharing its group is drawn with the group as one surface,
+        // its particles by their mix (og-physics' fluid_mix: its lane).
+        let (group, lane, mix) = match physics.fluid_mix(Entity::from_bits(e)) {
+            Some((lane, mix)) => (
+                v["group"].as_u64().unwrap_or(0) as u32,
+                lane,
+                Arc::from(mix),
+            ),
+            None => (0, 0, Arc::from(Vec::new())),
+        };
         scene.metaballs.push(Metaballs {
             particles: Arc::from(particles),
             radius: f(&v, "radius", 0.18) * f(&v, "blobScale", 1.6),
@@ -361,6 +377,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             color: super::fx::vec3(&v["color"]).extend(f(&v, "opacity", 0.9)),
             layer: v["layer"].as_i64().unwrap_or(0) as i32,
             z: h.world_of(e).transform_point3(Vec3::ZERO).z,
+            group,
+            lane,
+            mix,
             ..Metaballs::default()
         });
     }

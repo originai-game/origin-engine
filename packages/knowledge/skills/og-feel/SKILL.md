@@ -296,8 +296,9 @@ outputs you read:
 10. **Rooms scroll**: `get:og.Camera` on the ticks after the hero crosses a
     doorway shows `zoneScroll` rising from 0 to 1 (topdown's `door.og.ts`).
 
-`templates/archetypes/topdown`, `runner` and `match3` do all of this; read
-their `src/` and `tests/` for working patterns.
+`templates/archetypes/topdown`, `runner` and `match3` do all of this, and
+`tower-defense`, `roguelike`, `idle` and `rhythm` too (each README's feel
+table names where); read their `src/` and `tests/` for working patterns.
 
 ## 14. Feel, measured: `og polish`
 

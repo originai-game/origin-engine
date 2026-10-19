@@ -174,4 +174,4 @@ test("a world with every feature hashes the same twice and after a restore", () 
     return end;
   };
   for (const profile of ["3d", "2d"] as const) expect(run(profile)).toBe(run(profile));
-});
+}, 30_000); // two profiles, every feature, three runs each: about 2 s alone, over 5 s beside other builds

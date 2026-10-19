@@ -31,7 +31,7 @@ pub fn tick_all(scene: &mut RenderScene, tick: u64) {
     }
 }
 
-fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
+pub(crate) fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
     let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }
@@ -44,7 +44,7 @@ fn hash2(x: i32, y: i32, seed: u32) -> f32 {
 }
 
 /// Smooth 2D value noise in 0..1.
-fn noise2(x: f32, y: f32, seed: u32) -> f32 {
+pub(crate) fn noise2(x: f32, y: f32, seed: u32) -> f32 {
     let (ix, iy) = (x.floor() as i32, y.floor() as i32);
     let (fx, fy) = (x - x.floor(), y - y.floor());
     let (ux, uy) = (fx * fx * (3.0 - 2.0 * fx), fy * fy * (3.0 - 2.0 * fy));
@@ -73,7 +73,7 @@ fn noise2_periodic(x: f32, y: f32, period: i32, seed: u32) -> f32 {
 }
 
 /// Four octaves of tiling noise over the unit square, `period` cells first.
-fn tiling_fbm(u: f32, v: f32, period: i32, seed: u32) -> f32 {
+pub(crate) fn tiling_fbm(u: f32, v: f32, period: i32, seed: u32) -> f32 {
     let mut value = 0.0;
     let mut amp = 0.5;
     let mut p = period;

@@ -1,0 +1,1164 @@
+{
+ "project": "rhythm",
+ "date": "2026-10-19",
+ "scores": {
+  "contrast": 97,
+  "textSize": 97,
+  "hud": 100,
+  "transitions": 100,
+  "uiSounds": 100,
+  "latency": 100,
+  "hitFeedback": null,
+  "idle": 97,
+  "frameTime": 100,
+  "inputSound": 98,
+  "locale": 100,
+  "taste": 99,
+  "feel": 99
+ },
+ "findings": [
+  {
+   "measure": "contrast",
+   "where": "clear results: `Letter` \"S\"",
+   "detail": "3.6:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "clear results: `Key` \"Accuracy\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "fail failed: `Key` \"Accuracy\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames results: `Letter` \"S\"",
+   "detail": "3.6:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "frames results: `Key` \"Accuracy\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause play-zh: `Label` \"律动\"",
+   "detail": "3.85:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "band",
+   "title": "the clicks, the drums and every stem start on their beats and bar lines",
+   "tier": "metal",
+   "ticks": 1167,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 1165
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.38,
+    "stepP95Ms": 0.54,
+    "renderMedianMs": 0.13,
+    "renderP95Ms": 0.22,
+    "frameP95Ms": 0.75,
+    "frameMaxMs": 2.98
+   },
+   "audio": {
+    "seconds": 19.45,
+    "peak": 0.51,
+    "rms": 0.0539,
+    "clipped": 0,
+    "silentShare": 34.36
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "calibrate",
+   "title": "eight taps 67 ms late calibrate a 67 ms offset, and a late play is judged Perfect",
+   "tier": "metal",
+   "ticks": 795,
+   "shots": [
+    {
+     "name": "calibrate",
+     "tick": 348,
+     "frame": "frames/calibrate-calibrate.png",
+     "menu": true,
+     "hud": 4.67,
+     "centre": 42.26,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 6,
+    "passing": 6,
+    "worst": [
+     {
+      "shot": "calibrate",
+      "id": "Offset",
+      "text": "Offset 67 ms",
+      "ratio": 8.1
+     },
+     {
+      "shot": "calibrate",
+      "id": "Done",
+      "text": "Done",
+      "ratio": 9.59
+     },
+     {
+      "shot": "calibrate",
+      "id": "Title",
+      "text": "Calibrate",
+      "ratio": 11.49
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 6,
+    "passing": 6,
+    "smallest": [
+     {
+      "shot": "calibrate",
+      "id": "Offset",
+      "text": "Offset 67 ms",
+      "ink": 12
+     },
+     {
+      "shot": "calibrate",
+      "id": "Title",
+      "text": "Calibrate",
+      "ink": 14
+     },
+     {
+      "shot": "calibrate",
+      "id": "Body",
+      "text": "Tap any lane on each click. Eight taps m",
+      "ink": 15
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 521
+   },
+   "latency": {
+    "inputs": 17,
+    "answered": 17,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 90.49,
+    "sound": 17
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 24.97
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.38,
+    "stepP95Ms": 0.61,
+    "renderMedianMs": 0.15,
+    "renderP95Ms": 0.27,
+    "frameP95Ms": 0.88,
+    "frameMaxMs": 8.61
+   },
+   "audio": {
+    "seconds": 13.25,
+    "peak": 0.45,
+    "rms": 0.0291,
+    "clipped": 0,
+    "silentShare": 76.86
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "clear",
+   "title": "bar 21 to the end hit on time: cleared, grade S, the best kept and submitted, Play again",
+   "tier": "metal",
+   "ticks": 873,
+   "shots": [
+    {
+     "name": "results",
+     "tick": 822,
+     "frame": "frames/clear-results.png",
+     "menu": true,
+     "hud": 5.58,
+     "centre": 22.39,
+     "texts": 20,
+     "lowContrast": 1,
+     "small": 1
+    }
+   ],
+   "contrast": {
+    "texts": 20,
+    "passing": 19,
+    "worst": [
+     {
+      "shot": "results",
+      "id": "Letter",
+      "text": "S",
+      "ratio": 3.6
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Score",
+      "ratio": 7.52
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Accuracy",
+      "ratio": 7.52
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 20,
+    "passing": 19,
+    "smallest": [
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Accuracy",
+      "ink": 8
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Score",
+      "ink": 11
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Perfect",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 871
+   },
+   "latency": {
+    "inputs": 24,
+    "answered": 24,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 24
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 2
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.4,
+    "stepP95Ms": 0.62,
+    "renderMedianMs": 0.15,
+    "renderP95Ms": 0.28,
+    "frameP95Ms": 0.9,
+    "frameMaxMs": 8.4
+   },
+   "audio": {
+    "seconds": 14.55,
+    "peak": 0.57,
+    "rms": 0.0455,
+    "clipped": 0,
+    "silentShare": 38.6
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "fail",
+   "title": "five notes let pass empty the groove: the song fails and the results say so",
+   "tier": "metal",
+   "ticks": 453,
+   "shots": [
+    {
+     "name": "failed",
+     "tick": 450,
+     "frame": "frames/fail-failed.png",
+     "menu": true,
+     "hud": 5.48,
+     "centre": 18.93,
+     "texts": 18,
+     "lowContrast": 0,
+     "small": 1
+    }
+   ],
+   "contrast": {
+    "texts": 18,
+    "passing": 18,
+    "worst": [
+     {
+      "shot": "failed",
+      "id": "Key",
+      "text": "Score",
+      "ratio": 7.52
+     },
+     {
+      "shot": "failed",
+      "id": "Key",
+      "text": "Accuracy",
+      "ratio": 7.52
+     },
+     {
+      "shot": "failed",
+      "id": "Key",
+      "text": "Best combo",
+      "ratio": 7.52
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 18,
+    "passing": 17,
+    "smallest": [
+     {
+      "shot": "failed",
+      "id": "Key",
+      "text": "Accuracy",
+      "ink": 8
+     },
+     {
+      "shot": "failed",
+      "id": "Key",
+      "text": "Score",
+      "ink": 11
+     },
+     {
+      "shot": "failed",
+      "id": "Key",
+      "text": "Perfect",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 451
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.4,
+    "stepP95Ms": 0.66,
+    "renderMedianMs": 0.14,
+    "renderP95Ms": 0.27,
+    "frameP95Ms": 0.94,
+    "frameMaxMs": 8.07
+   },
+   "audio": {
+    "seconds": 7.55,
+    "peak": 0.45,
+    "rms": 0.0424,
+    "clipped": 0,
+    "silentShare": 60.26
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "flow",
+   "title": "Play, the count-in, perfect hits, a late Great, an early Good, misses and an empty press",
+   "tier": "metal",
+   "ticks": 549,
+   "shots": [
+    {
+     "name": "play",
+     "tick": 432,
+     "frame": "frames/flow-play.png",
+     "menu": false,
+     "hud": 1.75,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 7,
+    "passing": 7,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Pause",
+      "text": "Pause",
+      "ratio": 10.4
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Score",
+      "ratio": 10.79
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Groove",
+      "ratio": 10.79
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 7,
+    "passing": 7,
+    "smallest": [
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Score",
+      "ink": 9
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Groove",
+      "ink": 9
+     },
+     {
+      "shot": "play",
+      "id": "Multiplier",
+      "text": "×1",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.75,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 547
+   },
+   "latency": {
+    "inputs": 12,
+    "answered": 12,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.4,
+    "stepP95Ms": 0.62,
+    "renderMedianMs": 0.14,
+    "renderP95Ms": 0.26,
+    "frameP95Ms": 0.9,
+    "frameMaxMs": 8.88
+   },
+   "audio": {
+    "seconds": 9.15,
+    "peak": 0.46,
+    "rms": 0.0472,
+    "clipped": 0,
+    "silentShare": 65.03
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, the highway and the results match their reference frames",
+   "tier": "metal",
+   "ticks": 1065,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 60,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 7.58,
+     "centre": 55.47,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "highway",
+     "tick": 495,
+     "frame": null,
+     "menu": false,
+     "hud": 1.78,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 1059,
+     "frame": null,
+     "menu": true,
+     "hud": 5.56,
+     "centre": 22.2,
+     "texts": 20,
+     "lowContrast": 1,
+     "small": 1
+    }
+   ],
+   "contrast": {
+    "texts": 33,
+    "passing": 32,
+    "worst": [
+     {
+      "shot": "results",
+      "id": "Letter",
+      "text": "S",
+      "ratio": 3.6
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Score",
+      "ratio": 7.52
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Accuracy",
+      "ratio": 7.52
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 33,
+    "passing": 32,
+    "smallest": [
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Accuracy",
+      "ink": 8
+     },
+     {
+      "shot": "highway",
+      "id": "Label",
+      "text": "Score",
+      "ink": 9
+     },
+     {
+      "shot": "highway",
+      "id": "Label",
+      "text": "Groove",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.78,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 1063
+   },
+   "latency": {
+    "inputs": 23,
+    "answered": 23,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 23
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.4,
+    "stepP95Ms": 0.6,
+    "renderMedianMs": 0.15,
+    "renderP95Ms": 0.24,
+    "frameP95Ms": 0.83,
+    "frameMaxMs": 9.03
+   },
+   "audio": {
+    "seconds": 17.75,
+    "peak": 0.52,
+    "rms": 0.0483,
+    "clipped": 0,
+    "silentShare": 40.47
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pad",
+   "title": "the d-pad and the face buttons hit the lanes; Start pauses, A resumes",
+   "tier": "metal",
+   "ticks": 507,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 504
+   },
+   "latency": {
+    "inputs": 14,
+    "answered": 14,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.39,
+    "stepP95Ms": 0.64,
+    "renderMedianMs": 0.14,
+    "renderP95Ms": 0.25,
+    "frameP95Ms": 0.89,
+    "frameMaxMs": 2.16
+   },
+   "audio": {
+    "seconds": 8.45,
+    "peak": 0.46,
+    "rms": 0.0422,
+    "clipped": 0,
+    "silentShare": 73.37
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pause",
+   "title": "Escape freezes the clock and stops the band; 简体中文 is saved; Resume restarts the phrase after a count-in",
+   "tier": "metal",
+   "ticks": 975,
+   "shots": [
+    {
+     "name": "pause",
+     "tick": 378,
+     "frame": "frames/pause-pause.png",
+     "menu": true,
+     "hud": 7.77,
+     "centre": 54.84,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 456,
+     "frame": null,
+     "menu": true,
+     "hud": 9.22,
+     "centre": 55.85,
+     "texts": 14,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "play-zh",
+     "tick": 974,
+     "frame": null,
+     "menu": false,
+     "hud": 1.63,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 26,
+    "passing": 25,
+    "worst": [
+     {
+      "shot": "play-zh",
+      "id": "Label",
+      "text": "律动",
+      "ratio": 3.85
+     },
+     {
+      "shot": "play-zh",
+      "id": "Label",
+      "text": "连击",
+      "ratio": 6.08
+     },
+     {
+      "shot": "play-zh",
+      "id": "Label",
+      "text": "得分",
+      "ratio": 6.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 26,
+    "passing": 26,
+    "smallest": [
+     {
+      "shot": "play-zh",
+      "id": "Multiplier",
+      "text": "×1",
+      "ink": 9
+     },
+     {
+      "shot": "pause",
+      "id": "resume",
+      "text": "Resume",
+      "ink": 11
+     },
+     {
+      "shot": "pause",
+      "id": "restart",
+      "text": "Restart",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.63,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 7,
+    "withMotion": 7,
+    "presses": 3,
+    "pressesWithSound": 3,
+    "motionTicks": 973
+   },
+   "latency": {
+    "inputs": 12,
+    "answered": 12,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.4,
+    "stepP95Ms": 0.63,
+    "renderMedianMs": 0.14,
+    "renderP95Ms": 0.25,
+    "frameP95Ms": 0.86,
+    "frameMaxMs": 10.37
+   },
+   "audio": {
+    "seconds": 16.25,
+    "peak": 0.46,
+    "rms": 0.0386,
+    "clipped": 0,
+    "silentShare": 76.72
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "phone",
+   "title": "the phone layout: a HUD inside the safe area, three lanes across, fingers hit the notes",
+   "tier": "metal",
+   "ticks": 435,
+   "shots": [
+    {
+     "name": "play",
+     "tick": 434,
+     "frame": "frames/phone-play.png",
+     "menu": false,
+     "hud": 4.52,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 7,
+    "passing": 7,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Groove",
+      "ratio": 6.93
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Score",
+      "ratio": 10.79
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Combo",
+      "ratio": 11.16
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 7,
+    "passing": 7,
+    "smallest": [
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Score",
+      "ink": 9.33
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Groove",
+      "ink": 9.33
+     },
+     {
+      "shot": "play",
+      "id": "Label",
+      "text": "Combo",
+      "ink": 9.33
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 4.52,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 8,
+    "pressesWithSound": 8,
+    "motionTicks": 433
+   },
+   "latency": {
+    "inputs": 8,
+    "answered": 8,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 8
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.41,
+    "stepP95Ms": 0.63,
+    "renderMedianMs": 0.14,
+    "renderP95Ms": 0.28,
+    "frameP95Ms": 0.91,
+    "frameMaxMs": 22.28
+   },
+   "audio": {
+    "seconds": 7.25,
+    "peak": 0.46,
+    "rms": 0.0375,
+    "clipped": 0,
+    "silentShare": 75.63
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a play with hits, misses and the band replays to the same hash",
+   "tier": "metal",
+   "ticks": 588,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 586
+   },
+   "latency": {
+    "inputs": 10,
+    "answered": 10,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.4,
+    "stepP95Ms": 0.64,
+    "renderMedianMs": 0.14,
+    "renderP95Ms": 0.25,
+    "frameP95Ms": 0.86,
+    "frameMaxMs": 2.47
+   },
+   "audio": {
+    "seconds": 9.8,
+    "peak": 0.46,
+    "rms": 0.0455,
+    "clipped": 0,
+    "silentShare": 64.8
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

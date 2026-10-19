@@ -55,6 +55,7 @@ module load {
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
 | [`og.load.gltfInfo`](#fn-gltfInfo) | function | What a ready glTF holds. |
 | [`og.load.animation`](#fn-animation) | function | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles. |
+| [`og.load.rig`](#fn-rig) | function | Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle. |
 | [`og.load.flipbook`](#fn-flipbook) | function | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles. |
 | [`og.load.tilemap`](#fn-tilemap) | function | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
@@ -602,6 +603,36 @@ fn animation {
 
 <sub>`api.ogt` line 2962</sub>
 
+<a id="fn-rig"></a>
+
+### `og.load.rig`
+
+Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.
+
+```ts
+og.load.rig(world: World, path: string): Result<Rig>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation uses it. |
+| `path` | `string` | no | The rig's asset id, such as `rigs/strider.ogt`. |
+
+**Returns** `Result<Rig>`: Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
+
+Binding symbol `og_load_rig` · publish builds: kept
+
+```ogt
+fn rig {
+  doc "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle."
+  param world World "The world whose animation uses it."
+  param path String "The rig's asset id, such as `rigs/strider.ogt`."
+  returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+}
+```
+
+<sub>`api.ogt` line 2969</sub>
+
 <a id="fn-flipbook"></a>
 
 ### `og.load.flipbook`
@@ -630,7 +661,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 2969</sub>
+<sub>`api.ogt` line 2976</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -660,7 +691,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 2976</sub>
+<sub>`api.ogt` line 2983</sub>
 
 ## Components, resources and events
 
@@ -706,7 +737,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 2983</sub>
+<sub>`api.ogt` line 2990</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -731,7 +762,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 2989</sub>
+<sub>`api.ogt` line 2996</sub>
 
 ## Types
 

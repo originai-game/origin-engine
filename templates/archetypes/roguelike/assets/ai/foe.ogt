@@ -1,0 +1,28 @@
+type behaviour
+version 1
+---
+# A foe's mind (og.ai), shared by the rat and the skeleton: nothing happens
+# until it is the foes' turn (Game.foesTurn, set when the lamp-bearer acts);
+# then, first branch first: next to the lamp-bearer it strikes; having seen
+# it within the last six seconds it hunts it (to where it is, or where it was
+# last seen); otherwise it roams. Each branch is one of the game's commands
+# (src/foes.ts), run with the foe's handle before the next tick, so each foe
+# takes exactly one action a turn.
+name "foe"
+tree {
+  sequence turn {
+    check Game.foesTurn
+    selector act {
+      sequence strike {
+        check sees
+        check targetDistance atMost 1.05
+        command strike
+      }
+      sequence hunt {
+        check sinceSeen below 6
+        command hunt
+      }
+      command roam
+    }
+  }
+}
