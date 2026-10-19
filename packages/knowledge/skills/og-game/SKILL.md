@@ -315,8 +315,8 @@ for an unturned, unscaled terrain) gives the height, normal and slope
 anywhere (to place trees, spawn on the ground, or check a slope); `og.terrain.edit` raises, lowers, flattens,
 smooths or paints under a round brush (craters, building pads, a paint
 tool) and `og.terrain.layer` / `setLayer` retune a layer live. Edits are
-asset changes, not world state: a restored snapshot keeps the edited
-ground. Grass, flowers and stones are an `og.TerrainScatter` on the
+world state: a snapshot keeps them and restoring it brings the ground
+back as it was then. Grass, flowers and stones are an `og.TerrainScatter` on the
 terrain's entity: `{ data, geometry, material, layer, density, distance }`
 grows copies of the mesh where that layer shows, within `distance` of the
 camera (thinning out over its outer `fade`, never shrinking), each fixed to its spot
