@@ -7,6 +7,37 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Status 2026-10-19, shell own-window round
+
+A top-level Stage build with the platform's Stage overlay in its own
+document now has that overlay as its Player: when the page is not framed,
+carries no `window.__OG_GAME` and was told its own origin as the Stage host
+(`window.__OG_STAGE_HOST__ === location.origin`, the og-probe wire's own
+test, now one helper, `shell/wire.ts` `stageInPage`), the shell's Player
+bridge (`shell/player.ts`) speaks Player protocol 2 to its own window by
+`postMessage`, hears only its own window at its own origin, and ignores its
+own echo (a `hello` naming a `substrate` or listing no `capabilities`). The
+overlay's answers count as the Player's: its `hello` with `started: true`
+starts play with no gate of the shell's, og.platform's store and saves go
+to it, and nothing of og.platform's reaches the Stage origin's
+`localStorage` (the page's memory answers what the overlay does not); no
+service worker is registered there. Framed pages and `__OG_GAME` pages are
+unchanged, and any other top-level page still plays alone on the browser's
+storage. A `result`'s `time` now passes through the bridge from every
+transport (framed, HTTP, own window), so `og.platform.info().clock` reads
+`player` as soon as a Player stamps its answers. Details:
+`docs/web-export.md` §Player protocol 2; what the overlay must do to answer
+is ask 10 in `docs/platform-asks.md`.
+
+Proof: `tests/platform-stage.test.ts` (6 tests against a stand-in overlay
+answering in the same window), `tests/web/player.ts` in Chrome (65 checks,
+22 of them new: the Stage build with an in-document stand-in overlay at
+desktop and phone sizes, and a silent overlay that never answers). Each
+fails when its code is broken: without the echo filter, the `time`
+pass-through, the source and origin check, the `self` peer, the `__OG_GAME`
+precedence or the page's memory store. Transcripts, screenshots and
+receipts: `tests/evidence/P2/shell-self/`.
+
 ## Status 2026-10-19, player-page round
 
 The engine's page is the play page itself (design §4): `og build` writes

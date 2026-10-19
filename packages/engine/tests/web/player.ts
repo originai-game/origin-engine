@@ -23,6 +23,21 @@
 // before the gate's tap, then `start` and `ready`; Back navigates to the
 // game's page; screenshots at desktop and phone widths.
 //
+// Last, the same build as a top-level Stage build with the Stage overlay in
+// its own document (origingame agent-server/src/stage/creator.ts
+// `stageInPageSnippet`): served under a Stage ticket with
+// `window.__OG_STAGE_HOST__` naming its own origin, no `__OG_GAME`, and a
+// stand-in overlay script (deferred, before `</head>`, as the proxy injects
+// the bundle) that answers Player protocol 2 in the same window as the
+// platform's Stage overlay does (sdk/src/stage-page.ts: started, the scratch
+// store). Asserts, at desktop and phone sizes: the shell's hello reaches the
+// overlay, the overlay starts play (no gate, no tap), the overlay's stored
+// best is the game's best, nothing of og.platform's is in localStorage, no
+// service worker is installed on the Stage origin, and the og-probe wire
+// still answers the overlay's `state` from the same window. With an overlay
+// that never answers, the shell repeats its hello, draws its own gate and
+// still keeps og.platform out of localStorage.
+//
 //   bun tests/web/player.ts [--out <result.json>] [--chrome <path>] [--evidence <dir>]
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -258,7 +273,143 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
   }
 }
 origin.stop();
-if (evidence) writeFileSync(join(evidence, "top-level-receipt.json"), JSON.stringify({ checks: checks.filter((c) => c.check.startsWith("desktop") || c.check.startsWith("phone")), top, shots }, null, 1) + "\n");
+
+// ── the Stage overlay in the engine's own document ────────────────────
+const STAGE_ROOT = "/__og/stage/tkt01/";
+const stageServed: Array<{ path: string; worker: boolean }> = [];
+// The stand-in overlay: one listener on the page's own window for Player protocol 2 (skipping
+// the Player messages it posts itself) and a client of the og-probe wire.
+const overlayScript = `(() => {
+  window.stageGot = [];
+  // ?silent: an overlay that hears but never answers (the shell must fall back to memory, not storage).
+  const silent = new URLSearchParams(location.search).has("silent");
+  const caps = ["save.get", "save.read", "save.set", "store.get", "store.set", "store.list"];
+  const store = new Map([["best", { value: 555, revision: 4 }]]);
+  let clock = 1800000000000;
+  const post = (m) => window.postMessage({ og: "player", protocol: 2, ...m }, location.origin);
+  addEventListener("message", (e) => {
+    if (e.source !== window || e.origin !== location.origin) return;
+    const m = e.data;
+    if (!m || m.og !== "player" || m.protocol !== 2) return;
+    if (["result", "start", "gesture", "pause", "resume"].includes(m.kind) || (m.kind === "hello" && Array.isArray(m.capabilities))) return;
+    stageGot.push({ ...m, at: Math.round(performance.now()) });
+    if (silent) return;
+    if (m.kind === "hello") post({ kind: "hello", locale: "en", region: "global", capabilities: caps, started: true, paused: false });
+    if (m.kind !== "call") return;
+    const a = m.args || {};
+    const s = store.get(a.key);
+    let r;
+    if (m.method === "store.get") r = { ok: true, data: { key: a.key, value: s ? s.value : null, revision: s ? s.revision : 0 } };
+    else if (m.method === "store.set") { const revision = (s ? s.revision : 0) + 1; store.set(a.key, { value: a.value, revision }); r = { ok: true, data: { key: a.key, revision } }; }
+    else if (m.method === "store.list") r = { ok: true, data: { keys: [...store].map(([key, v]) => ({ key, revision: v.revision })) } };
+    else r = { ok: false, error: { code: "unavailable", message: "the Stage answers no " + m.method, retryable: false } };
+    post({ kind: "result", id: m.id, ...r, time: (clock += 1000) });
+  });
+  const pending = new Map(); let n = 0;
+  addEventListener("message", (e) => {
+    if (e.source !== window || e.origin !== location.origin) return;
+    const m = e.data;
+    if (!m || m.og !== "probe" || m.v !== 1 || m.kind === "call" || m.kind === "hello") return;
+    const p = pending.get(m.id); if (p) { pending.delete(m.id); p(m); }
+  });
+  window.wire = (method, params = {}) => new Promise((resolve) => { const id = "st" + (++n); pending.set(id, resolve);
+    window.postMessage({ og: "probe", v: 1, kind: "call", id, method, params }, location.origin);
+    setTimeout(() => { if (pending.delete(id)) resolve({ silent: true }); }, 8000); });
+})();`;
+const stage = Bun.serve({
+  port: 0,
+  hostname: "127.0.0.1",
+  async fetch(req) {
+    const url = new URL(req.url);
+    const worker = req.headers.get("service-worker") === "script";
+    stageServed.push({ path: url.pathname, worker });
+    // The shared Stage origin installs no service worker (agent-server isServiceWorkerScript).
+    if (worker) return new Response("no service worker on the Stage", { status: 404 });
+    if (url.pathname === `${STAGE_ROOT}__og/creator.js`) return new Response(overlayScript, { headers: { "content-type": "text/javascript", "cache-control": "no-store", "cross-origin-resource-policy": "same-origin" } });
+    if (!url.pathname.startsWith(STAGE_ROOT)) return new Response("not found", { status: 404 });
+    let rel = url.pathname.slice(STAGE_ROOT.length - 1);
+    if (rel.endsWith("/")) rel += "index.html";
+    const path = join(dist, rel);
+    if (!path.startsWith(dist) || !existsSync(path)) return new Response("not found", { status: 404 });
+    const headers: Record<string, string> = { "cache-control": "no-store", "cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp", "cross-origin-resource-policy": "same-origin" };
+    for (const r of rules) if (r.pattern === rel || (r.pattern.startsWith("/*.") && rel.endsWith(r.pattern.slice(2)))) Object.assign(headers, Object.fromEntries(Object.entries(r.headers).map(([k, v]) => [k.toLowerCase(), v])));
+    headers["content-type"] = TYPES[rel.slice(rel.lastIndexOf("."))] ?? "application/octet-stream";
+    if (rel === "/index.html") {
+      // What the Stage proxy injects before </head>: the Stage origin, then the overlay's bundle.
+      const told = `<script>window.__OG_STAGE_HOST__=${JSON.stringify(url.origin)};</script><script src="${STAGE_ROOT}__og/creator.js" defer></script>`;
+      return new Response(readFileSync(path, "utf8").replace(/<\/head\s*>/i, (m) => `${told}${m}`), { headers });
+    }
+    return new Response(Bun.file(path), { headers });
+  },
+});
+const inStage: Record<string, unknown> = {};
+for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }, { name: "phone", width: 390, height: 844, mobile: true }]) {
+  const v = `stage ${view.name}`;
+  const browser3 = await Browser.launch({ chrome: chromePath(args), width: view.width, height: view.height });
+  try {
+    const page = await browser3.open("about:blank");
+    if (view.mobile) {
+      await page.send("Emulation.setDeviceMetricsOverride", { width: view.width, height: view.height, deviceScaleFactor: 3, mobile: true });
+      await page.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+    }
+    await page.send("Page.navigate", { url: `http://127.0.0.1:${stage.port}${STAGE_ROOT}` });
+    await page.until("window.stageGot && stageGot.some((m) => m.kind === 'ready') && typeof __runtime_probe__ === 'object'", 60_000);
+    await wait(800);
+    const heard = await page.eval<Array<{ kind: string; substrate?: string; method?: string; args?: { key?: string } }>>("stageGot");
+    const kinds = heard.map((m) => m.kind);
+    check(heard[0]?.kind === "hello" && heard[0].substrate === "origin-engine", `${v}: the shell's hello reaches the overlay in its own document`, heard[0]);
+    check(kinds.includes("ready") && !kinds.includes("fail") && !kinds.includes("crash"), `${v}: ready reaches the overlay, no fail, no crash`, kinds);
+    const told = await page.eval<{ host: string; origin: string; game: boolean; framed: boolean }>("({ host: window.__OG_STAGE_HOST__, origin: location.origin, game: '__OG_GAME' in window, framed: window.parent !== window })");
+    check(told.host === told.origin && !told.game && !told.framed, `${v}: a top-level page, told its own origin, with no __OG_GAME`, told);
+    const gate = await page.eval<boolean>("document.getElementById('og-gate').hidden");
+    check(gate === true, `${v}: the overlay owns play start: the shell draws no gate`, gate);
+    const t1 = await page.eval<number>("__runtime_probe__.tick()");
+    await wait(1000);
+    const t2 = await page.eval<number>("__runtime_probe__.tick()");
+    check(t2 > t1 + 20, `${v}: play runs without a tap (the overlay's hello said started)`, { t1, t2 });
+    const calls = heard.filter((m) => m.kind === "call");
+    check(calls.some((c) => c.method === "store.get" && c.args?.key === "best"), `${v}: og.platform's store.get went to the overlay as a protocol 2 call`, calls);
+    const best = (await page.eval<{ facts?: { best?: number } }>("__runtime_probe__.state()")).facts?.best;
+    check(best === 555, `${v}: the overlay's stored best is the game's best`, best);
+    const keys = await page.eval<string[]>("Object.keys(localStorage)");
+    check(!keys.some((k) => k.startsWith("og.platform")), `${v}: nothing of og.platform's is in the Stage origin's localStorage`, keys);
+    const workers = await page.eval<number>("navigator.serviceWorker.getRegistrations().then((r) => r.length)");
+    check(workers === 0 && !stageServed.some((r) => r.worker || r.path.endsWith("/sw.js")), `${v}: no service worker is installed or fetched on the Stage origin`, { workers, fetched: stageServed.filter((r) => r.worker || r.path.endsWith("/sw.js")) });
+    const st = await page.eval<{ kind?: string; result?: { tick?: number } }>("wire('state')");
+    check(st.kind === "result" && typeof st.result?.tick === "number", `${v}: the og-probe wire still answers the overlay's state from the same window`, st);
+    save(`stage-in-page-${view.name}-playing.png`, await page.screenshot());
+    inStage[view.name] = { heard: kinds, best, t1, t2, keys };
+  } catch (e) {
+    check(false, `${v}: ran to the end`, String(e instanceof Error ? e.stack : e));
+  } finally {
+    await browser3.close();
+  }
+}
+{
+  // An overlay that never answers: the shell repeats its hello, then plays alone on this load's
+  // memory with its own gate, and still writes nothing of og.platform's to the Stage origin.
+  const v = "stage silent";
+  const browser4 = await Browser.launch({ chrome: chromePath(args), width: 1280, height: 720 });
+  try {
+    const page = await browser4.open(`http://127.0.0.1:${stage.port}${STAGE_ROOT}?silent=1`);
+    await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000);
+    // The first tick's store.get (behind the gate) is answered once the 1.5 s hello wait ends.
+    await wait(2000);
+    const hellos = await page.eval<number>("stageGot.filter((m) => m.kind === 'hello').length");
+    check(hellos >= 2 && hellos <= 6, `${v}: the shell repeats its hello (at most six) while no overlay answers`, hellos);
+    const keys = await page.eval<string[]>("Object.keys(localStorage)");
+    check(!keys.some((k) => k.startsWith("og.platform")), `${v}: og.platform falls back to the page's memory, never the Stage origin's localStorage`, keys);
+    save("stage-in-page-silent-gate.png", await page.screenshot());
+    inStage["silent"] = { hellos, keys };
+  } catch (e) {
+    check(false, `${v}: ran to the end`, String(e instanceof Error ? e.stack : e));
+  } finally {
+    await browser4.close();
+  }
+}
+stage.stop();
+if (evidence) writeFileSync(join(evidence, "stage-in-page-receipt.json"), JSON.stringify({ checks: checks.filter((c) => c.check.startsWith("stage ")), stage: inStage, shots: shots.filter((s) => s.includes("stage-in-page")) }, null, 1) + "\n");
+if (evidence) writeFileSync(join(evidence, "top-level-receipt.json"), JSON.stringify({ checks: checks.filter((c) => c.check.startsWith("desktop") || c.check.startsWith("phone")), top, shots: shots.filter((s) => s.includes("top-level")) }, null, 1) + "\n");
 
 const failures = checks.filter((c) => !c.ok).length;
 mkdirSync(dirname(outFile), { recursive: true });

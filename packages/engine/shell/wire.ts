@@ -331,6 +331,20 @@ export function createWire(options: WireOptions) {
 }
 
 /**
+ * Whether the platform's Stage overlay is drawn in this very document: the page
+ * is not framed and was told its own origin as the Stage host. The og-probe wire
+ * then also answers this window, and the Player bridge (./player.ts) speaks
+ * Player protocol 2 to it.
+ */
+export function stageInPage(w: Window & Record<string, unknown> = globalThis as unknown as Window & Record<string, unknown>): boolean {
+  try {
+    return w.parent === w && w[STAGE_HOST_GLOBAL] === w.location?.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The wire on this page: host = parent when embedded, else opener; origin =
  * `window.__OG_STAGE_HOST__`. A top-level page told its own origin also answers
  * itself: the Stage overlay drawn in this document posts to this window.
@@ -340,7 +354,7 @@ export function mountWire(options: Omit<WireOptions, "host" | "hostOrigin">): ()
   const wire = createWire({
     ...options,
     host: () => (w.parent && w.parent !== w ? w.parent : (w.opener as Window | null)),
-    inPage: () => (w.parent === w && w[STAGE_HOST_GLOBAL] === w.location?.origin ? w : null),
+    inPage: () => (stageInPage(w) ? w : null),
     hostOrigin: () => {
       const told = w[STAGE_HOST_GLOBAL];
       return typeof told === "string" && told && told !== "*" ? told : null;
