@@ -10,7 +10,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
-import { Burst, Game, GENERATORS, Mote, MOTES, Orb, Phase, Sfx, Sound, Tuning } from "./components.ts";
+import { Burst, Game, GENERATORS, Mote, MOTES, Orb, Phase, Prefs, Sfx, Sound, Tuning } from "./components.ts";
 import { big, generatorRate, novaGain, owned, price, setOwned, tapValue, totalRate } from "./numbers.ts";
 import { say } from "./ui.ts";
 
@@ -30,6 +30,12 @@ export const TIER_COLOURS = [
 export const ORB_RADIUS = 1.35;
 /** Burst kinds (Burst.kind, Game.burstKind). */
 export const BURST = { Tap: 0, Milestone: 1, Nova: 2 } as const;
+
+/** The camera feel's scale: 0.3 under reduced motion (og-feel), 1 otherwise. */
+export function feel(world: World): number {
+  const p = world.resource(Prefs);
+  return p.ok && p.value.reducedMotion ? 0.3 : 1;
+}
 
 export function must(r: { ok: true } | { ok: false; reason: string }): void {
   if (!r.ok) throw new Error(r.reason);
@@ -144,7 +150,7 @@ export const OrbTap = defineSystem(
  */
 export const Economy = defineSystem(
   "Economy",
-  { reads: [og.Input, og.Gamepad, Tuning], writes: [Game], after: ["Orb"] },
+  { reads: [og.Input, og.Gamepad, Tuning, Prefs], writes: [Game], after: ["Orb"] },
   (_q, _time, world) => {
     const game = world.resource(Game);
     const input = world.resource(og.Input);
@@ -213,7 +219,7 @@ function purchase(world: World, g: GameV, t: TuneV, i: number): void {
     g.sfx |= Sound.Milestone;
     float(world, say(world, "float.milestone", { name: say(world, `gen.${GENERATORS[i]}`) }), g.orbX, g.orbY + ring + 0.3, colour, true, 0.5);
     burst(world, g, BURST.Milestone, g.orbX, g.orbY);
-    must(og.camera.punch(world, 0.06));
+    must(og.camera.punch(world, 0.06 * feel(world)));
   } else {
     float(world, `+${big(world, generatorRate(t, i, n + 1, g.dust) - generatorRate(t, i, n, g.dust))}/s`, g.orbX + ring * 0.7, g.orbY + ring * 0.7, colour, false, 0.34);
   }
@@ -241,8 +247,9 @@ export function nova(world: World, g: GameV, t: TuneV): void {
   g.saveNow = true;
   burst(world, g, BURST.Nova, g.orbX, g.orbY);
   must(og.time.hitStop(world, 10));
-  must(og.camera.shake(world, 0.6));
-  must(og.camera.punch(world, 0.2));
+  const k = feel(world);
+  must(og.camera.shake(world, 0.6 * k));
+  must(og.camera.punch(world, 0.2 * k));
   must(og.platform.telemetry(world, "orb.nova", { gain, dust: g.dust, novas: g.novas }));
 }
 

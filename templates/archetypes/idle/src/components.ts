@@ -70,7 +70,7 @@ export const Game = defineResource("Game", {
   saves: u32(0, { doc: "Saves written." }),
   loaded: bool(false, { doc: "The save was read (or found empty) on launch." }),
   sinceSave: u32(0, { unit: "ticks" }),
-  saveNow: bool(false, { doc: "Write the save this tick (after a supernova, on pause)." }),
+  saveNow: bool(false, { doc: "Write the save this tick (after a supernova, on pause, on Quit)." }),
   burstKind: u32(0, { doc: "The burst asked for this tick (BURST.* of src/systems.ts)." }),
   burstX: f32(0, { unit: "m" }),
   burstY: f32(0, { unit: "m" }),

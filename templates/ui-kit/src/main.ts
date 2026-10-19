@@ -561,7 +561,9 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         open: true,
         settings: settingsOf(d),
         languages: LANGUAGES,
-        onSave: () => {
+        onSave: (saved) => {
+          const req = og.platform.saveSettings(world, saved);
+          if (!req.ok) throw new Error(req.reason);
           d.saves += 1;
           og.ui.toast(world, "Settings saved", { tone: "success" });
         },

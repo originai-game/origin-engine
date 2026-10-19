@@ -55,7 +55,7 @@ export const Match = defineComponent("Match", {
   pressY: f32(0, { unit: "m" }),
   viewHeight: f32(12, { unit: "m", doc: "The camera's visible height, set in start." }),
   viewCentreY: f32(0.5, { unit: "m", doc: "The camera's centre height, set in start." }),
-  pxPerM: f32(60, { doc: "Pixels of the play surface per metre, worked out by Pick every tick from the render target." }),
+  pxPerM: f32(60, { doc: "CSS pixels of the play surface per metre, worked out by Pick every tick from og.ui.viewport." }),
   screenX0: f32(640, { doc: "Surface x of the world origin (Pick)." }),
   screenY0: f32(390, { doc: "Surface y of the world origin (Pick)." }),
   wait: u32(0, { doc: "The Tag.* of the tween group the phase waits for; 0 once its og.TweenCompleted arrived." }),

@@ -155,17 +155,15 @@ export const Pick = defineSystem(
     const b = board.i;
     const i = input.value;
     // Where the world lands on the play surface this tick: the orthographic view is
-    // viewHeight metres tall over the render target. The target is in device pixels
-    // and the pointer in CSS pixels; with no device pixel ratio inside a system yet,
-    // this assumes 1 (headless runs and desktop browsers at 100%).
-    const caps = og.render.capabilities(world);
-    if (caps.width > 0 && caps.height > 0) {
-      m.pxPerM[b] = caps.height / m.viewHeight[b]!;
-      m.screenX0[b] = caps.width / 2;
-      m.screenY0[b] = caps.height / 2 + m.viewCentreY[b]! * m.pxPerM[b]!;
+    // viewHeight metres tall over the play surface, measured like the pointer in CSS
+    // pixels (og.ui.viewport), so a phone's device pixel ratio does not move the taps.
+    const vp = og.ui.viewport(world);
+    if (vp.width > 0 && vp.height > 0) {
+      m.pxPerM[b] = vp.height / m.viewHeight[b]!;
+      m.screenX0[b] = vp.width / 2;
+      m.screenY0[b] = vp.height / 2 + m.viewCentreY[b]! * m.pxPerM[b]!;
     }
-    // buttonsReleased & 1: the left button went up (the runtime lacks Input.buttonReleased yet).
-    if ((i.buttonsReleased & 1) !== 0) m.dragFrom[b] = -1;
+    if (i.buttonReleased("left")) m.dragFrom[b] = -1;
     // The press that dealt the round does not also select.
     if (m.phase[b] !== Phase.Idle || m.phaseTicks[b] === 0) return;
     // A swap asked for by the `swap` command.

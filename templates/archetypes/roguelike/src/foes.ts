@@ -19,7 +19,7 @@ import { og } from "@origingame/engine";
 import type { Entity, Value, World } from "@origingame/engine";
 import { Foe, FoeKind, FOE_SLOTS, Game, Sound } from "./components.ts";
 import { H, W } from "./dive.ts";
-import { cellCenter, float, isWall, lazyTuning, must, must2, RED } from "./systems.ts";
+import { cellCenter, feel, float, isWall, lazyTuning, must, must2, RED } from "./systems.ts";
 import { say } from "./ui.ts";
 
 type FoeV = Value<typeof Foe>;
@@ -105,8 +105,9 @@ export function strike(world: World, args: readonly string[]): void {
   ]));
   const dead = g.hp === 0;
   must(og.time.hitStop(world, dead ? 16 : charged ? 8 : 3));
-  must(og.camera.shake(world, dead ? 0.7 : charged ? 0.5 : 0.25));
-  must(og.camera.kick(world, { x: at.x - from.x, y: at.y - from.y, z: 0 }, charged ? 0.25 : 0.12));
+  const k = feel(world);
+  must(og.camera.shake(world, (dead ? 0.7 : charged ? 0.5 : 0.25) * k));
+  must(og.camera.kick(world, { x: at.x - from.x, y: at.y - from.y, z: 0 }, (charged ? 0.25 : 0.12) * k));
   if (dead) {
     g.killedBy = f.kind;
     g.overTicks = 0;

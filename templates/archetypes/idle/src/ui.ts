@@ -10,7 +10,7 @@
 // The Ui system also keeps the save in og.platform: read on launch (and on
 // `relaunch`), the time away (the answer's host time less the save's
 // `at`, og.platform.now when it was written) credited, written every Tuning.saveEvery
-// ticks, after a supernova and on pause, at the revision read; a write
+// ticks, after a supernova, on pause and on Quit, at the revision read; a write
 // refused as stale is read again and merged (the save with more lifetime
 // sparks wins) and written at the new revision.
 
@@ -158,8 +158,8 @@ function platform(world: World, g: GameV, p: PrefsV): void {
       }
     }
   }
-  // Saving: every Tuning.saveEvery ticks of play, and when asked (a supernova, the pause).
-  if (g.loaded && g.phase !== Phase.Title && g.saveWrite === 0 && g.saveRequest === 0) {
+  // Saving: every Tuning.saveEvery ticks of play, and when asked (a supernova, the pause, Quit, which has gone to the title by then).
+  if (g.loaded && (g.phase !== Phase.Title || g.saveNow) && g.saveWrite === 0 && g.saveRequest === 0) {
     g.sinceSave += 1;
     if (g.saveNow || g.sinceSave >= lazyTuning(world).saveEvery) writeSave(world, g);
   }

@@ -201,7 +201,7 @@ values from the `Game` resource with `get:Game`.
 | `tests/nova.og.ts` | N asks, Not yet keeps everything, Supernova and Collapse reset the run for one stardust, the card shows the run, Ignite again runs 10 % stronger; the telemetry and the save |
 | `tests/offline.og.ts` | Escape saves; `relaunch:7200` reads it back with Continue on the title and a welcome back of 64.8K sparks for two hours at half of 18 a second; a stale write is merged, the other device's progress kept |
 | `tests/away.og.ts` | two processes over one kept store (`store: "keep"`): ten embers and two storms saved by Escape at the first run's host time; the second launches two hours later by its own clock, offers Continue and welcomes back two hours at half of 18 a second, with no relaunch command |
-| `tests/pause.og.ts` | Escape holds the orb (time scale 0); settings switch to 简体中文 and move the music; Done saves; numbers read `1.23亿` and `每秒 +2`; Resume |
+| `tests/pause.og.ts` | Escape holds the orb (time scale 0); settings switch to 简体中文 and move the music; Done saves; numbers read `1.23亿` and `每秒 +2`; Resume; Quit writes the save on the title |
 | `tests/pad.og.ts` | a gamepad alone plays, taps, chooses, buys, is refused, asks for and declines the supernova, pauses and resumes |
 | `tests/phone.og.ts` | 390 × 844 at 3×: the wallet and Pause below the notch, the generators above the home bar with touch-sized buttons, taps on the orb, a card bought |
 | `tests/frames.og.ts` | the title, the orb with every kind of mote and the supernova's card match `references/<tier>/` (`OG_FX_CAPTURE=1 og test .` records them) |

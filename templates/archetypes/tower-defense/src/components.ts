@@ -57,6 +57,7 @@ export const Game = defineResource("Game", {
   newBest: bool(false),
   bestRequest: u32(0, { doc: "The store request reading `best` (og.platform)." }),
   bestRevision: u32(0, { doc: "The revision `best` was read or written at." }),
+  bestWrite: u32(0, { doc: "The store request writing `best`." }),
   overTick: u32(0, { unit: "ticks", doc: "The tick the round ended." }),
   lastStop: i32(-100, { unit: "ticks", doc: "The tick of the last kill's hit stop (at most one per 10 ticks, og-feel §3)." }),
   occ0: u32(0, { doc: "Cells holding a visitor (bit per cell, row-major, 4 words): no plant goes there." }),
