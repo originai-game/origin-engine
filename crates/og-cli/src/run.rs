@@ -18,12 +18,18 @@
 //! asked for (default: none, the base table). Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
+//!
+//! `og run --device chrome|android[:serial]|iphone[:udid] [project]
+//! [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]
+//! [--chrome <path>] [--cert <pem> --key <pem>] [--json]` plays the publish
+//! build in a real browser instead and reports its first frame and frame
+//! times (`device.rs`).
 
 use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -32,6 +38,10 @@ pub struct RunArgs {
     pub forward: Vec<String>,
     pub out: Option<String>,
     pub port: Option<String>,
+    /// `--device`: the browser target and device.ts's own options.
+    pub device: Option<crate::device::DeviceArgs>,
+    /// Native-only options given (refused with `--device`).
+    native: Vec<String>,
 }
 
 pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
@@ -41,12 +51,48 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         forward: Vec::new(),
         out: None,
         port: None,
+        device: None,
+        native: Vec::new(),
     };
+    let mut device_forward = Vec::new();
     let mut i = 0;
     while i < args.len() {
         match args[i] {
-            "--headless" => r.headless = true,
-            "--json" | "--no-render" => r.forward.push(args[i].into()),
+            "--headless" => {
+                r.headless = true;
+                r.native.push(args[i].into());
+            }
+            "--json" => {
+                r.forward.push(args[i].into());
+                device_forward.push(args[i].to_string());
+            }
+            "--no-render" => {
+                r.forward.push(args[i].into());
+                r.native.push(args[i].into());
+            }
+            f @ ("--headed" | "--webgl") => device_forward.push(f.to_string()),
+            flag @ ("--device" | "--seconds" | "--chrome" | "--cert" | "--key") => {
+                let Some(v) = args.get(i + 1) else {
+                    return Err(format!("{flag} needs a value. {USAGE}"));
+                };
+                match flag {
+                    "--device" => {
+                        r.device = Some(crate::device::DeviceArgs {
+                            target: v.to_string(),
+                            forward: Vec::new(),
+                        })
+                    }
+                    "--seconds" => device_forward.extend([flag.to_string(), v.to_string()]),
+                    _ => device_forward.extend([
+                        flag.to_string(),
+                        std::path::absolute(v)
+                            .map_err(|e| format!("{flag} {v}: {e}"))?
+                            .display()
+                            .to_string(),
+                    ]),
+                }
+                i += 1;
+            }
             flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
             | "--port" | "--audio" | "--platform-store" | "--clock" | "--locale") => {
                 let Some(v) = args.get(i + 1) else {
@@ -55,6 +101,10 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 match flag {
                     "--out" => r.out = Some(v.to_string()),
                     "--port" => r.port = Some(v.to_string()),
+                    "--size" => {
+                        r.forward.extend([flag.into(), v.to_string()]);
+                        device_forward.extend([flag.to_string(), v.to_string()]);
+                    }
                     "--audio" | "--platform-store" => {
                         // A path is the caller's, not bun's working directory's.
                         let v = match *v {
@@ -66,10 +116,12 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                         };
                         r.forward.push(flag.into());
                         r.forward.push(v);
+                        r.native.push(flag.into());
                     }
                     _ => {
                         r.forward.push(flag.into());
                         r.forward.push(v.to_string());
+                        r.native.push(flag.into());
                     }
                 }
                 i += 1;
@@ -80,6 +132,24 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             other => r.project = other.to_string(),
         }
         i += 1;
+    }
+    match &mut r.device {
+        Some(d) => {
+            if let Some(f) = r.native.first() {
+                return Err(format!(
+                    "{f} is a native run's option; og run --device takes --seconds, --port, --out, --size, --headed, --webgl, --chrome, --cert, --key and --json"
+                ));
+            }
+            d.forward = device_forward;
+        }
+        None => {
+            if let Some(f) = device_forward
+                .iter()
+                .find(|f| f.starts_with("--") && !matches!(f.as_str(), "--json" | "--size"))
+            {
+                return Err(format!("{f} goes with --device. {USAGE}"));
+            }
+        }
     }
     Ok(r)
 }
@@ -109,6 +179,9 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    if let Some(d) = &a.device {
+        return crate::device::run(&a.project, a.out.as_deref(), a.port.as_deref(), d);
+    }
     let p = match Project::open(Path::new(&a.project)) {
         Ok(p) => p,
         Err(e) => {

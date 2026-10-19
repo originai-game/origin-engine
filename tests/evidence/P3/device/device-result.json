@@ -1,0 +1,338 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "seconds": 3,
+ "results": {
+  "webgpu": {
+   "tier": "webgpu",
+   "firstFrameMs": 258,
+   "interval": {
+    "count": 96,
+    "mean": 41.67,
+    "p50": 8.32,
+    "p95": 10.11,
+    "p99": 3208.09,
+    "max": 3208.09
+   },
+   "work": {
+    "count": 96,
+    "mean": 0.62,
+    "p50": 0.59,
+    "p95": 0.95,
+    "p99": 2.17,
+    "max": 2.17
+   },
+   "fps": 32,
+   "scores": {
+    "firstFrame": 100,
+    "frameTime": 100
+   },
+   "findings": []
+  }
+ },
+ "checks": [
+  {
+   "check": "webgpu: og run --device chrome exits 0",
+   "ok": true,
+   "detail": [
+    "og run --device: serving /Volumes/app/origin-engine-p3-culling/templates/game/.og/device at http://127.0.0.1:54951/, http://192.168.6.243:54951/ (COOP/COEP)"
+   ]
+  },
+  {
+   "check": "webgpu: prints the summary line",
+   "ok": true,
+   "detail": "og run --device chrome: webgpu, first frame 258 ms, frame p50 8.32 / p95 10.11 / p99 3208.09 ms; 0 finding(s); /private/tmp/claude-501/-Volumes-app-origingame/d5edfb9c-de8a-4546-bbc7-e0cba5f21dae/scratchpad/device/t2/webgpu/report.md\n"
+  },
+  {
+   "check": "webgpu: prints the URLs it serves",
+   "ok": true,
+   "detail": "og run --device: serving /Volumes/app/origin-engine-p3-culling/templates/game/.og/device at http://127.0.0.1:54951/, http://192.168.6.243:54951/ (COOP/COEP)"
+  },
+  {
+   "check": "webgpu: report.md and device.json written",
+   "ok": true
+  },
+  {
+   "check": "webgpu: first frame after navigation, play after it",
+   "ok": true,
+   "detail": {
+    "firstFrameMs": 258,
+    "startMs": 2311
+   }
+  },
+  {
+   "check": "webgpu: tier webgpu",
+   "ok": true,
+   "detail": [
+    "webgpu",
+    "webgl2"
+   ]
+  },
+  {
+   "check": "webgpu: display interval p50 ≤ p95 ≤ p99 ≤ max, all > 0",
+   "ok": true,
+   "detail": {
+    "count": 96,
+    "mean": 41.67,
+    "p50": 8.32,
+    "p95": 10.11,
+    "p99": 3208.09,
+    "max": 3208.09
+   }
+  },
+  {
+   "check": "webgpu: engine work p50 ≤ p95 ≤ p99 ≤ max, all > 0",
+   "ok": true,
+   "detail": {
+    "count": 96,
+    "mean": 0.62,
+    "p50": 0.59,
+    "p95": 0.95,
+    "p99": 2.17,
+    "max": 2.17
+   }
+  },
+  {
+   "check": "webgpu: the game ticked while timed",
+   "ok": true,
+   "detail": {
+    "ticks": 51,
+    "fps": 32
+   }
+  },
+  {
+   "check": "webgpu: device info (user agent, DPR, viewport, cores)",
+   "ok": true,
+   "detail": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+    "platform": "macOS",
+    "mobile": false,
+    "dpr": 1,
+    "viewport": {
+     "width": 1280,
+     "height": 577
+    },
+    "screen": {
+     "width": 800,
+     "height": 600
+    },
+    "canvas": {
+     "width": 1280,
+     "height": 577
+    },
+    "hardwareConcurrency": 12,
+    "deviceMemory": 16,
+    "crossOriginIsolated": true,
+    "isSecureContext": true,
+    "gpu": {
+     "vendor": "apple",
+     "architecture": "metal-3",
+     "description": ""
+    },
+    "webgl": {
+     "vendor": "Google Inc. (Apple)",
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)"
+    }
+   }
+  },
+  {
+   "check": "webgpu: the page is cross-origin isolated in a secure context",
+   "ok": true,
+   "detail": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+    "platform": "macOS",
+    "mobile": false,
+    "dpr": 1,
+    "viewport": {
+     "width": 1280,
+     "height": 577
+    },
+    "screen": {
+     "width": 800,
+     "height": 600
+    },
+    "canvas": {
+     "width": 1280,
+     "height": 577
+    },
+    "hardwareConcurrency": 12,
+    "deviceMemory": 16,
+    "crossOriginIsolated": true,
+    "isSecureContext": true,
+    "gpu": {
+     "vendor": "apple",
+     "architecture": "metal-3",
+     "description": ""
+    },
+    "webgl": {
+     "vendor": "Google Inc. (Apple)",
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)"
+    }
+   }
+  },
+  {
+   "check": "webgpu: COOP/COEP served on the page and the wasm",
+   "ok": true,
+   "detail": {
+    "/": {
+     "cross-origin-resource-policy": "cross-origin",
+     "x-content-type-options": "nosniff",
+     "cross-origin-opener-policy": "same-origin",
+     "cross-origin-embedder-policy": "require-corp",
+     "cache-control": "no-store",
+     "content-type": "text/html; charset=utf-8"
+    },
+    "/origin-engine_bg.wasm": {
+     "cross-origin-resource-policy": "cross-origin",
+     "x-content-type-options": "nosniff",
+     "cross-origin-opener-policy": "same-origin",
+     "cross-origin-embedder-policy": "require-corp",
+     "content-type": "application/wasm",
+     "cache-control": "no-store"
+    },
+    "/basis/basis_transcoder.wasm": {
+     "cross-origin-resource-policy": "cross-origin",
+     "x-content-type-options": "nosniff",
+     "cross-origin-opener-policy": "same-origin",
+     "cross-origin-embedder-policy": "require-corp",
+     "content-type": "application/wasm",
+     "cache-control": "no-store"
+    }
+   }
+  },
+  {
+   "check": "webgpu: scores and a fix per finding",
+   "ok": true,
+   "detail": {
+    "project": "game",
+    "date": "2026-10-19",
+    "target": "chrome",
+    "driver": "chrome (Google Chrome for Testing, headless)",
+    "url": "http://127.0.0.1:54951/",
+    "scheme": "http",
+    "port": 54951,
+    "lan": [
+     "192.168.6.243"
+    ],
+    "budgetMs": 2000,
+    "scores": {
+     "firstFrame": 100,
+     "frameTime": 100
+    },
+    "findings": [],
+    "fps": 32,
+    "ticksPerSecond": 17,
+    "measured": {
+     "firstFrameMs": 258,
+     "readyMs": 188,
+     "startMs": 2311,
+     "tier": "webgpu",
+     "seconds": 3,
+     "frames": 96,
+     "ticks": 51,
+     "interval": {
+      "count": 96,
+      "mean": 41.67,
+      "p50": 8.32,
+      "p95": 10.11,
+      "p99": 3208.09,
+      "max": 3208.09
+     },
+     "work": {
+      "count": 96,
+      "mean": 0.62,
+      "p50": 0.59,
+      "p95": 0.95,
+      "p99": 2.17,
+      "max": 2.17
+     },
+     "device": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "platform": "macOS",
+      "mobile": false,
+      "dpr": 1,
+      "viewport": {
+       "width": 1280,
+       "height": 577
+      },
+      "screen": {
+       "width": 800,
+       "height": 600
+      },
+      "canvas": {
+       "width": 1280,
+       "height": 577
+      },
+      "hardwareConcurrency": 12,
+      "deviceMemory": 16,
+      "crossOriginIsolated": true,
+      "isSecureContext": true,
+      "gpu": {
+       "vendor": "apple",
+       "architecture": "metal-3",
+       "description": ""
+      },
+      "webgl": {
+       "vendor": "Google Inc. (Apple)",
+       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)"
+      }
+     },
+     "errors": []
+    },
+    "served": {
+     "/": {
+      "cross-origin-resource-policy": "cross-origin",
+      "x-content-type-options": "nosniff",
+      "cross-origin-opener-policy": "same-origin",
+      "cross-origin-embedder-policy": "require-corp",
+      "cache-control": "no-store",
+      "content-type": "text/html; charset=utf-8"
+     },
+     "/origin-engine_bg.wasm": {
+      "cross-origin-resource-policy": "cross-origin",
+      "x-content-type-options": "nosniff",
+      "cross-origin-opener-policy": "same-origin",
+      "cross-origin-embedder-policy": "require-corp",
+      "content-type": "application/wasm",
+      "cache-control": "no-store"
+     },
+     "/basis/basis_transcoder.wasm": {
+      "cross-origin-resource-policy": "cross-origin",
+      "x-content-type-options": "nosniff",
+      "cross-origin-opener-policy": "same-origin",
+      "cross-origin-embedder-policy": "require-corp",
+      "content-type": "application/wasm",
+      "cache-control": "no-store"
+     }
+    }
+   }
+  },
+  {
+   "check": "webgl2: og run --device chrome exits 0",
+   "ok": false,
+   "detail": [
+    "og run --device: serving /Volumes/app/origin-engine-p3-culling/templates/game/.og/device at http://127.0.0.1:54984/, http://192.168.6.243:54984/ (COOP/COEP)",
+    "og run --device: the page failed: The game could not start Uncaught RuntimeError: unreachable Logerror: origin-engine panicked: panicked at /Users/fan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wgpu-30.0.1/src/backend/wgpu_core.rs:1414:26: wgpu error: Validation Error Caused by: In Device::create_render_pipeline, label = 'overlay glass' Internal error in ShaderStages(FRAGMENT) shader: The selected version doesn't support Features(TEXTURE_LEVELS) tick 0: warning: GameDesc.scene: scenes/main.ogt: entity 'trickster': models/trickster.glb#tex0: models/trickster.glb#tex0: not transcoded; the Worker transcodes a bundle's Basis textures (src/web/basis.ts) before the engine starts World ReloadCopy report"
+   ]
+  },
+  {
+   "check": "webgl2: prints the summary line",
+   "ok": false,
+   "detail": ""
+  },
+  {
+   "check": "webgl2: prints the URLs it serves",
+   "ok": true,
+   "detail": "og run --device: serving /Volumes/app/origin-engine-p3-culling/templates/game/.og/device at http://127.0.0.1:54984/, http://192.168.6.243:54984/ (COOP/COEP)"
+  },
+  {
+   "check": "webgl2: report.md and device.json written",
+   "ok": false
+  },
+  {
+   "check": "a missing Chrome: exit 1 and one line naming the fix",
+   "ok": true,
+   "detail": "og run --device: no Chrome at /private/tmp/claude-501/-Volumes-app-origingame/d5edfb9c-de8a-4546-bbc7-e0cba5f21dae/scratchpad/device/t2/no-such-chrome: point --chrome (or CHROME) at the browser's executable\n"
+  }
+ ],
+ "failures": 3
+}

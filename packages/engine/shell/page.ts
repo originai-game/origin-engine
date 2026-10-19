@@ -18,7 +18,8 @@
 // - the error card (§6): the reason, the last 200 log lines and the world
 //   dump (state in a publish build), with Reload and Copy report;
 // - the probe: `globalThis.__runtime_probe__` (protocol 5, every member a
-//   Promise) and the platform's `og-probe` postMessage wire;
+//   Promise) and the platform's `og-probe` postMessage wire; the played
+//   frames' timings on `globalThis.__og_timings__` (`og run --device`);
 // - PWA: the service worker (publish builds) and the add-to-home-screen hint
 //   only when the install criteria hold;
 // - "Made with Origin Engine" in the corner unless the project turns it off.
@@ -52,6 +53,7 @@ export interface ShellConfig {
 }
 
 const PROBE_GLOBAL = "__runtime_probe__";
+const TIMINGS_GLOBAL = "__og_timings__";
 const REPLAY_SEED_PARAM = "replay-seed";
 const LOG_LINES = 200;
 const INSTALL_DISMISSED = "og-install-dismissed";
@@ -442,6 +444,8 @@ export async function play(): Promise<PlayHandle> {
   const probe: Record<string, unknown> = { version: 5, substrate: "origin-engine" };
   for (const m of MEMBERS) probe[m] = (...args: unknown[]) => shell.probe(m, probeParams(m, args));
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
+  // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
+  (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);
   mountWire({
     probe: () => (method, params) => shell.probe(method, params ?? {}),
     targetSize: () => ({ width: canvas.width || Math.round(box.width * Math.min(devicePixelRatio || 1, config.dprCap)), height: canvas.height || Math.round(box.height * Math.min(devicePixelRatio || 1, config.dprCap)) }),

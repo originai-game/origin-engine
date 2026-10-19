@@ -501,8 +501,10 @@ has a station for each.
 ## 14. Performance
 
 A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
-desktop so phones have room. `og run --json` prints `advanceMs`, and `og
-polish` the p95 step and render time of every playtest (og-build §5). The usual costs:
+desktop so phones have room. `og run --json` prints `advanceMs`, `og
+polish` the p95 step and render time of every playtest (og-build §5), and
+`og run --device` the first frame and frame times in a real browser or
+phone (og-build §6). The usual costs:
 draws (share geometry and one material per look), particle systems (cap
 `maxParticles` in the emitter's .ogt, despawn emitters that are done),
 per-tick TypeScript over many entities (iterate archetype columns, never

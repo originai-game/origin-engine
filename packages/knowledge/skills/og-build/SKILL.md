@@ -1,6 +1,6 @@
 ---
 name: og-build
-description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), and og build for publishing. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
+description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), og build for publishing, and og run --device for the first frame and frame times on a real browser or phone. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
 ---
 
 The `og` tool is the whole loop: it cooks assets, runs the game headless on
@@ -145,6 +145,13 @@ run it again after the fix: the report is the evidence.
 `og build .` bundles `src/` to `dist/game.js`, cooks, and copies the engine
 runtime and wasm next to it. `og build . --publish` produces the published
 form: the probe keeps only its player-facing members (hello, tick, state,
-pick, entity, input, capture) and the command channel is gone. `og doctor`
+pick, entity, input, capture) and the command channel is gone.
+`og run --device chrome .` plays that publish build in a real browser
+(`android[:serial]` over adb, `iphone[:udid]` over safaridriver), passes
+the play gate and writes `og-out/device/report.md`: the first frame against
+its budget (2.0 s, 1.5 s on an iPhone), the frame-time percentiles on the
+tier the device chose, the device itself, and a fix per finding (og-game
+§6 for a slow first frame, og-game §14 for missed frames). Run it on the
+phone you ship for: og polish's native numbers are not a phone's. `og doctor`
 names each missing tool (bun, the native addon, the wasm artifact) with its
 fix.

@@ -26,7 +26,9 @@
 // frame; { type: "crash", message } when the engine fails after ready (a
 // trap, a failing system, an uncaught error); { type: "log", lines } with
 // the engine's log and the Worker's console (the crash card shows the last
-// 200); { type: "result", id, value | error } for `call`; { type: "rpc",
+// 200); { type: "result", id, value | error } for `call` (`advance`,
+// `command`, `hash`, `frame`, `probe`, and `timings`: the played frames'
+// display intervals and engine work); { type: "rpc",
 // frame } for an answer that did not cross the ring.
 //
 // Requests on the ring are served between frames by the request loop
@@ -367,6 +369,9 @@ function isPendingCapture(frame: string, answer: string): boolean {
 /** The most log lines the Worker keeps for a crash card. */
 export const LOG_LINES = 200;
 
+/** Played frames whose timings the Worker keeps (`timings`). */
+const FRAME_RECORDS = 4096;
+
 /** Run `game` in this Worker, driven by the shell's messages. */
 export function startWorker(game: GameToken): void {
   let engine: Engine | null = null;
@@ -422,6 +427,15 @@ export function startWorker(game: GameToken): void {
 
   /** Real time not yet simulated after the last frame (its answer's `behind`), ms. */
   let behind = 0;
+  /**
+   * The played frames' timings, the last FRAME_RECORDS of them (the shell's
+   * `timings` call, which `og run --device` reads): the display interval
+   * (this frame's timestamp minus the last one's) and the engine's work
+   * (`engine.frame`: input, ticks, render submission), ms.
+   */
+  const intervals = new Float32Array(FRAME_RECORDS);
+  const work = new Float32Array(FRAME_RECORDS);
+  let recorded = 0;
   /**
    * An event with the page's time becomes one with its `at` within the tick
    * that reads it (input.ts stampAt): `now` is this Worker's clock now (a
@@ -492,10 +506,16 @@ export function startWorker(game: GameToken): void {
       drainRpc();
       // The clock holds while a capture waits for its readback.
       if (playing && retries.length === 0) {
+        const began = performance.now();
         const answered = engine.frame(last ? now - last : 0);
         if (!answered.ok) {
           crash(answered.reason ?? "the engine refused a frame");
           return;
+        }
+        if (last) {
+          intervals[recorded % FRAME_RECORDS] = now - last;
+          work[recorded % FRAME_RECORDS] = performance.now() - began;
+          recorded++;
         }
         behind = answered.behind ?? 0;
         if (!firstFrame && answered.rendered !== false) {
@@ -567,6 +587,14 @@ export function startWorker(game: GameToken): void {
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
     frame: (e, [ms]) => e.frame(Number(ms)),
+    // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
+    timings: (_, [reset]) => {
+      const n = Math.min(recorded, FRAME_RECORDS);
+      const at = (a: Float32Array) => Array.from({ length: n }, (_, i) => Math.round(a[(recorded - n + i) % FRAME_RECORDS]! * 1000) / 1000);
+      const answer = { frames: recorded, intervals: at(intervals), work: at(work) };
+      if (reset) recorded = 0;
+      return answer;
+    },
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
       if (typeof f !== "function") throw new TypeError(`probe has no member '${String(member)}'`);
