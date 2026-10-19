@@ -233,9 +233,10 @@ function playersScreen(d: DemoState): void {
     // Rich text: the button in bold, a link (a child element Hint/join, focusable by every pad).
     const hint = og.ui.richText("Hint", "Each pad moves its own ring; [b]A[/b] picks a hero for that player. [link=join]How to join[/link]", { color: { token: "fgMuted" }, width: grow });
     if (hint.link === "join") d.rules += 1;
+    // The player cards sit on bgSubtle, darker than the panel, so each player's ink and "Press A" read at 4.5:1.
     og.ui.row("Cards", { gap: t.space.sm, width: grow, wrap: phone }, () => {
       for (let p = 0; p < 4; p++) {
-        og.ui.column(og.ui.idi("Player", p), { width: grow, gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "fill" }, radius: t.radius.card }, () => {
+        og.ui.column(og.ui.idi("Player", p), { width: grow, gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "bgSubtle" }, radius: t.radius.card }, () => {
           og.ui.label("Name", `P${p + 1}`, { step: "lg", font: "display", color: { token: PLAYER_INKS[p]! }, nowrap: true });
           og.ui.label("Pick", picks[p] ? HEROES[picks[p]! - 1]! : "Press A", { color: { token: picks[p] ? "fg" : "fgMuted" }, nowrap: true });
         });
