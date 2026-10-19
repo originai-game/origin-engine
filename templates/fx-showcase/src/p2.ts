@@ -4,16 +4,19 @@
 //   lights   a night plaza lit by 256 point and spot lights (Forward+:
 //            clustered lights on WebGPU and native, the CPU tile table
 //            on WebGL2)
+//   moon     og.DayNight at 21:00: a waxing moon rising over the rooftops,
+//            moonlit, with stars
 
 import { og } from "@origingame/engine";
 import type { Geometry, Material, Vector3 as Vec3, World } from "@origingame/engine";
 
-export const P2_STATIONS = ["lights"] as const;
+export const P2_STATIONS = ["lights", "moon"] as const;
 export type P2Station = (typeof P2_STATIONS)[number];
 
 /** Where each station lives along x. */
 export const P2_ORIGIN: Record<P2Station, number> = {
   lights: 1400,
+  moon: 1500,
 };
 
 export interface P2Kit {
@@ -93,6 +96,26 @@ export function buildP2(k: P2Kit): void {
         }
       }
     },
+    moon: (world: World) => {
+      const x0 = P2_ORIGIN.moon;
+      k.ground(x0, { x: 0.3, y: 0.32, z: 0.3 });
+      const wall = k.mat({ color: { r: 0.62, g: 0.58, b: 0.52 }, roughness: 0.85 });
+      const roof = k.mat({ color: { r: 0.36, g: 0.2, b: 0.16 }, roughness: 0.7 });
+      // A row of houses on the far side of a square.
+      for (let i = 0; i < 7; i++) {
+        const h = 2.6 + hash01(i, 11) * 2.2;
+        const at = { x: x0 - 9 + i * 3.1, y: h / 2, z: -10 - hash01(i, 12) * 2 };
+        const e = must(world.spawn({ name: `house-${i}`, position: at }));
+        world.set(e, og.Transform, { scale: { x: 2.8, y: h, z: 3 } });
+        world.insert(e, og.Mesh, { geometry: k.box, material: wall, castShadow: true, receiveShadow: true });
+        const r = must(world.spawn({ name: `roof-${i}`, position: { x: at.x, y: h + 0.35, z: at.z }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 0, z: 1 }, Math.PI / 4) }));
+        world.set(r, og.Transform, { scale: { x: 1.9, y: 1.9, z: 3.1 } });
+        world.insert(r, og.Mesh, { geometry: k.box, material: roof, castShadow: true, receiveShadow: true });
+      }
+      const well = must(world.spawn({ name: "well", position: { x: x0 + 1, y: 0.5, z: -3 } }));
+      world.set(well, og.Transform, { scale: { x: 1.6, y: 1, z: 1.6 } });
+      world.insert(well, og.Mesh, { geometry: k.sphere, material: wall, castShadow: true, receiveShadow: true });
+    },
   };
 }
 
@@ -121,5 +144,18 @@ export function showP2(world: World, station: P2Station): void {
       cam.background = { r: 0.003, g: 0.004, b: 0.01 };
       cam.exposure = 1.4;
       break;
+    case "moon": {
+      // At 21:00 on this path, turned 63.4° about +y, the moon (opposite
+      // the sun) stands 38° up straight down -z; the camera looks up at it
+      // over the rooftops.
+      look({ x, y: 1.7, z: 6 }, { x: x + 1.5, y: 10.6, z: -14 });
+      const d = must(world.resource(og.DayNight));
+      Object.assign(d, { enabled: true, start: 21, speed: 0, tilt: 30, azimuth: 63.4, lightIntensity: 1.6, tintFog: false, step: 5, moonSize: 2.2, moonPhase: 0.36 });
+      settings.sky = true;
+      settings.bloom = true;
+      settings.bloomIntensity = 0.2;
+      cam.exposure = 1.2;
+      break;
+    }
   }
 }

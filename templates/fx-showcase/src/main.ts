@@ -16,9 +16,9 @@
 //
 // The E5 round adds eight stations (src/e5.ts): sky, weather, water,
 // shaders, controller, joints, rope, fluid; the phase 2 render round its
-// own (src/p2.ts): lights.
+// own (src/p2.ts): lights, moon.
 //
-// Commands: station:<name> (or station:<1-14>). `dump_entity:stage` reads
+// Commands: station:<name> (or station:<1-15>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
 // `dump_entity:e5` the E5 component.
 
@@ -181,7 +181,7 @@ function hud(world: World, font: Font, station: Station): void {
   og.render.text(world, { font, text: "Origin Engine effects", position: { x: 34, y: 46, z: 0 }, size: 24, screen: true, layer: 2 });
   const i = STATIONS.indexOf(station);
   const e5 = 5 + E5_STATIONS.length;
-  const label = i < 5 ? `station ${i + 1}/5  ${station}` : i < e5 ? `E5 station ${i - 4}/${E5_STATIONS.length}  ${station}` : `P2 station ${i - e5 + 1}/${P2_STATIONS.length}  ${station}`;
+  const label = i < 5 ? `station ${i + 1}/5  ${station}` : i < e5 ? `E5 station ${i - 4}/${E5_STATIONS.length}  ${station}` : `phase 2 station  ${station}`;
   og.render.text(world, { font, text: label, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
   og.ui.anchor("Badge", { anchor: "bottomRight" }, () => og.ui.panel("BadgePanel", { padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("BadgeText", "og.ui over the frame", {})));
 }
@@ -435,7 +435,7 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
   },
-  commandHelp: { station: { usage: "<name|1-14>", doc: "Show a station: post, lens, fx, 2d, stylised, the E5 round's eight, then phase 2's (lights)." } },
+  commandHelp: { station: { usage: "<name|1-15>", doc: "Show a station: post, lens, fx, 2d, stylised, the E5 round's eight, then phase 2's (lights, moon)." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);
