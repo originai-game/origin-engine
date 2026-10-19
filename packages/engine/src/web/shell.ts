@@ -90,6 +90,13 @@ export interface Ready {
 
 const BUTTONS = ["left", "middle", "right"] as const;
 
+/**
+ * How long the boot may go without a word from the Worker (progress, a log
+ * line) before it fails: generous, since a slow network moves the progress
+ * and only a hung Worker says nothing for this long.
+ */
+export const BOOT_DEADLINE_MS = 120_000;
+
 export class Shell {
   readonly worker: Worker;
   readonly tier: string;
@@ -112,6 +119,8 @@ export class Shell {
   /** Engine pointer ids (0 to 4) of the page pointers held down, by PointerEvent.pointerId. */
   #pointers = new Map<number, number>();
   #playing = false;
+  /** Why the engine no longer answers (it crashed, or the shell was disposed); every call after it fails with it. */
+  #stopped: Error | null = null;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
@@ -127,6 +136,8 @@ export class Shell {
         return;
       }
       if (m.type === "crash") {
+        // Nothing waits for an answer a stopped engine will not give.
+        this.#stop(`the engine stopped: ${m.message ?? "the engine stopped"}`);
         this.#onCrash?.(m.message ?? "the engine stopped");
         return;
       }
@@ -167,12 +178,38 @@ export class Shell {
     const offscreen = canvas.transferControlToOffscreen();
     const ring = globalThis.crossOriginIsolated ? createRing() : undefined;
     const rpc = globalThis.crossOriginIsolated ? createRpcRings() : undefined;
+    // The boot fails (and the Worker stops) when the Worker says so, when it
+    // does not load or throws while loading (game.js missing, a syntax error,
+    // a top-level throw: an `error` event and no message), when its message
+    // cannot be read, or when it says nothing for BOOT_DEADLINE_MS.
     const ready = new Promise<Ready>((resolve, reject) => {
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      const settle = () => {
+        clearTimeout(deadline);
+        worker.removeEventListener("message", on);
+        worker.removeEventListener("error", onError);
+        worker.removeEventListener("messageerror", onMessageError);
+      };
+      const failed = (message: string) => {
+        settle();
+        worker.terminate();
+        reject(new Error(message));
+      };
+      const arm = () => {
+        clearTimeout(deadline);
+        deadline = setTimeout(() => failed(`the engine Worker said nothing for ${BOOT_DEADLINE_MS / 1000} s while starting`), BOOT_DEADLINE_MS);
+      };
+      const onError = (e: Event) => {
+        const message = (e as ErrorEvent).message;
+        failed(message ? `the engine Worker failed: ${message}` : "the engine Worker did not load (game.js is missing, or it failed while loading)");
+      };
+      const onMessageError = () => failed("a message from the engine Worker could not be read");
       const on = (e: MessageEvent) => {
+        arm();
         const m = e.data as { type: string; value?: number; stage?: string; message?: string } & Partial<Ready>;
         if (m.type === "progress") options.onProgress?.(m.value ?? 0, m.stage ?? "");
         else if (m.type === "ready") {
-          worker.removeEventListener("message", on);
+          settle();
           resolve({
             lanes: m.lanes ?? { on: false, threads: 1, why: "the Worker did not report lanes" },
             tier: m.tier ?? "none",
@@ -182,12 +219,12 @@ export class Shell {
             files: m.files ?? 0,
             textures: m.textures ?? 0,
           });
-        } else if (m.type === "error") {
-          worker.removeEventListener("message", on);
-          reject(new Error(m.message));
-        }
+        } else if (m.type === "error") failed(m.message ?? "the engine did not start");
       };
       worker.addEventListener("message", on);
+      worker.addEventListener("error", onError);
+      worker.addEventListener("messageerror", onMessageError);
+      arm();
     });
     const choice = laneChoice(!!options.lanes, !!globalThis.crossOriginIsolated, globalThis.navigator?.hardwareConcurrency ?? 0);
     worker.postMessage(
@@ -239,6 +276,7 @@ export class Shell {
    * readback has landed (the Worker retries it on the following frames).
    */
   probe(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    if (this.#stopped) return Promise.reject(this.#stopped);
     const id = this.#rpcNext++;
     const frame = JSON.stringify({ jsonrpc: "2.0", id, method, params });
     return new Promise((resolve, reject) => {
@@ -263,7 +301,7 @@ export class Shell {
     if (this.#pumping || !this.#rpc) return;
     this.#pumping = true;
     try {
-      while (this.#rpcPending.size > 0) {
+      while (this.#rpcPending.size > 0 && !this.#stopped) {
         await waitForFrames(this.#rpc.answers, 100);
         for (const frame of readFrames(this.#rpc.answers)) this.#answer(frame);
       }
@@ -274,6 +312,7 @@ export class Shell {
 
   /** Call the engine in the Worker: `advance`, `command`, `hash`, `frame`, or `probe` with a member name. */
   call(method: string, ...args: unknown[]): Promise<unknown> {
+    if (this.#stopped) return Promise.reject(this.#stopped);
     const id = this.#next++;
     return new Promise((resolve, reject) => {
       this.#pending.set(id, { resolve, reject });
@@ -400,8 +439,19 @@ export class Shell {
     });
   }
 
+  /** The engine answers nothing more: every pending probe and call fails with `reason`, and so does every later one. */
+  #stop(reason: string): void {
+    if (this.#stopped) return;
+    this.#stopped = Object.assign(new Error(reason), { code: -32603 });
+    for (const pending of [this.#pending, this.#rpcPending]) {
+      for (const p of pending.values()) p.reject(this.#stopped);
+      pending.clear();
+    }
+  }
+
   /** Remove the page listeners and stop the Worker. */
   dispose(): void {
+    this.#stop("the shell was disposed");
     for (const off of this.#listeners.splice(0)) off();
     this.worker.terminate();
   }

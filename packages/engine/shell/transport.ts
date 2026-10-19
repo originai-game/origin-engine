@@ -60,6 +60,8 @@ export const PAGE_CALL_TIMEOUT_MS = 15_000;
 /** Messages a page keeps unsent at most, and sends per report. */
 export const REPORT_KEEP = 200;
 export const REPORT_BATCH = 20;
+/** A report's body at most, in UTF-8 bytes: the play origin's limit, and the browser's for a keepalive request in flight. */
+export const REPORT_MAX_BYTES = 64 * 1024;
 /** How long a save or score stays in the outbox. */
 const OUTBOX_DAYS = 7;
 const RETRYABLE = new Set(["offline", "timeout", "unavailable", "rate_limited"]);
@@ -295,14 +297,37 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
       void flush();
     }, ms);
   };
+  const encoder = new TextEncoder();
+  const bytes = (v: unknown) => encoder.encode(JSON.stringify(v)).length;
+  /** At most `count` messages from the front (or the end) whose report fits REPORT_MAX_BYTES; always at least one. */
+  const batchOf = (messages: readonly Message[], count: number, fromEnd = false): Message[] => {
+    const order = fromEnd ? [...messages].reverse() : messages;
+    let size = bytes({ session, device, messages: [] });
+    const batch: Message[] = [];
+    for (const m of order) {
+      if (batch.length >= count) break;
+      const more = bytes(m) + (batch.length > 0 ? 1 : 0);
+      if (batch.length > 0 && size + more > REPORT_MAX_BYTES) break;
+      size += more;
+      batch.push(m);
+    }
+    return fromEnd ? batch.reverse() : batch;
+  };
   let flushing: Promise<void> | null = null;
   const flush = (): Promise<void> => {
     if (flushing) return flushing;
     flushing = serial(async () => {
+      let count = REPORT_BATCH;
       while (unsent.length) {
-        const batch = unsent.slice(0, REPORT_BATCH);
+        const batch = batchOf(unsent, count);
         const r = await post("report", { session, device, messages: batch });
-        if (r.status !== 202 && r.status !== 200) return; // kept for the next report
+        // Too large: halve the batch; a single message that still does not fit is dropped below.
+        if (r.status === 413 && batch.length > 1) {
+          count = Math.ceil(batch.length / 2);
+          continue;
+        }
+        // 400 (invalid) and 413 are final: sending the same batch again fails the same way, so it is dropped.
+        if (r.status !== 202 && r.status !== 200 && r.status !== 400 && r.status !== 413) return; // kept for the next report
         unsent = unsent.filter((m) => !batch.includes(m));
       }
     }).finally(() => (flushing = null));
@@ -446,6 +471,7 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
       report({ kind: "fail", code, message: message.slice(0, 400), retryable });
     },
     crash(name, message) {
+      failed = true;
       report({ kind: "crash", name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
     },
     sample(fields) {
@@ -480,7 +506,7 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
       if (!started) return;
       keep(stamp({ kind: "end", durationMs: env.now() - startedAt, ready: state.ready, failed: state.failed }));
       // The page is going: no queue to wait behind, keepalive so the request outlives it.
-      const batch = unsent.slice(-REPORT_BATCH);
+      const batch = batchOf(unsent, REPORT_BATCH, true);
       unsent = [];
       void post("report", { session, device, messages: batch }, true);
     },

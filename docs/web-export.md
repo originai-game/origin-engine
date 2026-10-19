@@ -297,8 +297,10 @@ earlier build; a build that fails after replacing it removes what it wrote.
   standard mapping (A Space, B Escape, X KeyX, Y KeyZ, LB KeyQ, RB KeyE,
   Back Tab, Start Enter, d-pad and the left stick past 0.5 the arrows);
   og-ui counts a pad intent and the key it maps to once.
-- **Error card** (design §6): a failed start or a crash after it (a trap, a
-  failing system, an uncaught Worker error) shows the reason, the last 200
+- **Error card** (design §6): a failed start (the Worker's `error`, a
+  Worker that fails to load or says nothing for two minutes during the
+  boot, an engine that stops before its first frame) or a crash after it
+  (a trap, a failing system, an uncaught Worker error) shows the reason, the last 200
   lines of the engine's log, the Worker's console and the page's errors,
   and the world dump (a dev build) or the state (a publish build), with
   Reload and Copy report; the brand symbol switches to `drift`.
@@ -306,8 +308,12 @@ earlier build; a build that fails after replacing it removes what it wrote.
   precaches `./` and every file of the build except `og-build.json`,
   `_headers`, `origingame.runtime.json`, licence and README files, the
   streaming groups' packs, the engine variant the page will not take
-  (§Lanes) and itself under `og-<version>` (a failed install
-  keeps the old build), drops the scope's other `og-*` caches on activation,
+  (§Lanes) and itself under `og-<scope>-<version>` (`<scope>` a hash of
+  the registration's scope: CacheStorage is per origin, so builds served
+  side by side on one origin keep their own caches; a failed install keeps
+  the old build), drops only this scope's other caches on activation (and
+  an older build's unscoped `og-<version>` cache when it holds this
+  scope's `./`),
   serves the page from the network first (so a host's additions to it are
   current) and from the cache offline, and every other file from the cache.
   The network page is the browser's own navigation request (navigation
@@ -492,8 +498,11 @@ plays alone on the browser's storage, as before.
   message with `id` (a UUID v7), `at` (epoch ms) and `ms` (ms since
   navigation start); a report carries `session` (`game_session_<32 hex>`,
   per load) and `device` (`device_<32 hex>` from `og_device_<id>`, 30
-  days, the Player's). A report that fails is kept (at most 200 messages)
-  and sent with the next.
+  days, the Player's). A report holds at most 20 messages and 64 KiB
+  (UTF-8; `end` sends the newest that fit). A report that fails is kept
+  (at most 200 messages) and sent with the next; one answered 400 is
+  dropped, and one answered 413 is halved, a single message that still
+  does not fit dropped.
 - **The brand surface** is the shell's at the top level (design §4, §9):
   the boot splash on ink with the cover's 32 px derivative upscaled and
   blurred behind it (the hello's `page.backdrop`, `crossorigin="anonymous"`

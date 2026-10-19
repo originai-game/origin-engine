@@ -24,8 +24,11 @@
 // - message `{ type: "og-cache", files }`: files of one variant (absolute
 //   URLs); each names its whole variant (the lanes variant includes
 //   snippets/), and only the build's own variant files are cached.
-// - install: fetch every precached file into `og-<version>`; a failure keeps the old build.
-// - activate: delete the other `og-*` caches of this scope, take the clients.
+// - install: fetch every precached file into `og-<scope>-<version>`; a failure keeps the old build.
+//   CacheStorage is per origin, so the name carries a hash of the registration's scope:
+//   builds served side by side on one origin keep their own caches.
+// - activate: delete this scope's other caches (`og-<scope>-*`, and an older build's
+//   unscoped `og-<version>` only when it holds this scope's page), take the clients.
 // - fetch: the page (a navigation, index.html) from the network first, so
 //   whatever the host adds to it (the Stage proxy's told origin, the
 //   platform's `window.__OG_GAME`, the Player's modes) is current, and the
@@ -63,7 +66,14 @@ interface SwScope {
 }
 const scope = globalThis as unknown as SwScope;
 
-const CACHE = `og-${OG_SW.version}`;
+/** FNV-1a, 32 bits, as 8 hex digits: a short stable name for the scope, not a secret. */
+function scopeHash(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+const SCOPE = `og-${scopeHash(scope.registration.scope)}-`;
+const CACHE = SCOPE + OG_SW.version;
 const base = new URL(scope.registration.scope);
 const variants = { single: OG_SW.single ?? [], lanes: OG_SW.lanes ?? [] };
 const cores = (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ?? 0;
@@ -114,7 +124,15 @@ scope.addEventListener("activate", (e) => {
     Promise.all([
       // The browser makes navigations itself (as documents), in parallel with this worker's start.
       scope.registration.navigationPreload?.enable().catch(() => {}),
-      caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith("og-") && k !== CACHE).map((k) => caches.delete(k)))),
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys.map(async (k) => {
+            if (k === CACHE) return;
+            const mine = k.startsWith(SCOPE) || (/^og-[0-9a-f]{16}$/.test(k) && (await (await caches.open(k)).match(base.href)) !== undefined);
+            if (mine) await caches.delete(k);
+          }),
+        ),
+      ),
     ]).then(() => scope.clients.claim()),
   );
 });

@@ -302,7 +302,10 @@ export async function play(): Promise<PlayHandle> {
     else player.fail("engine_start", message, true);
     let dump = "";
     if (shellRef) {
-      const withTimeout = (p: Promise<unknown>) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), 1500))]);
+      const withTimeout = (p: Promise<unknown>) => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        return Promise.race([p, new Promise((r) => (timer = setTimeout(() => r(null), 1500)))]).finally(() => clearTimeout(timer));
+      };
       const world = await withTimeout(shellRef.probe(config.build === "publish" ? "state" : "dump", config.build === "publish" ? {} : { what: "world" }).catch(() => null));
       if (world) dump = JSON.stringify(world, null, 1).slice(0, 200_000);
     }
@@ -396,6 +399,13 @@ export async function play(): Promise<PlayHandle> {
   const platform = linked || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
 
   let firstFrameAt = 0;
+  // Ready is said once, never after the page failed; a crash before it is a start failure (Player protocol: fail before ready, crash after).
+  let readied = false;
+  const ready = () => {
+    if (readied || phase === "failed") return;
+    readied = true;
+    player.ready();
+  };
   let shell: Shell;
   try {
     shell = await Shell.start({
@@ -419,11 +429,11 @@ export async function play(): Promise<PlayHandle> {
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
       onProgress: (v) => setProgress(v),
       onLog: (lines) => log.push(lines),
-      onCrash: (message) => void fail(T.stopped, message, true),
+      onCrash: (message) => void fail(readied ? T.stopped : T.startFailed, message, readied),
       onFirstFrame: () => {
         firstFrameAt = performance.now();
         performance.mark?.("og:first-frame");
-        player.ready();
+        ready();
         player.sample({ renderer: shell?.tier ?? "unknown", timings: { firstFrame: Math.round(firstFrameAt), boot: Math.round(firstFrameAt - t0) } });
       },
     });
@@ -564,7 +574,7 @@ export async function play(): Promise<PlayHandle> {
   if (!firstFrameAt) {
     // The Worker drew the first frame behind the gate; a page without a renderer is ready now.
     setTimeout(() => {
-      if (!firstFrameAt) player.ready();
+      if (!firstFrameAt) ready();
     }, 2000);
   }
   if (harness) {
@@ -626,7 +636,7 @@ async function installPwa(framed: boolean, log: LogTail, booted: readonly string
   }
   void navigator.serviceWorker.ready
     .then((reg) => reg.active?.postMessage({ type: "og-cache", files: booted }))
-    .catch(() => {});
+    .catch((e) => log.push([`warn: service worker: ${e instanceof Error ? e.message : String(e)}`]));
   const standalone = matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
   const manifest = document.querySelector('link[rel="manifest"]');
   let dismissed = false;
