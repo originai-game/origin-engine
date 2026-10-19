@@ -426,6 +426,11 @@ fn effect_table(frames: u32, e5_only: bool) -> Result<String, String> {
             |g| g.scene.metaballs.clear(),
         ),
         (
+            "fluid-groups",
+            "E5, phase 2: ten 2D fluids in three fields, two groups of two",
+            |g| g.scene.metaballs.clear(),
+        ),
+        (
             "shader-hooks",
             "E5: material shader hooks (3 dissolving, 900 grass blades)",
             |g| {
