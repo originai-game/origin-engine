@@ -113,6 +113,7 @@ test("a scaffolded project routes media through Git LFS; the engine repository d
     ["lfs-match3", ["--archetype", "match3"]],
     ["lfs-topdown", ["--archetype", "topdown"]],
     ["lfs-tower-defense", ["--archetype", "tower-defense"]],
+    ["lfs-roguelike", ["--archetype", "roguelike"]],
   ] as const) {
     expect(cli(dir, ...args).code).toBe(0);
     const made = join(scratch, dir);

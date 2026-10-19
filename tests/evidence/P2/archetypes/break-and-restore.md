@@ -33,3 +33,27 @@ Restore: the line reverted, `maze` passes again:
 ```
 PASS maze (13 checks, 4725 ms): hedges route the visitors through the gap; a closed path, a stone, a taken cell and an empty purse are refused
 ```
+
+## roguelike (Lamp Dive)
+
+Break: `startDive` in `templates/archetypes/roguelike/src/ui.ts` keeps the
+last dive's strike instead of starting from the tuning's (permadeath
+broken: a blade found survives the lamp going out):
+
+```diff
+-  g.attack = t.heroAttack;
++  if (g.attack === 0) g.attack = t.heroAttack;
+```
+
+`tests/lose.og.ts` failed the check that the next dive starts from nothing:
+
+```
+FAIL lose (13 checks, 21265 ms): the lamp goes out: the summary, and the next dive starts from nothing
+  - from nothing: floor 1, full health, the blade gone, no kills, no turns
+```
+
+Restore: the line reverted, `lose` passes again:
+
+```
+PASS lose (13 checks, 17711 ms): the lamp goes out: the summary, and the next dive starts from nothing
+```
