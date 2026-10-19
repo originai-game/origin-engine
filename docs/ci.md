@@ -282,9 +282,12 @@ The lanes variant of og-host-web (docs/web-export.md §Lanes) is the
 publish build compiled for wasm atomics and shared memory, which stable
 Rust can only do by rebuilding std: `scripts/wasm-lanes.sh <cargo args>`
 runs `cargo build --target wasm32-unknown-unknown -Z
-build-std=panic_abort,std` with `RUSTC_BOOTSTRAP=1`, `RUSTFLAGS` adding
-`+atomics,+bulk-memory` and the shared, imported memory
-(at most 2 GiB) with wasm-bindgen's TLS exports, into its own target
+build-std=panic_abort,std` with `RUSTC_BOOTSTRAP=1`, `RUSTFLAGS` (the
+caller's, then) adding `+atomics,+bulk-memory` and the shared, imported
+memory (at most 2 GiB, against the single-threaded module's 4 GiB) with
+wasm-bindgen's TLS exports, and `CARGO_ENCODED_RUSTFLAGS` unset (cargo
+prefers it to `RUSTFLAGS`, so one inherited from an outer cargo would drop
+the lanes flags), into its own target
 directory, `<target>/wasm-mt` (`scripts/wasm-lanes.sh --target-dir`
 prints it), so the flags never invalidate the single-threaded build. It
 needs the `rust-src` component (`rust-toolchain.toml`). The first build
@@ -294,7 +297,9 @@ average around 30; afterwards a change costs about 30 s. rustc warns
 crate; that is expected. wasm-bindgen writes `snippets/` (the pool's
 Worker script) beside `origin-engine-lanes.js`; build.sh copies it into
 `dist/web-publish`, and `scripts/pack.sh` refuses a package without the
-lanes files.
+lanes files. In the gate's mode (`OG_GATE=1`) build.sh exits 1 when
+`scripts/wasm-crates.txt` marks og-host-web `lanes` and the gate left no
+`og_host_web-lanes.wasm`.
 
 ## `packages/engine/scripts/build.sh` outside the gate
 

@@ -13,6 +13,7 @@
 // and, for games that only read keys, as the keys of their standard mapping.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
+import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
 
@@ -72,21 +73,7 @@ export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio:
 /** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
 const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
 
-/** The most Workers lanes take beside the engine Worker. */
-export const LANES_MAX_THREADS = 8;
-
-/**
- * Lanes or not, decided at boot: the lanes variant needs shared memory
- * (`crossOriginIsolated`) and pays off with a core for the engine Worker, one
- * for the page and at least one more; the pool takes the cores but one, at
- * most LANES_MAX_THREADS.
- */
-export function laneChoice(offered: boolean, isolated: boolean, cores: number): { threads: number } | { why: string } {
-  if (!offered) return { why: "the build has no lanes variant" };
-  if (!isolated) return { why: "the page is not cross-origin isolated (COOP/COEP)" };
-  if (!(cores > 2)) return { why: `${cores || "unknown"} logical cores: single-threaded` };
-  return { threads: Math.min(cores - 1, LANES_MAX_THREADS) };
-}
+export { LANES_MAX_THREADS, laneChoice } from "./lanes.ts";
 
 /** What the Worker reported when the engine was ready. */
 export interface Ready {

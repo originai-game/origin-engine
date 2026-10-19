@@ -294,7 +294,9 @@ fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
         .flat_map(|a| a.entities().to_vec())
         .filter_map(|e| Some((e.to_bits(), world.get_bytes(e, id).ok()?)))
         .collect();
-    og_lanes::map(&cells, ROW_GRAIN, |(e, bytes)| (*e, layout.decode(bytes)))
+    og_lanes::map(og_lanes::Site::Extract, &cells, ROW_GRAIN, |(e, bytes)| {
+        (*e, layout.decode(bytes))
+    })
 }
 
 /// Rows per lane task when decoding a component's rows: a row decodes in

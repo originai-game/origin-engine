@@ -722,7 +722,9 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     }
     {
         let sh: &Shared = &sh;
-        og_lanes::for_each_mut(&mut evals, GRAIN, |ev| ev.out = evaluate(sh, ev, dt));
+        og_lanes::for_each_mut(og_lanes::Site::Anim, &mut evals, GRAIN, |ev| {
+            ev.out = evaluate(sh, ev, dt)
+        });
     }
     let mut work: Vec<Work> = Vec::with_capacity(evals.len());
     let mut fired: Vec<(Entity, Fired)> = Vec::new();
@@ -769,7 +771,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
 
     // The joint palettes, in lanes; then everything is written back in
     // entity order.
-    let palettes = og_lanes::map(&work, GRAIN, |w| {
+    let palettes = og_lanes::map(og_lanes::Site::Anim, &work, GRAIN, |w| {
         let mut palette = Vec::new();
         w.asset
             .palette(w.skeleton.skin, &w.pose.nodes, &mut palette);

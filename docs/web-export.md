@@ -124,15 +124,19 @@ textures transcoded, and the visited groups loading offline.
   MessagePort to the worklet; the engine runs single-threaded (§Lanes).
 - The lanes pool's Workers are started from a `blob:` URL
   (wasm-bindgen-rayon), so a host that sends a Content-Security-Policy
-  must allow `worker-src blob:` (or send no `worker-src`/`script-src`).
+  must allow `worker-src blob:` (or send no `worker-src`/`script-src`);
+  one that refuses it gets the single-threaded engine after the pool's
+  deadline at most (§Lanes, `tests/web/export.ts` serves one).
 
 ## Lanes
 
 Parallel systems (docs/design.md §2.2, phase 3 lanes round). Rayon runs the
 engine's data-parallel work on a pool of threads: one a core up to 8
 natively (the addon and `og`), Workers sharing the wasm memory on the web.
-What runs on lanes (`crates/og-lanes`, `og_lanes::map` and `for_each_mut`,
-both keeping the input order): the animation graph's evaluation and
+What runs on lanes (`crates/og-lanes`, `og_lanes::map`, `for_each_mut` and
+`for_each_indexed`, all keeping the input order; each caller names its site,
+and the report counts the parallel calls and items per site: `anim`,
+`extract`, `cull`, `physics`): the animation graph's evaluation and
 skinning palettes per character (og-anim, 64 skeletons a task),
 extraction's per-row decoding (og-runtime, 512 rows a task) and frustum
 culling per view (og-render, 1024 bounds a task; scheduling only: the
@@ -165,7 +169,16 @@ is 3,153,927 B and the lanes wasm 3,156,913 B brotli, 75 % of the budget;
 the lanes round grew the single-threaded wasm by about 4 KB). The
 lanes build needs nightly-only flags on the stable toolchain
 (`scripts/wasm-lanes.sh`: `RUSTC_BOOTSTRAP=1`, `-Z build-std` with
-`rust-src`; docs/ci.md).
+`rust-src`, its flags appended to the caller's `RUSTFLAGS`, an inherited
+`CARGO_ENCODED_RUSTFLAGS` unset; docs/ci.md). Its shared memory has a
+maximum, 2 GiB, which the browser reserves up front; the single-threaded
+module has none and may grow to wasm32's 4 GiB where the browser allows,
+so a game past 2 GiB of wasm memory runs out of memory on lanes only.
+A `--publish` build that would ship lanes but finds the lanes files
+missing from `dist/web-publish` says so in one warning on stderr, naming
+the file, and ships single-threaded; `scripts/build.sh` in the gate's mode
+(`OG_GATE=1`) stops instead when `scripts/wasm-crates.txt` marks
+og-host-web `lanes` and the gate left no lanes wasm.
 
 **The choice at boot.** The shell (`src/web/shell.ts` `laneChoice`) takes
 the lanes variant when the build offers it, `crossOriginIsolated` is true
@@ -173,7 +186,22 @@ and `navigator.hardwareConcurrency` is above 2, with
 `min(cores - 1, 8)` Workers beside the engine Worker. The engine Worker
 starts the pool (`initThreadPool`) and tells the engine (`og_lanes_ready`);
 if the lanes module or the pool fails to start, the Worker starts the
-single-threaded module instead, so a page always plays. The API is the
+single-threaded module instead, so a page always plays.
+wasm-bindgen-rayon waits for each pool Worker with no timeout and no error
+handler, so the engine Worker (`src/web/host.ts` `startPool`) races the
+pool against a deadline (`LANES_POOL_DEADLINE_MS`, 10 s) and against an
+`error` event from any Worker the pool creates (it wraps `Worker` while the
+pool starts); on either it terminates the pool's Workers and discards the
+lanes glue before the engine is told or anything is bound. That covers a
+lanes glue or wasm that does not load, a pool Worker the page may not
+create (a CSP without `worker-src blob:`: the constructor throws or the
+Worker fires `error`) and a pool Worker that never reports ready (a module
+import that fails inside it, which reaches no parent event: only the
+deadline catches it, after 10 s). It cannot cover what goes wrong after
+the pool started: a panic inside a lane on the lanes wasm leaves the
+engine Worker in `Atomics.wait` for a lane that never ends, so the page
+hangs instead of showing the crash screen, and the shell has no deadline
+on a frame that would notice (owed: docs/phase-1.md, lanes round). The API is the
 same either way. The mode is reported: the ready message's `lanes`
 (`{ on, threads, why }`, `why` saying why it is off), a log line
 (`lanes: on, 7 Workers` or `lanes: off (…)`), the page's
@@ -181,10 +209,16 @@ same either way. The mode is reported: the ready message's `lanes`
 (`og_web_lanes`: threads, pool, and how many parallel calls and items ran).
 
 **Service worker.** `OG_SW` lists both variants (`single`, `lanes`); the
-worker precaches the one its own `crossOriginIsolated` predicts (`sw.js` is
-served with the build's COEP) and serves the other from the network into
-the same cache the first time it is asked, so a wrong guess costs one
-download, never a failed boot.
+worker precaches the one the shell's own rule picks in its scope
+(`src/web/lanes.ts` `laneChoice`, shared by the shell and `shell/sw.ts`:
+its `crossOriginIsolated`, since `sw.js` is served with the build's COEP,
+and its `navigator.hardwareConcurrency`) and serves the other from the
+network into the same cache the first time it is asked, so a wrong guess
+costs one download, never a failed boot. Once the engine is ready the page
+posts `{ type: "og-cache", files }` (the booted variant's glue and wasm) to
+the active worker, which caches whatever of that variant it lacks
+(snippets/ included for lanes), so the variant the page actually runs,
+after a wrong guess or a pool that fell back, plays offline from then on.
 
 **Locally.** `og dev` and `og run` run the native host, whose lanes are a
 rayon pool (`OG_LANES`: `off`, `0` or `1` serial, `N` threads, unset the

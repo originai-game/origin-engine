@@ -50,10 +50,79 @@ export interface WebGlue extends Record<string, unknown> {
 }
 
 /**
+ * How long the lanes pool may take to start. wasm-bindgen-rayon waits for
+ * each pool Worker's ready message with no timeout and no error handler, so
+ * a Worker that never loads (a `worker-src` that refuses `blob:`, a failed
+ * module import inside it) would otherwise hang the boot.
+ */
+export const LANES_POOL_DEADLINE_MS = 10_000;
+
+/**
+ * Runs `start` (the glue's `initThreadPool`) and settles when it does, when a
+ * Worker it creates fires `error`, or at the deadline, whichever comes first.
+ * While it runs, `globalThis.Worker` is wrapped to record the pool's Workers;
+ * on a failure they are terminated. The pool can still be creating Workers
+ * after a failure (wasm-bindgen-rayon fetches its script per Worker), so the
+ * wrapper stays until `start` settles and terminates each late one; a pool
+ * that never settles leaves it for the life of the engine Worker, which
+ * starts no other Workers.
+ */
+async function startPool(start: () => Promise<unknown>, deadlineMs: number): Promise<void> {
+  const scope = globalThis as { Worker?: typeof Worker };
+  const Original = scope.Worker;
+  if (typeof Original !== "function") {
+    await start();
+    return;
+  }
+  const workers: Worker[] = [];
+  let abandoned = false;
+  let fail: (e: Error) => void = () => {};
+  const failure = new Promise<never>((_, reject) => (fail = reject));
+  failure.catch(() => {});
+  scope.Worker = new Proxy(Original, {
+    construct(target, args, newTarget) {
+      const w = Reflect.construct(target, args, newTarget) as Worker;
+      if (abandoned) {
+        w.terminate();
+        return w;
+      }
+      workers.push(w);
+      w.addEventListener("error", (e) => {
+        const message = (e as ErrorEvent).message;
+        fail(new Error(`a lanes pool Worker failed to load${message ? ` (${message})` : ""}`));
+      });
+      return w;
+    },
+  });
+  const pool = Promise.resolve().then(start);
+  const restore = () => {
+    scope.Worker = Original;
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`the lanes pool did not start within ${deadlineMs / 1000} s`)), deadlineMs);
+  });
+  try {
+    await Promise.race([pool, failure, deadline]);
+    restore();
+  } catch (e) {
+    abandoned = true;
+    for (const w of workers) w.terminate();
+    pool.then(restore, restore);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Initialise the glue with the wasm (a URL, a Response or the bytes) and bind
  * the runtime to it. With `threads`, the glue is the lanes variant and its
- * Worker pool starts first; a failure there throws before anything is bound,
- * so the caller can load the single-threaded variant instead.
+ * Worker pool starts first, within {@link LANES_POOL_DEADLINE_MS}; a failure
+ * there (an error, a pool Worker's `error` event or the deadline) terminates
+ * the pool's Workers and throws before the engine is told or anything is
+ * bound, so the caller can discard this glue and load the single-threaded
+ * variant instead.
  */
 export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: number): Promise<HostBinding> {
   const bound = boundHost();
@@ -61,7 +130,8 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: numbe
   const exports = await glue.default(wasm === undefined ? undefined : { module_or_path: wasm });
   if (threads !== undefined) {
     if (!glue.initThreadPool || !glue.og_lanes_ready) throw new Error("the module is not the lanes variant (no initThreadPool)");
-    await glue.initThreadPool(threads);
+    const init = glue.initThreadPool;
+    await startPool(() => init(threads), LANES_POOL_DEADLINE_MS);
     glue.og_lanes_ready(threads);
   }
   glue.og_web_init();

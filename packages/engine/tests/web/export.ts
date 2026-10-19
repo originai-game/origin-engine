@@ -14,7 +14,10 @@
 // Lanes: served with the build's COOP/COEP the page is cross-origin isolated
 // and boots the lanes variant (`__runtime_probe__.lanes.on`, Workers beside
 // the engine's), offline too from the service worker's precache; served
-// without them it runs the single-threaded engine and says why.
+// without them it runs the single-threaded engine and says why; served
+// isolated but with a Content-Security-Policy of `worker-src 'self'`, which
+// refuses the pool's `blob:` Workers, it falls back to the single-threaded
+// engine within the pool's deadline and says the lanes variant did not start.
 //
 //   bun tests/web/export.ts [--out <dir>] [--chrome <path>]
 //
@@ -27,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
+import { LANES_POOL_DEADLINE_MS } from "../../src/web/host.ts";
 import { ogBin } from "../support/og-bin.ts";
 
 declare const Bun: {
@@ -180,6 +184,26 @@ try {
       server.stop();
     }
     results["runner boot"] = boot;
+  }
+  // ── lanes refused by the host's CSP: the single-threaded engine, in time ──
+  {
+    const server = serve({ dist: builds["runner"]!.dist, isolate: true, headers: { "content-security-policy": "worker-src 'self'" } });
+    const log: string[] = [];
+    const page = await browser.open(`http://127.0.0.1:${server.port}/game/index.html`, log);
+    try {
+      const t = await load(page);
+      const isolated = await page.eval<boolean>("crossOriginIsolated");
+      check(isolated && !t.lanes.on && t.lanes.threads === 1 && /the lanes variant did not start/.test(t.lanes.why), "csp worker-src 'self': isolated, the pool's blob: Workers are refused and the single-threaded engine says the lanes variant did not start", t.lanes);
+      // The deadline bounds the wait for the pool; the rest of the boot gets as long again.
+      check(t.ready > 0 && t.ready < 2 * LANES_POOL_DEADLINE_MS, `csp worker-src 'self': ready at ${t.ready} ms, within the pool's deadline (${LANES_POOL_DEADLINE_MS} ms) and a boot`, t);
+      check(t.firstFrame > 0, "csp worker-src 'self': the single-threaded engine draws its first frame", t);
+      results["runner csp"] = { ...t, isolated, shot: save("runner-csp.png", await page.screenshot()) };
+    } catch (e) {
+      check(false, "runner with worker-src 'self'", { error: String(e), log: log.slice(-20) });
+    } finally {
+      await page.send("Page.close").catch(() => {});
+      server.stop();
+    }
   }
   {
     const server = serve({ dist: builds["match3"]!.dist, isolate: false });

@@ -19,7 +19,8 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   library) behind one switch, `OG_LANES` (`off`, `0` or `1` serial, `N`
   threads, unset the cores up to 8) and the probe's `lanes:<on|off>`;
   `dump_lanes` and `og_web_lanes` report threads, pool and the parallel
-  calls that ran. On lanes: og-anim's graph evaluation and palettes (64
+  calls that ran, in total and per site (`anim`, `extract`, `cull`,
+  `physics`; lanes.test.ts needs the first three to split). On lanes: og-anim's graph evaluation and palettes (64
   skeletons a task), extraction's row decoding (512 rows a task), og-render's
   frustum cull (1024 bounds a task; scheduling only, recording stays on the
   engine thread) and rapier's solver natively. A call splits only from two
@@ -47,8 +48,12 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   wasm-bindgen-rayon) and otherwise, or when the pool fails, boots the
   single-threaded module with the same API; the mode is on `ready.lanes`,
   the log, `__runtime_probe__.lanes` and `call("lanes")`. The service
-  worker precaches the variant it predicts. COOP/COEP stay per publication
-  (`_headers`, `origingame.runtime.json`).
+  worker precaches the variant the shell's rule picks (`src/web/lanes.ts`,
+  shared) and, once the engine is ready, caches the variant the page booted
+  (`og-cache`). A pool that does not start within 10 s or whose Worker fires
+  `error` (a CSP without `worker-src blob:`; `tests/web/export.ts` serves
+  one) is terminated and the single-threaded module boots. COOP/COEP stay
+  per publication (`_headers`, `origingame.runtime.json`).
 - **Wasm** (the gate's size-gate at 1f56ad7): publish 3,153,927 B
   brotli, lanes 3,156,913 B (75.3 % of the 4 MiB budget, which the size
   gate now holds per file; the round grew the single-threaded module by
@@ -96,7 +101,11 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   a physics world too small to split still pays the pool hop natively with
   lanes on (no body threshold); the crowd has no Chrome measurement; whether
   the lanes wasm's 0.07 ms a frame over the single-threaded one (mean, same
-  serial work) is noise or the atomics build is not separated.
+  serial work) is noise or the atomics build is not separated; a panic
+  inside a lane on the lanes wasm leaves the engine Worker in
+  `Atomics.wait` and the page hung without the crash screen (the shell has
+  no deadline on a frame or an engine call to notice; docs/web-export.md
+  §Lanes).
 
 ## Status 2026-10-19, Phase 2, showcase round
 

@@ -473,7 +473,13 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(host, f), join(out, f));
   // The lanes variant needs cross-origin isolation, which only a build that declares it can get.
-  const lanes = publish && p.isolation !== "off" && LANES_FILES.every((f) => existsSync(join(host, f)));
+  const missingLanes = publish && p.isolation !== "off" ? LANES_FILES.filter((f) => !existsSync(join(host, f))) : [];
+  const lanes = publish && p.isolation !== "off" && missingLanes.length === 0;
+  if (missingLanes.length > 0) {
+    process.stderr.write(
+      `og build: warning: ${join(host, missingLanes[0]!)} is missing, so this build ships single-threaded (no lanes variant); \`bun run build\` in packages/engine builds it (scripts/build.sh, docs/web-export.md §Lanes)\n`,
+    );
+  }
   if (lanes) {
     for (const f of LANES_FILES) cpSync(join(host, f), join(out, f), { recursive: true });
   }
