@@ -76,9 +76,14 @@ at 1.0 is a mix bug, not loudness.
 - Bar-length stems started bar by bar: on the last beat of each bar
   `og.MusicBeat` brings, start the next bar's stems at that event's `time`
   plus a beat. og.audio runs on the world's ticks, which keep going at
-  time scale 0, so a pause stops the stems and a resume starts them again
-  on a bar line. `templates/archetypes/rhythm` (its `Band` system, and
+  time scale 0, so a pause stops the stems and a resume starts them again.
+  `templates/archetypes/rhythm` (its `Band` system, and
   `tests/band.og.ts`, which asserts every `startAt`) does this.
+- Part-way starts: `startOffset` (seconds into the clip) with `startAt`
+  starts a source that far in, to the sample, so a resume carries on from
+  the beat it paused on: each stem sounding then starts at the count-in's
+  end with `startOffset` how far into it that beat is (the rhythm's
+  `tests/pause.og.ts` asserts both).
 - What the player hears lags the mix by the device's output latency:
   `og.audio.outputLatency(world)` (seconds; the Web Audio context's
   `outputLatency` or `baseLatency` plus the engine's buffer on the web, the

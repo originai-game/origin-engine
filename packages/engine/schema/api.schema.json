@@ -16455,6 +16455,13 @@
           "minimum": 0,
           "x-og-unit": "s"
         },
+        "startOffset": {
+          "type": "number",
+          "description": "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
         "fade": {
           "type": "number",
           "description": "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.",

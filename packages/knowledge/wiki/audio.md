@@ -72,7 +72,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 5700</sub>
+<sub>`api.ogt` line 5704</sub>
 
 ## Components, resources and events
 
@@ -106,6 +106,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `occlude` | `boolean` | `false` | — | — | — | A spatial source behind a collider (a physics ray to the listener) plays at Audio.occlusionGain through a low-pass at Audio.occlusionCutoff. |
 | `distanceCutoff` | `number` | `0` | 0 … 20000 | `hz` | tunable | A spatial source's low-pass by distance: the cutoff at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off. |
 | `startAt` | `number` | `0` | ≥ 0 | `s` | — | Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times. |
+| `startOffset` | `number` | `0` | ≥ 0 | `s` | — | Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region. |
 | `fade` | `number` | `0` | 0 … 30 | `s` | tunable | Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms. |
 
 ```ogt
@@ -185,6 +186,10 @@ component AudioSource {
     min 0
     unit s
   }
+  field startOffset f64 "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region." {
+    min 0
+    unit s
+  }
   field fade f32 "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms." {
     min 0
     max 30
@@ -220,7 +225,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 5481</sub>
+<sub>`api.ogt` line 5485</sub>
 
 <a id="record-Audio"></a>
 
@@ -308,7 +313,7 @@ resource Audio {
 }
 ```
 
-<sub>`api.ogt` line 5491</sub>
+<sub>`api.ogt` line 5495</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -429,7 +434,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 5554</sub>
+<sub>`api.ogt` line 5558</sub>
 
 <a id="record-Music"></a>
 
@@ -485,7 +490,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 5643</sub>
+<sub>`api.ogt` line 5647</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -512,7 +517,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 5677</sub>
+<sub>`api.ogt` line 5681</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -537,7 +542,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 5685</sub>
+<sub>`api.ogt` line 5689</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -564,7 +569,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 5692</sub>
+<sub>`api.ogt` line 5696</sub>
 
 ## Types
 

@@ -87,6 +87,9 @@ pub struct AudioSource {
     /// Starts at this world time (seconds since tick 0), sample-accurately, even inside a tick; 0 or a time past starts at once. og.Music.nextBar gives bar-aligned times.
     #[reflect(name = "startAt", min = 0, unit = "s")]
     pub start_at: f64,
+    /// Where in the sound it starts, in seconds of the sound: a resumed phrase continues from where it was, to the sample; past a one-shot's end it plays nothing. A loop wraps into its region.
+    #[reflect(name = "startOffset", min = 0, unit = "s")]
+    pub start_offset: f64,
     /// Starts, stops and volume changes ramp over this long (crossfades, stems brought in and out); 0 is 5 ms.
     #[reflect(min = 0, max = 30, unit = "s", tunable)]
     pub fade: f32,
@@ -113,6 +116,7 @@ impl Default for AudioSource {
             occlude: false,
             distance_cutoff: 0.0,
             start_at: 0.0,
+            start_offset: 0.0,
             fade: 0.0,
         }
     }

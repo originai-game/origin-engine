@@ -3283,6 +3283,11 @@
           "default": 0
         },
         {
+          "name": "startOffset",
+          "column": "f64",
+          "default": 0
+        },
+        {
           "name": "fade",
           "column": "f32",
           "default": 0,

@@ -5,7 +5,7 @@
 //!
 //! | offset | type | field | meaning |
 //! |---:|---|---|---|
-//! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx |
+//! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx, 7 cue |
 //! | 1 | u8 | `flags` | bit 0 loop, bit 1 spatial |
 //! | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui (the bus a `bus` or `fx` op sets) |
 //! | 3 | u8 | reserved | 0 |
@@ -18,7 +18,7 @@
 //! | 36 | u32 | `loop_start` | loop start, frames of the sound |
 //! | 40 | u32 | `loop_end` | loop end (exclusive), frames; 0 = the sound's end |
 //! | 44 | f32 | `lowpass` | the voice's low-pass cutoff in Hz (play, params); 0 open |
-//! | 48 | f64 | `position` | `play`: where it starts, frames of the sound (negative: starts that many frames later, sample-accurately); `params`, `stop`: the ramp in seconds (0: the default 256 frames) |
+//! | 48 | f64 | `position` | `play`: where it starts, frames of the sound (negative: starts that many frames later, sample-accurately); `cue`: the frame of the sound it starts from once that delay is over (`AudioSource.startOffset`); `params`, `stop`: the ramp in seconds (0: the default 256 frames) |
 
 /// What a command does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,6 +35,10 @@ pub enum Op {
     StopAll = 5,
     /// Set one effect parameter of bus `bus`: `voice` is the parameter ([`fx`]), `gain` its value.
     Fx = 6,
+    /// `voice`, just played, starts `position` frames into its sound (after
+    /// its play's delay), at full gain: `AudioSource.startOffset`. Follows
+    /// its `play` in the same tick; only sent for an offset above 0.
+    Cue = 7,
 }
 
 /// The effect parameters an `fx` command sets (its `voice` field).
@@ -76,6 +80,7 @@ impl Op {
             4 => Op::Bus,
             5 => Op::StopAll,
             6 => Op::Fx,
+            7 => Op::Cue,
             _ => return None,
         })
     }
