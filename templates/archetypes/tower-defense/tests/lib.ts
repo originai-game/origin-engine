@@ -27,6 +27,7 @@ export interface Game {
   score: number;
   best: number;
   newBest: boolean;
+  bestRevision: number;
 }
 
 /** Phase.* and Refusal.* of src/components.ts. */

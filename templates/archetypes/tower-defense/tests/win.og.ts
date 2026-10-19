@@ -1,7 +1,8 @@
 // The round held to the end: a stand of thorns and frost lilies at the
 // gate, the last wave called early with N (its bonus paid), every visitor
 // turned away; the end card lands with its stars and score, the score is
-// saved as the best (a store write at the revision read on tick 0),
+// saved as the best (a store write at the revision read on tick 0,
+// whose answer moves the revision on for the next one),
 // submitted to the board and filed as telemetry; Title goes back.
 import { playtest } from "@origingame/engine/playtest";
 import { game, OVER, type PlatformDump, press, tap, TITLE } from "./lib.ts";
@@ -50,6 +51,8 @@ export default playtest({
     t.equal(set?.result?.data["revision"], 1, "its first revision");
     t.equal(of("leaderboard.submit")[0]?.args["score"], won.score, "the score went to the board");
     t.equal(of("telemetry")[0]?.args["name"], "round.over", "a round.over event was filed");
-    t.equal(game(run, "title.json").phase, TITLE, "Title went back to the title");
+    const title = game(run, "title.json");
+    t.equal(title.phase, TITLE, "Title went back to the title");
+    t.equal(title.bestRevision, 1, "the write's answer moved the revision on, so the next best is written at 1 and not refused as stale");
   },
 });

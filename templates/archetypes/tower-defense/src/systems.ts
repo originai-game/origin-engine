@@ -616,7 +616,7 @@ export function endRound(world: World, g: GameV, won: boolean): void {
   g.sfx |= won ? Sound.Won : Sound.Lost;
   if (g.newBest) {
     g.best = g.score;
-    must(og.platform.storeSet(world, { key: "best", value: g.score, revision: g.bestRevision }));
+    g.bestWrite = must2(og.platform.storeSet(world, { key: "best", value: g.score, revision: g.bestRevision }));
   }
   must(og.platform.leaderboardSubmit(world, { board: "main", score: g.score }));
   must(og.platform.telemetry(world, "round.over", { won, wave: g.wave, kills: g.kills, lives: g.lives, score: g.score }));

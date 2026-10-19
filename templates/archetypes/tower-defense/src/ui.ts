@@ -140,7 +140,7 @@ function prefsValue(p: PrefsV) {
   return { masterVolume: p.master, musicVolume: p.music, sfxVolume: p.effects, language: LANGUAGES[p.language]!.code, reducedMotion: p.reducedMotion };
 }
 
-/** The first ticks: ask for the settings and the best score; apply each when it answers. */
+/** The first ticks: ask for the settings and the best score; apply each when it answers. A best written at a stale revision is read again and the higher written back. */
 function platform(world: World, g: GameV, p: PrefsV): void {
   if (world.tick === 0) {
     p.loadRequest = og.platform.loadSettings(world);
@@ -172,6 +172,23 @@ function platform(world: World, g: GameV, p: PrefsV): void {
       const d = (r.ok ? r.data : null) as { value?: unknown; revision?: number } | null;
       if (d && typeof d.value === "number") g.best = Math.max(g.best, d.value);
       if (d && typeof d.revision === "number") g.bestRevision = d.revision;
+      // A best this device holds above the stored one (a write refused as stale) is written again at the revision just read.
+      if (d && g.best > (typeof d.value === "number" ? d.value : 0)) {
+        const w = og.platform.storeSet(world, { key: "best", value: g.best, revision: g.bestRevision });
+        if (w.ok) g.bestWrite = w.value;
+      }
+    }
+  }
+  if (g.bestWrite !== 0) {
+    const r = og.platform.result(world, g.bestWrite);
+    if (r !== null) {
+      g.bestWrite = 0;
+      if (r.ok) g.bestRevision = (r.data as { revision: number }).revision;
+      else if (r.error?.code === "conflict") {
+        // Another device wrote `best` meanwhile: read it again; the answer keeps the higher and writes it back.
+        const again = og.platform.storeGet(world, "best");
+        g.bestRequest = again.ok ? again.value : 0;
+      }
     }
   }
 }
