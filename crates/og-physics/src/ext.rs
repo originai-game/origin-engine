@@ -2,7 +2,7 @@
 //! (like `sim.rs`): joints, the character controller, Verlet ropes and
 //! cloth, the 2D fluid and water, run by `sim::step` around the rigid-body
 //! step. `platformer.rs` (2D), `vehicle2.rs` / `vehicle3.rs` and
-//! `ragdoll3.rs` hold what only one profile has.
+//! `ragdoll.rs` (both profiles, through each one's joint) hold what the profiles do differently.
 
 use super::sim::{BodyPoses, Sim};
 use super::{DIM, flat, joint_frame, pose, rp, unpose, unv, v};
@@ -724,10 +724,12 @@ pub(crate) fn soft(
         let near = Near::around(&sim.world, min, max, cloth.radius * 2.0 + 0.1);
         state.step(cloth, dt, tick, gravity, *position, rotation, flat2, &near);
     }
-    // Fluids.
+    // Fluids: each alone, or with the others of its group.
     let live: BTreeSet<u64> = scene.fluids.iter().map(|f| f.0.to_bits()).collect();
     sim.fluids.retain(|e, _| live.contains(e));
-    for (e, position, fluid) in &scene.fluids {
+    let g = Vec2::new(settings.gravity.x, settings.gravity.y);
+    let mut groups: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
+    for (k, (e, position, fluid)) in scene.fluids.iter().enumerate() {
         let key = e.to_bits();
         let centre = Vec2::new(position.x, position.y);
         let rebuild = sim
@@ -737,7 +739,68 @@ pub(crate) fn soft(
         if rebuild {
             sim.fluids.insert(key, FluidState::new(fluid, centre));
         }
-        let state = sim.fluids.get_mut(&key).expect("inserted");
+        if fluid.group != 0 {
+            groups.entry(fluid.group).or_default().push(k);
+        }
+    }
+    let mut grouped: BTreeSet<u64> = BTreeSet::new();
+    for members in groups.values_mut() {
+        members.sort_by_key(|&k| scene.fluids[k].0.to_bits());
+        members.truncate(crate::fluid::GROUP_SIZE);
+        if members.len() < 2 {
+            continue;
+        }
+        let mut taken: Vec<(u64, FluidState)> = Vec::with_capacity(members.len());
+        let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+        let (mut z, mut reach) = (0.0f32, 0.0f32);
+        for (slot, &k) in members.iter().enumerate() {
+            let (e, position, fluid) = &scene.fluids[k];
+            let mut state = sim.fluids.remove(&e.to_bits()).expect("built above");
+            state.join(slot as u32);
+            for p in &state.positions {
+                min = min.min(*p);
+                max = max.max(*p);
+            }
+            if slot == 0 {
+                z = position.z;
+            }
+            reach = reach.max(fluid.radius * 2.0);
+            grouped.insert(e.to_bits());
+            taken.push((e.to_bits(), state));
+        }
+        let near = Near::around(
+            &sim.world,
+            Vec3::new(min.x, min.y, z),
+            Vec3::new(max.x, max.y, z),
+            reach,
+        );
+        {
+            let mut list: Vec<crate::fluid::Member<'_>> = taken
+                .iter_mut()
+                .zip(members.iter())
+                .map(|((_, state), &k)| {
+                    let (_, position, fluid) = &scene.fluids[k];
+                    crate::fluid::Member {
+                        fluid,
+                        state,
+                        centre: Vec2::new(position.x, position.y),
+                    }
+                })
+                .collect();
+            crate::fluid::step_group(&mut list, dt, g, z, &near);
+        }
+        for (key, state) in taken {
+            sim.fluids.insert(key, state);
+        }
+    }
+    for (e, position, fluid) in &scene.fluids {
+        let key = e.to_bits();
+        if grouped.contains(&key) {
+            continue;
+        }
+        let centre = Vec2::new(position.x, position.y);
+        let state = sim.fluids.get_mut(&key).expect("built above");
+        state.leave();
         let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
         for p in &state.positions {
             min = min.min(*p);
@@ -749,7 +812,6 @@ pub(crate) fn soft(
             Vec3::new(max.x, max.y, position.z),
             fluid.radius * 2.0,
         );
-        let g = Vec2::new(settings.gravity.x, settings.gravity.y);
         state.step(fluid, dt, g, centre, position.z, &near);
     }
     Ok(())

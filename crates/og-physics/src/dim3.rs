@@ -98,6 +98,25 @@ pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
     rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
 }
 
+/// A rotation as the profile's: here the quaternion itself.
+pub(crate) fn rot(q: Quat) -> rp::Rotation {
+    let q = crate::unit(q);
+    rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
+}
+
+/// A ragdoll bone's joint to its parent: a ball joint (contacts off) with
+/// `limit` of swing about x and z and half that of twist about y.
+pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
+    rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_SPHERICAL_AXES)
+        .local_frame1(frame1)
+        .local_frame2(rp::Pose::IDENTITY)
+        .contacts_enabled(false)
+        .limits(rp::JointAxis::AngX, [-limit, limit])
+        .limits(rp::JointAxis::AngY, [-limit * 0.5, limit * 0.5])
+        .limits(rp::JointAxis::AngZ, [-limit, limit])
+        .build()
+}
+
 /// The axes a ball joint locks.
 pub(crate) fn ball_axes() -> rp::JointAxesMask {
     rp::JointAxesMask::LOCKED_SPHERICAL_AXES
@@ -145,6 +164,7 @@ mod ext;
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};
 
-#[path = "ragdoll3.rs"]
+#[allow(clippy::duplicate_mod)]
+#[path = "ragdoll.rs"]
 mod ragdoll;
 pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};

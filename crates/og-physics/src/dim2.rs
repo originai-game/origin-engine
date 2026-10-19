@@ -141,18 +141,25 @@ pub(crate) fn hinge_angle(f1: &rp::Pose, f2: &rp::Pose) -> f32 {
     og_core::math::atan2(r.im, r.re)
 }
 
-/// Ragdolls are 3D only: the 2D profile keeps nothing for them.
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub(crate) struct RagdollState;
+/// A ragdoll bone's joint to its parent: a hinge about z (contacts off)
+/// bending `limit` either way from the pose it was made in.
+pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
+    rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_REVOLUTE_AXES)
+        .local_frame1(frame1)
+        .local_frame2(rp::Pose::IDENTITY)
+        .contacts_enabled(false)
+        .limits(rp::JointAxis::AngX, [-limit, limit])
+        .build()
+}
 
 pub(crate) fn ragdolls(
-    _scene: &crate::gather::Scene,
-    _dt: f32,
-    _sim: &mut Sim,
-    _shared: &Shared,
-    _out: &mut crate::StepOut,
+    scene: &crate::gather::Scene,
+    dt: f32,
+    sim: &mut Sim,
+    shared: &Shared,
+    out: &mut crate::StepOut,
 ) -> Result<()> {
-    Ok(())
+    ragdoll::ragdolls(scene, dt, sim, &shared.rigs, &shared.ragdoll_targets, out)
 }
 
 #[allow(clippy::duplicate_mod)]
@@ -171,3 +178,8 @@ pub(crate) use platformer::platformers;
 #[path = "vehicle2.rs"]
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};
+
+#[allow(clippy::duplicate_mod)]
+#[path = "ragdoll.rs"]
+mod ragdoll;
+pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};
