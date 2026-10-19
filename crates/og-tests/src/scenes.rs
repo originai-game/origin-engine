@@ -52,6 +52,12 @@ pub const SCENES: &[&str] = &[
     "shader-hooks",
     "weather-rain",
     "weather-snow",
+    "terrain-near",
+    "terrain-mid",
+    "terrain-far",
+    "water-planar",
+    "water-shadows",
+    "water-underwater",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -259,6 +265,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.frames = crate::atmo_scenes::WEATHER_FRAMES;
             g.update = Some(fx::tick_update);
         }
+        // Phase 2: the 2 km island from three distances, and the lake's
+        // planar reflection, shadows and underwater view.
+        "terrain-near" => g.scene = crate::terrain_scenes::island_view("near"),
+        "terrain-mid" => g.scene = crate::terrain_scenes::island_view("mid"),
+        "terrain-far" => g.scene = crate::terrain_scenes::island_view("far"),
+        "water-planar" => g.scene = crate::terrain_scenes::water_planar_scene(),
+        "water-shadows" => g.scene = crate::terrain_scenes::water_shadows_scene(),
+        "water-underwater" => g.scene = crate::terrain_scenes::water_underwater_scene(),
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",

@@ -19,7 +19,7 @@ the world → scene extraction belongs to the layer above.
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font` → handles; `set_material` replaces one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font`, `add_terrain` → handles; `set_material` and `set_terrain` replace one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists; RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
@@ -33,8 +33,10 @@ the world → scene extraction belongs to the layer above.
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
 | `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
 | `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
+| `TerrainData`, `TerrainControl`, `TerrainHandle` | A terrain's geometry: `columns` × `rows` heights (m) over a `size` rectangle centred on its origin, row-major from -z and -x, and an optional RGBA8 control map (one channel per layer). `height(local)` (on the triangles the renderer and physics use), `normal(local)`, `range()`, `cell()`, `check()`. See [Terrain](#phase-2-terrain). |
+| `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, `origin`, up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `frame`. |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `frame`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
 | `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `backend_tier()`: the reference-frame directory name. |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
@@ -72,6 +74,9 @@ object; see below). Passes whose feature is off are not recorded.
 4. **Local shadows**: per shadowed light (at most two), six cube faces (point)
    or one perspective view (spot), each a pass into a 512² `R32Float` array
    layer storing distance / range, casters culled to the face frustum.
+   With terrain, each of its clipmap levels that reaches into the face's
+   or cascade's volume is drawn too; with a planar water reflection the
+   **reflection pass** follows the shadows (§Phase 2: water).
 5. **Main pass** into the `Rgba16Float` HDR target (4× multisampled with a
    resolve when MSAA is on): forward PBR (`pbr.wgsl`) with the directional
    light, its cascade picked by view depth (the same slices its casters were
@@ -219,6 +224,8 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. | all |
 | `sky-only` | The sky with the sun in view: 2 draws. | all |
 | `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the tier's antialiasing. | all |
+| `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. | all |
+| `water-planar`, `water-shadows`, `water-underwater` | Phase 2: the lake's planar reflection, shadows on the water, the view from under it with caustics. | all |
 
 Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
 debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
@@ -404,6 +411,85 @@ References on `metal` and `vulkan-cpu`: `og-tests/references/*/{atmosphere-fog,
 atmosphere-dusk,atmosphere-night,water-3d,water-2d,fluid-2d,shader-hooks,
 weather-rain,weather-snow}.png`, with behaviour tests in
 `og-tests/tests/atmosphere.rs`. Costs: `tests/evidence/E5/feature-costs.md`.
+
+## Phase 2: terrain
+
+`src/terrain.rs`, `shaders/terrain.wgsl` (the clipmap vertex),
+`terrain_lit.wgsl` (shading, the prepass), `terrain_shadow.wgsl`,
+`terrain_normals.wgsl`. Off unless `RenderScene::terrains` names one:
+every earlier reference frame is unchanged.
+
+- **Data.** `add_terrain(TerrainData)` once; `set_terrain` replaces it (a
+  runtime edit), and the renderer uploads it again before the next frame
+  that draws it. Heights go to an `R32Float` texture read with
+  `textureLoad` in the vertex shader and filtered there (WebGL2 cannot
+  filter it); a fullscreen pass builds the normal map (`Rg16Float`, x and
+  z of the normal, y rebuilt) from the heights and the mip generator
+  fills its levels; the control map is an `Rgba8Unorm` with mips.
+- **The clipmap.** Level `l` is `ring` × `ring` quads (64 by default) of
+  `spacing · 2^l` around the camera, its centre snapped to twice its
+  spacing so vertices never move in the world. One index buffer holds the
+  full grid (level 0) and the ring with its hole at each of the four
+  places the finer level's snapping can put it; each level is one indexed
+  draw with its uniform slot by dynamic offset (WebGL2 has no first
+  instance). The levels end when the next one's hole would cover the
+  terrain or lie beyond the far plane. In the outer eighth of each level
+  its odd vertices slide onto the coarser grid (CDLOD's morph, by the
+  camera's own position, so it is continuous as it moves): at the edge the
+  two levels share vertices and heights bit for bit (positions are whole
+  grid units until scaled), so there are no cracks and no pops.
+- **Layers.** Up to four: weight = control channel × slope band × altitude
+  band, sharpened by the layers' heights (the albedo's alpha) with
+  `height_blend`, normalised (all zero: the first layer). Each is sampled
+  over world xz every `tile` m or triplanar (Golus's whiteout normals), its
+  normal map applied in the frame of the terrain's normal; samples inside
+  branches use `textureSampleGrad` with the pixel's own derivatives.
+- **Light.** The `StandardMaterial` lighting from `lighting.wgsl` (shared
+  with pbr.wgsl and water.wgsl now): the directional light with cascaded
+  shadows, the eight local lights with their shadows, the image-based
+  light, caustics under the frame's water, then fog.
+- **Shadows.** The terrain casts into the cascades and the local lights'
+  faces (both faces of the open surface; each level culled to the pass's
+  volume) and receives them; its bounds join `ShadowBounds::Auto`.
+- **Prepass.** Drawn into the depth-normal prepass (water's depth below,
+  AO, outlines, depth of field, particles' collision).
+
+Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
+
+## Phase 2: water
+
+Each off by default on `Water` (every earlier water frame is unchanged):
+
+- **Planar reflection** (`planar_reflection`, the fraction of the output's
+  resolution; one surface a frame, the first that asks, with the camera
+  above it and perspective). The camera mirrored in the surface
+  (`look_at` of the mirrored eye, target and up: a proper rotation, so
+  the image is flipped left to right and winding is unchanged) draws the
+  opaque meshes, skinned meshes, terrain and sky into the graph's
+  `reflection` target (`FramePass::Reflection`, before the main pass;
+  multisampled with a resolve on the MSAA tier) with its own frame and
+  effect uniforms. Its projection's near plane is the water's plane, 2 cm
+  up (Lengyel's oblique clipping), so nothing below the surface is
+  reflected; the sky's rays use the unclipped projection. The water
+  samples it at `(1 - u, v)`, shifted by the waves.
+- **Shadows** (`shadows`, 0 to 1): the directional light's cascaded shadow
+  at the surface darkens its sun highlight, its foam's light and its deep
+  colour's scattering (to 40 %); the sky's reflection stays.
+- **Underwater** (`underwater_color`, `underwater_density`; on by
+  default, density 0.09): with the camera inside a surface's extent and
+  under its waves, the frame's fog becomes the water's (exponential from
+  the eye, the sky left clear), and the surface seen from below shows the
+  scene above inside Snell's window (steeper than about 49°) and the
+  water's colour reflected outside it.
+- **Caustics** (`caustics`, `caustics_scale`): two scrolling cell patterns
+  multiplied, added to the sunlight of every lit and terrain surface below
+  the first surface that has them, inside its rectangle, fading with depth.
+
+Tests and references (`metal`, `vulkan-cpu`): `og-tests/tests/terrain.rs`
+and the scenes `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km
+island of `og_tests::terrain_scenes` from 2 m, 150 m and 700 m), and
+`water-planar`, `water-shadows`, `water-underwater`; each test was broken
+once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
 
 ## What phase 2 owes
 

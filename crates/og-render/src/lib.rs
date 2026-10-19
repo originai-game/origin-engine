@@ -48,6 +48,7 @@ mod scene;
 pub mod shapes;
 mod skin;
 mod sprites;
+mod terrain;
 mod texture;
 mod water;
 mod weather;
@@ -77,6 +78,10 @@ pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailS
 pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
+};
+pub use terrain::{
+    MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl, TerrainData, TerrainLayer,
+    TerrainLod,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
@@ -113,12 +118,14 @@ pub const MSAA_SAMPLES: u32 = 4;
 
 const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
 const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
+/// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
+pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
 
 /// The lit shader's source with `hooks` (`hooks.rs`) and the joint palette
 /// read as `palette`.
 fn lit_source_with(hooks: &str, palette: skin::PaletteMode) -> String {
     format!(
-        "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{hooks}{PBR_WGSL}",
+        "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}",
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
     )
@@ -416,6 +423,13 @@ pub struct FrameStats {
     /// Skinned instances drawn and the joints of the frame's palettes.
     pub skinned_instances: u32,
     pub joints: u32,
+    /// Terrain clipmap levels drawn in the main pass, their triangles
+    /// (also in `triangles`), and the levels drawn into shadow maps.
+    pub terrain_draws: u32,
+    pub terrain_triangles: u64,
+    pub terrain_shadow_draws: u32,
+    /// Draws of the planar reflection pass (0: it did not run).
+    pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
     pub frame: u64,
 }
@@ -650,6 +664,10 @@ pub struct Renderer {
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
+    /// The frame uniform of the planar reflection's mirrored camera.
+    reflection_buffer: wgpu::Buffer,
+    /// Its effect uniform (decals; no screen-space AO).
+    reflection_fx_buffer: wgpu::Buffer,
     shadow_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
@@ -667,6 +685,7 @@ pub struct Renderer {
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
     water: water::WaterRenderer,
+    terrain: terrain::TerrainRenderer,
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
@@ -694,7 +713,12 @@ pub struct Renderer {
     mips: mips::MipGenerator,
     /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
     /// (the sky cube) for the sky they were generated from.
-    environment: Option<(ProceduralSky, wgpu::BindGroup, wgpu::BindGroup)>,
+    environment: Option<(
+        ProceduralSky,
+        wgpu::BindGroup,
+        wgpu::BindGroup,
+        wgpu::BindGroup,
+    )>,
     default_white: wgpu::TextureView,
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
@@ -1369,6 +1393,18 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("frame (planar reflection)"),
+            size: std::mem::size_of::<frame::FrameUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let reflection_fx_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fx (planar reflection)"),
+            size: std::mem::size_of::<fx::FxUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shadow passes"),
             size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
@@ -1468,7 +1504,8 @@ impl Renderer {
         let sky_pipeline = hdr_pipeline(&device, sky_state("fs_sky"));
         let sky_look_pipeline = hdr_pipeline(&device, sky_state("fs_sky_look"));
         let ibl = ibl::IblGenerator::new(&device);
-        let water = water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
+        let water =
+            water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
         let additive = wgpu::BlendState {
@@ -1590,6 +1627,18 @@ impl Renderer {
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
+        let terrain = terrain::TerrainRenderer::new(
+            &device,
+            terrain::TerrainPipelines {
+                frame_layout: &frame_layout,
+                shadow_layout: &shadow_bind_layout,
+                frame_wgsl: FRAME_WGSL,
+                lighting_wgsl: LIGHTING_WGSL,
+                samples,
+                white: default_white.clone(),
+                flat_normal: default_normal.clone(),
+            },
+        );
         let vertex_buffer = |label: &str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
@@ -1652,6 +1701,8 @@ impl Renderer {
             material_layout,
             sprite_layout,
             frame_buffer,
+            reflection_buffer,
+            reflection_fx_buffer,
             shadow_buffer,
             shadow_bind_group,
             pbr_layout,
@@ -1665,6 +1716,7 @@ impl Renderer {
             sky_pipeline,
             sky_look_pipeline,
             water,
+            terrain,
             metaballs,
             ibl,
             sprite_pipeline,
@@ -2208,13 +2260,21 @@ impl Renderer {
             wgpu::BindingResource::Sampler(&ibl.sampler),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
+        let mut reflected = entries.clone();
+        reflected[0] = self.reflection_buffer.as_entire_binding();
+        let reflection_group = bind_group(
+            &self.device,
+            "frame (planar reflection)",
+            &self.frame_layout,
+            &reflected,
+        );
         let sky_group = bind_group(
             &self.device,
             "sky",
             &self.sky_layout,
             &[wgpu::BindingResource::TextureView(&ibl.sky)],
         );
-        self.environment = Some((*sky, group, sky_group));
+        self.environment = Some((*sky, group, sky_group, reflection_group));
     }
 
     /// Sorts the instances into (mesh, material) batches; returns the batches,
@@ -2644,6 +2704,35 @@ impl Renderer {
         let camera = shaken_camera(&scene.camera, scene.shake);
         let cam = frame::camera_frame(&camera, aspect, jitter);
         let view_frustum = Frustum::from_view_proj(cam.view_proj);
+        // Water: the surface the camera is under (its fog replaces the
+        // frame's), and the one drawn with a planar reflection (the camera
+        // mirrored in it, clipped at the surface by an oblique near plane).
+        let under = water::underwater(&scene.water, camera.position);
+        let frame_fog = match under {
+            Some(i) => Some(water::underwater_fog(&scene.water[i])),
+            None => scene.fog,
+        };
+        let planar = match (under, cam.orthographic) {
+            (None, false) => scene.water.iter().position(|w| {
+                let (n, at) = water::plane(w);
+                w.planar_reflection > 0.0 && (camera.position - at).dot(n) > 0.0
+            }),
+            _ => None,
+        };
+        let reflection = planar.map(|i| {
+            let w = &scene.water[i];
+            let (n, at) = water::plane(w);
+            let mirrored = water::mirrored_camera(&camera, n, at);
+            let f = frame::camera_frame(&mirrored, aspect, Vec2::ZERO);
+            let proj = f.view_proj * f.view.inverse();
+            let view_proj = water::oblique(proj, f.view, n, at, 0.02) * f.view;
+            let scale = w.planar_reflection.clamp(0.1, 1.0);
+            let size = (
+                ((self.width as f32 * scale) as u32).max(1),
+                ((self.height as f32 * scale) as u32).max(1),
+            );
+            (i, mirrored, f, view_proj, size)
+        });
         let (mut skinned_visible, skinned_culled) = Self::cull_skinned(&mut skinned, &view_frustum);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         let skinned_data = std::mem::take(&mut skinned.data);
@@ -2836,12 +2925,39 @@ impl Renderer {
             cam.forward,
         );
         culled += blended_culled + skinned_culled;
+        let reflection_list = reflection.as_ref().map(|r| {
+            self.cull(
+                &batches,
+                &spheres,
+                &mut transforms,
+                &mut origins,
+                &Frustum::from_view_proj(r.3),
+                |b| !b.transparent,
+            )
+            .0
+        });
+
+        // Terrains: new or edited data uploaded, this frame's clipmap levels.
+        let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
+        let textures = &self.cache.textures;
+        let terrain_draws = self.terrain.prepare(
+            &self.device,
+            &self.queue,
+            &mut self.mips,
+            scene,
+            camera.position,
+            camera.far,
+            cam.view_proj,
+            prev_view_proj,
+            |h| textures.get(h.index()).map(|t| &t.view),
+        )?;
+        let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
 
         // The directional light's cascades.
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
-        let has_casters = !batches.is_empty() || !skinned_batches.is_empty();
+        let has_casters = !batches.is_empty() || !skinned_batches.is_empty() || terrain_casters;
         let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
@@ -2853,6 +2969,7 @@ impl Renderer {
                             .map_or(1.0, |(_, e)| e.length() * 2.0);
                         (s.transform.w_axis.truncate(), r)
                     }));
+                    all.extend(self.terrain.bounds(scene));
                     Self::instance_bounds(&all)
                 }
             };
@@ -2888,8 +3005,11 @@ impl Renderer {
         let (lights_gpu, local_shadows) = frame::local_lights(&scene.lights, LOCAL_SHADOW_SIZE);
         let mut local_lists: Vec<Option<DrawList>> =
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
+        let mut local_frustums: Vec<Option<Frustum>> =
+            (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
         for ls in &local_shadows {
             for (face, (_, f)) in ls.faces.iter().enumerate() {
+                local_frustums[ls.slot * 6 + face] = Some(f.clone());
                 let list = self
                     .cull(&batches, &spheres, &mut transforms, &mut origins, f, |_| {
                         true
@@ -3013,7 +3133,7 @@ impl Renderer {
             lights: lights_gpu,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
-                scene.fog.as_ref(),
+                frame_fog.as_ref(),
                 match scene.environment.background {
                     Background::Procedural {
                         sun_direction,
@@ -3033,6 +3153,7 @@ impl Renderer {
                 scene.tick,
                 scene.tick_rate,
             ),
+            caustics: water::caustics(&scene.water),
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
@@ -3057,6 +3178,18 @@ impl Renderer {
         }
         self.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
+        if let Some((_, mirrored, f, view_proj, _)) = &reflection {
+            let mut u = uniform;
+            u.view_proj = view_proj.to_cols_array_2d();
+            // The sky's view rays: the mirrored camera's own projection
+            // (the oblique one tilts its far plane through the sky).
+            u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
+            u.view_pos = mirrored.position.extend(0.0).to_array();
+            u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
+            u.caustics = [[0.0; 4]; 2];
+            self.queue
+                .write_buffer(&self.reflection_buffer, 0, bytemuck::bytes_of(&u));
+        }
         self.queue
             .write_buffer(&self.shadow_buffer, 0, bytemuck::cast_slice(&shadow_slots));
 
@@ -3074,7 +3207,6 @@ impl Renderer {
             god_rays.is_some(),
             scene.tick,
         );
-        let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
         let mut fx_uniform =
             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
         let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
@@ -3085,6 +3217,15 @@ impl Renderer {
         }
         self.queue
             .write_buffer(&self.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
+        if let Some((_, _, _, view_proj, (rw, rh))) = &reflection {
+            let mut u = fx_uniform;
+            u.ao = [0.0; 4];
+            u.view_proj_unjittered = view_proj.to_cols_array_2d();
+            u.prev_view_proj = view_proj.to_cols_array_2d();
+            u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
+            self.queue
+                .write_buffer(&self.reflection_fx_buffer, 0, bytemuck::bytes_of(&u));
+        }
         let proj = cam.view_proj * cam.view.inverse();
         let global_outline = post_fx.outline;
         let fxp = post::FxPostUniform {
@@ -3213,6 +3354,9 @@ impl Renderer {
         if fluids > 0 {
             passes.push(FramePass::Metaballs);
         }
+        if reflection.is_some() {
+            passes.push(FramePass::Reflection);
+        }
         passes.push(FramePass::Main);
         if glow {
             passes.push(FramePass::Glow);
@@ -3269,6 +3413,7 @@ impl Renderer {
                     ),
                     gtao,
                     water: !scene.water.is_empty(),
+                    reflection: reflection.as_ref().map(|r| r.4),
                 },
                 &self.post,
                 &self.persistent,
@@ -3423,7 +3568,7 @@ impl Renderer {
             };
             self.fx_groups = Some(groups);
         }
-        let (_, frame_bind_group, sky_group) = self
+        let (_, frame_bind_group, sky_group, reflection_frame_group) = self
             .environment
             .as_ref()
             .expect("environment generated above");
@@ -3439,6 +3584,7 @@ impl Renderer {
             .graph
             .try_view("metaballs")
             .map(|v| self.metaballs.group(&self.device, v));
+        let reflection_view = self.graph.try_view("reflection");
         let water_draws = match self.graph.try_view("scene-copy") {
             Some(copy) if !scene.water.is_empty() => self.water.prepare(
                 &self.device,
@@ -3448,9 +3594,28 @@ impl Renderer {
                 self.info.tier == Tier::Full,
                 copy,
                 scene_depth,
+                planar.zip(reflection_view),
+                &self.post.white,
             ),
             _ => Vec::new(),
         };
+        // The planar reflection's effect group: its decals, no AO.
+        let reflection_fx_group = reflection.as_ref().map(|_| {
+            let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                &self.cache.textures[t.index()].view
+            });
+            bind_group(
+                &self.device,
+                "fx (planar reflection)",
+                &self.fx_layout,
+                &[
+                    self.reflection_fx_buffer.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(&self.post.white),
+                    wgpu::BindingResource::TextureView(atlas_view),
+                    wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                ],
+            )
+        });
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -3578,11 +3743,13 @@ impl Renderer {
             draws
         };
         // One shadow pass: a cascade or a local light's face.
+        let terrain_indices = self.terrain.index_buffer();
         let shadow_pass = |encoder: &mut wgpu::CommandEncoder,
                            color: &wgpu::TextureView,
                            depth: &wgpu::TextureView,
                            slot: usize,
                            list: &DrawList,
+                           frustum: &Frustum,
                            stats: &mut FrameStats| {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow"),
@@ -3631,6 +3798,18 @@ impl Renderer {
                 .filter(|b| !b.transparent)
                 .map(|b| b.count)
                 .sum::<u32>();
+            // Terrain levels that reach into the pass's volume.
+            if let Some(indices) = terrain_indices
+                && terrain_casters
+            {
+                pass.set_pipeline(&self.terrain.shadow);
+                let (n, _) =
+                    terrain::draw_levels(&mut pass, &terrain_draws, indices, true, |c, r| {
+                        frustum.intersects_sphere(c, r)
+                    });
+                stats.draw_calls += n;
+                stats.terrain_shadow_draws += n;
+            }
         };
         for &pass in self.graph.order() {
             match pass {
@@ -3640,6 +3819,7 @@ impl Renderer {
                     &self.cascade_map.depth,
                     i as usize,
                     &cascade_lists[i as usize],
+                    &cascades[i as usize].frustum,
                     &mut stats,
                 ),
                 FramePass::LocalFace(layer) => shadow_pass(
@@ -3650,6 +3830,9 @@ impl Renderer {
                     local_lists[layer as usize]
                         .as_ref()
                         .expect("a list per shadowed face"),
+                    local_frustums[layer as usize]
+                        .as_ref()
+                        .expect("a frustum per shadowed face"),
                     &mut stats,
                 ),
                 FramePass::Prepass => {
@@ -3715,6 +3898,14 @@ impl Renderer {
                     }
                     stats.prepass_draws +=
                         draw_skinned(&mut p, &skinned_visible, false, 1, 3, &prepass_skinned);
+                    if let Some(indices) = terrain_indices {
+                        p.set_pipeline(&self.terrain.prepass);
+                        let (n, _) =
+                            terrain::draw_levels(&mut p, &terrain_draws, indices, false, |c, r| {
+                                view_frustum.intersects_sphere(c, r)
+                            });
+                        stats.prepass_draws += n;
+                    }
                     stats.draw_calls += stats.prepass_draws;
                 }
                 FramePass::Particles => {
@@ -3739,6 +3930,98 @@ impl Renderer {
                     self.lights_2d
                         .encode(&mut encoder, self.graph.view("lightmap"), ambient);
                     stats.draw_calls += (lights_2d > 0) as u32;
+                }
+                FramePass::Reflection => {
+                    let clear = match scene.environment.background {
+                        Background::Color(c) => wgpu::Color {
+                            r: c.x as f64,
+                            g: c.y as f64,
+                            b: c.z as f64,
+                            a: 1.0,
+                        },
+                        Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
+                    };
+                    let target = self.graph.view("reflection");
+                    let (view, resolve_target) = if self.samples > 1 {
+                        (self.graph.view("reflection-msaa"), Some(target))
+                    } else {
+                        (target, None)
+                    };
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("planar reflection"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view,
+                            depth_slice: None,
+                            resolve_target,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(clear),
+                                store: if resolve_target.is_some() {
+                                    wgpu::StoreOp::Discard
+                                } else {
+                                    wgpu::StoreOp::Store
+                                },
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: self.graph.view("reflection-depth"),
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Discard,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
+                    pass.set_bind_group(0, reflection_frame_group, &[]);
+                    pass.set_bind_group(
+                        2,
+                        reflection_fx_group
+                            .as_ref()
+                            .expect("made with the reflection"),
+                        &[],
+                    );
+                    let list = reflection_list
+                        .as_ref()
+                        .expect("culled with the reflection");
+                    draw_list(
+                        &mut pass,
+                        list,
+                        true,
+                        &mut Some((Side::Front, false, false, None)),
+                    );
+                    stats.draw_calls += list.ranges.len() as u32;
+                    stats.reflection_draws += list.ranges.len() as u32;
+                    let n = draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
+                    stats.draw_calls += n;
+                    stats.reflection_draws += n;
+                    if let (Some(indices), Some(r)) = (terrain_indices, &reflection) {
+                        pass.set_pipeline(&self.terrain.lit);
+                        let frustum = Frustum::from_view_proj(r.3);
+                        let (n, _) = terrain::draw_levels(
+                            &mut pass,
+                            &terrain_draws,
+                            indices,
+                            false,
+                            |c, rad| frustum.intersects_sphere(c, rad),
+                        );
+                        stats.draw_calls += n;
+                        stats.reflection_draws += n;
+                    }
+                    let sky = match scene.environment.background {
+                        Background::Sky => Some(&self.sky_pipeline),
+                        Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+                        Background::Color(_) => None,
+                    };
+                    if let Some(sky) = sky {
+                        pass.set_pipeline(sky);
+                        pass.set_bind_group(1, sky_group, &[]);
+                        pass.draw(0..3, 0..1);
+                        stats.draw_calls += 1;
+                        stats.reflection_draws += 1;
+                    }
                 }
                 FramePass::Main => {
                     let clear = match scene.environment.background {
@@ -3824,6 +4107,20 @@ impl Renderer {
                     stats.draw_calls += main_list.ranges.len() as u32;
                     stats.draw_calls +=
                         draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
+                    if let Some(indices) = terrain_indices {
+                        pass.set_pipeline(&self.terrain.lit);
+                        let (n, tris) = terrain::draw_levels(
+                            &mut pass,
+                            &terrain_draws,
+                            indices,
+                            false,
+                            |c, r| view_frustum.intersects_sphere(c, r),
+                        );
+                        stats.draw_calls += n;
+                        stats.terrain_draws += n;
+                        stats.terrain_triangles += tris;
+                        stats.triangles += tris;
+                    }
                     let sky = match scene.environment.background {
                         Background::Sky => Some(&self.sky_pipeline),
                         Background::Procedural { .. } => Some(&self.sky_look_pipeline),

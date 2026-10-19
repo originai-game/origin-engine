@@ -40,6 +40,9 @@ pub(crate) struct FrameUniform {
     pub local_view_proj: [[[f32; 4]; 4]; LOCAL_SHADOW_LAYERS],
     /// Fog, the drawn sky's look and the clock (`atmosphere.rs`).
     pub atmosphere: crate::atmosphere::AtmosphereGpu,
+    /// The water's caustics: (height, strength, scale, fade), then the
+    /// surface's xz rectangle (`water.rs`).
+    pub caustics: [[f32; 4]; 2],
 }
 
 /// The camera's matrices for one frame.

@@ -305,6 +305,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 size: w.size,
                 heights: Arc::from(w.heights),
             }),
+            ..Water::default()
         });
     }
     // 2D water over its spring line.

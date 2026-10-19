@@ -8,3 +8,4 @@ pub mod compare;
 pub mod fx_scenes;
 pub mod gfx;
 pub mod scenes;
+pub mod terrain_scenes;
