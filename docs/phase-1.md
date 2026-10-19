@@ -7,6 +7,51 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, 2026-10-20 (50eb7f7)
+
+The rounds below (lanes, culling, og-ui tiers) and the showcase round
+deferred their final gate to main after their merges; the five fix merges
+that followed them (fix-showcase, fix-lanes, fix-docs, fix-culling,
+fix-terrain-gl) had none of their own. This is that gate, run once on
+main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
+15 with no other build running.
+
+- **fix-terrain-gl** (735a82d, merged 50eb7f7): the third-person
+  playtest's title and dawn frames failed on WebGL2 at 78 % outliers with
+  a flat white terrain. Cause: wgpu's GL backend picks the GL texture
+  target from the descriptor, so a one-layer square 2D array becomes
+  `TEXTURE_2D` and a multiple-of-six-layer one a cube map, and a
+  `sampler2DArray` bound to either reads zero with no validation error.
+  Ember Vale's 129 x 129 vale is one 128-quad tile, so its height, normal
+  and control atlases had one layer each (fx-showcase's 257 x 257 valley
+  has five, which is why the terrain station passed). `gl_safe_array_layers`
+  in og-render allocates at least two layers and skips multiples of six;
+  the cascade shadow map, the terrain atlases and the "no control" white
+  texture use it, and callers still address only the layers they asked
+  for. A bisect at 817b79e (before the lanes and culling rounds) failed the
+  same way, so this was never a regression of those rounds.
+- **`OG_GATE_JOBS=2 scripts/check.sh --all`: PASSED, 9 of 9 in 299 s.**
+  fmt 1 s, clippy 5 s, drift 8 s, determinism 9 s (lanes on, 4 threads,
+  1200 parallel calls, every build agrees), wasm-build 101 s, wasm-opt
+  91 s (og_host_web-publish 11,808,230 B, -lanes 11,861,764 B after
+  `-Oz`), test 106 s (nextest: 553 passed, 9 skipped), size-gate 52 s
+  (largest download 3,198,197 B brotli, 76 % of 4,194,304), bun-test 89 s
+  (110 engine tests in 28 files, 19 knowledge tests in 2 files, 0 failed).
+  No timeouts: the bun-test flakes the earlier rounds hit were load, not
+  code.
+- **`scripts/check.sh --only web-reference`: PASSED in 250 s.**
+  fx-showcase 23 stations on webgpu and webgl2 (46 captures), E5 stations
+  18 of 18 on both tiers, og-tests gfx 53 scenes on webgpu (21.9 s) and 53
+  on webgl2 (32.5 s), og-ui kit frames 16 of 16 playtests on each tier,
+  and third-person Ember Vale title, beacon and dawn on webgpu (RMSE
+  0.0013, 0.0048, 0.0007) and webgl2 (0.0043, 0.0004 against its own
+  beacon reference, 0.0018). Every other tier falls back to the metal
+  references; none was re-recorded.
+- **Not run here**: the vulkan-cpu (lavapipe container) references, the
+  phone paths of `--device`, the Three.js comparison and the native
+  device latency tests remain as the rounds left them (row 47 and the
+  culling round's terrain-grass note still stand).
+
 ## Phase 3, lanes round (2026-10-19)
 
 Branch `p3-lanes`, 211fc40..HEAD. Parallel systems (docs/design.md §2.2)
@@ -78,7 +123,8 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   repeated on a quiet machine. In Chrome lanes change nothing for this
   scene: nothing crosses the grains and physics is serial on the web. The
   Three.js comparison is an owner measurement and was not done.
-- **Gate**: not completed on this branch. `OG_GATE_JOBS=2 scripts/check.sh
+- **Gate**: not completed on this branch (the main gate at 50eb7f7 above
+  passed everything). `OG_GATE_JOBS=2 scripts/check.sh
   --all` at 1f56ad7, 2026-10-19, M4 Pro at load 127 to 237: fmt, clippy,
   drift, wasm-build, test (Rust workspace), wasm-opt, size-gate and
   determinism (lanes on: 4 threads, 1200 parallel calls, every build
@@ -203,6 +249,9 @@ unrotated capsule), not true world; `src/hero.ts` subtracts the hero's
 position.
 
 ### Checks
+
+The main gate at 50eb7f7 (top of this file) later passed the whole gate
+and web-reference, including the WebGL2 and gfx runs stopped below.
 
 On f728a2a (the merge of main 44d12a8), 2026-10-19, load average 50 to
 220: `OG_GATE_JOBS=2 scripts/check.sh` **PASSED, 9 of 9 in 830 s** (fmt
@@ -331,7 +380,8 @@ the streaming round left. Evidence is in `tests/evidence/P3/culling/`,
   tests over bun's 5 s default timeout. A rerun failed on one, the trails
   test (5.6 s). With `--timeout 60000`, all eight render tests pass in
   15.4 s. Determinism did not run, because the gate stops at bun-test. The
-  final gate is run on main after the merge.
+  final gate is run on main after the merge: see the main gate at 50eb7f7
+  at the top of this file (passed, 9 of 9 and web-reference).
   - On the debug addon, the GPU path makes render.test.ts's small
     multi-renderer tests about 30 % slower: trails 1.8 s against 1.4 s with
     `Culling::Cpu`. Release og-gfx shows the same on small scenes:
@@ -917,7 +967,8 @@ bytes" at 120 s (the known load flakes), plus asset-stream.test.ts
 --publish ships each group as its pack" at 120 s (not on the known list;
 this round changes nothing they run). This stopped determinism. Neither the `--only bun-test`
 rerun nor determinism nor `scripts/check.sh --only web-reference` ran:
-the coordinator now runs the gate on main after the merge. The browser
+the coordinator now runs the gate on main after the merge (done at
+50eb7f7, top of this file: all passed, kit frames 16 of 16 on both tiers). The browser
 kit and scene frames were checked directly instead: `reference-ui.ts`
 and `reference-gfx.ts` without `--record` reproduce every frame on
 webgpu and webgl2 at RMSE 0.
