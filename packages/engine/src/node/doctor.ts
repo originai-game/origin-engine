@@ -29,6 +29,10 @@ const wasm = join(pkg, "dist", "web", "origin-engine_bg.wasm");
 report.wasm = existsSync(wasm) ? { ok: true, path: wasm, bytes: statSync(wasm).size } : { ok: false, path: wasm };
 const publishWasm = join(pkg, "dist", "web-publish", "origin-engine_bg.wasm");
 report.publishWasm = existsSync(publishWasm) ? { ok: true, path: publishWasm, bytes: statSync(publishWasm).size } : { ok: false, path: publishWasm };
+// The lanes variant (wasm atomics): `og build` ships it beside the publish wasm
+// for cross-origin isolated pages (docs/web-export.md §Lanes).
+const lanesWasm = join(pkg, "dist", "web-publish", "origin-engine-lanes_bg.wasm");
+report.lanesWasm = existsSync(lanesWasm) ? { ok: true, path: lanesWasm, bytes: statSync(lanesWasm).size } : { ok: false, path: lanesWasm };
 
 if ((report.addon as { ok: boolean }).ok) {
   try {

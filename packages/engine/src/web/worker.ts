@@ -48,6 +48,15 @@ interface Start {
   type: "start";
   glue: string;
   wasm: string;
+  /**
+   * The lanes variant (the atomics build, its own glue and module) and the
+   * Worker pool's threads, when the shell chose lanes (laneChoice in
+   * shell.ts); without it, or when it fails to start, `glue`/`wasm` run
+   * single-threaded.
+   */
+  lanes?: { glue: string; wasm: string; threads: number; bytes?: number };
+  /** Why the shell did not choose lanes, reported back in ready. */
+  lanesWhy?: string;
   canvas?: OffscreenCanvas;
   webgl?: boolean;
   seed?: number;
@@ -123,6 +132,7 @@ export interface WebExtras {
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
+  og_web_lanes?(): string;
 }
 
 /** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-runtime/src/assets.rs). */
@@ -566,6 +576,8 @@ export function startWorker(game: GameToken): void {
     advance: (e, [n]) => e.advance(Number(n)),
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
+    /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
+    lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     frame: (e, [ms]) => e.frame(Number(ms)),
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
@@ -581,15 +593,13 @@ export function startWorker(game: GameToken): void {
         const progress = (value: number, stage: string) =>
           self.postMessage({ type: "progress", value: Math.min(1, value), stage, loaded: received.loaded, total: received.total });
         progress(0, "wasm");
-        const glue = (await import(data.glue)) as WebGlue & WebExtras & WebAudioGlue;
-        glueRef = glue;
         // The wasm streams through a counting body, so its bytes move the bar while it compiles.
-        let wasm: unknown = data.wasm;
-        if (data.expect?.wasm && typeof Response === "function" && typeof ReadableStream === "function") {
-          const r = await fetch(data.wasm);
-          if (!r.ok || !r.body) throw new Error(`cannot fetch ${data.wasm} (HTTP ${r.status})`);
+        const counted = async (url: string, expected: number | undefined): Promise<unknown> => {
+          if (!expected || typeof Response !== "function" || typeof ReadableStream !== "function") return url;
+          const r = await fetch(url);
+          if (!r.ok || !r.body) throw new Error(`cannot fetch ${url} (HTTP ${r.status})`);
           const reader = r.body.getReader();
-          const counted = new ReadableStream<Uint8Array>({
+          const body = new ReadableStream<Uint8Array>({
             async pull(controller) {
               const { done, value } = await reader.read();
               if (done) return controller.close();
@@ -598,9 +608,30 @@ export function startWorker(game: GameToken): void {
               controller.enqueue(value);
             },
           });
-          wasm = new Response(counted, { headers: { "content-type": "application/wasm" } });
+          return new Response(body, { headers: { "content-type": "application/wasm" } });
+        };
+        // Lanes: the atomics build on a pool of Workers sharing its memory. A
+        // variant that does not load or whose pool does not start falls back
+        // to the single-threaded build, the same engine with the same API.
+        let lanes: { on: boolean; threads: number; why: string } = { on: false, threads: 1, why: data.lanesWhy ?? "the page offered no lanes variant" };
+        let glue: WebGlue & WebExtras & WebAudioGlue | null = null;
+        if (data.lanes) {
+          try {
+            const g = (await import(data.lanes.glue)) as WebGlue & WebExtras & WebAudioGlue;
+            if (data.expect) received.total += (data.lanes.bytes ?? 0) - (data.expect.wasm ?? 0);
+            await loadWebHost(g, await counted(data.lanes.wasm, data.lanes.bytes ?? data.expect?.wasm), data.lanes.threads);
+            glue = g;
+            lanes = { on: true, threads: data.lanes.threads, why: "" };
+          } catch (e) {
+            if (data.expect) received.total += data.expect.wasm ?? 0;
+            lanes = { on: false, threads: 1, why: `the lanes variant did not start (${e instanceof Error ? e.message : String(e)}); single-threaded` };
+          }
         }
-        await loadWebHost(glue, wasm);
+        if (!glue) {
+          glue = (await import(data.glue)) as WebGlue & WebExtras & WebAudioGlue;
+          await loadWebHost(glue, await counted(data.wasm, data.expect?.wasm));
+        }
+        glueRef = glue;
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
         progress(data.expect ? received.value : 0.1, "bundle");
@@ -644,6 +675,7 @@ export function startWorker(game: GameToken): void {
           textureFormat: loaded?.textureFormat ?? null,
           files: loaded?.files ?? 0,
           textures: loaded?.textures ?? 0,
+          lanes,
         });
         void requests();
         if (data.autoplay) {

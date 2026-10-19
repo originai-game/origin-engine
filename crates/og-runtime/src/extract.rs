@@ -285,18 +285,22 @@ fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
         read: vec![layout.schema.clone()],
         ..QueryDesc::default()
     };
-    let mut out = Vec::new();
     let Ok(all) = world.query(&q) else {
-        return out;
+        return Vec::new();
     };
-    let entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
-    for e in entities {
-        if let Ok(bytes) = world.get_bytes(e, id) {
-            out.push((e.to_bits(), layout.decode(&bytes)));
-        }
-    }
-    out
+    // The bytes are read serially (the world is one thread's); decoding them
+    // is a lane per row, the rows staying in entity order.
+    let cells: Vec<(u64, Vec<u8>)> = all
+        .flat_map(|a| a.entities().to_vec())
+        .filter_map(|e| Some((e.to_bits(), world.get_bytes(e, id).ok()?)))
+        .collect();
+    og_lanes::map(&cells, ROW_GRAIN, |(e, bytes)| (*e, layout.decode(bytes)))
 }
+
+/// Rows per lane task when decoding a component's rows: a row decodes in
+/// about 0.6 us, so a task is a few hundred microseconds of work and a
+/// component splits from 1,024 rows (500 rows stay serial).
+const ROW_GRAIN: usize = 512;
 
 /// The layouts of the drawing components the engine registered.
 #[derive(Default)]

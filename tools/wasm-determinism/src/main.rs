@@ -1,4 +1,5 @@
-//! Prints the host's numbers in the format `load.mjs` prints the wasm's.
+//! Prints the host's numbers in the format `load.mjs` prints the wasm's,
+//! then what lanes did (`run.sh` runs it with `OG_LANES=off` and on).
 
 fn main() {
     println!("math_digest {}", wasm_determinism::math_digest());
@@ -8,4 +9,7 @@ fn main() {
     );
     println!("physics_hash {}", wasm_determinism::physics_hash());
     println!("anim_hash {}", wasm_determinism::anim_hash());
+    let lanes = og_lanes::report();
+    println!("lanes_threads {}", lanes.threads);
+    println!("lanes_parallel_calls {}", lanes.parallel_calls);
 }

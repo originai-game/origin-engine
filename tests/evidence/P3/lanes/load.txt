@@ -1,0 +1,9 @@
+bun bench/lanes.ts --native --frames 600
+  before: 23:14  up 10 days,  2:30, 12 users, load averages: 34.83 90.00 112.41
+  after:  23:14  up 10 days,  2:30, 12 users, load averages: 30.41 87.24 111.17
+bun bench/lanes.ts --native --crowd --frames 600
+  before: 23:14  up 10 days,  2:30, 12 users, load averages: 30.41 87.24 111.17
+  after:  23:14  up 10 days,  2:30, 12 users, load averages: 27.45 84.73 110.00
+bun bench/lanes.ts --chrome --frames 600
+  before: 23:14  up 10 days,  2:30, 12 users, load averages: 27.45 84.73 110.00
+  after:  23:17  up 10 days,  2:33, 12 users, load averages: 110.54 90.03 107.23

@@ -1,0 +1,5 @@
+# og cook output: rebuilt from assets/, never committed.
+cooked/
+# og run output.
+og-out/
+.og/

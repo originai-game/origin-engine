@@ -24,6 +24,13 @@ export interface ShellOptions {
   /** URLs of the wasm-bindgen glue (origin-engine.js) and module (origin-engine_bg.wasm), as the Worker resolves them. */
   readonly glue: string;
   readonly wasm: string;
+  /**
+   * The lanes variant's glue and module (origin-engine-lanes.js and
+   * origin-engine-lanes_bg.wasm) and its size in bytes, when the build ships
+   * one: the shell runs it when the page is cross-origin isolated and the
+   * device has the cores for it (laneChoice).
+   */
+  readonly lanes?: { readonly glue: string; readonly wasm: string; readonly bytes?: number };
   /** Use the WebGL2 fallback instead of WebGPU. */
   readonly webgl?: boolean;
   /** A replay seed; omitted is GameDesc.seed. */
@@ -65,8 +72,26 @@ export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio:
 /** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
 const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
 
+/** The most Workers lanes take beside the engine Worker. */
+export const LANES_MAX_THREADS = 8;
+
+/**
+ * Lanes or not, decided at boot: the lanes variant needs shared memory
+ * (`crossOriginIsolated`) and pays off with a core for the engine Worker, one
+ * for the page and at least one more; the pool takes the cores but one, at
+ * most LANES_MAX_THREADS.
+ */
+export function laneChoice(offered: boolean, isolated: boolean, cores: number): { threads: number } | { why: string } {
+  if (!offered) return { why: "the build has no lanes variant" };
+  if (!isolated) return { why: "the page is not cross-origin isolated (COOP/COEP)" };
+  if (!(cores > 2)) return { why: `${cores || "unknown"} logical cores: single-threaded` };
+  return { threads: Math.min(cores - 1, LANES_MAX_THREADS) };
+}
+
 /** What the Worker reported when the engine was ready. */
 export interface Ready {
+  /** The mode the engine got: lanes on with the pool's threads, or why it runs single-threaded. */
+  readonly lanes: { readonly on: boolean; readonly threads: number; readonly why: string };
   readonly tier: string;
   readonly transport: "ring" | "message";
   readonly rpc: "ring" | "message";
@@ -162,6 +187,7 @@ export class Shell {
         else if (m.type === "ready") {
           worker.removeEventListener("message", on);
           resolve({
+            lanes: m.lanes ?? { on: false, threads: 1, why: "the Worker did not report lanes" },
             tier: m.tier ?? "none",
             transport: m.transport ?? "message",
             rpc: m.rpc ?? "message",
@@ -176,11 +202,13 @@ export class Shell {
       };
       worker.addEventListener("message", on);
     });
+    const choice = laneChoice(!!options.lanes, !!globalThis.crossOriginIsolated, globalThis.navigator?.hardwareConcurrency ?? 0);
     worker.postMessage(
       {
         type: "start",
         glue: options.glue,
         wasm: options.wasm,
+        ...("threads" in choice ? { lanes: { ...options.lanes!, threads: choice.threads } } : { lanesWhy: choice.why }),
         canvas: offscreen,
         webgl: options.webgl ?? false,
         seed: options.seed,

@@ -7,6 +7,97 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Phase 3, lanes round (2026-10-19)
+
+Branch `p3-lanes`, 211fc40..HEAD. Parallel systems (docs/design.md §2.2)
+and the §7 reference scene measured with lanes off and on. Evidence:
+`tests/evidence/P3/lanes/` (commands, machine load and tables in its
+`README.md`).
+
+- **Lanes** (100419e, b22e3e5, 8b91954): `crates/og-lanes` wraps rayon
+  (`map` and `for_each_mut`, both in input order, `install` for a rayon
+  library) behind one switch, `OG_LANES` (`off`, `0` or `1` serial, `N`
+  threads, unset the cores up to 8) and the probe's `lanes:<on|off>`;
+  `dump_lanes` and `og_web_lanes` report threads, pool and the parallel
+  calls that ran. On lanes: og-anim's graph evaluation and palettes (64
+  skeletons a task), extraction's row decoding (512 rows a task), og-render's
+  frustum cull (1024 bounds a task; scheduling only, recording stays on the
+  engine thread) and rapier's solver natively. A call splits only from two
+  tasks' worth: waking the pool cost 0.5 to 2.6 ms a call on the loaded M4
+  Pro against 21 us for the reference scene's whole animation pass, so the
+  §7 scene stays serial everywhere but the native physics step. With lanes
+  off a rayon library runs inline on the calling thread (`use_current_thread`;
+  hop p50 1 us, was 110 us). TS systems keep their order on the engine
+  thread.
+- **Same world, lanes on or off** (a39d4f8, a236969, 6fcfea8): the gate's
+  determinism step runs the host release with lanes off and on four threads
+  and fails when the second ran nothing in parallel;
+  `packages/engine/tests/lanes.test.ts` runs the reference scene plus a
+  crowd (2000 boxes, 160 walkers, 48 crates) in two processes and finds the
+  same world hash and captured pixels at ticks 60, 180 and 300 and the same
+  replay with lanes switched mid-run. Results in completion order fail it.
+- **The lanes wasm** (b09df7f, 2728f9c): two web modules, decided and
+  documented in `docs/web-export.md` §Lanes. An atomics module cannot load
+  on a page that is not cross-origin isolated, so `origin-engine_bg.wasm`
+  stays single-threaded and `og build --publish` (isolation not `off`) also
+  ships `origin-engine-lanes_bg.wasm` (`scripts/wasm-lanes.sh`: `-Z
+  build-std` with `RUSTC_BOOTSTRAP=1`, its own target dir; docs/ci.md §The
+  lanes wasm). The shell takes it when the page is `crossOriginIsolated`
+  with more than 2 cores (`min(cores - 1, 8)` Workers through
+  wasm-bindgen-rayon) and otherwise, or when the pool fails, boots the
+  single-threaded module with the same API; the mode is on `ready.lanes`,
+  the log, `__runtime_probe__.lanes` and `call("lanes")`. The service
+  worker precaches the variant it predicts. COOP/COEP stay per publication
+  (`_headers`, `origingame.runtime.json`).
+- **Wasm** (the gate's size-gate at 1f56ad7): publish 3,153,927 B
+  brotli, lanes 3,156,913 B (75.3 % of the 4 MiB budget, which the size
+  gate now holds per file; the round grew the single-threaded module by
+  about 4 KB).
+- **Frame times** (e30fa0a, `bench/lanes.ts`, release, 1280x720, 600
+  frames, M4 Pro at load 27 to 35 natively and up to 110 in Chrome), p50 /
+  p95 / p99 ms:
+
+  | run | lanes off | lanes on |
+  |---|---|---|
+  | Metal, reference scene | 6.968 / 14.668 / 17.598 | 6.475 / 9.031 / 10.329 (8 threads, physics only) |
+  | Metal, crowd | 6.063 / 9.528 / 10.413 | 5.808 / 6.717 / 7.831 (8 threads, 5940 parallel calls) |
+  | Chrome WebGPU, not isolated | 1.2 / 2.3 / 3.1 | (single-threaded) |
+  | Chrome WebGPU, isolated | 1.19 / 2.235 / 3.225 | 1.265 / 2.305 / 3.16 (8 Workers, 0 parallel calls) |
+
+  Each native pair ends in the same world hash and the three Chrome runs
+  capture the same frame at tick 660. **§7 budget (16.7 ms)**: p95 held
+  in every run and p99 in all but one, native lanes off at 17.598 ms, the
+  GPU wait under host load (CPU p99 3.8 ms); single frames went over (max
+  20.6 ms native, 33.1 ms in Chrome not isolated); earlier runs at load
+  75 to 220 reached 23 to 59 ms at p95/p99 in both modes, so it should be
+  repeated on a quiet machine. In Chrome lanes change nothing for this
+  scene: nothing crosses the grains and physics is serial on the web. The
+  Three.js comparison is an owner measurement and was not done.
+- **Gate**: not completed on this branch. `OG_GATE_JOBS=2 scripts/check.sh
+  --all` at 1f56ad7, 2026-10-19, M4 Pro at load 127 to 237: fmt, clippy,
+  drift, wasm-build, test (Rust workspace), wasm-opt, size-gate and
+  determinism (lanes on: 4 threads, 1200 parallel calls, every build
+  agrees) passed; bun-test was stopped from outside mid-run (exit 143,
+  the gates moved to main after merge), with two engine tests over their
+  5 s timeout at that load (asset-stream, render trails) and
+  web-export.test.ts unfinished. Earlier, `scripts/check.sh quick` at
+  e30fa0a passed fmt, clippy, drift and bun-quick and failed test-quick on
+  og-audio's wall-clock mix bound (1.7 s against 1 s in debug at load 55
+  to 122; og-audio is untouched here). `bun test tests/lanes.test.ts`
+  passes and fails with `og_lanes::map` broken to completion order.
+- **Pre-existing**: `tests/web/export.ts --webgl` fails on base 211fc40 too
+  (overlay.wgsl `textureNumLevels` on WebGL2, from the UI round's 42d7294;
+  fixed on p2-showcase).
+- **Left**: `og run --device` (another branch this round) must serve a
+  build with its `_headers` so a phone gets lanes; the platform's pin bump
+  and ask 11 (`docs/platform-asks.md`: keep COOP/COEP on lanes releases,
+  allow `blob:` Workers, check `__runtime_probe__.lanes` on Play); rapier
+  in parallel on the web (its `parallel` feature in the lanes wasm);
+  a physics world too small to split still pays the pool hop natively with
+  lanes on (no body threshold); the crowd has no Chrome measurement; whether
+  the lanes wasm's 0.07 ms a frame over the single-threaded one (mean, same
+  serial work) is noise or the atomics build is not separated.
+
 ## Phase 3, streaming round (2026-10-19)
 
 Branch `p3-streaming`, 932dc00..HEAD. Terrain streaming, asset streaming

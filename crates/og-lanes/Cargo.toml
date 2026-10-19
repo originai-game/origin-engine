@@ -1,0 +1,19 @@
+[package]
+name = "og-lanes"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine lanes: deterministic data-parallel work inside a system or a frame step, on rayon natively and on a pool of Workers sharing the wasm memory when the page is cross-origin isolated; serial everywhere else, with the same results"
+
+[dependencies]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rayon = "1.12.0"
+
+# The lanes wasm (built with +atomics,+bulk-memory and build-std): rayon on
+# Workers through wasm-bindgen-rayon. The single-threaded wasm has neither.
+[target.'cfg(all(target_arch = "wasm32", target_feature = "atomics"))'.dependencies]
+rayon = "1.12.0"
+wasm-bindgen-rayon = { version = "=1.3.0", features = ["no-bundler"] }
+wasm-bindgen = "=0.2.129"

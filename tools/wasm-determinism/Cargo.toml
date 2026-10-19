@@ -21,6 +21,7 @@ og-core = { path = "../../crates/og-core" }
 og-ecs = { path = "../../crates/og-ecs" }
 og-physics = { path = "../../crates/og-physics" }
 og-anim = { path = "../../crates/og-anim" }
+og-lanes = { path = "../../crates/og-lanes" }
 
 [workspace]
 

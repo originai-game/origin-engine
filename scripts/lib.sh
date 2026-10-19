@@ -39,6 +39,12 @@ og_wasm_publish_crates() {
   awk '{ sub(/#.*/, "") } NF >= 3 && $3 == "publish" { print $1 }' "$OG_ROOT/scripts/wasm-crates.txt"
 }
 
+# og_wasm_lanes_crates: publish crates whose line also says `lanes` (the
+# atomics variant scripts/wasm-lanes.sh builds).
+og_wasm_lanes_crates() {
+  awk '{ sub(/#.*/, "") } NF >= 4 && $3 == "publish" && $4 == "lanes" { print $1 }' "$OG_ROOT/scripts/wasm-crates.txt"
+}
+
 # og_lock_version PACKAGE: the version Cargo.lock pins for a crates.io package.
 og_lock_version() {
   awk -v p="$1" '

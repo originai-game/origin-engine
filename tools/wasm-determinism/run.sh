@@ -11,7 +11,12 @@
 #             scripts/evidence.sh M1 cross-target-determinism <file.md> "..."
 #
 # Builds: host debug, host release, wasm32 release (scalar), wasm32 release
-# with +simd128. Needs cargo, the wasm32-unknown-unknown target and node.
+# with +simd128. The host release runs twice, lanes off (OG_LANES=off) and
+# on (OG_LANES=4: the rapier step on four threads, crates/og-lanes; the
+# walk's few skeletons stay below og-anim's grain, the native lanes test
+# packages/engine/tests/lanes.test.ts splits a crowd), and the lanes run
+# must have run in parallel, so the comparison is never between two serial
+# runs. Needs cargo, the wasm32-unknown-unknown target and node.
 # Builds go to $CARGO_TARGET_DIR/wasm-determinism (default target/).
 set -eu -o pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -50,8 +55,17 @@ for profile in debug release; do
   flag=""; [ "$profile" = release ] && flag="--release"
   # shellcheck disable=SC2086 # $flag is empty or one word
   CARGO_TARGET_DIR="$out/host" cargo build --quiet --locked $flag --manifest-path "$manifest" --bin wasm-determinism
-  record "$host $profile" "$("$out/host/$profile/wasm-determinism")"
 done
+record "$host debug" "$("$out/host/debug/wasm-determinism")"
+record "$host release, lanes off" "$(OG_LANES=off "$out/host/release/wasm-determinism")"
+lanes="$(OG_LANES=4 "$out/host/release/wasm-determinism")"
+calls="$(printf '%s\n' "$lanes" | awk '$1 == "lanes_parallel_calls" { print $2 }')"
+threads="$(printf '%s\n' "$lanes" | awk '$1 == "lanes_threads" { print $2 }')"
+if [ "${calls:-0}" -eq 0 ] || [ "${threads:-1}" -le 1 ]; then
+  og_err "the lanes run did not run in parallel (threads ${threads:-?}, parallel calls ${calls:-?}): lanes on against off would compare two serial runs"
+  exit 1
+fi
+record "$host release, lanes on ($threads threads, $calls parallel calls)" "$lanes"
 
 for variant in scalar simd128; do
   rustflags=""; [ "$variant" = simd128 ] && rustflags="-C target-feature=+simd128"
@@ -75,7 +89,9 @@ if [ -n "$report" ]; then
       "$(git -C "$OG_ROOT" rev-parse --short HEAD 2>/dev/null || echo no-git)" "$host"
     printf 'glam is built with `scalar-math`; the math digest covers `og_core::math`\n'
     printf 'and glam Vec3A/Vec4/Quat/Mat4 arithmetic (1.4M results); the world is\n'
-    printf '`crates/og-ecs/tests/support/bouncing_boxes.rs`, seed 42, 3600 ticks.\n\n'
+    printf '`crates/og-ecs/tests/support/bouncing_boxes.rs`, seed 42, 3600 ticks.\n'
+    printf 'The host release runs with lanes off and on (crates/og-lanes: og-anim and\n'
+    printf 'the rapier step on a four-thread pool); the wasm builds are single-threaded.\n\n'
     printf '| build | math digest | bouncing boxes world_hash | physics world hashes | anim world hash and retarget |\n|---|---|---|---|---|\n'
     printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5 }'
     printf '\n'

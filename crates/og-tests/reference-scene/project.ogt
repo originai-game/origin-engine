@@ -1,0 +1,17 @@
+type project
+version 1
+---
+# The reference scene of docs/design.md §7: 500 instanced objects, two
+# shadowed lights, 20 skinned characters, PBR materials and post. The lanes
+# bench (packages/engine/bench/lanes.ts) times it natively and in Chrome.
+name "Reference scene"
+id "reference-scene"
+engine "0.0.1"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

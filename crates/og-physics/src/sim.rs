@@ -346,9 +346,14 @@ pub(crate) fn step(
     ext::water(scene, settings, dt, sim, &handles, &mut out)?;
     let pre = rest_poses(scene, sim, &handles);
 
-    for _ in 0..substeps {
-        sim.world.step();
-    }
+    // On the lanes pool natively (rapier's parallel build), on one thread
+    // when lanes are off and in the wasm; the same result either way.
+    let world = &mut sim.world;
+    og_lanes::install(|| {
+        for _ in 0..substeps {
+            world.step();
+        }
+    });
 
     let (touching, moved) = after_step(settings, scene, sim, &handles, pre);
     out.touching = touching;
