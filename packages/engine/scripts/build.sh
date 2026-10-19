@@ -36,6 +36,12 @@ case "$target" in /*) ;; *) target="$root/$target" ;; esac
 cd "$root"
 . "$root/scripts/lock.sh"
 gate_wasm="${OG_WASM_OUT:-$target/og-wasm}"
+# A release ships only the wasm-opt output the size gate measures: without
+# wasm-opt it stops here, before compiling anything.
+if [ "${OG_RELEASE:-}" = 1 ] && ! command -v wasm-opt >/dev/null 2>&1; then
+  echo "build.sh: OG_RELEASE=1 needs wasm-opt on PATH: a release must not ship un-optimised wasm (dist/web-publish, single and lanes) that the size gate never measured; scripts/install-tools.sh installs it" >&2
+  exit 1
+fi
 if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "${1:-}" != --linux-x64 ] \
     && [ -s "$gate_wasm/opt-all.txt" ] && [ -f "$target/debug/og" ] \
     && { [ -f "$target/debug/libog_host_node.dylib" ] || [ -f "$target/debug/libog_host_node.so" ]; }; then
@@ -108,7 +114,8 @@ cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --l
 wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine "$target/wasm-publish/wasm32-unknown-unknown/wasm/og_host_web.wasm"
 # What ships is optimised for size by the gate's own wasm-opt invocation
 # (scripts/wasm-opt.sh), so it is the module the size gate measures; without
-# wasm-opt on PATH the publish wasm stays as wasm-bindgen wrote it.
+# wasm-opt on PATH (allowed only outside OG_RELEASE=1, checked above) the
+# publish wasm stays as wasm-bindgen wrote it.
 if command -v wasm-opt >/dev/null 2>&1; then
   "$root/scripts/wasm-opt.sh" "$here/dist/web-publish/origin-engine_bg.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
 else
@@ -124,6 +131,8 @@ wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-e
 rm -f "$here/dist/web-publish/origin-engine-lanes"*.d.ts
 if command -v wasm-opt >/dev/null 2>&1; then
   "$root/scripts/wasm-opt.sh" --threads "$here/dist/web-publish/origin-engine-lanes_bg.wasm" "$here/dist/web-publish/origin-engine-lanes_bg.wasm"
+else
+  echo "build.sh: no wasm-opt; the lanes variant in dist/web-publish is not size-optimised (scripts/install-tools.sh installs it)" >&2
 fi
 cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib
 wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine "$wasm"
