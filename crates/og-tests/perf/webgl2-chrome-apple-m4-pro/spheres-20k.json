@@ -1,0 +1,26 @@
+{
+  "scene": "spheres-20k",
+  "tier": "webgl2",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    6.894,
+    8.678,
+    8.753,
+    8.776,
+    9.052,
+    9.357,
+    10.042
+  ],
+  "frame_ms": 6.894,
+  "submit_median_ms": 1.3,
+  "load": [
+    199.5,
+    88,
+    51.4
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

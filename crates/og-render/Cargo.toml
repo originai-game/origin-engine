@@ -21,6 +21,11 @@ bytemuck = { workspace = true }
 log = { workspace = true }
 gltf = { workspace = true, optional = true }
 
+[dev-dependencies]
+# tests/webgl2.rs: the WGSL to GLSL ES 3.0 translation wgpu's GL backend runs
+# in the browser (wgpu's own naga, with the GLSL writer).
+naga = { version = "30.0.1", features = ["wgsl-in", "glsl-out"] }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = { workspace = true, features = ["metal", "vulkan"] }
 pollster = { workspace = true }

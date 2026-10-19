@@ -1,0 +1,26 @@
+{
+  "scene": "point-spot-lights",
+  "tier": "webgl2",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    0.61,
+    0.613,
+    0.615,
+    0.618,
+    0.621,
+    0.625,
+    0.669
+  ],
+  "frame_ms": 0.61,
+  "submit_median_ms": 0.2,
+  "load": [
+    198.1,
+    89.6,
+    52.1
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

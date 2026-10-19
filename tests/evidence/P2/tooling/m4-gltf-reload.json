@@ -1,0 +1,87 @@
+{
+ "machine": "Apple M4 Pro (14 cores), macOS, release og and native addon",
+ "load_average_1m": [
+  75.82,
+  67.8
+ ],
+ "budgetMs": 300,
+ "reloads": [
+  {
+   "n": 1,
+   "ok": true,
+   "rebuildMs": 46.2,
+   "swapMs": 55.9,
+   "totalMs": 102.1,
+   "writeToReloadLineMs": 145.1
+  },
+  {
+   "n": 2,
+   "ok": true,
+   "rebuildMs": 55.9,
+   "swapMs": 56.9,
+   "totalMs": 112.8,
+   "writeToReloadLineMs": 193.0
+  },
+  {
+   "n": 3,
+   "ok": true,
+   "rebuildMs": 53.4,
+   "swapMs": 58.2,
+   "totalMs": 111.6,
+   "writeToReloadLineMs": 250.8
+  },
+  {
+   "n": 4,
+   "ok": true,
+   "rebuildMs": 52.0,
+   "swapMs": 47.7,
+   "totalMs": 99.7,
+   "writeToReloadLineMs": 163.5
+  },
+  {
+   "n": 5,
+   "ok": true,
+   "rebuildMs": 47.4,
+   "swapMs": 51.8,
+   "totalMs": 99.2,
+   "writeToReloadLineMs": 169.3
+  },
+  {
+   "n": 6,
+   "ok": true,
+   "rebuildMs": 52.6,
+   "swapMs": 60.0,
+   "totalMs": 112.6,
+   "writeToReloadLineMs": 214.4
+  },
+  {
+   "n": 7,
+   "ok": true,
+   "rebuildMs": 45.0,
+   "swapMs": 45.0,
+   "totalMs": 90.0,
+   "writeToReloadLineMs": 170.7
+  },
+  {
+   "n": 8,
+   "ok": true,
+   "rebuildMs": 54.0,
+   "swapMs": 45.6,
+   "totalMs": 99.6,
+   "writeToReloadLineMs": 173.8
+  }
+ ],
+ "red_hull_pixels": {
+  "before": 0,
+  "after_each_edit_1_to_7": [
+   10105,
+   0,
+   10105,
+   0,
+   10105,
+   0,
+   10105
+  ]
+ },
+ "note": "totalMs is og dev's own figure (rebuild: change noticed to bundle written, including the re-cook; swap: bundle written to the first frame of the new bundle). writeToReloadLineMs is the driver's wall clock from its write of the .glb to og dev printing the reload line, which adds the watcher's 20 ms poll, the driver's 5 ms poll of the output file and its python start-up. Odd edits turn the hull red, even ones back to grey; captures after edits 1 to 7."
+}

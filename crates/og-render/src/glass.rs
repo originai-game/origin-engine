@@ -25,6 +25,9 @@ pub(crate) struct GlassPasses {
     uniform: wgpu::Buffer,
     /// Zeros: the later levels, already linear.
     off: wgpu::Buffer,
+    /// The overlay's sprite params for the pyramid: `[0, 0, 0, LEVELS]`,
+    /// the level count the glass shader clamps its level of detail to.
+    pyramid_params: wgpu::Buffer,
 }
 
 /// The textures of one output size.
@@ -119,6 +122,14 @@ impl GlassPasses {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let pyramid_params = wgpu::util::DeviceExt::create_buffer_init(
+            device,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("glass pyramid params"),
+                contents: bytemuck::bytes_of(&[0.0f32, 0.0, 0.0, LEVELS as f32]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            },
+        );
         GlassPasses {
             layout,
             down,
@@ -126,6 +137,7 @@ impl GlassPasses {
             sampler,
             uniform,
             off,
+            pyramid_params,
         }
     }
 
@@ -213,7 +225,7 @@ impl GlassPasses {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.off.as_entire_binding(),
+                    resource: self.pyramid_params.as_entire_binding(),
                 },
             ],
         });

@@ -1,0 +1,26 @@
+{
+  "scene": "gltf-reference",
+  "tier": "webgl2",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    1.635,
+    1.637,
+    1.717,
+    1.76,
+    1.874,
+    1.948,
+    1.997
+  ],
+  "frame_ms": 1.635,
+  "submit_median_ms": 0.4,
+  "load": [
+    196.9,
+    85.7,
+    50.3
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}
