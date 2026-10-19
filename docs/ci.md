@@ -64,7 +64,7 @@ changed:
 | the GPU reference tests (nextest `-E 'not (package(og-tests) \| package(og-ui) \| package(og-render))'` in test and test-quick; `--exclude` under cargo test) | og-tests, og-ui, og-render and every workspace crate they build on (`cargo tree`, with dev-dependencies), `templates/ui-kit/assets` | the rest of the test step runs; the step's summary line says the GPU tests were skipped |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
-| web-reference (`make web-reference`; in no lane) | og-host-web's crates for wasm32, `packages/engine`, `templates/fx-showcase` | |
+| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references), `packages/engine`, `templates/fx-showcase` | |
 
 A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
 `.cargo/` or `.config/` reruns every one of them. Each skip prints its
@@ -138,7 +138,7 @@ had grown `target/` to 143 GB.
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | both | yes | yes | |
 | `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | |
 | `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
-| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish`; copies to `target/og-wasm/raw/` | full | | yes | |
+| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`); copies to `target/og-wasm/raw/` | full | | yes | |
 | `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with; `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
@@ -146,7 +146,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
-| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -308,8 +308,9 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 
 ## Browser reference tiers
 
-gfx references cover `metal` and `vulkan-cpu`; the browser tiers come from
-`packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
+gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for four
+scenes, §og-tests' gfx scenes in the browser); fx-showcase's browser tiers
+come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
 export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
 Chrome for Testing, driven one tick and one render per `frame` call as
 `og run --commands` drives the native host, each station captured at its
@@ -373,10 +374,37 @@ tiers): the overlay blended encoded sRGB values on the WebGPU canvas's
 0.024); on WebGL2 TAA's `textureLoad` from a depth texture had no GLSL
 form, the lit skinned pipeline needed 18 of the GL backend's 16 texture
 slots, and the twelve-layer local shadow map was created as a cube-map
-array, which left every shadowed light black. The og-tests `overlay` gfx
-scene has no browser run: og-tests' scenes load their assets from disk and
-read back synchronously, so they would need a wasm harness of their own;
-fx-showcase's HUD and badge go through the same overlay pass.
+array, which left every shadowed light black. 
+### og-tests' gfx scenes in the browser
+
+`packages/engine/tests/web/reference-gfx.ts` renders og-tests' own gfx
+scenes (`crates/og-tests/src/scenes.rs`) in headless Chrome:
+`crates/og-tests-web` compiles them to a wasm-bindgen module (their glTF and
+font assets embedded with `include_bytes!` on wasm32), opens each on an
+OffscreenCanvas at 1280×720 on WebGPU or, with `--webgl`, on WebGL2
+through wgpu's GL backend, draws its frames as the native harness does
+(`og_tests::gfx::render_built`) and reads the target back, polling the
+device between tasks (on WebGL2 `map_async` completes only on a poll). Each
+frame is compared with `crates/og-tests/references/<webgpu|webgl2>/` when
+that frame is committed, else with `metal`, under the scene's own tolerance
+(`crates/og-tests/src/compare.rs`), and every frame's figures against
+`metal` are kept in the report. A scene that does not apply to the tier
+(`scenes::Applies`: `taa` is full tier only, `msaa` the no-compute tier's
+4x path) is listed, not rendered. `--record` writes the tier's references;
+`--time <n>` writes per-frame times of the perf scenes to
+`crates/og-tests/perf/<tier>-chrome-<adapter>/` beside the native ones. It
+builds in `target/wasm-gfx` so the gate's og-render artifacts stay put.
+
+On 2026-10-19 (Chrome for Testing 150, ANGLE Metal on the Apple M4 Pro,
+`tests/evidence/P2/tooling/web-gfx-*.json`) all 47 applicable scenes pass on
+each tier. WebGPU matches `metal` throughout and has no references of its
+own. WebGL2 has its own for four scenes that differ from `metal` by
+design: `msaa` (no other tier renders it), `showcase` and `overlay` (GPU
+particles take the CPU path without compute; RMSE 0.0107 and 0.0103 against
+`metal`) and `water-3d` (no screen-space reflection march, the sky cubemap
+reflects instead; RMSE 0.0258). A WebGL2 reference is recorded only for a
+difference the tier makes by design, never to absorb a defect. Each tier
+takes 30 to 50 s after the module build.
 
 ## Updating a budget
 
