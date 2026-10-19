@@ -86,7 +86,7 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.x.max(s.y)),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x),
         SHAPE_CONVEX => return Ok(None),
-        SHAPE_CYLINDER | SHAPE_TRIMESH => {
+        SHAPE_CYLINDER | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
@@ -107,6 +107,14 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
 }
 
 /// The convex polygon of a registered mesh's xy, scaled.
+/// Height fields are 3D only (refused by [`primitive`] before this).
+pub(crate) fn from_heightfield(_f: &crate::HeightfieldDesc, _s: Vec3) -> Result<rp::SharedShape> {
+    Err(Error::new(
+        ErrorKind::Invalid,
+        "og.Collider.shape 6 (a height field) is 3D only",
+    ))
+}
+
 pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
     let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
     rp::SharedShape::convex_hull(&points).ok_or_else(|| {

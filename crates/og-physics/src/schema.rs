@@ -139,6 +139,10 @@ pub const SHAPE_CYLINDER: u32 = 3;
 pub const SHAPE_CONVEX: u32 = 4;
 /// `Collider.shape`: the triangles of `mesh` (3D only; for static and kinematic bodies).
 pub const SHAPE_TRIMESH: u32 = 5;
+/// `Collider.shape`: the height field registered as `mesh` (3D only; a
+/// terrain, static), centred on the entity
+/// ([`crate::PhysicsSystem::set_heightfield`]).
+pub const SHAPE_HEIGHTFIELD: u32 = 6;
 
 /// The shape an entity collides with, attached to its RigidBody (or, with
 /// no RigidBody, a static collider at its Transform). Sizes are scaled by
@@ -146,8 +150,8 @@ pub const SHAPE_TRIMESH: u32 = 5;
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.Collider")]
 pub struct Collider {
-    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (3D).
-    #[reflect(min = 0, max = 5, label = "Shape")]
+    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).
+    #[reflect(min = 0, max = 6, label = "Shape")]
     pub shape: u32,
     /// Full extents of a box, as three.js BoxGeometry(width, height, depth).
     #[reflect(min = 0, unit = "m", default = [1, 1, 1], tunable)]
@@ -158,7 +162,7 @@ pub struct Collider {
     /// Capsule: distance between the cap centres (three.js CapsuleGeometry length); cylinder: its height.
     #[reflect(min = 0, unit = "m", default = 1, tunable)]
     pub height: f32,
-    /// The mesh handle whose vertices a convex, polygon or triangle-mesh shape uses (registered with PhysicsSystem::set_mesh).
+    /// The mesh handle whose vertices a convex, polygon or triangle-mesh shape uses (registered with PhysicsSystem::set_mesh), or the height field of a height-field shape (PhysicsSystem::set_heightfield).
     pub mesh: u64,
     /// Position of the shape relative to the entity.
     #[reflect(unit = "m")]
