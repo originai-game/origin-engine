@@ -41,6 +41,7 @@ mod glass;
 pub mod graph;
 mod hooks;
 mod ibl;
+mod instances;
 mod light2d;
 mod material;
 mod metaballs;
@@ -1155,6 +1156,8 @@ pub struct Renderer {
     graph: post::FrameGraph,
     /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
     /// between frames so no pass allocates it.
+    /// The sorted instances, kept across frames (`instances.rs`).
+    sorted: instances::SortedInstances,
     cull_inside: Vec<bool>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
@@ -2406,6 +2409,7 @@ impl Renderer {
             persistent,
             graph: post::FrameGraph::default(),
             cull_inside: Vec::new(),
+            sorted: instances::SortedInstances::default(),
             post,
             cascade_map,
             local_map,
@@ -3564,81 +3568,46 @@ impl Renderer {
         self.environment = Some((key, group, sky_group, reflection_group));
     }
 
-    /// Sorts the instances into (mesh, material) batches; returns the batches,
-    /// the sorted transforms, each sorted instance's world bounding sphere and
-    /// its submission index.
-    #[allow(clippy::type_complexity)]
+    /// Sorts the instances into (mesh, material) batches
+    /// ([`instances::SortedInstances`]: from the last frame's sort while the
+    /// submission's keys hold); returns the batches and the sorted
+    /// instances (transforms, world bounding spheres, submission indices),
+    /// lent to the frame until [`Renderer::restore_sorted`].
     fn build_batches(
-        &self,
+        &mut self,
         scene: &RenderScene,
-    ) -> Result<(Vec<Batch>, Vec<[[f32; 4]; 4]>, Vec<(Vec3, f32)>, Vec<u32>), RenderError> {
-        for (i, inst) in scene.instances.iter().enumerate() {
-            if inst.mesh.index() >= self.cache.meshes.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "instance {i}: mesh {}",
-                    inst.mesh.index()
-                )));
-            }
-            if inst.material.index() >= self.cache.materials.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "instance {i}: material {}",
-                    inst.material.index()
-                )));
-            }
-        }
-        let mut order: Vec<usize> = (0..scene.instances.len()).collect();
-        // Stable: instances of one batch keep their submission order.
-        order.sort_by_key(|&i| (scene.instances[i].mesh, scene.instances[i].material));
-        let mut transforms = Vec::with_capacity(order.len());
-        let mut spheres = Vec::with_capacity(order.len());
-        let mut submission = Vec::with_capacity(order.len());
-        let mut batches: Vec<Batch> = Vec::new();
-        for &i in &order {
-            let inst = &scene.instances[i];
-            let (mesh, material) = (inst.mesh.index(), inst.material.index());
-            let gpu = &self.cache.meshes[mesh];
-            if gpu.index_count == 0 {
-                continue;
-            }
-            match batches.last_mut() {
-                Some(b) if b.mesh == mesh && b.material == material => b.count += 1,
-                _ => {
-                    let m = &self.cache.materials[material];
-                    batches.push(Batch {
-                        mesh,
-                        material,
-                        first: transforms.len() as u32,
-                        count: 1,
-                        side: m.side,
-                        transparent: m.transparent,
-                        blend: m.blend,
-                        physical: m.physical.is_some(),
-                        transmissive: m.transmissive,
-                        dissolve: m.dissolve,
-                        effects: m.effects,
-                        shader: m.shader,
-                        lean: m.lean,
-                        derivatives: m.flat,
-                    })
+    ) -> Result<(Vec<Batch>, instances::Sorted), RenderError> {
+        let meshes = &self.cache.meshes;
+        let sorted = self.sorted.update(
+            scene,
+            meshes.len(),
+            |m| (meshes[m].bounds, meshes[m].index_count == 0),
+            self.cache.materials.len(),
+        )?;
+        let batches = sorted
+            .runs
+            .iter()
+            .map(|r| {
+                let m = &self.cache.materials[r.material];
+                Batch {
+                    mesh: r.mesh,
+                    material: r.material,
+                    first: r.first,
+                    count: r.count,
+                    side: m.side,
+                    transparent: m.transparent,
+                    blend: m.blend,
+                    physical: m.physical.is_some(),
+                    transmissive: m.transmissive,
+                    dissolve: m.dissolve,
+                    effects: m.effects,
+                    shader: m.shader,
+                    lean: m.lean,
+                    derivatives: m.flat,
                 }
-            }
-            let m = inst.transform;
-            spheres.push(match gpu.bounds {
-                Some((c, e)) => {
-                    let scale = m
-                        .x_axis
-                        .truncate()
-                        .length()
-                        .max(m.y_axis.truncate().length())
-                        .max(m.z_axis.truncate().length());
-                    (m.transform_point3(c), e.length() * scale)
-                }
-                None => (m.w_axis.truncate(), 0.0),
-            });
-            transforms.push(m.to_cols_array_2d());
-            submission.push(i as u32);
-        }
-        Ok((batches, transforms, spheres, submission))
+            })
+            .collect();
+        Ok((batches, sorted))
     }
 
     /// The draw ranges of one pass: per batch (`include`d), every instance
@@ -3748,17 +3717,12 @@ impl Renderer {
         (list, culled)
     }
 
-    /// World bounds of every instance as (center, radius).
-    fn instance_bounds(spheres: &[(Vec3, f32)]) -> (Vec3, f32) {
-        let mut lo = Vec3::splat(f32::MAX);
-        let mut hi = Vec3::splat(f32::MIN);
-        for &(c, r) in spheres {
-            lo = lo.min(c - Vec3::splat(r));
-            hi = hi.max(c + Vec3::splat(r));
-        }
-        if lo.x > hi.x {
+    /// World bounds of every instance as (center, radius), from their box
+    /// ([`instances::fold_box`]; `None`: no instance).
+    fn instance_bounds(bounds: Option<(Vec3, Vec3)>) -> (Vec3, f32) {
+        let Some((lo, hi)) = bounds else {
             return (Vec3::ZERO, 1.0);
-        }
+        };
         ((lo + hi) * 0.5, ((hi - lo).length() * 0.5).max(1e-3))
     }
 
@@ -4133,7 +4097,14 @@ impl Renderer {
         self.scene_size(grid.0, grid.1);
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
-        let (mut batches, mut transforms, spheres, submission) = self.build_batches(scene)?;
+        let (mut batches, sorted_instances) = self.build_batches(scene)?;
+        let instances::Sorted {
+            mut transforms,
+            spheres,
+            submission,
+            sphere_box,
+            ..
+        } = sorted_instances;
         let mut origins = submission.clone();
         let mut skinned = self.build_skinned(scene)?;
 
@@ -4595,15 +4566,16 @@ impl Renderer {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
                 ShadowBounds::Auto => {
-                    let mut all = spheres.clone();
-                    all.extend(scene.skinned_instances.iter().map(|s| {
+                    // The instances' box (kept while they stand still), then
+                    // the skinned instances and the terrains.
+                    let skinned = scene.skinned_instances.iter().map(|s| {
                         let r = self.cache.meshes[s.mesh.index()]
                             .bounds
                             .map_or(1.0, |(_, e)| e.length() * 2.0);
                         (s.transform.w_axis.truncate(), r)
-                    }));
-                    all.extend(self.terrain.bounds(scene));
-                    Self::instance_bounds(&all)
+                    });
+                    let all = instances::fold_box(sphere_box, skinned);
+                    Self::instance_bounds(instances::fold_box(all, self.terrain.bounds(scene)))
                 }
             };
             frame::fit_cascades(
@@ -4813,6 +4785,7 @@ impl Renderer {
                 bytemuck::cast_slice(&prev),
             );
         }
+        self.sorted.restore(transforms, spheres);
         if !skinned_data.is_empty() {
             grow_and_write(
                 &self.device,
