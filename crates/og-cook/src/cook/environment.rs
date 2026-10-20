@@ -1,27 +1,34 @@
 //! The environment map cook step (phase 4): a `type environment` .ogt names
-//! an equirectangular HDR image, which is prefiltered here, at cook time,
-//! into og-render's `EnvironmentMapData` (`og_render::bake`): a cube of
-//! RGB9E5 levels, level `m` GGX-prefiltered at roughness `m / 4` (level 0
-//! the radiance), and the diffuse irradiance as nine harmonics. The runtime
-//! only uploads it (`og.load.environment`).
+//! an HDR image, an equirectangular one or a cube map, which is prefiltered
+//! here, at cook time, into og-render's `EnvironmentMapData`
+//! (`og_render::bake`): a cube of RGB9E5 levels, level `m` GGX-prefiltered
+//! at roughness `m / 4` (level 0 the radiance), and the diffuse irradiance
+//! as nine harmonics. The runtime only uploads it (`og.load.environment`).
 //!
 //! ```text
 //! type environment
 //! version 1
 //! ---
-//! source "studio.hdr"   # an equirectangular Radiance .hdr or OpenEXR .exr (linear RGB)
+//! source "studio.hdr"   # an equirectangular Radiance .hdr or OpenEXR .exr (linear RGB),
+//!                       # or a KTX2 cube map (RGBA16F, RGB9E5, BC6H, ...: `cube_source`)
+//! faces "px.hdr" "nx.hdr" "py.hdr" "ny.hdr" "pz.hdr" "nz.hdr"
+//!                       # instead of source: six square faces, +x -x +y -y +z -z
 //! size 128              # level 0's face size: a power of two from 16 to 2048
 //! intensity 1           # multiplies the image
 //! rotation 0            # turns it about +y, degrees (what was at +x moves towards -z)
 //! samples 256           # GGX samples per texel of each prefiltered level (16 to 4096)
 //! ```
 //!
-//! The image is read beside the environment file (or, failing that, under
-//! `assets/`); it is part of the environment, not an asset of its own: the
-//! walk does not list it, and the environment's stamp covers its bytes. Its
-//! centre column looks along +x and its three-quarter column along +z, rows
-//! from +y down: the equirectangular mapping of three.js (and of most HDR
-//! panoramas, whose centre is the view's front once turned).
+//! The images are read beside the environment file (or, failing that,
+//! under `assets/`); they are part of the environment, not assets of their
+//! own: the walk does not list them, and the environment's stamp covers
+//! their bytes. An equirectangular image's centre column looks along +x
+//! and its three-quarter column along +z, rows from +y down: the
+//! equirectangular mapping of three.js (and of most HDR panoramas, whose
+//! centre is the view's front once turned). A cube map's faces are
+//! KTX2's (and WebGPU's): +x −x +y −y +z −z, each seen from the centre
+//! with rows from the top; the +x face's right edge is towards −z. Either
+//! is baked the same way (`bake::bake` or `bake::bake_cube`).
 
 use super::{CookError, Source};
 use crate::format::{self, BlobKind};
@@ -31,7 +38,38 @@ use std::path::{Path, PathBuf};
 
 pub(super) const ENVIRONMENT_TYPE: &str = "environment";
 
-const KEYS: [&str; 5] = ["source", "size", "intensity", "rotation", "samples"];
+const KEYS: [&str; 6] = [
+    "source",
+    "faces",
+    "size",
+    "intensity",
+    "rotation",
+    "samples",
+];
+
+/// What an environment bakes from.
+pub(super) enum EnvironmentSource {
+    /// An equirectangular `.hdr` or `.exr`.
+    Equirect(String),
+    /// A KTX2 cube map.
+    Ktx2(String),
+    /// Six face images, +x −x +y −y +z −z.
+    Faces([String; 6]),
+}
+
+impl EnvironmentSource {
+    fn files(&self) -> Vec<String> {
+        match self {
+            EnvironmentSource::Equirect(f) | EnvironmentSource::Ktx2(f) => vec![f.clone()],
+            EnvironmentSource::Faces(f) => f.to_vec(),
+        }
+    }
+}
+
+fn hdr_image(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.ends_with(".hdr") || lower.ends_with(".exr")
+}
 
 fn assets_root(s: &Source) -> PathBuf {
     let mut p = s.path.clone();
@@ -43,7 +81,7 @@ fn assets_root(s: &Source) -> PathBuf {
 
 /// An environment file's settings, read and checked.
 pub(super) struct EnvironmentDoc {
-    pub source: String,
+    pub source: EnvironmentSource,
     pub size: u32,
     pub intensity: f32,
     pub rotation: f32,
@@ -76,18 +114,55 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
             ));
         }
     }
-    let source = doc
-        .body
-        .get("source")
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_str())
-        .ok_or("an environment names its image: source \"<file>.hdr\" (or .exr)")?;
-    let lower = source.to_ascii_lowercase();
-    if !(lower.ends_with(".hdr") || lower.ends_with(".exr")) {
-        return Err(format!(
-            "source \"{source}\": an equirectangular Radiance .hdr or OpenEXR .exr"
-        ));
-    }
+    let source = match (doc.body.get("source"), doc.body.get("faces")) {
+        (Some(_), Some(f)) => {
+            return Err(format!(
+                "line {}: an environment has a source or six faces, not both",
+                f.line
+            ));
+        }
+        (None, Some(f)) => {
+            let names: Vec<&str> = f.values.iter().filter_map(|v| v.as_str()).collect();
+            if names.len() != 6 || f.values.len() != 6 {
+                return Err(format!(
+                    "line {}: faces takes six images, +x -x +y -y +z -z: faces \"px.hdr\" \"nx.hdr\" \"py.hdr\" \"ny.hdr\" \"pz.hdr\" \"nz.hdr\"",
+                    f.line
+                ));
+            }
+            if let Some(bad) = names.iter().find(|n| !hdr_image(n)) {
+                return Err(format!(
+                    "line {}: face \"{bad}\": a face is a Radiance .hdr or OpenEXR .exr",
+                    f.line
+                ));
+            }
+            EnvironmentSource::Faces(std::array::from_fn(|i| {
+                super::terrain::resolve(rel, root, names[i])
+            }))
+        }
+        (Some(e), None) => {
+            let source = e.values.first().and_then(|v| v.as_str()).ok_or_else(|| {
+                format!(
+                    "line {}: source \"<file>.hdr\" (or .exr, or a .ktx2 cube map)",
+                    e.line
+                )
+            })?;
+            if source.to_ascii_lowercase().ends_with(".ktx2") {
+                EnvironmentSource::Ktx2(super::terrain::resolve(rel, root, source))
+            } else if hdr_image(source) {
+                EnvironmentSource::Equirect(super::terrain::resolve(rel, root, source))
+            } else {
+                return Err(format!(
+                    "source \"{source}\": an equirectangular Radiance .hdr or OpenEXR .exr, or a KTX2 cube map"
+                ));
+            }
+        }
+        (None, None) => {
+            return Err(
+                "an environment names its image: source \"<file>.hdr\" (or .exr, or a .ktx2 cube map), or faces with six images"
+                    .into(),
+            );
+        }
+    };
     let size = number(&doc, "size", 128.0)?;
     let (lo, hi) = (
         og_render::ENVIRONMENT_MAP_MIN_SIZE,
@@ -108,7 +183,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
         return Err(format!("samples {samples}: a whole number from 16 to 4096"));
     }
     Ok(EnvironmentDoc {
-        source: super::terrain::resolve(rel, root, source),
+        source,
         size: size as u32,
         intensity,
         rotation: number(&doc, "rotation", 0.0)?,
@@ -116,15 +191,15 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
     })
 }
 
-/// The image an environment reads (by asset path), for the stamp and so the
-/// walk does not list it.
+/// The images an environment reads (by asset path), for the stamp and so
+/// the walk does not list them.
 pub(super) fn environment_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     parse(rel, root, text)
-        .map(|d| vec![d.source])
+        .map(|d| d.source.files())
         .unwrap_or_default()
 }
 
-/// The stamp's dependency: the image with its hash.
+/// The stamp's dependency: the images with their hashes.
 pub(super) fn environment_dependencies(s: &Source) -> String {
     let root = assets_root(s);
     environment_files(&s.rel, &root, &String::from_utf8_lossy(&s.bytes))
@@ -150,40 +225,99 @@ pub(super) fn cook_environment(
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("an environment is text (UTF-8)".into()))?;
     let doc = parse(&s.rel, &root, text).map_err(CookError)?;
-    let path = root.join(&doc.source);
-    let bytes = std::fs::read(&path).map_err(|e| CookError(format!("{}: {e}", doc.source)))?;
-    let img = image::load_from_memory(&bytes)
-        .map_err(|e| CookError(format!("{}: {e}", doc.source)))?
-        .to_rgb32f();
-    let (width, height) = (img.width(), img.height());
-    if width < 2 * height.saturating_sub(1) || width > 2 * height + 1 {
-        return Err(CookError(format!(
-            "{} is {width} × {height}: an equirectangular image is twice as wide as it is tall",
-            doc.source
-        )));
-    }
-    let rgb = img.into_raw();
-    if let Some(i) = rgb.iter().position(|v| !v.is_finite()) {
-        return Err(CookError(format!(
-            "{}: pixel {} holds a value that is not a finite number",
-            doc.source,
+    let read = |f: &str| std::fs::read(root.join(f)).map_err(|e| CookError(format!("{f}: {e}")));
+    let finite = |name: &str, rgb: &[f32]| match rgb.iter().position(|v| !v.is_finite()) {
+        Some(i) => Err(CookError(format!(
+            "{name}: pixel {} holds a value that is not a finite number",
             i / 3
-        )));
-    }
-    let map = og_render::bake::bake(
-        &og_render::bake::Equirect {
-            width,
-            height,
-            rgb: &rgb,
-        },
-        &og_render::bake::BakeDesc {
-            size: doc.size,
-            intensity: doc.intensity,
-            rotation_degrees: doc.rotation,
-            samples: doc.samples,
-        },
-    )
-    .map_err(|e| CookError(format!("{}: {e}", doc.source)))?;
+        ))),
+        None => Ok(()),
+    };
+    let desc = og_render::bake::BakeDesc {
+        size: doc.size,
+        intensity: doc.intensity,
+        rotation_degrees: doc.rotation,
+        samples: doc.samples,
+    };
+    let (map, width, height, what) = match &doc.source {
+        EnvironmentSource::Equirect(source) => {
+            let img = image::load_from_memory(&read(source)?)
+                .map_err(|e| CookError(format!("{source}: {e}")))?
+                .to_rgb32f();
+            let (width, height) = (img.width(), img.height());
+            if width < 2 * height.saturating_sub(1) || width > 2 * height + 1 {
+                return Err(CookError(format!(
+                    "{source} is {width} × {height}: an equirectangular image is twice as wide as it is tall"
+                )));
+            }
+            let rgb = img.into_raw();
+            finite(source, &rgb)?;
+            let map = og_render::bake::bake(
+                &og_render::bake::Equirect {
+                    width,
+                    height,
+                    rgb: &rgb,
+                },
+                &desc,
+            )
+            .map_err(|e| CookError(format!("{source}: {e}")))?;
+            (map, width, height, format!("{source} {width} × {height}"))
+        }
+        EnvironmentSource::Ktx2(source) => {
+            let cube = super::cube_source::read_ktx2_cube(&read(source)?)
+                .map_err(|e| CookError(format!("{source}: {e}")))?;
+            let map = og_render::bake::bake_cube(
+                &og_render::bake::CubeFaces {
+                    size: cube.size,
+                    rgb: &cube.rgb,
+                },
+                &desc,
+            )
+            .map_err(|e| CookError(format!("{source}: {e}")))?;
+            let n = cube.size;
+            (
+                map,
+                n,
+                n,
+                format!("{source} (a {} cube map of 6 × {n}²)", cube.format),
+            )
+        }
+        EnvironmentSource::Faces(faces) => {
+            let mut rgb = Vec::new();
+            let mut size = 0;
+            for (i, face) in faces.iter().enumerate() {
+                let img = image::load_from_memory(&read(face)?)
+                    .map_err(|e| CookError(format!("{face}: {e}")))?
+                    .to_rgb32f();
+                let (w, h) = (img.width(), img.height());
+                if w != h {
+                    return Err(CookError(format!(
+                        "{face} is {w} × {h}: a cube map's faces are square"
+                    )));
+                }
+                if i == 0 {
+                    size = w;
+                } else if w != size {
+                    return Err(CookError(format!(
+                        "{face} is {w} × {w} and {} is {size} × {size}: a cube map's faces are one size",
+                        faces[0]
+                    )));
+                }
+                let face_rgb = img.into_raw();
+                finite(face, &face_rgb)?;
+                rgb.extend(face_rgb.into_iter().map(|v| v.max(0.0)));
+            }
+            let map =
+                og_render::bake::bake_cube(&og_render::bake::CubeFaces { size, rgb: &rgb }, &desc)
+                    .map_err(|e| CookError(format!("{}: {e}", faces[0])))?;
+            (
+                map,
+                size,
+                size,
+                format!("six faces of {size}² ({} …)", faces[0]),
+            )
+        }
+    };
     let meta = format::EnvironmentMeta {
         size: map.size,
         levels: og_render::ENVIRONMENT_MAP_LEVELS,
@@ -222,8 +356,7 @@ pub(super) fn cook_environment(
     )
     .raw("texels", packed.clone(), 16);
     let note = format!(
-        "environment: {} {width} × {height} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd), {} samples a texel",
-        doc.source,
+        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd), {} samples a texel",
         map.size,
         og_render::ENVIRONMENT_MAP_LEVELS,
         texels.len() / 1024,

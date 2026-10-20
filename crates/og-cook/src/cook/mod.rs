@@ -12,6 +12,8 @@
 
 pub mod anim;
 pub mod audio;
+pub mod bc6h;
+pub mod cube_source;
 mod e6;
 mod environment;
 mod flipbook;
