@@ -168,8 +168,16 @@ cheaply than any model; use them on purpose, one look per area.
   fog (`heightDensity` 0.03–0.1 below the ground's height) fills valleys and
   swamps. Match the fog's `color` to the sky's horizon or the scene floats.
 - **One sky per area**: a clear noon (`og.Sky` zenith deep blue, horizon
-  pale), an overcast grey (low contrast, `sunSize` 0), a warm dusk
-  (`og.DayNight` at 17–18 h). A day-night cycle wants `speed` slow enough
+  pale), an overcast grey (low contrast, `sunSize` 0), a warm dusk with
+  long shadows (`og.DayNight` at 16.5–17.25 h: at the default `tilt` the
+  sun is 20° to 10° up, its light turning warm from about 17 h). Later the
+  sun's light on level ground sinks into the sky's and its shadows fade
+  (17.5 h: under 7° up), and at 18 h it sets whatever the `tilt` (which
+  only lowers the noon sun); 17.5–18.2 h is a glowing horizon without
+  sun shadows. Relief shadows the play area sooner: a valley's western
+  ridge puts the floor in shade by about 17 h, so check the hours on a
+  frame of the real ground (turn `azimuth` to set the sun across the
+  valley). A day-night cycle wants `speed` slow enough
   that a player notices it over minutes (0.02–0.05 game hours per second),
   never per encounter.
 - **Weather is a beat, not wallpaper**: rain or snow for a level's mood or a

@@ -327,3 +327,55 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         fog_color: horizon * (0.8 + 0.2 * day),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The sun's direct light on level ground against the sky's, the
+    /// contrast its shadows have there.
+    fn ground_contrast(look: &DayNightLook) -> f32 {
+        look.light_intensity * look.light_direction.y.max(0.0) / look.ambient
+    }
+
+    /// og-taste §8's warm dusk: at the default tilt (25°) the sun is 10 to
+    /// 20° up between 16.5 and 17.25 h, warm from about 17 h, and its light
+    /// on level ground still at least half the sky's, so shadows read. By
+    /// 17.5 h it is under 7° and its light a third of the sky's (the
+    /// shadows fade), and at 18 h it sets: the path is the equinox's,
+    /// whatever the tilt, which only lowers the noon sun.
+    #[test]
+    fn the_dusk_hours_keep_sun_shadows() {
+        let elevation = |h: f32| day_night(h, 25.0, 0.0).sun_direction.y.asin().to_degrees();
+        for h in [16.5, 17.0, 17.25] {
+            let look = day_night(h, 25.0, 0.0);
+            assert!(
+                ground_contrast(&look) >= 0.5,
+                "{h} h: {}",
+                ground_contrast(&look)
+            );
+            assert!(
+                (10.0..=21.0).contains(&elevation(h)),
+                "{h} h: {}°",
+                elevation(h)
+            );
+        }
+        for h in [17.0, 17.25] {
+            let c = day_night(h, 25.0, 0.0).light_color;
+            assert!(c.z < 0.75 * c.x, "{h} h: the sun is warm, {c}");
+        }
+        assert!(ground_contrast(&day_night(17.5, 25.0, 0.0)) < 0.4);
+        assert!(elevation(17.5) < 7.0);
+        assert!(elevation(18.0).abs() < 0.01);
+        // Tilt lowers the path, never the hour of sunset.
+        assert!(day_night(18.0, 0.0, 0.0).sun_direction.y.abs() < 1e-4);
+        assert!(
+            elevation(17.0)
+                < day_night(17.0, 0.0, 0.0)
+                    .sun_direction
+                    .y
+                    .asin()
+                    .to_degrees()
+        );
+    }
+}
