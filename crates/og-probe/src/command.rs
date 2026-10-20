@@ -56,6 +56,9 @@ fn is_action(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
+/// Actions whose last argument is typed text: kept to the `;` exactly.
+const TEXT_ACTIONS: [&str; 3] = ["type", "compose", "commit"];
+
 /// Parse a script without scheduling it.
 pub fn parse(script: &str) -> Result<Vec<CommandStep>, ParseError> {
     // Split into steps and fields in one pass, honouring escapes.
@@ -134,8 +137,15 @@ pub fn parse(script: &str) -> Result<Vec<CommandStep>, ParseError> {
         }
         let mut args: Vec<String> = fields.collect();
         if let Some(last) = args.last_mut() {
-            let trimmed = last.trim_end().len();
-            last.truncate(trimmed);
+            // Spaces before the `;` are layout, except in the text a step
+            // types (`type:`, `compose:`, `commit:`), which is taken up to
+            // the `;` exactly: `type:Mei ` types the space. Trailing
+            // white space with a line break in it is a script's layout.
+            let end = last.trim_end().len();
+            let layout = last[end..].contains(['\r', '\n']);
+            if layout || !TEXT_ACTIONS.contains(&action.as_str()) {
+                last.truncate(end);
+            }
         }
         steps.push(CommandStep { at, action, args });
     }
@@ -250,14 +260,18 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "key_down",
-        "key_down:<Key>",
-        "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`.",
+        "key_down:[Mod+]<Key>",
+        "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`, with the modifiers named before it held too (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, `Ctrl+Shift+KeyZ`; Shift, Ctrl, Alt or Option, Meta or Cmd).",
     ),
-    ("key_up", "key_up:<Key>", "Release a key."),
+    (
+        "key_up",
+        "key_up:[Mod+]<Key>",
+        "Release a key, then the modifiers named before it.",
+    ),
     (
         "type",
         "type:<text>",
-        "Type text, two ticks per character: its key press (Shift for capitals and symbols) and the character as typed text (og.TextInput); a character no key types (é, 中) is typed text alone.",
+        "Type text, two ticks per character: its key press (Shift for capitals and symbols) and the character as typed text (og.TextInput); a character no key types (é, 中) is typed text alone. The text runs to the `;` exactly, a trailing space included (`\\;` types a semicolon). From then on a text field takes typed text only: a bare key_down after it types nothing.",
     ),
     (
         "compose",
@@ -302,12 +316,12 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     (
         "set",
         "set:<entity>.<component>.<field>=<value> | set:<Resource>.<field>=<value>",
-        "Write one field of a component or a resource through the schema; vectors as `x,y,z`; range-checked, never clamped.",
+        "Write one field of a component or a resource through the schema; a number, `true`/`false` for a bool, vectors as `x,y,z`; refused outside the field's min/max, never clamped.",
     ),
     (
         "get",
         "get:<Resource>[.<field>] | get:<entity>[.<component>[.<field>]][:path]",
-        "Read a resource, an entity, a component or one field: logged and written as JSON (`get-<tick>.json`).",
+        "Read a resource, an entity, a component or one field as game code sees it (og.Time whole, a light og.DayNight drives as drawn): logged and written as JSON (`get-<tick>.json`, then `get-<tick>-2.json`, ... on one tick).",
     ),
     ("seed", "seed:<n>", "Reseed the world's Rng resource."),
     ("pause", "pause", "Hold the clock; advance still steps."),

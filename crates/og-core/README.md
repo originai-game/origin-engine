@@ -9,7 +9,7 @@ host floating-point library; every fallible call returns `Result<_, Error>`.
 |---|---|---|
 | `error` | `Error { kind, reason }`, `ErrorKind`, `Result<T>` | `kind` to branch on, `reason` to read; the probe shows `{ok:false, reason}` |
 | `handle` | `RawHandle` (`#[repr(C)]`: index, generation), `HandleAllocator`, `Handle<T>`, `Pool<T>`, `RETIRED_GENERATION`, `MAX_GENERATION` | generational; a dead handle is `ErrorKind::DeadHandle` |
-| `reflect` | `Reflect` + `#[derive(Reflect)]`, `Schema` (`check_packed`, `default_bytes`, `has_strings`), `FieldSchema` (`variants`, `enumeration`, `default_bytes`, `check_value`), `FieldType`, `FieldValue` (column views), `ReflectField` (derive fields), `Bool8`, `Str64`, `Str256`, `Layout`, `schemas_to_json` | the one schema (fields, types, docs, labels, units, min/max, default, `tunable`, enum variants) |
+| `reflect` | `Reflect` + `#[derive(Reflect)]`, `Schema` (`check_packed`, `default_bytes`), `FieldSchema` (`variants`, `enumeration`, `default_bytes`, `check_value`), `FieldType`, `FieldValue` (column views), `ReflectField` (derive fields), `Bool8`, `Str<N>` (`Str64`, `Str256`), `pack_str`/`unpack_str`, `Layout`, `schemas_to_json` | the one schema (fields, types, docs, labels, units, min/max, default, `tunable`, enum variants) |
 | `ogt` | `parse`, `Document { ty, version, body }`, `Block`, `Entry`, `Value`, `Number`, `Document::to_text` | the `.ogt` text format, grammar in the module docs |
 | `rng` | `Rng::new(seed)`, `next_u32`, `next_f64`, `range`, `range_f32`, `integer`, `fork(label)`, `save`/`restore` | bit-identical to the platform's `rng.ts`/`rng.rs`; schema `og.Rng` |
 | `math` | `glam::*` (built with `scalar-math`), `sin`, `cos`, `sin_cos`, `atan`, `atan2`, `exp`, `ln`, `pow`, `quat_from_axis_angle` | deterministic f32 on every host |
@@ -46,12 +46,15 @@ host declares a layout by name.
 | `mat4` | 64 | `Mat4` | `Mat4` | column-major, `Float32Array` stride 16 |
 | `bool` | 1 | `bool` or `Bool8` | `Bool8` | `Uint8Array`; byte entry points take 0 or 1 only |
 | `enum` | 4 | `u32` + `variants = [..]` | `u32` | the variant index; names in `FieldSchema::variants` |
-| `str64 str256` | 64 / 256 | `Str64 Str256` | none | **events only**; UTF-8, zero-padded, no NUL |
+| `strN` (`str32`, `str64` ...) | N, 1 to 4096 | `Str<N>` (`Str64`, `Str256`) | raw bytes (`Uint8Array` stride N) | UTF-8, zero-padded, no NUL; no range, default or `tunable` |
 
-Strings are bounded and inline because events are *copied* (a queue of
-packed values) while components are *viewed* in place as typed arrays and
-resources are polled whole: the world refuses a type with a string field as
-a component or a resource. `Schema::check_packed` is the value check the
+A string is fixed-capacity and inline, so it is plain data in a component,
+a resource or an event alike: its bytes are the text then zeros, so the
+world's hash and snapshots depend on the text alone. The capacity is part of
+the type name (`str32`) and of the layout hash; a migrating restore keeps a
+text that fits a new capacity and starts one that does not empty. Text over
+the capacity is refused by `pack_str` with the fix named (`declare the field
+str(40) or larger`), never truncated. `Schema::check_packed` is the value check the
 world's byte entry points run (bool 0/1, enum index in range, strings
 zero-padded UTF-8), naming the field; every other type accepts every bit
 pattern. `FieldSchema::default_bytes` is a field's declared default (or

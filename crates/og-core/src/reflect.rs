@@ -20,14 +20,15 @@
 //! | `mat4` | 64 | `Mat4` (column-major) | a `Float32Array` of stride 16 |
 //! | `bool` | 1: `0` or `1` | `bool`, or [`Bool8`] for column views | a `Uint8Array` |
 //! | `enum` | 4: a `u32` index into the field's `variants` | `u32` with `#[reflect(variants = [..])]` | a `Uint32Array` |
-//! | `str64` `str256` | 64 or 256 | [`Str64`] [`Str256`] | never: events only |
+//! | `strN` (`str32`, `str64`, ...) | N, the capacity: 1 to [`STR_MAX_CAPACITY`] | [`Str<N>`] ([`Str64`] [`Str256`]) | a `Uint8Array` of stride N |
 //!
-//! **Strings are for events only.** Components are viewed in place as typed
-//! arrays and resources are polled as values, while events are copied, so a
-//! bounded inline string is carried by events alone: UTF-8, zero-padded to
-//! its capacity, the text being the bytes before the first zero (no interior
-//! NUL). The world refuses a type with a string field as a component or a
-//! resource. **Enums** are a `u32` index; the variant names live in the
+//! **Strings** are fixed-capacity UTF-8 stored inline: the text, then zeros
+//! up to the capacity (no interior NUL), so a string is plain component
+//! data. Its bytes, and so the world's hash and snapshots, depend on the text
+//! alone. The capacity is part of the type (`str32`) and of the layout hash.
+//! Text over the capacity is refused with the fix named ([`pack_str`]), never
+//! truncated. A string field has no range, no declared default (it starts
+//! empty) and is not tunable. **Enums** are a `u32` index; the variant names live in the
 //! schema ([`FieldSchema::variants`]) and in the layout hash, so reordering
 //! variants is a layout change. **Bools** are one byte; the byte entry points
 //! ([`Schema::check_packed`]) refuse anything but 0 and 1, while a column view
@@ -49,7 +50,7 @@ pub enum Scalar {
     U64,
     /// One byte, 0 or 1.
     Bool,
-    /// One byte of UTF-8 text (the lanes of a bounded string).
+    /// One byte of UTF-8 text (the lanes of a fixed-capacity string).
     Utf8,
 }
 
@@ -63,9 +64,12 @@ impl Scalar {
     }
 }
 
-/// The type of one reflected field. JSON spells it in lower case (`"vec3"`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+/// The most bytes a string field holds (`str4096`).
+pub const STR_MAX_CAPACITY: usize = 4096;
+
+/// The type of one reflected field. JSON spells it by [`FieldType::name`]
+/// (`"vec3"`, `"str32"`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FieldType {
     F32,
     F64,
@@ -83,10 +87,32 @@ pub enum FieldType {
     Mat4,
     /// A `u32` index into [`FieldSchema::variants`].
     Enum,
-    /// UTF-8 text of at most 64 bytes, zero-padded. Events only.
-    Str64,
-    /// UTF-8 text of at most 256 bytes, zero-padded. Events only.
-    Str256,
+    /// UTF-8 text of at most this many bytes (1 to [`STR_MAX_CAPACITY`]),
+    /// zero-padded: `str32` is `Str(32)`.
+    Str(u16),
+}
+
+impl Serialize for FieldType {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
+        s.serialize_str(&self.name())
+    }
+}
+
+impl<'de> Deserialize<'de> for FieldType {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+        let name = String::deserialize(d)?;
+        FieldType::parse(&name).ok_or_else(|| {
+            serde::de::Error::custom(format!(
+                "unknown field type '{name}': f32, f64, i32, u32, i64, u64, vec2, vec3, vec4, quat, bool, mat4, enum or strN (N bytes, 1 to {STR_MAX_CAPACITY})"
+            ))
+        })
+    }
+}
+
+impl std::fmt::Display for FieldType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name())
+    }
 }
 
 impl FieldType {
@@ -100,38 +126,56 @@ impl FieldType {
             FieldType::I64 => Scalar::I64,
             FieldType::U64 => Scalar::U64,
             FieldType::Bool => Scalar::Bool,
-            FieldType::Str64 | FieldType::Str256 => Scalar::Utf8,
+            FieldType::Str(_) => Scalar::Utf8,
         }
     }
 
     /// Scalars per value: 1, 2/3/4 for vectors and quaternions, 16 for a
-    /// matrix, the byte capacity (64, 256) for a string.
+    /// matrix, the byte capacity for a string.
     pub const fn lanes(self) -> usize {
         match self {
             FieldType::Vec2 => 2,
             FieldType::Vec3 => 3,
             FieldType::Vec4 | FieldType::Quat => 4,
             FieldType::Mat4 => 16,
-            FieldType::Str64 => 64,
-            FieldType::Str256 => 256,
+            FieldType::Str(capacity) => capacity as usize,
             _ => 1,
         }
     }
 
-    /// Whether this is a bounded string (`str64`, `str256`), which only
-    /// events carry.
+    /// A string type of `capacity` bytes, refused outside 1 to
+    /// [`STR_MAX_CAPACITY`].
+    pub fn string(capacity: usize) -> Result<FieldType> {
+        if (1..=STR_MAX_CAPACITY).contains(&capacity) {
+            Ok(FieldType::Str(capacity as u16))
+        } else {
+            Err(Error::new(
+                ErrorKind::Schema,
+                format!(
+                    "a string field holds 1 to {STR_MAX_CAPACITY} bytes, got a capacity of {capacity}"
+                ),
+            ))
+        }
+    }
+
+    /// Whether this is a string (`strN`).
     pub const fn is_string(self) -> bool {
-        matches!(self, FieldType::Str64 | FieldType::Str256)
+        matches!(self, FieldType::Str(_))
+    }
+
+    /// A string's capacity in bytes; `None` for every other type.
+    pub const fn capacity(self) -> Option<usize> {
+        match self {
+            FieldType::Str(capacity) => Some(capacity as usize),
+            _ => None,
+        }
     }
 
     /// Whether packed bytes of this type have values outside the type (a
     /// bool byte other than 0 or 1, an enum index past its variants, a string
     /// that is not zero-padded UTF-8), which [`Schema::check_packed`] refuses.
     pub const fn is_checked(self) -> bool {
-        matches!(
-            self,
-            FieldType::Bool | FieldType::Enum | FieldType::Str64 | FieldType::Str256
-        )
+        matches!(self, FieldType::Bool | FieldType::Enum | FieldType::Str(_))
     }
 
     /// Bytes per value.
@@ -139,9 +183,10 @@ impl FieldType {
         self.scalar().size() * self.lanes()
     }
 
-    /// The lower-case name used in JSON and in hashes.
-    pub const fn name(self) -> &'static str {
-        match self {
+    /// The lower-case name used in JSON, snapshots and hashes: `f32`,
+    /// `vec3`, `str32`.
+    pub fn name(self) -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed(match self {
             FieldType::F32 => "f32",
             FieldType::F64 => "f64",
             FieldType::I32 => "i32",
@@ -155,9 +200,78 @@ impl FieldType {
             FieldType::Bool => "bool",
             FieldType::Mat4 => "mat4",
             FieldType::Enum => "enum",
-            FieldType::Str64 => "str64",
-            FieldType::Str256 => "str256",
-        }
+            FieldType::Str(64) => "str64",
+            FieldType::Str(256) => "str256",
+            FieldType::Str(capacity) => return format!("str{capacity}").into(),
+        })
+    }
+
+    /// The type a [`FieldType::name`] names; `None` for an unknown name or a
+    /// string capacity outside 1 to [`STR_MAX_CAPACITY`].
+    pub fn parse(name: &str) -> Option<FieldType> {
+        Some(match name {
+            "f32" => FieldType::F32,
+            "f64" => FieldType::F64,
+            "i32" => FieldType::I32,
+            "u32" => FieldType::U32,
+            "i64" => FieldType::I64,
+            "u64" => FieldType::U64,
+            "vec2" => FieldType::Vec2,
+            "vec3" => FieldType::Vec3,
+            "vec4" => FieldType::Vec4,
+            "quat" => FieldType::Quat,
+            "bool" => FieldType::Bool,
+            "mat4" => FieldType::Mat4,
+            "enum" => FieldType::Enum,
+            other => {
+                let digits = other.strip_prefix("str")?;
+                // One spelling per type: no sign, no leading zero.
+                if !digits.bytes().all(|b| b.is_ascii_digit()) || digits.starts_with('0') {
+                    return None;
+                }
+                return FieldType::string(digits.parse().ok()?).ok();
+            }
+        })
+    }
+}
+
+/// `text` as the packed bytes of a string field of `capacity` bytes: its
+/// UTF-8, then zeros. Refused, with the fix named, when it is longer than the
+/// capacity or holds a NUL character; never truncated.
+pub fn pack_str(text: &str, capacity: usize) -> std::result::Result<Vec<u8>, String> {
+    let bytes = text.as_bytes();
+    if bytes.len() > capacity {
+        let shown: String = text.chars().take(24).collect();
+        let more = if shown.len() < text.len() { "..." } else { "" };
+        let fix = if bytes.len() <= STR_MAX_CAPACITY {
+            format!(
+                "shorten the text, or declare the field str({}) or larger",
+                bytes.len()
+            )
+        } else {
+            format!("shorten the text: a string field holds at most {STR_MAX_CAPACITY} bytes")
+        };
+        return Err(format!(
+            "'{shown}{more}' is {} bytes of UTF-8 and the field holds {capacity}: {fix}",
+            bytes.len()
+        ));
+    }
+    if bytes.contains(&0) {
+        return Err("a string field cannot hold a NUL character (\\0)".into());
+    }
+    let mut out = vec![0u8; capacity];
+    out[..bytes.len()].copy_from_slice(bytes);
+    Ok(out)
+}
+
+/// The text of a string field's packed bytes: the bytes before the first
+/// zero (the longest valid UTF-8 prefix of them, for bytes that never passed
+/// [`FieldSchema::check_value`]).
+pub fn unpack_str(bytes: &[u8]) -> &str {
+    let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    match std::str::from_utf8(&bytes[..end]) {
+        Ok(s) => s,
+        Err(e) => std::str::from_utf8(&bytes[..e.valid_up_to()]).unwrap_or_default(),
     }
 }
 
@@ -169,8 +283,9 @@ mod sealed {
 /// A Rust type a column can be viewed as (`ArchetypeView::read::<T>`): plain
 /// old data whose every bit pattern is a value. Sealed: `f32`, `f64`, `i32`,
 /// `u32`, `i64`, `u64`, `Vec2`, `Vec3`, `Vec4`, `Quat`, `Mat4` and [`Bool8`]
-/// (a bool column). Every `FieldValue` is a [`ReflectField`]; `bool`,
-/// [`Str64`] and [`Str256`] are fields but not views.
+/// (a bool column). Every `FieldValue` is a [`ReflectField`]; `bool` and
+/// [`Str<N>`] are fields but not views (a string column is read through
+/// [`unpack_str`]).
 #[diagnostic::on_unimplemented(
     message = "`{Self}` is not a column element type",
     note = "a column is viewed as f32, f64, i32, u32, i64, u64, Vec2, Vec3, Vec4, Quat, Mat4 or Bool8 (for a bool column)"
@@ -244,12 +359,11 @@ impl std::fmt::Debug for Bool8 {
 }
 
 /// A Rust type a `#[derive(Reflect)]` field may have: every [`FieldValue`],
-/// plus `bool` (a `bool` field), [`Str64`] and [`Str256`] (string fields, for
-/// events). An enum field is a `u32` with `#[reflect(variants = [...])]`.
+/// plus `bool` (a `bool` field) and [`Str<N>`] (a `strN` field). An enum field is a `u32` with `#[reflect(variants = [...])]`.
 /// Sealed. The two methods are what the derive generates calls to.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` is not a reflected field type",
-    note = "fields of a #[derive(Reflect)] struct are f32, f64, i32, u32, i64, u64, Vec2, Vec3, Vec4, Quat, Mat4, bool, Bool8, Str64 or Str256 (an enum is a u32 with #[reflect(variants = [..])])"
+    note = "fields of a #[derive(Reflect)] struct are f32, f64, i32, u32, i64, u64, Vec2, Vec3, Vec4, Quat, Mat4, bool, Bool8 or Str<N> (an enum is a u32 with #[reflect(variants = [..])])"
 )]
 pub trait ReflectField: Copy + Send + Sync + sealed::SealedField + 'static {
     const TYPE: FieldType;
@@ -295,112 +409,84 @@ impl ReflectField for bool {
     }
 }
 
-macro_rules! inline_string {
-    ($(#[$doc:meta])* $name:ident, $cap:literal, $ft:ident) => {
-        $(#[$doc])*
-        #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-        pub struct $name([u8; $cap]);
+/// A string field: UTF-8 text of at most `N` bytes stored inline,
+/// zero-padded (`str32` is `Str<32>`). `N` is 1 to [`STR_MAX_CAPACITY`],
+/// checked at compile time.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Str<const N: usize>([u8; N]);
 
-        impl $name {
-            /// The capacity in bytes of UTF-8.
-            pub const CAPACITY: usize = $cap;
+/// A `str64` field.
+pub type Str64 = Str<64>;
 
-            /// The empty string.
-            pub const EMPTY: $name = $name([0; $cap]);
+/// A `str256` field.
+pub type Str256 = Str<256>;
 
-            /// `text` as an inline string. Refused when it is longer than
-            /// the capacity in UTF-8 bytes or holds a NUL character.
-            pub fn new(text: &str) -> Result<$name> {
-                let bytes = text.as_bytes();
-                if bytes.len() > $cap {
-                    return Err(Error::new(
-                        ErrorKind::Invalid,
-                        format!(
-                            "'{text}' is {} bytes of UTF-8; a {} holds at most {}",
-                            bytes.len(),
-                            FieldType::$ft.name(),
-                            $cap
-                        ),
-                    ));
-                }
-                if bytes.contains(&0) {
-                    return Err(Error::new(
-                        ErrorKind::Invalid,
-                        format!("a {} cannot hold a NUL character", FieldType::$ft.name()),
-                    ));
-                }
-                let mut out = [0u8; $cap];
-                out[..bytes.len()].copy_from_slice(bytes);
-                Ok($name(out))
-            }
+impl<const N: usize> Str<N> {
+    /// The capacity in bytes of UTF-8.
+    pub const CAPACITY: usize = N;
 
-            /// The text: the bytes before the first zero (the longest valid
-            /// UTF-8 prefix of them, for bytes that never passed a check).
-            pub fn as_str(&self) -> &str {
-                let end = self.0.iter().position(|&b| b == 0).unwrap_or($cap);
-                match std::str::from_utf8(&self.0[..end]) {
-                    Ok(s) => s,
-                    Err(e) => std::str::from_utf8(&self.0[..e.valid_up_to()]).unwrap_or_default(),
-                }
-            }
+    /// The empty string.
+    pub const EMPTY: Self = Str([0; N]);
 
-            /// The packed bytes.
-            pub fn as_bytes(&self) -> &[u8; $cap] {
-                &self.0
-            }
-        }
+    /// `text` as an inline string. Refused when it is longer than the
+    /// capacity in UTF-8 bytes or holds a NUL character ([`pack_str`]).
+    pub fn new(text: &str) -> Result<Self> {
+        let packed = pack_str(text, N).map_err(|reason| Error::new(ErrorKind::Invalid, reason))?;
+        let mut out = [0u8; N];
+        out.copy_from_slice(&packed);
+        Ok(Str(out))
+    }
 
-        impl Default for $name {
-            fn default() -> Self {
-                $name::EMPTY
-            }
-        }
+    /// The text: the bytes before the first zero ([`unpack_str`]).
+    pub fn as_str(&self) -> &str {
+        unpack_str(&self.0)
+    }
 
-        impl std::fmt::Debug for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Debug::fmt(self.as_str(), f)
-            }
-        }
-
-        impl std::fmt::Display for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(self.as_str())
-            }
-        }
-
-        impl sealed::SealedField for $name {}
-
-        impl ReflectField for $name {
-            const TYPE: FieldType = FieldType::$ft;
-
-            fn write_packed(&self, out: &mut dyn FnMut(&[u8])) {
-                out(&self.0);
-            }
-
-            fn read_packed(input: &mut dyn FnMut(&mut [u8])) -> Self {
-                let mut b = [0u8; $cap];
-                input(&mut b);
-                $name(b)
-            }
-        }
-    };
+    /// The packed bytes.
+    pub fn as_bytes(&self) -> &[u8; N] {
+        &self.0
+    }
 }
 
-inline_string!(
-    /// A `str64` field: UTF-8 text of at most 64 bytes stored inline,
-    /// zero-padded. Events only (see the module docs).
-    Str64,
-    64,
-    Str64
-);
+impl<const N: usize> Default for Str<N> {
+    fn default() -> Self {
+        Self::EMPTY
+    }
+}
 
-inline_string!(
-    /// A `str256` field: UTF-8 text of at most 256 bytes stored inline,
-    /// zero-padded. Events only (see the module docs).
-    Str256,
-    256,
-    Str256
-);
+impl<const N: usize> std::fmt::Debug for Str<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self.as_str(), f)
+    }
+}
+
+impl<const N: usize> std::fmt::Display for Str<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl<const N: usize> sealed::SealedField for Str<N> {}
+
+impl<const N: usize> ReflectField for Str<N> {
+    const TYPE: FieldType = {
+        assert!(
+            N >= 1 && N <= STR_MAX_CAPACITY,
+            "a Str<N> holds 1 to STR_MAX_CAPACITY (4096) bytes"
+        );
+        FieldType::Str(N as u16)
+    };
+
+    fn write_packed(&self, out: &mut dyn FnMut(&[u8])) {
+        out(&self.0);
+    }
+
+    fn read_packed(input: &mut dyn FnMut(&mut [u8])) -> Self {
+        let mut b = [0u8; N];
+        input(&mut b);
+        Str(b)
+    }
+}
 
 /// One field of a [`Schema`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -502,7 +588,7 @@ impl FieldSchema {
                     ))
                 }
             }
-            FieldType::Str64 | FieldType::Str256 => {
+            FieldType::Str(_) => {
                 let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
                 if bytes[end..].iter().any(|&b| b != 0) {
                     return Err("a string is followed by non-zero bytes after its end".into());
@@ -594,10 +680,27 @@ impl Schema {
                     f.ty.name()
                 ));
             }
-            if f.ty.is_string() && f.default.is_some() {
-                return err(format!(
-                    "string field '{at}' has a default; a string field starts empty"
-                ));
+            if let Some(capacity) = f.ty.capacity() {
+                if !(1..=STR_MAX_CAPACITY).contains(&capacity) {
+                    return err(format!(
+                        "string field '{at}' has a capacity of {capacity}; a string field holds 1 to {STR_MAX_CAPACITY} bytes"
+                    ));
+                }
+                if f.default.is_some() {
+                    return err(format!(
+                        "string field '{at}' has a default; a string field starts empty"
+                    ));
+                }
+                if f.min.is_some() || f.max.is_some() {
+                    return err(format!(
+                        "string field '{at}' has a range; only numeric fields have one (cap the text with the capacity)"
+                    ));
+                }
+                if f.tunable {
+                    return err(format!(
+                        "string field '{at}' is tunable; Tune and the probe's bounds publish numbers only (set the text with world.set or the probe's set:)"
+                    ));
+                }
             }
             if let Some(default) = &f.default {
                 if default.len() != f.ty.lanes() {
@@ -642,7 +745,7 @@ impl Schema {
         h.write_u64(self.fields.len() as u64);
         for f in &self.fields {
             h.write_str(&f.name);
-            h.write_str(f.ty.name());
+            h.write_str(&f.ty.name());
             if f.ty == FieldType::Enum {
                 h.write_u64(f.variants.len() as u64);
                 for v in &f.variants {
@@ -651,12 +754,6 @@ impl Schema {
             }
         }
         h.finish()
-    }
-
-    /// Whether any field is a string (`str64`, `str256`): such a type is
-    /// carried by events only.
-    pub fn has_strings(&self) -> bool {
-        self.fields.iter().any(|f| f.ty.is_string())
     }
 
     /// Packed bytes of every field's default ([`FieldSchema::default_bytes`]).

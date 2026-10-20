@@ -1,0 +1,3 @@
+perf extract-spheres-20k: best 0.437 ms per frame (0.022 us an instance)
+  baseline 0.531 ms, limit 0.611 ms
+cargo test -q -p og-runtime --release --test extract_cost -- --ignored perf   89.48s user 8.76s system 74% cpu 2:11.29 total

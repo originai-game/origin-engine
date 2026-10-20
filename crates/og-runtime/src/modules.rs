@@ -287,8 +287,8 @@ pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
 }
 
 /// The host's play surface: CSS pixels, device pixels per CSS pixel, the
-/// safe area, the pointer kind and the page's motion, contrast and
-/// transparency preferences. The web host calls it when the canvas
+/// safe area, the pointer kind, the page's motion, contrast and
+/// transparency preferences and whether text controls take macOS's keys. The web host calls it when the canvas
 /// is sized; native hosts take the render target's size.
 pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     let eng = engine(engine_id)?;
@@ -302,6 +302,7 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
         high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
         reduced_transparency: viewport["reducedTransparency"].as_bool().unwrap_or(false),
+        mac_keys: viewport["macKeys"].as_bool().unwrap_or(false),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
@@ -315,6 +316,7 @@ fn viewport_json(v: &Viewport) -> Value {
         "reducedMotion": v.reduced_motion,
         "highContrast": v.high_contrast,
         "reducedTransparency": v.reduced_transparency,
+        "macKeys": v.mac_keys,
         "breakpoint": v.breakpoint().name(),
     })
 }
@@ -798,11 +800,25 @@ fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> {
     Some(f(&mut guard))
 }
 
+/// The UiDesc a configure call makes: the last one's fields with the ones
+/// this call gives (`null` clears a field; one left out keeps its value).
+fn merged_ui_desc(last: &Value, given: Value) -> Result<Value, String> {
+    let mut d = match last {
+        Value::Object(o) => o.clone(),
+        _ => Map::new(),
+    };
+    match given {
+        Value::Object(o) => d.extend(o),
+        Value::Null => {}
+        other => return Err(format!("desc: a UiDesc is an object, not {other}")),
+    }
+    Ok(Value::Object(d))
+}
+
 pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        eng.state.borrow_mut().ui_desc = d.clone();
+        let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
         let skin = match d["skin"].as_f64() {
             Some(h) => {
                 let i =
@@ -968,10 +984,29 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         let mut ui = ui.lock();
         ui.set_theme(theme);
         let chain = ui.fonts().chain.clone();
-        ui.set_fonts(Fonts { chain, ..fonts });
+        let fonts = Fonts { chain, ..fonts };
+        let fontless = fonts.body.handle.is_none()
+            && fonts.display.is_none()
+            && fonts.mono.is_none()
+            && fonts.rounded.is_none()
+            && fonts.fallbacks.is_empty()
+            && fonts.fallback.is_none()
+            && fonts.chain.is_empty();
+        ui.set_fonts(fonts);
         ui.set_icons(atlas);
         ui.set_skin_name(skin.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
+        drop(ui);
+        let mut st = eng.state.borrow_mut();
+        st.ui_desc = d;
+        if fontless {
+            let text = "og.ui.configure: the UI has no font now, so it draws no text (every label, button and field is blank): give `font` (og.load.font) or a `skin` (og.load.skin, whose fonts it brings), in this call or an earlier one; a field set to null is cleared, a field left out keeps its value".to_string();
+            if st.ui_warned.insert(text.clone()) {
+                let tick = eng.world().map_or(0, |w| w.time().tick);
+                st.log
+                    .push(json!({ "tick": tick, "warning": true, "text": text }));
+            }
+        }
         Ok(())
     })();
     match answer {
@@ -1014,7 +1049,9 @@ pub(crate) fn load_skin(eng: &Engine, path: &str) -> Result<usize, String> {
                 .skin_text(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
-        let file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
+        let mut file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
+        // Ids relative to the skin file first, as the cook resolved them.
+        file.resolve(&id, |r| eng.assets.borrow().bundle_for(r).is_ok());
         let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
             let i = super::assets::load_texture(eng, p)?;
             eng.render
@@ -1167,6 +1204,9 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
         "skin": skin,
+        "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
+        "reducedMotion": theme.reduced_motion,
+        "reducedTransparency": theme.reduced_transparency,
     })
     .to_string()
 }
@@ -2178,7 +2218,7 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
         .map(|n| {
             json!({
                 "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
-                "value": n.value, "states": n.states,
+                "description": n.description, "value": n.value, "states": n.states,
                 "x": n.x, "y": n.y, "width": n.width, "height": n.height,
             })
         })
@@ -2220,6 +2260,7 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     reduced_motion: v["reducedMotion"].as_bool().unwrap_or(false),
                     high_contrast: v["highContrast"].as_bool().unwrap_or(false),
                     reduced_transparency: v["reducedTransparency"].as_bool().unwrap_or(false),
+                    mac_keys: v["macKeys"].as_bool().unwrap_or(false),
                 },
             );
         } else {

@@ -708,6 +708,22 @@ impl Bundle {
         CookedAnimation::decode(asset_id(id), &blob)
     }
 
+    /// The clip names of an animation blob (`<model>#anim`), in glTF order,
+    /// without decoding its clips (what `GltfInfo.animations` lists).
+    pub fn clip_names(&self, id: &str, bytes: &[u8]) -> Result<Vec<String>, LoadError> {
+        let blob = self.blob::<format::Animation>(id, bytes)?;
+        let clips = table::<ClipRow>(&blob, "clips")?;
+        let strings = blob.raw("strings")?;
+        clips
+            .iter()
+            .map(|c| {
+                pool_str(strings, c.name_offset, c.name_len)
+                    .map(str::to_string)
+                    .ok_or_else(|| invalid(&blob, "clip name out of range"))
+            })
+            .collect()
+    }
+
     /// Reads and decodes a glTF's animation blob (native); `id` is the model's
     /// id with or without `#anim`.
     #[cfg(not(target_arch = "wasm32"))]
@@ -2338,6 +2354,11 @@ pub struct CookedTerrain {
     /// The lowest and highest height (metres above the origin).
     pub range: (f32, f32),
     pub layers: Vec<CookedTerrainLayer>,
+    /// The texture arrays the layers' albedos and normal maps come from
+    /// (`layers`, `layerNormals`: asset ids, loaded by the host); each
+    /// layer's `albedo_layer` and `normal_layer` name its layers of them.
+    pub albedo_array: Option<String>,
+    pub normal_array: Option<String>,
     pub height_blend: f32,
     pub lod: og_render::TerrainLod,
     pub cast_shadows: bool,
@@ -2605,6 +2626,8 @@ impl Bundle {
                     slope_fade: l.slope_fade,
                     altitude: [l.altitude_min, l.altitude_max],
                     altitude_fade: l.altitude_fade,
+                    albedo_layer: (l.albedo_layer != format::NONE).then_some(l.albedo_layer),
+                    normal_layer: (l.normal_layer != format::NONE).then_some(l.normal_layer),
                 },
             });
         }
@@ -2613,6 +2636,8 @@ impl Bundle {
             layout,
             range: (m.height_min, m.height_max),
             layers: out,
+            albedo_array: text(m.albedo_array_at, m.albedo_array_len)?,
+            normal_array: text(m.normal_array_at, m.normal_array_len)?,
             height_blend: m.height_blend,
             lod: og_render::TerrainLod {
                 spacing: m.lod_spacing,

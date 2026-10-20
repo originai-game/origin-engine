@@ -275,7 +275,6 @@ impl World {
     ) -> Result<Vec<(SchemaId, Vec<u8>)>> {
         for (id, bytes) in &components {
             self.registry.check(*id)?;
-            self.registry.check_not_event_only(*id, "component")?;
             self.registry.check_value(*id, bytes)?;
         }
         components.sort_by_key(|(id, _)| *id);
@@ -375,7 +374,6 @@ impl World {
     /// Adds (or overwrites) component `id` from packed bytes.
     pub fn insert_bytes(&mut self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<()> {
         self.registry.check(id)?;
-        self.registry.check_not_event_only(id, "component")?;
         self.registry.check_value(id, bytes)?;
         let loc = self.location(e)?;
         let src = loc.archetype as usize;
@@ -533,7 +531,6 @@ impl World {
     /// Inserts or replaces resource `T`. `T` must be registered.
     pub fn insert_resource<T: Reflect>(&mut self, value: T) -> Result<()> {
         let id = self.id::<T>()?;
-        self.registry.check_not_event_only(id, "resource")?;
         let bytes = self.registry.encode(id, &value)?; // a layout mismatch is refused here, once
         self.registry.check_value(id, &bytes)?;
         self.resources[id.0 as usize] = Some(RefCell::new(ResourceValue::Typed(Box::new(value))));
@@ -543,7 +540,6 @@ impl World {
     /// Inserts or replaces resource `id` from packed bytes.
     pub fn insert_resource_bytes(&mut self, id: SchemaId, bytes: &[u8]) -> Result<()> {
         self.registry.check(id)?;
-        self.registry.check_not_event_only(id, "resource")?;
         self.registry.check_value(id, bytes)?;
         let info = self.registry.info(id);
         let value = match &info.rust {

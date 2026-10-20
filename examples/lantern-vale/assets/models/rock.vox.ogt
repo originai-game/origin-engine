@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# A boulder of the pile: about 1 m across, standing on y 0 (tools/make-assets.ts).
+model {
+  voxScale 0.15
+  voxOrigin bottom
+}

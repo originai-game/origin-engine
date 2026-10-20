@@ -45,6 +45,11 @@ pub(crate) struct LoadedTerrain {
     /// Level-0 tiles' heights decoded for sampling, by tile index.
     pub tiles: std::cell::RefCell<BTreeMap<u32, Arc<[f32]>>>,
     pub layers: Vec<TerrainLayer>,
+    /// The texture arrays its layers sample (`layers`, `layerNormals`), as
+    /// load indices in RenderState::texture_arrays: resolved to the
+    /// renderer's handles each frame (an array of a streaming group comes
+    /// back under a new one).
+    pub layer_arrays: [Option<usize>; 2],
     pub height_blend: f32,
     pub lod: TerrainLod,
     pub cast_shadows: bool,
@@ -466,6 +471,19 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
         }
         layers.push(layer);
     }
+    // The layer arrays, through og.load.textureArray's cache.
+    let mut layer_arrays = [None; 2];
+    for (slot, name) in layer_arrays
+        .iter_mut()
+        .zip([&cooked.albedo_array, &cooked.normal_array])
+    {
+        if let Some(n) = name {
+            *slot = Some(
+                super::assets::load_texture_array_index(eng, n)
+                    .map_err(|e| format!("{id}: layer array {e}"))?,
+            );
+        }
+    }
     let index = eng.render.borrow().terrain.loaded.len();
     // Physics needs the whole field (one height field); nothing else does.
     let field = if cooked.collision {
@@ -484,6 +502,7 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
         edited: false,
         tiles: Default::default(),
         layers,
+        layer_arrays,
         height_blend: cooked.height_blend,
         lod: cooked.lod,
         cast_shadows: cooked.cast_shadows,
@@ -883,6 +902,8 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
         *l = TerrainLayer {
             albedo: l.albedo,
             normal: l.normal,
+            albedo_layer: l.albedo_layer,
+            normal_layer: l.normal_layer,
             color: color(&v["color"], Vec3::ONE),
             roughness: f(&v, "roughness", 0.9).clamp(0.04, 1.0),
             tile: f(&v, "tile", 4.0).max(0.01),
@@ -921,10 +942,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let world = h.world_of(e);
         let spacing = f(&v, "lodSpacing", 0.0);
         let ring = u(&v, "lodRing", 0);
+        let array = |i: Option<usize>| i.and_then(|i| rs.texture_arrays.get(i)?.handle);
+        let layer_arrays = og_render::TerrainLayerArrays {
+            albedo: array(t.layer_arrays[0]),
+            normal: array(t.layer_arrays[1]),
+        };
         rs.scene.terrains.push(og_render::Terrain {
             terrain: t.render,
             transform: world,
             layers: t.layers.clone(),
+            layer_arrays,
             height_blend: t.height_blend,
             cast_shadows: on(&v, "castShadows", true) && t.cast_shadows,
             lod: TerrainLod {

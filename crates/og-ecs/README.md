@@ -56,9 +56,8 @@ world.add_system(
 - **Types**: one namespace for components, resources and events; ids follow
   registration order. Engine-owned names are dotted (`og.Time`, `og.Rng`),
   matching the TypeScript tokens. A Rust type adopts a host schema of the same name and
-  layout; the same name with another layout is refused. A type with a string
-  field (`str64`, `str256`) is an event type only: spawning, inserting it or
-  inserting it as a resource is refused (`ErrorKind::Schema`).
+  layout; the same name with another layout is refused. A string field
+  (`strN`) is plain data in components, resources and events alike.
 - **Values**: every byte entry point (and every typed one) checks the packed
   value with `Schema::check_packed`: a bool byte is 0 or 1, an enum index
   names a variant, a string is zero-padded UTF-8; the reason names the field.
@@ -142,7 +141,7 @@ structural operations against a shadow model), `tests/snapshot.rs`,
 snapshot restored into a fresh world, give the same hash; the world itself is
 `tests/support/bouncing_boxes.rs`, shared with `tools/wasm-determinism/`),
 `tests/schedule.rs`, `tests/host_schema.rs`, `tests/field_types.rs` (a bool
-column through snapshot and hash, mat4 columns, strings on events only),
+column through snapshot and hash, mat4 columns, string columns through snapshot, hash and a capacity change),
 `tests/packed_access.rs` (the `SystemContext` byte calls and their access
 checks), `tests/introspection.rs` (`system_info` matched counts, names in
 snapshots and the hash, the structural counter), `tests/migrate.rs` (added,

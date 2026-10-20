@@ -40,6 +40,8 @@ export interface ColumnSpec {
   readonly name: string;
   readonly array: "Float32Array" | "Float64Array" | "Uint32Array" | "Int32Array" | "Uint8Array";
   readonly stride: number;
+  /** The stride is each field's capacity (`str(32)`), not the kind's. */
+  readonly capacity?: boolean;
 }
 
 export const COLUMNS: ReadonlyMap<string, ColumnSpec> = new Map(
@@ -107,6 +109,8 @@ export interface FieldSpec {
   readonly kind: string;
   readonly default: unknown;
   readonly options: Record<string, unknown>;
+  /** A `str` field's capacity in bytes. */
+  readonly capacity?: number;
 }
 
 export interface Token {
@@ -122,6 +126,7 @@ function fieldList(fields: Readonly<Record<string, FieldSpec>>): unknown[] {
     kind: spec?.kind,
     default: spec?.default,
     options: spec?.options ?? {},
+    ...(spec?.capacity === undefined ? {} : { capacity: spec.capacity }),
   }));
 }
 
@@ -238,11 +243,13 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
   const token = Object.freeze({ tick: desc.tick ?? 60, systems: Object.freeze(list) });
   // Built when the host takes it, so the systems' host handles are known.
   declare((a) => {
+    // Unset tick, seed, scenes and scene stay null: the engine takes
+    // project.ogt's (CreateOptions.project), else 60, 0, none and "main".
     const wire = JSON.stringify({
-      tick: desc.tick ?? 60,
-      seed: desc.seed ?? 0,
-      scenes: desc.scenes ?? {},
-      scene: desc.scene ?? "main",
+      tick: desc.tick ?? null,
+      seed: desc.seed ?? null,
+      scenes: desc.scenes ?? null,
+      scene: desc.scene ?? null,
       systems: list.map((s) => systemHandles.get(s) ?? -1),
       resources: (desc.resources ?? []).map((r) => r.name),
       commands,
@@ -294,9 +301,11 @@ function layoutOf(component: Token): { names: string[]; kinds: ColumnSpec[] } {
   if (!l) {
     const names = Object.keys(component.fields ?? {});
     const kinds = names.map((n) => {
-      const kind = COLUMNS.get(component.fields![n]!.kind);
+      const field = component.fields![n]!;
+      const kind = COLUMNS.get(field.kind);
       if (!kind) throw new Error(`'${component.name}.${n}' is not a column field`);
-      return kind;
+      // A str column's stride is the field's capacity: one byte lane per byte.
+      return kind.capacity ? { ...kind, stride: field.capacity ?? 0 } : kind;
     });
     layouts.set(component, (l = { names, kinds }));
   }
@@ -679,6 +688,13 @@ export interface CreateOptions {
   readonly root?: string;
   /** The physics profile, project.ogt's `profile`: `3d` (the default) or `2d`. */
   readonly profile?: "2d" | "3d";
+  /**
+   * project.ogt's text (`og run`, `og test`, `og dev`, `og polish` and `og
+   * build` pass it): its `tick`, `seed`, `scenes` and `scene` fill the
+   * GameDesc fields the game leaves unset, and one set in both places to
+   * different values refuses the engine.
+   */
+  readonly project?: string;
   /** Run GameDesc.start at the first tick boundary instead of now, so a host can attach its renderer and report the viewport first (the web Worker does). */
   readonly deferStart?: boolean;
   /** The locale the host asks og.i18n for: the browser's language, `og run --locale`. */
@@ -747,9 +763,16 @@ export class Engine {
     this.game = game;
     this.world = worldFor(id) as unknown as Api.World;
     this.probe = makeProbe(id) as unknown as Api.EngineProbe;
-    rates.set(id, game.tick);
+    // The rate the engine runs at: GameDesc.tick, else project.ogt's, else 60.
+    const time = parse<Result<{ rate?: number }>>(abi().og_world_resource(id, "og.Time"));
+    rates.set(id, (time.ok ? time.value.rate : undefined) ?? game.tick);
     learnBuild(id);
     this.attachPlatform(noPlatform);
+  }
+
+  /** The fixed tick rate the engine runs at, in hertz (GameDesc.tick, else project.ogt's `tick`, else 60). */
+  get rate(): number {
+    return rates.get(this.id) ?? this.game.tick;
   }
 
   /** Attach what answers og.platform's calls: the native host's local store, the web shell's Player bridge. */
@@ -930,6 +953,7 @@ function makeProbe(id: number) {
     restore: (sid: string) => { epoch++; return a().og_engine_probe_restore(id, sid); },
     dump: (desc?: unknown) => parse(a().og_engine_probe_dump(id, json(desc))),
     commands: (script: string) => parse(a().og_engine_probe_commands(id, script)),
+    listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),
   });
 }
 
@@ -977,6 +1001,7 @@ export const load = Object.freeze({
   fontInfo: (world: WorldImpl, font: number) => parse(abi().og_load_font_info(world.id, font)),
   sound: (world: WorldImpl, path: string) => parse(abi().og_load_sound(world.id, path)),
   texture: (world: WorldImpl, path: string) => parse(abi().og_load_texture(world.id, path)),
+  textureArray: (world: WorldImpl, path: string) => parse(abi().og_load_texture_array(world.id, path)),
   lut: (world: WorldImpl, path: string) => parse(abi().og_load_lut(world.id, path)),
   environment: (world: WorldImpl, path: string) => parse(abi().og_load_environment(world.id, path)),
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
@@ -999,8 +1024,10 @@ export const anim = Object.freeze({
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
   humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
   retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),
-  clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }> }, name: string): number =>
-    info?.clips?.find((c) => c.name === name)?.clip ?? -1,
+  // One lookup for a flipbook's clips (an index, -1 when missing) and a
+  // loaded model's (og.load.animation: a ClipAsset, 0 when missing).
+  clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }>; skeleton?: number }, name: string): number =>
+    info?.clips?.find((c) => c.name === name)?.clip ?? (info?.skeleton !== undefined ? 0 : -1),
 });
 
 // ── E4: time scale, camera feel, tweens, tilemaps ───────────────────────────
@@ -1064,6 +1091,7 @@ export const physics = Object.freeze({
   setRagdollRig: (world: WorldImpl, entity: number, desc?: unknown) =>
     parse(abi().og_physics_set_ragdoll_rig(world.id, entity, json(desc))),
   ragdollPose: (world: WorldImpl, entity: number) => parse(abi().og_physics_ragdoll_pose(world.id, entity)),
+  stats: (world: WorldImpl) => parse(abi().og_physics_stats(world.id)),
 });
 
 export const audio = Object.freeze({

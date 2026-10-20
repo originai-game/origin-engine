@@ -27,6 +27,8 @@ export interface FieldSpec<K extends ColumnKind = ColumnKind> {
   readonly kind: K;
   readonly default: ColumnKinds[K]["value"];
   readonly options: FieldOptions;
+  /** A `str` field's capacity in bytes; absent for every other kind. */
+  readonly capacity?: number;
 }
 
 /** A reflected layout: field names to field specs. */
@@ -102,6 +104,11 @@ export interface ColumnKinds {
   Matrix4: { readonly array: Float32Array; readonly stride: 16; readonly value: Matrix4 };
   /** A Color field: r, g, b interleaved. */
   Color: { readonly array: Float32Array; readonly stride: 3; readonly value: Color };
+  /**
+   * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+   * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
+   */
+  str: { readonly array: Uint8Array; readonly stride: number; readonly value: string };
   /** An Entity field: (index, generation) pairs. */
   Entity: { readonly array: Uint32Array; readonly stride: 2; readonly value: Entity };
   /** A Geometry handle field. */
@@ -242,7 +249,7 @@ export interface Ray {
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 
 /**
- * Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.
+ * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -380,6 +387,17 @@ export declare function Matrix4(value?: Matrix4, options?: FieldOptions): FieldS
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function Color(value?: Color, options?: FieldOptions): FieldSpec<"Color">;
+
+/**
+ * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+ * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
+ *
+ * A `str` field: stored in a `Uint8Array` whose stride is its capacity.
+ * @param capacity The most bytes of UTF-8 it holds, 1 to 4096: four per character covers any script.
+ * @param value The field's default; omitted, the empty string.
+ * @param options Label and docs (a string has no range and is not tunable).
+ */
+export declare function str(capacity: number, value?: string, options?: FieldOptions): FieldSpec<"str">;
 
 /**
  * Declare a component: plain data stored per entity in engine memory, one column per field.
@@ -737,7 +755,7 @@ export type StartFn = (world: World) => void;
  */
 export interface GameDesc {
   /**
-   * The fixed tick rate.
+   * The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both.
    *
    * @default 60
    * @range 1..240
@@ -745,19 +763,19 @@ export interface GameDesc {
    */
   readonly tick?: number;
   /**
-   * The project seed every Rng stream derives from. A replay overrides it.
+   * The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it.
    *
    * @default 0
    */
   readonly seed?: number;
   /**
-   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`.
+   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block.
    *
    * @default {}
    */
   readonly scenes?: Readonly<Record<string, string>>;
   /**
-   * The scene loaded first.
+   * The scene loaded first; left unset, project.ogt's `scene` (else main).
    *
    * @default "main"
    */
@@ -801,7 +819,7 @@ export interface GameDesc {
    */
   readonly facts?: FactsFn | null;
   /**
-   * Called once before the first tick, after the first scene spawned.
+   * Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it.
    *
    * @default null
    */
@@ -822,7 +840,9 @@ export interface GameDesc {
 
 /** A declared game, the bundle's default export. */
 export interface Game {
-  /** The fixed tick rate in hertz. */
+  /**
+   * GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
+   */
   readonly tick: number;
   /** The systems in declaration order. */
   readonly systems: readonly System[];
@@ -886,7 +906,7 @@ export interface MatrixWorld {
 // Simulation time. Game code never reads the wall clock; it reads Time.
 
 /**
- * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+ * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
  *
  * The `Time` resource (token `og.Time`).
  */
@@ -1242,7 +1262,7 @@ export interface TextEntry {
 export type A11yActionKind = "focus" | "activate" | "increment" | "decrement";
 
 /**
- * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored).
+ * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).
  */
 export interface A11yRequest {
   /** What is asked. */
@@ -3022,6 +3042,30 @@ export interface StandardMaterialDesc {
    * @default null
    */
   readonly anisotropyMap?: Texture | null;
+  /**
+   * The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read); it draws on every tier, WebGL2 included. Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays.
+   *
+   * @default null
+   */
+  readonly mapArray?: TextureArray | null;
+  /**
+   * The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last).
+   *
+   * @default 0
+   */
+  readonly mapLayer?: number;
+  /**
+   * A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray.
+   *
+   * @default null
+   */
+  readonly normalMapArray?: TextureArray | null;
+  /**
+   * The layer of normalMapArray read where the Mesh does not pick one.
+   *
+   * @default 0
+   */
+  readonly normalMapLayer?: number;
 }
 
 /**
@@ -3058,6 +3102,14 @@ export interface Mesh {
    * @default { r: 1, g: 1, b: 1 }
    */
   flashColor: Color;
+  /**
+   * The texture-array layer this mesh's material reads (StandardMaterialDesc.mapArray and normalMapArray), in place of the material's mapLayer and normalMapLayer: one material, one draw, a layer per mesh (a tile set, a crowd's skins). -1 keeps the material's layers; a material without arrays ignores it.
+   *
+   * @default -1
+   * @range -1..
+   * @tunable
+   */
+  materialLayer: number;
 }
 
 /**
@@ -3791,8 +3843,9 @@ export declare function DitherPattern(value?: DitherPattern, options?: FieldOpti
  * Where Stylise lays a pattern (the paint canvas, the hatching, the halftone).
  * - `"screen"`: Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it.
  * - `"surface"`: On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses.
+ * - `"object"`: On the surfaces as surface, but in each mesh instance's own space (three planes of the instance blended by its normal, in metres along its axes): a moving, turning or skinned object carries its strokes, dots and grain instead of sliding through them, and keeps them however it is scaled. Terrain, scattered copies and the vertices a material shader moves keep the world pattern, the sky the screen pattern. The frame runs the prepass and an object pass that draws the opaque instances again.
  */
-export type StyliseSpace = "screen" | "surface";
+export type StyliseSpace = "screen" | "surface" | "object";
 
 /**
  * A StyliseSpace field: the variant's index.
@@ -3886,7 +3939,7 @@ export interface Stylise {
    */
   halftoneColor: Color;
   /**
-   * Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie).
+   * Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots.
    */
   halftoneSpace: StyliseSpace;
   /**
@@ -3925,9 +3978,17 @@ export interface Stylise {
    */
   hatchingColor: Color;
   /**
-   * Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie).
+   * Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same strokes in each instance's own space, so a moving or turning object carries its strokes.
    */
   hatchingSpace: StyliseSpace;
+  /**
+   * Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  hatchingDepth: number;
   /**
    * Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off.
    *
@@ -3978,7 +4039,7 @@ export interface Stylise {
    */
   paintCanvasScale: number;
   /**
-   * Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls.
+   * Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls; object, in each instance's own space, so a moving object carries its grain.
    */
   paintCanvasSpace: StyliseSpace;
   /**
@@ -4862,7 +4923,7 @@ export interface SpriteDesc {
    */
   readonly dropShadow?: number;
   /**
-   * The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0.
+   * The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0.
    *
    * @default 0
    * @unit m (metres)
@@ -5346,7 +5407,7 @@ export interface RenderCapabilities {
   /** The render target height in device pixels. */
   readonly height: number;
   /**
-   * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn.
+   * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn.
    */
   readonly stylise: readonly string[];
 }
@@ -5477,7 +5538,7 @@ export interface GltfInfo {
   /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
   /**
-   * Its animation clip names (the cook counts clips and does not cook them yet, so this is empty).
+   * Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name.
    */
   readonly animations: readonly string[];
 }
@@ -7922,6 +7983,49 @@ export interface BonePose {
 
 
 
+/** One phase of the last physics step, for og.physics.stats. */
+export interface PhysicsPhase {
+  /**
+   * gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back).
+   */
+  readonly name: string;
+  /**
+   * Wall-clock time it took (0 where the host has no clock); never world state.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly ms: number;
+  /**
+   * Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles.
+   */
+  readonly split: boolean;
+}
+
+/**
+ * What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them.
+ */
+export interface PhysicsStats {
+  /** The tick the step ran (0 before the first). */
+  readonly tick: number;
+  /** The rapier bodies it stepped (with ragdoll bones and vehicle wheels). */
+  readonly bodies: number;
+  /** The lanes pool's threads at the time (1: lanes off or single-threaded). */
+  readonly threads: number;
+  /**
+   * Whether the whole step ran on the lanes pool (from a number of bodies per thread count), where rapier splits its broad phase, narrow phase and solver.
+   */
+  readonly pool: boolean;
+  /**
+   * Wall-clock time of the whole og.physics system, gather to write-back.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly ms: number;
+  /** Every phase, in the order they run. */
+  readonly phases: readonly PhysicsPhase[];
+}
+
+
 // ── atmosphere ──────────────────────────────────────────────────
 // Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
 // The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
@@ -8160,7 +8264,7 @@ export interface Sky {
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
  *
  * The `DayNight` resource (token `og.DayNight`).
  */
@@ -9260,6 +9364,7 @@ export interface FlipbookInfo {
   /** The first frame's height in pixels. */
   readonly frameHeight: number;
 }
+
 
 
 // ── tween ───────────────────────────────────────────────────────
@@ -12259,15 +12364,19 @@ export interface Viewport {
    */
   readonly highContrast?: boolean;
   /**
-   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false.
+   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false.
    */
   readonly reducedTransparency?: boolean;
+  /**
+   * Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it on Apple platforms; native hosts leave it off, so a script edits the same on every OS (og.ui.previewViewport tries it). Omitted is false.
+   */
+  readonly macKeys?: boolean;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -12339,7 +12448,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * Glass parts (a skin's glass line) are opaque surfaces: no blur of the frame under them, their frame whole. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency).
+   * Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
    *
    * @default false
    */
@@ -12519,6 +12628,18 @@ export interface UiTheme {
   readonly durationsMs: Readonly<Record<string, number>>;
   /** The configured skin's name; empty for the platform tokens. */
   readonly skin: string;
+  /**
+   * The variant in effect: high when the game asked for it or the page prefers more contrast.
+   */
+  readonly contrast: Contrast;
+  /**
+   * Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement.
+   */
+  readonly reducedMotion: boolean;
+  /**
+   * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
+   */
+  readonly reducedTransparency: boolean;
 }
 
 /** Builds a container's children: ui calls made inside it nest under the container. */
@@ -13706,8 +13827,14 @@ export interface A11yNode {
    * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
    */
   readonly role: string;
-  /** Its accessible name: what a screen reader says it is. */
+  /**
+   * Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value).
+   */
   readonly name: string;
+  /**
+   * Read after the name (aria-description): a text field's placeholder when a label names it; empty for none.
+   */
+  readonly description: string;
   /**
    * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
    */
@@ -15185,6 +15312,24 @@ export interface ResultsDesc {
    * @default null
    */
   readonly onShare?: UiAction | null;
+  /**
+   * The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it.
+   *
+   * @default "Best {best}"
+   */
+  readonly bestLabel?: string;
+  /**
+   * The badge a new best shows.
+   *
+   * @default "New best"
+   */
+  readonly newBestLabel?: string;
+  /**
+   * The Share button's label.
+   *
+   * @default "Share"
+   */
+  readonly shareLabel?: string;
 }
 
 /**
@@ -15490,9 +15635,9 @@ export interface AlertDesc {
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
  * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
  * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
- * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
- * - `"key_up"`: `key_up:<Key>`: release a key.
- * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone.
+ * - `"key_down"`: `key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl).
+ * - `"key_up"`: `key_up:[Mod+]<Key>`: release a key, then the modifiers named before it.
+ * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing.
  * - `"compose"`: `compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it.
  * - `"commit"`: `commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends.
  * - `"move_to_text"`: `move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`).
@@ -15501,8 +15646,8 @@ export interface AlertDesc {
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
  * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds.
- * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema.
- * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON.
+ * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped.
+ * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.
  * - `"pause"`: `pause`: hold the clock; advance still steps.
  * - `"resume"`: `resume`: release the clock.
@@ -16217,7 +16362,7 @@ export interface EngineProbe extends RuntimeProbe {
 }
 
 // ── terrain ─────────────────────────────────────────────────────
-// Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+// Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
 // Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
 // Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
 
@@ -16838,7 +16983,7 @@ export declare namespace og {
     function fromAxisAngle(axis: Vector3, angle: number): Quaternion;
   }
   /**
-   * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+   * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
    */
   const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
   /** Simulation time. Game code never reads the wall clock; it reads Time. */
@@ -16958,7 +17103,7 @@ export declare namespace og {
    * Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.
    * The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.
    */
-  const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color"> }, Mesh>;
+  const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly materialLayer: FieldSpec<"i32"> }, Mesh>;
   /**
    * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
@@ -16988,7 +17133,7 @@ export declare namespace og {
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
    */
-  const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32"> }, Stylise>;
+  const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly hatchingDepth: FieldSpec<"f32">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32"> }, Stylise>;
   /**
    * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
    */
@@ -17199,6 +17344,7 @@ export declare namespace og {
     function defaultBundle(world: World): Result<Asset>;
     /**
      * Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+     * A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame).
      *
      * @param world The world that owns the asset.
      * @param path The asset id, such as `models/ship.glb`.
@@ -17245,7 +17391,7 @@ export declare namespace og {
      */
     function lut(world: World, path: string): Result<Lut>;
     /**
-     * A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
+     * A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `env/studio.ogt`.
@@ -17576,6 +17722,13 @@ export declare namespace og {
      * @returns Refused for an entity without a ragdoll.
      */
     function ragdollPose(world: World, entity: Entity): Result<readonly BonePose[]>;
+    /**
+     * What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step.
+     *
+     * @param world The world.
+     * @returns Refused for an engine without physics.
+     */
+    function stats(world: World): Result<PhysicsStats>;
   }
   /**
    * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
@@ -17586,7 +17739,7 @@ export declare namespace og {
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
@@ -17683,6 +17836,13 @@ export declare namespace og {
      * @param name The clip's name.
      */
     function clip(info: FlipbookInfo, name: string): number;
+    /**
+     * A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, "models/slime.glb").value, "chase")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name). A skinned glTF's clips are its animations' names; an animated `.vox`'s are `frames` or its `voxClip` names. 0 (plays nothing) when the model has no such clip.
+     *
+     * @param info What og.load.animation answered.
+     * @param name The clip's name.
+     */
+    function clip(info: Animation, name: string): ClipAsset;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;
@@ -18210,11 +18370,11 @@ export declare namespace og {
    */
   namespace ui {
     /**
-     * Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick.
+     * Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
-     * @param desc The scheme, density and fonts.
-     * @returns Refused for a dead font.
+     * @param desc The fields to change; the others keep their values.
+     * @returns Refused for a dead font or skin, or a desc that is not an object.
      */
     function configure(world: World, desc?: UiDesc): Result<void>;
     /**
@@ -18353,7 +18513,7 @@ export declare namespace og {
      */
     function toggle(id: string, on: boolean, label: string): ToggleResult;
     /**
-     * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
+     * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
      *
      * @param id Its id.
      * @param value The text from game state.
@@ -18539,7 +18699,7 @@ export declare namespace og {
      */
     function select(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult;
     /**
-     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too.
      *
      * @param id Its id.
      * @param value The value from game state.
@@ -18967,13 +19127,13 @@ export declare namespace og {
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
   /**
-   * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+   * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
    * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
    * Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
    */
   namespace terrain {
     /**
-     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures, and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.
+     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.
      *
      * @param world The world.
      * @param path The terrain file, such as `terrain/island.ogt`.

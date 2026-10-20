@@ -141,7 +141,8 @@ pub(crate) struct StyliseUniform {
     pub ink: [f32; 4],
     pub ink_color: [f32; 4],
     /// x: the camera's far plane (the prepass's sky depth), y: the depth
-    /// step that is an edge (relative), z: the normal turn that is a crease.
+    /// step that is an edge (relative), z: the normal turn that is a crease,
+    /// w: how far those edges darken the hatching's tone (`Hatching::depth`).
     pub ink_depth: [f32; 4],
     /// Surface space (`StyliseSpace::Surface`): view space from clip space,
     /// to place a prepass depth.
@@ -152,8 +153,10 @@ pub(crate) struct StyliseUniform {
     /// point under it, [`surface_origin`]), so a pattern far from the
     /// world's origin keeps its precision.
     pub eye: [f32; 4],
-    /// x: 1 with the canvas on surfaces, y: canvas texels per metre there,
-    /// z: 1 with hatching on surfaces, w: 1 with halftone on surfaces.
+    /// Where the canvas (x), the hatching (z) and the halftone (w) lie: 0
+    /// over the frame, 1 on the surfaces in world space, 2 in each
+    /// instance's space (`StyliseSpace::code`); y: canvas texels per metre
+    /// on surfaces.
     pub surface: [f32; 4],
     /// The canvas uv at the surface origin (fractional), so the grain is the
     /// same wherever the origin lies: x along world x (u), y along y (v),
@@ -316,6 +319,8 @@ pub(crate) struct PostPasses {
     pub identity_lut: wgpu::TextureView,
     /// 1x1 placeholders: view depth at [`FAR_DEPTH`], white AO.
     pub far_depth: wgpu::TextureView,
+    /// The object pass's "no instance" texel, bound where a frame has none.
+    pub no_object: wgpu::TextureView,
     pub white: wgpu::TextureView,
     post_buffer: wgpu::Buffer,
     pub taa_buffer: wgpu::Buffer,
@@ -489,7 +494,8 @@ impl PostPasses {
         // The stylisation passes (stylise.wgsl): the source, its sampler,
         // the parameters, the palette, the canvas and its repeating sampler,
         // the blue-noise tile, the prepass's view depth and normals (ink on
-        // depth edges; placeholders without a prepass).
+        // depth edges; placeholders without a prepass) and the object
+        // pass's positions (object space; a zero texel without one).
         let stylise_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("stylise"),
             entries: &[
@@ -502,6 +508,14 @@ impl PostPasses {
                 layout_entry(6, float_texture(true)),
                 layout_entry(7, float_texture(false)),
                 layout_entry(8, float_texture(false)),
+                layout_entry(
+                    9,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                ),
             ],
         });
         let stylise_pl = pipeline_layout("stylise", &stylise_layout);
@@ -726,6 +740,12 @@ impl PostPasses {
             bytemuck::bytes_of(&FAR_DEPTH),
         );
         let white = one_texel(device, queue, AO_FORMAT, &[255]);
+        let no_object = one_texel(
+            device,
+            queue,
+            crate::stylise_object::OBJECT_FORMAT,
+            &[0; 16],
+        );
         let blue_noise = texture_with_data(
             device,
             queue,
@@ -738,6 +758,7 @@ impl PostPasses {
             identity_lut,
             far_depth,
             white,
+            no_object,
             fx_layout,
             fx_buffer: uniform("fx post", std::mem::size_of::<FxPostUniform>()),
             fx,
@@ -1353,6 +1374,10 @@ pub(crate) struct GraphConfig {
     pub fluid_fields: u32,
     /// The planar reflection's size (`Some` with [`FramePass::Reflection`]).
     pub reflection: Option<(u32, u32)>,
+    /// Stylise lays a pattern in object space: the prepass also writes
+    /// `object-space` (stylise_object.rs), which the paint and lines
+    /// passes read.
+    pub object_space: bool,
 }
 
 /// The metaball field targets, by field.
@@ -1496,6 +1521,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         .transient("gbuffer", desc(w, h, GBUFFER_FORMAT, 1, attach_bind))
         .transient("lindepth", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind))
         .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, attach_bind));
+        if cfg.object_space {
+            g.transient(
+                "object-space",
+                desc(w, h, crate::stylise_object::OBJECT_FORMAT, 1, attach_bind),
+            );
+        }
     }
     if has(FramePass::Ao) {
         g.transient("ao.raw", desc(w, h, AO_FORMAT, 1, attach_bind))
@@ -1620,6 +1651,17 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         match p {
             FramePass::Cascade(_) => g.pass(name, &[], &["cascades"]),
             FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
+            FramePass::Prepass if cfg.object_space => g.pass(
+                name,
+                &[],
+                &[
+                    "pre-depth",
+                    "gbuffer",
+                    "lindepth",
+                    "outline-id",
+                    "object-space",
+                ],
+            ),
             FramePass::Prepass => g.pass(
                 name,
                 &[],
@@ -1759,6 +1801,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 let mut reads = vec![read.as_str()];
                 if matches!(p, FramePass::Paint | FramePass::Lines) && prepass {
                     reads.extend(["lindepth", "gbuffer"]);
+                    if cfg.object_space {
+                        reads.push("object-space");
+                    }
                 }
                 g.pass(name, &reads, &[write.as_str()])
             }
@@ -2003,11 +2048,14 @@ impl FrameGraph {
                 self.try_view("gbuffer")
                     .filter(|_| lines)
                     .unwrap_or(&passes.black),
+                self.try_view("object-space")
+                    .filter(|_| lines)
+                    .unwrap_or(&passes.no_object),
             )
         };
         for (i, p) in chain_passes(frame).into_iter().enumerate() {
             let source = self.view(&ldr_name(i));
-            let (depth, normals) = prepass_of(p);
+            let (depth, normals, object) = prepass_of(p);
             let g = if p == FramePass::Fxaa {
                 group(
                     "fxaa",
@@ -2028,6 +2076,7 @@ impl FrameGraph {
                         tex(&passes.blue_noise),
                         tex(depth),
                         tex(normals),
+                        tex(object),
                     ],
                 )
             };
@@ -2412,6 +2461,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "gbuffer",
         "lindepth",
         "outline-id",
+        "object-space",
         "ao.raw",
         "ao",
         "lightmap",

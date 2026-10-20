@@ -36,8 +36,18 @@ pub struct Viewport {
     pub high_contrast: bool,
     /// The page prefers less transparency (`prefers-reduced-transparency:
     /// reduce`): the theme's `reduced_transparency` is on whatever the game
-    /// configured (glass parts draw as opaque surfaces).
+    /// configured (glass parts draw as opaque surfaces, scrims and
+    /// translucent fills flat: `Theme::to_reduced_transparency`).
     pub reduced_transparency: bool,
+    /// Text controls take macOS's editing keys: Command for the shortcuts
+    /// (A, C, X, Z) and with ←/→ for the line's ends (↑/↓ the text's),
+    /// Option with ←/→, Backspace and Delete by words, Control+A and E the
+    /// line's ends (emacs). Otherwise Control takes the shortcuts and moves
+    /// by words (Alt too), Home and End go to the line's ends and Command
+    /// only copies, cuts, selects all and undoes. The web shell sets it on
+    /// Apple platforms (`navigator.platform`); native hosts leave it off, so
+    /// a script edits the same on every OS.
+    pub mac_keys: bool,
 }
 
 impl Default for Viewport {
@@ -51,6 +61,7 @@ impl Default for Viewport {
             reduced_motion: false,
             high_contrast: false,
             reduced_transparency: false,
+            mac_keys: false,
         }
     }
 }
@@ -394,6 +405,9 @@ pub(crate) struct NavFrame {
     pub pad0: bool,
     /// The control pads 1 to 3 pressed with A (0: none).
     pub pad_activate: [u64; 3],
+    /// A stepper a screen reader adjusted as a whole (its spinbutton's
+    /// key) and by how many steps.
+    pub spin: (u64, i32),
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells of a
@@ -727,17 +741,19 @@ impl Default for Ui {
 
 const STATE_VERSION: u32 = 8;
 
-/// `theme` with a viewport's preferences: the page's reduced motion and
-/// reduced transparency turn their flags on, its contrast preference takes
-/// the high-contrast variant (a game's own settings can only add to what
-/// the page asks).
+/// `theme` with a viewport's preferences: the page's reduced motion turns
+/// its flag on, its contrast preference takes the high-contrast variant,
+/// and reduced transparency (the page's or the game's) the flat variant
+/// (a game's own settings can only add to what the page asks).
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
     if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
         t = t.to_high_contrast();
     }
     t.reduced_motion |= viewport.reduced_motion;
-    t.reduced_transparency |= viewport.reduced_transparency;
+    if t.reduced_transparency || viewport.reduced_transparency {
+        t = t.to_reduced_transparency();
+    }
     t
 }
 
@@ -856,24 +872,33 @@ impl Ui {
         &self.frame.a11y
     }
 
-    /// What element `i` tells the accessibility tree: role, name, value and
-    /// its own states (the frame adds `focusable` and `focused`).
-    pub(crate) fn a11y_info(&self, i: usize) -> (&'static str, String, String, Vec<String>) {
+    /// What element `i` tells the accessibility tree: role, name,
+    /// description, value and its own states (the frame adds `focusable`
+    /// and `focused`).
+    pub(crate) fn a11y_info(
+        &self,
+        i: usize,
+    ) -> (&'static str, String, String, String, Vec<String>) {
         let n = &self.nodes[i];
         let (kind, anonymous) = self.kinds.get(i).copied().unwrap_or(("", true));
         let role = crate::a11y::role_of(kind, n);
+        let none = || ("", String::new(), String::new(), String::new(), Vec::new());
         if role.is_empty() {
-            return ("", String::new(), String::new(), Vec::new());
+            return none();
         }
+        // A text box shows its value (or its placeholder), which is not
+        // what it is: it is named by its label, the placeholder described.
+        let textbox = role == "textbox";
         let mut name = n.a11y.name.clone().unwrap_or_default();
-        if name.is_empty() {
+        let mut description = n.a11y.description.clone().unwrap_or_default();
+        if name.is_empty() && !textbox {
             name = n.probe_text.clone();
         }
         // A picture nothing names is decoration (an icon names itself).
         if name.is_empty() && role == "image" && !n.nav {
-            return ("", String::new(), String::new(), Vec::new());
+            return none();
         }
-        if name.is_empty() && (n.el.interactive || n.nav) {
+        if name.is_empty() && (n.el.interactive || n.nav) && !textbox {
             name = crate::a11y::text_within(&self.nodes, i);
         }
         let labelled = role != "text" && role != "heading";
@@ -892,12 +917,17 @@ impl Ui {
                 name = self.nodes[siblings[at - 1]].probe_text.clone();
             }
         }
+        // Without a label, a field is named by what its placeholder asks.
+        if name.is_empty() && !description.is_empty() {
+            name = std::mem::take(&mut description);
+        }
         if name.is_empty() && !anonymous && labelled {
             name = n.id.clone();
         }
         (
             role,
             name,
+            description,
             crate::a11y::value_of(n),
             crate::a11y::states_of(n),
         )
@@ -1900,12 +1930,10 @@ impl Ui {
         } else {
             value.clone()
         };
-        // A field is named by its placeholder (or its id) and its value is its text.
-        n.a11y.name = Some(if desc.placeholder.is_empty() {
-            n.id.clone()
-        } else {
-            desc.placeholder.clone()
-        });
+        // A field is named by its label (the label before it in its row),
+        // else its placeholder, else its id; the placeholder describes it,
+        // and its value is its text.
+        n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(value.clone());
         r
     }
@@ -1988,11 +2016,8 @@ impl Ui {
         } else {
             value.clone()
         };
-        n.a11y.name = Some(if desc.placeholder.is_empty() {
-            n.id.clone()
-        } else {
-            desc.placeholder.clone()
-        });
+        // Named and described as a field is.
+        n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(value.clone());
         r
     }
@@ -2388,7 +2413,7 @@ impl Ui {
         let mut top_scope = 0u64;
         for &i in &order[1..] {
             let n = &self.nodes[i];
-            let (role, name, value, states) = self.a11y_info(i);
+            let (role, name, description, value, states) = self.a11y_info(i);
             let parent_path = {
                 let mut up = if n.parent == NONE { n.anchor } else { n.parent };
                 loop {
@@ -2457,6 +2482,7 @@ impl Ui {
                 parent: parent_path.clone(),
                 role: role.to_owned(),
                 name: name.clone(),
+                description: description.clone(),
                 value: value.clone(),
                 states,
                 x: r.x,
@@ -2542,6 +2568,7 @@ impl Ui {
                             parent: path.clone(),
                             role: "link".into(),
                             name: text.clone(),
+                            description: String::new(),
                             value: String::new(),
                             states: Vec::new(),
                             x: lr.x,
@@ -2946,9 +2973,10 @@ impl Ui {
                 t.space.xxs
             };
             cmds.push(quad(rect.outset(w + gap), n.el.radius + w + gap, color));
-            if gap > 0.0 || (outline && !field_ring) {
-                cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
-            }
+            // Cut always: a field's skinned frame is not wholly opaque, and
+            // the ring under it tinted its text's ground (the scifi pack's
+            // focused placeholder read 3.5:1 on amber-tinted navy).
+            cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
         }
         if let Some(bg) = n.el.background {
             let (pressed, press) = match n.widget {

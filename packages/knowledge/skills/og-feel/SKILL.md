@@ -62,6 +62,12 @@ moving. It never shortens one already running.
   miss, then back to 1 after 0.5–1 s of real time (count ticks, not
   scaled time). Never leave the scale below 1 by accident: assert it in a
   test.
+- Where it lives: `world.resource(og.Time)` and a system's `time` carry
+  `scale`, `hitStop`, `scaledDt` and `scaledElapsed` beside `tick`, `dt`,
+  `elapsed` and `rate`. The world keeps the scale in a second resource,
+  `og.TimeScale` (`scale`, `hitStop`, `elapsed`), which is what a world
+  dump lists; read og.Time in code, and `get:og.Time` (every field above)
+  or `set:og.TimeScale.scale=0.5` from a script.
 - Do not hit-stop on every bullet of a fast weapon or every coin of a
   stream; cap it to one stop per 10 ticks.
 
@@ -278,15 +284,16 @@ from these (the defaults are the first column):
 ## 13. The checklist, proved
 
 Make each a playtest (`tests/*.og.ts`) or at least a scripted run whose
-outputs you read:
+outputs you read. A world dump lists resources by name only; read their
+values with `get:` (og-build §1), which logs the value and writes it as JSON:
 
 1. **Same-tick response**: `t:key_down:X;t+1/60:dump_entity:hero:a.json`
    shows the new state on the next tick.
 2. **Hit lands with weight**: during a hit, `dump_entity:enemy` shows
    `og.Sprite.flash` > 0 and its position equal across the hit-stop ticks;
-   `dump_world` shows `og.Time` with `hitStop` > 0 on the stop's first tick.
-3. **Shake decays**: the og.Camera resource in a world dump shows `trauma`
-   rising on the hit and back to 0 within about a second.
+   `get:og.Time` shows `hitStop` > 0 on the stop's first tick.
+3. **Shake decays**: `get:og.Camera.trauma` on the hit and about a second
+   later shows it rising, then back to 0.
 4. **Feet do not skate, steps are heard**: count og.FlipbookEvent `step`
    events over a scripted walk (a game resource or a fact).
 5. **Floating text appears**: a `screenshot` 0.2 s after a hit shows the
@@ -298,7 +305,7 @@ outputs you read:
 8. **Determinism**: a playtest with `runs: 2` and
    `t.equal(run.hashes[1], run.hashes[0], ...)` over a session with hits,
    pickups and a hit stop: the juice must replay exactly.
-9. **No stray slow motion**: the last world dump shows `og.Time.scale` 1.
+9. **No stray slow motion**: `get:og.Time.scale` at the end of the run is 1.
 10. **Rooms scroll**: `get:og.Camera` on the ticks after the hero crosses a
     doorway shows `zoneScroll` rising from 0 to 1 (topdown's `door.og.ts`).
 

@@ -187,7 +187,18 @@ pub struct Probe {
     /// A screenshot waiting on its frame: it holds the clock and later steps.
     shot: Option<Shot>,
     sweeping: Option<SweepJob>,
+    derive: Option<DeriveFn>,
+    /// The tick of the last unnamed `get` and how many it has had, so a
+    /// second one on the same tick writes `get-<tick>-2.json`.
+    gets: (u64, u32),
 }
+
+/// The host's `derive` hook: what `get` answers for a record whose value the
+/// engine derives each frame from other state (a light og.DayNight drives).
+/// It is called with the entity (`None` for a resource), the record's name
+/// and the stored fields, and may replace or add fields. It reads the world
+/// only, as a pure function of it.
+pub type DeriveFn = Box<dyn Fn(&World, Option<Entity>, &str, &mut Map<String, Value>)>;
 
 /// What the host's mixer rendered last, for `listen`: the last `seconds`
 /// as a 16-bit stereo WAV and its rate, frames, peak and RMS.
@@ -230,6 +241,27 @@ pub fn stamp_of(event: &Value) -> f32 {
         .and_then(Value::as_f64)
         .filter(|a| a.is_finite())
         .map_or(0.0, |a| a.clamp(-1.0, 1.0) as f32)
+}
+
+/// og.Time as game code reads it (`world.resource(og.Time)`, a system's
+/// `time`): the clock, its rate, and the time scale the world keeps in
+/// og.TimeScale (scale, hitStop, scaledDt, scaledElapsed).
+pub fn time_json(world: &World) -> Map<String, Value> {
+    let t = world.time();
+    let s = world.time_scale();
+    let Value::Object(fields) = json!({
+        "tick": t.tick,
+        "dt": f64::from(t.dt),
+        "elapsed": t.elapsed,
+        "rate": tick_rate(world),
+        "scale": s.scale,
+        "hitStop": s.hit_stop,
+        "scaledDt": s.dt(&t),
+        "scaledElapsed": s.elapsed,
+    }) else {
+        unreachable!("an object")
+    };
+    fields
 }
 
 fn tick_rate(world: &World) -> u32 {
@@ -314,6 +346,8 @@ impl Probe {
             inbox: Inbox::default(),
             shot: None,
             sweeping: None,
+            derive: None,
+            gets: (u64::MAX, 0),
         })
     }
 
@@ -337,6 +371,12 @@ impl Probe {
     /// The bundle swap for `reload`.
     pub fn set_reloader(&mut self, reloader: Box<dyn Reloader>) {
         self.reloader = Some(reloader);
+    }
+
+    /// What `get` answers for records the engine derives from other state
+    /// ([`DeriveFn`]).
+    pub fn set_derive(&mut self, derive: DeriveFn) {
+        self.derive = Some(derive);
     }
 
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
@@ -962,24 +1002,35 @@ impl Probe {
                 }
             }
             "key_down" | "key_up" => {
-                let key = arg(0, "key_down:<Key>")?.to_owned();
-                let action = if step.action == "key_down" {
-                    KeyAction::Down
-                } else {
-                    KeyAction::Up
-                };
-                let event = InjectedInput::Key {
-                    key: key.clone(),
+                let (modifiers, held, key) = key_chord(arg(0, "key_down:[Mod+]<Key>")?)?;
+                let down = step.action == "key_down";
+                let action = if down { KeyAction::Down } else { KeyAction::Up };
+                // The modifiers go down before the key and up after it.
+                let modifier = |code: &str| InjectedInput::Key {
+                    key: code.to_owned(),
                     action,
                     modifiers: Modifiers::default(),
                 };
-                if self.deliver(world, &event) {
-                    Ok(())
-                } else {
-                    Err(format!(
-                        "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
-                    ))
+                let mut events: Vec<InjectedInput> = Vec::new();
+                if down {
+                    events.extend(held.iter().map(|c| modifier(c)));
                 }
+                events.push(InjectedInput::Key {
+                    key: key.clone(),
+                    action,
+                    modifiers,
+                });
+                if !down {
+                    events.extend(held.iter().rev().map(|c| modifier(c)));
+                }
+                for event in &events {
+                    if !self.deliver(world, event) {
+                        return Err(format!(
+                            "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
+                        ));
+                    }
+                }
+                Ok(())
             }
             "type" => {
                 if joined.is_empty() {
@@ -1126,7 +1177,10 @@ impl Probe {
                 let (target, text) = joined
                     .split_once('=')
                     .ok_or_else(|| format!("write `{usage}`"))?;
-                let value = value::text_json(text)?;
+                let value = match Self::set_target_field(world, target) {
+                    Some(field) => value::command_value(&field, text)?,
+                    None => value::text_json(text)?,
+                };
                 if let Some((resource, field)) = Self::resource_target(world, target) {
                     return Self::write_resource_field(world, resource, &field, &value);
                 }
@@ -1162,10 +1216,22 @@ impl Probe {
                     shown.push_str("...");
                 }
                 self.note(tick, false, format!("get {target} = {shown}"));
+                // Unnamed gets on one tick: get-<tick>.json, then -2, -3, ...
+                let mut path = output_path(args.get(1))?;
+                if path.is_none() {
+                    self.gets = if self.gets.0 == tick {
+                        (tick, self.gets.1 + 1)
+                    } else {
+                        (tick, 1)
+                    };
+                    if self.gets.1 > 1 {
+                        path = Some(format!("get-{tick:06}-{}.json", self.gets.1));
+                    }
+                }
                 self.outputs.push(Output {
                     tick,
                     action: "get".into(),
-                    path: output_path(args.get(1))?,
+                    path,
                     payload: Payload::Json(json!({
                         "kind": "get",
                         "target": target,
@@ -1288,6 +1354,22 @@ impl Probe {
         Ok((id, schema, index))
     }
 
+    /// The field a `set:` target names (`Resource.field`,
+    /// `<entity>.Component.field`), when it names one: a string field reads
+    /// its value as text, not numbers.
+    fn set_target_field(world: &World, target: &str) -> Option<og_core::FieldSchema> {
+        if let Some((id, field)) = Self::resource_target(world, target) {
+            let schema = world.schema(id).ok()?;
+            return schema.fields.get(schema.field_index(&field)?).cloned();
+        }
+        let parameter = match target.strip_prefix('#') {
+            Some(rest) => rest.splitn(3, '.').nth(2)?,
+            None => target.split_once('.')?.1,
+        };
+        let (_, schema, index) = Self::field_ref(world, parameter).ok()?;
+        schema.fields.into_iter().nth(index)
+    }
+
     /// Write one field of an entity's component through the schema. With
     /// `tunable_only`, a field without the `tunable` flag is refused.
     fn write_field(
@@ -1350,21 +1432,28 @@ impl Probe {
                 .ok()
                 .filter(|&id| world.has_resource_id(id))
         };
-        if let Some(id) = resource(target) {
+        let resource_json = |id: SchemaId| -> Result<(String, Map<String, Value>), String> {
             let schema = world.schema(id).map_err(|e| e.reason().to_owned())?;
             let bytes = world
                 .resource_bytes(id)
                 .map_err(|e| e.reason().to_owned())?;
-            return Ok(Value::Object(value::component_json(schema, &bytes)));
+            let mut fields = value::component_json(schema, &bytes);
+            if schema.name == <og_core::Time as og_core::Reflect>::NAME {
+                fields = time_json(world);
+            }
+            if let Some(derive) = &self.derive {
+                derive(world, None, &schema.name, &mut fields);
+            }
+            Ok((schema.name.clone(), fields))
+        };
+        if let Some(id) = resource(target) {
+            return Ok(Value::Object(resource_json(id)?.1));
         }
         if let Some((id, field)) = Self::resource_target(world, target) {
-            let schema = world.schema(id).map_err(|e| e.reason().to_owned())?;
-            let bytes = world
-                .resource_bytes(id)
-                .map_err(|e| e.reason().to_owned())?;
-            return value::component_json(schema, &bytes)
+            let (name, mut fields) = resource_json(id)?;
+            return fields
                 .remove(&field)
-                .ok_or_else(|| format!("'{}' has no field '{field}'", schema.name));
+                .ok_or_else(|| format!("'{name}' has no field '{field}'"));
         }
         // An entity: `#i.g` or a name, then `.Component[.field]`, where a
         // component's name may hold dots (`og.Transform`).
@@ -1391,7 +1480,11 @@ impl Probe {
             let id = world.id_by_name(name).ok()?;
             let schema = world.schema(id).ok()?;
             let bytes = world.get_bytes(e, id).ok()?;
-            Some(value::component_json(schema, &bytes))
+            let mut fields = value::component_json(schema, &bytes);
+            if let Some(derive) = &self.derive {
+                derive(world, Some(e), &schema.name, &mut fields);
+            }
+            Some(fields)
         };
         if let Some(fields) = read(rest) {
             return Ok(Value::Object(fields));
@@ -1990,4 +2083,33 @@ impl Probe {
         );
         json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "elements": elements})
     }
+}
+
+/// A key with the modifiers held for it, as `key_down` and `key_up` take
+/// it: `ArrowLeft`, `Shift+ArrowLeft`, `Meta+Shift+KeyZ` (`Shift`, `Ctrl`
+/// or `Control`, `Alt` or `Option`, `Meta`, `Cmd` or `Command`; any case).
+/// Command is `MetaLeft`, apart from Control's `ControlLeft`.
+fn key_chord(text: &str) -> Result<(Modifiers, Vec<&'static str>, String), String> {
+    let mut parts: Vec<&str> = text.split('+').collect();
+    let key = parts.pop().unwrap_or_default().trim().to_owned();
+    let mut m = Modifiers::default();
+    let mut held = Vec::new();
+    for p in parts {
+        let (flag, code) = match p.trim().to_ascii_lowercase().as_str() {
+            "shift" => (&mut m.shift, "ShiftLeft"),
+            "ctrl" | "control" => (&mut m.control, "ControlLeft"),
+            "alt" | "option" => (&mut m.alt, "AltLeft"),
+            "meta" | "cmd" | "command" => (&mut m.platform, "MetaLeft"),
+            other => {
+                return Err(format!(
+                    "'{other}' is not a modifier; write `key_down:Shift+ArrowLeft` with Shift, Ctrl, Alt or Meta (Cmd)"
+                ));
+            }
+        };
+        if !*flag {
+            *flag = true;
+            held.push(code);
+        }
+    }
+    Ok((m, held, key))
 }

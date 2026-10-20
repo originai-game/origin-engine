@@ -16,7 +16,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9895</sub>
+<sub>`api.ogt` line 9971</sub>
 
 ## Contents
 
@@ -65,7 +65,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 9970</sub>
+<sub>`api.ogt` line 10046</sub>
 
 <a id="fn-parse"></a>
 
@@ -93,7 +93,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 9978</sub>
+<sub>`api.ogt` line 10054</sub>
 
 <a id="fn-help"></a>
 
@@ -121,7 +121,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 9984</sub>
+<sub>`api.ogt` line 10060</sub>
 
 <a id="fn-schedule"></a>
 
@@ -151,7 +151,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 9990</sub>
+<sub>`api.ogt` line 10066</sub>
 
 ## Types
 
@@ -174,9 +174,9 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"scroll"` | `scroll:dx,dy`: scroll at the pointer. |
 | `"touch"` | `touch:<id>:<down\|move\|up>:<x,y \| ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere. |
 | `"gamepad"` | `gamepad:<a+b+...\|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it. |
-| `"key_down"` | `key_down:<Key>`: hold a key by its code. |
-| `"key_up"` | `key_up:<Key>`: release a key. |
-| `"type"` | `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. |
+| `"key_down"` | `key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl). |
+| `"key_up"` | `key_up:[Mod+]<Key>`: release a key, then the modifiers named before it. |
+| `"type"` | `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing. |
 | `"compose"` | `compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it. |
 | `"commit"` | `commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends. |
 | `"move_to_text"` | `move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`). |
@@ -185,8 +185,8 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"dump_world"` | `dump_world[:path]`: tables, systems and their matched counts. |
 | `"dump_entity"` | `dump_entity:<name>[:path]`: one entity's components and transform. |
 | `"dump_ui"` | `dump_ui[:path]`: the UI tree with bounds. |
-| `"set"` | `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema. |
-| `"get"` | `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON. |
+| `"set"` | `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped. |
+| `"get"` | `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...). |
 | `"seed"` | `seed:<n>`: reseed the Rng resource. |
 | `"pause"` | `pause`: hold the clock; advance still steps. |
 | `"resume"` | `resume`: release the clock. |
@@ -206,9 +206,9 @@ enum CoreAction {
   variant scroll "`scroll:dx,dy`: scroll at the pointer."
   variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
   variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
-  variant key_down "`key_down:<Key>`: hold a key by its code."
-  variant key_up "`key_up:<Key>`: release a key."
-  variant type "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone."
+  variant key_down "`key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl)."
+  variant key_up "`key_up:[Mod+]<Key>`: release a key, then the modifiers named before it."
+  variant type "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing."
   variant compose "`compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it."
   variant commit "`commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends."
   variant move_to_text "`move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`)."
@@ -217,8 +217,8 @@ enum CoreAction {
   variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
   variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
   variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
-  variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema."
-  variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON."
+  variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped."
+  variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...)."
   variant seed "`seed:<n>`: reseed the Rng resource."
   variant pause "`pause`: hold the clock; advance still steps."
   variant resume "`resume`: release the clock."
@@ -228,7 +228,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 9901</sub>
+<sub>`api.ogt` line 9977</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -255,7 +255,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 9933</sub>
+<sub>`api.ogt` line 10009</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -279,7 +279,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 9939</sub>
+<sub>`api.ogt` line 10015</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -304,7 +304,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 9946</sub>
+<sub>`api.ogt` line 10022</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -329,7 +329,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 9955</sub>
+<sub>`api.ogt` line 10031</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -352,4 +352,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 9963</sub>
+<sub>`api.ogt` line 10039</sub>

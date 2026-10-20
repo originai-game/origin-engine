@@ -62,10 +62,19 @@ if (skin.ok) og.ui.configure(world, { skin: skin.value });
 
 Make it the game's own by changing the skin file, never by passing colours
 to individual calls: copy the pack directory into the game's
-`assets/skins/<game>/`, then change `palette` (start with `accent`, `bg`,
-`surface`, `fg`), `ramp` and `fonts` (any OFL font; keep
-`fallback "fonts/NotoSansSC-Regular-subset.ttf"` for Chinese), and redraw
-the atlas if the frames should change. The art in the art direction of the
+`assets/skins/<game>/` (`cp -R .../skins/fantasy assets/skins/<game>`) and
+load `skins/<game>/skin.ogt`. Nothing in it needs rewriting: the ids in a
+skin file are read relative to the file first (`atlas "atlas.png"`, `body
+"Newsreader-Medium.ttf"`), then from `assets/` (`skins/fantasy/atlas.png`
+still works). The one asset outside the pack is its CJK `fallback`,
+`fonts/NotoSansSC-Regular-subset.ttf` (2.5 MB, shared by every pack, so
+not copied six times): a project made by `npm create @origingame/game`
+has it at that id; otherwise point the line at the game's own CJK font,
+or delete it when the game shows no Chinese, Japanese or Korean (the cook
+names the line it cannot find). Then change `palette` (start with
+`accent`, `bg`, `surface`, `fg`), `ramp` and `fonts` (any OFL font beside
+the skin file), and redraw the atlas if the frames should change (`og skin
+pack`, og-ui §6). The art in the art direction of the
 world (sprites, backgrounds) and the skin must agree: a pixel-art world in a
 neon UI reads as two games.
 
@@ -99,7 +108,10 @@ neon UI reads as two games.
   the player's own row and focus. If everything is accent, nothing is.
 - **Value before hue**: check the screen in greyscale. Text, the primary
   button and the player character must separate from their ground by value
-  alone (body text at least 4.5:1; the packs' test enforces it for theirs).
+  alone (body text at least 4.5:1; the packs' test enforces it for theirs:
+  every label ink, every button label in every state, and a text field's
+  placeholder, which draws in `fgSubtle` on the field's frame, so a copied
+  pack whose `fgSubtle` or `fill` moves must keep that pair at 4.5:1 too).
 - Saturated colour on large areas tires the eye: keep saturation for small
   things (the accent, icons, effects) and keep grounds calmer.
 - Status colours mean status: never use `danger` red as decoration.
@@ -315,9 +327,16 @@ per metre by `paintCanvasWorldScale`), `hatchingSpace surface` and
 `halftoneSpace surface` stick to the surfaces and wrap round forms, so
 nothing slides over the world as the camera moves; `screen` (the
 default) suits 2D, fixed cameras and a deliberate printed-sheet feel.
-Pixel sprites standing in a 3D set take `Sprite.dropShadow`; on a deck or
-a step give them `dropShadowHeight`, and over an og.Terrain their
-shadows follow the slope by themselves.
+When things move (characters, vehicles, a turning prop), take
+`hatchingSpace object` (and `halftoneSpace object`, `paintCanvasSpace
+object`): the marks are laid in each object's own space, so a walking
+figure carries its strokes instead of wading through them (terrain keeps
+the world's). `hatchingDepth` (0 to 1) gathers the strokes along
+silhouettes and creases as `inkDepth` inks them: the contour shading of
+an inked page. Pixel sprites standing in a 3D set take
+`Sprite.dropShadow`; on a deck or a step give them `dropShadowHeight`,
+and over an og.Terrain their shadows follow the slope, and bend into a
+hollow or over a ridge narrower than themselves, by themselves.
 
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
 is applied after the first scene spawns and before `start` runs (so

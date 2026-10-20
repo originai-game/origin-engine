@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# A broadleaf: 2.25 m across, 4.2 m tall, standing on y 0 (tools/make-assets.ts).
+model {
+  voxScale 0.15
+  voxOrigin bottom
+}

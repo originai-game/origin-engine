@@ -22,7 +22,7 @@
 //! unions are refused at compile time with a reason.
 //!
 //! Field types are the `og_core::reflect::ReflectField` set (`f32` ... `Mat4`,
-//! `bool`, `Bool8`, `Str64`, `Str256`). Two field attributes shape the
+//! `bool`, `Bool8`, `Str<N>`). Two field attributes shape the
 //! schema beyond metadata: `name = "camelCase"` sets the schema field name
 //! (the Rust ident otherwise), and `variants = ["a", "b"]` on a `u32` field
 //! makes it an `enum` field whose value is the variant index.

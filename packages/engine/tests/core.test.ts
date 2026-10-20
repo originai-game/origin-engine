@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 
 // The functional lane may run with a web module older than the native addon
 // (scripts/check.sh bun-functional): the tests that compare the two hosts
-// skip there and run in the full lane.
+// or load the web module skip there and run in the full lane.
 const STALE_WASM = process.env.OG_WASM_STALE === "1";
 
 declare const Bun: {
@@ -77,7 +77,7 @@ const NAMES = {
   emit: ["CrEmit", "og.KeyUp", "writes"],
 } as const;
 
-test("an undeclared access throws with the system and the record in dev and release builds, failing the tick", () => {
+test.skipIf(STALE_WASM)("an undeclared access throws with the system and the record in dev and release builds, failing the tick", () => {
   for (const host of ["node", "web"]) {
     const r = run<Undeclared>(host, "undeclared");
     for (const [kind, [system, record, list]] of Object.entries(NAMES)) {
@@ -91,7 +91,7 @@ test("an undeclared access throws with the system and the record in dev and rele
   }
 }, 120_000);
 
-test("a publish build refuses an undeclared access and logs it once per system, and the game keeps running", () => {
+test.skipIf(STALE_WASM)("a publish build refuses an undeclared access and logs it once per system, and the game keeps running", () => {
   const r = run<Undeclared>("publish", "undeclared");
   for (const [kind, [system, record, list]] of Object.entries(NAMES)) {
     const a = r[kind as keyof Undeclared];
@@ -179,7 +179,7 @@ test.skipIf(STALE_WASM)("input events carry their time within the tick, from the
 
 type Latency = { headless: number; outside: number; reported?: number; expected?: number; moved?: number; expectedMoved?: number };
 
-test("og.audio.outputLatency is 0 headless and the web host's report of its AudioContext reaches it between ticks", () => {
+test.skipIf(STALE_WASM)("og.audio.outputLatency is 0 headless and the web host's report of its AudioContext reaches it between ticks", () => {
   for (const host of ["node", "web"]) {
     const r = run<Latency>(host, "latency");
     expect(r.headless).toBe(0);

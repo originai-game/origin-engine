@@ -54,13 +54,18 @@ pub fn bindings(ix: &Index<'_>) -> String {
     for m in &api.modules {
         for item in &m.items {
             match item {
-                Item::Column(c) => columns.push(
-                    Json::obj()
+                Item::Column(c) => {
+                    let mut o = Json::obj()
                         .with("name", Json::str(c.name.clone()))
                         .with("array", Json::str(c.array.clone()))
                         .with("stride", Json::num(c.stride))
-                        .with("value", Json::str(c.value.to_string())),
-                ),
+                        .with("value", Json::str(c.value.to_string()));
+                    if c.capacity {
+                        // The stride is each field's capacity (`str(32)`).
+                        o.set("capacity", Json::Bool(true));
+                    }
+                    columns.push(o);
+                }
                 Item::Record(r) => {
                     let slot = match r.kind {
                         RecordKind::Component => 0,

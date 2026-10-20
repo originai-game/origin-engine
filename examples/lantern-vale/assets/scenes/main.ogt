@@ -1,0 +1,16 @@
+type scene
+version 1
+---
+# Lantern Vale's scene: the vale is built in code (src/world.ts); the scene
+# declares the far side's streaming group. Its models, its banner and its
+# wind stay off the GPU until the camera comes within 26 m of the far
+# side's heart, and go again past 34 m (og-game §6).
+name "Lantern Vale"
+stream "far-side" {
+  asset "models/pine.vox"
+  asset "models/ruins.vox"
+  asset "textures/banner.png"
+  distance 6 0 -30 26
+  unload 34
+  priority 2
+}

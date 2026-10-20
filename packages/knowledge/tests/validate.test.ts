@@ -212,6 +212,18 @@ test("every og.* name and Type.field a skill writes exists in the generated API"
   );
 });
 
+test("a field written as `key: value` or in a token's object literal is one the API has", () => {
+  const p = added((r) =>
+    edit(
+      join(r.pkg, "skills/og-audio/SKILL.md"),
+      (s) =>
+        `${s}\nLoop it with \`looping: true\`; \`loop: true\` and \`runs: 2\` are fine.\n\n\`\`\`ts\nworld.insert(e, og.AudioSource, { sound, loop: true, volumn: 0.5 });\n\`\`\`\n`,
+    ),
+  );
+  const why = "which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts";
+  expect(p.sort()).toEqual(["looping", "og.AudioSource.volumn"].map((n) => `skills/og-audio/SKILL.md: names \`${n}\`, ${why}`).sort());
+});
+
 test("og-taste §12's table is held to the catalogue, row by row", () => {
   const p = added((r) =>
     edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>
@@ -238,7 +250,7 @@ const TAUGHT: Record<string, string[]> = {
     "og.Sprite.dropShadow", "SpriteDesc.dropShadow", "stepFps", "og.load.textureArray", "SpriteDesc.arrayLayer", "og.Sprite.arrayLayer", "FlipbookInfo.array", "array true",
     "StreamBudget", "StreamStatus", "og.stream.release", "og.physics.raycast", "og.physics.shapeCast", "og.physics.overlap", "lanes", ".vox", "compress true",
   ],
-  "og-taste": ["extends", "GameDesc.look", "--premise", "--look", "og.render.look", "looks/catalogue.json"],
+  "og-taste": ["extends", "GameDesc.look", "--premise", "--look", "og.render.look", "looks/catalogue.json", "hatchingSpace object", "hatchingDepth"],
   "og-ui": ["og.ui.textArea", "og.ui.textField", "compose:", "commit:", "ellipsis", "maxLines", "fallbackFonts", "og.ui.a11y", "og.A11yAction", "og.ui.zoomView", "og.Pointers", "og.ui.hasIcon", "kerning"],
   "og-i18n": ["runtime true", "fallbackFonts", "shaped", "Kerning"],
   "og-build": ["cooked/stream/", "environment maps", "texture arrays", "palettes", "looks and LUTs", ".vox", "compress true", "stream true", "isolation", "OG_LANES", "dump_lanes", "compose:"],

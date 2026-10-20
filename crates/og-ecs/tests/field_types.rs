@@ -1,9 +1,10 @@
 //! The M6 field types in a world: a bool column is one byte per entity (a
 //! `Uint8Array` on the web) and round-trips through snapshot and hash; a
-//! mat4 column is sixteen f32 per entity; string fields ride on events only.
+//! mat4 column is sixteen f32 per entity; a string field is plain data in
+//! events, components and resources alike, and migrates across capacities.
 
 use og_core::math::Mat4;
-use og_core::{Bool8, ErrorKind, Schema, Str64};
+use og_core::{Bool8, ErrorKind, FieldSchema, FieldType, Schema, Str, Str64};
 use og_ecs::{QueryDesc, Reflect, SystemDesc, World, WorldDesc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
@@ -160,22 +161,28 @@ fn a_mat4_column_is_sixteen_floats_per_entity() {
 }
 
 #[test]
-fn strings_ride_on_events_only() {
+fn a_string_is_plain_data_in_events_components_and_resources() {
     let mut w = world();
     let said = w.id::<Said>().unwrap();
-    let e = w.spawn(()).unwrap();
     let hello = Said {
         text: Str64::new("hello").unwrap(),
         mood: 1,
     };
-    for err in [
-        w.spawn((hello,)).unwrap_err(),
-        w.insert(e, hello).unwrap_err(),
-        w.insert_resource(hello).unwrap_err(),
-    ] {
-        assert_eq!(err.kind(), ErrorKind::Schema);
-        assert!(err.reason().contains("only events carry"), "{err}");
-    }
+    // A component and a resource hold a string like any other field.
+    let e = w.spawn((hello,)).unwrap();
+    assert_eq!(w.get::<Said>(e).unwrap().text.as_str(), "hello");
+    w.insert_resource(hello).unwrap();
+    let mut packed = vec![0u8; 68];
+    packed[..2].copy_from_slice(b"hi");
+    let mut bad = packed.clone();
+    bad[3] = b'!';
+    let err = w.insert_bytes(e, said, &bad).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Invalid);
+    assert!(err.reason().contains("followed by non-zero bytes"), "{err}");
+    w.insert_bytes(e, said, &packed).unwrap();
+    assert_eq!(w.get::<Said>(e).unwrap().text.as_str(), "hi");
+    w.despawn(e).unwrap();
+    w.remove_resource::<Said>().unwrap();
 
     w.send(hello).unwrap();
     let mut raw = vec![0u8; 68];
@@ -217,5 +224,105 @@ fn strings_ride_on_events_only() {
     assert_eq!(
         *seen.lock().unwrap(),
         [("hello".to_owned(), 1), ("hey".to_owned(), 0)]
+    );
+}
+
+/// A player's profile: a name and a level.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+struct Profile {
+    name: Str<32>,
+    level: u32,
+}
+
+fn profile(name: &str, level: u32) -> Profile {
+    Profile {
+        name: Str::new(name).unwrap(),
+        level,
+    }
+}
+
+#[test]
+fn a_string_column_snapshots_and_hashes_by_its_text() {
+    let make = || {
+        let mut w = World::new(&WorldDesc::default()).unwrap();
+        w.register::<Profile>().unwrap();
+        let ada = w.spawn((profile("Ada", 3),)).unwrap();
+        for (name, level) in [("小灯", 1), ("", 0)] {
+            w.spawn((profile(name, level),)).unwrap();
+        }
+        (w, ada)
+    };
+    let ((a, ada), (b, _)) = (make(), make());
+    assert_eq!(
+        a.world_hash(),
+        b.world_hash(),
+        "the same text hashes the same"
+    );
+    let column = a.field::<Profile>("name").unwrap();
+    let q = QueryDesc {
+        read: vec!["Profile".into()],
+        ..QueryDesc::default()
+    };
+    let view = a.query(&q).unwrap().next().unwrap();
+    let bytes = view.read_bytes(column).unwrap();
+    assert_eq!(bytes.len(), 3 * 32, "one 32-byte lane per entity");
+    assert_eq!(&bytes[..4], b"Ada\0");
+    assert!(bytes[3..32].iter().all(|b| *b == 0), "zero-padded");
+    drop(view);
+
+    let snapshot = a.snapshot();
+    let mut c = World::new(&WorldDesc::default()).unwrap();
+    c.register::<Profile>().unwrap();
+    c.restore(&snapshot).unwrap();
+    assert_eq!(c.world_hash(), a.world_hash());
+    assert_eq!(c.snapshot(), snapshot);
+    assert_eq!(c.get::<Profile>(ada).unwrap(), profile("Ada", 3));
+
+    let (mut d, first) = make();
+    d.insert(first, profile("Bea", 3)).unwrap();
+    assert_ne!(d.world_hash(), a.world_hash(), "another text, another hash");
+}
+
+#[test]
+fn a_string_migrates_to_another_capacity_by_its_text() {
+    let mut a = World::new(&WorldDesc::default()).unwrap();
+    a.register::<Profile>().unwrap();
+    let short = a.spawn((profile("Ada", 3),)).unwrap();
+    let long = a.spawn((profile("Bartholomew the Bold", 9),)).unwrap();
+    let snapshot = a.snapshot();
+
+    let mut narrow = FieldSchema::new("name", FieldType::string(8).unwrap());
+    narrow.doc = "The name, in at most 8 bytes.".into();
+    let mut b = World::new(&WorldDesc::default()).unwrap();
+    b.register_schema(Schema {
+        name: "Profile".into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![narrow, FieldSchema::new("level", FieldType::U32)],
+    })
+    .unwrap();
+    let id = b.id_by_name("Profile").unwrap();
+    let report = b.restore_migrating(&snapshot).unwrap();
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| w.contains("Profile.name changed from str32 to str8")),
+        "{report:?}"
+    );
+    let mut ada = b"Ada".to_vec();
+    ada.resize(8, 0);
+    ada.extend(3u32.to_le_bytes());
+    assert_eq!(
+        b.get_bytes(short, id).unwrap(),
+        ada,
+        "a text that fits is kept"
+    );
+    let mut empty = vec![0u8; 8];
+    empty.extend(9u32.to_le_bytes());
+    assert_eq!(
+        b.get_bytes(long, id).unwrap(),
+        empty,
+        "one that does not starts empty"
     );
 }

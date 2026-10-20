@@ -58,6 +58,7 @@ declare module "bun:test" {
     toBeTrue(): void;
     toBeFalse(): void;
     toBeGreaterThan(value: number): void;
+    toBeGreaterThanOrEqual(value: number): void;
     toBeLessThan(value: number): void;
     toBeCloseTo(value: number, digits?: number): void;
     toBeNull(): void;

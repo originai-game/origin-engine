@@ -35,7 +35,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
-| [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
+| [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
 | [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
 
 ### `og-feel`
@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-882 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+887 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -397,6 +397,7 @@ Field units the docs and Tune use.
 | [`og.AiAgent`](ai.md#record-AiAgent) | component | ai | — |
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
+| [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
 | [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
@@ -519,6 +520,7 @@ Field units the docs and Tune use.
 | [`og.physics.setMesh`](physics.md#fn-setMesh) | function | physics | `og_physics_set_mesh` |
 | [`og.physics.setRagdollRig`](physics.md#fn-setRagdollRig) | function | physics | `og_physics_set_ragdoll_rig` |
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
+| [`og.physics.stats`](physics.md#fn-stats) | function | physics | `og_physics_stats` |
 | [`og.physics.vehicleWheels`](physics.md#fn-vehicleWheels) | function | physics | `og_physics_vehicle_wheels` |
 | [`og.physics.waterHeight`](physics.md#fn-waterHeight) | function | physics | `og_physics_water_height` |
 | [`og.platform.aiMark`](platform.md#fn-aiMark) | function | platform | `og_platform_ai_mark` |
@@ -732,6 +734,8 @@ Field units the docs and Tune use.
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
+| [`PhysicsPhase`](physics.md#type-PhysicsPhase) | struct | physics | — |
+| [`PhysicsStats`](physics.md#type-PhysicsStats) | struct | physics | — |
 | [`PickOperation`](probe.md#type-PickOperation) | struct | probe | — |
 | [`PickResult`](probe.md#type-PickResult) | struct | probe | — |
 | [`PIN_LEFT`](physics.md#const-PIN_LEFT) | constant | physics | — |
@@ -886,6 +890,7 @@ Field units the docs and Tune use.
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
+| [`str()`](reflect.md#column-str) | column kind | reflect | — |
 | [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
 | [`STREAM_LOADING`](stream.md#const-STREAM_LOADING) | constant | stream | — |
 | [`STREAM_QUEUED`](stream.md#const-STREAM_QUEUED) | constant | stream | — |

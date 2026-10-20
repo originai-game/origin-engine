@@ -101,7 +101,8 @@ pub use nav::{
 pub use physics_ext::{
     og_physics_cloth_points, og_physics_fluid_particles, og_physics_fluid3d_particles,
     og_physics_ragdoll_pose, og_physics_ragdoll_rig_from_skeleton, og_physics_rope_points,
-    og_physics_set_ragdoll_rig, og_physics_vehicle_wheels, og_physics_water_height,
+    og_physics_set_ragdoll_rig, og_physics_stats, og_physics_vehicle_wheels,
+    og_physics_water_height,
 };
 pub use platform::{
     og_platform_ai_mark, og_platform_answer, og_platform_info, og_platform_leaderboard_around,
@@ -148,6 +149,13 @@ pub(crate) fn parse(text: Option<&str>) -> Result<Value, String> {
 /// Installs the host's hooks (its dispatcher, view hand-out and clock).
 pub fn set_hooks(hooks: std::rc::Rc<dyn Hooks>) {
     engine::HOOKS.with(|h| *h.borrow_mut() = Some(hooks));
+}
+
+/// The wall clock og-physics times its per-phase stats with
+/// (`og.physics.stats`), callable on any thread the step runs on: natively
+/// it has its own; the web host gives each Worker's `performance.now`.
+pub fn set_physics_clock(clock: fn() -> f64) {
+    og_physics::set_clock(clock);
 }
 
 // The lifecycle members under their binding names, so a host's

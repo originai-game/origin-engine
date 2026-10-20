@@ -146,9 +146,100 @@ fn rest(rig: &RagdollRig, position: Vec3, rotation: Quat) -> Vec<(Vec3, Quat)> {
         .collect()
 }
 
+/// What a ragdoll's bones are told before the step.
+enum Bones {
+    /// Follow the animation kinematically: each bone's next pose.
+    Follow(Vec<rp::Pose>),
+    /// Simulated: their damping.
+    Damp(f32, f32),
+}
+
+/// One ragdoll's sync before the step, planned from its component, rig,
+/// targets and state (read only, by ranges of ragdolls on the lanes), then
+/// done to the rapier world in ragdoll order.
+struct Plan {
+    key: u64,
+    /// No state yet, or one for another rig: (re)built at `target`.
+    build: bool,
+    target: Vec<(Vec3, Quat)>,
+    /// The component with its blend moved.
+    blended: Ragdoll,
+    /// Going limp: each bone's velocity (from the animation) and its share
+    /// of the hit.
+    limp: Option<(Vec<rp::Vector>, rp::Vector)>,
+    /// Recovered: the bones kinematic again.
+    recover: bool,
+    bones: Bones,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn plan(
+    (e, position, rotation, r): &(Entity, Vec3, Quat, Ragdoll),
+    dt: f32,
+    states: &BTreeMap<u64, RagdollState>,
+    rigs: &BTreeMap<u64, Arc<RagdollRig>>,
+    targets: &BTreeMap<u64, Vec<(Vec3, Quat)>>,
+) -> Option<Plan> {
+    let key = e.to_bits();
+    let rig = rigs.get(&key)?;
+    let target = targets
+        .get(&key)
+        .cloned()
+        .unwrap_or_else(|| rest(rig, *position, *rotation));
+    let state = states.get(&key).filter(|s| s.rig == rig_key(rig));
+    let build = state.is_none();
+    // A ragdoll (re)built this tick starts kinematic, its last targets these.
+    let (dynamic, last) = state.map_or((false, &target), |s| (s.dynamic, &s.last));
+    let mut c = *r;
+    let rate = if r.blend_time > 0.0 {
+        dt / r.blend_time
+    } else {
+        1.0
+    };
+    let goal = r.weight.clamp(0.0, 1.0);
+    c.blend = if c.blend < goal {
+        (c.blend + rate).min(goal)
+    } else {
+        (c.blend - rate).max(goal)
+    };
+    let mut limp = None;
+    let mut recover = false;
+    let mut now_dynamic = dynamic;
+    if goal > 0.0 && !dynamic {
+        // Going limp: the bodies take the animation's velocity and the hit.
+        now_dynamic = true;
+        let n = rig.bones.len().max(1) as f32;
+        let velocities = (0..rig.bones.len())
+            .map(|i| v((target[i].0 - last[i].0) / dt.max(1e-6)))
+            .collect();
+        limp = Some((velocities, v(r.impulse / n)));
+    } else if goal <= 0.0 && dynamic && c.blend <= 0.0 {
+        // Recovered: the bodies follow the animation again.
+        now_dynamic = false;
+        recover = true;
+    }
+    let bones = if !now_dynamic {
+        Bones::Follow(target.iter().map(|&(p, q)| pose(p, q)).collect())
+    } else {
+        Bones::Damp(r.damping.max(0.0), r.damping.max(0.0) * 2.0)
+    };
+    Some(Plan {
+        key,
+        build,
+        target,
+        blended: c,
+        limp,
+        recover,
+        bones,
+    })
+}
+
 /// Every og.Ragdoll before the step: built at the animation's pose, its
 /// bones following it (weight 0) or simulated (weight above 0), its blend
-/// moved towards the weight.
+/// moved towards the weight. Each ragdoll is planned alone (by
+/// [`crate::Grains::ragdolls`] a task on the lanes from two of them), then
+/// its bodies are built and told their targets in ragdoll order, bone by
+/// bone, as one thread would.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn ragdolls(
     scene: &Scene,
@@ -170,67 +261,63 @@ pub(crate) fn ragdolls(
             remove(&mut sim.world, &s);
         }
     }
-    for (e, position, rotation, r) in &scene.ragdolls {
-        let key = e.to_bits();
-        let Some(rig) = rigs.get(&key) else { continue };
-        let target = targets
-            .get(&key)
-            .cloned()
-            .unwrap_or_else(|| rest(rig, *position, *rotation));
-        let stale = sim.ragdolls.get(&key).is_none_or(|s| s.rig != rig_key(rig));
-        if stale {
+    let plans: Vec<Option<Plan>> = {
+        let states = &sim.ragdolls;
+        let mut parts =
+            crate::lanes::map_ranges(scene.ragdolls.len(), crate::lanes::now().ragdolls, |r| {
+                scene.ragdolls[r]
+                    .iter()
+                    .map(|ragdoll| plan(ragdoll, dt, states, rigs, targets))
+                    .collect::<Vec<_>>()
+            });
+        if parts.len() == 1 {
+            parts.pop().unwrap_or_default()
+        } else {
+            parts.into_iter().flatten().collect()
+        }
+    };
+    for ((e, _, _, r), plan) in scene.ragdolls.iter().zip(plans) {
+        let Some(plan) = plan else { continue };
+        let key = plan.key;
+        if plan.build {
             if let Some(s) = sim.ragdolls.remove(&key) {
                 remove(&mut sim.world, &s);
             }
-            let s = build(&mut sim.world, key, rig, r, &target)?;
+            let rig = &rigs[&key];
+            let s = build(&mut sim.world, key, rig, r, &plan.target)?;
             sim.ragdolls.insert(key, s);
         }
         let state = sim.ragdolls.get_mut(&key).expect("inserted");
-        let mut c = *r;
-        let rate = if r.blend_time > 0.0 {
-            dt / r.blend_time
-        } else {
-            1.0
-        };
-        let goal = r.weight.clamp(0.0, 1.0);
-        c.blend = if c.blend < goal {
-            (c.blend + rate).min(goal)
-        } else {
-            (c.blend - rate).max(goal)
-        };
-        if goal > 0.0 && !state.dynamic {
-            // Going limp: the bodies take the animation's velocity and the hit.
+        if let Some((velocities, impulse)) = &plan.limp {
             state.dynamic = true;
-            let n = state.bones.len().max(1) as f32;
-            for (i, &h) in state.bones.iter().enumerate() {
+            for (&h, velocity) in state.bones.iter().zip(velocities) {
                 let rb = &mut sim.world.bodies[h];
                 rb.set_body_type(rp::RigidBodyType::Dynamic, true);
-                let (now, _) = target[i];
-                let (before, _) = state.last[i];
-                rb.set_linvel(v((now - before) / dt.max(1e-6)), true);
-                rb.apply_impulse(v(r.impulse / n), true);
+                rb.set_linvel(*velocity, true);
+                rb.apply_impulse(*impulse, true);
             }
-        } else if goal <= 0.0 && state.dynamic && c.blend <= 0.0 {
-            // Recovered: the bodies follow the animation again.
+        } else if plan.recover {
             state.dynamic = false;
             for &h in &state.bones {
                 sim.world.bodies[h].set_body_type(rp::RigidBodyType::KinematicPositionBased, true);
             }
         }
-        if !state.dynamic {
-            for (i, &h) in state.bones.iter().enumerate() {
-                let (p, q) = target[i];
-                sim.world.bodies[h].set_next_kinematic_position(pose(p, q));
+        match &plan.bones {
+            Bones::Follow(poses) => {
+                for (&h, at) in state.bones.iter().zip(poses) {
+                    sim.world.bodies[h].set_next_kinematic_position(*at);
+                }
             }
-        } else {
-            for &h in &state.bones {
-                let rb = &mut sim.world.bodies[h];
-                rb.set_linear_damping(r.damping.max(0.0));
-                rb.set_angular_damping(r.damping.max(0.0) * 2.0);
+            Bones::Damp(linear, angular) => {
+                for &h in &state.bones {
+                    let rb = &mut sim.world.bodies[h];
+                    rb.set_linear_damping(*linear);
+                    rb.set_angular_damping(*angular);
+                }
             }
         }
-        state.last = target;
-        out.ragdolls.push((*e, c));
+        state.last = plan.target;
+        out.ragdolls.push((*e, plan.blended));
     }
     Ok(())
 }

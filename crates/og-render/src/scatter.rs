@@ -846,8 +846,8 @@ impl ScatterRenderer {
                 } else {
                     ((lo + hi) * 0.5, (hi - lo).length() * 0.5 + grow)
                 };
-                let transforms: Vec<[[f32; 4]; 4]> =
-                    placed.iter().map(|m| m.to_cols_array_2d()).collect();
+                let transforms: Vec<crate::instances::GpuTransform> =
+                    placed.iter().map(crate::instances::gpu_transform).collect();
                 let buffer = (!transforms.is_empty()).then(|| {
                     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("scatter chunk"),

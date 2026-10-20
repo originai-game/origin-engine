@@ -78,6 +78,8 @@ interface Start {
   basis?: { js: string; wasm: string };
   /** The project's physics profile (project.ogt `profile`). */
   profile?: "2d" | "3d";
+  /** project.ogt's text (CreateOptions.project). */
+  project?: string;
   /** The locale og.i18n is asked for (the page's `navigator.language`). */
   locale?: string;
   /** The play surface in CSS pixels, its DPR and safe area: what the UI lays out in. */
@@ -88,7 +90,7 @@ interface Start {
   prime?: boolean;
 }
 
-type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean };
+type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; macKeys?: boolean };
 
 interface Call {
   type: "call";
@@ -545,7 +547,7 @@ export function startWorker(game: GameToken): void {
     if (!engine || !("time" in event) || event.time === undefined) return event;
     const { time, ...rest } = event;
     const ahead = behind + (last ? Math.max(0, now - last) : 0);
-    return { ...rest, at: stampAt(time, performance.timeOrigin + now, ahead, 1000 / engine.game.tick) } as InjectedInput;
+    return { ...rest, at: stampAt(time, performance.timeOrigin + now, ahead, 1000 / engine.rate) } as InjectedInput;
   };
   const pumpInput = (now: number) => {
     if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(stamped(event, now));
@@ -800,6 +802,7 @@ export function startWorker(game: GameToken): void {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
           ...(data.root === undefined ? {} : { root: data.root }),
           ...(data.profile === undefined ? {} : { profile: data.profile }),
+          ...(data.project === undefined ? {} : { project: data.project }),
           ...(data.locale ? { locale: data.locale } : {}),
           deferStart: true,
           a11y: true,

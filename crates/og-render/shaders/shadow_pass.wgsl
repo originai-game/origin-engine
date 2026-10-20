@@ -25,7 +25,14 @@ fn paraboloid_local(v: vec3<f32>, sigma: f32) -> vec3<f32> {
 // over 1 + its z), and the depth is distance / range. Points far behind the
 // hemisphere keep a finite position; the fragment stage drops them.
 fn shadow_clip(world: vec4<f32>) -> vec4<f32> {
-  if (shadow_pass.paraboloid.x < 0.5) { return shadow_pass.view_proj * world; }
+  return shadow_project(world, shadow_pass.view_proj * world);
+}
+
+// `shadow_clip` given the point through the pass's view projection,
+// `flat` (a point an instance's matrix moved is projected with
+// `mul_point`, instance.wgsl).
+fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
+  if (shadow_pass.paraboloid.x < 0.5) { return flat; }
   let l = paraboloid_local(world.xyz - shadow_pass.light.xyz, shadow_pass.paraboloid.y);
   let d = max(length(l), 1e-6);
   let q = l / d;

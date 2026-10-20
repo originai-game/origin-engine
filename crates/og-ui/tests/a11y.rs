@@ -5,7 +5,9 @@
 //! Ways it could fail, each covered below:
 //! - a widget has no role, or the wrong one (a switch read as a button);
 //! - a control has no name (an icon button, a stepper's − and +, a field
-//!   that shows only its text, a slider beside its row's label), or a value or state goes stale (a checked
+//!   that shows only its text, a slider beside its row's label), a text
+//!   field is named by its placeholder or its text when a label names it
+//!   (the placeholder is its description), or a value or state goes stale (a checked
 //!   box not `checked`, a slider's number missing, the chosen tab not
 //!   `selected`);
 //! - the probe's elements and the tree disagree;
@@ -24,6 +26,7 @@ struct Form {
     check: bool,
     volume: f32,
     name: String,
+    nick: String,
     tab: usize,
     choice: usize,
     count: f32,
@@ -73,6 +76,35 @@ fn form(ui: &mut Ui, f: &mut Form) {
             &FieldDesc {
                 placeholder: "Your name".into(),
                 ..FieldDesc::default()
+            },
+        );
+        // A settings row: the label names the field, the placeholder
+        // describes it (lantern-vale FINDINGS #23 heard "Your name").
+        ui.row(
+            "Player",
+            Element {
+                width: Size::grow(),
+                ..Element::row()
+            },
+            |ui| {
+                ui.label("Label", "Lamplighter", LabelDesc::default());
+                ui.text_field(
+                    "Field",
+                    &mut f.nick,
+                    &FieldDesc {
+                        placeholder: "Your name".into(),
+                        ..FieldDesc::default()
+                    },
+                );
+                let mut note = String::new();
+                ui.text_area(
+                    "Note",
+                    &mut note,
+                    &TextAreaDesc {
+                        placeholder: "A note".into(),
+                        ..TextAreaDesc::default()
+                    },
+                );
             },
         );
         ui.tabs("Mode", &["Easy", "Hard"], &mut f.tab, TabsDesc::default());
@@ -140,6 +172,7 @@ fn every_widget_has_a_role_a_name_and_its_state() {
         on: true,
         volume: 35.0,
         name: "Ada".into(),
+        nick: "Mei".into(),
         tab: 1,
         count: 3.0,
         ..Form::default()
@@ -176,7 +209,22 @@ fn every_widget_has_a_role_a_name_and_its_state() {
         "0.50",
         "a control without text takes the label before it"
     );
-    assert_eq!(has("Form/Name", "textbox", "Your name").value, "Ada");
+    // A field alone is named by its placeholder; one after its row's label
+    // by the label, the placeholder its description, whatever it holds.
+    let alone = has("Form/Name", "textbox", "Your name");
+    assert_eq!(
+        (alone.value.as_str(), alone.description.as_str()),
+        ("Ada", "")
+    );
+    let labelled = has("Form/Player/Field", "textbox", "Lamplighter");
+    assert_eq!(
+        (labelled.value.as_str(), labelled.description.as_str()),
+        ("Mei", "Your name"),
+        "the label names it, the placeholder describes it"
+    );
+    // An area after a field is not labelled by it: its placeholder names it.
+    let area = has("Form/Player/Note", "textbox", "A note");
+    assert_eq!(area.description, "");
     has("Form/Mode", "tablist", "Mode");
     assert!(
         has("Form/Mode/Tab#1", "tab", "Hard")
@@ -310,7 +358,8 @@ fn asked(act: og_input::A11yAct, path: &str) -> InputFrame {
 /// A screen reader's requests (`InputFrame::a11y`, og-input's
 /// `og.A11yAction`) act on the control the tree names: Focus moves focus
 /// there with the ring, Activate presses it as Enter does (a switch
-/// toggles, a tab is chosen), Increment and Decrement step a slider, a
+/// toggles, a tab is chosen), Increment and Decrement step a slider and a
+/// stepper's spinbutton, a
 /// text field takes the focus to edit; a path outside an open dialog, or
 /// naming no control, does nothing.
 ///
@@ -340,6 +389,33 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Volume"));
     tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Volume"));
     assert_eq!(f.volume, 5.0);
+    // A stepper's spinbutton adjusts as a whole (the mirror's native
+    // control, VoiceOver's swipe up and down), within its range.
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Count"));
+    assert_eq!(f.count, 1.0, "increment steps the stepper");
+    let twice = InputFrame {
+        a11y: vec![
+            (A11yAct::Increment, "Form/Count".to_owned()),
+            (A11yAct::Increment, "Form/Count".to_owned()),
+        ],
+        ..InputFrame::default()
+    };
+    tick(&mut ui, &mut f, twice);
+    assert_eq!(f.count, 3.0, "two requests in a tick, two steps");
+    let node = ui
+        .a11y()
+        .nodes
+        .iter()
+        .find(|n| n.path == "Form/Count")
+        .cloned();
+    assert_eq!(
+        node.map(|n| (n.role, n.value)),
+        Some(("spinbutton".into(), "3".into()))
+    );
+    for _ in 0..5 {
+        tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Count"));
+    }
+    assert_eq!(f.count, 0.0, "not past its minimum");
     tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Name"));
     assert_eq!(ui.a11y().focused, "Form/Name", "a field takes the focus");
     tick(
@@ -359,6 +435,8 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     }
     tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Music"));
     assert!(f.on, "the switch under the dialog did not toggle");
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Count"));
+    assert_eq!(f.count, 0.0, "nor the stepper");
     tick(
         &mut ui,
         &mut f,
@@ -378,8 +456,9 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
 }
 
 /// The page's preferences arrive with the viewport: reduced motion and
-/// reduced transparency turn the theme's flags on, more contrast takes the
-/// high-contrast variant,
+/// reduced transparency turn the theme's flags on (reduced transparency
+/// also flattens the scrim and the translucent fills, as the game's own
+/// flag does), more contrast takes the high-contrast variant,
 /// over whatever the game configured, and leave again when the page
 /// drops them.
 #[test]
@@ -408,6 +487,40 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
                 "high contrast inks muted text as fg"
             );
         }
+        // Reduced transparency flattens the scrim and the translucent fills.
+        let p = t.palette;
+        let flat = [
+            p.scrim,
+            p.fill,
+            p.fill_strong,
+            p.accent_soft,
+            p.material_thick,
+        ];
+        assert_eq!(
+            flat.iter().all(|c| c.alpha == 1.0),
+            reduced,
+            "flat under reduced transparency only: {flat:?}"
+        );
+        if reduced && !high {
+            let c = configured.palette;
+            assert_eq!(
+                p.fill,
+                c.fill.over(c.surface),
+                "a fill as it looks on a surface"
+            );
+            assert_eq!(p.scrim, c.scrim.over(c.bg));
+            assert_eq!(p.fg, c.fg, "opaque inks unchanged");
+        }
     }
     assert_eq!(*ui.theme(), configured, "the configured theme is back");
+    // A game's own reduced transparency flattens the same way.
+    ui.set_theme(Theme {
+        reduced_transparency: true,
+        ..configured
+    });
+    ui.begin(InputFrame::default(), at(false, false));
+    form(&mut ui, &mut f);
+    ui.end();
+    assert_eq!(ui.theme().palette.scrim.alpha, 1.0);
+    assert_eq!(*ui.theme(), configured.to_reduced_transparency());
 }

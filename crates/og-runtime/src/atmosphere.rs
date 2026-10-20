@@ -96,6 +96,97 @@ fn hours(d: &Value, tick: u64, dt: f32) -> f32 {
     (start + tick as f64 * f64::from(dt) * speed).rem_euclid(24.0) as f32
 }
 
+/// An enabled og.DayNight at the world's tick: its row, the clock, the
+/// look, and the directional light's intensity (the look's times
+/// lightIntensity).
+struct DayNightNow {
+    d: Value,
+    hours: f32,
+    look: og_render::DayNightLook,
+    intensity: f32,
+}
+
+/// What og.DayNight makes of the frame at the world's tick, or `None` when it
+/// is absent or disabled. A pure function of the world: extraction draws
+/// it, and the probe's `get` answers it ([`derive`]), so what is read is
+/// what is drawn.
+fn day_night_now(world: &World, layout: Option<&Layout>) -> Option<DayNightNow> {
+    let d = resource(world, layout)?;
+    if !on(&d, "enabled", false) {
+        return None;
+    }
+    let time = world.time();
+    let (tilt, azimuth) = (f(&d, "tilt", 25.0), f(&d, "azimuth", 0.0));
+    let now = hours(&d, time.tick, time.dt);
+    let look = og_render::day_night(now, tilt, azimuth);
+    let intensity = look.light_intensity * f(&d, "lightIntensity", 1.0).max(0.0);
+    Some(DayNightNow {
+        d,
+        hours: now,
+        look,
+        intensity,
+    })
+}
+
+fn xyz(v: Vec3) -> Value {
+    json!([v.x, v.y, v.z])
+}
+
+/// What the probe's `get` answers for records og.DayNight drives (the
+/// `og_probe::DeriveFn` the runtime installs): og.DayNight gains the clock
+/// and the light it makes (`hours`, `toSun`, `toLight`, `lightColor`,
+/// `lightIntensity`); the first og.DirectionalLight, the one it drives, is
+/// answered with the colour and intensity it is drawn with, `toLight` (the
+/// unit vector towards the sun or the moon that replaces the entity's -Z)
+/// and `drivenBy`. Reads only; the world is never written.
+pub(crate) fn derive(
+    world: &World,
+    layouts: &BTreeMap<String, Layout>,
+    entity: Option<Entity>,
+    name: &str,
+    fields: &mut serde_json::Map<String, Value>,
+) {
+    let driven = match (name, entity) {
+        ("og.DayNight", None) => false,
+        ("og.DirectionalLight", Some(e)) => {
+            let first = rows(world, layouts.get("og.DirectionalLight"))
+                .into_iter()
+                .next()
+                .map(|(bits, _)| bits);
+            if first != Some(e.to_bits()) {
+                return;
+            }
+            true
+        }
+        _ => return,
+    };
+    let Some(now) = day_night_now(world, layouts.get("og.DayNight")) else {
+        return;
+    };
+    let c = now.look.light_color;
+    if driven {
+        // The stored colour's lanes (a fourth, if any, kept).
+        let mut color = fields.get("color").cloned().unwrap_or(json!([1, 1, 1]));
+        if let Some(lanes) = color.as_array_mut() {
+            for (i, v) in [c.x, c.y, c.z].into_iter().enumerate() {
+                if let Some(slot) = lanes.get_mut(i) {
+                    *slot = json!(v);
+                }
+            }
+        }
+        fields.insert("color".into(), color);
+        fields.insert("intensity".into(), json!(now.intensity));
+        fields.insert("toLight".into(), xyz(now.look.light_direction));
+        fields.insert("drivenBy".into(), json!("og.DayNight"));
+    } else {
+        fields.insert("hours".into(), json!(now.hours));
+        fields.insert("toSun".into(), xyz(now.look.sun_direction));
+        fields.insert("toLight".into(), xyz(now.look.light_direction));
+        fields.insert("lightColor".into(), xyz(c));
+        fields.insert("lightIntensity".into(), json!(now.intensity));
+    }
+}
+
 /// og.Fog, og.Sky, og.DayNight, og.Weather, og.Water, og.Water2D,
 /// og.Fluid2D, og.Fluid3D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
 /// the instances it added (cloth), for per-object motion.
@@ -149,22 +240,23 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 
     // The day-night cycle: light, sky and ambient from the clock.
     let mut fog_tint = None;
-    if let Some(d) = resource(world, layouts.day_night.as_ref())
-        && on(&d, "enabled", false)
+    if let Some(DayNightNow {
+        d,
+        hours: now,
+        look,
+        intensity,
+    }) = day_night_now(world, layouts.day_night.as_ref())
     {
         let (tilt, azimuth) = (f(&d, "tilt", 25.0), f(&d, "azimuth", 0.0));
-        let now = hours(&d, tick, time.dt);
-        let look = og_render::day_night(now, tilt, azimuth);
         // The image-based light steps every `step` game minutes.
         let step = f(&d, "step", 10.0).clamp(1.0, 120.0) / 60.0;
         let mut stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
         // The moon opposite the sun drawn this frame (moon_direction zero).
         stepped.sky.moon_size = f(&d, "moonSize", 1.6);
         stepped.sky.moon_phase = f(&d, "moonPhase", 0.5);
-        let scale = f(&d, "lightIntensity", 1.0).max(0.0);
         scene.light.direction_to_light = look.light_direction;
         scene.light.color = look.light_color;
-        scene.light.intensity = look.light_intensity * scale;
+        scene.light.intensity = intensity;
         scene.environment.intensity = look.ambient;
         scene.environment.sky = ProceduralSky {
             sun_direction: stepped.sun_direction,
@@ -618,7 +710,12 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
         let s = super::assets::index_of(shader)
             .and_then(|i| rs.atmo.shaders.get(i).copied())
             .ok_or_else(|| format!("shader {shader} is not loaded in this world"))?;
-        let m = super::api::material(og_render::StandardMaterial::default(), &desc, &rs.textures)?;
+        let m = super::api::material(
+            og_render::StandardMaterial::default(),
+            &desc,
+            &rs.textures,
+            &rs.texture_arrays,
+        )?;
         let handle = rs.scene.add_standard_material(m);
         rs.scene.set_material_shader(handle, Some(s));
         rs.materials.push(handle);

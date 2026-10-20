@@ -1373,11 +1373,13 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
 
 /// A StandardMaterialDesc applied over `base` (fields the desc omits keep
 /// their values): og-render's StandardMaterial carries every field under
-/// the same name; texture fields are Texture handles (null clears them).
+/// the same name; texture fields are Texture handles and texture-array
+/// fields TextureArray handles (null clears them).
 pub(crate) fn material(
     base: og_render::StandardMaterial,
     desc: &Value,
     textures: &[og_render::TextureHandle],
+    arrays: &[super::assets::LoadedArray],
 ) -> Result<og_render::StandardMaterial, String> {
     let mut m = base;
     let num = |k: &str| desc[k].as_f64().map(|v| v as f32);
@@ -1494,6 +1496,30 @@ pub(crate) fn material(
     set!(anisotropy, num("anisotropy"));
     set!(anisotropyRotation, num("anisotropyRotation"));
     set!(anisotropyMap, tex("anisotropyMap")?);
+    let array = |k: &str| -> Result<Option<u32>, String> {
+        match desc.get(k) {
+            None => Ok(None),
+            Some(Value::Null) => Ok(Some(0)),
+            Some(v) => {
+                let a = v.as_f64().unwrap_or(-1.0);
+                let loaded = index_of(a)
+                    .and_then(|i| arrays.get(i))
+                    .ok_or_else(|| format!("{k}: texture array {a} is not loaded in this world"))?;
+                let h = loaded.handle.ok_or_else(|| {
+                    format!(
+                        "{k}: {}'s streaming group is not resident (the array loads with it)",
+                        loaded.id
+                    )
+                })?;
+                Ok(Some(h.slot()))
+            }
+        }
+    };
+    let layer = |k: &str| desc[k].as_f64().map(|v| v.max(0.0) as u32);
+    set!(mapArray, array("mapArray")?);
+    set!(mapLayer, layer("mapLayer"));
+    set!(normalMapArray, array("normalMapArray")?);
+    set!(normalMapLayer, layer("normalMapLayer"));
     Ok(m)
 }
 
@@ -1508,7 +1534,12 @@ pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
         let desc = parse(desc.as_deref())?;
         // three.js MeshStandardMaterial defaults: white, metalness 0, roughness 1.
         let mut rs = eng.render.borrow_mut();
-        let m = material(og_render::StandardMaterial::default(), &desc, &rs.textures)?;
+        let m = material(
+            og_render::StandardMaterial::default(),
+            &desc,
+            &rs.textures,
+            &rs.texture_arrays,
+        )?;
         let handle = rs.scene.add_standard_material(m);
         rs.materials.push(handle);
         Ok(json!(material_handle(rs.materials.len() - 1)))
@@ -1527,7 +1558,7 @@ pub fn og_render_update_material(world: u32, handle: f64, desc: Option<String>) 
             .scene
             .standard_material(h)
             .ok_or("material is not alive")?;
-        let m = material(current, &desc, &rs.textures)?;
+        let m = material(current, &desc, &rs.textures, &rs.texture_arrays)?;
         rs.scene.set_standard_material(h, m);
         Ok(())
     })())
@@ -2156,6 +2187,19 @@ pub fn og_load_error(world: u32, asset: f64) -> String {
     json!(reason).to_string()
 }
 
+/// A model's clip names from its `#anim` blob, in glTF order; none when the
+/// cook wrote no `#anim` (no skins, clips or morph targets).
+fn clip_names(a: &assets::Assets, model: &str) -> Result<Vec<String>, String> {
+    let id = og_cook::runtime::anim_id(model);
+    if a.bundle_for(&id).is_err() {
+        return Ok(Vec::new());
+    }
+    let (bytes, bundle) = a.blob(&id)?;
+    bundle
+        .clip_names(&id, bytes.bytes())
+        .map_err(|e| e.to_string())
+}
+
 pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
     result((|| {
         let eng = engine(world)?;
@@ -2172,7 +2216,7 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
                 "scenes": scenes,
                 "geometries": geometries.iter().map(|g| *g as f64).collect::<Vec<_>>(),
                 "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),
-                "animations": Vec::<String>::new(),
+                "animations": clip_names(&a, &e.path)?,
             })),
             _ => Err(format!("{} is not a glTF", e.path)),
         }

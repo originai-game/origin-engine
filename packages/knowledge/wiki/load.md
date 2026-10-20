@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3298</sub>
+<sub>`api.ogt` line 3322</sub>
 
 ## Contents
 
@@ -49,7 +49,7 @@ module load {
 | [`og.load.fontInfo`](#fn-fontInfo) | function | A loaded font's metrics. |
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle. |
-| [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
+| [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
@@ -99,7 +99,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3402</sub>
+<sub>`api.ogt` line 3426</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -129,7 +129,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3409</sub>
+<sub>`api.ogt` line 3433</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -157,13 +157,15 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3416</sub>
+<sub>`api.ogt` line 3440</sub>
 
 <a id="fn-gltf"></a>
 
 ### `og.load.gltf`
 
 Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+
+A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame).
 
 ```ts
 og.load.gltf(world: World, path: string, desc?: GltfDesc): Result<Asset>
@@ -182,6 +184,7 @@ Binding symbol `og_load_gltf` · publish builds: kept
 ```ogt
 fn gltf {
   doc "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once."
+  doc "A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame)."
   param world World "The world that owns the asset."
   param path String "The asset id, such as `models/ship.glb`."
   param desc GltfDesc "Scene and shadow options."
@@ -189,7 +192,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3422</sub>
+<sub>`api.ogt` line 3446</sub>
 
 <a id="fn-scene"></a>
 
@@ -219,7 +222,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3430</sub>
+<sub>`api.ogt` line 3455</sub>
 
 <a id="fn-font"></a>
 
@@ -249,7 +252,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3437</sub>
+<sub>`api.ogt` line 3462</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -279,7 +282,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3444</sub>
+<sub>`api.ogt` line 3469</sub>
 
 <a id="fn-sound"></a>
 
@@ -312,7 +315,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3451</sub>
+<sub>`api.ogt` line 3476</sub>
 
 <a id="fn-lut"></a>
 
@@ -342,13 +345,13 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3459</sub>
+<sub>`api.ogt` line 3484</sub>
 
 <a id="fn-environment"></a>
 
 ### `og.load.environment`
 
-A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
+A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
 
 ```ts
 og.load.environment(world: World, path: string): Result<EnvironmentMap>
@@ -365,14 +368,14 @@ Binding symbol `og_load_environment` · publish builds: kept
 
 ```ogt
 fn environment {
-  doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
+  doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `env/studio.ogt`."
   returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
 }
 ```
 
-<sub>`api.ogt` line 3466</sub>
+<sub>`api.ogt` line 3491</sub>
 
 <a id="fn-emitter"></a>
 
@@ -402,7 +405,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3473</sub>
+<sub>`api.ogt` line 3498</sub>
 
 <a id="fn-shader"></a>
 
@@ -432,7 +435,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3480</sub>
+<sub>`api.ogt` line 3505</sub>
 
 <a id="fn-texture"></a>
 
@@ -465,7 +468,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3487</sub>
+<sub>`api.ogt` line 3512</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -498,7 +501,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 3495</sub>
+<sub>`api.ogt` line 3520</sub>
 
 <a id="fn-skin"></a>
 
@@ -528,7 +531,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3503</sub>
+<sub>`api.ogt` line 3528</sub>
 
 <a id="fn-look"></a>
 
@@ -558,7 +561,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3510</sub>
+<sub>`api.ogt` line 3535</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -588,7 +591,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3517</sub>
+<sub>`api.ogt` line 3542</sub>
 
 <a id="fn-palette"></a>
 
@@ -618,7 +621,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 3524</sub>
+<sub>`api.ogt` line 3549</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -648,7 +651,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3531</sub>
+<sub>`api.ogt` line 3556</sub>
 
 <a id="fn-status"></a>
 
@@ -678,7 +681,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3538</sub>
+<sub>`api.ogt` line 3563</sub>
 
 <a id="fn-error"></a>
 
@@ -708,7 +711,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3545</sub>
+<sub>`api.ogt` line 3570</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -738,7 +741,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3552</sub>
+<sub>`api.ogt` line 3577</sub>
 
 <a id="fn-animation"></a>
 
@@ -771,7 +774,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3559</sub>
+<sub>`api.ogt` line 3584</sub>
 
 <a id="fn-rig"></a>
 
@@ -801,7 +804,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3567</sub>
+<sub>`api.ogt` line 3592</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -831,7 +834,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3574</sub>
+<sub>`api.ogt` line 3599</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -861,7 +864,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3581</sub>
+<sub>`api.ogt` line 3606</sub>
 
 ## Components, resources and events
 
@@ -884,7 +887,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3397</sub>
+<sub>`api.ogt` line 3421</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -907,7 +910,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3588</sub>
+<sub>`api.ogt` line 3613</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -932,7 +935,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3594</sub>
+<sub>`api.ogt` line 3619</sub>
 
 ## Types
 
@@ -948,7 +951,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 3304</sub>
+<sub>`api.ogt` line 3328</sub>
 
 <a id="type-Font"></a>
 
@@ -962,7 +965,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 3305</sub>
+<sub>`api.ogt` line 3329</sub>
 
 <a id="type-Sound"></a>
 
@@ -976,7 +979,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 3306</sub>
+<sub>`api.ogt` line 3330</sub>
 
 <a id="type-Skin"></a>
 
@@ -990,7 +993,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 3307</sub>
+<sub>`api.ogt` line 3331</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1004,7 +1007,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 3308</sub>
+<sub>`api.ogt` line 3332</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1029,7 +1032,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 3331</sub>
+<sub>`api.ogt` line 3355</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1055,7 +1058,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 3338</sub>
+<sub>`api.ogt` line 3362</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1068,7 +1071,7 @@ What a loaded glTF holds.
 | `scenes` | `number` | `0` | — | — | — | How many scenes it has. |
 | `geometries` | `readonly Geometry[]` | `[]` | — | — | — | Its geometries, in glTF mesh-primitive order. |
 | `materials` | `readonly Material[]` | `[]` | — | — | — | Its materials, in glTF order, then the default material. |
-| `animations` | `readonly string[]` | `[]` | — | — | — | Its animation clip names (the cook counts clips and does not cook them yet, so this is empty). |
+| `animations` | `readonly string[]` | `[]` | — | — | — | Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name. |
 
 ```ogt
 struct GltfInfo {
@@ -1076,11 +1079,11 @@ struct GltfInfo {
   field scenes u32 "How many scenes it has."
   field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
   field materials List.Material "Its materials, in glTF order, then the default material."
-  field animations List.String "Its animation clip names (the cook counts clips and does not cook them yet, so this is empty)."
+  field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
 }
 ```
 
-<sub>`api.ogt` line 3346</sub>
+<sub>`api.ogt` line 3370</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1103,7 +1106,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3354</sub>
+<sub>`api.ogt` line 3378</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1136,7 +1139,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3361</sub>
+<sub>`api.ogt` line 3385</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1167,7 +1170,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3373</sub>
+<sub>`api.ogt` line 3397</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1198,7 +1201,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 3386</sub>
+<sub>`api.ogt` line 3410</sub>
 
 ## Column kinds
 
@@ -1219,7 +1222,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 3310</sub>
+<sub>`api.ogt` line 3334</sub>
 
 ```ogt
 column Asset {
@@ -1230,7 +1233,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 3317</sub>
+<sub>`api.ogt` line 3341</sub>
 
 ```ogt
 column Sound {
@@ -1241,4 +1244,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 3324</sub>
+<sub>`api.ogt` line 3348</sub>

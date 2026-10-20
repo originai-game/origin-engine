@@ -77,12 +77,12 @@ and when it runs still unknown, warns and the script continues. `type` and
 | `touch_move_to:<ui id>` | pointer to the centre of an element: an id (topmost first) or a `Parent/Child` path | warns "target not found" |
 | `move_to_text:[=]text[@N]` | pointer to the element showing the text: substring, `=` exact, Nth match (0-based, negative from the end), topmost first | warns |
 | `touch_move:x,y` / `touch_start` / `touch_end` / `scroll:dx,dy` | pointer move, left press and release where the pointer is, wheel at the pointer | — |
-| `key_down:<Key>` / `key_up:<Key>` / `type:<text>` | `KeyboardEvent.code` keys; `type` presses one key per character, two ticks apart, Shift for capitals and symbols (US layout) | — |
+| `key_down:[Mod+]<Key>` / `key_up:[Mod+]<Key>` / `type:<text>` | `KeyboardEvent.code` keys; a chord names its modifiers first (`Meta+ArrowLeft` for Command, `Ctrl+Shift+KeyZ`; Shift, Ctrl/Control, Alt/Option, Meta/Cmd/Command), held before the key goes down and released after it goes up; `type` presses one key per character, two ticks apart, Shift for capitals and symbols (US layout) | — |
 | `teleport:<entity>:x,y[,z]` | write `og.Transform.position` (two numbers keep z) | — |
 | `frame_entity:<entity>` | turn `og.Camera.quaternion` so its -Z looks at the entity | warns without `og.Camera` |
 | `dump_world[:path]` / `dump_entity:<entity>[:path]` / `dump_ui[:path]` | JSON outputs, as `dump` returns them | `dump_ui` is empty |
-| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `1,2,3`); range-checked, never clamped | — |
-| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema: a log line `get <target> = <value>` and a JSON output | `get-<tick>.json` |
+| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `true`/`false` for a bool, `1,2,3`); refused outside the field's `min`/`max` (as a look's cook is; game code's own writes are stored as given), never clamped | — |
+| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema as game code sees it (`og.Time` with its rate and time scale; a light `og.DayNight` drives with the colour and intensity it is drawn with, through the host's `set_derive`): a log line `get <target> = <value>` and a JSON output | `get-<tick>.json`, then `get-<tick>-2.json`, ... for more unnamed ones on one tick |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` / `quit` | reseed the world's `Rng`, hold and release the clock, take ≤ 3600 ticks now, end the run | — |
 | `listen[:path][:seconds]` | a `Wav` output: the last seconds (default 1, at most 2) of what the mixer rendered | warns without a listen hook |
 | `help` | a `Text` output listing every action, core and registered | — |

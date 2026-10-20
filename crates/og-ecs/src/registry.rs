@@ -58,8 +58,6 @@ pub(crate) struct TypeInfo {
     /// Whether the schema has bool, enum or string fields, whose packed
     /// bytes are checked on the way in.
     pub checked: bool,
-    /// Whether the schema has string fields (events only).
-    pub strings: bool,
 }
 
 #[derive(Default)]
@@ -116,7 +114,6 @@ impl Registry {
             layout: Layout::of(&schema),
             layout_hash: hash,
             checked: schema.fields.iter().any(|f| f.ty.is_checked()),
-            strings: schema.has_strings(),
             schema,
             rust: None,
         });
@@ -232,21 +229,6 @@ impl Registry {
         let info = self.info(id);
         if info.checked {
             info.schema.check_packed(bytes)?;
-        }
-        Ok(())
-    }
-
-    /// `Ok` unless `id` has string fields, which only events carry; `what`
-    /// is "component" or "resource".
-    pub fn check_not_event_only(&self, id: SchemaId, what: &str) -> Result<()> {
-        if self.info(id).strings {
-            return Err(Error::new(
-                ErrorKind::Schema,
-                format!(
-                    "'{}' has string fields (str64/str256), which only events carry; it cannot be a {what}",
-                    self.name(id)
-                ),
-            ));
         }
         Ok(())
     }

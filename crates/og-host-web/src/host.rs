@@ -19,6 +19,7 @@ impl Wire for WebHost {
 impl Lifecycle for WebHost {
     fn og_host_set_dispatcher(&self, dispatcher: Self::Function) {
         rt::set_hooks(Rc::new(WebHooks { dispatcher }));
+        rt::set_physics_clock(crate::clock_ms);
     }
     fn og_engine_create(&self, game: u32, options: String) -> String {
         rt::og_engine_create(game, options)
@@ -559,6 +560,9 @@ impl PhysicsApi for WebHost {
     }
     fn og_physics_ragdoll_pose(&self, world: u32, entity: f64) -> String {
         rt::og_physics_ragdoll_pose(world, entity)
+    }
+    fn og_physics_stats(&self, world: u32) -> String {
+        rt::og_physics_stats(world)
     }
     fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_raycast(world, desc)

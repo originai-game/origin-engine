@@ -1,0 +1,10 @@
+type environment
+version 1
+---
+# The vale's dusk sky (tools/make-assets.ts, 64 x 32): indigo overhead, the
+# afterglow low at +X, the dark valley floor below. Prefiltered by og cook.
+source "dusk.hdr"
+size 64
+intensity 1
+rotation 0
+samples 128

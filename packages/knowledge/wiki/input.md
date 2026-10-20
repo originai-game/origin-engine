@@ -18,7 +18,7 @@ module input {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 687</sub>
+<sub>`api.ogt` line 695</sub>
 
 ## Contents
 
@@ -38,7 +38,7 @@ module input {
 | [`WheelInput`](#type-WheelInput) | struct | A wheel or trackpad scroll at a point. |
 | [`TextEntry`](#type-TextEntry) | struct | Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them. |
 | [`A11yActionKind`](#type-A11yActionKind) | enum | What an assistive technology asks of a UI control. |
-| [`A11yRequest`](#type-A11yRequest) | struct | A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored). |
+| [`A11yRequest`](#type-A11yRequest) | struct | A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls). |
 | [`InjectedInput`](#type-InjectedInput) | union | One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it. |
 | [`og.Input`](#record-Input) | resource | The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods. |
 | [`og.Pointers`](#record-Pointers) | resource | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id). |
@@ -212,7 +212,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 862</sub>
+<sub>`api.ogt` line 870</sub>
 
 <a id="member-Input-down"></a>
 
@@ -240,7 +240,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 936</sub>
+<sub>`api.ogt` line 944</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -268,7 +268,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 941</sub>
+<sub>`api.ogt` line 949</sub>
 
 <a id="member-Input-released"></a>
 
@@ -296,7 +296,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 946</sub>
+<sub>`api.ogt` line 954</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -326,7 +326,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 951</sub>
+<sub>`api.ogt` line 959</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -360,7 +360,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 957</sub>
+<sub>`api.ogt` line 965</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -388,7 +388,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 965</sub>
+<sub>`api.ogt` line 973</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -416,7 +416,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 970</sub>
+<sub>`api.ogt` line 978</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -444,7 +444,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 975</sub>
+<sub>`api.ogt` line 983</sub>
 
 <a id="record-Pointers"></a>
 
@@ -561,7 +561,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 982</sub>
+<sub>`api.ogt` line 990</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -589,7 +589,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1037</sub>
+<sub>`api.ogt` line 1045</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -617,7 +617,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1042</sub>
+<sub>`api.ogt` line 1050</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -645,7 +645,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1047</sub>
+<sub>`api.ogt` line 1055</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -673,7 +673,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 1052</sub>
+<sub>`api.ogt` line 1060</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -701,7 +701,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 1057</sub>
+<sub>`api.ogt` line 1065</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -724,7 +724,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1062</sub>
+<sub>`api.ogt` line 1070</sub>
 
 <a id="record-Gamepad"></a>
 
@@ -885,7 +885,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 1068</sub>
+<sub>`api.ogt` line 1076</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -915,7 +915,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 1146</sub>
+<sub>`api.ogt` line 1154</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -947,7 +947,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1153</sub>
+<sub>`api.ogt` line 1161</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -979,7 +979,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1161</sub>
+<sub>`api.ogt` line 1169</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -1011,7 +1011,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1169</sub>
+<sub>`api.ogt` line 1177</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -1043,7 +1043,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 1177</sub>
+<sub>`api.ogt` line 1185</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -1071,7 +1071,7 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 1187</sub>
+<sub>`api.ogt` line 1195</sub>
 
 <a id="record-TextInput"></a>
 
@@ -1096,7 +1096,7 @@ event TextInput {
 }
 ```
 
-<sub>`api.ogt` line 1197</sub>
+<sub>`api.ogt` line 1205</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -1122,7 +1122,7 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 1204</sub>
+<sub>`api.ogt` line 1212</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -1154,7 +1154,7 @@ event PointerDown {
 }
 ```
 
-<sub>`api.ogt` line 1213</sub>
+<sub>`api.ogt` line 1221</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -1186,7 +1186,7 @@ event PointerUp {
 }
 ```
 
-<sub>`api.ogt` line 1225</sub>
+<sub>`api.ogt` line 1233</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -1211,7 +1211,7 @@ event PointerMove {
 }
 ```
 
-<sub>`api.ogt` line 1237</sub>
+<sub>`api.ogt` line 1245</sub>
 
 <a id="record-Wheel"></a>
 
@@ -1234,7 +1234,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 1244</sub>
+<sub>`api.ogt` line 1252</sub>
 
 <a id="record-A11yAction"></a>
 
@@ -1257,7 +1257,7 @@ event A11yAction {
 }
 ```
 
-<sub>`api.ogt` line 1250</sub>
+<sub>`api.ogt` line 1258</sub>
 
 ## Types
 
@@ -1312,7 +1312,7 @@ enum GamepadButton {
 }
 ```
 
-<sub>`api.ogt` line 696</sub>
+<sub>`api.ogt` line 704</sub>
 
 <a id="type-GamepadAxis"></a>
 
@@ -1343,7 +1343,7 @@ enum GamepadAxis {
 }
 ```
 
-<sub>`api.ogt` line 717</sub>
+<sub>`api.ogt` line 725</sub>
 
 <a id="type-KeyAction"></a>
 
@@ -1368,7 +1368,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 727</sub>
+<sub>`api.ogt` line 735</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -1395,7 +1395,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 734</sub>
+<sub>`api.ogt` line 742</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -1422,7 +1422,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 742</sub>
+<sub>`api.ogt` line 750</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -1447,7 +1447,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 750</sub>
+<sub>`api.ogt` line 758</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -1478,7 +1478,7 @@ struct KeyInput {
 }
 ```
 
-<sub>`api.ogt` line 758</sub>
+<sub>`api.ogt` line 766</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -1518,7 +1518,7 @@ struct PointerInput {
 }
 ```
 
-<sub>`api.ogt` line 772</sub>
+<sub>`api.ogt` line 780</sub>
 
 <a id="type-GamepadInput"></a>
 
@@ -1556,7 +1556,7 @@ struct GamepadInput {
 }
 ```
 
-<sub>`api.ogt` line 793</sub>
+<sub>`api.ogt` line 801</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -1589,7 +1589,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 813</sub>
+<sub>`api.ogt` line 821</sub>
 
 <a id="type-TextEntry"></a>
 
@@ -1612,7 +1612,7 @@ struct TextEntry {
 }
 ```
 
-<sub>`api.ogt` line 829</sub>
+<sub>`api.ogt` line 837</sub>
 
 <a id="type-A11yActionKind"></a>
 
@@ -1639,13 +1639,13 @@ enum A11yActionKind {
 }
 ```
 
-<sub>`api.ogt` line 837</sub>
+<sub>`api.ogt` line 845</sub>
 
 <a id="type-A11yRequest"></a>
 
 ### `A11yRequest` (struct)
 
-A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored).
+A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -1654,13 +1654,13 @@ A screen reader's request on a UI control (an engine extension of protocol 5): t
 
 ```ogt
 struct A11yRequest {
-  doc "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored)."
+  doc "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls)."
   field action A11yActionKind "What is asked."
   field path String "The control's path, as og.ui.a11y() names it."
 }
 ```
 
-<sub>`api.ogt` line 845</sub>
+<sub>`api.ogt` line 853</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -1692,7 +1692,7 @@ union InjectedInput {
 }
 ```
 
-<sub>`api.ogt` line 851</sub>
+<sub>`api.ogt` line 859</sub>
 
 ## Constants
 
@@ -1705,10 +1705,10 @@ union InjectedInput {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>`api.ogt` line 693</sub>
+<sub>`api.ogt` line 701</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
 ```
 
-<sub>`api.ogt` line 694</sub>
+<sub>`api.ogt` line 702</sub>

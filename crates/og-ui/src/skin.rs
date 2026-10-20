@@ -416,12 +416,57 @@ impl SkinFile {
         out
     }
 
+    /// Resolves the asset ids the file names against the skin file's own
+    /// id (`skin_id`, such as `skins/fantasy/skin.ogt`), so a pack copied
+    /// to another directory keeps working: an id is first read relative to
+    /// the skin's directory (`atlas.png` is `skins/fantasy/atlas.png`,
+    /// `../shared/rope.png` climbs one), and taken as written, from
+    /// `assets/`, when no asset `exists` there. The cook and the runtime
+    /// resolve the same way, so what the cook checked is what loads.
+    pub fn resolve(&mut self, skin_id: &str, exists: impl Fn(&str) -> bool) {
+        let at = |r: &mut String| *r = resolve_reference(skin_id, r, &exists);
+        if let Some(a) = self.atlas.as_mut() {
+            at(a);
+        }
+        for f in self.fonts.iter_mut().flatten() {
+            at(f);
+        }
+        if let Some(i) = self.icons.as_mut() {
+            at(&mut i.0);
+        }
+        for s in self.sounds.iter_mut().flatten() {
+            at(s);
+        }
+    }
+
     /// The theme with the loaded atlas and sound handles.
     pub fn theme(&self, atlas: Option<TextureHandle>, sounds: [u64; 6]) -> Theme {
         let mut t = self.theme;
         t.skin.atlas = atlas;
         t.skin.sounds = sounds;
         t
+    }
+}
+
+/// An asset id a skin file names, resolved against the skin's own id (see
+/// [`SkinFile::resolve`]): relative to its directory when that asset
+/// exists, else as written.
+pub fn resolve_reference(skin_id: &str, reference: &str, exists: impl Fn(&str) -> bool) -> String {
+    let dir = skin_id.rsplit_once('/').map_or("", |(d, _)| d);
+    let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
+    let mut inside = true;
+    for p in reference.split('/') {
+        match p {
+            "" | "." => {}
+            ".." => inside &= parts.pop().is_some(),
+            p => parts.push(p),
+        }
+    }
+    let relative = parts.join("/");
+    if inside && !relative.is_empty() && exists(&relative) {
+        relative
+    } else {
+        reference.to_string()
     }
 }
 

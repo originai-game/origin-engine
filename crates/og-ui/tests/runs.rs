@@ -14,6 +14,9 @@
 //!   Latin face between CJK) → `neutral_characters_stay_with_their_run`
 //! - a locale's face, or a role's face that has everything, cut into runs
 //!   → `a_text_one_font_sets_whole_is_not_cut`
+//! - a base letter and its combining mark split across faces (the mark
+//!   drawn from another face than its base), or a joiner pulling a run into
+//!   another face → `a_grapheme_cluster_takes_one_font`
 //! - measured with one font and drawn with another (the runs overlap or
 //!   gap), a missing glyph in a drawn command, a different frame on a
 //!   second build → `a_mixed_label_draws_one_command_per_run`
@@ -184,6 +187,45 @@ fn neutral_characters_stay_with_their_run() {
     let text = "(原点, Engine)";
     let m = &fonts.for_text(FontRole::Body, text).metrics;
     assert_eq!(runs(m, text), [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
+}
+
+#[test]
+fn a_grapheme_cluster_takes_one_font() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    // A face with every character (fixed metrics) after the role's ASCII face.
+    let everything = UiFont {
+        handle: f.cjk.handle,
+        metrics: FontMetrics::fixed(0.5),
+    };
+    let mut fonts = Fonts {
+        body: f.latin.clone(),
+        fallbacks: vec![everything],
+        ..Fonts::default()
+    };
+    fonts.link();
+    // "Café" with a combining acute: the role's face has the e but not the
+    // mark, so the cluster e + ◌́ goes whole to the face that has both.
+    let cafe = "Cafe\u{301} au lait";
+    let m = &fonts.for_text(FontRole::Body, cafe).metrics;
+    assert!(m.is_mixed());
+    assert_eq!(
+        runs(m, cafe),
+        [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+        "the e and its mark in one face, the space after them with it"
+    );
+    assert!(
+        (m.measure("Cafe\u{301}", 16.0)
+            - (f.latin.metrics.measure("Caf", 16.0) + 2.0 * 0.5 * 16.0))
+            .abs()
+            < 1e-3,
+        "measured as drawn"
+    );
+    // A joiner no face needs to draw keeps the letter before it in its face.
+    assert_eq!(runs(m, "ab\u{200d}c"), [0, 0, 0, 0]);
+    // A cluster the base's face draws whole stays there (the role's face
+    // has the a and the hyphen; nothing moves).
+    assert_eq!(runs(m, "a-a"), [0, 0, 0]);
 }
 
 #[test]

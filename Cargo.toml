@@ -31,6 +31,12 @@ debug = false
 # turns it on for the workspace (CI).
 [profile.dev.package."*"]
 debug = false
+# objc2 verifies every Objective-C message's signature against the
+# runtime's under debug assertions: most of a dev frame's CPU on Metal
+# (gltf-reference 3.8 to 1.0 ms a frame in og-gfx without it,
+# tests/evidence/P4/parity/). wgpu-hal's messages are wgpu's to verify.
+[profile.dev.package.objc2]
+debug-assertions = false
 
 # What ships: the wasm the size gate measures, packages/engine packs, the
 # perf lane. Never used for tests, drift or the gate's addon.
@@ -142,6 +148,15 @@ opt-level = 3
 [profile.dev.package.wgpu-types]
 opt-level = 3
 [profile.dev.package.naga]
+opt-level = 3
+# Every probe screenshot and reference frame is deflated by miniz_oxide: at
+# -O0 one 1280x720 PNG took 0.95 s of the tick that captured it (lantern-vale
+# FINDINGS #32 read it as a stall), optimised about 40 ms.
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.adler2]
+opt-level = 3
+[profile.dev.package.simd-adler32]
 opt-level = 3
 
 # The workspace crates in 16 codegen units instead of incremental's 256:

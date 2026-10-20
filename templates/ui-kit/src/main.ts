@@ -12,9 +12,10 @@
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
 // damage:<hp>, heal:<hp>, skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>
 // (a style pack from assets/skins), transition:<none|fade|wipe|iris|dissolve|slide>
-// (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default).
+// (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
+// mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens).
 
-import { og, defineComponent, defineSystem, bool, f32, f64, u32 } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 
 export const SCREENS = [
@@ -151,10 +152,12 @@ export const Demo = defineComponent("Demo", {
   skin: u32(0),
   wipe: u32(0),
   sounds: bool(true),
+  // `mixed:on`: a label mixing CJK, Latin and Arabic (menu.mixed) under the locale screens.
+  mixed: bool(),
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false };
 }
 
 export const ICONS = [
@@ -323,21 +326,20 @@ function applyTheme(world: World, d: DemoState): void {
       if (s.ok) sounds[e] = s.value;
     }
   }
+  // Every field, each time: configure keeps a field left out, so a pack's
+  // removal or the sounds turned off are said with null.
   og.ui.configure(world, {
-    ...(d.font && !skin ? { font: d.font as never } : {}),
-    ...(d.displayFont && !skin ? { displayFont: d.displayFont as never } : {}),
-    ...(d.roundedFont && !skin ? { roundedFont: d.roundedFont as never } : {}),
+    font: d.font && !skin ? (d.font as never) : null,
+    displayFont: d.displayFont && !skin ? (d.displayFont as never) : null,
+    roundedFont: d.roundedFont && !skin ? (d.roundedFont as never) : null,
     // Scripts the locale tables' fonts do not cover (the text screen).
     fallbackFonts: [d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
+    skin,
     // The materials screen draws from the iconoir set; the others from the kit's grid (or the pack's).
-    ...(d.iconoir && d.iconSet
-      ? { icons: { font: d.iconSet as never }, ...(skin ? { skin } : {}) }
-      : skin
-        ? { skin }
-        : { icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {} }),
-    ...(d.sounds ? { sounds } : {}),
+    icons: d.iconoir && d.iconSet ? { font: d.iconSet as never } : skin ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
+    sounds: d.sounds ? sounds : null,
   });
 }
 
@@ -369,13 +371,24 @@ function gallery(d: DemoState): void {
   });
 }
 
-/** The text screen's field and area values (UI text; the demo keeps them out of the world). */
-const typed = { name: "", notes: "" };
+/** The most characters the text screen's field and area take. */
+const NAME_CHARS = 24;
+const NOTES_CHARS = 256;
+
+/**
+ * The text screen's field and area values: world state like every other
+ * setting (snapshots, replays and `get:Typed` carry them). A str field holds
+ * bytes of UTF-8, at most four a character, so maxChars × 4 always fits.
+ */
+export const Typed = defineResource("Typed", {
+  name: str(NAME_CHARS * 4, "", { label: "Name" }),
+  notes: str(NOTES_CHARS * 4, "", { label: "Notes" }),
+});
 
 /** Type and scripts: the display and rounded faces kerned, labels cut with
  * an ellipsis, Arabic, Hebrew and Devanagari (shaped, in bidi order, a run
  * of Arabic inside a Latin span), a text field and a text area. */
-function textScreen(): void {
+function textScreen(world: World): void {
   const vp = og.ui.frameViewport();
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
   const t = og.ui.frameTheme();
@@ -403,8 +416,12 @@ function textScreen(): void {
       og.ui.label("Devanagari", "नमस्ते दुनिया", { nowrap: true });
       og.ui.label("Hindi", "हिन्दी भाषा", { nowrap: true });
     });
-    typed.name = og.ui.textField("Name", typed.name, { placeholder: "Your name", width: grow }).value;
-    typed.notes = og.ui.textArea("Notes", typed.notes, { placeholder: "Notes", rows: 3, width: grow }).value;
+    const typed = world.resource(Typed);
+    if (!typed.ok) return;
+    const name = og.ui.textField("Name", typed.value.name, { placeholder: "Your name", width: grow, maxChars: NAME_CHARS }).value;
+    if (name !== typed.value.name) typed.value.name = name;
+    const notes = og.ui.textArea("Notes", typed.value.notes, { placeholder: "Notes", rows: 3, width: grow, maxChars: NOTES_CHARS }).value;
+    if (notes !== typed.value.notes) typed.value.notes = notes;
   });
 }
 
@@ -583,7 +600,7 @@ export const Thud = defineSystem("Thud", { writes: [og.AudioSource], after: ["Ki
   }
 });
 
-export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q, time, world) => {
+export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo, Typed] }, (q, time, world) => {
   for (const a of q.archetypes()) {
     if (a.count === 0) continue;
     const cols = a.column(Demo) as unknown as Record<string, Float64Array>;
@@ -896,7 +913,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       back = og.ui.back();
       break;
     case "text":
-      textScreen();
+      textScreen(world);
       back = og.ui.back();
       break;
     case "materials":
@@ -915,6 +932,13 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       back = og.ui.back();
       break;
     }
+  }
+  // A label of three scripts at once (`mixed:on`): each run in its own face
+  // (the role's Latin, a locale's CJK, the Arabic shaped), nothing missing.
+  if (d.mixed && (screen === "mainMenu" || screen === "pause" || screen === "confirm")) {
+    og.ui.anchor("Mixed", { anchor: "bottom", direction: "column", padding: { left: 0, top: 0, right: 0, bottom: 24 } }, () => {
+      og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
+    });
   }
   if (back) d.screen = 0;
 }
@@ -942,6 +966,7 @@ export default og.game({
   tick: 60,
   seed: 1,
   systems: [Kit, Thud],
+  resources: [Typed],
   render: { antialias: "msaa4" },
   start(world) {
     const camera = world.resource(og.Camera);
@@ -1017,6 +1042,7 @@ export default og.game({
       const d = current(world);
       if (d) update(world, { hp: Math.min(100, d.hp + Number(args[0] ?? 10)) });
     },
+    mixed: (world, args) => update(world, { mixed: args[0] !== "off" }),
   },
   commandHelp: {
     show: { usage: "<screen>", doc: "Open a screen of the kit (gallery, widgets, mainMenu, pause, settings, ...)." },
@@ -1028,6 +1054,7 @@ export default og.game({
     skin: { usage: "<tokens|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
+    mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
   },
   facts: (world) => {
     const d = current(world);

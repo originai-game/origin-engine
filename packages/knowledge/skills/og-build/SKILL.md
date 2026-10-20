@@ -32,10 +32,16 @@ needs a browser or a Rust toolchain. The command channel is
    `teleport:<entity>:x,y,z`, `frame_entity:<entity>`, `dump_world[:path]`,
    `dump_entity:<entity>[:path]`, `dump_ui[:path]`,
    `get:<Resource>[.<field>]` or `get:<entity>[.<Component>[.<field>]]`
-   (logs the value and writes `get-<tick>.json`),
+   (logs the value as game code sees it, og.Time whole and a light og.DayNight
+   drives as it is drawn, and writes `get-<tick>.json`, then
+   `get-<tick>-2.json`, ... for more on one tick; a world dump lists
+   resources by name only, so `get:` is how to read one),
    `set:<entity>.<Component>.<field>=<value>` or
    `set:<Resource>.<field>=<value>` (`set:og.Camera.trauma=0.5`,
-   `set:Game.coins=10`), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
+   `set:Game.coins=10`, `set:og.Stylise.ink=false`: a number, `true` or
+   `false`, or `x,y,z`; a value outside the field's `min`/`max` is refused
+   naming the range, never clamped, while game code's own writes are stored
+   as given: widen the range in the field's options to try one), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
    `quit`, and `help` for the list. Modules add their own: `dump_ai` and
    `dump_nav` (og-ai §5), `dump_platform` (og-platform-sdk §4), `locale:<tag>`
    (og-i18n §6), `dump_stream` and `terrain_stream:<stream|resident>[:<MiB>]`
@@ -124,15 +130,23 @@ every screen that matters.
 | feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four | og-feel §3, §4, §7, og-audio §1 |
 | feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
-| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe) | 8.3 ms (half the frame) | og-game §14 |
+| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out | 8.3 ms (half the frame) | og-game §14 |
 
 The report also lists clipped samples in the mix (og-audio §4). Contrast and
 text size read text only: icons and images (their "text" is a picture's
 name), disabled controls and what they hold (WCAG exempts them), the
-slivers a scroll container cuts and what a dialog's or a tutorial's scrim
-dims on purpose are left out, and each element is measured
+slivers a scroll container cuts, what a dialog's or a tutorial's scrim
+dims on purpose and what is mid-transition in the shot (an element whose
+bounds differ on the ticks before and after it: a toast sliding out over
+a dialog, a panel popping in) are left out, and each element is measured
 at the pixels of the surface `dump_ui` reports, so a phone preview
-(390×844 at 3×) is read at its own size. Facts are the game's `facts`
+(390×844 at 3×) is read at its own size. The ink is what the pixels show,
+so it depends on the glyphs' coverage: thin strokes cover few pixels
+whole, and a regular-weight CJK face at body sizes measures lower than
+Latin in the same colours (a 15 px "设置" 3.1:1 where "Settings" reads
+4.6:1 on one button), as it reads lower to the eye. Darken the ink in the
+skin's palette, give the CJK face a heavier weight or the label a larger
+step; the measure is not wrong there. Facts are the game's `facts`
 (og-game §3): expose `hp`, `hits` or `kills` there or the hit measures stay
 n/a. A baseline line says how often things change with no input at all;
 when it is high (a runner that always moves), read latency together with
@@ -161,8 +175,9 @@ fix.
 ## 7. Big games: what the cook packs and the page fetches
 
 What `og cook` takes is decided by the file: `.glb`/`.gltf` and MagicaVoxel
-`.vox` (meshed into a glTF: flat-shaded quads, palette colours, one voxel
-one metre; og-game §5) are models; `.ogt` files by their `type` (scene,
+`.vox` (meshed into a glTF: flat-shaded quads, palette colours, `model {
+voxScale voxOrigin }` for the size and origin, frames as clips; og-game §5)
+are models; `.ogt` files by their `type` (scene,
 look, environment, texture-array, flipbook, particles, terrain, shader…);
 `.cube` LUTs, `.hex` and `.gpl` palettes, images, WAVs and fonts by
 extension. A look's built-in `@canvas/…` and `@palettes/…` assets are added

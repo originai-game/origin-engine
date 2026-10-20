@@ -3,11 +3,13 @@
 // order (a run of it inside a Latin rich-text span), Hebrew, Devanagari's
 // conjuncts and marks, then a text field and a text area edited through
 // the probe: typed text, Shift+arrows selecting, an input method's
-// composition shown underlined and committed. Each frame is compared with
+// composition shown underlined and committed. The values are world state
+// (the Typed resource's str fields, read with get:). Each frame is compared with
 // crates/og-ui/references/<tier>/kit-desktop-text*.png.
 // Ways it could fail: a script drawn with missing glyphs (a warning), a
 // field that drops typed text or types a key twice, a selection or a
-// composition not drawn, a commit that does not land in the value.
+// composition not drawn, a commit that does not land in the value, a value
+// that never reaches the world.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { type UiElement, key, tap, ui } from "./lib.ts";
@@ -40,6 +42,7 @@ export default playtest({
     "4.0:screenshot:text-compose.png",
     "4.1:commit:日本",
     "4.2:dump_ui:committed.json",
+    "4.2:get:Typed:typed.json",
     "4.3:quit",
   ].join(";"),
   check(run, t) {
@@ -48,6 +51,9 @@ export default playtest({
     const text = (file: string, id: string) => ui(run, file).find((e: UiElement) => e.id === id)?.text;
     t.equal(text("select.json", "Name"), "Ada Lovelace", "the field holds what was typed, once");
     t.equal(text("committed.json", "Notes"), "First line\nthen日本", "Enter broke the line and the commit landed");
+    const typed = run.json<{ value: { name: string; notes: string } }>("typed.json").value;
+    t.equal(typed.name, "Ada Lovelace", "the field's value is world state (Typed.name)");
+    t.equal(typed.notes, "First line\nthen日本", "so is the area's (Typed.notes)");
     checkFrames(run, t, ["text.png", "text-select.png", "text-compose.png"], "kit-desktop-");
   },
 });

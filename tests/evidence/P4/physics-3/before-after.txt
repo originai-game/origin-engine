@@ -1,0 +1,396 @@
+== round 1 lanes off lanes_old load 7.22 8.60 10.42
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.591 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.949 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.247 | d58922edef589f4e | 0 |
+| a pen | 2000 | 5.548 | d0b5c28399fbdc50 | 0 |
+| a pen | 4000 | 13.562 | 4c02f03358edae2e | 0 |
+== round 1 lanes off lanes2 load 7.29 8.53 10.35
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.571 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.945 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.090 | d58922edef589f4e | 0 |
+| a pen | 2000 | 5.629 | d0b5c28399fbdc50 | 0 |
+| a pen | 4000 | 12.839 | 4c02f03358edae2e | 0 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.074 | 0.024 | 0.000 | 0.000 | 0.000 | 1.279 | 0.118 | 0.000 | 0.000 | 0.000 | 0.000 | 0.060 |
+| a pen of 500 | 0.070 | 0.017 | 0.000 | 0.000 | 0.000 | 0.686 | 0.101 | 0.000 | 0.000 | 0.000 | 0.000 | 0.057 |
+| a pen of 1000 | 0.132 | 0.042 | 0.000 | 0.000 | 0.000 | 1.526 | 0.249 | 0.001 | 0.000 | 0.000 | 0.001 | 0.115 |
+| a pen of 2000 | 0.269 | 0.110 | 0.001 | 0.001 | 0.000 | 4.225 | 0.719 | 0.002 | 0.001 | 0.001 | 0.001 | 0.252 |
+| a pen of 4000 | 0.520 | 0.264 | 0.001 | 0.001 | 0.000 | 9.921 | 1.552 | 0.003 | 0.001 | 0.001 | 0.001 | 0.486 |
+== round 1 lanes 2 lanes_old load 7.19 8.45 10.29
+lanes on, 2 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.464 | 2be8de152ac7b522 | 1525 |
+| a pen | 500 | 0.970 | 0b9146c7818aa73e | 1525 |
+| a pen | 1000 | 2.028 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 4.721 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 10.621 | 4c02f03358edae2e | 1631 |
+== round 1 lanes 2 lanes2 load 7.73 8.49 10.26
+lanes on, 2 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.402 | 2be8de152ac7b522 | 840 |
+| a pen | 500 | 0.930 | 0b9146c7818aa73e | 840 |
+| a pen | 1000 | 1.879 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 4.425 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 9.019 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.080 | 0.033 | 0.000 | 0.000 | 0.000 | 1.042* | 0.132 | 0.000 | 0.000 | 0.000 | 0.000 | 0.076 |
+| a pen of 500 | 0.075 | 0.024 | 0.000 | 0.000 | 0.000 | 0.623* | 0.108 | 0.000 | 0.000 | 0.000 | 0.000 | 0.070 |
+| a pen of 1000 | 0.144 | 0.053 | 0.000 | 0.000 | 0.000 | 1.259* | 0.240* | 0.001 | 0.000 | 0.000 | 0.000 | 0.136 |
+| a pen of 2000 | 0.271 | 0.124 | 0.001 | 0.001 | 0.000 | 3.092* | 0.587* | 0.002 | 0.001 | 0.001 | 0.001 | 0.277 |
+| a pen of 4000 | 0.411* | 0.271 | 0.001 | 0.001 | 0.000 | 6.482* | 1.220* | 0.003 | 0.001 | 0.001 | 0.001 | 0.516 |
+== round 1 lanes 4 lanes_old load 7.46 8.41 10.21
+lanes on, 4 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.281 | 2be8de152ac7b522 | 1525 |
+| a pen | 500 | 1.057 | 0b9146c7818aa73e | 1525 |
+| a pen | 1000 | 2.040 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 4.104 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 9.093 | 4c02f03358edae2e | 1631 |
+== round 1 lanes 4 lanes2 load 7.73 8.42 10.18
+lanes on, 4 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.363 | 2be8de152ac7b522 | 840 |
+| a pen | 500 | 1.098 | 0b9146c7818aa73e | 840 |
+| a pen | 1000 | 2.115 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 4.190 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 8.144 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.081 | 0.032 | 0.000 | 0.000 | 0.000 | 0.998* | 0.137 | 0.000 | 0.000 | 0.000 | 0.000 | 0.075 |
+| a pen of 500 | 0.077 | 0.027 | 0.000 | 0.000 | 0.000 | 0.762* | 0.126 | 0.000 | 0.000 | 0.000 | 0.000 | 0.072 |
+| a pen of 1000 | 0.144 | 0.057 | 0.000 | 0.001 | 0.000 | 1.465* | 0.263* | 0.001 | 0.000 | 0.000 | 0.001 | 0.138 |
+| a pen of 2000 | 0.273 | 0.125 | 0.001 | 0.001 | 0.000 | 2.877* | 0.561* | 0.002 | 0.001 | 0.001 | 0.001 | 0.277 |
+| a pen of 4000 | 0.378* | 0.284 | 0.001 | 0.001 | 0.000 | 5.831* | 0.989* | 0.003 | 0.001 | 0.001 | 0.001 | 0.530 |
+== round 1 lanes 5 lanes_old load 8.67 8.60 10.21
+lanes on, 5 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.580 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.972 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.414 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 4.698 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 8.976 | 4c02f03358edae2e | 1631 |
+== round 1 lanes 5 lanes2 load 8.64 8.60 10.18
+lanes on, 5 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.567 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.959 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.151 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 3.803 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 8.286 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.071 | 0.024 | 0.000 | 0.000 | 0.000 | 1.279 | 0.117 | 0.000 | 0.000 | 0.000 | 0.000 | 0.059 |
+| a pen of 500 | 0.071 | 0.017 | 0.000 | 0.000 | 0.000 | 0.693 | 0.105 | 0.000 | 0.000 | 0.000 | 0.000 | 0.059 |
+| a pen of 1000 | 0.144 | 0.057 | 0.000 | 0.001 | 0.000 | 1.496* | 0.260* | 0.001 | 0.001 | 0.000 | 0.001 | 0.140 |
+| a pen of 2000 | 0.264 | 0.122 | 0.001 | 0.001 | 0.000 | 2.563* | 0.507* | 0.001 | 0.001 | 0.001 | 0.001 | 0.271 |
+| a pen of 4000 | 0.415* | 0.284 | 0.001 | 0.001 | 0.000 | 5.938* | 0.991* | 0.003 | 0.001 | 0.001 | 0.001 | 0.532 |
+== round 1 lanes 6 lanes_old load 8.25 8.52 10.13
+lanes on, 6 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.667 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.919 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.735 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 5.258 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 10.014 | 4c02f03358edae2e | 1631 |
+== round 1 lanes 6 lanes2 load 7.88 8.42 10.05
+lanes on, 6 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.616 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.929 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.512 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 3.928 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 7.207 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.074 | 0.023 | 0.000 | 0.000 | 0.000 | 1.320 | 0.122 | 0.000 | 0.000 | 0.000 | 0.000 | 0.061 |
+| a pen of 500 | 0.069 | 0.017 | 0.000 | 0.000 | 0.000 | 0.673 | 0.100 | 0.000 | 0.000 | 0.000 | 0.000 | 0.056 |
+| a pen of 1000 | 0.147 | 0.061 | 0.000 | 0.001 | 0.000 | 1.824* | 0.284* | 0.001 | 0.001 | 0.001 | 0.001 | 0.142 |
+| a pen of 2000 | 0.273 | 0.123 | 0.001 | 0.001 | 0.000 | 2.667* | 0.516* | 0.001 | 0.001 | 0.001 | 0.001 | 0.274 |
+| a pen of 4000 | 0.378* | 0.276 | 0.001 | 0.001 | 0.000 | 5.005* | 0.889* | 0.003 | 0.001 | 0.001 | 0.001 | 0.538 |
+== round 1 lanes 8 lanes_old load 7.43 8.30 9.99
+lanes on, 8 threads; on the pool from 1500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.523 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.959 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.104 | d58922edef589f4e | 0 |
+| a pen | 2000 | 4.858 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 10.626 | 4c02f03358edae2e | 1631 |
+== round 1 lanes 8 lanes2 load 7.58 8.29 9.96
+lanes on, 8 threads; on the pool from 1500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.596 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.978 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.189 | d58922edef589f4e | 0 |
+| a pen | 2000 | 5.491 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 8.912 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.073 | 0.024 | 0.000 | 0.000 | 0.000 | 1.304 | 0.117 | 0.000 | 0.000 | 0.000 | 0.000 | 0.061 |
+| a pen of 500 | 0.072 | 0.019 | 0.000 | 0.000 | 0.000 | 0.703 | 0.108 | 0.000 | 0.000 | 0.000 | 0.000 | 0.060 |
+| a pen of 1000 | 0.137 | 0.042 | 0.000 | 0.001 | 0.000 | 1.591 | 0.265 | 0.001 | 0.000 | 0.000 | 0.001 | 0.126 |
+| a pen of 2000 | 0.275 | 0.135 | 0.001 | 0.001 | 0.000 | 4.039* | 0.663* | 0.002 | 0.001 | 0.001 | 0.001 | 0.292 |
+| a pen of 4000 | 0.469* | 0.287 | 0.001 | 0.001 | 0.000 | 6.488* | 1.027* | 0.003 | 0.001 | 0.001 | 0.001 | 0.518 |
+== round 1 lanes 4 lanes2-rows-off load 8.97 8.61 10.00
+lanes on, 4 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.169 | 2be8de152ac7b522 | 840 |
+| a pen | 500 | 0.929 | 0b9146c7818aa73e | 840 |
+| a pen | 1000 | 1.716 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 3.626 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 7.612 | 4c02f03358edae2e | 2335 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.077 | 0.030 | 0.000 | 0.000 | 0.000 | 0.832* | 0.123 | 0.000 | 0.000 | 0.000 | 0.000 | 0.070 |
+| a pen of 500 | 0.076 | 0.024 | 0.000 | 0.000 | 0.000 | 0.613* | 0.113 | 0.000 | 0.000 | 0.000 | 0.000 | 0.069 |
+| a pen of 1000 | 0.140 | 0.051 | 0.000 | 0.000 | 0.000 | 1.117* | 0.230* | 0.001 | 0.000 | 0.000 | 0.001 | 0.132 |
+| a pen of 2000 | 0.272 | 0.118 | 0.001 | 0.001 | 0.000 | 2.379* | 0.509* | 0.002 | 0.001 | 0.001 | 0.001 | 0.274 |
+| a pen of 4000 | 0.514 | 0.263 | 0.001 | 0.001 | 0.000 | 5.261* | 0.943* | 0.003 | 0.001 | 0.001 | 0.001 | 0.514 |
+== round 1 lanes 8 lanes2-rows-off load 8.73 8.58 9.97
+lanes on, 8 threads; on the pool from 1500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.476 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.913 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.122 | d58922edef589f4e | 0 |
+| a pen | 2000 | 4.612 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 7.712 | 4c02f03358edae2e | 2335 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.069 | 0.021 | 0.000 | 0.000 | 0.000 | 1.208 | 0.110 | 0.000 | 0.000 | 0.000 | 0.000 | 0.054 |
+| a pen of 500 | 0.068 | 0.016 | 0.000 | 0.000 | 0.000 | 0.665 | 0.096 | 0.000 | 0.000 | 0.000 | 0.000 | 0.055 |
+| a pen of 1000 | 0.137 | 0.043 | 0.000 | 0.000 | 0.000 | 1.546 | 0.256 | 0.001 | 0.000 | 0.000 | 0.000 | 0.116 |
+| a pen of 2000 | 0.271 | 0.129 | 0.001 | 0.001 | 0.000 | 3.303* | 0.559* | 0.001 | 0.001 | 0.001 | 0.001 | 0.274 |
+| a pen of 4000 | 0.518 | 0.278 | 0.001 | 0.001 | 0.000 | 5.357* | 0.925* | 0.003 | 0.001 | 0.001 | 0.001 | 0.515 |
+== round 2 lanes off lanes_old load 8.62 8.57 9.94
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.550 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.878 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.075 | d58922edef589f4e | 0 |
+| a pen | 2000 | 5.551 | d0b5c28399fbdc50 | 0 |
+| a pen | 4000 | 12.625 | 4c02f03358edae2e | 0 |
+== round 2 lanes off lanes2 load 7.91 8.41 9.85
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.511 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.916 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 1.946 | d58922edef589f4e | 0 |
+| a pen | 2000 | 4.948 | d0b5c28399fbdc50 | 0 |
+| a pen | 4000 | 12.302 | 4c02f03358edae2e | 0 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.070 | 0.020 | 0.000 | 0.000 | 0.000 | 1.239 | 0.111 | 0.000 | 0.000 | 0.000 | 0.000 | 0.055 |
+| a pen of 500 | 0.069 | 0.016 | 0.000 | 0.000 | 0.000 | 0.667 | 0.096 | 0.000 | 0.000 | 0.000 | 0.000 | 0.056 |
+| a pen of 1000 | 0.130 | 0.035 | 0.000 | 0.000 | 0.000 | 1.423 | 0.223 | 0.001 | 0.000 | 0.000 | 0.000 | 0.111 |
+| a pen of 2000 | 0.260 | 0.093 | 0.001 | 0.001 | 0.000 | 3.659 | 0.644 | 0.001 | 0.001 | 0.001 | 0.001 | 0.241 |
+| a pen of 4000 | 0.518 | 0.241 | 0.001 | 0.001 | 0.000 | 9.453 | 1.517 | 0.003 | 0.001 | 0.001 | 0.001 | 0.479 |
+== round 2 lanes 2 lanes_old load 6.86 8.14 9.72
+lanes on, 2 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.434 | 2be8de152ac7b522 | 1525 |
+| a pen | 500 | 1.008 | 0b9146c7818aa73e | 1525 |
+| a pen | 1000 | 1.940 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 4.525 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 9.499 | 4c02f03358edae2e | 1631 |
+== round 2 lanes 2 lanes2 load 6.67 8.04 9.65
+lanes on, 2 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.367 | 2be8de152ac7b522 | 840 |
+| a pen | 500 | 0.944 | 0b9146c7818aa73e | 840 |
+| a pen | 1000 | 1.801 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 4.019 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 9.162 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.080 | 0.030 | 0.000 | 0.000 | 0.000 | 1.018* | 0.134 | 0.000 | 0.000 | 0.000 | 0.000 | 0.070 |
+| a pen of 500 | 0.075 | 0.025 | 0.000 | 0.000 | 0.000 | 0.631* | 0.112 | 0.000 | 0.000 | 0.000 | 0.000 | 0.069 |
+| a pen of 1000 | 0.136 | 0.052 | 0.000 | 0.000 | 0.000 | 1.215* | 0.222* | 0.001 | 0.000 | 0.000 | 0.000 | 0.131 |
+| a pen of 2000 | 0.272 | 0.124 | 0.001 | 0.001 | 0.000 | 2.740* | 0.537* | 0.001 | 0.001 | 0.001 | 0.001 | 0.274 |
+| a pen of 4000 | 0.422* | 0.279 | 0.001 | 0.001 | 0.000 | 6.602* | 1.226* | 0.003 | 0.001 | 0.001 | 0.001 | 0.515 |
+== round 2 lanes 4 lanes_old load 6.73 8.00 9.62
+lanes on, 4 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.270 | 2be8de152ac7b522 | 1525 |
+| a pen | 500 | 0.968 | 0b9146c7818aa73e | 1525 |
+| a pen | 1000 | 1.880 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 3.670 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 8.412 | 4c02f03358edae2e | 1631 |
+== round 2 lanes 4 lanes2 load 6.74 7.94 9.57
+lanes on, 4 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.408 | 2be8de152ac7b522 | 840 |
+| a pen | 500 | 0.993 | 0b9146c7818aa73e | 840 |
+| a pen | 1000 | 2.090 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 3.999 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 8.397 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.081 | 0.034 | 0.000 | 0.000 | 0.000 | 1.038* | 0.141 | 0.000 | 0.000 | 0.000 | 0.000 | 0.075 |
+| a pen of 500 | 0.075 | 0.025 | 0.000 | 0.000 | 0.000 | 0.677* | 0.116 | 0.000 | 0.000 | 0.000 | 0.000 | 0.067 |
+| a pen of 1000 | 0.144 | 0.057 | 0.000 | 0.001 | 0.000 | 1.434* | 0.265* | 0.001 | 0.000 | 0.000 | 0.001 | 0.140 |
+| a pen of 2000 | 0.272 | 0.121 | 0.001 | 0.001 | 0.000 | 2.728* | 0.530* | 0.001 | 0.001 | 0.001 | 0.001 | 0.273 |
+| a pen of 4000 | 0.407* | 0.278 | 0.001 | 0.001 | 0.000 | 6.042* | 1.026* | 0.003 | 0.001 | 0.001 | 0.001 | 0.520 |
+== round 2 lanes 5 lanes_old load 7.55 8.06 9.58
+lanes on, 5 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.635 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.994 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.580 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 4.996 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 9.974 | 4c02f03358edae2e | 1631 |
+== round 2 lanes 5 lanes2 load 8.26 8.18 9.60
+lanes on, 5 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.579 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.958 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.335 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 4.608 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 9.021 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.072 | 0.023 | 0.000 | 0.000 | 0.000 | 1.286 | 0.120 | 0.000 | 0.000 | 0.000 | 0.000 | 0.061 |
+| a pen of 500 | 0.073 | 0.018 | 0.000 | 0.000 | 0.000 | 0.690 | 0.103 | 0.000 | 0.000 | 0.000 | 0.000 | 0.058 |
+| a pen of 1000 | 0.143 | 0.061 | 0.000 | 0.001 | 0.000 | 1.661* | 0.274* | 0.001 | 0.001 | 0.001 | 0.001 | 0.143 |
+| a pen of 2000 | 0.277 | 0.137 | 0.001 | 0.001 | 0.000 | 3.242* | 0.584* | 0.002 | 0.001 | 0.001 | 0.001 | 0.284 |
+| a pen of 4000 | 0.446* | 0.301 | 0.001 | 0.001 | 0.000 | 6.546* | 1.055* | 0.003 | 0.001 | 0.001 | 0.001 | 0.540 |
+== round 2 lanes 6 lanes_old load 8.74 8.29 9.61
+lanes on, 6 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.599 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 1.002 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.773 | d58922edef589f4e | 1562 |
+| a pen | 2000 | 4.845 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 9.383 | 4c02f03358edae2e | 1631 |
+== round 2 lanes 6 lanes2 load 8.69 8.32 9.59
+lanes on, 6 threads; on the pool from 1000 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.552 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.909 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.201 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 4.015 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 7.801 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.072 | 0.023 | 0.000 | 0.000 | 0.000 | 1.266 | 0.116 | 0.000 | 0.000 | 0.000 | 0.000 | 0.059 |
+| a pen of 500 | 0.068 | 0.016 | 0.000 | 0.000 | 0.000 | 0.658 | 0.098 | 0.000 | 0.000 | 0.000 | 0.000 | 0.056 |
+| a pen of 1000 | 0.143 | 0.057 | 0.000 | 0.000 | 0.000 | 1.556* | 0.253* | 0.001 | 0.000 | 0.000 | 0.001 | 0.140 |
+| a pen of 2000 | 0.266 | 0.122 | 0.001 | 0.001 | 0.000 | 2.767* | 0.514* | 0.001 | 0.001 | 0.001 | 0.001 | 0.271 |
+| a pen of 4000 | 0.394* | 0.278 | 0.001 | 0.001 | 0.000 | 5.568* | 0.921* | 0.003 | 0.001 | 0.001 | 0.001 | 0.520 |
+== round 2 lanes 8 lanes_old load 8.81 8.35 9.59
+lanes on, 8 threads; on the pool from 1500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.620 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.970 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.221 | d58922edef589f4e | 0 |
+| a pen | 2000 | 5.026 | d0b5c28399fbdc50 | 1594 |
+| a pen | 4000 | 9.887 | 4c02f03358edae2e | 1631 |
+== round 2 lanes 8 lanes2 load 8.53 8.37 9.54
+lanes on, 8 threads; on the pool from 1500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.595 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.905 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.147 | d58922edef589f4e | 0 |
+| a pen | 2000 | 5.115 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 9.163 | 4c02f03358edae2e | 4015 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.073 | 0.024 | 0.000 | 0.000 | 0.000 | 1.305 | 0.118 | 0.000 | 0.000 | 0.000 | 0.000 | 0.059 |
+| a pen of 500 | 0.069 | 0.016 | 0.000 | 0.000 | 0.000 | 0.655 | 0.098 | 0.000 | 0.000 | 0.000 | 0.000 | 0.054 |
+| a pen of 1000 | 0.137 | 0.042 | 0.000 | 0.000 | 0.000 | 1.561 | 0.265 | 0.001 | 0.000 | 0.000 | 0.001 | 0.117 |
+| a pen of 2000 | 0.277 | 0.132 | 0.001 | 0.001 | 0.000 | 3.717* | 0.633* | 0.002 | 0.001 | 0.001 | 0.001 | 0.276 |
+| a pen of 4000 | 0.473* | 0.297 | 0.001 | 0.001 | 0.000 | 6.691* | 1.061* | 0.003 | 0.001 | 0.001 | 0.001 | 0.519 |
+== round 2 lanes 4 lanes2-rows-off load 8.77 8.43 9.55
+lanes on, 4 threads; on the pool from 500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.407 | 2be8de152ac7b522 | 840 |
+| a pen | 500 | 1.043 | 0b9146c7818aa73e | 840 |
+| a pen | 1000 | 2.003 | d58922edef589f4e | 1540 |
+| a pen | 2000 | 4.161 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 8.354 | 4c02f03358edae2e | 2335 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.080 | 0.032 | 0.000 | 0.000 | 0.000 | 1.039* | 0.139 | 0.000 | 0.000 | 0.000 | 0.000 | 0.075 |
+| a pen of 500 | 0.077 | 0.028 | 0.000 | 0.000 | 0.000 | 0.713* | 0.120 | 0.000 | 0.000 | 0.000 | 0.000 | 0.071 |
+| a pen of 1000 | 0.144 | 0.055 | 0.000 | 0.001 | 0.000 | 1.366* | 0.256* | 0.001 | 0.000 | 0.000 | 0.001 | 0.134 |
+| a pen of 2000 | 0.275 | 0.124 | 0.001 | 0.001 | 0.000 | 2.851* | 0.556* | 0.001 | 0.001 | 0.001 | 0.001 | 0.279 |
+| a pen of 4000 | 0.515 | 0.278 | 0.001 | 0.001 | 0.000 | 5.927* | 0.992* | 0.003 | 0.001 | 0.001 | 0.001 | 0.518 |
+== round 2 lanes 8 lanes2-rows-off load 8.57 8.40 9.52
+lanes on, 8 threads; on the pool from 1500 bodies
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.547 | 2be8de152ac7b522 | 0 |
+| a pen | 500 | 0.938 | 0b9146c7818aa73e | 0 |
+| a pen | 1000 | 2.063 | d58922edef589f4e | 0 |
+| a pen | 2000 | 4.993 | d0b5c28399fbdc50 | 2264 |
+| a pen | 4000 | 8.526 | 4c02f03358edae2e | 2335 |
+
+ms per tick by phase (`*`: split on the pool on some tick)
+| scene | gather | sync | joints | ragdolls | water | rapier | readout | controllers | soft | fluids | fluids3d | writeBack |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| the pile (500) | 0.071 | 0.023 | 0.000 | 0.000 | 0.000 | 1.264 | 0.114 | 0.000 | 0.000 | 0.000 | 0.000 | 0.058 |
+| a pen of 500 | 0.071 | 0.017 | 0.000 | 0.000 | 0.000 | 0.675 | 0.102 | 0.000 | 0.000 | 0.000 | 0.000 | 0.060 |
+| a pen of 1000 | 0.131 | 0.040 | 0.000 | 0.000 | 0.000 | 1.500 | 0.248 | 0.001 | 0.000 | 0.000 | 0.001 | 0.118 |
+| a pen of 2000 | 0.272 | 0.132 | 0.001 | 0.001 | 0.000 | 3.617* | 0.610* | 0.001 | 0.001 | 0.001 | 0.001 | 0.281 |
+| a pen of 4000 | 0.515 | 0.285 | 0.001 | 0.001 | 0.000 | 6.083* | 0.997* | 0.003 | 0.001 | 0.001 | 0.001 | 0.522 |

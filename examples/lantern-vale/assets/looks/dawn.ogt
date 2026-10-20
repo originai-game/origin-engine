@@ -1,0 +1,37 @@
+type look
+version 1
+---
+# The results at dawn: the luminous layered preset as it is meant, a
+# painting of the vale in five depth bands from a plum foreground to a
+# glowing gold distance, seen from high over the valley as the night
+# passes (the View system lifts the camera while the results show).
+# Applied by src/ui.ts with og.render.applyLook when the results open, the
+# dusk look again when they close.
+name "Lantern Vale at dawn"
+extends "luminous-layered-painting"
+skin "skins/lantern/skin.ogt"
+antialias taa
+Stylise {
+  depthBands 5
+  depthBandsNear 26
+  depthBandsFar 52
+  depthBandsNearColor "#3a1d4a"
+  depthBandsFarColor "#ffcf86"
+  depthBandsFlatten 0.8
+  ink true
+  inkThreshold 0.5
+  inkDepth 0.5
+  inkNormalThreshold 2
+  inkWidth 1
+  inkColor "#1a0f22"
+}
+RenderSettings {
+  toneMapping agx
+  exposure 1.3
+  bloom true
+  bloomIntensity 0.7
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.35
+}

@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# The lamplighter: 0.8 x 0.6 x 1.6 m, standing on y 0 (tools/make-assets.ts).
+model {
+  voxScale 0.1
+  voxOrigin bottom
+}

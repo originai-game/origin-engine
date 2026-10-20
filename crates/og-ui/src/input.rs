@@ -29,20 +29,24 @@ pub enum UiKey {
     Tab,
     Space,
     NumpadEnter,
-    /// With Control or Command: select all.
+    /// With the shortcut key (Command under [`crate::Viewport::mac_keys`],
+    /// else Control): select all. With Control under mac keys: the line's
+    /// start (emacs).
     KeyA,
-    /// With Control or Command: copy.
+    /// With the shortcut key: copy.
     KeyC,
-    /// With Control or Command: cut.
+    /// With the shortcut key: cut.
     KeyX,
-    /// With Control or Command: undo (with Shift: redo).
+    /// With the shortcut key: undo (with Shift: redo).
     KeyZ,
-    /// With Control or Command: redo.
+    /// With the shortcut key: redo.
     KeyY,
+    /// With Control under mac keys: the line's end (emacs).
+    KeyE,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 18] = [
+    pub const ALL: [UiKey; 19] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -61,6 +65,7 @@ impl UiKey {
         UiKey::KeyX,
         UiKey::KeyZ,
         UiKey::KeyY,
+        UiKey::KeyE,
     ];
 
     /// Its `KeyboardEvent.code`.
@@ -84,6 +89,7 @@ impl UiKey {
             UiKey::KeyX => "KeyX",
             UiKey::KeyZ => "KeyZ",
             UiKey::KeyY => "KeyY",
+            UiKey::KeyE => "KeyE",
         }
     }
 }
@@ -109,8 +115,14 @@ pub trait InputSource {
     fn shift(&self) -> bool {
         false
     }
-    /// A Control or Command key is held (Ctrl/Cmd+A, C, X, Z, Y in a text field).
+    /// A Control key is held (Ctrl+A, C, X, Z, Y and Ctrl+←/→ by words in
+    /// a text field; under mac keys Ctrl+A and E, the line's ends).
     fn ctrl(&self) -> bool {
+        false
+    }
+    /// A Command (macOS) or Windows key is held: Cmd+A, C, X, Z under mac
+    /// keys, Cmd+←/→ the line's ends.
+    fn meta(&self) -> bool {
         false
     }
     /// An Alt (Option) key is held (Alt+←/→ move by words in a text field).
@@ -235,7 +247,7 @@ impl InputSource for og_input::Input {
     /// from `beforeinput` and the probe's `type:` sends too): once one has
     /// arrived, the UI takes text from those alone ([`InputFrame::with_text`]).
     fn typed(&self, out: &mut String) {
-        if self.ctrl() {
+        if self.ctrl() || self.meta() {
             return;
         }
         let shift = self.down("ShiftLeft") || self.down("ShiftRight");
@@ -254,10 +266,11 @@ impl InputSource for og_input::Input {
     }
 
     fn ctrl(&self) -> bool {
-        self.down("ControlLeft")
-            || self.down("ControlRight")
-            || self.down("MetaLeft")
-            || self.down("MetaRight")
+        self.down("ControlLeft") || self.down("ControlRight")
+    }
+
+    fn meta(&self) -> bool {
+        self.down("MetaLeft") || self.down("MetaRight")
     }
 
     fn alt(&self) -> bool {
@@ -288,8 +301,10 @@ pub struct InputFrame {
     pub typed_stream: bool,
     /// A Shift key is held.
     pub shift: bool,
-    /// A Control or Command key is held.
+    /// A Control key is held (not Command: [`InputFrame::meta`]).
     pub ctrl: bool,
+    /// A Command (macOS) or Windows key is held.
+    pub meta: bool,
     /// An Alt (Option) key is held.
     pub alt: bool,
     /// The first gamepad.
@@ -327,6 +342,7 @@ impl InputFrame {
             typed_stream: false,
             shift: source.shift(),
             ctrl: source.ctrl(),
+            meta: source.meta(),
             alt: source.alt(),
             gamepad: source.gamepad(),
             extra_pads: [GamepadFrame::default(); 3],

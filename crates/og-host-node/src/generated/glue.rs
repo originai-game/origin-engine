@@ -873,6 +873,12 @@ pub fn og_physics_ragdoll_pose(env: Env, world: u32, entity: f64) -> String {
     <Host as PhysicsApi>::og_physics_ragdoll_pose(&Host, world, entity)
 }
 
+#[napi(js_name = "og_physics_stats")]
+pub fn og_physics_stats(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_stats(&Host, world)
+}
+
 #[napi(js_name = "og_atmosphere_time_of_day")]
 pub fn og_atmosphere_time_of_day(env: Env, world: u32) -> f64 {
     let _env = crate::EnvScope::enter(&env);

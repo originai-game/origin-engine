@@ -14,13 +14,13 @@ module time {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 553</sub>
+<sub>`api.ogt` line 561</sub>
 
 ## Contents
 
 | Name | Kind | Summary |
 |---|---|---|
-| [`og.Time`](#record-Time) | resource | The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. |
+| [`og.Time`](#record-Time) | resource | The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script. |
 | [`og.time.setScale`](#fn-setScale) | function | Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it. |
 | [`og.time.hitStop`](#fn-hitStop) | function | Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values at 60 Hz: 2-3 ticks for a light hit, 4-6 medium, 8-12 heavy, 12-20 a finishing blow (paired with slow motion). |
 
@@ -54,7 +54,7 @@ fn setScale {
 }
 ```
 
-<sub>`api.ogt` line 595</sub>
+<sub>`api.ogt` line 603</sub>
 
 <a id="fn-hitStop"></a>
 
@@ -84,7 +84,7 @@ fn hitStop {
 }
 ```
 
-<sub>`api.ogt` line 602</sub>
+<sub>`api.ogt` line 610</sub>
 
 ## Components, resources and events
 
@@ -92,7 +92,7 @@ fn hitStop {
 
 ### `og.Time` (resource)
 
-The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
 
 Token `og.Time`, registered under the schema name `og.Time`; its value type is `Time`.
 
@@ -109,7 +109,7 @@ Token `og.Time`, registered under the schema name `og.Time`; its value type is `
 
 ```ogt
 resource Time {
-  doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers."
+  doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script."
   field tick u32 "Fixed steps taken since load." {
     readonly true
     unit ticks
@@ -147,4 +147,4 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 557</sub>
+<sub>`api.ogt` line 565</sub>

@@ -198,15 +198,23 @@ impl Hooks for WebHooks {
     }
 
     fn now_ms(&self) -> f64 {
-        PERFORMANCE.with(|p| match p {
-            Some((performance, now)) => now
-                .call0(performance)
-                .ok()
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
-            None => js_sys::Date::now(),
-        })
+        clock_ms()
     }
+}
+
+/// This thread's `performance.now()` (each Worker has its own, from its own
+/// origin), or the date where there is none: the hooks' clock and
+/// og-physics's for its per-phase stats, which a step on the lanes times on
+/// the pool Worker it runs on.
+pub(crate) fn clock_ms() -> f64 {
+    PERFORMANCE.with(|p| match p {
+        Some((performance, now)) => now
+            .call0(performance)
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
+        None => js_sys::Date::now(),
+    })
 }
 
 /// `cooked/stream/<name>.ogb`, as the Worker's fetcher tells a pack
@@ -493,9 +501,11 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
 }
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
-/// coarsePointer?, reducedMotion?, highContrast?, reducedTransparency? }` in
-/// CSS pixels (the last three the page's `prefers-reduced-motion`,
-/// `prefers-contrast` and `prefers-reduced-transparency`).
+/// coarsePointer?, reducedMotion?, highContrast?, reducedTransparency?,
+/// macKeys? }` in CSS pixels (reducedMotion, highContrast and
+/// reducedTransparency the page's `prefers-reduced-motion`,
+/// `prefers-contrast` and `prefers-reduced-transparency`; macKeys an Apple
+/// platform's editing keys in text controls).
 /// Answers wire JSON.
 #[wasm_bindgen]
 pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {

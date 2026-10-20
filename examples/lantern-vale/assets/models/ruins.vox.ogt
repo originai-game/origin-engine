@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# The far side's broken arch (the far-side streaming group): 4.8 m wide, 4 m tall (tools/make-assets.ts).
+model {
+  voxScale 0.2
+  voxOrigin bottom
+}

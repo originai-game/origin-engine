@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a falling UI cancel: og.load.sound(world, "<this file>") plays it.
+preset "back"
+seed 0
+pitch 1
+length 1
+volume 1
