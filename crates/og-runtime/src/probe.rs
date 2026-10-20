@@ -254,16 +254,23 @@ impl Reloader for RuntimeReloader {
             .ok_or("no game was declared; the bundle must export og.game(...)")?;
         let seed = current.resource::<og_core::Rng>().map(|r| r.seed()).ok();
         let eng = engine(self.engine)?;
-        let (profile, ui) = {
+        let (profile, ui, project) = {
             let st = eng.state.borrow();
-            (st.profile, st.ui.clone())
+            (st.profile, st.ui.clone(), st.project.clone())
         };
         let link = og_audio::link(self.engine);
         let previous = match (&ui, link) {
             (Some(u), Some(l)) => Some((u, l)),
             _ => None,
         };
-        let mut a = assemble(game as u32, seed, self.engine, profile, previous)?;
+        let mut a = assemble(
+            game as u32,
+            seed,
+            self.engine,
+            profile,
+            project.as_ref(),
+            previous,
+        )?;
         a.probe = None;
         let world = std::mem::replace(
             &mut a.world,

@@ -694,7 +694,7 @@
             {
               "name": "tick",
               "prop": "u32",
-              "doc": "The fixed tick rate in hertz.",
+              "doc": "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).",
               "publish": true
             },
             {
@@ -7856,7 +7856,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The fixed tick rate.",
+          "description": "The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both.",
           "default": 60,
           "minimum": 1,
           "maximum": 240,
@@ -7866,7 +7866,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The project seed every Rng stream derives from. A replay overrides it.",
+          "description": "The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it.",
           "default": 0
         },
         "scenes": {
@@ -7874,12 +7874,12 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`.",
+          "description": "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`; left unset, project.ogt's `scenes` block.",
           "default": {}
         },
         "scene": {
           "type": "string",
-          "description": "The scene loaded first.",
+          "description": "The scene loaded first; left unset, project.ogt's `scene` (else main).",
           "default": "main"
         },
         "systems": {

@@ -76,7 +76,7 @@ interface Game {
 
 #### `Game.tick` (property)
 
-The fixed tick rate in hertz.
+GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
 
 ```ts
 readonly tick: number
@@ -85,7 +85,7 @@ readonly tick: number
 Binding symbol `og_game_get_tick` · publish builds: kept
 
 ```ogt
-prop tick u32 "The fixed tick rate in hertz."
+prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
 <sub>`api.ogt` line 479</sub>
@@ -171,10 +171,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `tick` | `number` | `60` | 1 … 240 | `hz` | — | The fixed tick rate. |
-| `seed` | `number` | `0` | — | — | — | The project seed every Rng stream derives from. A replay overrides it. |
-| `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`. |
-| `scene` | `string` | `"main"` | — | — | — | The scene loaded first. |
+| `tick` | `number` | `60` | 1 … 240 | `hz` | — | The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both. |
+| `seed` | `number` | `0` | — | — | — | The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it. |
+| `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block. |
+| `scene` | `string` | `"main"` | — | — | — | The scene loaded first; left unset, project.ogt's `scene` (else main). |
 | `systems` | `readonly System[]` | `[]` | — | — | — | The systems, in declaration order before `after`/`before` constraints apply. |
 | `resources` | `readonly AnyResource[]` | `[]` | — | — | — | The game's own resources, created at their defaults. |
 | `commands` | `Readonly<Record<string, CommandHandler>>` | `{}` | — | — | — | Game actions registered into the command channel, by action name. |
@@ -189,15 +189,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct GameDesc {
   doc "A game: its tick, scenes, systems and commands."
   desc true
-  field tick u32 "The fixed tick rate." {
+  field tick u32 "The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both." {
     default 60
     min 1
     max 240
     unit hz
   }
-  field seed u32 "The project seed every Rng stream derives from. A replay overrides it."
-  field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`."
-  field scene String "The scene loaded first." {
+  field seed u32 "The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it."
+  field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`; left unset, project.ogt's `scenes` block."
+  field scene String "The scene loaded first; left unset, project.ogt's `scene` (else main)." {
     default "main"
   }
   field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."

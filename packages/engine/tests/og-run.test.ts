@@ -3,6 +3,8 @@
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { ogBin } from "./support/og-bin.ts";
 
 // The functional lane may run with a web module older than the native addon
@@ -42,9 +44,22 @@ test("a throw in GameDesc.start fails og run, named with its stack, with and wit
   const game = "packages/engine/tests/fixtures/start-throws/main.ts";
   for (const args of [["--ticks", "10"], ["--commands", "0.1:quit"], ["--commands", "0.1:quit", "--no-render"]]) {
     const r = spawn([ogBin(), "run", "--headless", game, ...args], repo);
-    expect(r.exitCode, `${args.join(" ")}: ${r.stderr}`).not.toBe(0);
+    if (r.exitCode === 0) throw new Error(`og run ${args.join(" ")} exited 0: ${r.stderr}${r.stdout}`);
     expect(r.stderr).toContain("GameDesc.start threw");
     expect(r.stderr).toContain("the village has no well");
     expect(r.stderr).toContain("buildTheVillage");
+  }
+}, 120_000);
+
+test("og run takes tick and seed from project.ogt for a GameDesc that leaves them unset", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-project-"));
+  try {
+    const r = spawn([ogBin(), "run", "--headless", "packages/engine/tests/fixtures/project-defaults", "--no-render", "--out", out, "--commands", "0:get:og.Time:time.json;0:get:og.Rng.seed:seed.json;0.1:quit"], repo);
+    if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${r.stderr}${r.stdout}`);
+    const read = (f: string) => (JSON.parse(readFileSync(join(out, f), "utf8")) as { value: unknown }).value;
+    expect((read("time.json") as { rate: number }).rate).toBe(30);
+    expect(read("seed.json")).toBe(5);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
   }
 }, 120_000);

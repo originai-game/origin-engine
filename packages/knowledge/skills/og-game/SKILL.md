@@ -40,7 +40,11 @@ in this table owns it and the other points there.
 | `dist/` | `og build` output |
 
 The engine version in `project.ogt` is a pin. Upgrading it is an explicit
-change with its own run, never a side effect.
+change with its own run, never a side effect. Its `tick`, `seed`, `scenes`
+and `scene` are the defaults of the `GameDesc` fields of those names: what
+`og.game({...})` leaves unset takes the manifest's value (else 60, 0, none
+and `main`). Write each in one place; set in both to different values, the
+engine refuses to start and names both.
 
 ## 3. Components, resources, systems, the game
 

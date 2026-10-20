@@ -737,7 +737,7 @@ export type StartFn = (world: World) => void;
  */
 export interface GameDesc {
   /**
-   * The fixed tick rate.
+   * The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both.
    *
    * @default 60
    * @range 1..240
@@ -745,19 +745,19 @@ export interface GameDesc {
    */
   readonly tick?: number;
   /**
-   * The project seed every Rng stream derives from. A replay overrides it.
+   * The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it.
    *
    * @default 0
    */
   readonly seed?: number;
   /**
-   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`.
+   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block.
    *
    * @default {}
    */
   readonly scenes?: Readonly<Record<string, string>>;
   /**
-   * The scene loaded first.
+   * The scene loaded first; left unset, project.ogt's `scene` (else main).
    *
    * @default "main"
    */
@@ -822,7 +822,9 @@ export interface GameDesc {
 
 /** A declared game, the bundle's default export. */
 export interface Game {
-  /** The fixed tick rate in hertz. */
+  /**
+   * GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
+   */
   readonly tick: number;
   /** The systems in declaration order. */
   readonly systems: readonly System[];

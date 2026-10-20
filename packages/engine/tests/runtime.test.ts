@@ -149,6 +149,27 @@ test("a throw in GameDesc.start fails the run: the error with its stack, and no 
   engine.destroy();
 });
 
+test("project.ogt fills the GameDesc fields a game leaves unset, and one set in both differently refuses", () => {
+  const project = 'type project\nversion 1\n---\nname "P"\ntick 30\nseed 5\n';
+  const created = createEngine(og.game({}) as unknown as GameToken, { project });
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  expect(engine.rate).toBe(30);
+  const time = engine.world.resource(og.Time);
+  expect(time.ok && (time.value as { rate: number }).rate).toBe(30);
+  const rng = engine.world.resource(og.Rng);
+  expect(rng.ok && rng.value.seed).toBe(5);
+  engine.destroy();
+  // Set alike in both: fine; differently: refused, naming both.
+  expect(createEngine(og.game({ tick: 30 }) as unknown as GameToken, { project }).ok).toBeTrue();
+  const clash = createEngine(og.game({ seed: 1 }) as unknown as GameToken, { project });
+  expect(clash.ok).toBeFalse();
+  if (!clash.ok) expect(clash.reason).toContain("GameDesc.seed is 1 but project.ogt's `seed` is 5");
+  // Without a project: GameDesc, else the defaults.
+  const bare = createEngine(og.game({}) as unknown as GameToken);
+  expect(bare.ok && bare.value.rate).toBe(60);
+});
+
 test("after/before order systems regardless of declaration order", () => {
   const engine = start(og.game({ systems: [CopyB, SetA], commands: { spawn: spawnMovers } }) as unknown as GameToken);
   engine.command("spawn", ["1"]);

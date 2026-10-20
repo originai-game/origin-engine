@@ -198,10 +198,10 @@ test("get answers the sun og.DayNight drives as it is drawn, and og.Time whole",
   expect(day!.lightIntensity).toBeCloseTo(sun!.intensity as number, 5);
   expect(day!.toLight).toEqual(sun!.toLight);
   // Only the first directional light is driven.
-  expect(lamp!.drivenBy).toBeUndefined();
+  expect("drivenBy" in lamp!).toBeFalse();
   expect(lamp!.intensity).toBeCloseTo(2.4, 5);
   // og.Time as a system reads it: the clock, its rate and the time scale.
-  expect(time).toMatchObject({ rate: 60, scale: 1, hitStop: 0 });
+  expect([time!.rate, time!.scale, time!.hitStop]).toEqual([60, 1, 0]);
   expect(time!.scaledDt).toBeCloseTo(1 / 60, 6);
   // Midnight: the moon, cold and dim, opposite the sun.
   // (a script's times count from when it is scheduled)

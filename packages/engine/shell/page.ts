@@ -41,6 +41,8 @@ export interface ShellConfig {
   readonly build: "publish" | "dev";
   readonly name: string;
   readonly profile: "2d" | "3d";
+  /** project.ogt's text, for the engine's tick, seed, scenes and scene (CreateOptions.project). */
+  readonly project?: string;
   readonly isolation: "required" | "preferred" | "off";
   readonly fit: "letterbox" | "fill";
   /** Width over height for letterbox; null takes the screen's. */
@@ -108,6 +110,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     build: c.build === "publish" ? "publish" : "dev",
     name: c.name ?? "Origin Engine",
     profile: c.profile === "2d" ? "2d" : "3d",
+    ...(typeof c.project === "string" ? { project: c.project } : {}),
     isolation: c.isolation ?? "preferred",
     fit: c.fit === "fill" ? "fill" : "letterbox",
     aspect: typeof c.aspect === "number" && c.aspect > 0 ? c.aspect : null,
@@ -427,6 +430,7 @@ export async function play(): Promise<PlayHandle> {
       prime: !harness,
       ...(seed === undefined ? {} : { seed }),
       profile: config.profile,
+      ...(config.project === undefined ? {} : { project: config.project }),
       dprCap: config.dprCap,
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
       onProgress: (v) => setProgress(v),
