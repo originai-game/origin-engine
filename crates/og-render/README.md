@@ -585,7 +585,9 @@ its names, with glTF `KHR_materials_*` meanings (`src/physical.rs`,
   `attenuationDistance`, and puts it in place of the diffuse light, as
   three.js does. So a transmissive object shows the opaque scene, the sky
   and terrain behind it, not water, transparent or other transmissive
-  objects. `ior` also sets a dielectric's F0, ((ior - 1) / (ior + 1))².
+  objects; it casts a shadow like an opaque one (as in three.js) and is
+  left out of the depth prepass, the planar reflection and GPU occlusion
+  like a blended one. `ior` also sets a dielectric's F0, ((ior - 1) / (ior + 1))².
 - **Iridescence** (`iridescence`, `iridescenceIOR`,
   `iridescenceThicknessRange`, `iridescenceMap` red,
   `iridescenceThicknessMap` green between the range's ends): Belcour and

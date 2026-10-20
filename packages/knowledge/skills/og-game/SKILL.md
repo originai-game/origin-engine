@@ -306,8 +306,13 @@ Every effect is off until the game turns it on, as data:
   `og.render.updateMaterial(world, material, { dissolve: t })`. Beside
   three.js's standard fields (metalness, roughness, emissive, `normalMap` in
   glTF's tangent frame, `alphaTest`, `transparent`, `side: "double"`,
-  `unlit`), `clearcoat` and `clearcoatRoughness` lay a glossy lacquer over a
-  rough base (car paint, varnish). A non-uniform `scale` shades correctly.
+  `unlit`), three.js `MeshPhysicalMaterial`'s fields work on every tier:
+  `clearcoat` (with `clearcoatMap`, `clearcoatNormalMap`) for car paint and
+  varnish, `sheen` and `sheenColor` for cloth and velvet, `transmission`
+  with `thickness`, `ior` and `attenuationColor` for glass and water that
+  refract what is behind them, `iridescence` for soap film and oil,
+  `anisotropy` for brushed metal; a glTF's `KHR_materials_*` extensions
+  load into them. A non-uniform `scale` shades correctly.
 - **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
