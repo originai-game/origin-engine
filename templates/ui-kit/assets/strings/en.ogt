@@ -7,6 +7,7 @@ base true
 string "gallery.button" "Gallery"
 string "menu.title" "Origin Quest"
 string "menu.subtitle" "A small adventure"
+string "menu.greeting" "Welcome back, traveller"
 string "menu.play" "Play"
 string "menu.continue" "Continue"
 string "menu.settings" "Settings"

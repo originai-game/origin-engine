@@ -864,6 +864,14 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 None => skin_font(2)?,
             },
             rounded: font("roundedFont")?,
+            fallbacks: match d["fallbackFonts"].as_array() {
+                Some(list) => list
+                    .iter()
+                    .filter_map(Value::as_f64)
+                    .map(|h| ui_font(&eng, h))
+                    .collect::<Result<Vec<_>, _>>()?,
+                None => Vec::new(),
+            },
             fallback: skin_font(3)?,
             // The locale's chain (og.i18n) stays.
             chain: Vec::new(),

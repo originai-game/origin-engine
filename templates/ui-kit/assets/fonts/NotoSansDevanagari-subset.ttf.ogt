@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# Made by tools/make-faces.py.
+font {
+  charset ascii
+  chars "नमस्तेदुनियाहिन्दीभाषास्तरखेलशुरूकरें"
+  em_px 32
+  px_range 4
+}

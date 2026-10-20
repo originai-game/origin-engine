@@ -76,8 +76,9 @@ pub struct UiDesc {
 }
 
 /// The fonts of each role; `display` and `mono` (the numeric role) fall
-/// back to `body`, `rounded` to `display`, then `body`. A text the role's font cannot draw whole takes the first
-/// font of `chain` (the locale's, og.i18n) that can, then `fallback` (a
+/// back to `body`, `rounded` to `display`, then `body`. A text the role's
+/// font cannot draw whole takes the first font of `chain` (the locale's,
+/// og.i18n), then of `fallbacks` (the game's), that can, then `fallback` (a
 /// skin's Latin display face and Chinese text).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Fonts {
@@ -89,6 +90,10 @@ pub struct Fonts {
     pub fallback: Option<UiFont>,
     /// The active locale's fonts, first first.
     pub chain: Vec<UiFont>,
+    /// The game's fonts for other scripts (`UiDesc.fallbackFonts`), tried
+    /// after the locale's: a text the role's font cannot draw whole takes
+    /// the first that can.
+    pub fallbacks: Vec<UiFont>,
 }
 
 impl Fonts {
@@ -105,30 +110,40 @@ impl Fonts {
         }
     }
 
-    /// The font a text of `role` is measured and drawn with: the role's,
-    /// or the fallback when the role's lacks a character the fallback has.
+    /// The font a text of `role` is measured and drawn with: the role's when
+    /// its atlas has every character; else the first of `chain` then
+    /// `fallbacks` whose atlas does; else the skin's `fallback` when it has
+    /// a character the role's lacks; else the first font, in the same
+    /// order, that can draw it with the characters its file renders at run
+    /// time (`font { runtime true }`); else the role's.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
         let f = self.get(role);
-        let covers = |font: &UiFont| {
+        let cooked = |font: &UiFont| {
+            text.chars()
+                .all(|c| c.is_whitespace() || font.metrics.in_atlas(c))
+        };
+        if cooked(f) {
+            return f;
+        }
+        let others = || self.chain.iter().chain(&self.fallbacks);
+        if let Some(c) = others().find(|c| cooked(c)) {
+            return c;
+        }
+        if let Some(fb) = &self.fallback
+            && text
+                .chars()
+                .any(|c| !c.is_whitespace() && !f.metrics.in_atlas(c) && fb.metrics.has(c))
+        {
+            return fb;
+        }
+        let drawable = |font: &UiFont| {
             text.chars()
                 .all(|c| c.is_whitespace() || font.metrics.has(c))
         };
-        if !self.chain.is_empty()
-            && !covers(f)
-            && let Some(c) = self.chain.iter().find(|c| covers(c))
-        {
-            return c;
+        if drawable(f) {
+            return f;
         }
-        match &self.fallback {
-            Some(fb)
-                if text
-                    .chars()
-                    .any(|c| !c.is_whitespace() && !f.metrics.has(c) && fb.metrics.has(c)) =>
-            {
-                fb
-            }
-            _ => f,
-        }
+        others().find(|c| drawable(c)).unwrap_or(f)
     }
 }
 

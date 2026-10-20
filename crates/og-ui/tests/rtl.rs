@@ -218,3 +218,35 @@ fn a_right_to_left_ui_mirrors_its_layout() {
         );
     }
 }
+
+/// Devanagari through rustybuzz: a conjunct (स + ् + त) becomes fewer glyphs
+/// than characters, the vowel sign ि is drawn before the consonant it
+/// follows in the text, and the run keeps its logical indices.
+#[test]
+fn devanagari_forms_conjuncts_and_reorders_its_vowel_signs() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/ui-kit/assets/fonts/NotoSansDevanagari-subset.ttf"
+    );
+    let file = FontFile::new(Arc::new(
+        std::fs::read(path).expect("the kit's Devanagari font"),
+    ))
+    .expect("a font rustybuzz reads");
+    let m = FontMetrics::fixed(0.5).with_file(Some(file));
+    let word = "नमस्ते";
+    let g = m.visual(word, Direction::Ltr, 0.0);
+    assert!(g.iter().all(|g| g.ch as u32 >= GLYPH_PUA), "shaped: {g:?}");
+    assert!(
+        g.len() < word.chars().count(),
+        "the conjunct स्त is one glyph or fewer than its three characters: {} glyphs",
+        g.len()
+    );
+    assert!(!g.iter().any(|g| g.rtl));
+    // हिन्दी: the vowel sign ि follows ह in the text and is drawn before it,
+    // both in ह's cluster (logical index 0).
+    let hi = m.visual("हिन्दी", Direction::Ltr, 0.0);
+    let ha = m.visual("ह", Direction::Ltr, 0.0)[0].ch;
+    assert_eq!((hi[0].index, hi[1].index), (0, 0), "{hi:?}");
+    assert_ne!(hi[0].ch, ha, "the sign comes first");
+    assert_eq!(hi[1].ch, ha, "then ह");
+}

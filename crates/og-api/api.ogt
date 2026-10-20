@@ -7322,6 +7322,7 @@ module ui {
     field displayFont Option.Font "The display font; null uses the body font."
     field monoFont Option.Font "The monospaced font; null uses the body font."
     field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
+    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole."
     field contrast Contrast "Standard or high contrast."
     field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
     field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."

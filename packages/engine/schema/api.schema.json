@@ -20605,6 +20605,14 @@
           "description": "The rounded font (levels and scores); null uses the display font, then the body font.",
           "default": null
         },
+        "fallbackFonts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Font"
+          },
+          "description": "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole.",
+          "default": []
+        },
         "contrast": {
           "$ref": "#/$defs/Contrast",
           "description": "Standard or high contrast.",

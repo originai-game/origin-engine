@@ -11273,6 +11273,12 @@ export interface UiDesc {
    */
   readonly roundedFont?: Font | null;
   /**
+   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole.
+   *
+   * @default []
+   */
+  readonly fallbackFonts?: readonly Font[];
+  /**
    * Standard or high contrast.
    *
    * @default "standard"
