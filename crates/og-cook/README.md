@@ -57,6 +57,8 @@ calls `cook_project`.
 | glTF 2.0 | `<path>.ogb` (`og.Model`) + `<path>.tex<n>.ogb` per texture use | Per primitive (glTF order): positions, normals (flat when missing), uv0, colour0, tangents (MikkTSpace for normal-mapped primitives that lack them, via unwelding); weld; quantise (position u16×3 over the bounds, normal oct snorm16×2, uv u16×2 over the uv range, colour u8×4, tangent oct snorm16×2 + sign); weld again; meshopt vertex-cache and overdraw (1.05) ordering; LOD chain by `meshopt_simplify` (3 levels, each half the previous, max error 5 % of the extent, stops when a level saves < 5 %); vertex-fetch reorder over all LODs; meshopt vertex codec v1 and index codec v1. Materials (metallic-roughness, emissive strength, alpha mode, double-sided) plus a default material, nodes in topological order, scenes and their roots. Skins, animations and morph targets go to the `#anim` blob (next row). Welding keys skinned and morphed vertices by their skin and morph data, so it never merges vertices that deform apart. |
 | glTF skins, animations, morph targets | `<path>.anim.ogb` (`og.Animation`, id `<path>#anim`) | Only when the glTF has any. The node hierarchy in the model blob's order; skins (joints, inverse bind matrices, `skeleton`); per clip, every channel evaluated by the glTF sampler (STEP, LINEAR with shortest-arc slerp, CUBICSPLINE Hermite; f64; a key within 1 µs of a sample counts as reached) at `i / rate` and at the end, `rate` = the import settings' `animation { rate }` or the source's key rate rounded (1–120 Hz), the source rate kept; markers from `animations[i].extras."og.events"` (`[{"name", "time"}]`) and `animation { event "<clip>" "<name>" <s> }`; samples f32 by default (a channel whose frames are all the same bits stored once), or with `animation { compress true }` quantised with keyframe reduction within `tolerance` (§Animation samples); per skinned primitive joints u16×4 and weights unorm16×4 (summing to 65535) per cooked vertex; per morphed primitive, sparse, each target's moved vertices (a delta with any bit set) with their indices, position (and normal) deltas, names from `mesh.extras.targetNames`, default weights; streams meshopt-encoded. |
 | PNG/JPEG | `<path>.ogb` (`og.Texture`) | Decoded to RGBA8, then KTX2: colour → ETC1S/BasisLZ, sRGB, quality 128; `kind normal` → UASTC level 1 + RDO 1.0 + Zstandard, linear, tuned for normal maps, x y z in RGB and y again in alpha (Basis transcoders take BC5's and EAC RG11's second channel from alpha; `has_alpha` 1 says a map carries it, and the settings string's "normal y in alpha" recooks older maps); `kind linear` → the same without the normal-map tuning. Full mip chain. `kind pixel` → RGBA8 + zlib, sRGB, lossless, one level; the runtime samples it nearest (sprite sheets, tilesets). In a glTF, base colour and emissive are colour, metallic-roughness and occlusion linear, normal normal. |
+| KTX2 | `<path>.ogb` (`og.Texture`) | `src/cook/ktx2_source.rs`. Basis ETC1S or UASTC, or RGBA8 (none or zlib), its `KTXorientation` and `KTXswizzle` honoured: a file that is `rd` and `rgba` (or says neither), of a colour or linear kind matching its transfer function, is taken byte for byte; any other is decoded (Basis through the native transcoder), flipped to rows top to bottom and columns left to right, swizzled (`r g b a 0 1` per channel) and cooked again as an image of its kind (`texture { kind }`, else sRGB colour or linear). The report says which. `toktx`'s own output goes through the same check. |
+| texture array `.ogt` (`type texture-array`) | `<path>.ogb` (`og.TextureArray`) + `<path>.layer<n>.ogb` (`og.Texture`, id `<path>#layer<n>`) per layer | `src/cook/texture_array.rs`: `kind color|normal|linear|pixel` and 1–256 `layer "<file>"` images (beside the file, else under `assets/`) of one size (a layer of another size is refused naming both); each layer cooked as a texture of the kind; the array blob holds the size, kind, level count and the layers' ids. The runtime uploads the layers as one `D2Array` texture (`og.load.textureArray`, og-render's `RenderScene::add_texture_array`; padded with the last layer when WebGL2 would take the count for a 2D or cube texture). Nothing samples an array yet. |
 | WAV | `<path>.ogb` (`og.Sound`), and for a sound cooked in chunks `<path>.chunk<n>.ogb` (`og.SoundChunk`, id `<path>#chunk<n>`) | 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit, then QOA (in-crate encoder: 3.2 bits per sample). With `sound { stream true }`, or when the QOA file would pass 1 MiB (27 s of 48 kHz stereo) unless `stream false`, the file is encoded once and cut between QOA frames into chunks of about `chunk` seconds (default 4, whole frames): the sound's blob holds the QOA header and the first chunk, each other chunk a blob of its own, which the runtime reads ahead of the playheads and drops behind them (og-audio's README §Chunked sounds). A QOA frame carries its predictor's state, so the chunks decode to the whole file's samples exactly. A chunked sound cannot join a stream group. |
 | TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle) and ascender/descender/line gap. |
 | rig `.ogt` (`type rig`) | `<path>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): `scheme` (auto, mixamo, vrm, unity, rigify, ue, blender) and standard bones named outright or `none`; validated and stored as canonical text, loaded with `og.load.rig`. A model's `animation { rig }` names it for the cook's retargeting. |
@@ -144,6 +146,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 |---|---|---|
 | `og.Model` | `ModelMeta` (counts, default scene, skipped animations/skins, default-scene bounds) | `primitives` `PrimitiveRow` (material, attribute bits, vertex count/stride, byte ranges in `vertices`/`indices`, index count, LOD range, dequantisation offset/scale), `lods` `LodRow` (index range, simplify error), `meshes` `MeshRow` (primitive range, name), `materials` `MaterialRow`, `textures` `TextureRefRow` (asset id, kind), `nodes` `NodeRow` (parent, mesh, name, TRS), `scenes` `SceneRow`, `roots` (u32), `strings` (UTF-8 pool), `vertices`, `indices` (meshopt streams, 4-aligned per primitive) |
 | `og.Texture` | `TextureMeta` (size, levels, kind, codec, colour space, alpha, supercompression) | `ktx2`: a complete KTX2 file, 16-aligned |
+| `og.TextureArray` | `TextureArrayMeta` (size, layers, levels, kind) | `layers` `ArrayLayerRow` (the layers' texture ids in `strings`), `strings` |
 | `og.Sound` | `SoundMeta` (rate, channels, frames, QOA frames per chunk, chunk count; 0 0 when whole) | `qoa`: a complete QOA file, or of a chunked sound its header and first chunk |
 | `og.SoundChunk` | `SoundChunkMeta` (chunk, first QOA frame, frame count) | `qoa`: the chunk's QOA frames |
 | `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point, `atlas.<n>` KTX2 RGBA8/zlib |
@@ -239,6 +242,7 @@ A stamp is FNV-1a 64 (`og_core::hash`) over the cooker version
 | rig | the file |
 | glTF texture | texture options and encoder, the image's bytes, the texture kind |
 | texture | texture options and encoder, the file and its import settings, the kind |
+| texture array, and each layer | texture options and encoder, the file, every layer image's bytes (and the layer's index) |
 | sound | the file, its import settings, and the chunk count it is cut into |
 | sound chunk | the same, and the chunk's index |
 | font | the effective font settings, the file and its import settings |
@@ -300,7 +304,9 @@ compares every file). Two caveats the integrator must decide on:
   release agree and makes the debug test run ~10× faster; cross-host
   identity would need `-ffp-contract=off` for the C++ crates
   (`.cargo/config.toml` `[env]`) and a check on Linux x86-64.
-- `toktx` output depends on its version, which is part of every texture stamp.
+- `toktx` output depends on its version, which is part of every texture stamp
+  (toktx 4 prints it on stderr; the stamp read stdout only and held an
+  empty version until P4).
 
 ## Tests
 
@@ -327,6 +333,7 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | `animation.rs` (separate file) | every cooked clip sample of `walker.glb` (source rates and 60 Hz) and `trickster.glb` equals an independent glTF sampler within 1e-5; skins, inverse binds, joints, weights and morph deltas follow the cooked vertices; markers from extras and import settings, bad ones refused; a cooked walker plays in og-anim; evidence `anim-cook-resample.json` |
 | `anim_compress.rs` (separate file) | every committed animated model cooked f32 and compressed: every frame of every channel within the tolerance, every node within 0.5 mm per metre of the skeleton, smaller samples, the same skins and morphs; the trickster posed mid-clip by each cook within og-tests' default frame tolerance; the settings parse and enter the stamp; evidence `P4/cook/anim-compress.json` and the two frames |
 | `sound_chunks.rs` (separate file) | a 12.5 s WAV with `sound { stream true chunk 1.5 }` cooks to 8 chunks whose head and chunk blobs laid end to end are the bytes of the same WAV cooked whole, and go into og-audio's bank; nothing re-cooks unchanged, a chunk length edit re-cooks only that sound and removes the old chunks; the 1 MiB threshold and `stream false`; bad settings refused by line; a chunked sound in a stream group refused |
+| `textures_p4.rs` (separate file) | an RGBA8 KTX2 tagged `ru`/`bgra` cooks to the source texels exactly; an `rd` RGBA8 or Basis KTX2 is taken byte for byte; a Basis KTX2 tagged `ru` is re-encoded the right way up (53.9 dB against 23.7 as stored); a texture array's layers cook in order, each also a texture, upload as one `D2Array` texture whose layers read back exactly (RGBA8) or in the device's block format (BC7 on Metal), counted in the frame's texture bytes; layers of two sizes refused; with `toktx` on PATH (else skipped with the reason printed), the template's two textures cook through it (40.8 and 45.9 dB, `rd`, its version in the stamp) and toktx's own `--lower_left_maps_to_s0t0` (`ru`) output is flipped back (40.3 dB); evidence `P4/cook/textures-*.json` |
 | `retarget.rs` (separate file) | fx-showcase's animation library retargeted at cook time into `strider.glb` (Mixamo names, armature scale 0.01, a rig file) and `stout.glb` (Unreal names, detected): the clips and markers arrive, and on every frame the library's walk plants a foot the character's foot is on its own ground within 2 mm and does not slide (0 m measured; 2.9 cm without foot IK); an edit of the rig file re-cooks only the model naming it, an edit of the library's settings both; a rig naming a missing node fails with the file and line; evidence `retarget-contacts.json` |
 | `cooked_models_render_the_gltf_reference_scene` | og-tests' `gltf-reference` scene with the models swapped for cooked ones renders within RMSE 0.02 of `crates/og-tests/references/<tier>/gltf-reference.png` (0.0043 on Metal) |
 | `compressed.rs` (separate file) | the template's Basis textures reach each block family the GPU takes (BC7/BC5, ASTC 4x4, ETC2/EAC RG11) by kind, with sRGB only on colour and every cooked level at its exact size; RGBA8 without a renderer or with compression off; stone boards near and far (small levels) draw within RMSE 0.012 and 0.5 % outliers of their RGBA8 frame, which the normal map read flipped exceeds; the cooked models with compressed textures stay within RMSE 0.02 and 1 % outliers of `gltf-reference`; `FrameStats::texture_bytes` shrinks (evidence under `tests/evidence/P2/render/`) |
@@ -341,15 +348,24 @@ without base colour textures), then restored.
 ## What phase 2 owes
 
 - **Fonts**: kerning and shaping (rustybuzz), runtime glyph generation for
-  CJK, `msdfgen`-style error correction.
-- **Hot reload**: the host side landed with `og dev` (5c79c75: re-cook of
-  the changed sources, bundle rebuild, the probe's `reload` keeping world
-  state, latency printed against 300 ms); the M4 row's measured "glTF edit →
-  reload ≤ 300 ms" run is not yet filed under `tests/evidence/M4/`. The
-  cook's part (an incremental re-cook of one model in ~10–50 ms) is here.
-- Archetype templates (`runner`, `match3`) and their assets.
-- KTX2 orientation/swizzle metadata, texture arrays, KTX2 cube-map
-  sources (environment maps take equirectangular HDR images), audio
-  streaming chunks; terrains loaded tile by tile (the runtime assembles every tile today).
-- `toktx` fallback is implemented but untested here (no `toktx` on this
-  machine); with neither encoder the cook fails with a message naming both.
+  CJK (the ui-text stream on main covers part of this; see its notes).
+- **Texture arrays**: nothing samples a `TextureArray` yet (a sprite
+  layer, a material or terrain binding is renderer work); environment
+  cube maps from KTX2 cube sources (environment maps take equirectangular
+  HDR images, `type environment`).
+- **Animation**: compressed clips are rebuilt to f32 at load, so a
+  resident clip is not smaller in memory; sampling quantised keys in
+  og-anim would be.
+- **Audio**: chunks are fetched by distance to the playhead only, not
+  prioritised against other fetches.
+
+Done since phase 1 (kept here for the record): the measured M4 "glTF edit
+→ reload ≤ 300 ms" run is filed (`tests/evidence/P2/tooling/m4-m5-tooling.md`:
+8 reloads, worst 112.8 ms in `og dev`, 251 ms from the write; owed row 34);
+terrains stream tile by tile (og.Terrain schema 2, the phase 3 streaming
+round: the runtime decodes the wanted tiles off the frame within a budget);
+the `runner` and `match3` archetypes exist (`templates/archetypes/`);
+animation sample compression and sparse morph targets, audio streaming
+chunks, KTX2 orientation and swizzle, texture arrays and the `toktx`
+fallback's test landed in P4 (§Animation samples, the importers above,
+`tests/evidence/P4/cook/`).

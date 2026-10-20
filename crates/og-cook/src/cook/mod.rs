@@ -16,12 +16,14 @@ mod e6;
 mod environment;
 mod flipbook;
 mod font;
+pub mod ktx2_source;
 mod model;
 mod scene;
 pub mod sfx;
 mod stream;
 mod terrain;
 mod texture;
+pub mod texture_array;
 pub mod tilemap;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
@@ -403,6 +405,7 @@ enum Kind {
     Rig,
     Terrain,
     Environment,
+    TextureArray,
 }
 
 impl Kind {
@@ -426,6 +429,7 @@ impl Kind {
             Kind::Rig => "rig",
             Kind::Terrain => "terrain",
             Kind::Environment => "environment",
+            Kind::TextureArray => "texture-array",
         }
     }
 }
@@ -477,6 +481,9 @@ enum Work<'a> {
     Rig(&'a Source),
     Terrain(&'a Source),
     Environment(&'a Source),
+    /// A texture array's blob, and layer `n`'s texture.
+    TextureArray(&'a Source, texture_array::ArrayDecl),
+    ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -626,7 +633,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     for (rel, path) in &files {
         let kind = match ext(rel).as_str() {
             "glb" | "gltf" => Kind::Model,
-            "png" | "jpg" | "jpeg" => Kind::Texture,
+            "png" | "jpg" | "jpeg" | "ktx2" => Kind::Texture,
             "wav" => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,
@@ -662,6 +669,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
+                    Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
@@ -1004,6 +1012,37 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
             }
+            Kind::TextureArray => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let root = texture_array::assets_dir(&s.path, &s.rel);
+                match texture_array::parse(&s.rel, &text, &|p| root.join(p).is_file()) {
+                    Ok(decl) => {
+                        let deps = texture_array::dependencies(&root, &decl);
+                        let base = [
+                            b"texture-array 1".as_slice(),
+                            tex_desc.as_bytes(),
+                            &hash,
+                            deps.as_bytes(),
+                        ];
+                        outs.push((
+                            s.rel.clone(),
+                            format::TextureArray::NAME,
+                            stamp(&base),
+                            Work::TextureArray(s, decl.clone()),
+                        ));
+                        for n in 0..decl.layers.len() {
+                            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                            outs.push((
+                                texture_array::layer_id(&s.rel, n),
+                                format::Texture::NAME,
+                                st,
+                                Work::ArrayLayer(s, decl.clone(), n),
+                            ));
+                        }
+                    }
+                    Err(e) => early_errors.push((s.rel.clone(), "texture-array", e)),
+                }
+            }
             Kind::Environment => {
                 let deps = environment::environment_dependencies(s);
                 let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
@@ -1334,6 +1373,12 @@ fn run(
             let note = format!("{}: {}x{} image {image}", p.id, img.width, img.height);
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
+        Work::Texture(s, k) if s.rel.ends_with(".ktx2") => {
+            let explicit = settings_block(s, "texture")
+                .and_then(|b| b.get("kind"))
+                .map(|_| *k);
+            ktx2_source::cook(&s.bytes, explicit, &options.texture, p.stamp)
+        }
         Work::Texture(s, k) => {
             let img = texture::decode(&s.bytes).map_err(CookError)?;
             let note = format!(
@@ -1496,6 +1541,15 @@ fn run(
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Environment(s) => environment::cook_environment(s, p.stamp),
+        Work::TextureArray(s, decl) => {
+            let root = texture_array::assets_dir(&s.path, &s.rel);
+            texture_array::cook(&s.rel, &root, decl, &options.texture, p.stamp)
+        }
+        Work::ArrayLayer(s, decl, n) => {
+            let root = texture_array::assets_dir(&s.path, &s.rel);
+            texture_array::cook_layer(&root, decl, *n, &options.texture, p.stamp)
+                .map(|b| (b, Vec::new()))
+        }
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

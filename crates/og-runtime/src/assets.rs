@@ -85,6 +85,8 @@ pub(crate) struct Assets {
     pub warnings: Vec<String>,
     /// The game bundle's streaming groups.
     pub stream: super::stream::Streams,
+    /// og.load.textureArray's answers, by asset id.
+    pub texture_arrays: BTreeMap<String, Value>,
 }
 
 pub(crate) fn handle(index: usize) -> u64 {
@@ -574,6 +576,64 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         .by_path
         .insert(format!("texture:{id}"), i);
     Ok(i)
+}
+
+/// `og.load.textureArray`: a cooked `type texture-array`, its layers
+/// decoded through the host's texture hook (each an `og.Texture` the web
+/// Worker transcoded with the bundle) and uploaded as one 2D-array
+/// texture. Loading a path again answers the same array.
+pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(v) = eng.assets.borrow().texture_arrays.get(&id) {
+        return Ok(v.clone());
+    }
+    let formats = texture_formats(eng);
+    let (array, layers) = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        let array = bundle
+            .texture_array(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?;
+        let mut layers = Vec::with_capacity(array.layers.len());
+        for l in &array.layers {
+            let (bytes, bundle) = assets.blob(l)?;
+            let tex = bundle
+                .texture(l, bytes.bytes())
+                .map_err(|e| e.to_string())?;
+            match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
+                Some(Fetch::Ready(d)) => layers.push(d),
+                Some(Fetch::Pending) => {
+                    return Err(format!("{l}: the layer is still being transcoded"));
+                }
+                Some(Fetch::Failed(e)) => return Err(format!("{l}: {e}")),
+                None => return Err("no host is installed to decode textures".into()),
+            }
+        }
+        (array, layers)
+    };
+    let data = og_render::TextureArrayData { layers };
+    let info = data.info().map_err(|e| format!("{id}: {e}"))?;
+    let added = eng
+        .render
+        .borrow_mut()
+        .scene
+        .add_texture_array(data)
+        .map_err(|e| format!("{id}: {e}"))?;
+    let value = json!({
+        "array": handle(added.index()) as f64,
+        "width": info.width,
+        "height": info.height,
+        "layers": info.layers,
+        "levels": info.levels,
+        "format": info.format.name(),
+        "bytes": info.bytes as f64,
+    });
+    debug_assert_eq!(array.meta.layers, info.layers);
+    eng.assets
+        .borrow_mut()
+        .texture_arrays
+        .insert(id, value.clone());
+    Ok(value)
 }
 
 pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {

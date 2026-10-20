@@ -619,6 +619,31 @@ impl Bundle {
         })
     }
 
+    /// Decodes a texture array blob: its shape and its layers' texture ids
+    /// (each an `og.Texture` of its own, loaded as any texture).
+    pub fn texture_array(&self, id: &str, bytes: &[u8]) -> Result<CookedTextureArray, LoadError> {
+        let blob = self.blob::<format::TextureArray>(id, bytes)?;
+        let meta = one::<format::TextureArrayMeta>(&blob)?;
+        let rows = table::<format::ArrayLayerRow>(&blob, "layers")?;
+        let strings = blob.raw("strings")?;
+        let layers = rows
+            .iter()
+            .map(|r| {
+                pool_str(strings, r.name_offset, r.name_len)
+                    .map(str::to_string)
+                    .ok_or_else(|| invalid(&blob, "layer name out of range"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if layers.len() != meta.layers as usize || layers.is_empty() {
+            return Err(invalid(&blob, "layer count disagrees with the meta row"));
+        }
+        Ok(CookedTextureArray {
+            id: asset_id(id).to_string(),
+            meta,
+            layers,
+        })
+    }
+
     /// Reads a chunk of a sound cooked in chunks (`<id>#chunk<n>`,
     /// [`chunk_id`]): its index and its QOA frames.
     pub fn sound_chunk(&self, id: &str, bytes: &[u8]) -> Result<(u32, Vec<u8>), LoadError> {
@@ -1464,6 +1489,34 @@ pub fn sound_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<(u32, Vec<
     let blob = Blob::open(aligned.as_slice(), path, &expect)?;
     let meta = one::<format::SoundChunkMeta>(&blob)?;
     Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+}
+
+/// A cooked texture array: its shape and its layers' texture ids, in
+/// layer order ([`Bundle::texture_array`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTextureArray {
+    pub id: String,
+    pub meta: format::TextureArrayMeta,
+    pub layers: Vec<String>,
+}
+
+impl CookedTextureArray {
+    /// The array og-render uploads from its layers' textures, each in the
+    /// encoding `formats` takes (RGBA8 without a renderer; native only:
+    /// the web host hands the layers over transcoded).
+    #[cfg(feature = "transcode")]
+    pub fn to_texture_array(
+        &self,
+        bundle: &Bundle,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Result<og_render::TextureArrayData, LoadError> {
+        let mut layers = Vec::with_capacity(self.layers.len());
+        for l in &self.layers {
+            let t = bundle.load_texture(l)?;
+            layers.push(t.to_texture_source(formats)?);
+        }
+        Ok(og_render::TextureArrayData { layers })
+    }
 }
 
 /// The id of chunk `n` of a sound cooked in chunks (`audio/theme.wav#chunk3`).

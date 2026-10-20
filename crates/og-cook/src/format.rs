@@ -12,7 +12,8 @@
 //! | blob | root | sections |
 //! |---|---|---|
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices` |
-//! | texture (`og.Texture`) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
+//! | texture (`og.Texture`; a PNG, JPEG or KTX2 source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
+//! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `atlas.<n>` (KTX2 RGBA8, zlib) |
@@ -315,6 +316,39 @@ row!(
         supercompression: u32,
     }
 );
+
+row!(
+    /// The root of a texture array blob (an `.ogt` of `type texture-array`):
+    /// `layers` same-sized layers, each an `og.Texture` blob of its own
+    /// (`<id>#layer<n>`, named in `layers` [`ArrayLayerRow`]), which the
+    /// runtime uploads as one 2D-array texture.
+    TextureArrayMeta, "og.TextureArray", 1 {
+        width: u32,
+        height: u32,
+        layers: u32,
+        /// Mip levels each layer is cooked with.
+        levels: u32,
+        /// [`kind`]: colour, normal, linear or pixel.
+        kind: u32,
+    }
+);
+
+row!(
+    /// A texture array's layer: its texture's asset id in `strings`.
+    ArrayLayerRow, "og.TextureArrayLayer", 1 {
+        name_offset: u32,
+        name_len: u32,
+    }
+);
+
+/// The texture array blob.
+pub struct TextureArray;
+impl BlobKind for TextureArray {
+    const NAME: &'static str = "og.TextureArray";
+    fn schemas() -> Vec<Schema> {
+        vec![TextureArrayMeta::schema(), ArrayLayerRow::schema()]
+    }
+}
 
 /// The texture blob.
 pub struct Texture;

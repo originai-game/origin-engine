@@ -18,7 +18,7 @@ module anim {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4984</sub>
+<sub>`api.ogt` line 5005</sub>
 
 ## Contents
 
@@ -94,7 +94,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 5294</sub>
+<sub>`api.ogt` line 5315</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -124,7 +124,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 5322</sub>
+<sub>`api.ogt` line 5343</sub>
 
 <a id="fn-retarget"></a>
 
@@ -154,7 +154,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 5342</sub>
+<sub>`api.ogt` line 5363</sub>
 
 <a id="fn-clip"></a>
 
@@ -185,7 +185,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 5426</sub>
+<sub>`api.ogt` line 5447</sub>
 
 ## Components, resources and events
 
@@ -222,7 +222,7 @@ component Skeleton {
 }
 ```
 
-<sub>`api.ogt` line 5068</sub>
+<sub>`api.ogt` line 5089</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -278,7 +278,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 5083</sub>
+<sub>`api.ogt` line 5104</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -354,7 +354,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 5117</sub>
+<sub>`api.ogt` line 5138</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -427,7 +427,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 5165</sub>
+<sub>`api.ogt` line 5186</sub>
 
 <a id="record-IkChain"></a>
 
@@ -498,7 +498,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 5213</sub>
+<sub>`api.ogt` line 5234</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -529,7 +529,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 5257</sub>
+<sub>`api.ogt` line 5278</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -585,7 +585,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 5365</sub>
+<sub>`api.ogt` line 5386</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -612,7 +612,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 5396</sub>
+<sub>`api.ogt` line 5417</sub>
 
 ## Types
 
@@ -628,7 +628,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
 ```
 
-<sub>`api.ogt` line 4990</sub>
+<sub>`api.ogt` line 5011</sub>
 
 <a id="type-ClipAsset"></a>
 
@@ -642,7 +642,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
 ```
 
-<sub>`api.ogt` line 4991</sub>
+<sub>`api.ogt` line 5012</sub>
 
 <a id="type-GraphAsset"></a>
 
@@ -656,7 +656,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
 ```
 
-<sub>`api.ogt` line 4992</sub>
+<sub>`api.ogt` line 5013</sub>
 
 <a id="type-RootMotion"></a>
 
@@ -681,7 +681,7 @@ enum RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 5015</sub>
+<sub>`api.ogt` line 5036</sub>
 
 <a id="type-BlendshapeSource"></a>
 
@@ -704,7 +704,7 @@ enum BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 5029</sub>
+<sub>`api.ogt` line 5050</sub>
 
 <a id="type-IkSolver"></a>
 
@@ -727,7 +727,7 @@ enum IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 5042</sub>
+<sub>`api.ogt` line 5063</sub>
 
 <a id="type-IkSpace"></a>
 
@@ -750,7 +750,7 @@ enum IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 5055</sub>
+<sub>`api.ogt` line 5076</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -777,7 +777,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 5268</sub>
+<sub>`api.ogt` line 5289</sub>
 
 <a id="type-Animation"></a>
 
@@ -804,7 +804,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 5278</sub>
+<sub>`api.ogt` line 5299</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -828,7 +828,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 5287</sub>
+<sub>`api.ogt` line 5308</sub>
 
 <a id="type-Rig"></a>
 
@@ -842,7 +842,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
 ```
 
-<sub>`api.ogt` line 5301</sub>
+<sub>`api.ogt` line 5322</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -863,7 +863,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 5303</sub>
+<sub>`api.ogt` line 5324</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -884,7 +884,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 5309</sub>
+<sub>`api.ogt` line 5330</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -908,7 +908,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 5315</sub>
+<sub>`api.ogt` line 5336</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -942,7 +942,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 5329</sub>
+<sub>`api.ogt` line 5350</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -956,7 +956,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 5349</sub>
+<sub>`api.ogt` line 5370</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -981,7 +981,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 5358</sub>
+<sub>`api.ogt` line 5379</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1012,7 +1012,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 5404</sub>
+<sub>`api.ogt` line 5425</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1041,7 +1041,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5416</sub>
+<sub>`api.ogt` line 5437</sub>
 
 ## Column kinds
 
@@ -1067,7 +1067,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 4994</sub>
+<sub>`api.ogt` line 5015</sub>
 
 ```ogt
 column ClipAsset {
@@ -1078,7 +1078,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 5001</sub>
+<sub>`api.ogt` line 5022</sub>
 
 ```ogt
 column GraphAsset {
@@ -1089,7 +1089,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 5008</sub>
+<sub>`api.ogt` line 5029</sub>
 
 ```ogt
 column RootMotion {
@@ -1100,7 +1100,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 5022</sub>
+<sub>`api.ogt` line 5043</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -1111,7 +1111,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 5035</sub>
+<sub>`api.ogt` line 5056</sub>
 
 ```ogt
 column IkSolver {
@@ -1122,7 +1122,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 5048</sub>
+<sub>`api.ogt` line 5069</sub>
 
 ```ogt
 column IkSpace {
@@ -1133,7 +1133,7 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 5061</sub>
+<sub>`api.ogt` line 5082</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1144,4 +1144,4 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 5351</sub>
+<sub>`api.ogt` line 5372</sub>

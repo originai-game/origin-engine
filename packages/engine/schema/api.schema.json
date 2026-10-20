@@ -1527,6 +1527,7 @@
         "Font",
         "Sound",
         "Skin",
+        "TextureArray",
         "Asset",
         "Sound",
         "LoadStatus",
@@ -1535,6 +1536,7 @@
         "BundleInfo",
         "FontInfo",
         "SoundInfo",
+        "TextureArrayInfo",
         "Model",
         "AssetReady",
         "AssetFailed"
@@ -1792,7 +1794,7 @@
         },
         {
           "name": "texture",
-          "doc": "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.",
+          "doc": "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.\nSources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.",
           "params": [
             {
               "name": "world",
@@ -1808,6 +1810,27 @@
             }
           ],
           "returns": "Result<Texture>",
+          "publish": true
+        },
+        {
+          "name": "textureArray",
+          "doc": "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.\nTextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the array."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The array's asset id, such as `tiles/ground.ogt`."
+            }
+          ],
+          "returns": "Result<TextureArrayInfo>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.",
           "publish": true
         },
         {
@@ -12508,6 +12531,13 @@
       "type": "integer",
       "minimum": 0
     },
+    "TextureArray": {
+      "x-og-kind": "handle",
+      "x-og-module": "load",
+      "description": "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray).",
+      "type": "integer",
+      "minimum": 0
+    },
     "LoadStatus": {
       "x-og-kind": "enum",
       "x-og-module": "load",
@@ -12717,6 +12747,60 @@
         "frames",
         "seconds",
         "chunks"
+      ],
+      "additionalProperties": false
+    },
+    "TextureArrayInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "What og.load.textureArray uploaded.",
+      "type": "object",
+      "properties": {
+        "array": {
+          "$ref": "#/$defs/TextureArray",
+          "description": "The array."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Each layer's width in texels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Each layer's height in texels."
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its layers, in the order the file lists them."
+        },
+        "levels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Mip levels of each layer."
+        },
+        "format": {
+          "type": "string",
+          "description": "The encoding on the GPU: `rgba8`, or the block format the device takes for its kind (`bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`)."
+        },
+        "bytes": {
+          "type": "number",
+          "description": "Bytes it takes on the GPU, every level of every layer (counted in the frame's texture bytes)."
+        }
+      },
+      "required": [
+        "array",
+        "width",
+        "height",
+        "layers",
+        "levels",
+        "format",
+        "bytes"
       ],
       "additionalProperties": false
     },

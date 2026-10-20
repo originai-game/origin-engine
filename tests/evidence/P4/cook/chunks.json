@@ -1,0 +1,1 @@
+{"seconds": 180.27, "channels": 2, "rate": 48000, "qoa_bytes": 6989848, "chunks": 46, "chunk_bytes": 153032, "qoa_frames_per_chunk": 37, "whole_file_resident_peak": 6989848, "chunked_resident_peak": 918200, "chunk_loads": 50, "chunk_drops": 46, "beats": 380, "pcm_frames": 9120000, "pcm_hash": "1eafea3643407585", "identical": true}

@@ -28,6 +28,7 @@ module load {
 | [`Font`](#type-Font) | handle | A cooked MSDF font: its glyph table and one or more atlas pages. |
 | [`Sound`](#type-Sound) | handle | A cooked sound: QOA-encoded PCM the audio module plays. |
 | [`Skin`](#type-Skin) | handle | A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure. |
+| [`TextureArray`](#type-TextureArray) | handle | A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray). |
 | [`Asset()`](#column-Asset) | column kind | An Asset handle field. |
 | [`Sound()`](#column-Sound) | column kind | A Sound handle field. |
 | [`LoadStatus`](#type-LoadStatus) | enum | Where a load is. |
@@ -36,6 +37,7 @@ module load {
 | [`BundleInfo`](#type-BundleInfo) | struct | An open cooked bundle. |
 | [`FontInfo`](#type-FontInfo) | struct | A loaded font's metrics, in em units unless stated. |
 | [`SoundInfo`](#type-SoundInfo) | struct | A loaded sound. |
+| [`TextureArrayInfo`](#type-TextureArrayInfo) | struct | What og.load.textureArray uploaded. |
 | [`og.Model`](#record-Model) | component | Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one. |
 | [`og.load.bundle`](#fn-bundle) | function | Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready. |
 | [`og.load.bundleInfo`](#fn-bundleInfo) | function | What an open bundle holds. |
@@ -50,6 +52,7 @@ module load {
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path. |
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
+| [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
 | [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
 | [`og.load.status`](#fn-status) | function | Where a load is. |
@@ -92,7 +95,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2993</sub>
+<sub>`api.ogt` line 3005</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -122,7 +125,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3000</sub>
+<sub>`api.ogt` line 3012</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -150,7 +153,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3007</sub>
+<sub>`api.ogt` line 3019</sub>
 
 <a id="fn-gltf"></a>
 
@@ -182,7 +185,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3013</sub>
+<sub>`api.ogt` line 3025</sub>
 
 <a id="fn-scene"></a>
 
@@ -212,7 +215,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3021</sub>
+<sub>`api.ogt` line 3033</sub>
 
 <a id="fn-font"></a>
 
@@ -242,7 +245,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3028</sub>
+<sub>`api.ogt` line 3040</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -272,7 +275,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3035</sub>
+<sub>`api.ogt` line 3047</sub>
 
 <a id="fn-sound"></a>
 
@@ -305,7 +308,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3042</sub>
+<sub>`api.ogt` line 3054</sub>
 
 <a id="fn-lut"></a>
 
@@ -335,7 +338,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3050</sub>
+<sub>`api.ogt` line 3062</sub>
 
 <a id="fn-environment"></a>
 
@@ -365,7 +368,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3057</sub>
+<sub>`api.ogt` line 3069</sub>
 
 <a id="fn-emitter"></a>
 
@@ -395,7 +398,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3064</sub>
+<sub>`api.ogt` line 3076</sub>
 
 <a id="fn-shader"></a>
 
@@ -425,13 +428,15 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3071</sub>
+<sub>`api.ogt` line 3083</sub>
 
 <a id="fn-texture"></a>
 
 ### `og.load.texture`
 
 Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+
+Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
 
 ```ts
 og.load.texture(world: World, path: string): Result<Texture>
@@ -449,13 +454,47 @@ Binding symbol `og_load_texture` · publish builds: kept
 ```ogt
 fn texture {
   doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
+  doc "Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is."
   param world World "The world whose renderer owns the texture."
   param path String "The texture's asset id, such as `textures/stone.png`."
   returns Result.Texture
 }
 ```
 
-<sub>`api.ogt` line 3078</sub>
+<sub>`api.ogt` line 3090</sub>
+
+<a id="fn-textureArray"></a>
+
+### `og.load.textureArray`
+
+Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.
+
+TextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it.
+
+```ts
+og.load.textureArray(world: World, path: string): Result<TextureArrayInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the array. |
+| `path` | `string` | no | The array's asset id, such as `tiles/ground.ogt`. |
+
+**Returns** `Result<TextureArrayInfo>`: Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.
+
+Binding symbol `og_load_texture_array` · publish builds: kept
+
+```ogt
+fn textureArray {
+  doc "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array."
+  doc "TextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it."
+  param world World "The world whose renderer owns the array."
+  param path String "The array's asset id, such as `tiles/ground.ogt`."
+  returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
+}
+```
+
+<sub>`api.ogt` line 3098</sub>
 
 <a id="fn-skin"></a>
 
@@ -485,7 +524,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3085</sub>
+<sub>`api.ogt` line 3106</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -515,7 +554,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3092</sub>
+<sub>`api.ogt` line 3113</sub>
 
 <a id="fn-status"></a>
 
@@ -545,7 +584,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3099</sub>
+<sub>`api.ogt` line 3120</sub>
 
 <a id="fn-error"></a>
 
@@ -575,7 +614,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3106</sub>
+<sub>`api.ogt` line 3127</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -605,7 +644,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3113</sub>
+<sub>`api.ogt` line 3134</sub>
 
 <a id="fn-animation"></a>
 
@@ -638,7 +677,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3120</sub>
+<sub>`api.ogt` line 3141</sub>
 
 <a id="fn-rig"></a>
 
@@ -668,7 +707,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3128</sub>
+<sub>`api.ogt` line 3149</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -698,7 +737,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3135</sub>
+<sub>`api.ogt` line 3156</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -728,7 +767,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3142</sub>
+<sub>`api.ogt` line 3163</sub>
 
 ## Components, resources and events
 
@@ -751,7 +790,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2988</sub>
+<sub>`api.ogt` line 3000</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -774,7 +813,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3149</sub>
+<sub>`api.ogt` line 3170</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -799,7 +838,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3155</sub>
+<sub>`api.ogt` line 3176</sub>
 
 ## Types
 
@@ -859,6 +898,20 @@ handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it
 
 <sub>`api.ogt` line 2918</sub>
 
+<a id="type-TextureArray"></a>
+
+### `TextureArray` (handle)
+
+A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray).
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
+```
+
+<sub>`api.ogt` line 2919</sub>
+
 <a id="type-LoadStatus"></a>
 
 ### `LoadStatus` (enum)
@@ -882,7 +935,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2934</sub>
+<sub>`api.ogt` line 2935</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -908,7 +961,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2941</sub>
+<sub>`api.ogt` line 2942</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -933,7 +986,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2949</sub>
+<sub>`api.ogt` line 2950</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -956,7 +1009,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2957</sub>
+<sub>`api.ogt` line 2958</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -987,7 +1040,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2964</sub>
+<sub>`api.ogt` line 2965</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1018,7 +1071,38 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2975</sub>
+<sub>`api.ogt` line 2976</sub>
+
+<a id="type-TextureArrayInfo"></a>
+
+### `TextureArrayInfo` (struct)
+
+What og.load.textureArray uploaded.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `array` | `TextureArray` | `0` | — | — | — | The array. |
+| `width` | `number` | `0` | — | — | — | Each layer's width in texels. |
+| `height` | `number` | `0` | — | — | — | Each layer's height in texels. |
+| `layers` | `number` | `0` | — | — | — | Its layers, in the order the file lists them. |
+| `levels` | `number` | `0` | — | — | — | Mip levels of each layer. |
+| `format` | `string` | `""` | — | — | — | The encoding on the GPU: `rgba8`, or the block format the device takes for its kind (`bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`). |
+| `bytes` | `number` | `0` | — | — | — | Bytes it takes on the GPU, every level of every layer (counted in the frame's texture bytes). |
+
+```ogt
+struct TextureArrayInfo {
+  doc "What og.load.textureArray uploaded."
+  field array TextureArray "The array."
+  field width u32 "Each layer's width in texels."
+  field height u32 "Each layer's height in texels."
+  field layers u32 "Its layers, in the order the file lists them."
+  field levels u32 "Mip levels of each layer."
+  field format String "The encoding on the GPU: `rgba8`, or the block format the device takes for its kind (`bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`)."
+  field bytes f64 "Bytes it takes on the GPU, every level of every layer (counted in the frame's texture bytes)."
+}
+```
+
+<sub>`api.ogt` line 2989</sub>
 
 ## Column kinds
 
@@ -1038,7 +1122,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2920</sub>
+<sub>`api.ogt` line 2921</sub>
 
 ```ogt
 column Sound {
@@ -1049,4 +1133,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2927</sub>
+<sub>`api.ogt` line 2928</sub>

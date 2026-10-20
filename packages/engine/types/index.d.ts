@@ -4748,6 +4748,13 @@ export type Sound = number & { readonly [handleType]: "Sound" };
 export type Skin = number & { readonly [handleType]: "Skin" };
 
 /**
+ * A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TextureArray = number & { readonly [handleType]: "TextureArray" };
+
+/**
  * An Asset handle field.
  *
  * A `Asset` field: stored in a `Uint32Array` with stride 2.
@@ -4865,6 +4872,28 @@ export interface SoundInfo {
   readonly chunks: number;
 }
 
+/** What og.load.textureArray uploaded. */
+export interface TextureArrayInfo {
+  /** The array. */
+  readonly array: TextureArray;
+  /** Each layer's width in texels. */
+  readonly width: number;
+  /** Each layer's height in texels. */
+  readonly height: number;
+  /** Its layers, in the order the file lists them. */
+  readonly layers: number;
+  /** Mip levels of each layer. */
+  readonly levels: number;
+  /**
+   * The encoding on the GPU: `rgba8`, or the block format the device takes for its kind (`bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`).
+   */
+  readonly format: string;
+  /**
+   * Bytes it takes on the GPU, every level of every layer (counted in the frame's texture bytes).
+   */
+  readonly bytes: number;
+}
+
 /**
  * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
  *
@@ -4874,6 +4903,7 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
 
 
 
@@ -16347,11 +16377,21 @@ export declare namespace og {
     function shader(world: World, path: string): Result<Shader>;
     /**
      * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+     * Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
      *
      * @param world The world whose renderer owns the texture.
      * @param path The texture's asset id, such as `textures/stone.png`.
      */
     function texture(world: World, path: string): Result<Texture>;
+    /**
+     * Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.
+     * TextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it.
+     *
+     * @param world The world whose renderer owns the array.
+     * @param path The array's asset id, such as `tiles/ground.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.
+     */
+    function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
      * Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
      *
