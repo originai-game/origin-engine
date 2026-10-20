@@ -224,6 +224,10 @@ pub(crate) struct GpuCulling {
     view_group: wgpu::BindGroup,
     params: [wgpu::Buffer; 2],
     pub instances: wgpu::Buffer,
+    /// What the input region of `instances` holds, written by changes only.
+    upload: crate::upload::DirtyUpload,
+    /// Bytes of transforms the last `encode` wrote.
+    pub uploaded: u64,
     batches: wgpu::Buffer,
     scan: wgpu::Buffer,
     pub args: wgpu::Buffer,
@@ -452,6 +456,8 @@ impl GpuCulling {
             view_group,
             params,
             instances: buffer(device, "culled instances", 0, Self::instance_usage()),
+            upload: Default::default(),
+            uploaded: 0,
             batches: buffer(device, "cull batches", 0, Self::storage_usage()),
             scan: buffer(device, "cull scan", 0, Self::storage_usage()),
             args: buffer(device, "cull draws", 0, Self::args_usage()),
@@ -861,7 +867,7 @@ impl GpuCulling {
         // visible last frame).
         let blocks = n.div_ceil(WORKGROUP);
         let args_words = CountLayout::words(p, b);
-        Self::grow(
+        let instances_replaced = Self::grow(
             device,
             &mut self.instances,
             &mut self.groups,
@@ -922,8 +928,14 @@ impl GpuCulling {
             });
         }
 
-        // Uploads.
-        queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(transforms));
+        // Uploads: of the transforms, only the blocks that changed (the
+        // compute writes its outputs after them, never over them).
+        if instances_replaced {
+            self.upload.invalidate();
+        }
+        self.uploaded = self
+            .upload
+            .write(queue, &self.instances, bytemuck::cast_slice(transforms));
         let table: Vec<BatchGpu> = batches
             .iter()
             .map(|x| {

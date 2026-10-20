@@ -58,6 +58,7 @@ mod sprites;
 mod terrain;
 mod terrain_tiles;
 mod texture;
+mod upload;
 mod water;
 mod weather;
 
@@ -589,6 +590,10 @@ pub struct FrameStats {
     pub scatter_draws: u32,
     pub scatter_copies: u32,
     pub scatter_built: u32,
+    /// Bytes of instance transforms written to the GPU this frame: only the
+    /// 4 KiB blocks that changed since the last frame (0 for a scene that
+    /// stood still).
+    pub instance_upload_bytes: u64,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
@@ -1023,6 +1028,8 @@ pub struct Renderer {
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
     instance_buffer: wgpu::Buffer,
+    /// What `instance_buffer` holds, so a frame writes only what changed.
+    instance_upload: upload::DirtyUpload,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
     /// The overlay's glass: its passes, and its textures for the output's size.
@@ -2159,6 +2166,7 @@ impl Renderer {
             default_normal,
             white_sprite_group,
             instance_buffer,
+            instance_upload: upload::DirtyUpload::default(),
             sprite_buffer,
             overlay,
             glass,
@@ -4090,13 +4098,23 @@ impl Renderer {
         } else {
             &transforms[..]
         };
-        grow_and_write(
+        // Only the blocks that changed since the last frame are written
+        // (a buffer just replaced is written whole).
+        let instance_bytes: &[u8] = bytemuck::cast_slice(cpu_instances);
+        if grow(
             &self.device,
-            &self.queue,
             &mut self.instance_buffer,
             "instances",
-            bytemuck::cast_slice(cpu_instances),
-        );
+            instance_bytes.len() as u64,
+        ) {
+            self.instance_upload.invalidate();
+        }
+        let mut instance_upload_bytes =
+            self.instance_upload
+                .write(&self.queue, &self.instance_buffer, instance_bytes);
+        if gpu_cull && let Some(gc) = &self.gpu_cull {
+            instance_upload_bytes += gc.uploaded;
+        }
         if object_motion {
             let prev: Vec<[[f32; 4]; 4]> = origins
                 .iter()
@@ -4594,6 +4612,7 @@ impl Renderer {
 
         let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
+            instance_upload_bytes,
             terrain_tiles: self.terrain.resident,
             terrain_uploads: self.terrain.uploads,
             scatter_built: self.scatter.built,
@@ -5988,6 +6007,21 @@ fn sprite_bind_group(
     )
 }
 
+/// Replaces `buffer` (a vertex buffer) with a larger one when `len` bytes
+/// do not fit; true when it did.
+fn grow(device: &wgpu::Device, buffer: &mut wgpu::Buffer, label: &str, len: u64) -> bool {
+    if len <= buffer.size() {
+        return false;
+    }
+    *buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size: len.next_power_of_two(),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    true
+}
+
 /// Writes `bytes` at the start of `buffer`, replacing it with a larger one first if needed.
 fn grow_and_write(
     device: &wgpu::Device,
@@ -5996,14 +6030,7 @@ fn grow_and_write(
     label: &str,
     bytes: &[u8],
 ) {
-    if bytes.len() as u64 > buffer.size() {
-        *buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (bytes.len() as u64).next_power_of_two(),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-    }
+    grow(device, buffer, label, bytes.len() as u64);
     if !bytes.is_empty() {
         queue.write_buffer(buffer, 0, bytes);
     }
