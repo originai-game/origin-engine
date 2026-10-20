@@ -3,7 +3,8 @@
 //! through them, a sensor in one corner, and a churn system that despawns a
 //! random body and drops a new one every 20 ticks (so rapier bodies appear
 //! and vanish with their components). Everything random comes from the
-//! world's Rng.
+//! world's Rng. [`pen`] is the same bodies without the paddle, the sensor
+//! and the churn, as many as asked, in a pen that grows with them.
 
 use super::{at, floor, spawn_static};
 use og_core::glam::Vec3;
@@ -29,6 +30,11 @@ pub struct PileStats {
 pub struct Paddle {}
 
 fn random_body(rng: &mut Rng) -> (Transform, RigidBody, Collider) {
+    random_body_in(rng, 4.0)
+}
+
+/// A random body over `half` metres either side of the origin.
+fn random_body_in(rng: &mut Rng, half: f32) -> (Transform, RigidBody, Collider) {
     let kind = rng.integer(0, 4) as u32;
     let s = rng.range_f32(0.25, 0.6);
     let collider = match kind {
@@ -50,9 +56,9 @@ fn random_body(rng: &mut Rng) -> (Transform, RigidBody, Collider) {
     let axis = Vec3::new(rng.range_f32(-1.0, 1.0), 1.0, rng.range_f32(-1.0, 1.0)).normalize();
     let t = Transform {
         position: Vec3::new(
-            rng.range_f32(-4.0, 4.0),
+            rng.range_f32(-half, half),
             rng.range_f32(1.0, 40.0),
-            rng.range_f32(-4.0, 4.0),
+            rng.range_f32(-half, half),
         ),
         quaternion: quat_from_axis_angle(axis, rng.range_f32(0.0, 3.0)),
         scale: Vec3::ONE,
@@ -212,6 +218,44 @@ pub fn build(seed: u32) -> (World, PhysicsSystem) {
 
     let physics = install(&mut w, Physics::default()).unwrap();
     physics.set_mesh(CONVEX_MESH, octahedron(0.45)).unwrap();
+    (w, physics)
+}
+
+/// `n` of the pile's bodies dropped into a walled pen that grows with them
+/// (the pile's 8 × 8 m for 500), and nothing else: physics alone.
+pub fn pen(n: usize, seed: u32) -> (World, PhysicsSystem) {
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed,
+    })
+    .unwrap();
+    w.register::<Transform>().unwrap();
+    let physics = install(&mut w, Physics::default()).unwrap();
+    physics.set_mesh(CONVEX_MESH, octahedron(0.45)).unwrap();
+    spawn_static(
+        &mut w,
+        at(0.0, -0.5, 0.0),
+        Collider::cuboid(Vec3::new(80.0, 1.0, 80.0)),
+    );
+    let half = 4.0 * (n as f32 / 500.0).sqrt().max(0.5);
+    let wall = half + 1.5;
+    for (x, z, sx, sz) in [
+        (wall, 0.0, 1.0, 2.0 * wall + 1.0),
+        (-wall, 0.0, 1.0, 2.0 * wall + 1.0),
+        (0.0, wall, 2.0 * wall + 1.0, 1.0),
+        (0.0, -wall, 2.0 * wall + 1.0, 1.0),
+    ] {
+        spawn_static(
+            &mut w,
+            at(x, 15.0, z),
+            Collider::cuboid(Vec3::new(sx, 30.0, sz)),
+        );
+    }
+    let mut rng = *w.resource::<Rng>().unwrap();
+    for _ in 0..n {
+        w.spawn(random_body_in(&mut rng, half)).unwrap();
+    }
+    *w.resource_mut::<Rng>().unwrap() = rng;
     (w, physics)
 }
 
