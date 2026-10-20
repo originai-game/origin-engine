@@ -1175,6 +1175,8 @@
         "Palette",
         "DitherPattern",
         "DitherPattern",
+        "StyliseSpace",
+        "StyliseSpace",
         "Stylise",
         "MaterialStyle",
         "LookInfo",
@@ -4884,7 +4886,7 @@
         },
         {
           "name": "textField",
-          "doc": "One line of text: a press focuses it with the caret at the press and a drag selects; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects; Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
+          "doc": "One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
           "params": [
             {
               "name": "id",
@@ -4910,7 +4912,7 @@
         },
         {
           "name": "textArea",
-          "doc": "Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, the text wrapped between words at the area's width and scrolled to keep the caret's line in view. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
+          "doc": "Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, the text wrapped between words at the area's width and scrolled to keep the caret's line in view (a drag above or below the area scrolls it, faster the further out). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
           "params": [
             {
               "name": "id",
@@ -11570,6 +11572,20 @@
         "interleavedGradient": "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
       }
     },
+    "StyliseSpace": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone).",
+      "type": "string",
+      "enum": [
+        "screen",
+        "surface"
+      ],
+      "x-og-variants": {
+        "screen": "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it.",
+        "surface": "On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses."
+      }
+    },
     "Stylise": {
       "x-og-kind": "resource",
       "x-og-module": "render",
@@ -11666,6 +11682,11 @@
             "b": 0.03
           }
         },
+        "halftoneSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie).",
+          "default": "screen"
+        },
         "hatching": {
           "type": "number",
           "description": "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only.",
@@ -11705,6 +11726,11 @@
             "g": 0.035,
             "b": 0.03
           }
+        },
+        "hatchingSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie).",
+          "default": "screen"
         },
         "paintRadius": {
           "type": "number",
@@ -11756,10 +11782,22 @@
         },
         "paintCanvasScale": {
           "type": "number",
-          "description": "Canvas texels per logical pixel.",
+          "description": "Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky).",
           "default": 1,
           "minimum": 0.125,
           "maximum": 8
+        },
+        "paintCanvasSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls.",
+          "default": "screen"
+        },
+        "paintCanvasWorldScale": {
+          "type": "number",
+          "description": "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres.",
+          "default": 128,
+          "minimum": 1,
+          "maximum": 4096
         },
         "ink": {
           "type": "boolean",
@@ -11799,6 +11837,19 @@
           "maximum": 1,
           "x-og-unit": "ratio",
           "x-og-tunable": true
+        },
+        "inkDepthThreshold": {
+          "type": "number",
+          "description": "With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps.",
+          "default": 0.04,
+          "minimum": 0
+        },
+        "inkNormalThreshold": {
+          "type": "number",
+          "description": "With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 2
         },
         "depthBands": {
           "type": "integer",
@@ -12854,10 +12905,16 @@
         },
         "dropShadow": {
           "type": "number",
-          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on.",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on.",
           "default": 0,
           "minimum": 0,
           "maximum": 1
+        },
+        "dropShadowHeight": {
+          "type": "number",
+          "description": "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0.",
+          "default": 0,
+          "x-og-unit": "m"
         },
         "flipX": {
           "type": "boolean",
@@ -13108,11 +13165,17 @@
         },
         "dropShadow": {
           "type": "number",
-          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set.",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set.",
           "default": 0,
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "dropShadowHeight": {
+          "type": "number",
+          "description": "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight).",
+          "default": 0,
+          "x-og-unit": "m"
         },
         "visible": {
           "type": "boolean",
@@ -13432,7 +13495,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
         }
       },
       "required": [
@@ -21967,6 +22030,10 @@
           "type": "boolean",
           "description": "The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false."
         },
+        "reducedTransparency": {
+          "type": "boolean",
+          "description": "The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false."
+        },
         "breakpoint": {
           "$ref": "#/$defs/Breakpoint",
           "description": "Its size class: phone portrait or landscape, tablet, desktop."
@@ -21985,7 +22052,7 @@
     "UiDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas.",
+      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas.",
       "type": "object",
       "properties": {
         "scheme": {
@@ -22051,7 +22118,7 @@
           "items": {
             "$ref": "#/$defs/Font"
           },
-          "description": "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole.",
+          "description": "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts.",
           "default": []
         },
         "contrast": {
@@ -22086,6 +22153,11 @@
         "reducedMotion": {
           "type": "boolean",
           "description": "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion).",
+          "default": false
+        },
+        "reducedTransparency": {
+          "type": "boolean",
+          "description": "Glass parts (a skin's glass line) are opaque surfaces: no blur of the frame under them, their frame whole. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency).",
           "default": false
         },
         "icons": {

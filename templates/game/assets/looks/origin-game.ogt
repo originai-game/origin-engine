@@ -1,0 +1,12 @@
+type look
+version 1
+---
+# The game's look (og-taste §12): the frame's art direction as data, named
+# by GameDesc.look in src/main.ts and applied before start runs. It starts
+# from the catalogue's faceted-low-poly preset (flat facets on every lit
+# material, a soft vignette, AgX tone mapping); a block written below wins
+# over the preset field by field, and `extends` takes any catalogue slug
+# (packages/knowledge/looks/catalogue.json). `npm create @origingame/game`
+# writes the game's own look from its premise, or from --look <slug>.
+name "Origin Game"
+extends "faceted-low-poly"

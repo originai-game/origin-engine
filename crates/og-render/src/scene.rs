@@ -2439,19 +2439,108 @@ pub enum TextureFilter {
 }
 
 /// A sprite's drop shadow ([`RenderScene::sprite_shadows`]): the sprite's
-/// quad as it stands, projected along the sun onto the ground plane y = 0
-/// (lifted by [`SPRITE_SHADOW_LIFT`] over a ground mesh there), its texture's
-/// alpha in black at `opacity` times the sprite's own alpha. With the sun
+/// quad as it stands, projected along the sun onto its [`ShadowGround`]
+/// (by default the plane y = 0; lifted by [`SPRITE_SHADOW_LIFT`] over a
+/// ground mesh there), its texture's alpha in black at `opacity` times the
+/// sprite's own alpha, faded where the ground already lies in the sun's
+/// cascaded shadow (a shadow inside a shadow is no darker). With the sun
 /// at or below the horizon there is none; a low sun's shadow is at most
 /// five times as long as the sprite is tall. For pixel sprites standing in
 /// 3D sets (a perspective camera over the xz ground); a 2D camera looking
 /// down -z sees the plane edge on.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SpriteShadow {
     /// The index in [`RenderScene::sprites`].
     pub sprite: u32,
     /// How dark, 0 to 1.
     pub opacity: f32,
+    /// The ground the shadow falls on.
+    pub ground: ShadowGround,
+}
+
+/// The ground a [`SpriteShadow`] falls on: the plane through the point
+/// at `height` under the sprite's anchor with the normal `normal` (og-runtime
+/// fits it to the terrain under the sprite with [`ShadowGround::fit`], or
+/// takes `SpriteDesc.dropShadowHeight`). The default is the plane y = 0.
+/// A normal steeper than about 70° from up is taken as that steep.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadowGround {
+    pub height: f32,
+    pub normal: Vec3,
+}
+
+impl Default for ShadowGround {
+    fn default() -> Self {
+        ShadowGround {
+            height: 0.0,
+            normal: Vec3::Y,
+        }
+    }
+}
+
+impl ShadowGround {
+    /// A level plane at `height`.
+    pub fn level(height: f32) -> ShadowGround {
+        ShadowGround {
+            height,
+            normal: Vec3::Y,
+        }
+    }
+
+    /// The plane a drop shadow of `sprite` lies on over uneven ground
+    /// (`height_at(x, z)`, a terrain's height in metres), under the sun
+    /// towards `direction_to_light`: through the ground at the anchor,
+    /// along the slope from there to where the shadow's tip falls and
+    /// across the slope over the sprite's width, raised where the ground
+    /// between bulges above that plane, so no part of the shadow sinks
+    /// into a hill (over a hollow it lies a little above the ground). A
+    /// level plane at the anchor's ground with the sun at or below the
+    /// horizon.
+    pub fn fit(
+        height_at: impl Fn(f32, f32) -> f32,
+        sprite: &crate::Sprite,
+        direction_to_light: Vec3,
+    ) -> ShadowGround {
+        let at = glam::Vec2::new(sprite.position.x, sprite.position.z);
+        let h0 = height_at(at.x, at.y);
+        let Some(g) = crate::sprites::shadow_ground(direction_to_light) else {
+            return ShadowGround::level(h0);
+        };
+        let step = glam::Vec2::new(g[1], g[2]) * sprite.size.y.abs();
+        let length = step.length();
+        if !(length > 1e-3 && length.is_finite()) {
+            return ShadowGround::level(h0);
+        }
+        let along = step / length;
+        let across = along.perp() * (sprite.size.x.abs() * 0.5).max(0.05);
+        let mid = at + step * 0.5;
+        let tip = height_at(at.x + step.x, at.y + step.y);
+        let (left, right) = (
+            height_at(mid.x - across.x, mid.y - across.y),
+            height_at(mid.x + across.x, mid.y + across.y),
+        );
+        // The rise per metre along the shadow and across it, as a gradient
+        // over x and z.
+        let gradient = along * (tip - h0) / length
+            + across.normalize() * (right - left) / (2.0 * across.length());
+        let bulge = (height_at(mid.x, mid.y) - (h0 + tip) * 0.5).max(0.0);
+        ShadowGround {
+            height: h0 + bulge,
+            normal: Vec3::new(-gradient.x, 1.0, -gradient.y).normalize(),
+        }
+    }
+
+    /// How the ground rises per metre along x and z (0, 0 for a level
+    /// plane, or a normal that is not finite or points down).
+    pub fn slope(&self) -> [f32; 2] {
+        let n = self.normal;
+        if !n.is_finite() || n.y <= 1e-4 {
+            return [0.0, 0.0];
+        }
+        // At most about 70° (a rise of about 3 per metre).
+        let ny = n.y.max(0.34 * n.length());
+        [-n.x / ny, -n.z / ny]
+    }
 }
 
 /// How far above y = 0 a sprite's drop shadow lies (metres), so it never

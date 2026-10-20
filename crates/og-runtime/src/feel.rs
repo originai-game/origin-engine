@@ -1857,8 +1857,11 @@ struct SpriteOut {
     cast_shadow: bool,
     /// Drawn from this layer of a texture array instead of its texture.
     array: Option<(og_render::TextureArrayHandle, u32)>,
-    /// `Sprite.dropShadow`: a flattened dark copy on the ground (0 none).
+    /// `Sprite.dropShadow`: a flattened dark copy on the ground (0 none),
+    /// and `Sprite.dropShadowHeight`, the level ground under it (a higher
+    /// terrain wins, `terrain::ground_drop_shadows`).
     drop_shadow: f32,
+    drop_shadow_height: f32,
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
@@ -1885,6 +1888,7 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
         scene.sprite_shadows.push(og_render::SpriteShadow {
             sprite: index,
             opacity: s.drop_shadow.min(1.0),
+            ground: og_render::ShadowGround::level(s.drop_shadow_height),
         });
     }
     if s.flash[3] > 0.0 || s.glow > 0.0 || s.additive {
@@ -2094,6 +2098,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     cast_shadow: false,
                     array: None,
                     drop_shadow: 0.0,
+                    drop_shadow_height: 0.0,
                 },
             );
         }
@@ -2138,6 +2143,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         cast_shadow: false,
                         array: gimage.array(),
                         drop_shadow: 0.0,
+                        drop_shadow_height: 0.0,
                     },
                 );
             }
@@ -2159,6 +2165,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         };
         let cast = on(&v, "castShadow", false);
         let drop_shadow = f(&v, "dropShadow", 0.0).clamp(0.0, 1.0);
+        let drop_shadow_height = f(&v, "dropShadowHeight", 0.0);
         for (i, p) in pieces.into_iter().enumerate() {
             push(
                 scene,
@@ -2171,6 +2178,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     cast_shadow: cast && i == 0,
                     array: image.array(),
                     drop_shadow,
+                    drop_shadow_height,
                 },
             );
         }

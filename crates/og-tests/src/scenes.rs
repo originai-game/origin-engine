@@ -85,6 +85,8 @@ pub const SCENES: &[&str] = &[
     "stylise-ink-depth",
     "sprites-shadow",
     "sprites-array-fx",
+    "sprites-shadow-terrain",
+    "stylise-surface",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -303,6 +305,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // the ground along the sun (one without, one from a texture
         // array), beside a pillar and a crate casting their own.
         "sprites-shadow" => g.scene = sprites_shadow_scene(),
+        // Drop shadows off the plane y = 0: figures on a hilly terrain
+        // (each shadow on the plane of the slope under its feet), one on a
+        // raised deck (its shadow at the deck's height), and one beside a
+        // wall whose cascaded shadow its drop shadow fades into.
+        "sprites-shadow-terrain" => g.scene = sprites_shadow_terrain_scene(),
         // Texture arrays through every sprite path: glowing array sprites
         // (the glow pass), two 2D particle emitters drawing from arrays
         // (layers by age, and at random with the soft dot's round edge,
@@ -450,6 +457,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-retro" => g.scene = crate::stylise_scenes::retro_scene(),
         "stylise-material" => g.scene = crate::stylise_scenes::material_scene(),
         "stylise-ink-depth" => g.scene = crate::stylise_scenes::ink_depth_scene(),
+        "stylise-surface" => g.scene = crate::stylise_scenes::surface_scene(),
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
@@ -1033,6 +1041,7 @@ pub fn sprites_shadow_scene() -> RenderScene {
             scene.sprite_shadows.push(SpriteShadow {
                 sprite: i,
                 opacity: shadow,
+                ..Default::default()
             });
         }
         i
@@ -1083,6 +1092,127 @@ pub fn sprites_shadow_scene() -> RenderScene {
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.6, 7.5),
         target: Vec3::new(0.0, 0.6, -0.4),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The `sprites-shadow-terrain` hills: heights in metres at world x, z.
+fn shadow_hills(x: f32, z: f32) -> f32 {
+    0.55 * (0.45 * x + 0.3).sin() * (0.38 * z).cos() + 0.25 * (0.9 * z + 1.1).sin() + 0.6
+}
+
+/// The `sprites-shadow-terrain` scene (see [`build`]).
+pub fn sprites_shadow_terrain_scene() -> RenderScene {
+    use og_render::{
+        ShadowGround, SpriteShadow, Terrain, TerrainData, TerrainLayer, TextureFilter,
+    };
+    let mut scene = RenderScene::new();
+    // 48 m of hills sampled every half metre (the clipmap's finest level),
+    // checkered so the slopes read.
+    let (columns, rows, size) = (97u32, 97u32, Vec2::splat(48.0));
+    let cell = size / Vec2::new(columns as f32 - 1.0, rows as f32 - 1.0);
+    let heights: Vec<f32> = (0..rows)
+        .flat_map(|r| {
+            (0..columns).map(move |c| {
+                let p = -size * 0.5 + Vec2::new(c as f32, r as f32) * cell;
+                shadow_hills(p.x, p.y)
+            })
+        })
+        .collect();
+    let data = TerrainData {
+        size,
+        columns,
+        rows,
+        heights: heights.into(),
+        control: None,
+    };
+    let checker = scene.add_texture(shapes::checker(512, 16));
+    let handle = scene.add_terrain(data.clone());
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(checker),
+            color: Vec3::new(0.85, 0.95, 0.75),
+            tile: 4.0,
+            ..Default::default()
+        }],
+        ..Terrain::new(handle)
+    });
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.7, 0.66, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    // A deck whose top is 1.9 m up, and a wall casting the sun's shadow.
+    let deck_top = 1.9;
+    let deck = scene.add_mesh(shapes::cuboid(Vec3::new(2.4, 2.0, 1.8)));
+    scene.add_instance(
+        deck,
+        stone,
+        Mat4::from_translation(Vec3::new(2.7, deck_top - 1.0, 0.2)),
+    );
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(2.6, 4.0, 0.4)));
+    scene.add_instance(
+        wall,
+        stone,
+        Mat4::from_translation(Vec3::new(-2.2, 1.6, -2.2)),
+    );
+    let figures: Vec<_> = [[200, 60, 60], [60, 120, 210], [80, 170, 90]]
+        .into_iter()
+        .map(|tunic| {
+            let t = scene.add_texture(pixel_figure(tunic));
+            scene.set_texture_filter(t, TextureFilter::Nearest);
+            t
+        })
+        .collect();
+    // Each figure stands on the ground under it; its shadow falls on the
+    // plane fitted to the terrain under it (ShadowGround::fit, as
+    // og-runtime fits it), or on the deck.
+    let sun = Vec3::new(0.35, 0.75, -0.6);
+    let stand = |scene: &mut RenderScene, x: f32, z: f32, figure: usize, deck: bool| {
+        let height = if deck {
+            deck_top
+        } else {
+            data.height(Vec2::new(x, z))
+        };
+        let sprite = Sprite {
+            texture: Some(figures[figure % figures.len()]),
+            position: Vec3::new(x, height, z),
+            size: Vec2::splat(1.4),
+            anchor: Vec2::new(0.5, 0.0),
+            ..Default::default()
+        };
+        let ground = if deck {
+            ShadowGround::level(deck_top)
+        } else {
+            ShadowGround::fit(|x, z| data.height(Vec2::new(x, z)), &sprite, sun)
+        };
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        scene.sprite_shadows.push(SpriteShadow {
+            sprite: i,
+            opacity: 0.6,
+            ground,
+        });
+    };
+    // On the hills: down a slope facing away from the sun, up one facing
+    // it, and in a hollow.
+    stand(&mut scene, 0.6, 2.2, 0, false);
+    stand(&mut scene, 0.4, -1.2, 1, false);
+    stand(&mut scene, -3.6, 2.4, 2, false);
+    // On the deck.
+    stand(&mut scene, 3.5, -0.4, 2, true);
+    // Beside the wall: its drop shadow runs into the wall's shadow.
+    stand(&mut scene, -2.8, 0.1, 0, false);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 5.6, 8.5),
+        target: Vec3::new(0.0, 0.8, -0.2),
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };

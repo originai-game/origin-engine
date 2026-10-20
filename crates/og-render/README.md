@@ -31,7 +31,7 @@ the world → scene extraction belongs to the layer above.
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, the cook's prefilter. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
 | `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays` for screen sprites): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture, with glow, flash, 2D lighting and blend; `ParticleEmitter::array` draws a 2D emitter's particles from one. See [The 2D batch](#the-2d-batch-e4). |
-| `SpriteShadow`, `SPRITE_SHADOW_LIFT` | `sprite_shadows`: a world sprite's drop shadow on the ground plane y = 0 along the sun, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
+| `SpriteShadow`, `ShadowGround`, `SPRITE_SHADOW_LIFT` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` (a plane through `height` under the anchor with a `normal`; the plane y = 0 by default; `ShadowGround::fit` fits one to a terrain under the shadow), faded where the cascades already shadow that ground, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
@@ -615,8 +615,8 @@ flipbook emitter by age, four overlay array sprites beside a plain one),
 `array_sprites_glow_and_draw_in_the_overlay` and
 `array_particles_take_their_layers_by_age_or_at_random`.
 
-**Drop shadows** (`sprite_shadows`, `SpriteShadow { sprite, opacity }`;
-the IDL's `SpriteDesc.dropShadow` and `Sprite.dropShadow`): a world
+**Drop shadows** (`sprite_shadows`, `SpriteShadow { sprite, opacity,
+ground }`; the IDL's `SpriteDesc.dropShadow` and `Sprite.dropShadow`): a world
 sprite's shadow is one more instance of its quad, region and texture (or
 array layer) in black at `opacity` times its alpha, keyed `f32::MIN` so it
 draws before every sprite of its layer, whose `ground` (location 6: on,
@@ -633,6 +633,40 @@ on. Shadows are not counted in `FrameStats::sprites`. The instance grew
 by those 16 bytes (100 a sprite or glyph). Tests: `sprites.rs`'s
 `a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun` and
 `a_low_sun_casts_at_most_five_heights` (CPU), og-tests `sprites-shadow`.
+
+*Off the plane y = 0* (stylisation round three): a shadow's `ground`
+(`ShadowGround { height, normal }`) puts it on the plane through `height`
+under the sprite's anchor, tilted to `normal`: `ground.w` carries the
+height (plus the lift), and the shadow instance's `fx.yz` (glow, lighting
+and the soft dot are never a shadow's, and the vertex shader zeroes them
+for one) the rise per metre along x and z, so the instance layout is
+unchanged; the vertex shader (`sloped_shadow`, sprite.wgsl and
+sprite_array.wgsl) moves each corner down the sun until it meets that
+plane, a slope steeper than about 70° taken as that steep and a sun
+grazing the slope held to five heights. A level ground keeps the old
+projection, byte for byte. `ShadowGround::fit(height_at, sprite, sun)`
+fits the plane to uneven ground: through the ground at the anchor, along
+the slope to where the shadow's tip falls and across it over the sprite's
+width, raised where the ground between bulges above it, so the shadow
+never sinks into a hill. og-runtime gives every shadow the level ground
+of `dropShadowHeight` (0 by default) and, where an og.Terrain drawn under
+the anchor is higher, the plane fitted to that terrain
+(`terrain::ground_drop_shadows`, sampling as `og.terrain.sample` does,
+streamed tiles included). *In the cascades*: the fragment shader reads
+the sun's cascaded shadow at the shadow's point (lighting.wgsl
+`cascade_shadow`, now prepended to the sprite shaders) and multiplies the
+shadow's alpha by the light there, so where a wall or tree already
+shadows the ground the drop shadow fades out instead of darkening it
+twice. Tests: `sprites.rs`'s
+`a_drop_shadow_lies_on_its_ground_at_its_height_and_slope` and
+`a_fitted_ground_follows_the_terrain_under_the_shadow`, og-runtime
+`tests/drop_shadows.rs` (a cooked ramp terrain, a deck above it, a sprite
+off it and an immediate sprite), og-tests `sprites-shadow-terrain`
+(figures on hills, one on a deck, one whose shadow runs out of a wall's
+shadow). The sprite vertex shader's slope path moves `sprites-20k` on
+Metal by at most 2/255 on 261 pixels (the compiler's code for the
+standing quad changes with it; no shadow in that scene); every other
+reference is byte-identical.
 
 Tests: `tests/sprites2d.rs` (sort keys across textures within a layer,
 layers still win; tile culling, tiles under their layer's sprites, repeat
@@ -1184,7 +1218,8 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   - `paint`: a Kuwahara filter of four sectors (turned and stretched along
     the image's edges by `anisotropy`), pigment pooling at the edges, a
     bleed from a ring two radii out, and a tileable canvas texture laid
-    over the frame through a repeating sampler.
+    over the frame through a repeating sampler, or on the surfaces
+    (`Paint::canvas_space`, below).
   - `lines`: cross-hatching from the tone (one stroke set per level, each
     turned further, over a paper-light ground), halftone dots on a
     rotated grid sized by the tone, and ink on luminance edges (a Sobel
@@ -1195,10 +1230,12 @@ built. `RenderCapabilities.stylise` names what this renderer draws
     placeholders for the other chain passes and frames without one, and
     the graph declares the reads so nothing aliases them first): a pixel
     is also inked, at that strength, where a neighbour at the line's
-    width is farther by more than 4 % (a silhouette, on the nearer
-    surface) or of about the same depth and turned past 1 − cos 0.4 (a
-    crease), the outline pass's defaults, never on the sky. Comic looks
-    get contours round flat colours that luminance misses.
+    width is farther by more than `Ink::depth_threshold` (4 % by default;
+    a silhouette, on the nearer surface) or of about the same depth and
+    turned past `Ink::normal_threshold` (1 − cos, 0.4 by default; a
+    crease), the outline pass's defaults (the IDL's `inkDepthThreshold`
+    and `inkNormalThreshold`), never on the sky. Comic looks get contours
+    round flat colours that luminance misses.
   - `quantize`: posterisation in display space with an ordered Bayer 2/4/8
     dither (bit-interleaved in the shader), blue noise or
     interleaved-gradient noise (`DitherPattern::InterleavedGradient`),
@@ -1211,6 +1248,32 @@ built. `RenderCapabilities.stylise` names what this renderer draws
     (binding 6) and repeated per dither cell: every 8 × 8 block within 8.6
     levels of the middle (31 for the same values shuffled), no
     4-neighbours within 8 levels.
+- **Surface space** (`StyliseSpace::Surface`: `Paint::canvas_space`,
+  `Hatching::space`, `Halftone::space`; the IDL's `paintCanvasSpace`,
+  `hatchingSpace`, `halftoneSpace`, capability `surfaceSpace`): the
+  pattern is laid on the surfaces instead of over the frame. The frame
+  runs the depth-normal prepass (`Stylise::on_surfaces`) and the paint and
+  lines passes bind its `lindepth` and `gbuffer`; each pixel's point is
+  rebuilt from its view depth (the inverse projection, the camera's
+  rotation) relative to a surface origin, the 1024 m grid point under the
+  camera, computed in f64 on the CPU (`post::surface_origin`), so the
+  patterns keep their precision far from the world's origin, and its
+  world normal weights three planar projections (the planes facing x, y
+  and z, weights |n|⁴). The canvas is sampled on the three planes at
+  `canvas_world_scale` texels per metre (128 by default) with the level
+  of one pixel's footprint, its uv at the origin carried per axis so the
+  grain does not jump when the origin moves. Hatching and halftone lay
+  the screen pattern's stroke sets and dot grids, same tone thresholds,
+  turns and angle, in metres on each plane: the spacing that is
+  `scale` (`size`) pixels where the surface lies falls between two
+  powers of two, and the coarser octave's lines (dots) are a subset of
+  the finer's, so the finer one fades in and out by the fraction between
+  them (a tonal art map's levels): the strokes wrap round spheres, stay
+  on the objects as the camera moves, and keep about their pixel spacing
+  from near to far. The sky keeps the screen pattern. The space is a
+  setting, not a pass (`chain_bits` unchanged). og-tests
+  `stylise-surface`: a pencil drawing of clay forms (hatching and a paper
+  canvas on the surfaces, depth ink with its thresholds set).
 - **Depth bands** (`DepthBands`): an HDR pass after the main pass
   (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
   `near` to `far` into `count` flat layers between two colours; `flatten`
@@ -1241,21 +1304,34 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   monochrome-pixel and monochrome-dither-3d quantise to `handheld4` and
   `1bit`.
 - Beside the frame's stylisation: sprite drop shadows ([The 2D
-  batch](#the-2d-batch-e4)) for pixel sprites in 3D sets, and og-anim's
+  batch](#the-2d-batch-e4)) for pixel sprites in 3D sets, on terrain,
+  decks and steps and faded inside the cascades' shadow, and og-anim's
   stepped playback (`AnimationPlayer.stepFps`) for stop motion on twos.
 
 Scenes: `stylise-pixel`, `stylise-palette`, `stylise-print`,
 `stylise-halftone`, `stylise-paint`, `stylise-bands`, `stylise-retro`,
 `stylise-material`, `stylise-ink-depth` (flat unlit shapes of one colour
 where every line is a silhouette or crease) and `sprites-shadow` (og-tests,
-`metal` and `vulkan-cpu` references), and fx-showcase's `looks` station,
-one frame per preset of `templates/looks/`. Every style of the catalogue
+`metal` and `vulkan-cpu` references), `stylise-surface` and
+`sprites-shadow-terrain` (round three; their references are recorded by
+the round's merge), and fx-showcase's `looks` station, one frame per
+preset of `templates/looks/`, which the browser tiers compare too
+(`reference.ts --looks` in `scripts/check.sh web-reference`, every frame
+against `metal`). Every style of the catalogue
 (`packages/knowledge/looks/catalogue.json`) is now `full` or `content`.
-Not yet: hatching works on luminance only (strokes follow the tone, not
-the surface's curvature); the canvas is laid over the frame in screen
-space (it does not stick to surfaces); drop shadows fall on the plane
-y = 0 only (not on terrain or steps, and they do not darken by the
-cascades); `inkDepth` uses fixed depth and crease thresholds.
+
+Round three delivered what round two left: hatching and halftone on the
+surfaces (strokes follow the tone and the form), the canvas on the
+surfaces, drop shadows on terrain and explicit heights that fade inside
+the cascades' shadow, and `inkDepth`'s thresholds as fields. Still open:
+the surface patterns are triplanar in world space, not in each object's
+own space (a moving object slides through its strokes; the instance id is
+not in the prepass), and the octave fade shows as faint bands on a long
+receding floor (the footprint is measured across the pixel, not along the
+depth gradient); a drop shadow lies on one plane per sprite, so over a
+ridge or a hollow narrower than the shadow it floats a little (never
+sinks: `ShadowGround::fit` lifts it over bulges); no preset uses surface
+space yet (the presets' looks frames are unchanged).
 
 ## What phase 2 owes
 

@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-880 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+882 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -896,6 +896,8 @@ Field units the docs and Tune use.
 | [`StreamStatus`](stream.md#type-StreamStatus) | struct | stream | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
+| [`StyliseSpace`](render.md#type-StyliseSpace) | enum | render | — |
+| [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |
 | [`SweepFrame`](probe.md#type-SweepFrame) | struct | probe | — |
 | [`SweepResult`](probe.md#type-SweepResult) | struct | probe | — |

@@ -61,6 +61,8 @@ module render {
 | [`Palette()`](#column-Palette) | column kind | A Palette handle field (0 is none). |
 | [`DitherPattern`](#type-DitherPattern) | enum | The threshold pattern Stylise.dither spreads the steps of posterize and palette with. |
 | [`DitherPattern()`](#column-DitherPattern) | column kind | A DitherPattern field: the variant's index. |
+| [`StyliseSpace`](#type-StyliseSpace) | enum | Where Stylise lays a pattern (the paint canvas, the hatching, the halftone). |
+| [`StyliseSpace()`](#column-StyliseSpace) | column kind | A StyliseSpace field: the variant's index. |
 | [`og.Stylise`](#record-Stylise) | resource | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation. |
 | [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
 | [`LookInfo`](#type-LookInfo) | struct | A loaded look: where it came from and what applying it sets. |
@@ -134,7 +136,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2794</sub>
+<sub>`api.ogt` line 2824</sub>
 
 <a id="fn-sprite"></a>
 
@@ -164,7 +166,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2916</sub>
+<sub>`api.ogt` line 2949</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -194,7 +196,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3087</sub>
+<sub>`api.ogt` line 3123</sub>
 
 <a id="fn-measureText"></a>
 
@@ -224,7 +226,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3094</sub>
+<sub>`api.ogt` line 3130</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -254,7 +256,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3154</sub>
+<sub>`api.ogt` line 3190</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -284,7 +286,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3161</sub>
+<sub>`api.ogt` line 3197</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -314,7 +316,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3168</sub>
+<sub>`api.ogt` line 3204</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -344,7 +346,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3191</sub>
+<sub>`api.ogt` line 3227</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -376,7 +378,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3198</sub>
+<sub>`api.ogt` line 3234</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -408,7 +410,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3208</sub>
+<sub>`api.ogt` line 3244</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -440,7 +442,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3216</sub>
+<sub>`api.ogt` line 3252</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -474,7 +476,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3224</sub>
+<sub>`api.ogt` line 3260</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -504,7 +506,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3233</sub>
+<sub>`api.ogt` line 3269</sub>
 
 <a id="fn-look"></a>
 
@@ -532,7 +534,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3240</sub>
+<sub>`api.ogt` line 3276</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -560,7 +562,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3246</sub>
+<sub>`api.ogt` line 3282</sub>
 
 <a id="fn-text"></a>
 
@@ -590,7 +592,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3252</sub>
+<sub>`api.ogt` line 3288</sub>
 
 ## Components, resources and events
 
@@ -1164,23 +1166,29 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `halftoneSize` | `number` | `6` | 2 … 64 | — | — | The dot grid's pitch in logical pixels. |
 | `halftoneAngle` | `number` | `45` | — | `deg` | — | The dot grid's angle. |
 | `halftoneColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The ink of the dots (linear). |
+| `halftoneSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie). |
 | `hatching` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only. |
 | `hatchingScale` | `number` | `6` | 2 … 64 | — | — | The spacing of hatch lines in logical pixels. |
 | `hatchingLevels` | `number` | `4` | 1 … 6 | — | — | How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6). |
 | `hatchingAngle` | `number` | `45` | — | `deg` | — | The direction of the first stroke set. |
 | `hatchingColor` | `Color` | `{ r: 0.04, g: 0.035, b: 0.03 }` | — | — | — | The stroke colour (linear): graphite, sepia or ink. |
+| `hatchingSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie). |
 | `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off. |
 | `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara). |
 | `paintEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
 | `paintBleed` | `number` | `0` | 0 … 1 | `ratio` | tunable | Colour bleeding across edges into its neighbours, wet in wet; 0 is none. |
 | `paintCanvas` | `Texture` | `0` | — | — | — | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
 | `paintCanvasStrength` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the canvas texture modulates the frame: 0 none, 1 its full grain. |
-| `paintCanvasScale` | `number` | `1` | 0.125 … 8 | — | — | Canvas texels per logical pixel. |
+| `paintCanvasScale` | `number` | `1` | 0.125 … 8 | — | — | Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky). |
+| `paintCanvasSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls. |
+| `paintCanvasWorldScale` | `number` | `128` | 1 … 4096 | — | — | Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres. |
 | `ink` | `boolean` | `false` | — | — | — | Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases. |
 | `inkThreshold` | `number` | `0.1` | 0 … 1 | — | tunable | The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines. |
 | `inkWidth` | `number` | `1` | 0.5 … 8 | — | tunable | The line width in logical pixels. |
 | `inkColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line colour (linear). |
 | `inkDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses. |
+| `inkDepthThreshold` | `number` | `0.04` | ≥ 0 | — | — | With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps. |
+| `inkNormalThreshold` | `number` | `0.4` | 0 … 2 | — | — | With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds. |
 | `depthBands` | `number` | `0` | 0 … 8 | — | — | Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off. |
 | `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts. |
 | `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; beyond it everything is the far colour. |
@@ -1241,6 +1249,7 @@ resource Stylise {
   field halftoneColor Color "The ink of the dots (linear)." {
     default 0.02 0.02 0.03
   }
+  field halftoneSpace StyliseSpace "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie)."
   field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only." {
     min 0
     max 1
@@ -1264,6 +1273,7 @@ resource Stylise {
   field hatchingColor Color "The stroke colour (linear): graphite, sepia or ink." {
     default 0.04 0.035 0.03
   }
+  field hatchingSpace StyliseSpace "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie)."
   field paintRadius f32 "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off." {
     min 0
     max 8
@@ -1293,10 +1303,16 @@ resource Stylise {
     unit ratio
     tunable true
   }
-  field paintCanvasScale f32 "Canvas texels per logical pixel." {
+  field paintCanvasScale f32 "Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky)." {
     default 1
     min 0.125
     max 8
+  }
+  field paintCanvasSpace StyliseSpace "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls."
+  field paintCanvasWorldScale f32 "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres." {
+    default 128
+    min 1
+    max 4096
   }
   field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases."
   field inkThreshold f32 "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines." {
@@ -1319,6 +1335,15 @@ resource Stylise {
     max 1
     unit ratio
     tunable true
+  }
+  field inkDepthThreshold f32 "With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps." {
+    default 0.04
+    min 0
+  }
+  field inkNormalThreshold f32 "With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds." {
+    default 0.4
+    min 0
+    max 2
   }
   field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
     min 0
@@ -1363,7 +1388,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2347</sub>
+<sub>`api.ogt` line 2360</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -1428,7 +1453,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2517</sub>
+<sub>`api.ogt` line 2547</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1467,7 +1492,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2567</sub>
+<sub>`api.ogt` line 2597</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1518,7 +1543,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2586</sub>
+<sub>`api.ogt` line 2616</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1549,7 +1574,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2616</sub>
+<sub>`api.ogt` line 2646</sub>
 
 <a id="record-Decal"></a>
 
@@ -1604,7 +1629,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2630</sub>
+<sub>`api.ogt` line 2660</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1635,7 +1660,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2662</sub>
+<sub>`api.ogt` line 2692</sub>
 
 <a id="record-Trail"></a>
 
@@ -1711,7 +1736,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2673</sub>
+<sub>`api.ogt` line 2703</sub>
 
 <a id="record-Beam"></a>
 
@@ -1777,7 +1802,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2721</sub>
+<sub>`api.ogt` line 2751</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1816,7 +1841,8 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `shadow` | `number` | `0` | 0 … 1 | — | tunable | A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer. |
 | `shadowSize` | `Vector2` | `{ x: 0, y: 0 }` | ≥ 0 | `m` | — | The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width. |
 | `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
-| `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set. |
+| `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight). |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
@@ -1889,10 +1915,13 @@ component Sprite {
   field shadowOffset Vector2 "The blob's centre relative to the anchor." {
     unit m
   }
-  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
     min 0
     max 1
     tunable true
+  }
+  field dropShadowHeight f32 "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight)." {
+    unit m
   }
   field visible bool "Whether it is drawn." {
     default true
@@ -1900,7 +1929,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2923</sub>
+<sub>`api.ogt` line 2956</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1948,7 +1977,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3002</sub>
+<sub>`api.ogt` line 3038</sub>
 
 ## Types
 
@@ -2641,6 +2670,29 @@ enum DitherPattern {
 
 <sub>`api.ogt` line 2330</sub>
 
+<a id="type-StyliseSpace"></a>
+
+### `StyliseSpace` (enum)
+
+Where Stylise lays a pattern (the paint canvas, the hatching, the halftone).
+
+A string: one of the variants below. The zero value is `"screen"`.
+
+| Variant | Doc |
+|---|---|
+| `"screen"` | Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it. |
+| `"surface"` | On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses. |
+
+```ogt
+enum StyliseSpace {
+  doc "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone)."
+  variant screen "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it."
+  variant surface "On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses."
+}
+```
+
+<sub>`api.ogt` line 2347</sub>
+
 <a id="type-LookInfo"></a>
 
 ### `LookInfo` (struct)
@@ -2670,7 +2722,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2556</sub>
+<sub>`api.ogt` line 2586</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2710,7 +2762,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2761</sub>
+<sub>`api.ogt` line 2791</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2741,7 +2793,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2782</sub>
+<sub>`api.ogt` line 2812</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2803,7 +2855,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2801</sub>
+<sub>`api.ogt` line 2831</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2832,7 +2884,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2835</sub>
+<sub>`api.ogt` line 2865</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2855,7 +2907,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>`api.ogt` line 2876</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2884,7 +2936,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
 | `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
-| `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on. |
+| `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -2941,9 +2994,12 @@ struct SpriteDesc {
   }
   field blend SpriteBlend "Alpha or additive."
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
-  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on." {
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on." {
     min 0
     max 1
+  }
+  field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0." {
+    unit m
   }
   field flipX bool "Mirror the region left to right."
   field flipY bool "Mirror the region top to bottom."
@@ -2958,7 +3014,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2853</sub>
+<sub>`api.ogt` line 2883</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3046,7 +3102,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3029</sub>
+<sub>`api.ogt` line 3065</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3084,7 +3140,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3101</sub>
+<sub>`api.ogt` line 3137</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3116,7 +3172,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3121</sub>
+<sub>`api.ogt` line 3157</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3152,7 +3208,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3136</sub>
+<sub>`api.ogt` line 3172</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3170,7 +3226,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
-| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
+| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
 
 ```ogt
 struct RenderCapabilities {
@@ -3183,11 +3239,11 @@ struct RenderCapabilities {
   field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
-  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
 }
 ```
 
-<sub>`api.ogt` line 3178</sub>
+<sub>`api.ogt` line 3214</sub>
 
 <a id="type-Shader"></a>
 
@@ -3201,7 +3257,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3206</sub>
+<sub>`api.ogt` line 3242</sub>
 
 ## Column kinds
 
@@ -3222,6 +3278,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-StripBlend"></a>`StripBlend` | `StripBlend` | `Uint32Array` | 1 | A StripBlend field: the variant's index. |
 | <a id="column-Palette"></a>`Palette` | `Palette` | `Uint32Array` | 2 | A Palette handle field (0 is none). |
 | <a id="column-DitherPattern"></a>`DitherPattern` | `DitherPattern` | `Uint32Array` | 1 | A DitherPattern field: the variant's index. |
+| <a id="column-StyliseSpace"></a>`StyliseSpace` | `StyliseSpace` | `Uint32Array` | 1 | A StyliseSpace field: the variant's index. |
 
 ```ogt
 column Geometry {
@@ -3366,6 +3423,17 @@ column DitherPattern {
 
 <sub>`api.ogt` line 2340</sub>
 
+```ogt
+column StyliseSpace {
+  doc "A StyliseSpace field: the variant's index."
+  array Uint32Array
+  stride 1
+  value StyliseSpace
+}
+```
+
+<sub>`api.ogt` line 2353</sub>
+
 ## Constants
 
 | Constant | Type | Value | Doc |
@@ -3377,10 +3445,10 @@ column DitherPattern {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3175</sub>
+<sub>`api.ogt` line 3211</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3176</sub>
+<sub>`api.ogt` line 3212</sub>

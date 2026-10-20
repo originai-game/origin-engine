@@ -1,5 +1,6 @@
 //! The scenes og-ui's reference frames are drawn from (`references/<tier>/`
-//! sample-screen, text-glow, glass and widget-set), as scenes ready to
+//! sample-screen, text-glow, glass, widget-set and text-fields-2; and
+//! text-mixed-runs, whose fonts `tests/text_gfx.rs` cooks), as scenes ready to
 //! render: shared by the native tests (`tests/gfx.rs`, `tests/kit_gfx.rs`,
 //! through `support`) and the browser tiers (crates/og-tests-web includes
 //! this file, packages/engine/tests/web/reference-gfx.ts renders them), so
@@ -678,6 +679,261 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
     shot(ui, scene, atlas, vp)
 }
 
+/// The fields of `text-fields-2` and the text they hold.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Fields {
+    pub words: String,
+    pub undo: String,
+    pub notes: String,
+}
+
+/// A column of two fields (a double click's word, an undone edit) and a
+/// three-row text area, `top` CSS px down the surface.
+pub fn fields_screen(ui: &mut Ui, f: &mut Fields, top: f32) {
+    let t = *ui.theme();
+    ui.column(
+        "Fields",
+        Element {
+            width: Size::grow(),
+            padding: Insets {
+                left: t.space.lg,
+                top: t.space.lg + top,
+                right: t.space.lg,
+                bottom: 0.0,
+            },
+            gap: t.space.sm,
+            ..Element::column()
+        },
+        |ui| {
+            let field = FieldDesc {
+                width: Some(Size::Fixed(320.0)),
+                ..FieldDesc::default()
+            };
+            ui.text_field("Words", &mut f.words, &field);
+            ui.text_field("Undo", &mut f.undo, &field);
+            ui.text_area(
+                "Notes",
+                &mut f.notes,
+                &TextAreaDesc {
+                    width: Some(Size::Fixed(320.0)),
+                    rows: 3,
+                    ..TextAreaDesc::default()
+                },
+            );
+        },
+    );
+}
+
+/// `references/<tier>/text-fields-2.png`, 520×330 at 1.5×, two UIs (each
+/// with its own focus) in one frame: in the first, "one two three" typed a
+/// character a tick into the second field and undone back to "one two ",
+/// then "select" in the first field selected by a double click (its caret
+/// at the word's end); in the second, a press on the area's first line
+/// dragged 30 px below it and held there 6 ticks, the area scrolled about
+/// three lines (a line cut part way at its top) and its selection over
+/// every line it passed, the press still held.
+pub fn text_fields_shot(font: &FontFiles) -> Shot {
+    let mut scene = RenderScene::new();
+    let font = add_font(&mut scene, font);
+    let atlas = scene.add_texture(atlas_texture());
+    let (ui, area) = text_fields_uis(&font);
+    let vp = text_fields_viewport();
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+    // The area's UI under the fields' (each band leaves the other's empty).
+    area.frame()
+        .emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.bg.linear();
+    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: (vp.width * vp.dpr) as u32,
+        height: (vp.height * vp.dpr) as u32,
+        ..RenderDesc::default()
+    };
+    Shot { ui, scene, desc }
+}
+
+/// The surface of `text-fields-2`.
+pub fn text_fields_viewport() -> Viewport {
+    Viewport {
+        width: 520.0,
+        height: 330.0,
+        dpr: 1.5,
+        ..Viewport::default()
+    }
+}
+
+/// The two UIs of `text-fields-2` after their input ([`text_fields_shot`]):
+/// the fields' and the area's.
+pub fn text_fields_uis(font: &UiFont) -> (Ui, Ui) {
+    let vp = text_fields_viewport();
+    let at = |p: Vec2, down: bool, pressed: bool, released: bool| InputFrame {
+        pointer: p,
+        pointer_inside: true,
+        down,
+        pressed,
+        released,
+        ..InputFrame::default()
+    };
+    let center = |ui: &Ui, id: &str| {
+        let e = ui.frame().element(id).expect(id);
+        Vec2::new(e.x + e.width - 4.0, e.y + e.height / 2.0)
+    };
+
+    let mut ui = ui_with_font(font.clone());
+    let mut f = Fields {
+        words: "drag to select words".into(),
+        ..Fields::default()
+    };
+    let step = |ui: &mut Ui, f: &mut Fields, input: InputFrame| {
+        ui.begin(input, vp);
+        fields_screen(ui, f, 0.0);
+        ui.end();
+    };
+    step(&mut ui, &mut f, InputFrame::default());
+    let p = center(&ui, "Undo");
+    step(&mut ui, &mut f, at(p, true, true, false));
+    step(&mut ui, &mut f, at(p, false, false, true));
+    for c in "one two three".chars() {
+        step(
+            &mut ui,
+            &mut f,
+            InputFrame {
+                text: c.to_string(),
+                ..InputFrame::default()
+            },
+        );
+    }
+    step(
+        &mut ui,
+        &mut f,
+        InputFrame {
+            keys: vec![UiKey::KeyZ],
+            ctrl: true,
+            ..InputFrame::default()
+        },
+    );
+    // A double click inside "select" (the test face's advances at body size).
+    let words = ui.frame().element("Words").expect("words").clone();
+    let t = *ui.theme();
+    let m = &font.metrics;
+    let x = words.x + t.space.md + m.measure("drag to sel", t.type_ramp.body.size);
+    let p = Vec2::new(x, words.y + words.height / 2.0);
+    for _ in 0..2 {
+        step(&mut ui, &mut f, at(p, true, true, false));
+        step(&mut ui, &mut f, at(p, false, false, true));
+    }
+    step(&mut ui, &mut f, InputFrame::default());
+
+    let mut area = ui_with_font(font.clone());
+    let mut g = Fields {
+        notes: (1..=9)
+            .map(|k| format!("Line {k} of the notes"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        ..Fields::default()
+    };
+    let step = |ui: &mut Ui, f: &mut Fields, input: InputFrame| {
+        ui.begin(input, vp);
+        fields_screen(ui, f, 120.0);
+        ui.end();
+    };
+    step(&mut area, &mut g, InputFrame::default());
+    let notes = area.frame().element("Notes").expect("notes").clone();
+    let start = Vec2::new(notes.x + 30.0, notes.y + 14.0);
+    step(&mut area, &mut g, at(start, true, true, false));
+    let below = Vec2::new(notes.x + 120.0, notes.y + notes.height + 30.0);
+    for _ in 0..6 {
+        step(&mut area, &mut g, at(below, true, false, false));
+    }
+
+    (ui, area)
+}
+
+/// The labels of `text-mixed-runs`: lines that mix Latin with CJK, Arabic,
+/// Hebrew and Devanagari, each drawn a run per font (`Fonts::link`).
+pub const MIXED_LINES: [&str; 5] = [
+    "Level 1-2 古い水車小屋",
+    "Score 42: مرحبا بك",
+    "Player: שלום, नमस्ते!",
+    "Found 冒険 and مغامرة in one line",
+    "A wrapped paragraph of Latin words with 古い水車小屋 inside it, and مرحبا بك too, broken where it meets the column's edge.",
+];
+
+/// The UI of `references/<tier>/text-mixed-runs.png` (`tests/text_gfx.rs`
+/// cooks its fonts and draws it at `vp`): the mixed lines as labels (the
+/// last one wrapping in a 300 px column), rich text with a bold Latin run
+/// beside CJK and Arabic spans, and a focused field holding a mixed name
+/// with its caret, in `fonts` (a Latin face first, the other scripts'
+/// faces as fallbacks).
+pub fn mixed_runs_ui(fonts: Fonts, vp: Viewport) -> Ui {
+    let mut ui = Ui::new(UiDesc {
+        fonts,
+        ..UiDesc::default()
+    });
+    let mut name = "Name 冒険".to_string();
+    let mut step = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, vp);
+        let t = *ui.theme();
+        ui.column(
+            "Mixed",
+            Element {
+                width: Size::grow(),
+                padding: Insets::all(t.space.lg),
+                gap: t.space.sm,
+                ..Element::column()
+            },
+            |ui| {
+                for (k, line) in MIXED_LINES.iter().enumerate().take(4) {
+                    ui.label(ui_idi("Line", k as u32), line, LabelDesc::default());
+                }
+                ui.label(
+                    "Wrapped",
+                    MIXED_LINES[4],
+                    LabelDesc {
+                        width: Size::Fixed(300.0),
+                        ..LabelDesc::default()
+                    },
+                );
+                ui.rich_text(
+                    "Rich",
+                    "[b]Rank 3[/b] 冒険 [color=accent]مغامرة[/color]",
+                    RichTextDesc::default(),
+                );
+                ui.text_field(
+                    "Name",
+                    &mut name,
+                    &FieldDesc {
+                        width: Some(Size::Fixed(300.0)),
+                        ..FieldDesc::default()
+                    },
+                );
+            },
+        );
+        ui.end();
+    };
+    step(&mut ui, InputFrame::default());
+    let e = ui.frame().element("Name").expect("name").clone();
+    let p = Vec2::new(e.x + e.width - 4.0, e.y + e.height / 2.0);
+    for (down, pressed, released) in [(true, true, false), (false, false, true)] {
+        step(
+            &mut ui,
+            InputFrame {
+                pointer: p,
+                pointer_inside: true,
+                down,
+                pressed,
+                released,
+                ..InputFrame::default()
+            },
+        );
+    }
+    step(&mut ui, InputFrame::default());
+    ui
+}
+
 /// A dark card of display-size labels, with or without a skin's text
 /// glow, as a scene ready to render.
 pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, RenderDesc) {
@@ -817,7 +1073,13 @@ pub fn glass_reference_scene() -> (RenderScene, RenderDesc) {
 }
 
 /// The reference frames, by their file name under `references/<tier>/`.
-pub const REFERENCE_SCENES: [&str; 4] = ["sample-screen", "text-glow", "glass", "widget-set"];
+pub const REFERENCE_SCENES: [&str; 5] = [
+    "sample-screen",
+    "text-glow",
+    "glass",
+    "widget-set",
+    "text-fields-2",
+];
 
 /// The scene and renderer description of reference frame `name`.
 pub fn reference_scene(name: &str, font: &FontFiles) -> Result<(RenderScene, RenderDesc), String> {
@@ -830,6 +1092,10 @@ pub fn reference_scene(name: &str, font: &FontFiles) -> Result<(RenderScene, Ren
         "glass" => glass_reference_scene(),
         "widget-set" => {
             let s = widget_set_shot(font);
+            (s.scene, s.desc)
+        }
+        "text-fields-2" => {
+            let s = text_fields_shot(font);
             (s.scene, s.desc)
         }
         _ => {

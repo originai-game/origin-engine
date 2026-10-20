@@ -1,6 +1,6 @@
 ---
 name: og-build
-description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), og build for publishing, and og run --device for the first frame and frame times on a real browser or phone. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
+description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, and big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
 ---
 
 The `og` tool is the whole loop: it cooks assets, runs the game headless on
@@ -27,7 +27,8 @@ needs a browser or a Rust toolchain. The command channel is
    `touch_move_to:<ui id>`, `move_to_text:[=]text[@N]`, `touch_move:x,y`,
    `touch_start`, `touch_end`, `touch:<id>:<down|move|up>:<x,y | ui id>`
    (a second finger), `gamepad:<a+b+...|->[@pad][:lx,ly][:lt,rt]`, `scroll:dx,dy`,
-   `key_down:<Key>`, `key_up:<Key>`, `type:<text>`,
+   `key_down:<Key>`, `key_up:<Key>`, `type:<text>`, `compose:<text>` and
+   `commit:<text>` (an input method, og-ui §7),
    `teleport:<entity>:x,y,z`, `frame_entity:<entity>`, `dump_world[:path]`,
    `dump_entity:<entity>[:path]`, `dump_ui[:path]`,
    `get:<Resource>[.<field>]` or `get:<entity>[.<Component>[.<field>]]`
@@ -156,3 +157,69 @@ tier the device chose, the device itself, and a fix per finding (og-game
 phone you ship for: og polish's native numbers are not a phone's. `og doctor`
 names each missing tool (bun, the native addon, the wasm artifact) with its
 fix.
+
+## 7. Big games: what the cook packs and the page fetches
+
+What `og cook` takes is decided by the file: `.glb`/`.gltf` and MagicaVoxel
+`.vox` (meshed into a glTF: flat-shaded quads, palette colours, one voxel
+one metre; og-game §5) are models; `.ogt` files by their `type` (scene,
+look, environment, texture-array, flipbook, particles, terrain, shader…);
+`.cube` LUTs, `.hex` and `.gpl` palettes, images, WAVs and fonts by
+extension. A look's built-in `@canvas/…` and `@palettes/…` assets are added
+to the bundle only when a look names them; a game's own `assets/@canvas/`
+is refused.
+
+**Streaming groups** (og-game §6) are cooked into one pack each,
+`cooked/stream/<name>.ogb`, and `og build --publish` ships each as its own
+file the page fetches when the group loads. A group may hold glTF models
+without skins or morph targets, textures, texture arrays, sounds,
+environment maps, palettes, looks and LUTs:
+
+```text
+stream "night-market" {
+  asset "models/stalls.glb"
+  asset "env/night.ogt"            # an environment map
+  asset "tiles/market.ogt"         # a texture array
+  asset "palettes/neon.hex"
+  asset "looks/night-market.ogt"   # applied once resident
+  asset "grade/night.cube"
+  volume "market-gate"
+}
+```
+
+The cook refuses any other kind (a skinned model, a chunked sound, a scene)
+in a group, naming the scene and the asset. Prove a group in a script:
+move the camera into its trigger (`teleport`, or the game's own command),
+`advance` a few ticks, then `dump_stream` lists each group's state,
+memory and the assets kept past an unload (`retained`), and
+`get:` of a field the game copies from `og.stream.budget` shows `used` and
+`kept` against `budget`. A run with the same script must end on the same
+world hash streamed or not: nothing a tick reads depends on what is
+resident.
+
+**Size knobs** in a model's or a sound's import settings (`<file>.ogt`,
+`type import`):
+
+```text
+animation {
+  compress true        # quantised clips, keyframes the curve rebuilds dropped
+  tolerance 0.0001     # the most a sampled value may move (og-game §9)
+}
+sound {
+  stream true          # cooked in chunks (the default past 1 MiB of QOA, about 27 s of stereo)
+  chunk 4              # seconds per chunk (og-audio §5)
+}
+```
+
+Compare `og cook`'s byte count before and after: the bundle is the
+player's download.
+
+**The lanes** spread physics, skinning, culling and extraction over the
+cores with results identical to one thread (og-game §14). Natively
+`OG_LANES=off` (or `1`) runs serial and `OG_LANES=<n>` uses n threads; a
+world hash must not change between them, which is a check worth a
+playtest of its own on a physics-heavy game. On the web the lanes need a
+cross-origin isolated page: `project.ogt`'s `publish { isolation
+required | preferred | off }` (`preferred` by default: lanes where the
+host serves COOP/COEP, one thread otherwise, the same game either way).
+The lanes build caps memory at 2 GiB. `dump_lanes` reports what ran where.

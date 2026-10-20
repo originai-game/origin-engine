@@ -1,6 +1,6 @@
 ---
 name: og-ui
-description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, phones and the safe area, and the look: skins (style packs) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
+description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: skins (style packs) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
 ---
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
@@ -68,7 +68,7 @@ error with Retry, and its empty text; never invent scores or counts.
 ## 3. Below the templates: the widget set
 
 Layout (`row`, `column`, `panel`, `scroll`, `anchor`), text and controls
-(`label`, `button`, `toggle`, `slider`, `textField`, `checkbox`,
+(`label`, `button`, `toggle`, `slider`, `textField`, `textArea`, `checkbox`,
 `checkboxList`, `radio`, `tabs`, `select`, `stepper`, `chip`, `badge`,
 `keyValue`, `divider`, `spacer`, `icon`, `image`, `progress`, `skeleton`,
 `spinner`), HUD parts (`meter` for health, mana and xp with a trail that
@@ -97,6 +97,19 @@ messages are markup). A link is a child element (`Hint/shop`, kind `link`)
 that keys, pads and touch reach like a button; the result's `link` names
 the one clicked. A typo in a tag stays visible as text and warns.
 
+`textField` and `textArea` edit as a player's system does, with nothing to
+wire: Alt or Ctrl with the arrows moves by words (with Backspace or Delete,
+deletes one), a double click selects a word and a triple click the line,
+Ctrl/Cmd+Z undoes and Shift+Z or Y redoes (typing undoes a word at a
+time), and a drag past an area's edge scrolls it. A text the game sets
+starts the field's undo history again.
+
+Scripts: a label mixing scripts draws each run in the first font that has
+it (the Latin in the body or the pack's face, CJK, Arabic or Hebrew from the
+locale's fonts or `fallbackFonts` in `og.ui.configure`), so `"Level 3 ·
+古い水車小屋"` needs no font of its own; a string a locale's font covers
+whole keeps that face.
+
 Icons: an icon set cooked from SVGs (an `.ogt` of `type icons` naming
 them; the UI kit ships 64 iconoir icons as `icons/iconoir.ogt`) loads with
 `og.load.font` and becomes the atlas with `og.ui.configure(world, { icons:
@@ -104,7 +117,10 @@ them; the UI kit ships 64 iconoir icons as `icons/iconoir.ogt`) loads with
 then draw crisp distance-field glyphs at any size in their ink. A texture
 grid (`icons: { texture, columns, rows, names }`) still works for painted
 icons. Icons sit in `fgMuted` or `fgSubtle` (design language: icons are
-neutral).
+neutral). Sets name their icons differently (iconoir's `coins` and
+`fire-flame`, the skin grids' `coin` and `fire`): an unknown name draws an
+empty slot and warns, so a template that may meet either asks
+`og.ui.hasIcon(name)` first and draws its fallback.
 
 ## 4. Focus: keyboard and gamepad
 
@@ -120,6 +136,27 @@ clicks pressing the control), so the names you give are what a blind
 player hears. The page's `prefers-reduced-motion` and `prefers-contrast:
 more` turn on the reduced-motion and high-contrast themes on top of the
 game's own settings: nothing to wire.
+
+There are no label or role fields to set: a node's `role` comes from the
+widget (button, link, text, heading, image, checkbox, slider, textbox,
+progressbar, dialog, status…; layout containers have none) and its `name`
+from its text, then the text inside it, then its id. So the work is in
+the ids and texts: `"Buy"` reads well, `"btn3"` is what a blind player
+hears. `og.ui.a11y()` answers `{ nodes, focusOrder, focused }`, each
+`A11yNode` with `role`, `name`, `value`, `states` (disabled, focused,
+checked, selected, expanded, busy…) and its rectangle. A screen reader's
+own requests (focus, activate, increment, decrement) arrive as
+`og.A11yAction` events and are applied to the control at the next frame
+like a press. Prove it with a playtest that walks the tree:
+
+```ts
+const tree = og.ui.a11y();
+const unnamed = tree.nodes.filter((n) => n.states.includes("focusable") && n.name === "");
+// a fact the playtest asserts is 0 (templates/ui-kit/tests/a11y.og.ts)
+```
+
+The mirror exists on the web only; natively the tree is still answered
+for tests.
 
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
@@ -161,6 +198,24 @@ Preview a phone headless with a game command that calls
 `og.ui.previewViewport(world, { width: 390, height: 844, dpr: 3, safeArea: { top: 47, bottom: 34, left: 0, right: 0 }, coarsePointer: true })`
 and `og run --size 1170x2532`.
 
+Gestures the UI owns: one finger presses and drags (a slider, a scroll's
+flick, a drag and drop), two fingers on a scroller scroll it, two on a
+`zoomView` pinch about their centre and pan it, and an `actionButton` is
+pressed while held and clicked on a tap. There is no swipe, long-press or
+double-tap event: a game that wants one reads `og.Pointers` (`down(id)`,
+`start(id)`, `position(id)`; pointer 0 and up to four more) over ticks,
+deciding by distance and ticks held, which replays exactly. A map or an
+artwork to explore:
+
+```ts
+const z = og.ui.zoomView("Map", { texture: map, width: { kind: "grow" }, aspect: 16 / 9, maxZoom: 4 });   // ZoomResult: zoom, centerX, centerY (UI state)
+```
+
+A zoom view is a picture, not a control: keys do not move it. Script two
+fingers with `touch_start` for the first and `touch:1:down:<x,y>` /
+`touch:1:move:<x,y>` / `touch:1:up` for the second
+(`templates/ui-kit/tests/gestures.og.ts`).
+
 ## 6. Theming: skins, motion, transitions, sounds
 
 The default look is the platform's tokens; a game should have its own. A
@@ -196,6 +251,9 @@ its frame drawn at `fill` opacity (the scifi pack's dialogs:
 it (a HUD under a glass dialog); it costs a frame copy and a blur pyramid
 when any is on screen (about 0.8 ms at 1280×720 on an M4 Pro), and one more
 pyramid for each glass layer with UI under it, nothing without glass.
+A player whose system asks for less transparency (`prefers-reduced-
+transparency`, or `reducedTransparency: true` in `og.ui.configure` from a
+settings toggle) gets glass parts as opaque surfaces.
 
 A skin of the game's own art: draw each part as a nine-patch PNG
 (`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
@@ -230,7 +288,55 @@ a shake and the error sound on a press of a disabled button. Reduced motion
 keeps every shake still and turns the rest into fades. How long and how
 much is og-taste §5 and §6; camera shake is never for UI (og-feel §4).
 
-## 7. Proving it
+## 7. Text: labels, fields, areas, input methods
+
+Labels lay out by themselves: words break at spaces, CJK between
+characters under kinsoku (og-i18n §3), right-to-left runs reorder, complex
+scripts are shaped (Arabic joins, Devanagari conjuncts) and every font's
+kerning pairs apply. What a game sets:
+
+```ts
+og.ui.label("Quest", quest.text, { width: { kind: "grow" }, maxLines: 2, ellipsis: true, color: { token: "fgMuted" } });   // cut with … on the last line
+og.ui.label("Gold", gold, { font: "rounded", step: "xl", nowrap: true });   // body, display, mono or rounded
+```
+
+`ellipsis` cuts a `nowrap` label (which may then shrink in its row) or the
+last of `maxLines`; the probe still reads the whole text, so a playtest
+can find it. Keep long text in a `scroll` instead of cutting what the
+player must read.
+
+Text entry is a field (one line) or an area (several), each one call that
+takes the value and answers it, like every widget (§1):
+
+```ts
+const name = og.ui.textField("Name", save.name, { placeholder: "Your name", maxChars: 16 });
+if (name.response.changed) save.name = name.value;
+if (name.response.submitted) state.screen = "play";   // Enter, once
+const note = og.ui.textArea("Note", save.note, { placeholder: "A note for later", rows: 3, width: { kind: "grow" } });
+save.note = note.value;
+```
+
+Both take the press point as the caret, select by drag, Shift with
+arrows, and Ctrl or Cmd with A; copy, cut and paste use the page's
+clipboard; typed text replaces the selection; the text scrolls to keep the
+caret in view and the caret blinks by the tick (steady under reduced
+motion). An area's Enter is a new line, Up and Down move between lines
+and stay out of focus navigation while it is edited, and `maxChars`
+counts its line breaks. On the web the shell keeps a hidden text box over
+the focused field, so a phone's keyboard opens and an input method
+(Chinese, Japanese, Korean) shows its candidates there; the composition
+is drawn underlined at the caret until it commits. Script them:
+`type:<text>`, `compose:<text>` (`compose:` alone ends it) and
+`commit:<text>`, then read the field's value from `dump_ui` or the
+game's facts (`templates/ui-kit/tests/text.og.ts`).
+
+Fonts: a label takes the role's font when it can draw the whole text,
+else the locale's fonts, then `UiDesc.fallbackFonts` (a Hebrew or
+Devanagari face, a CJK face cooked with `runtime true`), then the skin's
+`fallback`. One label uses one font: a Hebrew word next to digits needs a
+Hebrew font that has digits. Tracking applies to Latin text only.
+
+## 8. Proving it
 
 `templates/ui-kit` in the engine repository runs every template; its
 playtests show how to drive UI from a script: `move_to_text:=shop` then

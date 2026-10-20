@@ -71,6 +71,9 @@ pub(crate) struct QueuedSprite {
     pub array: Option<(og_render::TextureArrayHandle, u32)>,
     /// `SpriteDesc.dropShadow`: a flattened dark copy on the ground (0 none).
     pub drop_shadow: f32,
+    /// `SpriteDesc.dropShadowHeight`: the level ground under it (a higher
+    /// terrain wins, `terrain::ground_drop_shadows`).
+    pub drop_shadow_height: f32,
 }
 
 /// One `og.load.lut`: its renderer LUT while resident.
@@ -448,6 +451,10 @@ fn stylise(
                 dither_scale: u(&s, "ditherScale", 1).max(1),
             });
         }
+        let space = |v: &Value| match variant(v, &["screen", "surface"]) {
+            1 => og_render::StyliseSpace::Surface,
+            _ => og_render::StyliseSpace::Screen,
+        };
         let halftone = f(&s, "halftone", 0.0);
         if halftone > 0.0 {
             out.halftone = Some(og_render::Halftone {
@@ -455,6 +462,7 @@ fn stylise(
                 size: f(&s, "halftoneSize", 6.0),
                 angle_degrees: f(&s, "halftoneAngle", 45.0),
                 color: rgb(&s["halftoneColor"], Vec3::new(0.02, 0.02, 0.03)),
+                space: space(&s["halftoneSpace"]),
             });
         }
         let hatching = f(&s, "hatching", 0.0);
@@ -465,6 +473,7 @@ fn stylise(
                 levels: u(&s, "hatchingLevels", 4),
                 angle_degrees: f(&s, "hatchingAngle", 45.0),
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
+                space: space(&s["hatchingSpace"]),
             });
         }
         let paint = og_render::Paint {
@@ -475,6 +484,8 @@ fn stylise(
             canvas: texture(&s["paintCanvas"]),
             canvas_strength: f(&s, "paintCanvasStrength", 0.0),
             canvas_scale: f(&s, "paintCanvasScale", 1.0),
+            canvas_space: space(&s["paintCanvasSpace"]),
+            canvas_world_scale: f(&s, "paintCanvasWorldScale", 128.0),
         };
         if paint.radius > 0.0
             || paint.edge_darkening > 0.0
@@ -489,6 +500,8 @@ fn stylise(
                 width: f(&s, "inkWidth", 1.0),
                 color: rgb(&s["inkColor"], Vec3::new(0.02, 0.02, 0.03)),
                 depth: f(&s, "inkDepth", 0.0),
+                depth_threshold: f(&s, "inkDepthThreshold", 0.04),
+                normal_threshold: f(&s, "inkNormalThreshold", 0.4),
             });
         }
         let bands = u(&s, "depthBands", 0);
@@ -769,6 +782,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
             scene.sprite_shadows.push(og_render::SpriteShadow {
                 sprite: index,
                 opacity: q.drop_shadow.min(1.0),
+                ground: og_render::ShadowGround::level(q.drop_shadow_height),
             });
         }
         if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive {

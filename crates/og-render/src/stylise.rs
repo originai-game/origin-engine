@@ -13,8 +13,10 @@
 /// The primitive groups this renderer draws, by the names
 /// `RenderCapabilities.stylise` reports: `pixel`, `posterize`, `palette`,
 /// `dither`, `halftone`, `hatching`, `paint`, `ink`, `inkDepth`,
-/// `depthBands` and `retro3d` ([`Stylise`]); `toon`, `shadowTint`, `rim`,
-/// `outline`, `outlineDistance` and `flatShading` ([`MaterialStyle`]).
+/// `depthBands`, `retro3d` and `surfaceSpace` (the canvas, hatching and
+/// halftone laid on surfaces, [`StyliseSpace::Surface`]) ([`Stylise`]);
+/// `toon`, `shadowTint`, `rim`, `outline`, `outlineDistance` and
+/// `flatShading` ([`MaterialStyle`]).
 pub const STYLISE_DRAWN: &[&str] = &[
     "pixel",
     "posterize",
@@ -27,6 +29,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "inkDepth",
     "depthBands",
     "retro3d",
+    "surfaceSpace",
     "toon",
     "shadowTint",
     "rim",
@@ -87,26 +90,45 @@ pub struct Quantize {
     pub dither_scale: u32,
 }
 
+/// Where a pattern (the canvas, the hatching, the halftone) is laid.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum StyliseSpace {
+    /// Over the frame, in logical pixels: the pattern stays put on the
+    /// screen as the camera moves.
+    #[default]
+    Screen,
+    /// On the surfaces, through the depth-normal prepass's position and
+    /// normal (triplanar in world space): the pattern sticks to the scene
+    /// as the camera moves and wraps round forms. The sky keeps the screen
+    /// pattern. The frame runs the prepass.
+    Surface,
+}
+
 /// Halftone dots on a rotated grid.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Halftone {
     pub strength: f32,
-    /// The grid's pitch in logical pixels.
+    /// The grid's pitch in logical pixels (on surfaces: about that many
+    /// pixels where the dots lie, by whole octaves).
     pub size: f32,
     pub angle_degrees: f32,
     /// The dots' linear colour.
     pub color: [f32; 3],
+    pub space: StyliseSpace,
 }
 
 /// Cross-hatching from a tonal art map.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Hatching {
     pub strength: f32,
-    /// Line spacing in logical pixels.
+    /// Line spacing in logical pixels (on surfaces: about that many pixels
+    /// where the strokes lie; strokes fade in and out by whole octaves of
+    /// world spacing, as a tonal art map's levels).
     pub scale: f32,
     pub levels: u32,
     pub angle_degrees: f32,
     pub color: [f32; 3],
+    pub space: StyliseSpace,
 }
 
 /// Painterly smoothing, pigment pooling and a canvas.
@@ -121,8 +143,27 @@ pub struct Paint {
     /// The paper or canvas texture and how strongly it modulates the frame.
     pub canvas: Option<crate::TextureHandle>,
     pub canvas_strength: f32,
-    /// Canvas texels per logical pixel.
+    /// Canvas texels per logical pixel ([`StyliseSpace::Screen`]).
     pub canvas_scale: f32,
+    /// Where the canvas is laid: over the frame, or on the surfaces so the
+    /// grain does not slide over the scene as the camera moves.
+    pub canvas_space: StyliseSpace,
+    /// Canvas texels per metre on surfaces ([`StyliseSpace::Surface`]);
+    /// 0 is [`DEFAULT_CANVAS_WORLD_SCALE`].
+    pub canvas_world_scale: f32,
+}
+
+/// [`Paint::canvas_world_scale`] when it is 0: a 256² canvas repeats every
+/// two metres.
+pub const DEFAULT_CANVAS_WORLD_SCALE: f32 = 128.0;
+
+impl Paint {
+    /// Whether the canvas is drawn on surfaces (the frame runs the prepass).
+    pub fn canvas_on_surfaces(&self) -> bool {
+        self.canvas_space == StyliseSpace::Surface
+            && self.canvas.is_some()
+            && self.canvas_strength > 0.0
+    }
 }
 
 /// Ink lines on luminance edges, and with `depth` on the prepass's depth
@@ -138,6 +179,28 @@ pub struct Ink {
     /// flat colour that luminance alone misses. 0 is luminance only; above
     /// 0 the frame runs the prepass.
     pub depth: f32,
+    /// With `depth`: the relative depth step to a farther neighbour that is
+    /// a silhouette (0.04: 4 %), as `Outline::depth_threshold`.
+    pub depth_threshold: f32,
+    /// With `depth`: the normal turn between neighbours of about the same
+    /// depth that is a crease (1 − cos of the angle; 0.4 ≈ 53°), as
+    /// `Outline::normal_threshold`.
+    pub normal_threshold: f32,
+}
+
+impl Default for Ink {
+    /// The IDL's defaults: luminance edges only, the outline pass's
+    /// thresholds for depth edges.
+    fn default() -> Self {
+        Ink {
+            threshold: 0.1,
+            width: 1.0,
+            color: [0.02, 0.02, 0.03],
+            depth: 0.0,
+            depth_threshold: 0.04,
+            normal_threshold: 0.4,
+        }
+    }
 }
 
 /// Flat colour bands by depth.
@@ -209,6 +272,18 @@ pub struct Stylise {
 }
 
 impl Stylise {
+    /// Whether a pattern is laid on surfaces: the frame runs the
+    /// depth-normal prepass and the paint or lines pass reads it.
+    pub fn on_surfaces(&self) -> bool {
+        self.paint.is_some_and(|p| p.canvas_on_surfaces())
+            || self
+                .hatching
+                .is_some_and(|h| h.space == StyliseSpace::Surface && h.strength > 0.0)
+            || self
+                .halftone
+                .is_some_and(|h| h.space == StyliseSpace::Surface && h.strength > 0.0)
+    }
+
     /// Whether any primitive is on.
     pub fn is_active(&self) -> bool {
         self.pixel.is_some()
@@ -284,6 +359,48 @@ mod tests {
         let mut toon = six;
         toon.material.toon = true;
         assert_ne!(toon.chain_bits(), six.chain_bits(), "the material style");
+    }
+
+    #[test]
+    fn surface_space_asks_for_the_prepass_only_where_it_draws() {
+        let mut s = Stylise::default();
+        assert!(!s.on_surfaces());
+        let paint = Paint {
+            radius: 0.0,
+            anisotropy: 0.0,
+            edge_darkening: 0.0,
+            bleed: 0.0,
+            canvas: None,
+            canvas_strength: 0.5,
+            canvas_scale: 1.0,
+            canvas_space: StyliseSpace::Surface,
+            canvas_world_scale: 0.0,
+        };
+        s.paint = Some(paint);
+        assert!(!s.on_surfaces(), "a surface canvas without a texture");
+        s.hatching = Some(Hatching {
+            strength: 0.8,
+            scale: 6.0,
+            levels: 4,
+            angle_degrees: 45.0,
+            color: [0.0; 3],
+            space: StyliseSpace::Screen,
+        });
+        assert!(!s.on_surfaces(), "screen hatching");
+        s.hatching.as_mut().unwrap().space = StyliseSpace::Surface;
+        assert!(s.on_surfaces());
+        assert_eq!(
+            s.chain_bits(),
+            Stylise {
+                hatching: Some(Hatching {
+                    space: StyliseSpace::Screen,
+                    ..s.hatching.unwrap()
+                }),
+                ..s
+            }
+            .chain_bits(),
+            "the space is a setting, not a pass"
+        );
     }
 
     #[test]
