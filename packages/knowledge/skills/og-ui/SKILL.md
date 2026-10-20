@@ -248,7 +248,14 @@ og.ui.configure(world, {
   reducedMotion: settings.reducedMotion,   // every motion becomes a fade
   sounds: { hover, press, open, close, success, error },  // og.load.sound handles, played on the ui bus
 });
+og.ui.configure(world, { reducedMotion: true });   // later, from the settings: the skin, fonts and sounds stay
 ```
+
+`configure` takes a partial UiDesc: a field left out keeps the value the
+last call gave it (or the skin a look applied, `GameDesc.look` and
+`og.render.applyLook`), and `null` clears one (`skin: null` is the
+platform tokens again). A UI left with no font at all warns that it draws
+no text.
 
 A skin's `slice` line says how a frame's edges and centre fill: `stretch`
 (the default), `repeat` (tiled at the art's size from the corner, the last

@@ -12355,7 +12355,7 @@ export interface Viewport {
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -18317,11 +18317,11 @@ export declare namespace og {
    */
   namespace ui {
     /**
-     * Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick.
+     * Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
-     * @param desc The scheme, density and fonts.
-     * @returns Refused for a dead font.
+     * @param desc The fields to change; the others keep their values.
+     * @returns Refused for a dead font or skin, or a desc that is not an object.
      */
     function configure(world: World, desc?: UiDesc): Result<void>;
     /**

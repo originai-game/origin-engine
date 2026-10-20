@@ -59,14 +59,14 @@ module ui {
 | [`ToggleResult`](#type-ToggleResult) | struct | A toggle's response and its state after this tick's input. |
 | [`FieldResult`](#type-FieldResult) | struct | A text field's response and its text after this tick's input. |
 | [`Viewport`](#type-Viewport) | struct | The play surface the UI lays out in. |
-| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas. |
+| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it. |
 | [`UiSounds`](#type-UiSounds) | desc struct | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
 | [`SkinPart`](#type-SkinPart) | enum | An element class a skin dresses with a nine-slice frame. |
 | [`TypeStep`](#type-TypeStep) | struct | One step of the type ramp. |
 | [`ControlSizes`](#type-ControlSizes) | struct | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](#type-UiTheme) | struct | The design tokens the UI draws with, read-only. |
 | [`UiBuild`](#type-UiBuild) | callback | Builds a container's children: ui calls made inside it nest under the container. |
-| [`og.ui.configure`](#fn-configure) | function | Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick. |
+| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text. |
 | [`og.ui.viewport`](#fn-viewport) | function | This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them. |
 | [`og.ui.theme`](#fn-theme) | function | The design tokens the UI draws with. |
 | [`og.ui.open`](#fn-open) | function | Open a container; the calls until its close() build its children. |
@@ -273,7 +273,7 @@ module ui {
 
 ### `og.ui.configure`
 
-Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick.
+Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
 
 ```ts
 og.ui.configure(world: World, desc?: UiDesc): Result<void>
@@ -282,18 +282,18 @@ og.ui.configure(world: World, desc?: UiDesc): Result<void>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose UI is configured. |
-| `desc` | `UiDesc` | yes | The scheme, density and fonts. |
+| `desc` | `UiDesc` | yes | The fields to change; the others keep their values. |
 
-**Returns** `Result<void>`: Refused for a dead font.
+**Returns** `Result<void>`: Refused for a dead font or skin, or a desc that is not an object.
 
 Binding symbol `og_ui_configure` · publish builds: kept
 
 ```ogt
 fn configure {
-  doc "Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick."
+  doc "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text."
   param world World "The world whose UI is configured."
-  param desc UiDesc "The scheme, density and fonts."
-  returns Result.Void "Refused for a dead font."
+  param desc UiDesc "The fields to change; the others keep their values."
+  returns Result.Void "Refused for a dead font or skin, or a desc that is not an object."
 }
 ```
 
@@ -4427,7 +4427,7 @@ struct Viewport {
 
 ### `UiDesc` (desc struct)
 
-How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas.
+How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -4452,7 +4452,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct UiDesc {
-  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas."
+  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it."
   desc true
   field scheme Scheme "The palette."
   field density DensityMode "The control sizes."

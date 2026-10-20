@@ -46,7 +46,9 @@ press, `select` for success, `back` for close, `error` for a refused press
 tick of its input. `hover` also answers keyboard and gamepad focus moving
 to a control, and `press` a press by Enter, Space or the pad's A, so a
 menu walked with a pad is heard step by step; keep `hover` short and quiet
-(volume ≤ 0.3).
+(volume ≤ 0.3). `configure` changes only the fields it is given: setting
+the sounds after a skin (or a look that brings one) keeps the skin and its
+fonts, and `sounds: null` silences them again.
 
 ## 4. Buses and the mix
 

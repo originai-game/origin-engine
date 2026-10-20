@@ -88,15 +88,12 @@ export function toTitle(world: World, g: GameV): void {
 }
 
 /**
- * The UI's desc, whole: og.ui.configure replaces every field it is not
- * given, so the look's skin (og.render.look's) and the sounds go in with
- * the reduced-motion setting every time (FINDINGS.md).
+ * The UI's sounds and reduced motion: og.ui.configure keeps every field it
+ * is not given, so the skin the look applied stays.
  */
 export function configureUi(world: World, reducedMotion: boolean): void {
   const sound = (path: string) => must(og.load.sound(world, path));
-  const skin = og.render.look(world)?.skin ?? null;
   must(og.ui.configure(world, {
-    skin,
     reducedMotion,
     sounds: { press: sound("audio/ui-click.ogt"), success: sound("audio/ui-select.ogt"), open: sound("audio/ui-select.ogt"), close: sound("audio/ui-back.ogt"), error: sound("audio/ui-error.ogt") },
   }));

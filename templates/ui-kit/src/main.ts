@@ -326,21 +326,20 @@ function applyTheme(world: World, d: DemoState): void {
       if (s.ok) sounds[e] = s.value;
     }
   }
+  // Every field, each time: configure keeps a field left out, so a pack's
+  // removal or the sounds turned off are said with null.
   og.ui.configure(world, {
-    ...(d.font && !skin ? { font: d.font as never } : {}),
-    ...(d.displayFont && !skin ? { displayFont: d.displayFont as never } : {}),
-    ...(d.roundedFont && !skin ? { roundedFont: d.roundedFont as never } : {}),
+    font: d.font && !skin ? (d.font as never) : null,
+    displayFont: d.displayFont && !skin ? (d.displayFont as never) : null,
+    roundedFont: d.roundedFont && !skin ? (d.roundedFont as never) : null,
     // Scripts the locale tables' fonts do not cover (the text screen).
     fallbackFonts: [d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
+    skin,
     // The materials screen draws from the iconoir set; the others from the kit's grid (or the pack's).
-    ...(d.iconoir && d.iconSet
-      ? { icons: { font: d.iconSet as never }, ...(skin ? { skin } : {}) }
-      : skin
-        ? { skin }
-        : { icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {} }),
-    ...(d.sounds ? { sounds } : {}),
+    icons: d.iconoir && d.iconSet ? { font: d.iconSet as never } : skin ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
+    sounds: d.sounds ? sounds : null,
   });
 }
 

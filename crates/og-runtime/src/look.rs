@@ -271,12 +271,9 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
             .map_err(|e| format!("{resource}: {e}"))?;
     }
     if let Some(skin) = skin {
-        let mut desc = match eng.state.borrow().ui_desc.clone() {
-            Value::Object(o) => o,
-            _ => Map::new(),
-        };
-        desc.insert("skin".into(), handle_value(skin));
-        let answer = super::modules::og_ui_configure(eng.id, Some(Value::Object(desc).to_string()));
+        // Every other field keeps the last UiDesc's value (og.ui.configure merges).
+        let desc = json!({ "skin": handle_value(skin) });
+        let answer = super::modules::og_ui_configure(eng.id, Some(desc.to_string()));
         if let Ok(Value::Object(o)) = serde_json::from_str::<Value>(&answer)
             && o.get("ok") == Some(&Value::Bool(false))
         {
