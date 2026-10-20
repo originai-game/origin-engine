@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# A base other looks extend: tone, fog, the UI skin and no antialiasing.
+name "Base"
+skin "skins/tiny/skin.ogt"
+antialias off
+RenderSettings {
+  toneMapping agx
+  exposure 1.5
+}
+Fog {
+  enabled true
+  color "#808080"
+  density 0.02
+}

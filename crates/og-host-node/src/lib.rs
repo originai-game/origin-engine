@@ -376,12 +376,10 @@ impl RenderBackend for OffscreenBackend {
         self.renderer.size()
     }
     fn antialias(&self) -> String {
-        match self.renderer.info().antialias {
-            og_render::Antialias::Msaa4 => "msaa4",
-            og_render::Antialias::Taa => "taa",
-            _ => "off",
-        }
-        .into()
+        og_runtime::antialias_name(self.renderer.info().antialias).into()
+    }
+    fn info(&self) -> Option<og_render::RenderInfo> {
+        Some(self.renderer.info().clone())
     }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.renderer
@@ -425,36 +423,27 @@ impl RenderBackend for OffscreenBackend {
     }
 }
 
-/// `RenderOptions.antialias` as og-render's.
-fn antialias(options: &str) -> og_render::Antialias {
-    match options {
-        "off" => og_render::Antialias::Off,
-        "msaa4" => og_render::Antialias::Msaa4,
-        "taa" => og_render::Antialias::Taa,
-        _ => og_render::Antialias::Tier,
-    }
-}
-
 /// Give an engine a headless renderer of `width`×`height` (Metal or Vulkan,
 /// lavapipe in executors), created with the game's RenderOptions. A Result
 /// of the tier.
 #[napi(js_name = "og_node_attach_offscreen")]
 pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) -> String {
     let _env = EnvScope::enter(&env);
-    let options = og_runtime::render_options(engine);
-    let desc = og_render::RenderDesc {
-        width: width.max(1),
-        height: height.max(1),
-        antialias: antialias(options["antialias"].as_str().unwrap_or("tier")),
-        // OG_GFX_CULLING=cpu culls on the CPU, as og-gfx does: lanes.test.ts
-        // needs the CPU cull, which GPU culling skips.
-        culling: if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
-            og_render::Culling::Cpu
-        } else {
-            og_render::Culling::Auto
+    let desc = og_runtime::render_desc(
+        engine,
+        og_render::RenderDesc {
+            width: width.max(1),
+            height: height.max(1),
+            // OG_GFX_CULLING=cpu culls on the CPU, as og-gfx does: lanes.test.ts
+            // needs the CPU cull, which GPU culling skips.
+            culling: if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
+                og_render::Culling::Cpu
+            } else {
+                og_render::Culling::Auto
+            },
+            ..og_render::RenderDesc::default()
         },
-        ..og_render::RenderDesc::default()
-    };
+    );
     let answer = og_render::Renderer::new_blocking(&desc)
         .map_err(|e| e.to_string())
         .and_then(|renderer| {

@@ -1142,6 +1142,8 @@
         "Side",
         "RenderTier",
         "Antialias",
+        "PointShadows",
+        "TaaHistory",
         "RenderOptions",
         "StandardMaterialDesc",
         "Mesh",
@@ -1168,6 +1170,14 @@
         "StripBlend",
         "StripBlend",
         "PostEffects",
+        "Palette",
+        "Look",
+        "Palette",
+        "DitherPattern",
+        "DitherPattern",
+        "Stylise",
+        "MaterialStyle",
+        "LookInfo",
         "Lighting2D",
         "Light2D",
         "Occluder2D",
@@ -1481,6 +1491,41 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for a material without a shader or a parameter its shader does not declare.",
+          "publish": true
+        },
+        {
+          "name": "applyLook",
+          "doc": "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose look changes."
+            },
+            {
+              "name": "look",
+              "type": "Look",
+              "optional": false,
+              "doc": "The look, from og.load.look."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a look not loaded in this world or a resource the system did not declare.",
+          "publish": true
+        },
+        {
+          "name": "look",
+          "doc": "The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world asked."
+            }
+          ],
+          "returns": "Option<LookInfo>",
           "publish": true
         },
         {
@@ -1857,6 +1902,69 @@
           ],
           "returns": "Result<Skin>",
           "returnsDoc": "Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.",
+          "publish": true
+        },
+        {
+          "name": "look",
+          "doc": "Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut \"luts/warm.cube\"`, `palette \"palettes/dusk.hex\"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `looks/main.ogt`."
+            }
+          ],
+          "returns": "Result<Look>",
+          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load.",
+          "publish": true
+        },
+        {
+          "name": "lookInfo",
+          "doc": "What a loaded look holds and sets.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the look."
+            },
+            {
+              "name": "look",
+              "type": "Look",
+              "optional": false,
+              "doc": "The look."
+            }
+          ],
+          "returns": "Result<LookInfo>",
+          "returnsDoc": "Refused for a look not loaded in this world.",
+          "publish": true
+        },
+        {
+          "name": "palette",
+          "doc": "A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `palettes/dusk.hex`."
+            }
+          ],
+          "returns": "Result<Palette>",
+          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook).",
           "publish": true
         },
         {
@@ -7824,6 +7932,11 @@
           "$ref": "#/$defs/RenderOptions",
           "description": "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer.",
           "default": {}
+        },
+        "look": {
+          "type": "string",
+          "description": "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none.",
+          "default": ""
         }
       },
       "additionalProperties": false
@@ -10069,13 +10182,45 @@
         "tier",
         "off",
         "msaa4",
-        "taa"
+        "taa",
+        "fxaa"
       ],
       "x-og-variants": {
-        "tier": "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2.",
+        "tier": "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled.",
         "off": "One sample per pixel.",
-        "msaa4": "4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled.",
-        "taa": "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames."
+        "msaa4": "4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled.",
+        "taa": "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it.",
+        "fxaa": "FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture."
+      }
+    },
+    "PointShadows": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "cube",
+        "paraboloid"
+      ],
+      "x-og-variants": {
+        "auto": "Cube faces on the full tier, paraboloids on WebGL2.",
+        "cube": "Six 90 degree faces: six shadow passes per light.",
+        "paraboloid": "Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection)."
+      }
+    },
+    "TaaHistory": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How TAA resamples its history each frame, as og-render's TaaHistory.",
+      "type": "string",
+      "enum": [
+        "bilinear",
+        "catmullRom"
+      ],
+      "x-og-variants": {
+        "bilinear": "One bilinear tap: cheap, slightly soft while the camera moves.",
+        "catmullRom": "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
       }
     },
     "RenderOptions": {
@@ -10097,6 +10242,24 @@
           "default": 2048,
           "minimum": 256,
           "maximum": 4096
+        },
+        "pointShadows": {
+          "$ref": "#/$defs/PointShadows",
+          "description": "How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser).",
+          "default": "auto"
+        },
+        "taaHistory": {
+          "$ref": "#/$defs/TaaHistory",
+          "description": "With TAA: how the history is resampled.",
+          "default": "bilinear"
+        },
+        "taaSharpen": {
+          "type": "number",
+          "description": "With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
         }
       },
       "additionalProperties": false
@@ -10710,6 +10873,23 @@
           "default": 200,
           "minimum": 1,
           "x-og-unit": "m"
+        },
+        "shadowSoftness": {
+          "type": "number",
+          "description": "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 0.2,
+          "x-og-tunable": true
+        },
+        "cascadeBlend": {
+          "type": "number",
+          "description": "The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 0.5,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -10717,7 +10897,7 @@
     "PointLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nLights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.",
+      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nLights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.",
       "type": "object",
       "properties": {
         "color": {
@@ -10746,7 +10926,7 @@
         },
         "castShadow": {
           "type": "boolean",
-          "description": "Cast cube shadows.",
+          "description": "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows).",
           "default": false
         }
       },
@@ -10898,6 +11078,14 @@
           "$ref": "#/$defs/ToneMapping",
           "description": "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none.",
           "default": "aces"
+        },
+        "exposure": {
+          "type": "number",
+          "description": "A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 16,
+          "x-og-tunable": true
         },
         "decalAtlas": {
           "$ref": "#/$defs/Texture",
@@ -11343,6 +11531,492 @@
           "default": 0
         }
       },
+      "additionalProperties": false
+    },
+    "Palette": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Look": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "DitherPattern": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The threshold pattern Stylise.dither spreads the steps of posterize and palette with.",
+      "type": "string",
+      "enum": [
+        "none",
+        "bayer2",
+        "bayer4",
+        "bayer8",
+        "blueNoise"
+      ],
+      "x-og-variants": {
+        "none": "No dither: every pixel rounds to its nearest step or colour, in flat bands.",
+        "bayer2": "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds.",
+        "bayer4": "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art.",
+        "bayer8": "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours.",
+        "blueNoise": "Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl."
+      }
+    },
+    "Stylise": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.\nOrder in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.",
+      "type": "object",
+      "properties": {
+        "pixelHeight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2160
+        },
+        "pixelUpscale": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 16
+        },
+        "pixelSnap": {
+          "type": "boolean",
+          "description": "Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets).",
+          "default": true
+        },
+        "posterize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 64
+        },
+        "palette": {
+          "$ref": "#/$defs/Palette",
+          "description": "Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none.",
+          "default": 0
+        },
+        "dither": {
+          "$ref": "#/$defs/DitherPattern",
+          "description": "How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion.",
+          "default": "none"
+        },
+        "ditherStrength": {
+          "type": "number",
+          "description": "The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "ditherScale": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The size of one dither cell in logical pixels.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 8
+        },
+        "halftone": {
+          "type": "number",
+          "description": "Halftone print: tones become dots on a rotated grid, larger where the image is darker; 0 is off, 1 dots only.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "halftoneSize": {
+          "type": "number",
+          "description": "The dot grid's pitch in logical pixels.",
+          "default": 6,
+          "minimum": 2,
+          "maximum": 64
+        },
+        "halftoneAngle": {
+          "type": "number",
+          "description": "The dot grid's angle.",
+          "default": 45,
+          "x-og-unit": "deg"
+        },
+        "halftoneColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The ink of the dots (linear).",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        "hatching": {
+          "type": "number",
+          "description": "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "hatchingScale": {
+          "type": "number",
+          "description": "The spacing of hatch lines in logical pixels.",
+          "default": 6,
+          "minimum": 2,
+          "maximum": 64
+        },
+        "hatchingLevels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6).",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 6
+        },
+        "hatchingAngle": {
+          "type": "number",
+          "description": "The direction of the first stroke set.",
+          "default": 45,
+          "x-og-unit": "deg"
+        },
+        "hatchingColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The stroke colour (linear): graphite, sepia or ink.",
+          "default": {
+            "r": 0.04,
+            "g": 0.035,
+            "b": 0.03
+          }
+        },
+        "paintRadius": {
+          "type": "number",
+          "description": "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 8,
+          "x-og-tunable": true
+        },
+        "paintAnisotropy": {
+          "type": "number",
+          "description": "How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "paintEdgeDarkening": {
+          "type": "number",
+          "description": "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "paintBleed": {
+          "type": "number",
+          "description": "Colour bleeding across edges into its neighbours, wet in wet; 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "paintCanvas": {
+          "$ref": "#/$defs/Texture",
+          "description": "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none.",
+          "default": 0
+        },
+        "paintCanvasStrength": {
+          "type": "number",
+          "description": "How much the canvas texture modulates the frame: 0 none, 1 its full grain.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "paintCanvasScale": {
+          "type": "number",
+          "description": "Canvas texels per logical pixel.",
+          "default": 1,
+          "minimum": 0.125,
+          "maximum": 8
+        },
+        "ink": {
+          "type": "boolean",
+          "description": "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass.",
+          "default": false
+        },
+        "inkThreshold": {
+          "type": "number",
+          "description": "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines.",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "inkWidth": {
+          "type": "number",
+          "description": "The line width in logical pixels.",
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 8,
+          "x-og-tunable": true
+        },
+        "inkColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The line colour (linear).",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        "depthBands": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 8
+        },
+        "depthBandsNear": {
+          "type": "number",
+          "description": "Where the first band starts.",
+          "default": 5,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "depthBandsFar": {
+          "type": "number",
+          "description": "Where the last band ends; beyond it everything is the far colour.",
+          "default": 60,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "depthBandsNearColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The nearest band's colour (linear, before exposure).",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        "depthBandsFarColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The farthest band's colour (linear, before exposure).",
+          "default": {
+            "r": 0.55,
+            "g": 0.6,
+            "b": 0.7
+          }
+        },
+        "depthBandsFlatten": {
+          "type": "number",
+          "description": "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "vertexSnap": {
+          "type": "number",
+          "description": "Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 16
+        },
+        "affineTexturing": {
+          "type": "number",
+          "description": "How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "depthBits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 24
+        }
+      },
+      "additionalProperties": false
+    },
+    "MaterialStyle": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.",
+      "type": "object",
+      "properties": {
+        "toon": {
+          "type": "boolean",
+          "description": "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights.",
+          "default": false
+        },
+        "gradientMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands.",
+          "default": 0
+        },
+        "shadowTint": {
+          "$ref": "#/$defs/Color",
+          "description": "The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration.",
+          "default": {
+            "r": 0.18,
+            "g": 0.16,
+            "b": 0.32
+          }
+        },
+        "shadowTintAmount": {
+          "type": "number",
+          "description": "How far shadowed light moves towards shadowTint; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "rimColor": {
+          "$ref": "#/$defs/Color",
+          "description": "Rim (fresnel) light for materials without their own (linear).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "rimIntensity": {
+          "type": "number",
+          "description": "The rim light's strength; 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "rimPower": {
+          "type": "number",
+          "description": "How tight the rim is (higher: thinner).",
+          "default": 3,
+          "minimum": 0.1
+        },
+        "outlineColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The outline colour for materials without their own (linear).",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        "outlineWidth": {
+          "type": "number",
+          "description": "The outline width in pixels at outlineDistance for materials without their own; 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 31,
+          "x-og-tunable": true
+        },
+        "outlineDistance": {
+          "type": "number",
+          "description": "The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "flatShading": {
+          "type": "boolean",
+          "description": "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LookInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "A loaded look: where it came from and what applying it sets.",
+      "type": "object",
+      "properties": {
+        "look": {
+          "$ref": "#/$defs/Look",
+          "description": "Its handle."
+        },
+        "path": {
+          "type": "string",
+          "description": "Its asset id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name (the file's `name`, else its file name without `.ogt`)."
+        },
+        "extends": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The looks it builds on, nearest first: asset ids under assets/ and built-in preset slugs."
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
+        },
+        "skin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skin"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The UI skin it names, loaded with it; applying the look configures the UI with it."
+        },
+        "antialias": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Antialias"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method."
+        }
+      },
+      "required": [
+        "look",
+        "path",
+        "name",
+        "extends",
+        "resources",
+        "skin",
+        "antialias"
+      ],
       "additionalProperties": false
     },
     "Lighting2D": {
@@ -12677,7 +13351,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "How many point and spot lights may cast shadows."
+          "description": "How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs."
+        },
+        "pointShadows": {
+          "$ref": "#/$defs/PointShadows",
+          "description": "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
         },
         "width": {
           "type": "integer",
@@ -12690,6 +13368,13 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "The render target height in device pixels."
+        },
+        "stylise": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
         }
       },
       "required": [
@@ -12698,8 +13383,10 @@
         "antialias",
         "maxLights",
         "maxShadowedLights",
+        "pointShadows",
         "width",
-        "height"
+        "height",
+        "stylise"
       ],
       "additionalProperties": false
     },

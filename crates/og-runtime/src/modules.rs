@@ -800,6 +800,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = parse(desc.as_deref())?;
+        eng.state.borrow_mut().ui_desc = d.clone();
         let skin = match d["skin"].as_f64() {
             Some(h) => {
                 let i =
@@ -989,9 +990,17 @@ pub(crate) struct LoadedSkin {
 
 /// `og.load.skin`: a cooked skin, its atlas, fonts, icons and sounds loaded with it.
 pub fn og_load_skin(world: u32, path: String) -> String {
-    let answer = (|| -> Result<usize, String> {
-        let eng = engine(world)?;
-        let id = og_cook::runtime::asset_id(&path).to_string();
+    match engine(world).and_then(|eng| load_skin(&eng, &path)) {
+        Ok(i) => ok(json!(super::assets::handle(i) as f64)),
+        Err(e) => refuse(e),
+    }
+}
+
+/// `og.load.skin`: the skin's load index, its atlas, fonts, icons and
+/// sounds loaded with it (once per path).
+pub(crate) fn load_skin(eng: &Engine, path: &str) -> Result<usize, String> {
+    (|| -> Result<usize, String> {
+        let id = og_cook::runtime::asset_id(path).to_string();
         if let Some(i) = eng.assets.borrow().skins.iter().position(|s| s.id == id) {
             return Ok(i);
         }
@@ -1004,7 +1013,7 @@ pub fn og_load_skin(world: u32, path: String) -> String {
         };
         let file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
         let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
-            let i = super::assets::load_texture(&eng, p)?;
+            let i = super::assets::load_texture(eng, p)?;
             eng.render
                 .borrow()
                 .textures
@@ -1017,14 +1026,14 @@ pub fn og_load_skin(world: u32, path: String) -> String {
         let mut fonts = [None; 4];
         for (k, p) in file.fonts.iter().enumerate() {
             if let Some(p) = p {
-                let i = super::assets::load_font(&eng, p)?;
+                let i = super::assets::load_font(eng, p)?;
                 fonts[k] = Some(super::assets::handle(i) as f64);
             }
         }
         let mut sounds = [0u64; 6];
         for (k, p) in file.sounds.iter().enumerate() {
             if let Some(p) = p {
-                let i = super::assets::load_sound(&eng, p)?;
+                let i = super::assets::load_sound(eng, p)?;
                 sounds[k] = eng.assets.borrow().sound_handles[i];
             }
         }
@@ -1038,11 +1047,7 @@ pub fn og_load_skin(world: u32, path: String) -> String {
             sounds,
         });
         Ok(a.skins.len() - 1)
-    })();
-    match answer {
-        Ok(i) => ok(json!(super::assets::handle(i) as f64)),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// A loaded font as the UI lays out and draws with it: its first atlas

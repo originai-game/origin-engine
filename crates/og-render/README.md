@@ -14,19 +14,19 @@ the world → scene extraction belongs to the layer above.
 
 | Type | What it is |
 |---|---|
-| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`. Default 1280×720, `Auto`, `Antialias::Off`. |
-| `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4` and `Taa` (any tier). `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Off` where the HDR format cannot be multisampled. |
+| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening. |
+| `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4`, `Taa` and `Fxaa` (any tier). `RenderInfo::antialias` reports what was resolved; `Tier` and `Msaa4` fall back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing by tier](#shadows-and-antialiasing-by-tier)). |
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`, `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `particle_colliders` (`ParticleCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
-| `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth). Three cascades. |
-| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 in view with `cast_shadows` get shadows. |
+| `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
+| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8 on the full tier, `NO_COMPUTE_SHADOWED_LIGHTS` = 4 on WebGL2) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, the cook's prefilter. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
@@ -38,8 +38,8 @@ the world → scene extraction belongs to the layer above.
 | `TerrainData`, `TerrainControl`, `TerrainHandle` | A terrain's geometry: `columns` × `rows` heights (m) over a `size` rectangle centred on its origin, row-major from -z and -x, and an optional RGBA8 control map (one channel per layer). `height(local)` (on the triangles the renderer and physics use), `normal(local)`, `range()`, `cell()`, `check()`. See [Terrain](#phase-2-terrain). |
 | `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, its `transform` (rotation, scale and translation from the terrain's own space, centred on the height field at height 0, to the world), up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes`, `frame`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
-| `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes`, `frame`, `shadowed_lights` and `shadowed_lights_dropped`, `particle_collision_skipped`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
+| `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `texture_formats`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
 | `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`. A bridge until the cook (M4). |
@@ -186,6 +186,90 @@ for the mirrored camera over the same light records
 (`ClusterBuilder::build_kept`; the oblique projection moves only depth, so
 the tiles follow the mirrored camera's x and y).
 
+## Shadows and antialiasing by tier
+
+The shadows-aa round (P4, `tests/evidence/P4/shadows-aa/`) closed the
+shadow and antialiasing lines phase 2 owed (`src/shadows.rs`,
+`src/frame.rs`, `shaders/lighting.wgsl`, `shaders/shadow_pass.wgsl`,
+`src/post.rs`, `shaders/fxaa.wgsl`, `shaders/taa.wgsl`). Everything new is
+off by default or tier-dependent off the full tier's defaults: every
+earlier reference frame is byte for byte what it was.
+
+**Shadowed local lights.** Up to `RenderInfo::shadowed_lights` point and
+spot lights cast shadows in a frame: 8 on the full tier, 4 on WebGL2
+(`og.render.capabilities().maxShadowedLights`). When more in view cast,
+the ones with the most radiance at the camera keep theirs (the clusters'
+score: intensity × the colour's brightest channel over the squared
+distance; ties in scene order) and the rest are counted in
+`FrameStats::shadowed_lights_dropped`; `shadowed_lights` counts the drawn
+ones. Each gets consecutive layers of one 512² `R32Float` array, handed out
+in scene order: a spot one view, a point light six cube faces or two
+paraboloid hemispheres. The array starts at twelve layers and grows once,
+to the tier's capacity (48 layers with cube faces), the first frame whose
+scene could need more.
+
+**Point shadows by tier** (`RenderDesc::point_shadows`, the IDL's
+`RenderOptions.pointShadows`): `Cube` draws six 90° faces, `Paraboloid` the
+hemisphere below the light and the one above, each in one pass (the
+projection scaled into 0.9 of the disc, so filtering at the seam reads up to
+96° from the axis). A paraboloid projection is not linear: vertices are
+projected and triangles stay straight between them, so a large caster's
+silhouette is approximate; the distance each texel stores is measured along
+its own ray to the triangle's plane (from the world position's screen
+derivatives), exact for flat triangles of any size, so a one-quad ground
+does not shadow itself. The texels are about 2.2 times coarser at a
+hemisphere's centre than a cube face's, and the normal offset and depth
+bias grow with them. On `point-spot-lights` the paraboloid frame is within
+RMSE 0.0023 of the cube one (102 outlier pixels, on shadow edges and the
+ring at the light's height) in 3 passes instead of 7. `Auto` picks cube
+faces on the full tier and paraboloids on WebGL2: measured in Chrome on the M4 Pro (`reference-gfx.ts --time 60`), WebGL2
+draws `point-spot-lights` in 0.50 ms per frame with paraboloids against
+0.70 ms with cube faces, and four shadowed lights of `shadows-local-8` in
+0.60 against 1.09 ms; on WebGPU one point light costs the same either way
+(0.44 against 0.45 ms) and eight lights (six point) 0.60 against 1.33 ms;
+natively on metal 0.4–0.5 against 0.6–0.9 ms and 0.8–1.0 against
+2.2–2.7 ms, most of it the CPU encoding 38 shadow passes instead of 14
+(`tests/evidence/P4/shadows-aa/`). A full-tier frame with a few shadowed
+point lights costs nearly nothing more with cube faces, whose texels are
+finer, so `Auto` keeps them there; a game with many shadowed point lights
+saves about 0.7 ms a frame with `Paraboloid`.
+
+**The sun's soft shadows and cascade blending** (`DirectionalLight::
+shadow_softness`, `cascade_blend`, the IDL's `shadowSoftness` and
+`cascadeBlend`). PCSS: 16 Vogel-disc reads search the cascade for blockers
+over the widest penumbra the cascade allows (24 texels at most), then 16
+bilinear PCF taps (64 compares) filter over the penumbra their mean depth
+gives, softness × the distance from blocker to receiver; a slope term keeps
+the wide kernel off receivers tilted from the light. Contact shadows stay
+sharp and penumbrae widen with height (`shadows-soft`: penumbra pixels on a
+plain ground 759 hard, 7,073 at softness 0.03). Blending: each cascade's
+last `cascade_blend` of its depth fades into the next, whose fit reaches
+back over that band so its casters are there. Both read with
+`textureLoad` compares, so WebGL2 draws them too. PCSS costs 0.22 ms on WebGPU (`shadows-soft` 0.64 against
+0.41 ms hard), 0.39 ms on WebGL2 (1.01 against 0.62) and about 0.4 ms on
+metal at 1280×720.
+
+**FXAA** (`Antialias::Fxaa`): FXAA 3.11's quality path (eight edge-search
+steps) over the tonemapped image, which the tonemap writes into an sRGB
+8-bit target the FXAA pass reads and writes to the output before the
+overlay, so the HUD stays sharp. One pass, no history, on any tier; `Tier`
+and `Msaa4` resolve to it where the HDR target cannot be multisampled
+(they resolved to `Off` before). It costs 0.08 ms on WebGPU and WebGL2 (`fxaa`
+0.50 and 0.75 ms against 0.41 and 0.67 ms without antialiasing; WebGL2's
+4× MSAA takes 1.11 ms on the same scene) and about 0.1 ms on metal.
+
+**TAA's history and sharpening** (`RenderDesc::taa_history`,
+`taa_sharpen`; the IDL's `taaHistory` and `taaSharpen`):
+`TaaHistory::CatmullRom` resamples the history with a 9-tap Catmull-Rom
+(Jimenez's bilinear-tap form) before the neighbourhood clamp, which keeps
+it sharp when the camera moves; `taa_sharpen` adds a pass after TAA into
+its own target (the history stays unsharpened): an unsharp mask over the
+four neighbours clamped to their range. On the thin geometry under a
+camera sliding 2 cm a frame, the mean absolute Laplacian of the luma is
+7.07 bilinear, 7.38 Catmull-Rom, 8.61 with 0.5 sharpening. Catmull-Rom and 0.5 sharpening together cost 0.06 ms on
+WebGPU (`taa-sharp` 0.55 against `taa` 0.49 ms) and about 0.1 ms on
+metal.
+
 ## The overlay
 
 The screen-space layer for HUDs and og-ui. It is drawn after every post
@@ -271,8 +355,10 @@ a page needs no `preserveDrawingBuffer`; a probe capture renders a frame to
 
 | Tier | Backends | Reference directory | Antialiasing (`Tier`) |
 |---|---|---|---|
-| `Full` | Metal, Vulkan (GPU or lavapipe), WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `webgpu` | TAA |
-| `NoCompute` | WebGL2 (wgpu GL), native GL | `webgl2`, `gl` | 4× MSAA |
+| Tier | Backends | Reference directory | Antialiasing (`Tier`) | Shadowed local lights | Point shadows (`Auto`) | Particle collision |
+|---|---|---|---|---|---|---|
+| `Full` | Metal, Vulkan (GPU or lavapipe), WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `webgpu` | TAA | 8 | cube faces | the depth buffer (compute) |
+| `NoCompute` | WebGL2 (wgpu GL), native GL | `webgl2`, `gl` | 4× MSAA (FXAA without a multisampled HDR target) | 4 | paraboloids | the scene's colliders (CPU) |
 
 Both tiers request `Limits::downlevel_webgl2_defaults()` at the adapter's
 resolution; both tiers run the same passes (the full tier adds GPU
@@ -283,7 +369,8 @@ arrays read with `textureLoad` and compared explicitly (WebGL2 can neither
 filter, `textureLod` nor gather a depth texture), the HDR target is
 `Rgba16Float` (`EXT_color_buffer_float`), IBL, mips, metering and bloom are
 render passes, there is no `first_instance`, and the uniform arrays stay far
-below the 16 KB WebGL2 uniform block limit (the frame uniform is 1.7 KB).
+below the 16 KB WebGL2 uniform block limit (the frame uniform is about 4 KB:
+48 local shadow matrices since the shadows-aa round).
 Three constraints of wgpu's GL backend, each of which once broke
 fx-showcase on WebGL2:
 
@@ -298,7 +385,7 @@ fx-showcase on WebGL2:
   ([Physical materials](#physical-materials-p4)).
 - The texture target is chosen at creation, and a square 2D texture with a
   multiple of six layers becomes a cube map (array): the local shadow map
-  (twelve layers) gets a spare thirteenth to stay a 2D array.
+  (twelve layers, 48 once grown) gets a spare layer to stay a 2D array.
 
 ## Testing
 
@@ -316,9 +403,14 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `gltf-reference` | The spike's scene (trickster + dropship × 25) with CSM, sky, mips. | all |
 | `spheres-20k` | 20,000 spheres submitted one by one: 2 batches, ≤ 10 draws. | all |
 | `cascades-200m` | A 420 m field, pillars to 190 m, a wall at 200 m, short kerbs and blocks: shadows in every cascade. | all |
-| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes). | all |
+| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes; 3 on WebGL2, whose point shadows are paraboloids). | all |
+| `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes, RMSE 0.0023 against the cube frame. | all |
+| `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. | full |
+| `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. | all |
 | `taa` | Thin poles and bars after 16 TAA frames. | full |
 | `msaa` | The same geometry with 4× MSAA. | no-compute |
+| `fxaa` | The same geometry with FXAA. | all |
+| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening. | full |
 | `bloom` | Emissive spheres with bloom. | all |
 | `exposure` | A dim dusk scene metered to middle grey. | all |
 | `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |
@@ -434,10 +526,14 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 - **Decals**: up to 8 projected boxes per frame, read by the lit shader
   (`fx-decals`); each is capped to its box.
 - **Particles**: `ParticleEmitter` assets and `ParticleSystem`s with
-  curves, bursts, noise, sprite sheets, collision against the depth buffer,
-  soft fade against the scene, local or world space, 2D emitters drawn as
-  sprites. Simulated by compute on the full tier and on the CPU elsewhere;
-  both paths give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
+  curves, bursts, noise, sprite sheets, collision against the depth buffer
+  (compute) or against `RenderScene::particle_colliders` (the CPU path:
+  planes, boxes, spheres and terrain height fields, which og-runtime fills
+  from its og.Collider components; a step from outside a shape to inside
+  bounces, as the compute shader's response), soft fade against the scene,
+  local or world space, 2D emitters drawn as sprites. Simulated by compute
+  on the full tier and on the CPU elsewhere; without collision both paths
+  give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
   and a 600-tick run is deterministic on either.
 - **Trails, ribbons and beams**: `Trail` keeps a per-id history for its
   `TrailStyle`'s lifetime; `Ribbon` is an explicit polyline; `Beam` joins
@@ -921,7 +1017,12 @@ restore to tick 31 redraws tick 120 byte for byte, and zero speeds equal
 
 Delivered in P4: clearcoat maps, sheen, transmission (with volume and
 `ior`), iridescence and anisotropy on both tiers ([Physical
-materials](#physical-materials-p4)).
+materials](#physical-materials-p4)); cascade blending, PCSS soft shadows
+for the sun, point shadows by tier (dual-paraboloid on WebGL2), up to 8
+shadowed local lights (4 on WebGL2), TAA's Catmull-Rom history and
+sharpening, FXAA on every tier, and the CPU particle path's collision
+(WebGL2's sparks bounce) ([Shadows and antialiasing by
+tier](#shadows-and-antialiasing-by-tier)).
 
 Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
 declared targets and passes, data-flow order, aliased transients; the
@@ -944,11 +1045,6 @@ with their mips, chosen per tier and reported in
   The browser runner (`make web-reference`) covers `templates/fx-showcase`
   on `webgpu` and `webgl2`, which draws every E1 effect, skinning and the
   overlay.
-- Shadows: cascade blending at split boundaries, PCSS/soft shadows, point
-  shadows by tier (dual-paraboloid on WebGL2 if cube faces cost too much),
-  more than two shadowed local lights.
-- TAA: Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier
-  as an MSAA alternative.
 - Post: fog.
 - 2D: per-texture filtering (nearest for pixel art), billboards. (Kerning,
   shaped placements and glyph tables that grow at run time landed in the

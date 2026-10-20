@@ -127,3 +127,35 @@ fn the_physical_shaders_translate_and_fit_webgl2s_texture_units() {
     );
     assert_eq!(textures, 14, "frame 5, material 5, effects 3, skin 1");
 }
+
+/// The shadow and antialiasing passes of shadows.rs and post.rs on the
+/// WebGL2 tier: the casters' shader (cascades, spot and cube faces, the
+/// dual-paraboloid hemispheres with their per-texel ray), the lit shader
+/// that reads them (PCSS, cascade blending, paraboloid lookups), TAA with
+/// its Catmull-Rom history and sharpening, and FXAA.
+#[test]
+fn the_shadow_and_antialiasing_shaders_translate_to_glsl_es_300() {
+    let builtin = og_render::MaterialShader {
+        name: "built-in".into(),
+        code: String::new(),
+        params: Vec::new(),
+    };
+    let fullscreen = include_str!("../shaders/fullscreen.wgsl");
+    let shaders = [
+        ("shadow", og_render::shadow_module_source(&builtin, false)),
+        ("lit", og_render::lit_module_source(&builtin, false)),
+        (
+            "taa.wgsl",
+            format!("{fullscreen}{}", include_str!("../shaders/taa.wgsl")),
+        ),
+        (
+            "fxaa.wgsl",
+            format!("{fullscreen}{}", include_str!("../shaders/fxaa.wgsl")),
+        ),
+    ];
+    let failures: Vec<String> = shaders
+        .iter()
+        .flat_map(|(name, source)| webgl2_failures(name, source))
+        .collect();
+    assert!(failures.is_empty(), "{failures:#?}");
+}

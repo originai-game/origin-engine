@@ -1,12 +1,13 @@
-//! After the main pass: outlines, TAA, depth of field, motion blur, god
-//! rays, auto-exposure metering, bloom (and the 2D glow), the tonemap with
-//! grading, vignette, chromatic aberration, grain and flash; before it, the
-//! ambient occlusion over the depth-normal prepass. Also the size-dependent
-//! targets they and the main pass draw into, as render graph targets.
+//! After the main pass: outlines, TAA (and its sharpening), depth of field,
+//! motion blur, god rays, auto-exposure metering, bloom (and the 2D glow),
+//! the tonemap with grading, vignette, chromatic aberration, grain and
+//! flash, and FXAA after it; before it, the ambient occlusion over the
+//! depth-normal prepass. Also the size-dependent targets they and the main
+//! pass draw into, as render graph targets.
 
 use crate::graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 use crate::scene::{Exposure, PostEffects, Tonemap};
-use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, target_texture};
+use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
 const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");
@@ -15,6 +16,19 @@ const TAA_WGSL: &str = include_str!("../shaders/taa.wgsl");
 const LUMINANCE_WGSL: &str = include_str!("../shaders/luminance.wgsl");
 const EXPOSURE_WGSL: &str = include_str!("../shaders/exposure.wgsl");
 const FXPOST_WGSL: &str = include_str!("../shaders/fxpost.wgsl");
+const FXAA_WGSL: &str = include_str!("../shaders/fxaa.wgsl");
+
+/// The tonemapped image FXAA reads (sRGB-encoded 8 bits, as the output).
+pub(crate) const LDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
+/// TAA's refinements ([`crate::RenderDesc::taa_history`],
+/// [`crate::RenderDesc::taa_sharpen`]).
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct AaOptions {
+    pub taa_history: TaaHistory,
+    /// 0 (no pass) to 1.
+    pub taa_sharpen: f32,
+}
 
 /// The prepass targets: world normal and velocity, view depth, outline ids.
 pub(crate) const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -217,6 +231,12 @@ pub(crate) struct PostPasses {
     up: wgpu::RenderPipeline,
     tonemap: wgpu::RenderPipeline,
     taa: Option<wgpu::RenderPipeline>,
+    /// TAA's sharpening pass, when [`AaOptions::taa_sharpen`] is above 0.
+    taa_sharpen_pipeline: Option<wgpu::RenderPipeline>,
+    /// Its strength (`TaaUniform::params.w`).
+    pub taa_sharpen: f32,
+    /// FXAA: the tonemap into [`LDR_FORMAT`] and the FXAA pass into the output.
+    fxaa: Option<(wgpu::RenderPipeline, wgpu::RenderPipeline)>,
     sampler: wgpu::Sampler,
     black: wgpu::TextureView,
     /// The identity 32³ grading LUT (bound when no grading is set).
@@ -311,6 +331,7 @@ impl PostPasses {
         queue: &wgpu::Queue,
         output_format: wgpu::TextureFormat,
         antialias: Antialias,
+        aa: AaOptions,
     ) -> PostPasses {
         let sampler_ty = wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering);
         let source_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -499,16 +520,68 @@ impl PostPasses {
             output_format,
             None,
         );
-        let taa = (antialias == Antialias::Taa).then(|| {
-            let taa_shader = module("taa", TAA_WGSL);
+        let taa_on = antialias == Antialias::Taa;
+        let taa_shader = taa_on.then(|| module("taa", TAA_WGSL));
+        let taa_pl = pipeline_layout("taa", &taa_layout);
+        let taa = taa_shader.as_ref().map(|taa_shader| {
             fullscreen_pipeline(
                 device,
                 "taa",
-                &taa_shader,
-                "fs",
-                &pipeline_layout("taa", &taa_layout),
+                taa_shader,
+                match aa.taa_history {
+                    TaaHistory::Bilinear => "fs",
+                    TaaHistory::CatmullRom => "fs_catmull_rom",
+                },
+                &taa_pl,
                 HDR_FORMAT,
                 None,
+            )
+        });
+        let taa_sharpen = if taa_on {
+            aa.taa_sharpen.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let taa_sharpen_pipeline =
+            taa_shader
+                .as_ref()
+                .filter(|_| taa_sharpen > 0.0)
+                .map(|taa_shader| {
+                    fullscreen_pipeline(
+                        device,
+                        "taa sharpen",
+                        taa_shader,
+                        "fs_sharpen",
+                        &taa_pl,
+                        HDR_FORMAT,
+                        None,
+                    )
+                });
+        let fxaa = (antialias == Antialias::Fxaa).then(|| {
+            let fxaa_shader = module("fxaa", FXAA_WGSL);
+            (
+                fullscreen_pipeline(
+                    device,
+                    "tonemap (ldr)",
+                    &post_shader,
+                    "fs",
+                    &post_pl,
+                    LDR_FORMAT,
+                    None,
+                ),
+                fullscreen_pipeline(
+                    device,
+                    "fxaa",
+                    &fxaa_shader,
+                    if output_format.is_srgb() {
+                        "fs"
+                    } else {
+                        "fs_srgb_encode"
+                    },
+                    &source_pl,
+                    output_format,
+                    None,
+                ),
             )
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -589,6 +662,9 @@ impl PostPasses {
             up,
             tonemap,
             taa,
+            taa_sharpen_pipeline,
+            taa_sharpen,
+            fxaa,
             sampler,
             black: black_texture.create_view(&Default::default()),
             post_buffer: uniform("post", std::mem::size_of::<PostUniform>()),
@@ -911,6 +987,8 @@ pub(crate) enum FramePass {
     Glow,
     Outline,
     Taa,
+    /// The sharpening after TAA (into `hdr.sharp`; the history stays soft).
+    TaaSharpen,
     DofCoc,
     DofBlur,
     DofComposite,
@@ -929,6 +1007,8 @@ pub(crate) enum FramePass {
     /// Bloom level `i + 1` added onto `i`.
     BloomUp(u32),
     Tonemap,
+    /// FXAA over the tonemapped image (`ldr`) into the output.
+    Fxaa,
 }
 
 impl FramePass {
@@ -948,6 +1028,7 @@ impl FramePass {
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
             FramePass::Taa => "taa".into(),
+            FramePass::TaaSharpen => "taa-sharpen".into(),
             FramePass::DofCoc => "dof-coc".into(),
             FramePass::DofBlur => "dof-blur".into(),
             FramePass::DofComposite => "dof-composite".into(),
@@ -961,6 +1042,7 @@ impl FramePass {
             FramePass::BloomDown(i) => format!("bloom-down.{i}"),
             FramePass::BloomUp(i) => format!("bloom-up.{i}"),
             FramePass::Tonemap => "tonemap".into(),
+            FramePass::Fxaa => "fxaa".into(),
         }
     }
 }
@@ -1002,11 +1084,11 @@ fn bloom_name(i: u32) -> String {
 }
 
 /// The names of the lit image as the effects hand it on: after the main
-/// pass (and outlines), after TAA (`None`: the history), after depth of
-/// field and motion blur.
+/// pass (and outlines), after TAA (`None`: the history; its sharpening:
+/// `hdr.sharp`), after depth of field and motion blur.
 struct LitNames {
     main: &'static str,
-    /// `None` when TAA writes the history.
+    /// `None` when TAA writes the history and nothing sharpens it.
     aa: Option<&'static str>,
     after_dof: Option<&'static str>,
     last: Option<&'static str>,
@@ -1019,7 +1101,11 @@ fn lit_names(passes: &[FramePass]) -> LitNames {
     } else {
         "hdr"
     };
-    let aa = (!has(FramePass::Taa)).then_some(main);
+    let aa = if has(FramePass::TaaSharpen) {
+        Some("hdr.sharp")
+    } else {
+        (!has(FramePass::Taa)).then_some(main)
+    };
     let after_dof = if has(FramePass::DofComposite) {
         Some("hdr.dof")
     } else {
@@ -1177,8 +1263,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::Glow) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
     }
+    if has(FramePass::Fxaa) {
+        g.transient("ldr", desc(w, h, LDR_FORMAT, 1, attach_bind));
+    }
     for (pass, name) in [
         (FramePass::Outline, "hdr.outline"),
+        (FramePass::TaaSharpen, "hdr.sharp"),
         (FramePass::DofComposite, "hdr.dof"),
         (FramePass::MotionBlur, "hdr.mb"),
     ] {
@@ -1308,6 +1398,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &[names.main, "depth", "history-read"],
                 &["history-write"],
             ),
+            FramePass::TaaSharpen => g.pass(name, &["history-write", "depth"], &["hdr.sharp"]),
             // Every effect pass binds the prepass's lindepth and gbuffer
             // (`fx_group`), so each declares them: a target written here may
             // not alias a texture the pass still has bound.
@@ -1347,8 +1438,14 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if has(FramePass::GodRaysBlur) {
                     reads.push("god.blur");
                 }
-                g.pass(name, &reads, &["output"])
+                let target = if has(FramePass::Fxaa) {
+                    "ldr"
+                } else {
+                    "output"
+                };
+                g.pass(name, &reads, &[target])
             }
+            FramePass::Fxaa => g.pass(name, &["ldr"], &["output"]),
         };
     }
     g
@@ -1358,6 +1455,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
 /// in pairs are per TAA history slot.
 struct Bindings {
     taa: Option<[wgpu::BindGroup; 2]>,
+    taa_sharpen: Option<[wgpu::BindGroup; 2]>,
+    fxaa: Option<wgpu::BindGroup>,
     meter: Option<[wgpu::BindGroup; 2]>,
     reduce: Vec<wgpu::BindGroup>,
     adapt: Option<[wgpu::BindGroup; 2]>,
@@ -1543,6 +1642,29 @@ impl FrameGraph {
                 )
             })
         });
+        // The sharpening reads what TAA wrote this frame (as both images).
+        let taa_sharpen = history.filter(|_| has(FramePass::TaaSharpen)).map(|h| {
+            [0usize, 1].map(|slot| {
+                group(
+                    "taa sharpen",
+                    &passes.taa_layout,
+                    &[
+                        tex(&h[slot]),
+                        tex(&h[slot]),
+                        tex(self.view("depth")),
+                        sampler.clone(),
+                        passes.taa_buffer.as_entire_binding(),
+                    ],
+                )
+            })
+        });
+        let fxaa = has(FramePass::Fxaa).then(|| {
+            group(
+                "fxaa",
+                &passes.source_layout,
+                &[tex(self.view("ldr")), sampler.clone()],
+            )
+        });
         let levels = meter_levels();
         let auto = has(FramePass::Meter);
         let metered = if auto {
@@ -1692,6 +1814,8 @@ impl FrameGraph {
         let _ = cfg;
         Bindings {
             taa: taa_groups,
+            taa_sharpen,
+            fxaa,
             meter,
             reduce,
             adapt,
@@ -1827,16 +1951,47 @@ impl FrameGraph {
                 1
             }
             FramePass::Tonemap => {
-                fullscreen_pass(
-                    encoder,
-                    "tonemap",
-                    output,
-                    clear,
-                    &passes.tonemap,
-                    &b.post[slot],
-                );
+                match (&passes.fxaa, self.passes.contains(&FramePass::Fxaa)) {
+                    (Some((tonemap_ldr, _)), true) => fullscreen_pass(
+                        encoder,
+                        "tonemap",
+                        self.view("ldr"),
+                        clear,
+                        tonemap_ldr,
+                        &b.post[slot],
+                    ),
+                    _ => fullscreen_pass(
+                        encoder,
+                        "tonemap",
+                        output,
+                        clear,
+                        &passes.tonemap,
+                        &b.post[slot],
+                    ),
+                }
                 1
             }
+            FramePass::Fxaa => match (&passes.fxaa, &b.fxaa) {
+                (Some((_, pipeline)), Some(group)) => {
+                    fullscreen_pass(encoder, "fxaa", output, clear, pipeline, group);
+                    1
+                }
+                _ => 0,
+            },
+            FramePass::TaaSharpen => match (&passes.taa_sharpen_pipeline, &b.taa_sharpen) {
+                (Some(pipeline), Some(groups)) => {
+                    fullscreen_pass(
+                        encoder,
+                        "taa sharpen",
+                        self.view("hdr.sharp"),
+                        clear,
+                        pipeline,
+                        &groups[slot],
+                    );
+                    1
+                }
+                _ => 0,
+            },
             FramePass::Ao
             | FramePass::AoBlur
             | FramePass::Outline
@@ -1887,6 +2042,8 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "reflection-depth",
         "reflection-msaa",
         "glow",
+        "ldr",
+        "hdr.sharp",
         "hdr.outline",
         "hdr.dof",
         "hdr.mb",

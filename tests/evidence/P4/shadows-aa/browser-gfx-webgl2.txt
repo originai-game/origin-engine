@@ -1,0 +1,20 @@
+ok   point-spot-lights (webgl2): 0.011 % outliers (≤ 0.5 %), RMSE 0.00225 (≤ 0.01) against crates/og-tests/references/metal/point-spot-lights.png
+time point-spot-lights (webgl2): 0.523 ms per frame with the GPU (best of 7 x 60), submit median 0.2 ms, last frame {"gpu_culling":false,"draws":13,"instances":9,"culled":0,"occluded":0,"triangles":4670,"shadow_casters":27,"counts_lag":0}
+time point-shadows-cube (webgl2): 0.702 ms per frame with the GPU (best of 7 x 60), submit median 0.2 ms, last frame {"gpu_culling":false,"draws":23,"instances":9,"culled":0,"occluded":0,"triangles":4670,"shadow_casters":32,"counts_lag":0}
+ok   point-shadows-paraboloid (webgl2): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/point-shadows-paraboloid.png
+time point-shadows-paraboloid (webgl2): 0.503 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":13,"instances":9,"culled":0,"occluded":0,"triangles":4670,"shadow_casters":27,"counts_lag":0}
+time shadows-local-8-cube (webgl2): 1.085 ms per frame with the GPU (best of 7 x 60), submit median 0.2 ms, last frame {"gpu_culling":false,"draws":29,"instances":11,"culled":0,"occluded":0,"triangles":122,"shadow_casters":43,"counts_lag":0}
+time shadows-local-8-paraboloid (webgl2): 0.602 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":15,"instances":11,"culled":0,"occluded":0,"triangles":122,"shadow_casters":40,"counts_lag":0}
+ok   shadows-soft (webgl2): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/shadows-soft.png
+time shadows-soft (webgl2): 1.01 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":21,"instances":16,"culled":0,"occluded":0,"triangles":1706,"shadow_casters":24,"counts_lag":0}
+time shadows-soft-off (webgl2): 0.618 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":21,"instances":16,"culled":0,"occluded":0,"triangles":1706,"shadow_casters":24,"counts_lag":0}
+ok   fxaa (webgl2): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/fxaa.png
+time fxaa (webgl2): 0.75 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":19,"instances":19,"culled":0,"occluded":0,"triangles":1742,"shadow_casters":46,"counts_lag":0}
+time aa-off (webgl2): 0.668 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":18,"instances":19,"culled":0,"occluded":0,"triangles":1742,"shadow_casters":46,"counts_lag":0}
+ok   msaa (webgl2): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/webgl2/msaa.png
+time msaa (webgl2): 1.113 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":18,"instances":19,"culled":0,"occluded":0,"triangles":1742,"shadow_casters":46,"counts_lag":0}
+ok   showcase (webgl2): 0.032 % outliers (≤ 0.5 %), RMSE 0.00274 (≤ 0.01) against crates/og-tests/references/webgl2/showcase.png; metal: RMSE 0.01103
+time showcase (webgl2): 2.918 ms per frame with the GPU (best of 7 x 60), submit median 1.4 ms, last frame {"gpu_culling":false,"draws":300,"instances":92,"culled":0,"occluded":0,"triangles":95045,"shadow_casters":342,"counts_lag":0}
+ok   overlay (webgl2): 0.027 % outliers (≤ 0.5 %), RMSE 0.00243 (≤ 0.01) against crates/og-tests/references/webgl2/overlay.png; metal: RMSE 0.01055
+time overlay (webgl2): 2.907 ms per frame with the GPU (best of 7 x 60), submit median 1.3 ms, last frame {"gpu_culling":false,"draws":304,"instances":92,"culled":0,"occluded":0,"triangles":95045,"shadow_casters":342,"counts_lag":0}
+PASS og-tests gfx on webgl2: 14 scenes in 22851 ms (module built in 128435 ms); /private/tmp/claude-501/-Volumes-app-origin-engine/c35cacf3-281a-4f6c-a921-ab3ea067b1dd/scratchpad/sa/web-gfx/reference-gfx-webgl2.json

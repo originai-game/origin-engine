@@ -24,6 +24,7 @@ function copy(): Roots {
   cpSync(real.pkg, roots.pkg, { recursive: true, filter: (s) => !s.includes("node_modules") });
   cpSync(real.template, roots.template, { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
   cpSync(join(real.engine, "package.json"), join(roots.engine, "package.json"));
+  cpSync(join(real.engine, "schema/api.schema.json"), join(roots.engine, "schema/api.schema.json"));
   return roots;
 }
 
@@ -144,13 +145,52 @@ test("each module is taught by the one skill the wiki's index groups it under", 
 
 test("a section reference names a numbered section that exists", () => {
   const p = added((r) =>
-    edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-feel §15, og-taste §4, §12 and §9, og-build §Tests.\n\n\`\`\`text\nog-feel §99 in a code block is not a reference\n\`\`\`\n`),
+    edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-feel §15, og-taste §4, §13 and §9, og-build §Tests.\n\n\`\`\`text\nog-feel §99 in a code block is not a reference\n\`\`\`\n`),
   );
   expect(p).toEqual([
     "skills/og-audio/SKILL.md: refers to og-build §Tests by name; refer to a skill's sections by their numbers (## N.)",
     "skills/og-audio/SKILL.md: refers to og-feel §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
-    "skills/og-audio/SKILL.md: refers to og-taste §12, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)",
+    "skills/og-audio/SKILL.md: refers to og-taste §13, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)",
   ]);
   const own = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nAs §8 says.\n`));
   expect(own).toEqual(["skills/og-audio/SKILL.md: refers to its own §8, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7)"]);
+});
+
+test("the style catalogue covers 37 styles, each complete and listed in og-taste", () => {
+  const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string; checks: string[]; look: { support: string; missing: string[] } }[] };
+  expect(cat.styles).toHaveLength(37);
+  for (const s of cat.styles) {
+    expect(s.checks).toHaveLength(3);
+    if (s.look.support !== "full") expect(s.look.missing.length).toBeGreaterThan(0);
+  }
+  const b = bundle(real);
+  expect(b.files["game/skills/og-taste/looks/catalogue.json"]).toBe(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8"));
+});
+
+test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
+  const p = added((r) =>
+    edit(join(r.pkg, "looks/catalogue.json"), (s) => {
+      const cat = JSON.parse(s);
+      const [a, b, c] = cat.styles;
+      a.checks = a.checks.slice(0, 2);
+      b.look.support = "planned";
+      b.look.missing = [];
+      c.look.primitives = [...c.look.primitives, "Stylise.posterise"];
+      cat.styles.push({ ...cat.styles[3] });
+      cat.styles.push({ ...cat.styles[4], slug: "a-new-look" });
+      return JSON.stringify(cat, null, 2);
+    }),
+  );
+  const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] };
+  const [a, b, c, d] = cat.styles.map((s) => s.slug);
+  expect(p.sort()).toEqual(
+    [
+      `looks/catalogue.json: ${a}: needs exactly three checks a critic can judge on a frame`,
+      `looks/catalogue.json: ${b}: support planned must name what is missing (the primitive or the authored art)`,
+      `looks/catalogue.json: ${c}: names Stylise.posterise, which the generated API does not have`,
+      `looks/catalogue.json: ${d}: a second style with this slug`,
+      "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
+      "skills/og-taste/SKILL.md: the style catalogue (§12) does not list `a-new-look`",
+    ].sort(),
+  );
 });

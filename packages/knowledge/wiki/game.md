@@ -54,7 +54,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 482</sub>
+<sub>`api.ogt` line 483</sub>
 
 ## Interfaces
 
@@ -70,7 +70,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 476</sub>
+<sub>`api.ogt` line 477</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -88,7 +88,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "The fixed tick rate in hertz."
 ```
 
-<sub>`api.ogt` line 478</sub>
+<sub>`api.ogt` line 479</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +106,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 479</sub>
+<sub>`api.ogt` line 480</sub>
 
 ## Types
 
@@ -183,6 +183,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `facts` | `FactsFn \| null` | `null` | — | — | — | The game's own facts for the probe's state(). |
 | `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. |
 | `render` | `RenderOptions` | `{}` | — | — | — | How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer. |
+| `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none. |
 
 ```ogt
 struct GameDesc {
@@ -212,6 +213,7 @@ struct GameDesc {
   field facts Option.FactsFn "The game's own facts for the probe's state()."
   field start Option.StartFn "Called once before the first tick, after the first scene spawned."
   field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
+  field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none."
 }
 ```
 

@@ -31,6 +31,8 @@ pub(crate) struct FxLayouts {
     pub trail: Option<Layout>,
     pub beam: Option<Layout>,
     pub skeleton: Option<Layout>,
+    pub stylise: Option<Layout>,
+    pub material_style: Option<Layout>,
 }
 
 impl FxLayouts {
@@ -45,6 +47,8 @@ impl FxLayouts {
             trail: get("og.Trail"),
             beam: get("og.Beam"),
             skeleton: get("og.Skeleton"),
+            stylise: get("og.Stylise"),
+            material_style: get("og.MaterialStyle"),
         }
     }
 }
@@ -98,6 +102,8 @@ pub(crate) struct FxState {
     /// Loaded models by asset handle bits, and skin data by model id.
     pub models: BTreeMap<u64, ModelInfo>,
     pub skins: BTreeMap<String, SkinnedModel>,
+    /// Looks and palettes (`super::look`).
+    pub look: super::look::LookState,
     /// og-anim on this world (its palettes and blendshape weights).
     pub anim: Option<og_anim::AnimationSystem>,
     /// Instance transforms by (entity, part) of the last two ticks, for
@@ -313,6 +319,12 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             );
         }
     }
+    scene.stylise = stylise(
+        resource(world, layouts.stylise.as_ref()),
+        resource(world, layouts.material_style.as_ref()),
+        &fx.look.palettes,
+        textures,
+    );
     if let Some(l) = resource(world, layouts.lighting_2d.as_ref())
         && on(&l, "enabled", false)
     {
@@ -323,6 +335,130 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             resolution: f(&l, "resolution", 0.5),
         });
     }
+}
+
+/// `Stylise` and `MaterialStyle` as og-render's description (every
+/// primitive `None` or zero unless its field turns it on).
+fn stylise(
+    s: Option<Value>,
+    m: Option<Value>,
+    palettes: &[og_render::PaletteHandle],
+    textures: &[og_render::TextureHandle],
+) -> og_render::Stylise {
+    let rgb = |v: &Value, d: Vec3| {
+        let c = color(v, d);
+        [c.x, c.y, c.z]
+    };
+    let texture = |v: &Value| handle_index(v).and_then(|i| textures.get(i).copied());
+    let mut out = og_render::Stylise::default();
+    if let Some(s) = s {
+        let height = u(&s, "pixelHeight", 0);
+        if height > 0 {
+            out.pixel = Some(og_render::PixelScale {
+                height,
+                upscale: u(&s, "pixelUpscale", 0),
+                snap: on(&s, "pixelSnap", true),
+            });
+        }
+        let posterize = u(&s, "posterize", 0);
+        let palette = handle_index(&s["palette"]).and_then(|i| palettes.get(i).copied());
+        let dither = match variant(
+            &s["dither"],
+            &["none", "bayer2", "bayer4", "bayer8", "blueNoise"],
+        ) {
+            1 => og_render::DitherPattern::Bayer2,
+            2 => og_render::DitherPattern::Bayer4,
+            3 => og_render::DitherPattern::Bayer8,
+            4 => og_render::DitherPattern::BlueNoise,
+            _ => og_render::DitherPattern::None,
+        };
+        if posterize > 0 || palette.is_some() || dither != og_render::DitherPattern::None {
+            out.quantize = Some(og_render::Quantize {
+                posterize,
+                palette,
+                dither,
+                dither_strength: f(&s, "ditherStrength", 1.0),
+                dither_scale: u(&s, "ditherScale", 1).max(1),
+            });
+        }
+        let halftone = f(&s, "halftone", 0.0);
+        if halftone > 0.0 {
+            out.halftone = Some(og_render::Halftone {
+                strength: halftone,
+                size: f(&s, "halftoneSize", 6.0),
+                angle_degrees: f(&s, "halftoneAngle", 45.0),
+                color: rgb(&s["halftoneColor"], Vec3::new(0.02, 0.02, 0.03)),
+            });
+        }
+        let hatching = f(&s, "hatching", 0.0);
+        if hatching > 0.0 {
+            out.hatching = Some(og_render::Hatching {
+                strength: hatching,
+                scale: f(&s, "hatchingScale", 6.0),
+                levels: u(&s, "hatchingLevels", 4),
+                angle_degrees: f(&s, "hatchingAngle", 45.0),
+                color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
+            });
+        }
+        let paint = og_render::Paint {
+            radius: f(&s, "paintRadius", 0.0),
+            anisotropy: f(&s, "paintAnisotropy", 0.0),
+            edge_darkening: f(&s, "paintEdgeDarkening", 0.0),
+            bleed: f(&s, "paintBleed", 0.0),
+            canvas: texture(&s["paintCanvas"]),
+            canvas_strength: f(&s, "paintCanvasStrength", 0.0),
+            canvas_scale: f(&s, "paintCanvasScale", 1.0),
+        };
+        if paint.radius > 0.0
+            || paint.edge_darkening > 0.0
+            || paint.bleed > 0.0
+            || (paint.canvas.is_some() && paint.canvas_strength > 0.0)
+        {
+            out.paint = Some(paint);
+        }
+        if on(&s, "ink", false) {
+            out.ink = Some(og_render::Ink {
+                threshold: f(&s, "inkThreshold", 0.1),
+                width: f(&s, "inkWidth", 1.0),
+                color: rgb(&s["inkColor"], Vec3::new(0.02, 0.02, 0.03)),
+            });
+        }
+        let bands = u(&s, "depthBands", 0);
+        if bands > 0 {
+            out.depth_bands = Some(og_render::DepthBands {
+                count: bands,
+                near: f(&s, "depthBandsNear", 5.0),
+                far: f(&s, "depthBandsFar", 60.0),
+                near_color: rgb(&s["depthBandsNearColor"], Vec3::new(0.02, 0.02, 0.03)),
+                far_color: rgb(&s["depthBandsFarColor"], Vec3::new(0.55, 0.6, 0.7)),
+                flatten: f(&s, "depthBandsFlatten", 1.0),
+            });
+        }
+        let retro = og_render::Retro3d {
+            vertex_snap: f(&s, "vertexSnap", 0.0),
+            affine: f(&s, "affineTexturing", 0.0),
+            depth_bits: u(&s, "depthBits", 0),
+        };
+        if retro.vertex_snap > 0.0 || retro.affine > 0.0 || retro.depth_bits > 0 {
+            out.retro = Some(retro);
+        }
+    }
+    if let Some(m) = m {
+        out.material = og_render::MaterialStyle {
+            toon: on(&m, "toon", false),
+            gradient_map: texture(&m["gradientMap"]),
+            shadow_tint: rgb(&m["shadowTint"], Vec3::new(0.18, 0.16, 0.32)),
+            shadow_tint_amount: f(&m, "shadowTintAmount", 0.0),
+            rim_color: rgb(&m["rimColor"], Vec3::ONE),
+            rim_intensity: f(&m, "rimIntensity", 0.0),
+            rim_power: f(&m, "rimPower", 3.0),
+            outline_color: rgb(&m["outlineColor"], Vec3::new(0.02, 0.02, 0.03)),
+            outline_width: f(&m, "outlineWidth", 0.0),
+            outline_distance: f(&m, "outlineDistance", 0.0),
+            flat_shading: on(&m, "flatShading", false),
+        };
+    }
+    out
 }
 
 /// The world's translation, rotation about z (2D) and scale of a matrix.

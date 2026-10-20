@@ -71,6 +71,8 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
         "Camera",
         "Rng",
         "PostEffects",
+        "Stylise",
+        "MaterialStyle",
         "Lighting2D",
     ] {
         assert!(
@@ -121,6 +123,9 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "texture",
             "textureArray",
             "skin",
+            "look",
+            "lookInfo",
+            "palette",
             "soundInfo",
             "status",
             "error",

@@ -172,6 +172,8 @@ pub(crate) struct GameDecl {
     pub render: Value,
     /// GameDesc.start, called once before the first tick.
     pub start: Option<u32>,
+    /// GameDesc.look: applied before start runs; empty is none.
+    pub look: String,
 }
 
 #[derive(Clone, Debug)]
@@ -283,6 +285,11 @@ pub(crate) struct State {
     pub boot_scene: Option<String>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
+    /// GameDesc.look, until it has been applied (just before start).
+    pub boot_look: Option<String>,
+    /// The last UiDesc given to og.ui.configure, which applying a look's
+    /// skin keeps.
+    pub ui_desc: Value,
     pub step_ms: f64,
     pub render_ms: f64,
     pub warnings: Vec<String>,
@@ -528,6 +535,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
             .unwrap_or_default(),
         render: desc["render"].clone(),
         start: desc["start"].as_u64().map(|n| n as u32),
+        look: desc["look"].as_str().unwrap_or_default().to_string(),
     };
     DECL.with(|d| {
         let mut d = d.borrow_mut();
@@ -902,6 +910,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             environment: get("og.Environment"),
             terrain: get("og.Terrain"),
             scatter: get("og.TerrainScatter"),
+            collider: get("og.Collider"),
         },
     )
 }
@@ -936,6 +945,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         facts: a.game.facts,
         boot_scene: None,
         start: a.game.start,
+        boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
+        ui_desc: Value::Null,
         step_ms: 0.0,
         render_ms: 0.0,
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
@@ -1006,6 +1017,10 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         engine.state.borrow_mut().boot_scene = Some(path.clone());
         boot_scene(&engine);
     }
+    // GameDesc.look's antialias, before the host attaches its renderer.
+    if !a.game.look.is_empty() {
+        super::look::boot_antialias(&engine, &a.game.look);
+    }
     // `deferStart`: the host attaches its renderer and reports the viewport
     // first; start then runs at the first tick boundary.
     if !options["deferStart"].as_bool().unwrap_or(false) {
@@ -1018,6 +1033,16 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
 fn run_start(eng: &Engine) -> Result<(), String> {
     if eng.state.borrow().boot_scene.is_some() {
         return Ok(());
+    }
+    let look = eng.state.borrow_mut().boot_look.take();
+    if let Some(path) = look
+        && let Err(e) = super::look::load(eng, &path).and_then(|i| super::look::apply(eng, i))
+    {
+        let text = format!("GameDesc.look: {e}; the world starts without it");
+        let mut st = eng.state.borrow_mut();
+        st.log
+            .push(json!({ "tick": 0, "warning": true, "text": text }));
+        st.warnings.push(text);
     }
     let Some(start) = eng.state.borrow_mut().start.take() else {
         return Ok(());
@@ -1096,6 +1121,57 @@ pub fn set_render_backend(id: u32, backend: Option<Box<dyn RenderBackend>>) -> R
 /// The game's RenderOptions (`GameDesc.render`), for a host creating a renderer.
 pub fn render_options(id: u32) -> Value {
     engine(id).map_or(Value::Null, |e| e.render.borrow().options.clone())
+}
+
+/// `base` with the game's RenderOptions applied (GameDesc.render):
+/// antialias, shadowMapSize, pointShadows, taaHistory and taaSharpen. Both
+/// hosts create their renderer from it, so the options mean the same on
+/// each.
+pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
+    let options = render_options(id);
+    let mut desc = base;
+    desc.antialias = match options["antialias"].as_str().unwrap_or("tier") {
+        "off" => og_render::Antialias::Off,
+        "msaa4" => og_render::Antialias::Msaa4,
+        "taa" => og_render::Antialias::Taa,
+        "fxaa" => og_render::Antialias::Fxaa,
+        _ => og_render::Antialias::Tier,
+    };
+    if let Some(size) = options["shadowMapSize"].as_u64() {
+        desc.shadow_map_size = size.clamp(256, 4096) as u32;
+    }
+    desc.point_shadows = match options["pointShadows"].as_str().unwrap_or("auto") {
+        "cube" => og_render::PointShadows::Cube,
+        "paraboloid" => og_render::PointShadows::Paraboloid,
+        _ => og_render::PointShadows::Auto,
+    };
+    desc.taa_history = match options["taaHistory"].as_str() {
+        Some("catmullRom") => og_render::TaaHistory::CatmullRom,
+        _ => og_render::TaaHistory::Bilinear,
+    };
+    desc.taa_sharpen = options["taaSharpen"]
+        .as_f64()
+        .map_or(0.0, |v| v.clamp(0.0, 1.0) as f32);
+    desc
+}
+
+/// og-render's Antialias by its IDL name (RenderCapabilities.antialias).
+pub fn antialias_name(a: og_render::Antialias) -> &'static str {
+    match a {
+        og_render::Antialias::Msaa4 => "msaa4",
+        og_render::Antialias::Taa => "taa",
+        og_render::Antialias::Fxaa => "fxaa",
+        og_render::Antialias::Off | og_render::Antialias::Tier => "off",
+    }
+}
+
+/// og-render's PointShadows by its IDL name (RenderCapabilities.pointShadows).
+pub fn point_shadows_name(p: og_render::PointShadows) -> &'static str {
+    match p {
+        og_render::PointShadows::Cube => "cube",
+        og_render::PointShadows::Paraboloid => "paraboloid",
+        og_render::PointShadows::Auto => "auto",
+    }
 }
 
 // ── the tick ────────────────────────────────────────────────────────────────
@@ -1505,12 +1581,24 @@ pub fn command(id: u32, action: &str, args: &str) -> String {
 
 /// `og_engine_write_resource`.
 pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
+    match parse(Some(value)).and_then(|v| write_resource_value(world, resource, &v)) {
+        Ok(()) => super::ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
+/// Writes the fields `value` names into a resource (the others keep
+/// theirs): through the running system's context, which refuses a
+/// resource it did not declare among its writes, or straight into the
+/// world outside systems.
+pub(crate) fn write_resource_value(
+    world: u32,
+    resource: &str,
+    value: &Value,
+) -> Result<(), String> {
     if let Some(f) = running(world) {
-        // Inside a system: through its context, which refuses a resource
-        // the system did not declare among its writes.
-        let result = (|| {
+        return (|| {
             let eng = engine(world)?;
-            let value = parse(Some(value))?;
             let (layout, id) = {
                 let st = eng.state.borrow();
                 let layout = st
@@ -1544,17 +1632,12 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };
             let current = ctx.resource_bytes(id).map_err(err)?;
-            let bytes = layout.encode(Some(&current), Some(&value))?;
+            let bytes = layout.encode(Some(&current), Some(value))?;
             ctx.set_resource_bytes(id, &bytes).map_err(err)
         })();
-        return match result {
-            Ok(()) => super::ok_void(),
-            Err(e) => refuse(e),
-        };
     }
-    let result = (|| {
+    (|| {
         let eng = engine(world)?;
-        let value = parse(Some(value))?;
         let st = eng.state.borrow();
         let layout = st
             .layouts
@@ -1573,13 +1656,9 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
         let w = eng.world()?;
         let id = w.id_by_name(resource).map_err(err)?;
         let current = w.resource_bytes(id).map_err(err)?;
-        let bytes = layout.encode(Some(&current), Some(&value))?;
+        let bytes = layout.encode(Some(&current), Some(value))?;
         w.insert_resource_bytes(id, &bytes).map_err(err)
-    })();
-    match result {
-        Ok(()) => super::ok_void(),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 // ── views ───────────────────────────────────────────────────────────────────

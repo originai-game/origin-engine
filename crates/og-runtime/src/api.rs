@@ -1539,17 +1539,20 @@ pub fn og_render_capabilities(world: u32) -> String {
         rs.backend.as_ref().map(|b| {
             let tier = b.tier();
             let (w, h) = b.size();
+            let info = b.info();
             json!({
                 "tier": tier.clone(),
                 "compute": tier != "webgl2",
                 "antialias": b.antialias(),
                 "maxLights": og_render::MAX_LIGHTS,
-                "maxShadowedLights": og_render::MAX_SHADOWED_LIGHTS,
+                "maxShadowedLights": info.as_ref().map_or(0, |i| i.shadowed_lights),
+                "pointShadows": info.as_ref().map_or("cube", |i| crate::point_shadows_name(i.point_shadows)),
                 "width": w, "height": h,
+                "stylise": og_render::STYLISE_DRAWN,
             })
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "width": 0, "height": 0 }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [] }))
         .to_string()
 }
 
@@ -2019,6 +2022,30 @@ pub fn og_load_scene(world: u32, path: String) -> String {
 
 pub fn og_load_lut(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_look(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| super::look::load(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_look_info(world: u32, look: f64) -> String {
+    result(engine(world).and_then(|eng| super::look::info(&eng, super::look::index(look)?)))
+}
+
+pub fn og_load_palette(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| super::look::load_palette(&eng, &path).map(asset_value)))
+}
+
+pub fn og_render_apply_look(world: u32, look: f64) -> String {
+    result_void(engine(world).and_then(|eng| super::look::apply(&eng, super::look::index(look)?)))
+}
+
+pub fn og_render_look(world: u32) -> String {
+    let info = engine(world).ok().and_then(|eng| {
+        let applied = eng.render.borrow().fx.look.applied;
+        applied.and_then(|i| super::look::info(&eng, i).ok())
+    });
+    info.unwrap_or(Value::Null).to_string()
 }
 
 pub fn og_load_texture_array(world: u32, path: String) -> String {

@@ -28,7 +28,8 @@
 // native baselines, with the median wall time of one render call (the CPU
 // cost of encoding and submitting a frame) and the last frame's counts.
 // The perf-only city scenes (CITY: city-street, city-aerial) are timed only
-// when --scene names them. --cpu-culling culls on the CPU on WebGPU too
+// when --scene names them, as is any scene --scene names (with --time),
+// the shadows-aa cost scenes (COSTS) among them. --cpu-culling culls on the CPU on WebGPU too
 // (og-render's Culling::Cpu; WebGL2 always does); --perf-out writes the
 // timing JSON to <dir>/<tier>[-cpu-culling]/ instead (evidence runs).
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
@@ -76,6 +77,12 @@ const PERF = ["gltf-reference", "spheres-20k", "point-spot-lights", "showcase", 
 const RUNS = 7;
 /** Perf-only scenes (scenes::build, not SCENES), timed when --scene names them. */
 const CITY = ["city-street", "city-aerial"];
+/** The shadows-aa round's cost scenes (scenes::build only): each forced point shadow
+ * storage, PCSS on and off, FXAA and TAA's refinements against their plain frames. */
+const COSTS = [
+  "point-shadows-cube", "shadows-local-8-cube", "shadows-local-8-paraboloid",
+  "shadows-soft-off", "aa-off", "taa-motion",
+];
 const cpuCulling = args.includes("--cpu-culling");
 const perfOut = opt("--perf-out");
 
@@ -178,7 +185,7 @@ try {
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
-  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
+  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
   for (const scene of scenes) {
     const row: Record<string, unknown> = {};
     rows[scene] = row;
@@ -242,7 +249,7 @@ try {
             (against !== metal && row["metal"] ? `; metal: RMSE ${(row["metal"] as { rmse: number }).rmse}` : ""),
         );
       }
-      if (timed > 0 && (PERF.includes(scene) || CITY.includes(scene))) {
+      if (timed > 0 && (PERF.includes(scene) || CITY.includes(scene) || (only?.includes(scene) ?? false))) {
         const t = await bounded(tab.eval<{ runs: number[]; each: number[]; stats: Record<string, unknown> }>(`(async () => {
           const gfx = globalThis.__gfx;
           const runs = [], each = [];

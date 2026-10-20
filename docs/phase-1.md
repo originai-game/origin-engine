@@ -258,7 +258,13 @@ glob (row 12).
   within the tolerance against it; docs/ci.md: a tier gets its own
   reference only for a difference it makes by design), so both tiers are
   judged against `references/metal/` except the webgl2 beacon, which
-  keeps `references/webgl2/beacon.png` by design.
+  keeps `references/webgl2/beacon.png` by design. (2026-10-21, the
+  shadows-aa round: the CPU particle path now bounces off the scene's
+  colliders, so WebGL2's sparks bounce too; against main's re-recorded
+  metal beacon the WebGL2 frame went from RMSE 0.0185 to 0.0165, still
+  over 0.01 for the MSAA against TAA difference and the sparks' paths
+  after a bounce, and its reference was re-recorded; docs/ci.md §Browser
+  reference tiers, `tests/evidence/P4/shadows-aa/`.)
   `scripts/check.sh web-reference` now runs these frames on both tiers.
 - **vulkan-cpu**: not recorded (the gate does not run templates on it).
 - **og polish** (`tests/evidence/P2/showcase/`, metal, release addon):
