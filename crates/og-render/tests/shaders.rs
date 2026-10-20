@@ -23,6 +23,7 @@ fn full_capabilities() -> Capabilities {
 fn checked(
     label: &str,
     wgsl: &str,
+    set: &[(String, f64)],
     caps: Capabilities,
 ) -> Result<(naga::Module, naga::valid::ModuleInfo), String> {
     let module = naga::front::wgsl::parse_str(wgsl)
@@ -38,14 +39,19 @@ fn checked(
             constants.insert(name.clone(), 1.0);
         }
     }
+    // The variant's own constants (the lean lit pipelines' `DISCARD`).
+    for (name, value) in set {
+        constants.insert(name.clone(), *value);
+    }
     let (module, info) =
         naga::back::pipeline_constants::process_overrides(&module, &info, None, &constants)
             .map_err(|e| format!("{label}: overrides: {e:?}"))?;
     Ok((module.into_owned(), info.into_owned()))
 }
 
-fn full_tier_failures(label: &str, wgsl: &str) -> Vec<String> {
-    let (module, info) = match checked(label, wgsl, full_capabilities()) {
+fn full_tier_failures(s: &og_render::ShaderSource) -> Vec<String> {
+    let label = &s.label;
+    let (module, info) = match checked(label, &s.wgsl, &s.constants, full_capabilities()) {
         Ok(m) => m,
         Err(e) => return vec![e],
     };
@@ -63,8 +69,9 @@ fn full_tier_failures(label: &str, wgsl: &str) -> Vec<String> {
     failures
 }
 
-fn gl_tier_failures(label: &str, wgsl: &str) -> Vec<String> {
-    let (module, info) = match checked(label, wgsl, Capabilities::empty()) {
+fn gl_tier_failures(s: &og_render::ShaderSource) -> Vec<String> {
+    let label = &s.label;
+    let (module, info) = match checked(label, &s.wgsl, &s.constants, Capabilities::empty()) {
         Ok(m) => m,
         Err(e) => return vec![e],
     };
@@ -112,10 +119,7 @@ fn gl_tier_failures(label: &str, wgsl: &str) -> Vec<String> {
 fn every_full_tier_module_validates_and_translates_to_msl_and_spirv() {
     let sources = og_render::shader_sources(true);
     assert!(sources.len() >= 30, "{} modules", sources.len());
-    let failures: Vec<String> = sources
-        .iter()
-        .flat_map(|s| full_tier_failures(&s.label, &s.wgsl))
-        .collect();
+    let failures: Vec<String> = sources.iter().flat_map(full_tier_failures).collect();
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
@@ -124,9 +128,6 @@ fn every_gl_tier_module_validates_and_translates_to_glsl_es_300() {
     let sources = og_render::shader_sources(false);
     assert!(sources.len() >= 25, "{} modules", sources.len());
     assert!(sources.iter().all(|s| s.gl));
-    let failures: Vec<String> = sources
-        .iter()
-        .flat_map(|s| gl_tier_failures(&s.label, &s.wgsl))
-        .collect();
+    let failures: Vec<String> = sources.iter().flat_map(gl_tier_failures).collect();
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }

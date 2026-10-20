@@ -137,23 +137,42 @@ fn world_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
   return normalize(cofactor * n) * select(1.0, -1.0, mirrored);
 }
 
-fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
-  var world = model * vec4<f32>(v.position, 1.0);
-  let n = world_normal(model, v.normal);
+// Where a lit vertex lands: its clip position, world position (moved by
+// a material shader's vertex offset) and world normal. Every lit vertex
+// stage, the lean ones (pbr_lean.wgsl) included, computes them here, so
+// they agree to the bit.
+struct LitPlace {
+  clip: vec4<f32>,
+  world: vec3<f32>,
+  normal: vec3<f32>,
+};
+
+fn lit_place(model: mat4x4<f32>, position: vec3<f32>, normal: vec3<f32>, uv: vec2<f32>, color: vec4<f32>) -> LitPlace {
+  var world = model * vec4<f32>(position, 1.0);
+  let n = world_normal(model, normal);
   // A material shader's vertex offset (none with the built-in hooks).
   var h: Hook;
   h.world = world.xyz;
-  h.local = v.position;
+  h.local = position;
   h.normal = n;
-  h.uv = v.uv;
-  h.color = v.color;
+  h.uv = uv;
+  h.color = color;
   h.time = frame.time.x;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
+  var p: LitPlace;
+  p.clip = retro_clip(frame.view_proj * world);
+  p.world = world.xyz;
+  p.normal = n;
+  return p;
+}
+
+fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
+  let p = lit_place(model, v.position, v.normal, v.uv, v.color);
   var o: VertexOut;
-  o.clip = retro_clip(frame.view_proj * world);
+  o.clip = p.clip;
   o.affine = vec3<f32>(v.uv * o.clip.w, o.clip.w);
-  o.world_pos = world.xyz;
-  o.normal = n;
+  o.world_pos = p.world;
+  o.normal = p.normal;
   o.uv = v.uv;
   o.color = v.color;
   o.local_pos = v.position;

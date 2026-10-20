@@ -70,6 +70,24 @@ fn vs(v: VertexIn, i: InstanceIn) -> VsOut {
   return shadow_vertex(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), v);
 }
 
+// Casters whose shadow needs nothing of their material (not skinned, no
+// dissolve, no material shader): the position alone in, the world
+// position alone out, the same depth as `vs` and `fs` (lib.rs
+// `shadow_pipeline`).
+struct LeanVsOut {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) world: vec3<f32>,
+};
+
+@vertex
+fn vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {
+  let world = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * vec4<f32>(position, 1.0);
+  var o: LeanVsOut;
+  o.clip = shadow_clip(world);
+  o.world = world.xyz;
+  return o;
+}
+
 fn shadow_hook(o: VsOut) -> Hook {
   var h: Hook;
   h.world = o.world;
@@ -154,10 +172,15 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInst
 // `dx`, `dy`: the world position's derivatives, taken first (before any
 // discard) for a paraboloid pass's ray to the triangle's plane.
 fn shadow_value(in: VsOut, dx: vec3<f32>, dy: vec3<f32>) -> vec4<f32> {
+  return shadow_depth(in.world, in.clip, dx, dy);
+}
+
+// What a caster's fragment at `world` (`frag`: its position builtin) stores.
+fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>) -> vec4<f32> {
   if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(local_distance(in.world, in.clip, dx, dy), 0.0, 0.0, 1.0);
+    return vec4<f32>(local_distance(world, frag, dx, dy), 0.0, 0.0, 1.0);
   }
-  return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
+  return vec4<f32>(frag.z, 0.0, 0.0, 1.0);
 }
 
 @fragment
@@ -165,6 +188,13 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
   return shadow_value(in, dx, dy);
+}
+
+@fragment
+fn fs_lean(in: LeanVsOut) -> @location(0) vec4<f32> {
+  let dx = dpdx(in.world);
+  let dy = dpdy(in.world);
+  return shadow_depth(in.world, in.clip, dx, dy);
 }
 
 // Dissolving casters: the dissolved pixels cast no shadow.
