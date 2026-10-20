@@ -246,9 +246,16 @@ fn the_grammar_is_strict_about_times_and_names() {
     );
     assert_eq!(
         steps[1].args,
-        vec!["a:b;c".to_owned(), " d".to_owned()],
-        "escapes, and leading spaces of arguments kept"
+        vec!["a:b;c".to_owned(), " d ".to_owned()],
+        "escapes, and the spaces of typed text kept to the `;` (lantern-vale FINDINGS #21: `type:` lost a trailing space)"
     );
+    // Other actions' arguments end where their text does; typed text keeps
+    // its spaces, but not trailing white space that holds a line break
+    // (a script's layout).
+    let typed = parse("1:dump_ui:a.json  ;2:commit:小灯 \n  ;3:compose:x ").unwrap();
+    assert_eq!(typed[0].args, vec!["a.json".to_owned()]);
+    assert_eq!(typed[1].args, vec!["小灯".to_owned()]);
+    assert_eq!(typed[2].args, vec!["x ".to_owned()]);
     assert_eq!(
         (steps[2].action.as_str(), steps[2].args.clone()),
         ("set", vec!["player.Mover.speed=3".to_owned()])

@@ -112,12 +112,8 @@ chord with the modifier before the key: `key_down:Meta+ArrowLeft`
 so a script edits the same on every OS (`og.ui.previewViewport` with
 `macKeys: true` tries the Mac's).
 
-Scripts: a label mixing scripts draws each run in the first font that has
-it (the Latin in the body or the pack's face, CJK, Arabic or Hebrew from the
-locale's fonts or `fallbackFonts` in `og.ui.configure`), a letter and its
-accents always in one face, so `"Level 3 · 古い水車小屋"` needs no font of
-its own; a string a locale's font covers
-whole keeps that face.
+Scripts: a label mixing scripts (`"Level 3 · 古い水車小屋"`) needs no font
+of its own; which face draws which part is one rule, §7 (Fonts).
 
 Icons: an icon set cooked from SVGs (an `.ogt` of `type icons` naming
 them; the UI kit ships 64 iconoir icons as `icons/iconoir.ogt`) loads with
@@ -351,15 +347,33 @@ counts its line breaks. On the web the shell keeps a hidden text box over
 the focused field, so a phone's keyboard opens and an input method
 (Chinese, Japanese, Korean) shows its candidates there; the composition
 is drawn underlined at the caret until it commits. Script them:
-`type:<text>`, `compose:<text>` (`compose:` alone ends it) and
-`commit:<text>`, then read the field's value from `dump_ui` or the
-game's facts (`templates/ui-kit/tests/text.og.ts`).
+`type:<text>` (the text to the `;` exactly, a trailing space included),
+`compose:<text>` (`compose:` alone ends it) and `commit:<text>`, then read
+the field's value from `dump_ui` or the game's facts
+(`templates/ui-kit/tests/text.og.ts`). Fields take the typed-text stream
+(`og.TextInput`: the page's typing, `type:` and `commit:`); until a world
+has had any, a printable key pressed (`key_down:KeyM`) types its US-layout
+character, and from the first on keys only edit (Backspace, arrows), so
+script text with `type:`, not `key_down`.
 
-Fonts: a label takes the role's font when it can draw the whole text,
-else the locale's fonts, then `UiDesc.fallbackFonts` (a Hebrew or
-Devanagari face, a CJK face cooked with `runtime true`), then the skin's
-`fallback`. One label uses one font: a Hebrew word next to digits needs a
-Hebrew font that has digits. Tracking applies to Latin text only.
+Fonts (the one rule for every label, field and button):
+
+1. The role's font (body, display, mono, rounded; the skin's or
+   `og.ui.configure`'s) when it has every character: the whole label in it.
+2. Else the first of the locale's fonts (its string table's `fonts` line)
+   that has every character: the whole label in that face, its Latin and
+   digits too. A CJK subset that carries Latin-1, as the archetypes cook
+   theirs, therefore sets `"Lantern Vale · 灯笼谷"` entirely in Noto.
+3. Else run by run: each run of the label from the first font that has it,
+   the role's font first, then the locale's fonts, `UiDesc.fallbackFonts`
+   (a Hebrew or Devanagari face, a CJK face cooked with `runtime true`) and
+   the skin's `fallback`; a letter and its accents stay in one face. A
+   CJK-only subset (lantern-vale's `tools/subset-font.py`) gives this: the
+   Latin in the skin's face, the Chinese in Noto, on one line.
+
+So choose by the subset: keep Latin in the CJK subset for one face per
+label, leave it out to keep the game's Latin face beside CJK. Tracking
+applies to Latin text only.
 
 ## 8. Proving it
 
