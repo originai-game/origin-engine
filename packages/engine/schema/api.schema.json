@@ -1175,6 +1175,8 @@
         "Palette",
         "DitherPattern",
         "DitherPattern",
+        "StyliseSpace",
+        "StyliseSpace",
         "Stylise",
         "MaterialStyle",
         "LookInfo",
@@ -11570,6 +11572,20 @@
         "interleavedGradient": "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
       }
     },
+    "StyliseSpace": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone).",
+      "type": "string",
+      "enum": [
+        "screen",
+        "surface"
+      ],
+      "x-og-variants": {
+        "screen": "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it.",
+        "surface": "On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses."
+      }
+    },
     "Stylise": {
       "x-og-kind": "resource",
       "x-og-module": "render",
@@ -11666,6 +11682,11 @@
             "b": 0.03
           }
         },
+        "halftoneSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie).",
+          "default": "screen"
+        },
         "hatching": {
           "type": "number",
           "description": "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only.",
@@ -11705,6 +11726,11 @@
             "g": 0.035,
             "b": 0.03
           }
+        },
+        "hatchingSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie).",
+          "default": "screen"
         },
         "paintRadius": {
           "type": "number",
@@ -11756,10 +11782,22 @@
         },
         "paintCanvasScale": {
           "type": "number",
-          "description": "Canvas texels per logical pixel.",
+          "description": "Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky).",
           "default": 1,
           "minimum": 0.125,
           "maximum": 8
+        },
+        "paintCanvasSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls.",
+          "default": "screen"
+        },
+        "paintCanvasWorldScale": {
+          "type": "number",
+          "description": "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres.",
+          "default": 128,
+          "minimum": 1,
+          "maximum": 4096
         },
         "ink": {
           "type": "boolean",
@@ -11799,6 +11837,19 @@
           "maximum": 1,
           "x-og-unit": "ratio",
           "x-og-tunable": true
+        },
+        "inkDepthThreshold": {
+          "type": "number",
+          "description": "With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps.",
+          "default": 0.04,
+          "minimum": 0
+        },
+        "inkNormalThreshold": {
+          "type": "number",
+          "description": "With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 2
         },
         "depthBands": {
           "type": "integer",
@@ -13444,7 +13495,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
         }
       },
       "required": [

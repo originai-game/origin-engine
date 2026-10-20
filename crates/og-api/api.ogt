@@ -2344,6 +2344,19 @@ module render {
     value DitherPattern
   }
 
+  enum StyliseSpace {
+    doc "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone)."
+    variant screen "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it."
+    variant surface "On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses."
+  }
+
+  column StyliseSpace {
+    doc "A StyliseSpace field: the variant's index."
+    array Uint32Array
+    stride 1
+    value StyliseSpace
+  }
+
   resource Stylise {
     doc "Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation."
     doc "Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised."
@@ -2393,6 +2406,7 @@ module render {
     field halftoneColor Color "The ink of the dots (linear)." {
       default 0.02 0.02 0.03
     }
+    field halftoneSpace StyliseSpace "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie)."
     field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only." {
       min 0
       max 1
@@ -2416,6 +2430,7 @@ module render {
     field hatchingColor Color "The stroke colour (linear): graphite, sepia or ink." {
       default 0.04 0.035 0.03
     }
+    field hatchingSpace StyliseSpace "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie)."
     field paintRadius f32 "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off." {
       min 0
       max 8
@@ -2445,10 +2460,16 @@ module render {
       unit ratio
       tunable true
     }
-    field paintCanvasScale f32 "Canvas texels per logical pixel." {
+    field paintCanvasScale f32 "Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky)." {
       default 1
       min 0.125
       max 8
+    }
+    field paintCanvasSpace StyliseSpace "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls."
+    field paintCanvasWorldScale f32 "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres." {
+      default 128
+      min 1
+      max 4096
     }
     field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases."
     field inkThreshold f32 "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines." {
@@ -2471,6 +2492,15 @@ module render {
       max 1
       unit ratio
       tunable true
+    }
+    field inkDepthThreshold f32 "With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps." {
+      default 0.04
+      min 0
+    }
+    field inkNormalThreshold f32 "With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds." {
+      default 0.4
+      min 0
+      max 2
     }
     field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
       min 0
@@ -3191,7 +3221,7 @@ module render {
     field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
-    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
   }
 
   fn standardMaterial {

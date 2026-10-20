@@ -143,6 +143,32 @@ pub(crate) struct StyliseUniform {
     /// x: the camera's far plane (the prepass's sky depth), y: the depth
     /// step that is an edge (relative), z: the normal turn that is a crease.
     pub ink_depth: [f32; 4],
+    /// Surface space (`StyliseSpace::Surface`): view space from clip space,
+    /// to place a prepass depth.
+    pub inv_proj: [[f32; 4]; 4],
+    /// The camera's rotation from view to world space (no translation).
+    pub view_rotation: [[f32; 4]; 4],
+    /// xyz: the camera's position from the surface origin (the 1024 m grid
+    /// point under it, [`surface_origin`]), so a pattern far from the
+    /// world's origin keeps its precision.
+    pub eye: [f32; 4],
+    /// x: 1 with the canvas on surfaces, y: canvas texels per metre there,
+    /// z: 1 with hatching on surfaces, w: 1 with halftone on surfaces.
+    pub surface: [f32; 4],
+    /// The canvas uv at the surface origin (fractional), so the grain is the
+    /// same wherever the origin lies: x along world x (u), y along y (v),
+    /// z along z as u, w along z as v.
+    pub canvas_origin: [f32; 4],
+}
+
+/// The grid the surface patterns are measured from (metres): a whole
+/// number of every hatching and halftone octave (powers of two to 1024 m).
+pub(crate) const SURFACE_GRID: f64 = 1024.0;
+
+/// The surface origin for a camera at `eye`: the [`SURFACE_GRID`] point at
+/// or below it on each axis.
+pub(crate) fn surface_origin(eye: glam::Vec3) -> glam::DVec3 {
+    (eye.as_dvec3() / SURFACE_GRID).floor() * SURFACE_GRID
 }
 
 #[repr(C)]
@@ -1728,9 +1754,10 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 } else {
                     ldr_name(i + 1)
                 };
-                // The lines pass binds the prepass (`Bindings::chain`).
+                // The paint and lines passes bind the prepass
+                // (`Bindings::chain`).
                 let mut reads = vec![read.as_str()];
-                if p == FramePass::Lines && prepass {
+                if matches!(p, FramePass::Paint | FramePass::Lines) && prepass {
                     reads.extend(["lindepth", "gbuffer"]);
                 }
                 g.pass(name, &reads, &[write.as_str()])
@@ -1964,10 +1991,11 @@ impl FrameGraph {
             })
         });
         let mut chain = HashMap::new();
-        // The lines pass reads the prepass (ink on depth edges) when the
-        // frame has one; the other passes bind placeholders.
+        // The paint and lines passes read the prepass (a canvas, hatching
+        // or halftone on surfaces, ink on depth edges) when the frame has
+        // one; the other passes bind placeholders.
         let prepass_of = |p: FramePass| {
-            let lines = p == FramePass::Lines;
+            let lines = matches!(p, FramePass::Paint | FramePass::Lines);
             (
                 self.try_view("lindepth")
                     .filter(|_| lines)

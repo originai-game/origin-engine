@@ -451,6 +451,10 @@ fn stylise(
                 dither_scale: u(&s, "ditherScale", 1).max(1),
             });
         }
+        let space = |v: &Value| match variant(v, &["screen", "surface"]) {
+            1 => og_render::StyliseSpace::Surface,
+            _ => og_render::StyliseSpace::Screen,
+        };
         let halftone = f(&s, "halftone", 0.0);
         if halftone > 0.0 {
             out.halftone = Some(og_render::Halftone {
@@ -458,6 +462,7 @@ fn stylise(
                 size: f(&s, "halftoneSize", 6.0),
                 angle_degrees: f(&s, "halftoneAngle", 45.0),
                 color: rgb(&s["halftoneColor"], Vec3::new(0.02, 0.02, 0.03)),
+                space: space(&s["halftoneSpace"]),
             });
         }
         let hatching = f(&s, "hatching", 0.0);
@@ -468,6 +473,7 @@ fn stylise(
                 levels: u(&s, "hatchingLevels", 4),
                 angle_degrees: f(&s, "hatchingAngle", 45.0),
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
+                space: space(&s["hatchingSpace"]),
             });
         }
         let paint = og_render::Paint {
@@ -478,6 +484,8 @@ fn stylise(
             canvas: texture(&s["paintCanvas"]),
             canvas_strength: f(&s, "paintCanvasStrength", 0.0),
             canvas_scale: f(&s, "paintCanvasScale", 1.0),
+            canvas_space: space(&s["paintCanvasSpace"]),
+            canvas_world_scale: f(&s, "paintCanvasWorldScale", 128.0),
         };
         if paint.radius > 0.0
             || paint.edge_darkening > 0.0
@@ -492,6 +500,8 @@ fn stylise(
                 width: f(&s, "inkWidth", 1.0),
                 color: rgb(&s["inkColor"], Vec3::new(0.02, 0.02, 0.03)),
                 depth: f(&s, "inkDepth", 0.0),
+                depth_threshold: f(&s, "inkDepthThreshold", 0.04),
+                normal_threshold: f(&s, "inkNormalThreshold", 0.4),
             });
         }
         let bands = u(&s, "depthBands", 0);

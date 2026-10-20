@@ -110,8 +110,9 @@ pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use stylise::{
-    DepthBands, DitherPattern, Halftone, Hatching, Ink, MAX_PALETTE_COLORS, MaterialStyle, Paint,
-    Palette, PaletteHandle, PixelScale, Quantize, Retro3d, STYLISE_DRAWN, Stylise,
+    DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
+    MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelScale, Quantize,
+    Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
@@ -4212,11 +4213,13 @@ impl Renderer {
         let god_rays = post_fx.god_rays;
         let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
-        // Ink on depth edges reads the prepass in the lines pass.
+        // Ink on depth edges reads the prepass in the lines pass, a canvas,
+        // hatching or halftone on surfaces in the paint or lines pass.
         let ink_depth = scene.stylise.ink.is_some_and(|i| i.depth > 0.0);
         let prepass = ao.is_some()
             || depth_bands.is_some()
             || ink_depth
+            || scene.stylise.on_surfaces()
             || outline
             || dof.is_some()
             || motion_blur.is_some()
@@ -5323,6 +5326,37 @@ impl Renderer {
             let hc = st.hatching;
             let pt = st.paint;
             let ink = st.ink;
+            // Surface space: positions from the surface origin (f64 on the
+            // CPU, so a camera far from 0 keeps the patterns' precision),
+            // and the canvas uv there.
+            let origin = post::surface_origin(camera.position);
+            let surface_eye = (camera.position.as_dvec3() - origin).as_vec3();
+            let canvas_world_scale = pt.map_or(0.0, |p| {
+                if p.canvas_world_scale > 0.0 {
+                    p.canvas_world_scale.min(4096.0)
+                } else {
+                    stylise::DEFAULT_CANVAS_WORLD_SCALE
+                }
+            });
+            let canvas_size = pt
+                .and_then(|p| p.canvas)
+                .and_then(|t| scene.texture_size(t))
+                .map_or(glam::DVec2::ONE, |(w, h)| {
+                    glam::DVec2::new(w.max(1) as f64, h.max(1) as f64)
+                });
+            let canvas_origin = {
+                // The uv of the origin along x (u), y (v) and z (u on the
+                // x plane, v on the y plane), as stylise.wgsl's
+                // `canvas_surface` lays the three planes.
+                let k = canvas_world_scale as f64;
+                let c = |o: f64, size: f64| ((o * k / size).rem_euclid(1.0)) as f32;
+                [
+                    c(origin.x, canvas_size.x),
+                    c(origin.y, canvas_size.y),
+                    c(origin.z, canvas_size.x),
+                    c(origin.z, canvas_size.y),
+                ]
+            };
             let u = post::StyliseUniform {
                 screen: [w, h, 1.0 / w, 1.0 / h],
                 output: [
@@ -5387,8 +5421,25 @@ impl Renderer {
                     ]
                 }),
                 ink_color: ink.map_or([0.0; 4], |i| [i.color[0], i.color[1], i.color[2], 1.0]),
-                // The outline pass's default thresholds.
-                ink_depth: [camera.far, 0.04, 0.4, 0.0],
+                ink_depth: ink.map_or([camera.far, 0.04, 0.4, 0.0], |i| {
+                    [
+                        camera.far,
+                        i.depth_threshold.max(0.0),
+                        i.normal_threshold.max(0.0),
+                        0.0,
+                    ]
+                }),
+                inv_proj: cam.proj.inverse().to_cols_array_2d(),
+                view_rotation: glam::Mat4::from_mat3(glam::Mat3::from_mat4(cam.view.inverse()))
+                    .to_cols_array_2d(),
+                eye: surface_eye.extend(0.0).to_array(),
+                surface: [
+                    pt.is_some_and(|p| p.canvas_on_surfaces()) as u32 as f32,
+                    canvas_world_scale,
+                    hc.is_some_and(|h| h.space == StyliseSpace::Surface) as u32 as f32,
+                    ht.is_some_and(|h| h.space == StyliseSpace::Surface) as u32 as f32,
+                ],
+                canvas_origin,
             };
             self.post.write_stylise(&self.queue, &u);
         }
