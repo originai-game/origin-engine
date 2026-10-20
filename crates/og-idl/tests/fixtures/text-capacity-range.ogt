@@ -1,0 +1,38 @@
+type api
+version 1
+---
+# expect: 36: `str<5000>`: a text field holds 1 to 4096 bytes
+package "@origingame/fixture"
+doc "A fixture: the smallest valid API plus one mistake below."
+
+module reflect {
+  skill og-core
+  doc "Reflection."
+  place top
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+  }
+  column f32 {
+    doc "A float."
+    array Float32Array
+    stride 1
+    value f32
+  }
+  column str {
+    doc "Text of at most a capacity of bytes."
+    array Uint8Array
+    capacity true
+    value String
+  }
+}
+
+module game {
+  skill og-core
+  doc "The game."
+  component Label {
+    doc "A label."
+    field text str.5000 "The text."
+  }
+}
