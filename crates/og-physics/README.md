@@ -119,9 +119,12 @@ in the browser (the same hashes as the single-threaded module).
 
 The grain was measured with `examples/lanes_costs.rs` on the M4 Pro
 (8 performance and 4 efficiency cores, a shared machine):
-`tests/evidence/P4/physics-lanes/`. Four lanes pay from about 750 bodies,
-eight from about 1,500 (rapier's stages wait for their slowest worker, and
-an eighth thread lands on an efficiency core or a busy one).
+`tests/evidence/P4/physics-lanes/`. Four lanes pay from about 500 bodies
+(-20 % at 1,000, -32 % at 2,000), eight only from about 1,500 (-15 % at
+2,000): rapier's stages wait for their slowest worker, and with eight
+threads some land on an efficiency core or a busy one. One grain a thread
+for both keeps eight lanes never slower than serial and leaves four lanes'
+7 to 15 % between 500 and 800 bodies serial.
 ## Beyond rigid bodies (the E5 round)
 
 Components over the same rapier world and state block (`src/schema_ext.rs`,
