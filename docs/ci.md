@@ -344,8 +344,8 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   into `<target>/wasm-NAME`, raw name `<crate>-NAME.wasm`, bindgen'd as
   `origin-engine` and measured by the size gate as its own download.
   og-host-web has two, one per game profile (docs/web-export.md
-  §Variants): `publish` (`publish,physics3d`, the 3D module in
-  `dist/web-publish`) and `publish2d` (`publish,physics2d`, the 2D module
+  §Variants): `publish` (`publish,physics3d,shaping`, the 3D module in
+  `dist/web-publish`) and `publish2d` (`publish,physics2d,shaping`, the 2D module
   in `dist/web-publish-2d`); `build.sh` under the gate stops when a declared
   variant's wasm is missing. The lanes variant keeps `--features publish`
   (both profiles).
@@ -359,8 +359,8 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 ## Browser reference tiers
 
 og-tests' gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for
-four scenes, §og-tests' gfx scenes in the browser); og-ui's 74 reference
-frames cover `metal` and `vulkan-cpu`, and the browser tiers are judged
+four scenes, §og-tests' gfx scenes in the browser); og-ui's 80 reference
+frames cover `metal` and `vulkan-cpu` (the browser tiers run 74 of them), and the browser tiers are judged
 against `metal` (§og-ui's kit frames in the browser);
 fx-showcase's browser tiers
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev

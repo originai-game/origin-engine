@@ -29,10 +29,16 @@ pub enum UiKey {
     Tab,
     Space,
     NumpadEnter,
+    /// With Control or Command: select all.
+    KeyA,
+    /// With Control or Command: copy.
+    KeyC,
+    /// With Control or Command: cut.
+    KeyX,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 13] = [
+    pub const ALL: [UiKey; 16] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -46,6 +52,9 @@ impl UiKey {
         UiKey::Tab,
         UiKey::Space,
         UiKey::NumpadEnter,
+        UiKey::KeyA,
+        UiKey::KeyC,
+        UiKey::KeyX,
     ];
 
     /// Its `KeyboardEvent.code`.
@@ -64,6 +73,9 @@ impl UiKey {
             UiKey::Tab => "Tab",
             UiKey::Space => "Space",
             UiKey::NumpadEnter => "NumpadEnter",
+            UiKey::KeyA => "KeyA",
+            UiKey::KeyC => "KeyC",
+            UiKey::KeyX => "KeyX",
         }
     }
 }
@@ -87,6 +99,10 @@ pub trait InputSource {
     fn typed(&self, out: &mut String);
     /// A Shift key is held (Shift+Tab moves focus backwards).
     fn shift(&self) -> bool {
+        false
+    }
+    /// A Control or Command key is held (Ctrl/Cmd+A, C, X in a text field).
+    fn ctrl(&self) -> bool {
         false
     }
     /// The first gamepad (standard mapping); `og.Input` alone has none, and
@@ -202,9 +218,14 @@ impl InputSource for og_input::Input {
 
     /// `og.Input` has key codes but no characters: a printable key pressed
     /// this tick types the US-layout character for it, shifted while a Shift
-    /// key is held. (Injected `modifiers` do not reach the resource, so
-    /// `type:Hello` types `hello`; a typed-text stream is owed by og-input.)
+    /// key is held. This is the fallback for a world that has never had
+    /// typed text (og-input's `og.TextInput` events, which the shell sends
+    /// from `beforeinput` and the probe's `type:` sends too): once one has
+    /// arrived, the UI takes text from those alone ([`InputFrame::with_text`]).
     fn typed(&self, out: &mut String) {
+        if self.ctrl() {
+            return;
+        }
         let shift = self.down("ShiftLeft") || self.down("ShiftRight");
         for c in (0x20u8..=0x7e).map(char::from) {
             if let Some((code, shifted)) = og_input::key_for_char(c)
@@ -219,6 +240,13 @@ impl InputSource for og_input::Input {
     fn shift(&self) -> bool {
         self.down("ShiftLeft") || self.down("ShiftRight")
     }
+
+    fn ctrl(&self) -> bool {
+        self.down("ControlLeft")
+            || self.down("ControlRight")
+            || self.down("MetaLeft")
+            || self.down("MetaRight")
+    }
 }
 
 /// One tick of input, as the UI consumes it.
@@ -232,10 +260,20 @@ pub struct InputFrame {
     pub released: bool,
     /// Editing keys that went down this tick.
     pub keys: Vec<UiKey>,
-    /// Text typed this tick.
+    /// Text typed this tick: committed `og.TextInput` text when any arrived
+    /// this tick (or ever: [`InputFrame::typed_stream`]), else the
+    /// characters of the printable keys pressed.
     pub text: String,
+    /// An input method's composition changed this tick: what it shows now
+    /// (empty: it ended). `None`: no change.
+    pub composition: Option<String>,
+    /// This tick's text came from `og.TextInput` events (the world has a
+    /// typed-text stream; key presses then type nothing).
+    pub typed_stream: bool,
     /// A Shift key is held.
     pub shift: bool,
+    /// A Control or Command key is held.
+    pub ctrl: bool,
     /// The first gamepad.
     pub gamepad: GamepadFrame,
     /// Pads 1 to 3 (`og.Gamepad`): each moves a focus of its own while the
@@ -263,7 +301,10 @@ impl InputFrame {
                 .filter(|k| source.key_pressed(k.code()))
                 .collect(),
             text,
+            composition: None,
+            typed_stream: false,
             shift: source.shift(),
+            ctrl: source.ctrl(),
             gamepad: source.gamepad(),
             extra_pads: [GamepadFrame::default(); 3],
             pointers: og_input::Pointers::default(),
@@ -285,6 +326,33 @@ impl InputFrame {
         }
         if let Some(p) = pointers {
             self.pointers = *p;
+        }
+        self
+    }
+
+    /// Adds this tick's `og.TextInput` events (og-input's typed-text
+    /// stream): committed text replaces the key-derived text, and the last
+    /// composition is what an input method shows. With no event the frame
+    /// keeps the key-derived text (the UI drops it once a world has had a
+    /// stream: `crate::Ui` remembers).
+    pub fn with_text(mut self, events: &[og_input::TextInput]) -> InputFrame {
+        if events.is_empty() {
+            return self;
+        }
+        self.typed_stream = true;
+        self.text.clear();
+        for e in events {
+            let t = e.text.as_str();
+            if e.composing {
+                match (&mut self.composition, e.more) {
+                    (Some(c), true) => c.push_str(t),
+                    _ => self.composition = Some(t.to_string()),
+                }
+            } else {
+                self.text.push_str(t);
+                // A commit ends the composition.
+                self.composition = Some(String::new());
+            }
         }
         self
     }

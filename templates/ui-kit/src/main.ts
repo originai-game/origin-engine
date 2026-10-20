@@ -20,7 +20,7 @@ import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
-  "players",
+  "players", "text",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -52,6 +52,7 @@ const BLURBS: Record<Screen, string> = {
   alert: "One-button alert",
   toasts: "The toast queue in every tone",
   players: "Local multiplayer: four pads, four rings",
+  text: "Kerning, ellipses, scripts, fields and text areas",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -60,6 +61,11 @@ export const Demo = defineComponent("Demo", {
   paused: bool(),
   // Asset handles exceed 32 bits: f64 keeps them exact.
   font: f64(0),
+  // The display and rounded faces and the sample scripts' fonts (assets/fonts, tools/make-faces.py).
+  displayFont: f64(0),
+  roundedFont: f64(0),
+  hebrewFont: f64(0),
+  devanagariFont: f64(0),
   icons: f64(0),
   backdrop: f64(0),
   hp: f32(72),
@@ -141,7 +147,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
 }
 
 export const ICONS = [
@@ -312,6 +318,10 @@ function applyTheme(world: World, d: DemoState): void {
   }
   og.ui.configure(world, {
     ...(d.font && !skin ? { font: d.font as never } : {}),
+    ...(d.displayFont && !skin ? { displayFont: d.displayFont as never } : {}),
+    ...(d.roundedFont && !skin ? { roundedFont: d.roundedFont as never } : {}),
+    // Scripts the locale tables' fonts do not cover (the text screen).
+    fallbackFonts: [d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
     ...(skin ? { skin } : { icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {} }),
@@ -344,6 +354,45 @@ function gallery(d: DemoState): void {
       });
     });
     if (r.clicked !== null) d.screen = r.clicked + 1;
+  });
+}
+
+/** The text screen's field and area values (UI text; the demo keeps them out of the world). */
+const typed = { name: "", notes: "" };
+
+/** Type and scripts: the display and rounded faces kerned, labels cut with
+ * an ellipsis, Arabic, Hebrew and Devanagari (shaped, in bidi order, a run
+ * of Arabic inside a Latin span), a text field and a text area. */
+function textScreen(): void {
+  const vp = og.ui.frameViewport();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  const t = og.ui.frameTheme();
+  const grow = { kind: "grow" } as const;
+  og.ui.anchor("Type", {
+    anchor: "center",
+    direction: "column",
+    gap: t.space.sm,
+    width: phone ? grow : { kind: "fixed", px: 640 },
+    padding: { left: t.space.xl, top: t.space.lg, right: t.space.xl, bottom: t.space.lg },
+    background: { token: "surface" },
+    radius: t.radius.panel,
+  }, () => {
+    og.ui.label("Title", "Type and scripts", { step: "displaySm", font: "display", heading: true });
+    og.ui.row("Faces", { gap: t.space.lg, width: grow, cross: "center" }, () => {
+      og.ui.label("Kerned", "AVATAR · Toyota · WAVE", { step: "xl", font: "display", nowrap: true });
+      og.ui.label("Score", "Level 12 · 48 350", { step: "xl", font: "rounded", nowrap: true });
+    });
+    og.ui.label("Cut", "A sentence far too long for its one line ends in an ellipsis where it meets the edge, instead of running out of its box", { nowrap: true, ellipsis: true, width: grow });
+    og.ui.label("Clamp", "A paragraph clamped to two lines keeps what fits on them and ends the second with an ellipsis where the rest is left out: this sentence, and the one after it, go on well past the two lines the label shows, so the cut is easy to see.", { ellipsis: true, maxLines: 2, width: grow, color: { token: "fgMuted" } });
+    og.ui.label("Arabic", "Level 1-2: مغامرة صغيرة!", { nowrap: true });
+    og.ui.richText("Mixed", "Press [b]العب[/b] for [color=accent]مغامرة صغيرة 2[/color] now", { width: grow });
+    og.ui.row("Scripts", { gap: t.space.lg, width: grow }, () => {
+      og.ui.label("Hebrew", "שלום עולם", { nowrap: true });
+      og.ui.label("Devanagari", "नमस्ते दुनिया", { nowrap: true });
+      og.ui.label("Hindi", "हिन्दी भाषा", { nowrap: true });
+    });
+    typed.name = og.ui.textField("Name", typed.name, { placeholder: "Your name", width: grow }).value;
+    typed.notes = og.ui.textArea("Notes", typed.notes, { placeholder: "Notes", rows: 3, width: grow }).value;
   });
 }
 
@@ -515,6 +564,13 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         ],
         footer: tr(world, "menu.footer", { version: "0.1.0" }),
       });
+      // A greeting with characters no locale font cooked (zh-CN and ja): the
+      // Chinese font draws them from its outlines at run time (runtime true).
+      if (screen === "mainMenu") {
+        og.ui.anchor("Greeting", { anchor: "top", direction: "column", padding: { left: 0, top: 24, right: 0, bottom: 0 } }, () => {
+          og.ui.label("Text", tr(world, "menu.greeting"), { step: "lg", color: { token: "fgMuted" }, nowrap: true });
+        });
+      }
       if (r.selected === "play") d.screen = screenIndex("platformer");
       if (r.selected === "settings") d.screen = screenIndex("settings");
       if (r.selected === "quit") d.screen = 0;
@@ -767,6 +823,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       playersScreen(d);
       back = og.ui.back();
       break;
+    case "text":
+      textScreen();
+      back = og.ui.back();
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "surface" }, radius: t.radius.panel }, () => {
@@ -837,7 +897,16 @@ export default og.game({
     const icons = og.load.texture(world, "textures/icons.png");
     const backdrop = og.load.texture(world, "textures/backdrop.png");
     const handle = (r: { ok: boolean; value?: unknown }): number => (r.ok ? (r.value as number) : 0);
-    world.insert(e.value, Demo, { font: handle(font), icons: handle(icons), backdrop: handle(backdrop) });
+    const face = (path: string) => handle(og.load.font(world, path));
+    world.insert(e.value, Demo, {
+      font: handle(font),
+      displayFont: face("fonts/Inter-Display.ttf"),
+      roundedFont: face("fonts/Nunito-Rounded.ttf"),
+      hebrewFont: face("fonts/NotoSansHebrew-subset.ttf"),
+      devanagariFont: face("fonts/NotoSansDevanagari-subset.ttf"),
+      icons: handle(icons),
+      backdrop: handle(backdrop),
+    });
     const d = current(world);
     if (d) applyTheme(world, d);
   },

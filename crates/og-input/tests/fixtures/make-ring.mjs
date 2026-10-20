@@ -33,6 +33,10 @@ const events = [
   { kind: "pointer", action: "down", x: 900, y: 600, button: "left", id: 2 },
   { kind: "gamepad", pad: 1, connected: true, buttons: ["a", "leftBumper", "up"], axes: [0.5, -1, 0, 0.25], triggers: [0, 0.75] },
   { kind: "gamepad", pad: 1, connected: false, buttons: [], axes: [0, 0, 0, 0], triggers: [0, 0] },
+  { kind: "text", text: "a" },
+  { kind: "text", text: "にほんご", composing: true },
+  // Past one slot's 48 bytes: split between characters, joined by the drain.
+  { kind: "text", text: "Typed text longer than one slot holds: 日本語のテキスト" },
 ];
 for (const e of events) if (!writeRing(ring, e)) throw new Error("full");
 const copy = new SharedArrayBuffer(ring.byteLength);

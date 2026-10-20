@@ -58,7 +58,7 @@ calls `cook_project`.
 | glTF skins, animations, morph targets | `<path>.anim.ogb` (`og.Animation`, id `<path>#anim`) | Only when the glTF has any. The node hierarchy in the model blob's order; skins (joints, inverse bind matrices, `skeleton`); per clip, every channel evaluated by the glTF sampler (STEP, LINEAR with shortest-arc slerp, CUBICSPLINE Hermite; f64; a key within 1 µs of a sample counts as reached) at `i / rate` and at the end, `rate` = the import settings' `animation { rate }` or the source's key rate rounded (1–120 Hz), the source rate kept; markers from `animations[i].extras."og.events"` (`[{"name", "time"}]`) and `animation { event "<clip>" "<name>" <s> }`; per skinned primitive joints u16×4 and weights unorm16×4 (summing to 65535) per cooked vertex; per morphed primitive the targets' position (and normal) deltas per cooked vertex, names from `mesh.extras.targetNames`, default weights; streams meshopt-encoded. |
 | PNG/JPEG | `<path>.ogb` (`og.Texture`) | Decoded to RGBA8, then KTX2: colour → ETC1S/BasisLZ, sRGB, quality 128; `kind normal` → UASTC level 1 + RDO 1.0 + Zstandard, linear, tuned for normal maps, x y z in RGB and y again in alpha (Basis transcoders take BC5's and EAC RG11's second channel from alpha; `has_alpha` 1 says a map carries it, and the settings string's "normal y in alpha" recooks older maps); `kind linear` → the same without the normal-map tuning. Full mip chain. `kind pixel` → RGBA8 + zlib, sRGB, lossless, one level; the runtime samples it nearest (sprite sheets, tilesets). In a glTF, base colour and emissive are colour, metallic-roughness and occlusion linear, normal normal. |
 | WAV | `<path>.ogb` (`og.Sound`) | 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit, then QOA (in-crate encoder: 3.2 bits per sample). |
-| TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle) and ascender/descender/line gap. |
+| TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, generated in f32 and passed through msdfgen's error correction (fdsm's `correct_error_mtsdf`: edge priority, distance checks at edges, before the sign correction) so channels that would interpolate into a false edge at a sharp corner become single-channel; shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle), ascender/descender/line gap and a kerning table: the pair adjustments of every `kern` feature's GPOS lookups (pair positioning formats 1 and 2, every script's; the first subtable of a lookup that takes a pair decides it, lookups add), else the legacy `kern` table, between the cooked characters, in em. A charset with a shaped script (Arabic, Devanagari and og-i18n's other `needs_shaping` scripts) adds every glyph the font's substitutions reach (joining forms, ligatures, conjuncts) under U+F0000 + glyph id, and the font file; so does `runtime true`, for characters outside the charset that og-ui renders from the outlines when a text needs them. |
 | rig `.ogt` (`type rig`) | `<path>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): `scheme` (auto, mixamo, vrm, unity, rigify, ue, blender) and standard bones named outright or `none`; validated and stored as canonical text, loaded with `og.load.rig`. A model's `animation { rig }` names it for the cook's retargeting. |
 | animation library (a glTF named by another model's `animation { library }`) | into the naming model's `#anim` | The library is cooked like any glTF (its own `#anim`, loadable with `og.load.animation`); the naming model's `#anim` gets the library's clips after its own, each rewritten by `og_anim::retarget` from the library's skeleton (its humanoid map from its own `animation { rig }` or detected) onto the model's (its `rig` or detected): rest corrections, the model's bone lengths, the hips' travel scaled by the leg ratio, the legs solved for the feet unless `footIk false`. A clip the model has of its own wins over a library's of the same name (a note says so); a library naming libraries is refused. |
 | flipbook `.ogt` (`type flipbook`) | `<path>.ogb` (`og.Flipbook`) | The canonical sheet text (og-anim's README): grid and `frame` lines, an `atlas` (Aseprite frames and tags, TexturePacker frames and pivots) resolved into frames and clips, the texture's size read from the image, paths relative to the sheet when the file exists. The stamp covers the texture's and the atlas's bytes. |
@@ -85,11 +85,12 @@ animation {
   footIk true                 # retargeting solves the legs so planted feet stay planted (default true)
 }
 font {
-  charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | all
+  charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | hangul | arabic | all
   chars "开始游戏"           # extra characters (UI strings)
   em_px 32
   px_range 4
   page_size 1024
+  runtime true              # ship the font file: characters outside the charset render at run time (default false)
 }
 tilemap {                   # a .tmj, .ldtk or tilemap .ogt
   unit 1                    # world units per tile width
@@ -139,7 +140,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Model` | `ModelMeta` (counts, default scene, skipped animations/skins, default-scene bounds) | `primitives` `PrimitiveRow` (material, attribute bits, vertex count/stride, byte ranges in `vertices`/`indices`, index count, LOD range, dequantisation offset/scale), `lods` `LodRow` (index range, simplify error), `meshes` `MeshRow` (primitive range, name), `materials` `MaterialRow`, `textures` `TextureRefRow` (asset id, kind), `nodes` `NodeRow` (parent, mesh, name, TRS), `scenes` `SceneRow`, `roots` (u32), `strings` (UTF-8 pool), `vertices`, `indices` (meshopt streams, 4-aligned per primitive) |
 | `og.Texture` | `TextureMeta` (size, levels, kind, codec, colour space, alpha, supercompression) | `ktx2`: a complete KTX2 file, 16-aligned |
 | `og.Sound` | `SoundMeta` (rate, channels, frames) | `qoa`: a complete QOA file |
-| `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point, `atlas.<n>` KTX2 RGBA8/zlib |
+| `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point (shaped forms at U+F0000 + glyph id), `kerning` `KernRow` (left, right, adjust in em) sorted by pair, `atlas.<n>` KTX2 RGBA8/zlib, `ttf` (the font file, with a shaped script or `runtime true`) |
 | `og.Animation` | `AnimMeta` (counts) | `nodes` `NodeRow`, `skins` `SkinRow`, `joints` (u32), `inverse_binds` (f32 ×16 per joint, column-major), `clips` `ClipRow` (name, duration, rate, source rate, frames, channel and event ranges), `channels` `ChannelRow` (node, path, source interpolation, lanes, sample offset), `samples` (f32), `events` `EventRow`, `skin_streams` `SkinStreamRow` + `skin_data`, `morphs` `MorphRow` + `targets` `TargetRow` + `morph_data`, `strings` |
 | `og.Scene` | `SceneMeta` (counts, name) | `entities` `EntityRow` (name, parent, instance), `refs` `RefRow` (asset ids), `components` `ComponentRow` (name, layout hash, rows, inferred), `strings`, `c.<Type>` rows (`u32` entity index + packed fields), `s.<Type>` schema JSON |
 | `og.Tileset` | `TilesetMeta` (text bytes) | `text` (the canonical tileset `.ogt`) |
@@ -233,8 +234,10 @@ a 387 KB model blob (LODs 18,641 / 9,320 / 6,724 triangles).
 **CJK fonts.** `charset all` on the platform's subset (7,831 glyphs: GB2312,
 kana, punctuation) cooks to 10 pages of 1024² in 4.9 s and **19.8 MB** — eight
 times the TTF. Games should declare the characters they show (`chars`), as
-the template does; full CJK coverage needs runtime glyph generation into a
-paged atlas (phase 2) or a smaller `em_px`.
+the template does, and add `runtime true` for text they cannot know (a
+player's name, chat): the blob then carries the 2.5 MB font file and og-ui
+renders what the charset left out from its outlines into pages of the
+font's own (`crates/og-ui/README.md` §Text). The UI kit's Chinese font does.
 
 ## Determinism
 
@@ -292,8 +295,10 @@ without base colour textures), then restored.
 
 - **Animation**: cooked (`#anim`, `crates/og-anim`); still owed: sample
   quantisation/compression (f32 today), sparse morph targets.
-- **Fonts**: kerning and shaping (rustybuzz), runtime glyph generation for
-  CJK, `msdfgen`-style error correction.
+- (Fonts: kerning, shaped forms keyed by glyph id, `runtime true` for
+  characters outside the charset and msdfgen's error correction landed in
+  the phase 4 UI text round; `tests/template.rs` checks the template
+  font's pairs and bounds its corner clashes.)
 - **Hot reload**: the host side landed with `og dev` (5c79c75: re-cook of
   the changed sources, bundle rebuild, the probe's `reload` keeping world
   state, latency printed against 300 ms); the M4 row's measured "glTF edit →

@@ -36,11 +36,13 @@ module input {
 | [`PointerInput`](#type-PointerInput) | struct | A pointer event at a point in CSS pixels of the play surface. |
 | [`GamepadInput`](#type-GamepadInput) | struct | A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own. |
 | [`WheelInput`](#type-WheelInput) | struct | A wheel or trackpad scroll at a point. |
+| [`TextEntry`](#type-TextEntry) | struct | Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them. |
 | [`InjectedInput`](#type-InjectedInput) | union | One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it. |
 | [`og.Input`](#record-Input) | resource | The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods. |
 | [`og.Pointers`](#record-Pointers) | resource | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id). |
 | [`og.Gamepad`](#record-Gamepad) | resource | The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys. |
 | [`og.KeyDown`](#record-KeyDown) | event | A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems. |
+| [`og.TextInput`](#record-TextInput) | event | Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one. |
 | [`og.KeyUp`](#record-KeyUp) | event | A key went up. |
 | [`og.PointerDown`](#record-PointerDown) | event | A pointer button went down (or a touch landed). |
 | [`og.PointerUp`](#record-PointerUp) | event | A pointer button went up (or a touch lifted). |
@@ -207,7 +209,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 837</sub>
+<sub>`api.ogt` line 846</sub>
 
 <a id="member-Input-down"></a>
 
@@ -235,7 +237,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 911</sub>
+<sub>`api.ogt` line 920</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -263,7 +265,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 916</sub>
+<sub>`api.ogt` line 925</sub>
 
 <a id="member-Input-released"></a>
 
@@ -291,7 +293,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 921</sub>
+<sub>`api.ogt` line 930</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -321,7 +323,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 926</sub>
+<sub>`api.ogt` line 935</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -355,7 +357,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 932</sub>
+<sub>`api.ogt` line 941</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -383,7 +385,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 940</sub>
+<sub>`api.ogt` line 949</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -411,7 +413,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 945</sub>
+<sub>`api.ogt` line 954</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -439,7 +441,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 950</sub>
+<sub>`api.ogt` line 959</sub>
 
 <a id="record-Pointers"></a>
 
@@ -556,7 +558,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 957</sub>
+<sub>`api.ogt` line 966</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -584,7 +586,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1012</sub>
+<sub>`api.ogt` line 1021</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -612,7 +614,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1017</sub>
+<sub>`api.ogt` line 1026</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -640,7 +642,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1022</sub>
+<sub>`api.ogt` line 1031</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -668,7 +670,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 1027</sub>
+<sub>`api.ogt` line 1036</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -696,7 +698,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 1032</sub>
+<sub>`api.ogt` line 1041</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -719,7 +721,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1037</sub>
+<sub>`api.ogt` line 1046</sub>
 
 <a id="record-Gamepad"></a>
 
@@ -880,7 +882,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 1043</sub>
+<sub>`api.ogt` line 1052</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -910,7 +912,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 1121</sub>
+<sub>`api.ogt` line 1130</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -942,7 +944,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1128</sub>
+<sub>`api.ogt` line 1137</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -974,7 +976,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1136</sub>
+<sub>`api.ogt` line 1145</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -1006,7 +1008,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1144</sub>
+<sub>`api.ogt` line 1153</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -1038,7 +1040,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 1152</sub>
+<sub>`api.ogt` line 1161</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -1066,7 +1068,32 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 1162</sub>
+<sub>`api.ogt` line 1171</sub>
+
+<a id="record-TextInput"></a>
+
+### `og.TextInput` (event)
+
+Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one.
+
+Token `og.TextInput`, registered under the schema name `og.TextInput`; its value type is `TextInput`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `text` | `string` | `""` | — | — | — | The text (whole characters). |
+| `composing` | `boolean` | `false` | — | — | — | An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert. |
+| `more` | `boolean` | `false` | — | — | — | Continues the composition of the event before it (a composition longer than one event). |
+
+```ogt
+event TextInput {
+  doc "Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one."
+  field text String "The text (whole characters)."
+  field composing bool "An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert."
+  field more bool "Continues the composition of the event before it (a composition longer than one event)."
+}
+```
+
+<sub>`api.ogt` line 1181</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -1092,7 +1119,7 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 1172</sub>
+<sub>`api.ogt` line 1188</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -1124,7 +1151,7 @@ event PointerDown {
 }
 ```
 
-<sub>`api.ogt` line 1181</sub>
+<sub>`api.ogt` line 1197</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -1156,7 +1183,7 @@ event PointerUp {
 }
 ```
 
-<sub>`api.ogt` line 1193</sub>
+<sub>`api.ogt` line 1209</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -1181,7 +1208,7 @@ event PointerMove {
 }
 ```
 
-<sub>`api.ogt` line 1205</sub>
+<sub>`api.ogt` line 1221</sub>
 
 <a id="record-Wheel"></a>
 
@@ -1204,7 +1231,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 1212</sub>
+<sub>`api.ogt` line 1228</sub>
 
 ## Types
 
@@ -1538,6 +1565,29 @@ struct WheelInput {
 
 <sub>`api.ogt` line 812</sub>
 
+<a id="type-TextEntry"></a>
+
+### `TextEntry` (struct)
+
+Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `text` | `string` | `""` | — | — | — | The text. |
+| `composing` | `boolean` | `false` | — | — | optional | An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text. |
+
+```ogt
+struct TextEntry {
+  doc "Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them."
+  field text String "The text."
+  field composing bool "An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text." {
+    optional true
+  }
+}
+```
+
+<sub>`api.ogt` line 828</sub>
+
 <a id="type-InjectedInput"></a>
 
 ### `InjectedInput` (union)
@@ -1552,6 +1602,7 @@ Tagged by `kind`.
 | `kind: "pointer"` | [`PointerInput`](#type-PointerInput) | A pointer event. |
 | `kind: "wheel"` | [`WheelInput`](#type-WheelInput) | A wheel event. |
 | `kind: "gamepad"` | [`GamepadInput`](#type-GamepadInput) | A gamepad's state. |
+| `kind: "text"` | [`TextEntry`](#type-TextEntry) | Typed or composed text. |
 
 ```ogt
 union InjectedInput {
@@ -1561,10 +1612,11 @@ union InjectedInput {
   case pointer PointerInput "A pointer event."
   case wheel WheelInput "A wheel event."
   case gamepad GamepadInput "A gamepad's state."
+  case text TextEntry "Typed or composed text."
 }
 ```
 
-<sub>`api.ogt` line 828</sub>
+<sub>`api.ogt` line 836</sub>
 
 ## Constants
 

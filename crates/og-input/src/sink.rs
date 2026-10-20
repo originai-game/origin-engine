@@ -116,6 +116,13 @@ impl InputSink for InputLayer {
         };
         let mut events = Vec::new();
         match event {
+            InjectedInput::Text { text, composing } => {
+                for e in crate::resource::TextInput::split(text, *composing) {
+                    if world.send(e).is_err() {
+                        return false;
+                    }
+                }
+            }
             InjectedInput::Gamepad(state) => {
                 let Ok(pad) = world.resource_mut::<Gamepad>() else {
                     return false;

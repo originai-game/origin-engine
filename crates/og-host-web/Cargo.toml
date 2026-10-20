@@ -10,7 +10,11 @@ description = "Origin Engine web host: the binding symbols as a wasm-bindgen mod
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["physics2d", "physics3d"]
+default = ["shaping", "physics2d", "physics3d"]
+# og-ui's run-time shaping (rustybuzz: Arabic, Indic); every shipped variant
+# keeps it (scripts/wasm-crates.txt); a build without it is for games
+# without shaped scripts (crates/og-ui/README.md §Text).
+shaping = ["og-runtime/shaping"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 # The physics profiles built in. The dev module and the lanes variant have

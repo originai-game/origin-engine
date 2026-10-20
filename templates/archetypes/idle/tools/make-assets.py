@@ -403,7 +403,10 @@ def sounds():
 
 def zh_characters():
     text = open(os.path.join(assets, "strings", "zh-CN.ogt"), encoding="utf-8").read()
-    chars = sorted({ch for ch in text if ord(ch) > 0x2E7F})
+    # And the punctuation the UI draws itself: the en dash (a grade or a
+    # count not yet known) and the ellipsis (a cut label), which the zh-CN
+    # screens showed as missing glyphs before og-ui warned about them.
+    chars = sorted({ch for ch in text if ord(ch) > 0x2E7F} | set("–…"))
     return "".join(chars)
 
 

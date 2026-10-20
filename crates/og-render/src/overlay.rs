@@ -127,23 +127,20 @@ pub(crate) fn build<'a>(
                 continue;
             }
             // The pen in em, y down from the first baseline.
-            let mut pen = Vec2::ZERO;
-            for ch in text.text.chars() {
-                if ch == '\n' {
-                    pen = Vec2::new(0.0, pen.y + layout.line_height);
-                    continue;
-                }
-                let Some(g) = layout.glyphs.get(&ch) else {
+            layout.walk(text, layout.line_height, |ch, g, pen, offset| {
+                let Some(g) = g else {
                     if !ch.is_whitespace() && !pass {
                         missing_glyphs += 1;
                     }
-                    continue;
+                    return;
                 };
                 let [l, b, r, t] = g.plane_bounds;
                 if r > l && t > b {
                     // plane bounds are em y up from the baseline: the glyph's top
-                    // left is (l, -t) in y-down em.
-                    let corner = rotate((pen + Vec2::new(l, -t)) * text.size);
+                    // left is (l, -t) in y-down em; a placement's y is up too.
+                    let corner = rotate(
+                        (pen + Vec2::new(offset.x, -offset.y) + Vec2::new(l, -t)) * text.size,
+                    );
                     let [al, at, ar, ab] = g.atlas_bounds;
                     let (effect, effect_color) = match glow {
                         Some(gl) => (
@@ -176,8 +173,7 @@ pub(crate) fn build<'a>(
                         },
                     ));
                 }
-                pen.x += g.advance + text.tracking;
-            }
+            });
         }
     }
     let glyphs = keyed.len() as u32 - sprites;

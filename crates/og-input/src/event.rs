@@ -140,8 +140,9 @@ pub struct GamepadState {
     pub triggers: [f32; 2],
 }
 
-/// One input event in the game's own vocabulary (protocol 5, plus two
-/// engine extensions: a pointer `id` for multi-touch and the `gamepad` kind).
+/// One input event in the game's own vocabulary (protocol 5, plus three
+/// engine extensions: a pointer `id` for multi-touch, the `gamepad` kind and
+/// the `text` kind).
 /// Positions are CSS pixels of the play surface, the space `pick` reads;
 /// `key` is a `KeyboardEvent.code` name.
 #[derive(Clone, Debug, PartialEq)]
@@ -168,6 +169,12 @@ pub enum InjectedInput {
     },
     /// A pad's state, whole (the shell sends one when it changes).
     Gamepad(GamepadState),
+    /// Typed text (an engine extension): what the page's `beforeinput`
+    /// inserted (a key's character, a paste, an IME's committed text), or,
+    /// with `composing`, an input method's composition so far (the
+    /// underlined text not yet committed; empty ends it). Raises
+    /// [`crate::TextInput`] events; the UI's focused field takes them.
+    Text { text: String, composing: bool },
 }
 
 fn number(value: &Value, key: &str) -> Option<f32> {
@@ -261,6 +268,13 @@ impl InjectedInput {
                 floats("triggers", &mut state.triggers)?;
                 Some(InjectedInput::Gamepad(state))
             }
+            "text" => Some(InjectedInput::Text {
+                text: value.get("text")?.as_str()?.to_owned(),
+                composing: match value.get("composing") {
+                    None | Some(Value::Null) => false,
+                    Some(v) => v.as_bool()?,
+                },
+            }),
             "wheel" => Some(InjectedInput::Wheel {
                 x: number(value, "x")?,
                 y: number(value, "y")?,
@@ -316,6 +330,13 @@ impl InjectedInput {
                 delta_y,
             } => {
                 json!({"kind": "wheel", "x": x, "y": y, "deltaX": delta_x, "deltaY": delta_y})
+            }
+            InjectedInput::Text { text, composing } => {
+                let mut v = json!({"kind": "text", "text": text});
+                if *composing {
+                    v["composing"] = json!(true);
+                }
+                v
             }
         }
     }

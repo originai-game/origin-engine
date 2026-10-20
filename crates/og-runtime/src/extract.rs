@@ -43,6 +43,11 @@ pub trait RenderBackend {
     }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
+    /// The last frame's text characters its fonts lack (og-render's
+    /// `FrameStats::missing_glyphs`).
+    fn missing_glyphs(&self) -> u32 {
+        0
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on
@@ -133,8 +138,13 @@ pub(crate) struct RenderState {
     pub ui_atlas: Option<og_render::TextureHandle>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
+    /// Fonts (by index into `fonts`) that render missing characters at run
+    /// time from their file (`super::glyphs`).
+    pub runtime_fonts: BTreeMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
+    /// A frame drew text its fonts lack (warned once).
+    pub missing_warned: bool,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
@@ -168,7 +178,9 @@ impl RenderState {
             ui: None,
             ui_atlas: None,
             ui_pages: BTreeMap::new(),
+            runtime_fonts: BTreeMap::new(),
             notes: Vec::new(),
+            missing_warned: false,
             feel: Default::default(),
             atmo: Default::default(),
             env: Default::default(),
@@ -758,6 +770,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::feel::camera_frame(world, rs, aspect);
     super::feel::extract(world, rs, &mut h);
 
+    // Characters the fonts lack, rendered from their files before any
+    // text is laid out for this frame.
+    super::glyphs::generate(rs);
+
     // Text, page by page; screen text into the overlay.
     let queued_texts: &[QueuedText] = if fresh { &rs.texts } else { &[] };
     for t in queued_texts {
@@ -778,6 +794,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 tracking: 0.0,
                 weight: 0.0,
                 glow: None,
+                placements: Vec::new(),
             };
             if t.screen {
                 let o = scene
@@ -812,6 +829,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedFont) -> FontPages {
     let meta = &font.meta;
     let line_height = meta.ascender - meta.descender + meta.line_gap;
+    let kerning: Vec<og_render::Kern> = font
+        .kerning
+        .iter()
+        .filter_map(|k| {
+            Some(og_render::Kern {
+                left: char::from_u32(k.left)?,
+                right: char::from_u32(k.right)?,
+                adjust: k.adjust,
+            })
+        })
+        .collect();
     let mut pages = Vec::with_capacity(font.pages.len());
     for (p, data) in font.pages.iter().enumerate() {
         let atlas = scene.add_texture(og_render::TextureData {
@@ -851,6 +879,7 @@ pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedF
             distance_range: meta.px_range,
             line_height,
             glyphs,
+            kerning: kerning.clone(),
         }));
     }
     FontPages { pages }

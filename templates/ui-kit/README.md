@@ -27,8 +27,17 @@ the UI's event sounds. `dump_entity:demo` reads the demo's state (the `Demo` com
 Screens: gallery, widgets, mainMenu, pause, settings, platformer, shooter,
 puzzle, idle, racing, cutscene, shop, inventory, levels, results,
 leaderboard, tutorial, loading, confirm, alert, toasts, players (a
-local-multiplayer lobby: `og.ui.setPlayers(4)`). `screens/<screen>.png`
+local-multiplayer lobby: `og.ui.setPlayers(4)`), text (type and scripts:
+the display face kerned, the rounded face for a score, labels cut with an
+ellipsis, Arabic in a Latin line and inside a rich-text span, Hebrew,
+Devanagari, a text field and a text area). `screens/<screen>.png`
 shows each at desktop (left) and on a phone in portrait (right).
+
+Faces: the body is Noto Sans SC; titles take `font: "display"` (Inter at
+its display optical size, semibold: `assets/fonts/Inter-Display.ttf`) and
+scores `font: "rounded"` (Nunito bold), both cooked as their own atlases
+and made by `tools/make-faces.py` from the platform's own copies; Hebrew
+and Devanagari subsets are `fallbackFonts`.
 
 ## What it demonstrates, and the skills it exercises
 
@@ -75,6 +84,7 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 | `skin-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-skin-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
 | `skin-<pack>-phone` (six) | the same on a phone in portrait (390×844@3 with the notch and home indicator), each screen box-filtered to its 390×844 CSS pixels against its cell of `kit-skin-<pack>-phone.png` (10 × 2 cells) |
 | `juice` | an iris transition keeps the old screen until it has closed and builds the new one as it opens; the results score counts and lands on 12,840; a dialog's open, a hover and a press start voices on the ui bus |
+| `text` | the text screen draws every script without a missing glyph (no warning), matching `kit-desktop-text.png`; a tap on the name field and `type:Ada Lovelace` fill it once, Shift+← ×4 selects "lace" (`kit-desktop-text-select.png`); in the notes area Enter breaks the line, `compose:にほん` shows underlined at the caret (`kit-desktop-text-compose.png`) and `commit:日本` lands in the value |
 
 ## Style packs
 
@@ -107,6 +117,13 @@ left. The language setting calls `og.i18n.setLocale`; `og run --locale ja`
 and the browser's `navigator.language` pick the first locale. `og cook`
 warns about any key a table lacks.
 
+The main menu's greeting (`menu.greeting`) is drawn with characters no
+locale font cooked in zh-CN and ja (欢迎回来，旅人晨星, おかえりなさい、旅人さん): the
+Chinese font cooks with `runtime true`, so og-ui renders them from its
+outlines when the screen shows them (crates/og-ui/README.md §Text). The
+locales playtest asserts no warning, and a frame that draws a missing glyph
+warns.
+
 The confirm dialog's message is rich-text markup in each table
 (`"…slot [b]{slot}[/b] will be lost. [color=danger]This cannot be
 undone.[/color]"`): every translation bolds the slot and colours the
@@ -116,5 +133,5 @@ with a `[link=join]` the `players` playtest taps.
 
 `tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>`
 subsets the Noto fonts to exactly the tables' characters (rerun it after
-changing a string). `tests/locales.og.ts` compares each of the three
+changing a string), leaving the greeting out of zh-CN's and ja's. `tests/locales.og.ts` compares each of the three
 screens in each locale with `crates/og-ui/references/<tier>/kit-locale-*`.

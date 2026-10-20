@@ -7,7 +7,7 @@ use crate::event::{
 };
 use crate::keys::{KEY_CODES, key_index};
 use og_core::glam::Vec2;
-use og_core::{Reflect, Str64};
+use og_core::{Reflect, Str64, Str256};
 use og_ecs::World;
 
 /// The input state at the start of a tick, as systems poll it (IDL
@@ -160,6 +160,48 @@ pub struct PointerMove {
     pub id: u32,
 }
 
+/// Text typed or composed (IDL `input.TextInput`), from the page's
+/// `beforeinput` and composition events (an engine extension of protocol
+/// 5): committed text to insert, or an input method's composition so far.
+/// A text longer than 255 bytes arrives as several events in order.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.TextInput")]
+pub struct TextInput {
+    /// The text (UTF-8, whole characters).
+    pub text: Str256,
+    /// An input method's composition, not yet committed: it replaces the
+    /// composition before it (`text` empty ends it without a commit); a
+    /// commit ends it too. False: committed text, inserted at the caret.
+    pub composing: bool,
+    /// Continues the composition of the event before it (a composition
+    /// longer than one event).
+    pub more: bool,
+}
+
+impl TextInput {
+    /// `text` as events of at most 255 bytes each, split between characters.
+    pub fn split(text: &str, composing: bool) -> Vec<TextInput> {
+        let mut out = Vec::new();
+        let mut rest = text;
+        loop {
+            let mut cut = rest.len().min(255);
+            while !rest.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            let (head, tail) = rest.split_at(cut);
+            out.push(TextInput {
+                text: Str256::new(head).expect("at most 255 bytes"),
+                composing,
+                more: composing && !out.is_empty(),
+            });
+            if tail.is_empty() {
+                return out;
+            }
+            rest = tail;
+        }
+    }
+}
+
 /// A wheel or trackpad scroll (IDL `input.Wheel`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.Wheel")]
@@ -210,10 +252,10 @@ impl InputEvent {
     }
 }
 
-/// Registers [`Input`] and the six events, then [`Pointers`] and
-/// [`Gamepad`], in this order: `og.Input`, `og.KeyDown`, `og.KeyUp`,
-/// `og.PointerDown`, `og.PointerUp`, `og.PointerMove`, `og.Wheel`,
-/// `og.Pointers`, `og.Gamepad`. Idempotent.
+/// Registers [`Input`] and the six events, then [`Pointers`],
+/// [`Gamepad`] and [`TextInput`], in this order: `og.Input`, `og.KeyDown`,
+/// `og.KeyUp`, `og.PointerDown`, `og.PointerUp`, `og.PointerMove`,
+/// `og.Wheel`, `og.Pointers`, `og.Gamepad`, `og.TextInput`. Idempotent.
 pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Input>()?;
     world.register::<KeyDown>()?;
@@ -224,6 +266,7 @@ pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Wheel>()?;
     world.register::<Pointers>()?;
     world.register::<Gamepad>()?;
+    world.register::<TextInput>()?;
     Ok(())
 }
 
@@ -379,9 +422,9 @@ impl Input {
                     }
                 }
             }
-            // Further touches and pads have their own resources.
+            // Further touches, pads and text have their own resources and events.
             InjectedInput::Pointer { id, .. } if *id != 0 => {}
-            InjectedInput::Gamepad(_) => {}
+            InjectedInput::Gamepad(_) | InjectedInput::Text { .. } => {}
             InjectedInput::Pointer {
                 action,
                 x,

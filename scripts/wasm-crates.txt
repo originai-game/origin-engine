@@ -20,9 +20,9 @@
 # only its profile's physics (docs/web-export.md §Variants): `publish` is
 # the 3D variant (dist/web-publish) and `publish2d` the 2D one
 # (dist/web-publish-2d); `og build --publish` copies the one of the game's
-# profile. The lanes variant keeps the publish features with both
+# profile. Both keep og-ui's `shaping` (rustybuzz: Arabic, Indic). The lanes variant keeps the publish features with both
 # profiles. The size gate holds each download to the budget.
 og-render   required
 og-host-web required publish lanes
-variant publish   og-host-web publish,physics3d
-variant publish2d og-host-web publish,physics2d
+variant publish   og-host-web publish,physics3d,shaping
+variant publish2d og-host-web publish,physics2d,shaping

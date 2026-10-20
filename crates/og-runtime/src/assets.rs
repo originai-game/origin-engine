@@ -62,8 +62,10 @@ pub(crate) struct LoadedFont {
     pub info: Value,
     /// Index into the render state's fonts.
     pub render: usize,
-    /// A shaped script's font file (og-ui shapes with it).
-    pub ttf: Option<std::sync::Arc<Vec<u8>>>,
+    /// The font's file, when it ships one (a shaped script, `runtime
+    /// true`): og-ui shapes with it and measures characters outside the
+    /// atlas, which `super::glyphs` renders.
+    pub file: Option<std::sync::Arc<og_ui::shape::FontFile>>,
 }
 
 /// Everything an engine loaded.
@@ -500,13 +502,22 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     let pages = add_font(&mut rs.scene, &font);
     rs.fonts.push(pages);
     let render = rs.fonts.len() - 1;
-    let ttf = font.ttf.clone().map(std::sync::Arc::new);
+    let file = font
+        .ttf
+        .clone()
+        .and_then(|t| og_ui::shape::FontFile::new(std::sync::Arc::new(t)));
+    if let Some(f) = &file {
+        rs.runtime_fonts.insert(
+            render,
+            super::glyphs::RuntimeFont::new(f.clone(), m.em_px, m.px_range),
+        );
+    }
     let mut assets = eng.assets.borrow_mut();
     assets.fonts.push(LoadedFont {
         id,
         info,
         render,
-        ttf,
+        file,
     });
     Ok(assets.fonts.len() - 1)
 }
