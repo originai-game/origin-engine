@@ -295,11 +295,15 @@ fn visual_segments(
     line: &RichLine,
     direction: og_i18n::Direction,
 ) -> Vec<Segment> {
+    let mixed = |p: &Piece| {
+        let s = &rc.spans[p.span];
+        s.icon.is_none() && fonts.metrics_for(s.font, &p.text).is_mixed()
+    };
     let plain = direction == og_i18n::Direction::Ltr
         && line
             .pieces
             .iter()
-            .all(|p| !crate::text::needs_visual(&p.text));
+            .all(|p| !crate::text::needs_visual(&p.text) && !mixed(p));
     if plain {
         return line
             .pieces
@@ -354,7 +358,7 @@ fn visual_segments(
             let piece_text = &text[r.clone()];
             let m = fonts.metrics_for(s.font, piece_text);
             let tracking = crate::layout::step_tracking(&s.step, piece_text);
-            let needs = rtl || crate::text::needs_visual(piece_text);
+            let needs = rtl || crate::text::needs_visual(piece_text) || m.is_mixed();
             if !needs {
                 out.push(Segment {
                     span: p.span,
@@ -665,6 +669,7 @@ impl Ui {
             }
             let font = self.fonts.for_text(s.font, &text);
             let Some(handle) = font.handle else { continue };
+            let mixed = font.metrics.is_mixed();
             let m = &font.metrics;
             let tracking = crate::layout::step_tracking(&s.step, &text);
             // Bold: thickened in the shader (as far as the field reaches)
@@ -691,7 +696,40 @@ impl Ui {
                 glow: None,
                 placements,
             };
-            if let Some(glyphs) = piece.glyphs {
+            if let Some(glyphs) = piece.glyphs.as_ref().filter(|_| mixed) {
+                // A segment mixing fonts: a command per font, each where its
+                // glyphs start.
+                for pc in crate::text::split(font, glyphs) {
+                    let Some(f) = pc.font else { continue };
+                    // Bold: a copy one device pixel to the right first.
+                    let copies = if smear > 0.0 {
+                        &[smear, 0.0][..]
+                    } else {
+                        &[0.0][..]
+                    };
+                    for &dx in copies {
+                        cmds.push(DrawCmd::Text {
+                            x: snap(r.x + dx) + pc.dx * size,
+                            baseline: snap(baseline),
+                            size,
+                            text: pc.text.clone(),
+                            color: color.fade(alpha).linear(),
+                            font: f,
+                            bounds: Rect::new(
+                                r.x + dx + pc.dx * size,
+                                r.y,
+                                pc.width * size,
+                                r.height,
+                            ),
+                            clip,
+                            tracking,
+                            weight,
+                            glow: None,
+                            placements: pc.placements.clone(),
+                        });
+                    }
+                }
+            } else if let Some(glyphs) = piece.glyphs {
                 // A right-to-left or shaped segment: drawn whole in visual
                 // order with its placements (its joins would break glyph by glyph).
                 let (drawn, placements) = crate::text::FontMetrics::drawn(&glyphs);
