@@ -177,19 +177,60 @@ four at a time to the GPU-bound packages, and starts og-tests, the cooks,
 the pile and the walk first. `scripts/install-tools.sh` installs it; without
 it the steps fall back to `cargo test`.
 
-CI runs on `ubuntu-latest`. The Rust toolchain comes from
-`rust-toolchain.toml` (channel, rustfmt, clippy, the wasm target) through
-`actions-rust-lang/setup-rust-toolchain`, which also caches `~/.cargo` and
-`target/`. `scripts/install-tools.sh` installs wasm-bindgen-cli at the
-version `Cargo.lock` pins, binaryen (`wasm-opt`), brotli and bun, skipping
-any already present at the right version; the tools are cached under
-`~/.local`. `mesa-vulkan-drivers` gives wgpu a Vulkan adapter (lavapipe) for
-headless gfx tests.
+### CI
 
-On failure CI uploads `target/evidence/**` (gate summary, size report, gfx
-actual and diff frames, perf reports), the wasm manifests and any
-`*.diff.png` as the `evidence-<run>` artifact. The size report and summary
-are uploaded on every run as `size-gate-<run>`.
+Every job runs on `ubuntu-latest` (a private repository's runner: 2 vCPU,
+7 GB, about 13 GB of free disk) inside a `debian:trixie` container, and
+`.github/actions/provision` installs what the scripts expect; the lanes are
+the scripts' own. Trixie because its Lavapipe (`mesa-vulkan-drivers`, Mesa
+25.0.7 on LLVM 19.1.7, 256-bit) is the og-lavapipe image's, where the
+`vulkan-cpu` references are recorded (§The wave-end run): on the runner's
+own Ubuntu 24.04 (LLVM 20.1.2) `atmosphere-night` and `atmosphere-moon`
+came out at RMSE 0.01050 and 0.01033 against their references (tolerance
+0.01; a few hundred star pixels), and on trixie they pass with the rest.
+The tier detection reads llvmpipe as `vulkan-cpu`, so the GPU reference
+tests compare with `references/vulkan-cpu/` and, frame by frame, with
+`metal`'s where a scene has no vulkan-cpu frame yet. The container runs
+with `--init` (`og dev`'s signal test waits for the game it stopped to be
+reaped, which the container's bare PID 1 never does) and has the host's
+unused SDKs (dotnet, Android, GHC, CodeQL: about 30 GB) mounted to be
+emptied first.
+
+The provisioning: trixie's build tools, Lavapipe, ALSA's headers (cpal's
+`alsa-sys`), brotli and procps; the Rust toolchain from
+`rust-toolchain.toml` (`actions-rust-lang/setup-rust-toolchain`); `~/.cargo`
+and `target/`'s dependencies cached by `Swatinem/rust-cache`, one cache per
+job, saved on failure too; cargo-nextest (`taiki-e/install-action`); node
+24 (`actions/setup-node`, for `determinism`); and `scripts/install-tools.sh`
+(wasm-bindgen-cli at the `Cargo.lock` version, binaryen, bun, ShellCheck),
+cached under `~/.local`. The workflow sets `CI` (so every step and test
+runs and the wasm is the shipping profile), `OG_GATE_MACHINE_LOCK=0` (one
+gate per runner), an empty `RUSTC_WRAPPER` (no sccache) and
+`CARGO_PROFILE_DEV_DEBUG=line-tables-only`.
+
+| Job | Runs | When | Timeout |
+|---|---|---|---|
+| `quick` | `shellcheck -x scripts/*.sh`, `scripts/check.sh quick` | every PR | 90 min |
+| `functional` | `scripts/check.sh functional` | every PR | 180 min |
+| `gate` | `shellcheck -x scripts/*.sh`, `scripts/check.sh` (with `CI`: `--all`) | every PR and push to main | 330 min |
+| `perf-nightly` | `scripts/perf.sh --measure` | 03:17 UTC, and by hand | 150 min |
+
+The nightly measures and judges nothing: the committed perf baselines are
+the M4 Pro's (`crates/og-tests/perf/metal-apple-m4-pro/`, ...), a shared
+runner's Lavapipe frame times measure the VM rather than the renderer, and
+the comparison against a baseline of its own would move by more than the
+15 % tolerance from run to run. It records each scene's time
+(`OG_PERF_RECORD`) into `target/evidence/perf/` and prints them. Before
+2026-10-21 it compared against baselines that do not exist for the runner,
+failed every test after 46 min of rendering and once ran past its 60 min
+limit.
+
+On failure a job uploads `target/evidence/**` (gate summary, size report,
+gfx actual and diff frames) and any `*.diff.png` as an artifact; the gate
+uploads the size report and summary on every run. The uploads may not fail
+a job (`continue-on-error`): the account's artifact storage quota was
+exhausted in 2026-10, and every upload then fails with "Artifact storage
+quota has been hit".
 
 ## Running the gate locally
 
@@ -684,6 +725,14 @@ intended:
 OG_CAPTURE=1 cargo test -p og-tests          # rewrite the references
 git diff --stat tests/                       # see which frames moved
 ```
+
+A scene with no reference on the adapter's tier is compared with
+`references/metal/` and the test prints so (`gfx <scene>: no vulkan-cpu
+reference …; comparing with metal's`), as every other reference harness
+does (§Browser reference tiers); a scene on neither fails. So a scene
+recorded on metal is held on lavapipe in CI at once, and its own
+`vulkan-cpu` frame, when the tier differs by more than the tolerance, is
+recorded at the wave's end (`scripts/wave-end.sh --record gfx/<scene>`).
 
 Commit the new references with the change, and describe in the commit what
 each moved frame now shows (AGENTS.md §Validation: a rendering change carries
