@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>three.js bench</title>
+<style>html,body{margin:0;background:#14161b}canvas{display:block;width:1280px;height:720px}</style>
+<script type="importmap">{ "imports": { "three": "/three/node_modules/three/build/three.module.js", "three/webgpu": "/three/node_modules/three/build/three.webgpu.js", "three/tsl": "/three/node_modules/three/build/three.tsl.js", "three/addons/": "/three/node_modules/three/examples/jsm/" } }</script>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script type="module">
+// ?scene=reference|spheres picks the module; the rest of the query is its options.
+const scene = new URLSearchParams(location.search).get("scene");
+import(`/three/three-${scene}.js`).catch((e) => { globalThis.__bench_error__ = String(e && e.stack || e); });
+</script>
+</body>
+</html>

@@ -14,6 +14,16 @@ use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+/// The tick the last [`World::step`] in this process began, for a host's
+/// crash report (a panic hook reads it); nothing in a tick reads it.
+static LAST_TICK: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The tick the last [`World::step`] in this process began (any world), 0
+/// before the first: what a host's panic hook names as the panic's tick.
+pub fn last_tick() -> u64 {
+    LAST_TICK.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// How to make a world. `Default` is 60 ticks per second, seed 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WorldDesc {
@@ -872,6 +882,7 @@ impl World {
             queue.current = std::mem::take(&mut queue.pending);
         }
         let tick = self.time().tick;
+        LAST_TICK.store(tick, std::sync::atomic::Ordering::Relaxed);
         let mut commands = Vec::new();
         for i in 0..self.systems.len() {
             let matched = self.match_counts(&self.systems[i]);

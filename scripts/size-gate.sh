@@ -5,10 +5,12 @@
 #   scripts/size-gate.sh [file.wasm ...]
 #
 # With no arguments it measures every file listed in target/og-wasm/opt.txt,
-# which scripts/check.sh's wasm-opt step writes. The budget applies to each
-# measured file: a page downloads one engine module, the single-threaded
-# publish variant or the lanes variant (docs/web-export.md §Lanes), never
-# both. Writes $OG_EVIDENCE_DIR/size-gate.json. A module
+# which scripts/check.sh's wasm-opt step writes. The budget is per download:
+# a page downloads one engine module, never two, so each measured file (the
+# 3D publish variant, the 2D one, the lanes variant: docs/web-export.md
+# §Variants and §Lanes) is held to it, and the figure that matters is the
+# largest of them, not their sum. Writes $OG_EVIDENCE_DIR/size-gate.json
+# (each file with its download, and max_brotli_bytes). A module
 # measured before (same SHA-256 and brotli) takes its recorded size, unless
 # OG_SIZE_GATE_FRESH is set (scripts/check.sh --all sets it).
 set -u -o pipefail
@@ -44,7 +46,16 @@ total=0
 max=0
 over=""
 entries=""
-printf '%-28s %12s %12s\n' "wasm" "bytes" "brotli-q11"
+# What a player downloads it as (scripts/wasm-crates.txt names the variants).
+download_of() {
+  case "$1" in
+    *-publish.wasm) echo "3D publish" ;;
+    *-publish2d.wasm) echo "2D publish" ;;
+    *-lanes.wasm) echo "lanes" ;;
+    *) echo "-" ;;
+  esac
+}
+printf '%-28s %-11s %12s %12s\n' "wasm" "download" "bytes" "brotli-q11"
 for f in "${files[@]}"; do
   if [ ! -f "$f" ]; then og_err "size-gate: $f does not exist"; exit 1; fi
   raw="$(og_bytes "$f")"
@@ -61,11 +72,12 @@ for f in "${files[@]}"; do
   name="$(basename "$f")"
   [ "$br" -le "$max" ] || max="$br"
   [ "$br" -le "$budget" ] || over="${over}${over:+, }$name ${br} B (+$((br - budget)) B)"
-  printf '%-28s %12s %12s\n' "$name" "$raw" "$br"
-  entries="${entries}${entries:+,}{\"file\":\"$name\",\"bytes\":$raw,\"brotli_bytes\":$br}"
+  download="$(download_of "$name")"
+  printf '%-28s %-11s %12s %12s  (%s%% of the budget)\n' "$name" "$download" "$raw" "$br" "$((br * 100 / budget))"
+  entries="${entries}${entries:+,}{\"file\":\"$name\",\"download\":\"$download\",\"bytes\":$raw,\"brotli_bytes\":$br}"
 done
 pct=$((max * 100 / budget))
-printf '%-28s %12s %12s  (largest download, %s%% of budget %s)\n' "max" "" "$max" "$pct" "$budget"
+printf '%-28s %-11s %12s %12s  (the largest download, %s%% of the per-download budget %s)\n' "max" "" "" "$max" "$pct" "$budget"
 printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":%s,"max_brotli_bytes":%s,"files":[%s]}\n' "$budget" "$total" "$max" "$entries" > "$report"
 
 if [ -n "$over" ]; then

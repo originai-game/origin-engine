@@ -31,6 +31,11 @@ export function spawnVoices(world: World): void {
   must(world.insert(fx, og.AudioBusFx, { bus: "music", duck: true, duckBus: "sfx", duckDepth: 5, duckRelease: 0.6 }));
   const echo = must(world.spawn({ name: "sfx-bus" }));
   must(world.insert(echo, og.AudioBusFx, { bus: "sfx", reverb: 0.18 }));
+  // The touch HUD's Jump and Kindle: the skin's press sound on the ui bus,
+  // like every og.ui button, beside the jump's or the fire's own effect.
+  const tap = must(world.spawn({ name: `sfx-${Sound.Tap}` }));
+  must(world.insert(tap, og.AudioSource, { sound: sound("audio/ui-press.ogt"), playing: false, bus: "ui", volume: 0.5, priority: 150 }));
+  must(world.insert(tap, Sfx, { bit: Sound.Tap }));
 }
 
 /** Plays each requested sound once; steps and splashes vary their pitch a little. */

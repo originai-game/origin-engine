@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# 20,000 low-poly spheres, each moved by a TS system every tick: the
+# per-object scene of tools/bench/threejs-compare.ts (docs/design.md §7).
+name "Sphere field"
+id "sphere-field"
+engine "0.0.1"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

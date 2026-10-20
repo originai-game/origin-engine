@@ -3,10 +3,12 @@
 # Changing a number here is a reviewed change: say in the commit what moved
 # and why (docs/ci.md §Updating a budget). Budgets come from docs/design.md §7.
 
-# brotli -q 11 size of each shipping wasm the gate builds (the publish and
-# lanes variants, scripts/wasm-crates.txt), after wasm-bindgen and wasm-opt
-# -Oz; a page downloads one of them (design §7: engine wasm, brotli, <= 4 MB
-# core; docs/web-export.md §Lanes).
+# brotli -q 11 size of each shipping wasm the gate builds (the 3D and 2D
+# publish variants and the lanes variant, scripts/wasm-crates.txt), after
+# wasm-bindgen and wasm-opt -Oz. Per download: a page downloads one of them,
+# so each is held to it and the largest is what counts, never the sum
+# (design §7: engine wasm, brotli, <= 4 MB core; docs/web-export.md
+# §Variants, §Lanes).
 wasm_core_brotli_bytes 4194304
 
 # optional: a scaffold with no cdylib crate yet passes the size gate with

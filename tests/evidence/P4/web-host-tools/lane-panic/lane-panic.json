@@ -1,0 +1,222 @@
+{
+  "deadlineMs": 5000,
+  "results": {
+    "isolated (lanes)": {
+      "lanes": {
+        "on": true,
+        "threads": 8,
+        "why": ""
+      },
+      "error": {
+        "kind": "panic",
+        "message": "a fault injected at the extract site (og_lanes::inject_fault)",
+        "tick": 34,
+        "lane": "extract",
+        "location": "crates/og-lanes/src/lib.rs:181:9"
+      },
+      "ms": 9,
+      "card": {
+        "title": "The game stopped",
+        "text": "panic at tick 34 in a lane (extract): a fault injected at the extract site (og_lanes::inject_fault) (crates/og-lanes/src/lib.rs:181:9)"
+      },
+      "shot": "lane-panic-lanes.png",
+      "log": []
+    },
+    "not isolated (single-threaded)": {
+      "lanes": {
+        "on": false,
+        "threads": 1,
+        "why": "the page is not cross-origin isolated (COOP/COEP)"
+      },
+      "error": {
+        "kind": "panic",
+        "message": "a fault injected at the extract site (og_lanes::inject_fault)",
+        "tick": 34,
+        "lane": null,
+        "location": "crates/og-lanes/src/lib.rs:181:9"
+      },
+      "ms": 6,
+      "card": {
+        "title": "The game stopped",
+        "text": "panic at tick 34: a fault injected at the extract site (og_lanes::inject_fault) (crates/og-lanes/src/lib.rs:181:9)"
+      },
+      "shot": "lane-panic-single.png",
+      "log": []
+    }
+  },
+  "checks": [
+    {
+      "check": "the publish build ships the 3D variant and the lanes variant",
+      "ok": true,
+      "detail": {
+        "variant": "3d",
+        "lanes": {
+          "glue": "origin-engine-lanes.js",
+          "wasm": "origin-engine-lanes_bg.wasm"
+        }
+      }
+    },
+    {
+      "check": "isolated (lanes): lanes on, 8 Workers",
+      "ok": true,
+      "detail": {
+        "on": true,
+        "threads": 8,
+        "why": ""
+      }
+    },
+    {
+      "check": "isolated (lanes): no error while it plays",
+      "ok": true
+    },
+    {
+      "check": "isolated (lanes): the fault is armed in the engine Worker",
+      "ok": true,
+      "detail": {
+        "result": {
+          "type": "string",
+          "value": "sent"
+        }
+      }
+    },
+    {
+      "check": "isolated (lanes): the page has the crash 9 ms after the fault (deadline 5000 ms)",
+      "ok": true,
+      "detail": {
+        "error": {
+          "kind": "panic",
+          "message": "a fault injected at the extract site (og_lanes::inject_fault)",
+          "tick": 34,
+          "lane": "extract",
+          "location": "crates/og-lanes/src/lib.rs:181:9"
+        },
+        "ms": 9
+      }
+    },
+    {
+      "check": "isolated (lanes): __runtime_probe__.error is a panic",
+      "ok": true,
+      "detail": {
+        "kind": "panic",
+        "message": "a fault injected at the extract site (og_lanes::inject_fault)",
+        "tick": 34,
+        "lane": "extract",
+        "location": "crates/og-lanes/src/lib.rs:181:9"
+      }
+    },
+    {
+      "check": "isolated (lanes): with the panic's message",
+      "ok": true,
+      "detail": "a fault injected at the extract site (og_lanes::inject_fault)"
+    },
+    {
+      "check": "isolated (lanes): and the tick it happened at",
+      "ok": true,
+      "detail": 34
+    },
+    {
+      "check": "isolated (lanes): and where",
+      "ok": true,
+      "detail": "crates/og-lanes/src/lib.rs:181:9"
+    },
+    {
+      "check": "isolated (lanes): inside a lane (extract)",
+      "ok": true,
+      "detail": "extract"
+    },
+    {
+      "check": "isolated (lanes): the error card shows the panic",
+      "ok": true,
+      "detail": {
+        "title": "The game stopped",
+        "text": "panic at tick 34 in a lane (extract): a fault injected at the extract site (og_lanes::inject_fault) (crates/og-lanes/src/lib.rs:181:9)"
+      }
+    },
+    {
+      "check": "isolated (lanes): a probe call after the crash is refused at once",
+      "ok": true,
+      "detail": "refused: the engine stopped: panic at tick 34 in a lane (extract): a fault injected at the extract site (og_lanes::inject_fault) (crates/og-lanes/src/lib.rs:181:9)"
+    },
+    {
+      "check": "not isolated (single-threaded): lanes off",
+      "ok": true,
+      "detail": {
+        "on": false,
+        "threads": 1,
+        "why": "the page is not cross-origin isolated (COOP/COEP)"
+      }
+    },
+    {
+      "check": "not isolated (single-threaded): no error while it plays",
+      "ok": true
+    },
+    {
+      "check": "not isolated (single-threaded): the fault is armed in the engine Worker",
+      "ok": true,
+      "detail": {
+        "result": {
+          "type": "string",
+          "value": "sent"
+        }
+      }
+    },
+    {
+      "check": "not isolated (single-threaded): the page has the crash 6 ms after the fault (deadline 5000 ms)",
+      "ok": true,
+      "detail": {
+        "error": {
+          "kind": "panic",
+          "message": "a fault injected at the extract site (og_lanes::inject_fault)",
+          "tick": 34,
+          "lane": null,
+          "location": "crates/og-lanes/src/lib.rs:181:9"
+        },
+        "ms": 6
+      }
+    },
+    {
+      "check": "not isolated (single-threaded): __runtime_probe__.error is a panic",
+      "ok": true,
+      "detail": {
+        "kind": "panic",
+        "message": "a fault injected at the extract site (og_lanes::inject_fault)",
+        "tick": 34,
+        "lane": null,
+        "location": "crates/og-lanes/src/lib.rs:181:9"
+      }
+    },
+    {
+      "check": "not isolated (single-threaded): with the panic's message",
+      "ok": true,
+      "detail": "a fault injected at the extract site (og_lanes::inject_fault)"
+    },
+    {
+      "check": "not isolated (single-threaded): and the tick it happened at",
+      "ok": true,
+      "detail": 34
+    },
+    {
+      "check": "not isolated (single-threaded): and where",
+      "ok": true,
+      "detail": "crates/og-lanes/src/lib.rs:181:9"
+    },
+    {
+      "check": "not isolated (single-threaded): on the engine thread (lane null)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "not isolated (single-threaded): the error card shows the panic",
+      "ok": true,
+      "detail": {
+        "title": "The game stopped",
+        "text": "panic at tick 34: a fault injected at the extract site (og_lanes::inject_fault) (crates/og-lanes/src/lib.rs:181:9)"
+      }
+    },
+    {
+      "check": "not isolated (single-threaded): a probe call after the crash is refused at once",
+      "ok": true,
+      "detail": "refused: the engine stopped: panic at tick 34: a fault injected at the extract site (og_lanes::inject_fault) (crates/og-lanes/src/lib.rs:181:9)"
+    }
+  ]
+}

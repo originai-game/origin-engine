@@ -13,6 +13,18 @@ pub const CITY_SIDE: u32 = 200;
 /// Metres between building centres (the avenues run between them).
 pub const CITY_SPACING: f32 = 8.0;
 
+/// Buildings a side: [`CITY_SIDE`], or `OG_GFX_CITY_SIDE` (rounded up to an
+/// even number, so the avenue stays between two columns) to time the
+/// culling paths across instance counts
+/// (`tests/evidence/P4/web-host-tools/culling-threshold.md`).
+pub fn city_side() -> u32 {
+    std::env::var("OG_GFX_CITY_SIDE")
+        .ok()
+        .and_then(|v| v.parse::<u32>().ok())
+        .filter(|&n| n >= 2)
+        .map_or(CITY_SIDE, |n| n.div_ceil(2) * 2)
+}
+
 fn hash(i: u32, salt: u32) -> f32 {
     let mut h = i.wrapping_mul(0x9e37_79b9) ^ salt.wrapping_mul(0x85eb_ca6b);
     h ^= h >> 15;
@@ -24,7 +36,8 @@ fn hash(i: u32, salt: u32) -> f32 {
 /// The city with the camera at `eye` looking at `target`.
 pub fn city(eye: Vec3, target: Vec3) -> RenderScene {
     let mut scene = RenderScene::new();
-    let extent = CITY_SIDE as f32 * CITY_SPACING + 40.0;
+    let side = city_side();
+    let extent = side as f32 * CITY_SPACING + 40.0;
     crate::scenes::ground(&mut scene, extent, 4.0, 0.9);
     let meshes = [
         scene.add_mesh(shapes::cuboid(Vec3::new(5.0, 1.0, 5.0))),
@@ -45,9 +58,9 @@ pub fn city(eye: Vec3, target: Vec3) -> RenderScene {
             ..Default::default()
         })
     });
-    let half = (CITY_SIDE as f32 - 1.0) / 2.0;
-    for i in 0..CITY_SIDE * CITY_SIDE {
-        let (gx, gz) = ((i % CITY_SIDE) as f32 - half, (i / CITY_SIDE) as f32 - half);
+    let half = (side as f32 - 1.0) / 2.0;
+    for i in 0..side * side {
+        let (gx, gz) = ((i % side) as f32 - half, (i / side) as f32 - half);
         let height = 4.0 + hash(i, 1).powi(3) * 40.0;
         let mesh = meshes[(hash(i, 2) * 3.999) as usize];
         let material = materials[(hash(i, 3) * 3.999) as usize];
@@ -86,7 +99,7 @@ pub fn city_street() -> RenderScene {
 
 /// 300 m over the city's corner, looking across it.
 pub fn city_aerial() -> RenderScene {
-    let side = CITY_SIDE as f32 * CITY_SPACING / 2.0;
+    let side = city_side() as f32 * CITY_SPACING / 2.0;
     city(
         Vec3::new(side + 120.0, 300.0, side + 120.0),
         Vec3::new(0.0, 0.0, 0.0),

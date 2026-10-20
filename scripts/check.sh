@@ -181,10 +181,13 @@ step_test_quick() { run_tests test-quick 0 og-tests; }
 # dependencies come from sccache (or CI's cached target/) the first time.
 # VARIANT lanes builds through scripts/wasm-lanes.sh (wasm atomics, std
 # rebuilt), which keeps its own target dir (target/wasm-mt) for the same reason.
+# A FEATURES starting with `-` builds without the default features
+# (`-og-host-web/publish,og-host-web/physics3d`).
 wasm_build() {
   local variant="$1" features="$2"; shift 2
   local args=() c f name dest cargo=(cargo build --target "$WASM_TRIPLE")
   for c in "$@"; do args+=(-p "$c"); done
+  case "$features" in -*) args+=(--no-default-features); features="${features#-}" ;; esac
   [ -z "$features" ] || args+=(--features "$features")
   case "$variant" in
     "") ;;
@@ -233,9 +236,20 @@ step_wasm_build() {
     # shellcheck disable=SC2086
     wasm_build "" "" $required || return 1
   fi
+  local v vname vfeat
   for c in $(og_wasm_publish_crates); do
-    og_say "publish variant: $c (--features $c/publish)"
-    wasm_build publish "$c/publish" "$c" || return 1
+    v="$(og_wasm_variants "$c")"
+    if [ -z "$v" ]; then
+      og_say "publish variant: $c (--features $c/publish)"
+      wasm_build publish "$c/publish" "$c" || return 1
+      continue
+    fi
+    while read -r vname vfeat; do
+      og_say "publish variant $vname: $c (--no-default-features --features $vfeat)"
+      wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
+    done <<EOF_VARIANTS
+$v
+EOF_VARIANTS
   done
   for c in $(og_wasm_lanes_crates); do
     og_say "lanes variant: $c (--features $c/publish, wasm atomics: scripts/wasm-lanes.sh)"
@@ -260,8 +274,8 @@ step_wasm_build() {
 # wasm-bindgen (when the module uses it, at the Cargo.lock version, out-name
 # origin-engine as packages/engine ships it) then wasm-opt -Oz; writes
 # target/og-wasm/opt/<name>.wasm for every variant (opt-all.txt) and lists
-# the shipping ones in opt.txt: the -publish and -lanes variants when any
-# were built, else all. A -lanes module is bindgen'd as origin-engine-lanes
+# the shipping ones in opt.txt: the -publish* (one per game profile) and
+# -lanes variants when any were built, else all. A -lanes module is bindgen'd as origin-engine-lanes
 # and optimised with --threads. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
 # wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
 # into $OG_WASM_OUT/opt/NAME.wasm.
@@ -329,7 +343,7 @@ step_wasm_opt() {
   cat "$OG_WASM_OUT"/opt/*.log
   [ "$rc" -eq 0 ] || return 1
   if grep -q -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt"; then
-    grep -E -- '-(publish|lanes)\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
+    grep -E -- '-(publish[a-z0-9]*|lanes)\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
     og_say "size-gate measures the publish variant(s): $(og_words < "$OG_WASM_OUT/opt.txt")"
   else
     cp "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"
@@ -424,7 +438,7 @@ step_bun_quick() {
 # §Browser reference tiers; `make web-reference`). In no lane: CI has no
 # Chrome for Testing.
 step_web_reference() {
-  local a b c d e f g h i j
+  local a b c d e f g h i j k
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
@@ -445,7 +459,10 @@ step_web_reference() {
     --shots title@54,beacon@204,dawn@432)
   (cd packages/engine && bun tests/web/reference.ts "${tp[@]}"); i=$?
   (cd packages/engine && bun tests/web/reference.ts --webgl "${tp[@]}"); j=$?
-  return $((a | b | c | d | e | f | g | h | i | j))
+  # A panic inside a lane reaches the page as a crash within 5 s, not a hang
+  # (docs/web-export.md §Errors), and the same fault single-threaded.
+  (cd packages/engine && bun tests/web/lane-panic.ts); k=$?
+  return $((a | b | c | d | e | f | g | h | i | j | k))
 }
 
 # --- Scheduling ---------------------------------------------------------------

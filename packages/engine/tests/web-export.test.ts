@@ -95,6 +95,29 @@ test("og-build.json names every file beside it, with bytes and sha256, and the P
   expect(web.icons.map((i: { sizes: string }) => i.sizes)).toEqual(["192x192", "512x512"]);
 }, 60_000);
 
+test("a publish build ships the engine variant of the game's profile (docs/web-export.md §Variants)", async () => {
+  const same = (a: string, b: string) => {
+    const [x, y] = [new Uint8Array(readFileSync(a)), new Uint8Array(readFileSync(b))];
+    return x.length === y.length && x.every((v, i) => v === y[i]);
+  };
+  // runner is a 2d game: the 2D module, as origin-engine_bg.wasm.
+  const two = JSON.parse(read(join(work, "a"), "og-build.json"));
+  expect([two.game.profile, two.variant]).toEqual(["2d", "2d"]);
+  expect(same(join(work, "a", "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"))).toBe(true);
+  expect(same(join(work, "a", "origin-engine.js"), join(pkg, "dist", "web-publish-2d", "origin-engine.js"))).toBe(true);
+  // The same project declared 3d takes the 3D module; the lanes variant is the one module of both.
+  const out = join(work, "three-d");
+  const b = await webBuild(project, entry, out, true, { ...settings(), profile: "3d" });
+  expect(b.ok).toBe(true);
+  expect([b.manifest!.game.profile, b.manifest!.variant]).toEqual(["3d", "3d"]);
+  expect(same(join(out, "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"))).toBe(true);
+  expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(work, "a", "origin-engine-lanes_bg.wasm"))).toBe(true);
+  // The two variants differ (each has only its profile's physics), and a dev build takes the full module.
+  expect(same(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"))).toBe(false);
+  const dev = await webBuild(project, entry, join(work, "dev"), false, settings());
+  expect(dev.ok && dev.manifest!.variant === "full").toBe(true);
+}, 120_000);
+
 test("publish settings: isolation, the badge and the service worker's version", async () => {
   const off = await webBuild(project, entry, join(work, "off"), true, settings({ isolation: "off", madeWith: false }));
   expect(off.ok).toBe(true);

@@ -267,6 +267,10 @@ function hud(world: World, g: GameV): void {
   if (touch) {
     og.ui.anchor("Move", { anchor: "bottomLeft" }, () => {
       const s = og.ui.joystick("Stick", { size: 140, deadZone: 0.12 });
+      // A thumb landing on the stick answers on the ui bus too (Sound.Tap).
+      const held = og.ui.memory("Held", 0);
+      if (s.active && held === 0) g.sfx |= Sound.Tap;
+      if ((s.active ? 1 : 0) !== held) og.ui.remember("Held", s.active ? 1 : 0);
       if (s.active) {
         stickX = s.x;
         stickY = s.y;
@@ -274,7 +278,13 @@ function hud(world: World, g: GameV): void {
     });
     og.ui.anchor("Hands", { anchor: "bottomRight", gap: S.md, cross: "end" }, () => {
       kindle = og.ui.actionButton("Kindle", say(world, "hud.kindle"), { icon: "fire", size: 64, primary: g.near >= 0 }).pressed;
-      if (og.ui.actionButton("Jump", say(world, "hud.jump"), { icon: "play", size: 72 }).clicked) g.padJump = true;
+      // Each answers on the ui bus as it is touched (Sound.Tap), then acts.
+      if (kindle && !g.padKindle) g.sfx |= Sound.Tap;
+      const jump = og.ui.actionButton("Jump", say(world, "hud.jump"), { icon: "play", size: 72 });
+      if (jump.clicked) {
+        g.padJump = true;
+        g.sfx |= Sound.Tap;
+      }
     });
   }
   if (stickX !== g.stickX) g.stickX = stickX;

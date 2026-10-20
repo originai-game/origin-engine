@@ -10,13 +10,19 @@ description = "Origin Engine web host: the binding symbols as a wasm-bindgen mod
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = []
+default = ["physics2d", "physics3d"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
+# The physics profiles built in. The dev module and the lanes variant have
+# both; the publish variants one each, by the game's profile (`og build
+# --publish` ships the 3D or the 2D one; scripts/wasm-crates.txt `variant`).
+physics2d = ["og-runtime/physics2d"]
+physics3d = ["og-runtime/physics3d"]
 
 [dependencies]
 og-api = { path = "../og-api" }
-og-runtime = { path = "../og-runtime" }
+og-runtime = { path = "../og-runtime", default-features = false }
+og-lanes = { path = "../og-lanes" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", default-features = false }
 og-cook = { path = "../og-cook", default-features = false, features = ["runtime"] }

@@ -266,6 +266,7 @@ fn engine_checks(cwd: &Path) -> usize {
     for (key, what) in [
         ("wasm", "wasm"),
         ("publishWasm", "wasm-publish"),
+        ("publishWasm2d", "wasm-publish-2d"),
         ("lanesWasm", "wasm-lanes"),
     ] {
         let w = &report[key];
