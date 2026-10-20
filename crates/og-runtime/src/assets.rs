@@ -823,11 +823,14 @@ pub(crate) fn sound_index(eng: &Engine, handle: f64) -> Option<usize> {
 /// One field of a packed row as the JSON the codec reads, shaped for the
 /// target field's kind.
 fn field_json(ty: FieldType, bytes: &[u8], target: &super::codec::FieldLayout) -> Value {
+    if ty.is_string() {
+        return json!(og_core::unpack_str(bytes));
+    }
     let lanes: Vec<f64> = (0..ty.lanes())
         .map(|i| {
             let at = i * ty.scalar().size();
             let b = &bytes[at..at + ty.scalar().size()];
-            match ty.name() {
+            match &*ty.name() {
                 "f64" => f64::from_le_bytes(b.try_into().unwrap_or([0; 8])),
                 "i32" => i32::from_le_bytes(b.try_into().unwrap_or([0; 4])) as f64,
                 "u32" | "enum" => u32::from_le_bytes(b.try_into().unwrap_or([0; 4])) as f64,
@@ -873,7 +876,9 @@ fn migrate(schema: &Schema, row: &[u8], layout: &Layout, dropped: &mut Vec<Strin
             continue;
         };
         let range = packed.range(i);
-        if f.ty.lanes() != target.ty.lanes() {
+        // A string moves by its text; the codec refuses one over the capacity.
+        let strings = f.ty.is_string() && target.ty.is_string();
+        if !strings && f.ty.lanes() != target.ty.lanes() {
             dropped.push(format!(
                 "{}.{} ({} lanes in the scene, {} registered)",
                 layout.schema,

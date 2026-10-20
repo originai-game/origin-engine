@@ -7,7 +7,7 @@
 // four lanterns (Lantern), the three slimes (Slime), the rocks of the pile
 // (Rock) and one voice per sound (Sfx).
 
-import { bool, defineComponent, defineResource, f32, f64, i32, u32 } from "@origingame/engine";
+import { bool, defineComponent, defineResource, f32, f64, i32, str, u32 } from "@origingame/engine";
 
 /** The screen the game is on. */
 export const Phase = { Title: 0, Play: 1, Over: 2 } as const;
@@ -24,7 +24,7 @@ export const Sound = { Step: 1, Light: 2, Hurt: 4, Hit: 8, Win: 16, Lose: 32, Ki
 /** The lanterns a run lights, the hearts it starts with. */
 export const LANTERN_COUNT = 4;
 export const HEARTS = 3;
-/** The player's name: at most this many characters, kept as code points in Prefs (no string fields: FINDINGS.md). */
+/** The player's name: at most this many characters (Prefs.name holds four bytes of UTF-8 for each). */
 export const NAME_CHARS = 12;
 
 /** The run: the hero's progress, the clock and the effects' bookkeeping. */
@@ -93,9 +93,7 @@ export const Prefs = defineResource("Prefs", {
   effects: f32(1, { min: 0, max: 1 }),
   language: u32(0, { doc: "0 English, 1 简体中文 (LANGUAGES in src/ui.ts)." }),
   reducedMotion: bool(false),
-  nameLength: u32(0, { doc: "The player's name: its length, its code points in n0 … n11." }),
-  n0: u32(0), n1: u32(0), n2: u32(0), n3: u32(0), n4: u32(0), n5: u32(0),
-  n6: u32(0), n7: u32(0), n8: u32(0), n9: u32(0), n10: u32(0), n11: u32(0),
+  name: str(NAME_CHARS * 4, "", { doc: "The player's name, at most NAME_CHARS characters (the field's maxChars)." }),
   loadRequest: u32(0),
   saves: u32(0),
 });

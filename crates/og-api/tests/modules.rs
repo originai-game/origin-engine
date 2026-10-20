@@ -34,7 +34,7 @@ fn idl_schema(decl: &RecordDecl) -> Schema {
                         | "SkeletonAsset" | "ClipAsset" | "GraphAsset" | "FlipbookSheet"
                         | "Tween" | "TilemapAsset" => FieldType::U64,
                         // Event text: og-anim's marker names are str64.
-                        "String" => FieldType::Str64,
+                        "String" => FieldType::Str(64),
                         other => panic!(
                             "{}.{}: column {other} has no storage type here",
                             decl.schema, f.name

@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-885 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+886 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -889,6 +889,7 @@ Field units the docs and Tune use.
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
+| [`str()`](reflect.md#column-str) | column kind | reflect | — |
 | [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
 | [`STREAM_LOADING`](stream.md#const-STREAM_LOADING) | constant | stream | — |
 | [`STREAM_QUEUED`](stream.md#const-STREAM_QUEUED) | constant | stream | — |

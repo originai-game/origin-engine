@@ -22,11 +22,13 @@
 //!
 //! Inside an `entity` block: `entity` nests a child, `model "<asset id>"`
 //! instantiates a cooked glTF under the entity, and any other key with a
-//! block is a component whose entries are its fields (numbers, or the words
-//! `true`/`false`). With the component's schema (`CookOptions::schemas`) the
-//! fields are checked, ordered and defaulted from it; without one the cook
-//! infers a layout from the text (f32 lanes) and every entity must set the
-//! same fields.
+//! block is a component whose entries are its fields (numbers, the words
+//! `true`/`false`, or one quoted string for a `strN` field: `name "Mei"`,
+//! packed as its UTF-8 then zeros, refused over the capacity). With the
+//! component's schema (`CookOptions::schemas`) the fields are checked,
+//! ordered and defaulted from it; without one the cook infers a layout from
+//! the text (f32 lanes; a string needs the schema for its capacity) and
+//! every entity must set the same fields.
 
 use super::CookError;
 use crate::format::{self, *};
@@ -44,10 +46,30 @@ struct Entity {
 struct Pending {
     entity: u32,
     line: usize,
-    fields: Vec<(String, Vec<f64>, usize)>,
+    fields: Vec<(String, Given, usize)>,
 }
 
-fn lanes(values: &[Value], line: usize, comp: &str, field: &str) -> Result<Vec<f64>, CookError> {
+/// A field's value as the scene text gives it.
+enum Given {
+    /// Numbers (and `true`/`false` as 1/0), one per lane.
+    Lanes(Vec<f64>),
+    /// One quoted string: a `strN` field's text.
+    Text(String),
+}
+
+impl Given {
+    fn len(&self) -> usize {
+        match self {
+            Given::Lanes(v) => v.len(),
+            Given::Text(_) => 1,
+        }
+    }
+}
+
+fn lanes(values: &[Value], line: usize, comp: &str, field: &str) -> Result<Given, CookError> {
+    if let [Value::String(text)] = values {
+        return Ok(Given::Text(text.clone()));
+    }
     values
         .iter()
         .map(|v| match v {
@@ -55,16 +77,22 @@ fn lanes(values: &[Value], line: usize, comp: &str, field: &str) -> Result<Vec<f
             Value::Word(w) if w == "true" => Ok(1.0),
             Value::Word(w) if w == "false" => Ok(0.0),
             _ => Err(CookError(format!(
-                "line {line}: {comp}.{field}: values are numbers or true/false"
+                "line {line}: {comp}.{field}: values are numbers, true/false, or one quoted string for a string field"
             ))),
         })
-        .collect()
+        .collect::<Result<Vec<f64>, CookError>>()
+        .map(Given::Lanes)
 }
 
 fn infer(name: &str, rows: &[Pending]) -> Result<Schema, CookError> {
     let mut fields: Vec<FieldSchema> = Vec::new();
     for r in rows {
         for (f, v, line) in &r.fields {
+            if let Given::Text(_) = v {
+                return Err(CookError(format!(
+                    "line {line}: {name}.{f} is a string; without {name}'s schema the cook cannot know its capacity (pass the schema set to the cook)"
+                )));
+            }
             let ty = match v.len() {
                 1 => FieldType::F32,
                 2 => FieldType::Vec2,
@@ -120,8 +148,33 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
     }
     for fs in &schema.fields {
         let given = row.fields.iter().find(|(n, ..)| n == &fs.name);
+        if fs.ty.is_string() {
+            match given {
+                Some((_, Given::Text(text), line)) => out.extend_from_slice(
+                    &og_core::pack_str(text, fs.ty.size())
+                        .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?,
+                ),
+                Some((_, Given::Lanes(_), line)) => {
+                    return Err(CookError(format!(
+                        "line {line}: {comp}.{} is a {}: give it one quoted string",
+                        fs.name,
+                        fs.ty.name()
+                    )));
+                }
+                None => out.resize(out.len() + fs.ty.size(), 0),
+            }
+            continue;
+        }
         let values: Vec<f64> = match given {
-            Some((_, v, line)) => {
+            Some((_, Given::Text(_), line)) => {
+                return Err(CookError(format!(
+                    "line {line}: {comp}.{} is a {}, not a string: give it {} number(s)",
+                    fs.name,
+                    fs.ty.name(),
+                    fs.ty.lanes()
+                )));
+            }
+            Some((_, Given::Lanes(v), line)) => {
                 if v.len() != fs.ty.lanes() {
                     return Err(CookError(format!(
                         "line {line}: {comp}.{} is a {} ({} value(s)), got {}",

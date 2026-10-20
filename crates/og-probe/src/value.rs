@@ -24,8 +24,8 @@ fn word<const N: usize>(bytes: &[u8], at: usize) -> [u8; N] {
     out
 }
 
-/// One field's packed bytes as JSON: a number, or an array for vectors and
-/// quaternions (`[x, y, z, w]`).
+/// One field's packed bytes as JSON: a number, an array for vectors and
+/// quaternions (`[x, y, z, w]`), the text of a string.
 pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
     match ty {
         FieldType::F32 => f32_json(f32::from_le_bytes(word(bytes, 0))),
@@ -43,10 +43,7 @@ pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
         }
         FieldType::Bool => Value::Bool(bytes[0] != 0),
         FieldType::Enum => Value::from(u32::from_le_bytes(word(bytes, 0))),
-        FieldType::Str64 | FieldType::Str256 => {
-            let end = bytes.iter().position(|b| *b == 0).unwrap_or(bytes.len());
-            Value::from(String::from_utf8_lossy(&bytes[..end]).into_owned())
-        }
+        FieldType::Str(_) => Value::from(og_core::unpack_str(bytes)),
     }
 }
 
@@ -133,11 +130,11 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
                 None => Err("a bool takes true, false, 0 or 1".into()),
             };
         }
-        FieldType::Str64 | FieldType::Str256 => {
-            return Err(format!(
-                "a {} field is not patched (strings are event fields)",
-                field.ty.name()
-            ));
+        FieldType::Str(_) => {
+            let text = value
+                .as_str()
+                .ok_or_else(|| format!("a {} takes a string, got {value}", field.ty.name()))?;
+            return og_core::pack_str(text, field.ty.size());
         }
         _ => {}
     }
@@ -161,6 +158,22 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
         }
     }
     Ok(out)
+}
+
+/// Command text as the JSON value of `field` for [`json_field`]: a string
+/// field takes the text as it is (`set:Prefs.name=Ada Lovelace`), or a JSON
+/// string literal for escapes and the empty string (`set:Prefs.name=""`);
+/// every other field takes [`text_json`].
+pub(crate) fn command_value(field: &FieldSchema, text: &str) -> Result<Value, String> {
+    if !field.ty.is_string() {
+        return text_json(text);
+    }
+    if text.starts_with('"') {
+        return serde_json::from_str::<String>(text)
+            .map(Value::String)
+            .map_err(|e| format!("{text} is not a JSON string literal ({e}); write the text bare, or quote it as JSON"));
+    }
+    Ok(Value::String(text.to_owned()))
 }
 
 /// Command text as JSON for [`json_field`]: `1.5`, or `1,2,3` for a vector.

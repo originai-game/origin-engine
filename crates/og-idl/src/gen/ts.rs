@@ -50,6 +50,8 @@ export interface FieldSpec<K extends ColumnKind = ColumnKind> {
   readonly kind: K;
   readonly default: ColumnKinds[K]["value"];
   readonly options: FieldOptions;
+  /** A `str` field's capacity in bytes; absent for every other kind. */
+  readonly capacity?: number;
 }
 
 /** A reflected layout: field names to field specs. */
@@ -145,9 +147,14 @@ impl<'a> Gen<'a, '_> {
         for c in columns {
             self.jsdoc("  ", &c.doc, &[]);
             let value = self.ty(&c.value, &[]);
+            let stride = if c.capacity {
+                "number".to_string()
+            } else {
+                c.stride.to_string()
+            };
             self.line(&format!(
-                "  {}: {{ readonly array: {}; readonly stride: {}; readonly value: {} }};",
-                c.name, c.array, c.stride, value
+                "  {}: {{ readonly array: {}; readonly stride: {stride}; readonly value: {} }};",
+                c.name, c.array, value
             ));
         }
         self.line("}");
@@ -223,6 +230,24 @@ impl<'a> Gen<'a, '_> {
                     let params = self.params(&c.params, &[], false);
                     let ret = self.ty(&c.returns, &[]);
                     self.line(&format!("export type {} = ({params}) => {ret};", c.name));
+                }
+                Item::Column(c) if c.capacity => {
+                    let value = self.ty(&c.value, &[]);
+                    let tags = vec![
+                        format!(
+                            "A `{}` field: stored in a `{}` whose stride is its capacity.",
+                            c.name, c.array
+                        ),
+                        "@param capacity The most bytes of UTF-8 it holds, 1 to 4096: four per character covers any script."
+                            .to_string(),
+                        "@param value The field's default; omitted, the empty string.".to_string(),
+                        "@param options Label and docs (a string has no range and is not tunable).".to_string(),
+                    ];
+                    self.jsdoc("", &c.doc, &tags);
+                    self.line(&format!(
+                        "export declare function {}(capacity: number, value?: {value}, options?: FieldOptions): FieldSpec<\"{}\">;",
+                        c.name, c.name
+                    ));
                 }
                 Item::Column(c) => {
                     let value = self.ty(&c.value, &[]);

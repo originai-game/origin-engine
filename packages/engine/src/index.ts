@@ -46,6 +46,8 @@ export const Vector3 = ((value = vector3(), options) => spec("Vector3", value, o
 export const Quaternion = ((value = { x: 0, y: 0, z: 0, w: 1 }, options) => spec("Quaternion", value, options)) as typeof Api.Quaternion;
 export const Matrix4 = ((value = { elements: identity() }, options) => spec("Matrix4", value, options)) as typeof Api.Matrix4;
 export const Color = ((value = { r: 0, g: 0, b: 0 }, options) => spec("Color", value, options)) as typeof Api.Color;
+// The capacity crosses with the spec; the engine refuses one outside 1 to 4096 at declaration.
+export const str = ((capacity, value = "", options) => Object.freeze({ ...spec("str", value, options), capacity })) as typeof Api.str;
 export const Entity = ((value = 0 as Api.Entity, options) => spec("Entity", value, options)) as typeof Api.Entity;
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;

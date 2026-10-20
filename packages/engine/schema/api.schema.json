@@ -60,7 +60,8 @@
         "Vector3",
         "Quaternion",
         "Matrix4",
-        "Color"
+        "Color",
+        "str"
       ],
       "consts": [],
       "functions": [

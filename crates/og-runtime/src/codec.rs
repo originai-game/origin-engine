@@ -23,7 +23,8 @@ pub enum Kind {
     Material,
     Asset,
     Sound,
-    /// Bounded UTF-8 text (events only): str64 or str256.
+    /// Fixed-capacity UTF-8 text: a `str(N)` field (`strN`), or an event's
+    /// `String` (a `str256`).
     Str,
     /// An enum: a u32 index into the field's variants.
     Enum,
@@ -58,7 +59,7 @@ impl Kind {
             "Navigation" | "Behaviour" => Kind::Asset,
             // Phase 2: terrains.
             "TerrainData" => Kind::Asset,
-            "String" => Kind::Str,
+            "String" | "str" => Kind::Str,
             _ => return None,
         })
     }
@@ -75,9 +76,16 @@ impl Kind {
     }
 
     /// The og-core field type this kind is stored as: a `bool` is one byte
-    /// (a `Uint8Array` column), a `Matrix4` sixteen f32, handles a `u64`, an
-    /// event's text a `str256`, an enum a `u32` index.
-    pub fn field_type(self, viewed: bool) -> Result<FieldType, String> {
+    /// (a `Uint8Array` column), a `Matrix4` sixteen f32, handles a `u64`, a
+    /// `str(N)` field its `capacity` bytes (an event's text without one a
+    /// `str256`), an enum a `u32` index.
+    pub fn field_type(self, viewed: bool, capacity: Option<usize>) -> Result<FieldType, String> {
+        if let Some(n) = capacity {
+            if self != Kind::Str {
+                return Err("only a str field has a capacity".into());
+            }
+            return FieldType::string(n).map_err(|e| e.reason().to_owned());
+        }
         Ok(match self {
             Kind::F32 => FieldType::F32,
             Kind::F64 => FieldType::F64,
@@ -86,12 +94,16 @@ impl Kind {
             Kind::Vector2 => FieldType::Vec2,
             Kind::Vector3 | Kind::Color => FieldType::Vec3,
             Kind::Quaternion => FieldType::Quat,
-            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => FieldType::U64,
+            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => {
+                FieldType::U64
+            }
             Kind::Bool => FieldType::Bool,
             Kind::Matrix4 => FieldType::Mat4,
             Kind::Enum => FieldType::Enum,
-            Kind::Str if !viewed => FieldType::Str256,
-            Kind::Str => return Err("text is carried by events only; a component or resource field cannot hold a string".into()),
+            Kind::Str if !viewed => FieldType::Str(256),
+            Kind::Str => {
+                return Err("a string field declares its capacity in bytes: str(32)".into());
+            }
         })
     }
 
@@ -109,7 +121,7 @@ impl Kind {
             FieldType::Bool => Kind::Bool,
             FieldType::Mat4 => Kind::Matrix4,
             FieldType::Enum => Kind::Enum,
-            FieldType::Str64 | FieldType::Str256 => Kind::Str,
+            FieldType::Str(_) => Kind::Str,
         }
     }
 }
@@ -194,8 +206,20 @@ impl Layout {
                     format!("'{schema}.{name}': `{kind_name}` is not a column kind; use a column factory such as f32() or Vector3()")
                 })?,
             };
+            let capacity = match f.get("capacity") {
+                None | Some(Value::Null) => None,
+                Some(c) => Some(
+                    c.as_u64()
+                        .and_then(|c| usize::try_from(c).ok())
+                        .ok_or_else(|| {
+                            format!(
+                                "'{schema}.{name}': a capacity is a whole number of bytes, got {c}"
+                            )
+                        })?,
+                ),
+            };
             let ty = k
-                .field_type(kind == RecordKind::Component)
+                .field_type(kind == RecordKind::Component, capacity)
                 .map_err(|e| format!("'{schema}.{name}': {e}"))?;
             let o = &f["options"];
             let opt_num = |key: &str| o.get(key).and_then(Value::as_f64);
@@ -251,7 +275,7 @@ impl Layout {
                 Kind::Enum
             };
             let ty = k
-                .field_type(kind == RecordKind::Component)
+                .field_type(kind == RecordKind::Component, None)
                 .map_err(|e| format!("'{}.{}': {e}", decl.schema, f.name))?;
             fields.push(FieldLayout {
                 name: f.name.to_string(),
@@ -443,16 +467,7 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
                     .as_str()
                     .ok_or_else(|| format!("expected a string, got {v}"))?,
             };
-            let size = f.ty.size();
-            if text.len() > size || text.contains('\0') {
-                return Err(format!(
-                    "text of at most {size} UTF-8 bytes without NUL, got {} bytes",
-                    text.len()
-                ));
-            }
-            let mut b = text.as_bytes().to_vec();
-            b.resize(size, 0);
-            out.extend_from_slice(&b)
+            out.extend_from_slice(&og_core::pack_str(text, f.ty.size())?)
         }
         Kind::Enum => {
             let index = match v {
@@ -501,10 +516,7 @@ fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
         Kind::U32 => json!(u32::from_le_bytes(b[..4].try_into().expect("4 bytes"))),
         Kind::I32 => json!(i32::from_le_bytes(b[..4].try_into().expect("4 bytes"))),
         Kind::Bool => json!(b.iter().any(|x| *x != 0)),
-        Kind::Str => {
-            let end = b.iter().position(|x| *x == 0).unwrap_or(b.len());
-            json!(String::from_utf8_lossy(&b[..end]))
-        }
+        Kind::Str => json!(og_core::unpack_str(b)),
         Kind::Enum => {
             let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
             f.variants.get(i).map_or_else(|| json!(i), |n| json!(n))

@@ -171,6 +171,14 @@ module reflect {
     value Color
   }
 
+  column str {
+    doc "Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script)."
+    doc "Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes."
+    array Uint8Array
+    capacity true
+    value String
+  }
+
   fn defineComponent {
     doc "Declare a component: plain data stored per entity in engine memory, one column per field."
     doc "Registration is by name, so a hot reload re-registers the same component and migrates its fields by name."

@@ -508,6 +508,7 @@ impl Loader {
             doc: self.inline(node, 1),
             array: String::new(),
             stride: 0,
+            capacity: false,
             value: TypeRef::named(""),
             line: node.line,
         };
@@ -523,6 +524,7 @@ impl Loader {
                         .unwrap_or_default()
                 }
                 "stride" => c.stride = self.number_value(child).map(|n| n as u32).unwrap_or(0),
+                "capacity" => c.capacity = self.bool_value(child).unwrap_or(false),
                 "value" => {
                     if let Some(ty) = child.values.first().and_then(|v| self.type_value(v, child.line)) {
                         c.value = ty;
@@ -530,7 +532,7 @@ impl Loader {
                 }
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in column `{}`: expected doc, array, stride or value", c.name),
+                    format!("unknown key `{other}` in column `{}`: expected doc, array, stride, capacity or value", c.name),
                 ),
             }
         }

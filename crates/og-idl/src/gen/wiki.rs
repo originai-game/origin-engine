@@ -673,11 +673,22 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
     if !columns.is_empty() {
         out.push_str("## Column kinds\n\nEach is a factory, `");
         out.push_str(&columns[0].name);
-        out.push_str(
-            "(value?, options?)`, that makes one field of a component or resource layout.\n\n",
-        );
+        out.push_str("(value?, options?)`, that makes one field of a component or resource layout");
+        for c in columns.iter().filter(|c| c.capacity) {
+            let _ = write!(
+                out,
+                "; `{}(capacity, value?, options?)` takes its capacity in bytes first",
+                c.name
+            );
+        }
+        out.push_str(".\n\n");
         out.push_str("| Column | Value | Typed array | Stride | Doc |\n|---|---|---|---|---|\n");
         for c in &columns {
+            let stride = if c.capacity {
+                "the capacity".to_string()
+            } else {
+                c.stride.to_string()
+            };
             let _ = writeln!(
                 out,
                 "| <a id=\"{}\"></a>`{}` | {} | `{}` | {} | {} |",
@@ -685,7 +696,7 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
                 c.name,
                 code(&ts::type_text(ix, &c.value, &[])),
                 c.array,
-                c.stride,
+                stride,
                 cell(&c.doc.join(" "))
             );
         }

@@ -67,26 +67,8 @@ const FORMAT_STATE: u32 = 1;
 const NAMES_TAG: &[u8; 4] = b"NAME";
 const BLOCKS_TAG: &[u8; 4] = b"BLOK";
 
-const FIELD_TYPES: [FieldType; 15] = [
-    FieldType::F32,
-    FieldType::F64,
-    FieldType::I32,
-    FieldType::U32,
-    FieldType::I64,
-    FieldType::U64,
-    FieldType::Vec2,
-    FieldType::Vec3,
-    FieldType::Vec4,
-    FieldType::Quat,
-    FieldType::Bool,
-    FieldType::Mat4,
-    FieldType::Enum,
-    FieldType::Str64,
-    FieldType::Str256,
-];
-
 fn field_type(name: &str) -> Option<FieldType> {
-    FIELD_TYPES.iter().copied().find(|t| t.name() == name)
+    FieldType::parse(name)
 }
 
 struct Writer(Vec<u8>);
@@ -563,6 +545,9 @@ enum Source {
     /// The snapshot enum field with this index, its indices mapped by
     /// variant name (`None`: the variant is gone, use the default).
     Enum(usize, Vec<Option<u32>>),
+    /// The snapshot string field with this index, of another capacity:
+    /// its text when it fits, else the default (empty).
+    Text(usize),
     /// The field's default.
     Default,
 }
@@ -587,6 +572,19 @@ impl Plan {
         }
     }
 
+    /// A string of another capacity as field `k`: its text, zero-padded,
+    /// or the default when the text does not fit.
+    fn text(&self, k: usize, raw: &[u8], out: &mut Vec<u8>) {
+        let size = self.defaults[k].len();
+        let text = og_core::unpack_str(raw).as_bytes();
+        if text.len() <= size {
+            out.extend_from_slice(text);
+            out.resize(out.len() + size - text.len(), 0);
+        } else {
+            out.extend_from_slice(&self.defaults[k]);
+        }
+    }
+
     /// One packed value of the snapshot type as this world's type.
     fn convert(&self, value: &[u8], out: &mut Vec<u8>) {
         let Some(fields) = &self.fields else {
@@ -599,6 +597,7 @@ impl Plan {
                 Source::Enum(f, map) => {
                     self.mapped_enum(k, map, &value[self.source_ranges[*f].clone()], out)
                 }
+                Source::Text(f) => self.text(k, &value[self.source_ranges[*f].clone()], out),
                 Source::Default => out.extend_from_slice(&self.defaults[k]),
             }
         }
@@ -613,6 +612,12 @@ impl Plan {
             Some(Source::Enum(f, map)) => {
                 for raw in columns[*f].as_chunks::<4>().0 {
                     self.mapped_enum(k, map, raw, out);
+                }
+            }
+            Some(Source::Text(f)) => {
+                let n = self.source_ranges[*f].len();
+                for raw in columns[*f].chunks_exact(n) {
+                    self.text(k, raw, out);
                 }
             }
             Some(Source::Default) => {
@@ -671,6 +676,21 @@ fn plan(
             None => {
                 report.added.push(at);
                 Source::Default
+            }
+            Some(i)
+                if snap.fields[i].ty.is_string()
+                    && f.ty.is_string()
+                    && snap.fields[i].ty != f.ty =>
+            {
+                if snap.fields[i].ty.size() > f.ty.size() {
+                    report.warnings.push(format!(
+                        "{at} changed from {} to {}; a text longer than {} bytes starts empty",
+                        snap.fields[i].ty.name(),
+                        f.ty.name(),
+                        f.ty.size()
+                    ));
+                }
+                Source::Text(i)
             }
             Some(i) if snap.fields[i].ty != f.ty => {
                 report.warnings.push(format!(
@@ -978,29 +998,16 @@ impl World {
         })?;
         let mut report = MigrationReport::default();
         let mut plans: Vec<Option<Plan>> = Vec::with_capacity(parsed.types.len());
-        for (i, t) in parsed.types.iter().enumerate() {
+        for t in &parsed.types {
             let Ok(id) = self.registry.id_by_name(&t.name) else {
                 report.dropped.push(t.name.clone());
                 plans.push(None);
                 continue;
             };
             let p = plan(&self.registry, t, id, &mut report)?;
-            let stored = parsed.archetypes.iter().any(|a| a.stored.contains(&i))
-                || parsed.resources.iter().any(|(u, _)| *u == i);
-            if self.registry.info(id).strings && stored {
-                report.warnings.push(format!(
-                    "{} now has string fields, which only events carry; its components and resource were dropped",
-                    t.name
-                ));
-            }
             plans.push(Some(p));
         }
-        // A plan whose target may be stored in archetypes and resources.
-        let storable = |t: usize| {
-            plans[t]
-                .as_ref()
-                .filter(|p| !self.registry.info(p.target).strings)
-        };
+        let storable = |t: usize| plans[t].as_ref();
 
         let mut locations = vec![
             Location {

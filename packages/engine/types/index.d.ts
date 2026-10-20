@@ -27,6 +27,8 @@ export interface FieldSpec<K extends ColumnKind = ColumnKind> {
   readonly kind: K;
   readonly default: ColumnKinds[K]["value"];
   readonly options: FieldOptions;
+  /** A `str` field's capacity in bytes; absent for every other kind. */
+  readonly capacity?: number;
 }
 
 /** A reflected layout: field names to field specs. */
@@ -102,6 +104,11 @@ export interface ColumnKinds {
   Matrix4: { readonly array: Float32Array; readonly stride: 16; readonly value: Matrix4 };
   /** A Color field: r, g, b interleaved. */
   Color: { readonly array: Float32Array; readonly stride: 3; readonly value: Color };
+  /**
+   * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+   * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
+   */
+  str: { readonly array: Uint8Array; readonly stride: number; readonly value: string };
   /** An Entity field: (index, generation) pairs. */
   Entity: { readonly array: Uint32Array; readonly stride: 2; readonly value: Entity };
   /** A Geometry handle field. */
@@ -380,6 +387,17 @@ export declare function Matrix4(value?: Matrix4, options?: FieldOptions): FieldS
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function Color(value?: Color, options?: FieldOptions): FieldSpec<"Color">;
+
+/**
+ * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+ * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
+ *
+ * A `str` field: stored in a `Uint8Array` whose stride is its capacity.
+ * @param capacity The most bytes of UTF-8 it holds, 1 to 4096: four per character covers any script.
+ * @param value The field's default; omitted, the empty string.
+ * @param options Label and docs (a string has no range and is not tunable).
+ */
+export declare function str(capacity: number, value?: string, options?: FieldOptions): FieldSpec<"str">;
 
 /**
  * Declare a component: plain data stored per entity in engine memory, one column per field.

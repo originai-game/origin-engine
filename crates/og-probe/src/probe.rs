@@ -1137,7 +1137,10 @@ impl Probe {
                 let (target, text) = joined
                     .split_once('=')
                     .ok_or_else(|| format!("write `{usage}`"))?;
-                let value = value::text_json(text)?;
+                let value = match Self::set_target_field(world, target) {
+                    Some(field) => value::command_value(&field, text)?,
+                    None => value::text_json(text)?,
+                };
                 if let Some((resource, field)) = Self::resource_target(world, target) {
                     return Self::write_resource_field(world, resource, &field, &value);
                 }
@@ -1297,6 +1300,22 @@ impl Probe {
             .field_index(field)
             .ok_or_else(|| format!("'{component}' has no field '{field}'"))?;
         Ok((id, schema, index))
+    }
+
+    /// The field a `set:` target names (`Resource.field`,
+    /// `<entity>.Component.field`), when it names one: a string field reads
+    /// its value as text, not numbers.
+    fn set_target_field(world: &World, target: &str) -> Option<og_core::FieldSchema> {
+        if let Some((id, field)) = Self::resource_target(world, target) {
+            let schema = world.schema(id).ok()?;
+            return schema.fields.get(schema.field_index(&field)?).cloned();
+        }
+        let parameter = match target.strip_prefix('#') {
+            Some(rest) => rest.splitn(3, '.').nth(2)?,
+            None => target.split_once('.')?.1,
+        };
+        let (_, schema, index) = Self::field_ref(world, parameter).ok()?;
+        schema.fields.into_iter().nth(index)
     }
 
     /// Write one field of an entity's component through the schema. With

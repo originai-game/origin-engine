@@ -20,7 +20,10 @@ if (r.closed) state.screen = "map";
 
 - Keep game state (open flags, the current line, the settings, slots) in a
   component or resource, pass it in every tick, store what comes back. Never
-  keep UI state in module variables.
+  keep UI state in module variables. A field's or an area's text is game
+  state too: keep it in a `str(capacity)` field (og-core §4), four bytes per
+  character of the widget's `maxChars` (`name: str(64)` for `maxChars: 16`),
+  so the text always fits.
 - What only the UI needs between ticks (hover, focus, scroll, a menu being
   open, the chosen tab of a template, animation progress, toasts) is UI state:
   snapshots and replays carry it. A template that needs a number of its own
@@ -322,10 +325,11 @@ Text entry is a field (one line) or an area (several), each one call that
 takes the value and answers it, like every widget (§1):
 
 ```ts
+// Save = defineResource("Save", { name: str(64), note: str(1024) }): maxChars × 4 bytes always fits.
 const name = og.ui.textField("Name", save.name, { placeholder: "Your name", maxChars: 16 });
 if (name.response.changed) save.name = name.value;
 if (name.response.submitted) state.screen = "play";   // Enter, once
-const note = og.ui.textArea("Note", save.note, { placeholder: "A note for later", rows: 3, width: { kind: "grow" } });
+const note = og.ui.textArea("Note", save.note, { placeholder: "A note for later", rows: 3, maxChars: 256, width: { kind: "grow" } });
 save.note = note.value;
 ```
 

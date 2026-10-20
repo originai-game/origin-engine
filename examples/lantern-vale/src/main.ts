@@ -20,7 +20,7 @@ import { FEET, HeroMove, spawnHero, View } from "./hero.ts";
 import { Lanterns, lightLantern } from "./lanterns.ts";
 import { hurt, Slimes, spawnSlimes } from "./slimes.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { configureUi, LANGUAGES, nameOf, score, startRun, toTitle, Ui } from "./ui.ts";
+import { configureUi, LANGUAGES, score, startRun, toTitle, Ui } from "./ui.ts";
 import { buildVale, groundY, HOURS, LANTERNS, must, setHour } from "./world.ts";
 
 function start(world: World): void {
@@ -154,7 +154,7 @@ export default og.game({
       farLoads: g.farLoads,
       musicChunks: g.musicChunks,
       rockMoved: Math.round(g.rockMoved * 100) / 100,
-      name: nameOf(prefs.value),
+      name: prefs.value.name,
       language: LANGUAGES[prefs.value.language]!.code,
       a11yUnnamed: g.a11yUnnamed,
       a11yNodes: g.a11yNodes,
