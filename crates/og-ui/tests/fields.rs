@@ -14,6 +14,11 @@
 //!   after an undo, a new edit keeps the redo, a text the game set is undone
 //!   into, the history grows without bound or is not saved →
 //!   `undo_and_redo_step_through_the_history`
+//! - Command taken for Control (or the other way round) under mac keys:
+//!   Cmd+←/→ moving by words or characters, Option+← by characters, Ctrl+A
+//!   selecting all, Cmd+Backspace one character, Ctrl+Z undoing; or Command
+//!   moving by words on other platforms →
+//!   `mac_keys_tell_command_from_control`
 //! - a drag below a text area jumps to the end (or does not scroll), keeps
 //!   scrolling past the end, or scrolls while the pointer is inside →
 //!   `a_drag_past_a_text_area_scrolls_it_line_by_line`
@@ -122,6 +127,19 @@ impl Rig {
             keys: keys.to_vec(),
             shift,
             ctrl,
+            alt,
+            pointer_inside: true,
+            ..InputFrame::default()
+        });
+    }
+
+    /// Keys with Command (`meta`) apart from Control.
+    fn chord(&mut self, keys: &[UiKey], shift: bool, ctrl: bool, meta: bool, alt: bool) {
+        self.step(InputFrame {
+            keys: keys.to_vec(),
+            shift,
+            ctrl,
+            meta,
             alt,
             pointer_inside: true,
             ..InputFrame::default()
@@ -424,4 +442,75 @@ fn the_text_fields_scene_is_what_its_frame_shows() {
     let (again, area2) = text_fields_uis(&font);
     assert_eq!(again.frame().items, ui.frame().items);
     assert_eq!(area2.frame().items, area.frame().items);
+}
+
+#[test]
+fn mac_keys_tell_command_from_control() {
+    let mut rig = Rig::new("hello brave, new world", "");
+    rig.vp.mac_keys = true;
+    rig.focus_field();
+    // Command+← and →: the line's ends.
+    rig.chord(&[UiKey::Left], false, false, true, false);
+    assert_eq!(rig.caret_marked(), "|hello brave, new world");
+    rig.chord(&[UiKey::Right], false, false, true, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new world|");
+    // Option+←: by words; Control+← one character (no word move on a Mac).
+    rig.chord(&[UiKey::Left], false, false, false, true);
+    assert_eq!(rig.caret_marked(), "hello brave, new |world");
+    rig.chord(&[UiKey::Left], false, true, false, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new| world");
+    // Shift+Command+←: selects to the line's start.
+    rig.chord(&[UiKey::Left], true, false, true, false);
+    assert_eq!(rig.selection(), "hello brave, new");
+    // Control+A and E: the line's ends (emacs), not select all.
+    rig.chord(&[UiKey::KeyE], false, true, false, false);
+    assert_eq!(rig.selection(), "");
+    assert_eq!(rig.caret_marked(), "hello brave, new world|");
+    rig.chord(&[UiKey::KeyA], false, true, false, false);
+    assert_eq!(rig.selection(), "", "Control+A is no select all on a Mac");
+    assert_eq!(rig.caret_marked(), "|hello brave, new world");
+    // Command+A selects all; Command+→ then Command+Backspace deletes to
+    // the line's start; Control+Z undoes nothing, Command+Z the delete.
+    rig.chord(&[UiKey::KeyA], false, false, true, false);
+    assert_eq!(rig.selection(), "hello brave, new world");
+    rig.chord(&[UiKey::Right], false, false, true, false);
+    rig.chord(&[UiKey::Left, UiKey::Left], false, false, false, true);
+    rig.chord(&[UiKey::Backspace], false, false, true, false);
+    assert_eq!(rig.value, "new world");
+    rig.chord(&[UiKey::KeyZ], false, true, false, false);
+    assert_eq!(rig.value, "new world", "Control+Z is no undo on a Mac");
+    rig.chord(&[UiKey::KeyZ], false, false, true, false);
+    assert_eq!(rig.value, "hello brave, new world");
+    // Command+↑ and ↓ in an area: the text's ends; Command+← its line's start.
+    let (x, y, w, _) = rig.rect("Notes");
+    rig.click(Vec2::new(x + w / 2.0, y + 6.0));
+    rig.idle(40);
+    rig.typed("one\ntwo\nthree");
+    rig.chord(&[UiKey::Up], false, false, true, false);
+    rig.chord(&[UiKey::Down], true, false, true, false);
+    assert_eq!(rig.selection(), "one\ntwo\nthree");
+    rig.chord(&[UiKey::Left], false, false, true, false);
+    rig.chord(&[UiKey::Right], true, false, false, true);
+    assert_eq!(
+        rig.selection(),
+        "three",
+        "the last line's start, then a word"
+    );
+
+    // Other platforms: Command moves one character and still selects all;
+    // Control moves by words.
+    let mut rig = Rig::new("hello brave, new world", "");
+    rig.focus_field();
+    rig.chord(&[UiKey::Left], false, false, true, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new worl|d");
+    rig.chord(&[UiKey::Left], false, true, false, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new |world");
+    rig.chord(&[UiKey::KeyA], false, false, true, false);
+    assert_eq!(rig.selection(), "hello brave, new world");
+    rig.chord(&[UiKey::KeyE], false, true, false, false);
+    assert_eq!(
+        rig.selection(),
+        "hello brave, new world",
+        "Ctrl+E is nothing"
+    );
 }

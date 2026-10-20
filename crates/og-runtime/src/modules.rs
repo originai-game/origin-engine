@@ -287,8 +287,8 @@ pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
 }
 
 /// The host's play surface: CSS pixels, device pixels per CSS pixel, the
-/// safe area, the pointer kind and the page's motion, contrast and
-/// transparency preferences. The web host calls it when the canvas
+/// safe area, the pointer kind, the page's motion, contrast and
+/// transparency preferences and whether text controls take macOS's keys. The web host calls it when the canvas
 /// is sized; native hosts take the render target's size.
 pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     let eng = engine(engine_id)?;
@@ -302,6 +302,7 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
         high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
         reduced_transparency: viewport["reducedTransparency"].as_bool().unwrap_or(false),
+        mac_keys: viewport["macKeys"].as_bool().unwrap_or(false),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
@@ -315,6 +316,7 @@ fn viewport_json(v: &Viewport) -> Value {
         "reducedMotion": v.reduced_motion,
         "highContrast": v.high_contrast,
         "reducedTransparency": v.reduced_transparency,
+        "macKeys": v.mac_keys,
         "breakpoint": v.breakpoint().name(),
     })
 }
@@ -2220,6 +2222,7 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     reduced_motion: v["reducedMotion"].as_bool().unwrap_or(false),
                     high_contrast: v["highContrast"].as_bool().unwrap_or(false),
                     reduced_transparency: v["reducedTransparency"].as_bool().unwrap_or(false),
+                    mac_keys: v["macKeys"].as_bool().unwrap_or(false),
                 },
             );
         } else {

@@ -1,14 +1,21 @@
 //! Text editing, shared by the one-line field and the multi-line area: the
-//! caret and the selection (Shift with the arrows, Home and End; Alt or
-//! Ctrl with the arrows by words, with Backspace and Delete a word, Ctrl
-//! with Home and End to the text's ends; a press places the caret, a drag
-//! selects and scrolls the text past its edge, a double click selects a
-//! word and a triple click the line; Ctrl or Cmd with A, C and X), typed
-//! text (og-input's `og.TextInput` stream, or the keys before one exists)
-//! replacing the selection, an input method's composition shown underlined
-//! at the caret until it commits, undo and redo (Ctrl or Cmd with Z,
-//! Shift+Z and Y; a bounded history per control, typing grouped by words),
-//! and the caret's blink by the tick.
+//! caret and the selection (Shift with the arrows, Home and End; by words
+//! with the arrows, Backspace and Delete; Ctrl with Home and End to the
+//! text's ends; a press places the caret, a drag selects and scrolls the
+//! text past its edge, a double click selects a word and a triple click the
+//! line; the shortcut key with A, C and X), typed text (og-input's
+//! `og.TextInput` stream, or the keys before one exists) replacing the
+//! selection, an input method's composition shown underlined at the caret
+//! until it commits, undo and redo (the shortcut key with Z, Shift+Z and Y;
+//! a bounded history per control, typing grouped by words), and the
+//! caret's blink by the tick.
+//!
+//! The keys follow the platform ([`crate::Viewport::mac_keys`]): on a Mac
+//! Command is the shortcut key and goes to the line's ends with ←/→ (and
+//! deletes to them with Backspace and Delete, ↑/↓ the text's ends in an
+//! area), Option moves and deletes by words, Control+A and E go to the
+//! line's ends; elsewhere Control is the shortcut key and moves by words
+//! (Alt too), and Command only takes the shortcuts.
 //!
 //! Positions come from the same visual layout the text is drawn with
 //! (`FontMetrics::visual`: kerning, bidi runs, shaped clusters), so a press
@@ -669,9 +676,23 @@ impl Ui {
                 note(&mut kind, EditKind::Typing);
             }
             let shift = self.input.shift;
-            let ctrl = self.input.ctrl;
-            // Alt (Option) or Ctrl moves and deletes by words.
-            let word = self.input.alt || ctrl;
+            let (ctrl, meta, alt) = (self.input.ctrl, self.input.meta, self.input.alt);
+            let mac = self.viewport.mac_keys;
+            // The shortcut key (A, C, X, Z, Y): Command under mac keys;
+            // elsewhere Control, and Command too (the OS's own there).
+            let shortcut = if mac { meta } else { ctrl || meta };
+            // By words: Option under mac keys; elsewhere Control (or Alt).
+            let word = if mac { alt && !meta } else { ctrl || alt };
+            // To the line's ends: Command with the arrows, Backspace and
+            // Delete under mac keys; Control+A and E there too (emacs).
+            let line = mac && meta;
+            let emacs = mac && ctrl && !meta;
+            // The line holding the caret: its start and end.
+            let line_of = |chars: &[char], caret: usize| {
+                let lines = layout(chars);
+                let (li, _) = locate(&lines, caret);
+                (lines[li].0, lines[li].1)
+            };
             for k in self.input.keys.iter().copied() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 let selected = a != b;
@@ -684,7 +705,10 @@ impl Ui {
                         note(&mut kind, EditKind::Other);
                     }
                     UiKey::Backspace if caret > 0 => {
-                        let from = if word {
+                        let from = if line {
+                            let start = line_of(&chars, caret).0;
+                            if start < caret { start } else { caret - 1 }
+                        } else if word {
                             word_left(&chars, caret)
                         } else {
                             caret - 1
@@ -695,7 +719,10 @@ impl Ui {
                         note(&mut kind, EditKind::Back);
                     }
                     UiKey::Delete if caret < chars.len() => {
-                        let to = if word {
+                        let to = if line {
+                            let end = line_of(&chars, caret).1;
+                            if end > caret { end } else { caret + 1 }
+                        } else if word {
                             word_right(&chars, caret)
                         } else {
                             caret + 1
@@ -704,24 +731,23 @@ impl Ui {
                         anchor = caret;
                         note(&mut kind, EditKind::Forward);
                     }
+                    // Command+←/→ under mac keys: the line's ends.
+                    UiKey::Left if line => moved = Some(line_of(&chars, caret).0),
+                    UiKey::Right if line => moved = Some(line_of(&chars, caret).1),
                     UiKey::Left if word => moved = Some(word_left(&chars, caret)),
                     UiKey::Right if word => moved = Some(word_right(&chars, caret)),
                     UiKey::Left if selected && !shift => moved = Some(a),
                     UiKey::Right if selected && !shift => moved = Some(b),
                     UiKey::Left => moved = Some(caret.saturating_sub(1)),
                     UiKey::Right => moved = Some((caret + 1).min(chars.len())),
-                    // Ctrl/Cmd with Home and End: the text's ends.
-                    UiKey::Home if ctrl => moved = Some(0),
-                    UiKey::End if ctrl => moved = Some(chars.len()),
-                    UiKey::Home | UiKey::End => {
-                        let lines = layout(&chars);
-                        let (li, _) = locate(&lines, caret);
-                        moved = Some(if k == UiKey::Home {
-                            lines[li].0
-                        } else {
-                            lines[li].1
-                        });
-                    }
+                    // Ctrl (or Command) with Home and End: the text's ends.
+                    UiKey::Home if ctrl || meta => moved = Some(0),
+                    UiKey::End if ctrl || meta => moved = Some(chars.len()),
+                    UiKey::Home => moved = Some(line_of(&chars, caret).0),
+                    UiKey::End => moved = Some(line_of(&chars, caret).1),
+                    // Command+↑/↓ in an area under mac keys: the text's ends.
+                    UiKey::Up if line && d.multiline => moved = Some(0),
+                    UiKey::Down if line && d.multiline => moved = Some(chars.len()),
                     UiKey::Up | UiKey::Down if d.multiline => {
                         let lines = layout(&chars);
                         let (li, x) = locate(&lines, caret);
@@ -739,11 +765,14 @@ impl Ui {
                             None => chars.len(),
                         });
                     }
-                    UiKey::KeyA if ctrl => {
+                    UiKey::KeyA if shortcut => {
                         anchor = 0;
                         caret = chars.len();
                     }
-                    UiKey::KeyC | UiKey::KeyX if ctrl && selected => {
+                    // Control+A and E under mac keys: the line's ends (emacs).
+                    UiKey::KeyA if emacs => moved = Some(line_of(&chars, caret).0),
+                    UiKey::KeyE if emacs => moved = Some(line_of(&chars, caret).1),
+                    UiKey::KeyC | UiKey::KeyX if shortcut && selected => {
                         clipboard = Some(chars[a..b].iter().collect::<String>());
                         if k == UiKey::KeyX {
                             chars.drain(a..b);
@@ -753,7 +782,7 @@ impl Ui {
                         }
                     }
                     // Undo and redo: what this tick did so far is a step first.
-                    UiKey::KeyZ | UiKey::KeyY if ctrl && composition.is_empty() => {
+                    UiKey::KeyZ | UiKey::KeyY if shortcut && composition.is_empty() => {
                         if chars != before {
                             history.record(
                                 &before,

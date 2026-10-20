@@ -962,24 +962,35 @@ impl Probe {
                 }
             }
             "key_down" | "key_up" => {
-                let key = arg(0, "key_down:<Key>")?.to_owned();
-                let action = if step.action == "key_down" {
-                    KeyAction::Down
-                } else {
-                    KeyAction::Up
-                };
-                let event = InjectedInput::Key {
-                    key: key.clone(),
+                let (modifiers, held, key) = key_chord(arg(0, "key_down:[Mod+]<Key>")?)?;
+                let down = step.action == "key_down";
+                let action = if down { KeyAction::Down } else { KeyAction::Up };
+                // The modifiers go down before the key and up after it.
+                let modifier = |code: &str| InjectedInput::Key {
+                    key: code.to_owned(),
                     action,
                     modifiers: Modifiers::default(),
                 };
-                if self.deliver(world, &event) {
-                    Ok(())
-                } else {
-                    Err(format!(
-                        "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
-                    ))
+                let mut events: Vec<InjectedInput> = Vec::new();
+                if down {
+                    events.extend(held.iter().map(|c| modifier(c)));
                 }
+                events.push(InjectedInput::Key {
+                    key: key.clone(),
+                    action,
+                    modifiers,
+                });
+                if !down {
+                    events.extend(held.iter().rev().map(|c| modifier(c)));
+                }
+                for event in &events {
+                    if !self.deliver(world, event) {
+                        return Err(format!(
+                            "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
+                        ));
+                    }
+                }
+                Ok(())
             }
             "type" => {
                 if joined.is_empty() {
@@ -1990,4 +2001,33 @@ impl Probe {
         );
         json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "elements": elements})
     }
+}
+
+/// A key with the modifiers held for it, as `key_down` and `key_up` take
+/// it: `ArrowLeft`, `Shift+ArrowLeft`, `Meta+Shift+KeyZ` (`Shift`, `Ctrl`
+/// or `Control`, `Alt` or `Option`, `Meta`, `Cmd` or `Command`; any case).
+/// Command is `MetaLeft`, apart from Control's `ControlLeft`.
+fn key_chord(text: &str) -> Result<(Modifiers, Vec<&'static str>, String), String> {
+    let mut parts: Vec<&str> = text.split('+').collect();
+    let key = parts.pop().unwrap_or_default().trim().to_owned();
+    let mut m = Modifiers::default();
+    let mut held = Vec::new();
+    for p in parts {
+        let (flag, code) = match p.trim().to_ascii_lowercase().as_str() {
+            "shift" => (&mut m.shift, "ShiftLeft"),
+            "ctrl" | "control" => (&mut m.control, "ControlLeft"),
+            "alt" | "option" => (&mut m.alt, "AltLeft"),
+            "meta" | "cmd" | "command" => (&mut m.platform, "MetaLeft"),
+            other => {
+                return Err(format!(
+                    "'{other}' is not a modifier; write `key_down:Shift+ArrowLeft` with Shift, Ctrl, Alt or Meta (Cmd)"
+                ));
+            }
+        };
+        if !*flag {
+            *flag = true;
+            held.push(code);
+        }
+    }
+    Ok((m, held, key))
 }

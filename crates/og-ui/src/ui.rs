@@ -38,6 +38,15 @@ pub struct Viewport {
     /// reduce`): the theme's `reduced_transparency` is on whatever the game
     /// configured (glass parts draw as opaque surfaces).
     pub reduced_transparency: bool,
+    /// Text controls take macOS's editing keys: Command for the shortcuts
+    /// (A, C, X, Z) and with ←/→ for the line's ends (↑/↓ the text's),
+    /// Option with ←/→, Backspace and Delete by words, Control+A and E the
+    /// line's ends (emacs). Otherwise Control takes the shortcuts and moves
+    /// by words (Alt too), Home and End go to the line's ends and Command
+    /// only copies, cuts, selects all and undoes. The web shell sets it on
+    /// Apple platforms (`navigator.platform`); native hosts leave it off, so
+    /// a script edits the same on every OS.
+    pub mac_keys: bool,
 }
 
 impl Default for Viewport {
@@ -51,6 +60,7 @@ impl Default for Viewport {
             reduced_motion: false,
             high_contrast: false,
             reduced_transparency: false,
+            mac_keys: false,
         }
     }
 }

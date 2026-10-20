@@ -669,8 +669,24 @@ own. Pointing it at another resource is the one line
 `pub type OgInput = og_input::Input;` in `src/input.rs` plus an
 `impl InputSource`.
 
-**Modifiers** are read as held keys: `shift`, `ctrl` (Control or Command)
-and `alt` (Alt or Option), the last for word moves in text controls.
+**Modifiers** are read as held keys: `shift`, `ctrl` (Control), `meta`
+(Command, or the Windows key) and `alt` (Alt or Option). Text controls read
+them by the platform's convention, `Viewport::mac_keys` (IDL
+`Viewport.macKeys`, which the web shell sets on Apple platforms and native
+hosts leave off, so a script edits alike on every OS):
+
+| | mac keys | other platforms |
+|---|---|---|
+| select all, copy, cut, undo, redo | Cmd+A, C, X, Z, Shift+Z (Y) | Ctrl (or Cmd) +A, C, X, Z, Shift+Z, Y |
+| by words (←/→, Backspace, Delete) | Option | Ctrl (or Alt) |
+| the line's ends | Cmd+←/→ (Backspace, Delete delete to them), Ctrl+A/E, Home/End | Home/End |
+| the text's ends | Cmd+↑/↓ in an area, Ctrl/Cmd+Home/End | Ctrl+Home/End |
+
+The probe's `key_down:Meta+ArrowLeft` holds Command with the key
+(`Shift`, `Ctrl`, `Alt`/`Option`, `Meta`/`Cmd`), and og-input holds the
+modifiers a protocol key event names for the tick it happens in. A Mac's
+browser sends no keyup for a key released under Command, so the web shell
+releases those keys when Command goes up.
 
 **Typed text** is og-input's typed-text stream: `og.TextInput` events
 (`text`, `composing`, `more`), which the web shell sends from the page's

@@ -7911,6 +7911,9 @@ module ui {
     field reducedTransparency bool "The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false." {
       optional true
     }
+    field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it on Apple platforms; native hosts leave it off, so a script edits the same on every OS (og.ui.previewViewport tries it). Omitted is false." {
+      optional true
+    }
     field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
   }
 
@@ -9909,8 +9912,8 @@ module commands {
     variant scroll "`scroll:dx,dy`: scroll at the pointer."
     variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
     variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
-    variant key_down "`key_down:<Key>`: hold a key by its code."
-    variant key_up "`key_up:<Key>`: release a key."
+    variant key_down "`key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl)."
+    variant key_up "`key_up:[Mod+]<Key>`: release a key, then the modifiers named before it."
     variant type "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone."
     variant compose "`compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it."
     variant commit "`commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends."

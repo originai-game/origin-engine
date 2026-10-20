@@ -250,10 +250,14 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "key_down",
-        "key_down:<Key>",
-        "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`.",
+        "key_down:[Mod+]<Key>",
+        "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`, with the modifiers named before it held too (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, `Ctrl+Shift+KeyZ`; Shift, Ctrl, Alt or Option, Meta or Cmd).",
     ),
-    ("key_up", "key_up:<Key>", "Release a key."),
+    (
+        "key_up",
+        "key_up:[Mod+]<Key>",
+        "Release a key, then the modifiers named before it.",
+    ),
     (
         "type",
         "type:<text>",
