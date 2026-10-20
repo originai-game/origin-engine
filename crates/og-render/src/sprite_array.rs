@@ -18,7 +18,11 @@ pub(crate) const OVERLAY_ARRAY_WGSL: &str = include_str!("../shaders/overlay_arr
 
 /// The module's source as the renderer compiles it.
 pub(crate) fn source() -> String {
-    format!("{}{SPRITE_ARRAY_WGSL}", crate::FRAME_WGSL)
+    format!(
+        "{}{}{SPRITE_ARRAY_WGSL}",
+        crate::FRAME_WGSL,
+        crate::LIGHTING_WGSL
+    )
 }
 
 /// The array sprite pipelines (alpha, additive and glow) and their group

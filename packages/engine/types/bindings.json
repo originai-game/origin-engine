@@ -1329,6 +1329,11 @@
           "tunable": true
         },
         {
+          "name": "dropShadowHeight",
+          "column": "f32",
+          "default": 0
+        },
+        {
           "name": "visible",
           "column": "bool",
           "default": true

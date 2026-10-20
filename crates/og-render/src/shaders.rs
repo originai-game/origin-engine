@@ -68,7 +68,12 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(
         "sprite",
-        format!("{}{}", crate::FRAME_WGSL, crate::SPRITE_WGSL),
+        format!(
+            "{}{}{}",
+            crate::FRAME_WGSL,
+            crate::LIGHTING_WGSL,
+            crate::SPRITE_WGSL
+        ),
     );
     add("sprite array", crate::sprite_array::source());
     add(

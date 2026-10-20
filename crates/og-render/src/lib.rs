@@ -2119,7 +2119,11 @@ impl Renderer {
             lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
         let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
-        let sprite_shader = shader(&device, "sprite", format!("{FRAME_WGSL}{SPRITE_WGSL}"));
+        let sprite_shader = shader(
+            &device,
+            "sprite",
+            format!("{FRAME_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}"),
+        );
         let ribbon_shader = shader(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
         let shadow_shader = shader(
             &device,

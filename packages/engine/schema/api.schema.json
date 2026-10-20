@@ -12854,10 +12854,16 @@
         },
         "dropShadow": {
           "type": "number",
-          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on.",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on.",
           "default": 0,
           "minimum": 0,
           "maximum": 1
+        },
+        "dropShadowHeight": {
+          "type": "number",
+          "description": "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0.",
+          "default": 0,
+          "x-og-unit": "m"
         },
         "flipX": {
           "type": "boolean",
@@ -13108,11 +13114,17 @@
         },
         "dropShadow": {
           "type": "number",
-          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set.",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set.",
           "default": 0,
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "dropShadowHeight": {
+          "type": "number",
+          "description": "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight).",
+          "default": 0,
+          "x-og-unit": "m"
         },
         "visible": {
           "type": "boolean",
