@@ -209,8 +209,11 @@ deadline catches it, after 10 s). After the pool started, a
 panic inside a lane aborts the pool Worker it runs on, so the lane never
 ends; rayon's own wait would leave the engine Worker in `Atomics.wait`
 forever. So in the lanes wasm the engine thread does not wait on rayon: it
-hands each parallel call to the pool (`rayon::spawn`) and waits on a latch
-of og-lanes' own, which the call's end or a recorded panic rings (checked
+hands each parallel call to the pool through a relay (one pool Worker that
+runs what the engine thread sends it, started by `og_lanes_ready`, since
+`rayon::spawn` from the engine thread would queue in its own one-thread
+pool once a call, a physics step below its grain, ran serially there) and
+waits on a latch of og-lanes' own, which the call's end or a recorded panic rings (checked
 every 250 ms besides). The panic hook records the lane's panic (message,
 location, tick, site) and rings it; the engine thread then panics with
 that line, traps, and the Worker reports the crash with the lane's report

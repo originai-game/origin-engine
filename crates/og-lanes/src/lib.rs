@@ -18,6 +18,11 @@
 //!   then announces with [`og_lanes_ready`];
 //! - in the single-threaded wasm, nowhere: every helper runs serially.
 //!
+//! A library built on rayon (rapier's `parallel` build, in og-physics) runs
+//! through [`install`]: on the pool when lanes are on and the call has two
+//! grains of items, otherwise on the calling thread inside a one-thread pool,
+//! so the library finds one thread and never reaches rayon's global pool.
+//!
 //! The probe's `lanes:<on|off>` switches them at run time ([`set_enabled`])
 //! and `dump_lanes` reports what the engine got ([`report`]), with the
 //! parallel calls counted per [`Site`].
@@ -31,7 +36,10 @@
 //! own, which a recorded panic also wakes, and then panics itself with the
 //! lane's message. The engine Worker therefore traps and reports the crash
 //! instead of sleeping in `Atomics.wait` for a lane that will never end
-//! (docs/web-export.md §Lanes).
+//! (docs/web-export.md §Lanes). The call goes to the pool through a relay,
+//! one pool Worker that runs whatever the engine thread sends it, since
+//! `rayon::spawn` reaches the pool its caller belongs to, and the engine
+//! thread belongs to its own one-thread pool once a call ran serially.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
@@ -50,7 +58,8 @@ pub enum Site {
     Extract,
     /// og-render's CPU frustum cull.
     Cull,
-    /// og-physics: the rapier step ([`install`]).
+    /// og-physics: the step (rapier's `parallel` build, [`install`]) and
+    /// the contact pairs it reads back.
     Physics,
 }
 
@@ -106,8 +115,7 @@ pub struct Report {
     /// Why lanes are serial, empty when they are on.
     pub why: &'static str,
     /// The helper calls that ran in parallel since the start ([`install`]
-    /// counts one call of one item, and only natively, where it hands the
-    /// work to the pool; in the wasm it runs it on the calling thread).
+    /// counts one call of the items it was given, og-physics's bodies).
     pub parallel_calls: u64,
     /// The items those calls ran.
     pub parallel_items: u64,
@@ -360,12 +368,18 @@ pub fn report() -> Report {
     }
 }
 
-fn parallel(site: Site, len: usize, grain: usize) -> bool {
-    if len < grain.max(1) * 2 || !SWITCH.load(Ordering::Relaxed) {
+/// Whether a call of `len` items splits: lanes on, and at least `tasks`
+/// grains of items (`None`: one grain for every pool thread).
+fn parallel(site: Site, len: usize, grain: usize, tasks: Option<usize>) -> bool {
+    if !SWITCH.load(Ordering::Relaxed) {
         return false;
     }
     let (threads, _, why) = imp::pool();
     if threads <= 1 || !why.is_empty() {
+        return false;
+    }
+    let tasks = tasks.unwrap_or(threads as usize).max(2);
+    if len < grain.max(1).saturating_mul(tasks) {
         return false;
     }
     count(site, len);
@@ -387,7 +401,7 @@ where
         fault(site);
         f(t)
     };
-    if parallel(site, items.len(), grain) {
+    if parallel(site, items.len(), grain, Some(2)) {
         imp::map(items, grain.max(1), f)
     } else {
         items.iter().map(f).collect()
@@ -404,7 +418,7 @@ where
         fault(site);
         f(t)
     };
-    if parallel(site, items.len(), grain) {
+    if parallel(site, items.len(), grain, Some(2)) {
         imp::for_each_mut(items, grain.max(1), f)
     } else {
         items.iter_mut().for_each(f)
@@ -421,7 +435,7 @@ where
         fault(site);
         f(i, t)
     };
-    if parallel(site, items.len(), grain) {
+    if parallel(site, items.len(), grain, Some(2)) {
         imp::for_each_indexed(items, grain.max(1), f)
     } else {
         items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
@@ -429,13 +443,106 @@ where
 }
 
 /// Runs `f` where a library built on rayon (rapier's `parallel` build, in
-/// og-physics natively) finds exactly the threads lanes allow: natively,
-/// inside the lanes pool when lanes are on and inside a one-thread pool when
-/// they are off; elsewhere on the calling thread. Such a library must give
-/// the same results on any number of threads (rapier's does under
+/// og-physics natively and in the lanes wasm) finds exactly the threads
+/// lanes allow: inside the lanes pool when lanes are on and `items` (what
+/// `f` works on: og-physics's bodies) gives every pool thread a `grain`,
+/// since such a library splits its work across all of them; otherwise on
+/// the calling thread inside a one-thread pool, so the library sees one
+/// thread and runs its serial paths without waking the pool. In the
+/// single-threaded wasm, on the calling thread. `f` is told whether it runs
+/// on the pool, so the helpers it calls can split along. Such a library
+/// must give the same results on any number of threads (rapier's does under
 /// `enhanced-determinism`; the lanes determinism test checks it).
-pub fn install<R: Send>(site: Site, f: impl FnOnce() -> R + Send) -> R {
-    imp::install(site, report().on, f)
+pub fn install<R: Send>(
+    site: Site,
+    items: usize,
+    grain: usize,
+    f: impl FnOnce(bool) -> R + Send,
+) -> R {
+    if parallel(site, items, grain, None) {
+        imp::install(move || {
+            fault(site);
+            f(true)
+        })
+    } else {
+        imp::serial(move || {
+            fault(site);
+            f(false)
+        })
+    }
+}
+
+/// The calling thread is running a lane's item: it is a pool thread, and
+/// rayon called from it reaches the pool.
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+fn in_lane() -> bool {
+    IN_LANE.try_with(|d| d.get() > 0).unwrap_or(false)
+}
+
+/// The one-thread pool of [`install`]'s serial path, natively and in the
+/// lanes wasm.
+#[cfg(any(not(target_arch = "wasm32"), target_feature = "atomics"))]
+mod one {
+    thread_local! {
+        /// One thread for a rayon library when it runs serially: the calling
+        /// thread itself (`use_current_thread`), so the work runs inline.
+        /// A pool of its own thread would cost a wake there and back on
+        /// every call, 0.1 ms at the median and milliseconds at the tail on
+        /// a loaded machine (and the wasm cannot start a thread outside
+        /// wasm-bindgen-rayon's pool). Rayon leaks such a pool's registry,
+        /// one per thread that ever calls serially; the thread belongs to it
+        /// from then on, so rayon called from it outside `install` (a query
+        /// parry splits) runs inline too, never on rayon's global pool.
+        /// Where the thread already belongs to a pool (a lane calling in),
+        /// there is none and the work runs on that pool, with the same
+        /// results.
+        static SERIAL: Option<rayon::ThreadPool> = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .use_current_thread()
+            .build()
+            .ok();
+    }
+
+    pub fn serial<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+        SERIAL.with(|serial| match serial {
+            Some(p) => p.install(f),
+            None => f(),
+        })
+    }
+}
+
+/// The lanes wasm's way onto the pool: one pool thread runs every job sent
+/// to it, so rayon inside a job reaches that pool whichever thread sent it,
+/// the engine thread included once it belongs to its one-thread pool
+/// (`rayon::spawn` would queue the job there, behind the engine thread's own
+/// wait). The relay thread runs the jobs it is sent itself and takes part in
+/// the rayon work they start, so it costs the pool no thread.
+#[cfg(any(test, all(target_arch = "wasm32", target_feature = "atomics")))]
+mod relay {
+    use std::sync::mpsc;
+
+    pub type Job = Box<dyn FnOnce() + Send + 'static>;
+
+    pub struct Relay(mpsc::Sender<Job>);
+
+    impl Relay {
+        /// Starts the relay on the thread `spawn` hands its loop to.
+        pub fn start(spawn: impl FnOnce(Job)) -> Relay {
+            let (tx, rx) = mpsc::channel::<Job>();
+            spawn(Box::new(move || {
+                for job in rx {
+                    job();
+                }
+            }));
+            Relay(tx)
+        }
+
+        pub fn send(&self, job: Job) {
+            self.0
+                .send(job)
+                .expect("the relay runs as long as the pool does");
+        }
+    }
 }
 
 #[cfg(any(not(target_arch = "wasm32"), target_feature = "atomics"))]
@@ -512,32 +619,13 @@ mod imp {
         }
     }
 
-    thread_local! {
-        /// One thread for a rayon library when lanes are off: the calling
-        /// thread itself (`use_current_thread`), so the work runs inline.
-        /// A pool of its own thread would cost a wake there and back on
-        /// every call, 0.1 ms at the median and milliseconds at the tail on
-        /// a loaded machine. Rayon leaks such a pool's registry, one per
-        /// thread that ever calls with lanes off. Where the thread already
-        /// belongs to a pool (a lane calling in), there is none and the
-        /// work runs on that pool, with the same results.
-        static SERIAL: Option<rayon::ThreadPool> = rayon::ThreadPoolBuilder::new()
-            .num_threads(1)
-            .use_current_thread()
-            .build()
-            .ok();
-    }
+    pub use super::one::serial;
 
-    pub fn install<R: Send>(site: super::Site, on: bool, f: impl FnOnce() -> R + Send) -> R {
-        if on && let Some(p) = &pool_of().0 {
-            // One call of one item handed to the pool.
-            super::count(site, 1);
-            return p.install(f);
+    pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+        match &pool_of().0 {
+            Some(p) => p.install(|| super::lane(f)),
+            None => serial(f),
         }
-        SERIAL.with(|serial| match serial {
-            Some(p) => p.install(f),
-            None => f(),
-        })
     }
 
     fn pooled<R: Send>(f: impl FnOnce() -> R + Send) -> R {
@@ -570,18 +658,28 @@ mod imp {
 
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 mod imp {
+    use std::sync::OnceLock;
     use std::sync::atomic::{AtomicU32, Ordering};
     use wasm_bindgen::prelude::*;
 
     /// The Worker pool's threads once it is running, 0 before.
     static READY: AtomicU32 = AtomicU32::new(0);
+    static RELAY: OnceLock<super::relay::Relay> = OnceLock::new();
 
+    pub use super::one::serial;
     pub use wasm_bindgen_rayon::init_thread_pool;
 
     /// Called by the engine Worker once `initThreadPool(threads)` resolved:
-    /// from then on lanes run on the pool.
+    /// starts the relay on the pool (`rayon::spawn` from the engine thread,
+    /// which belongs to no pool yet) and from then on lanes run there.
     #[wasm_bindgen]
     pub fn og_lanes_ready(threads: u32) {
+        if rayon::current_thread_index().is_some() {
+            // The engine thread already ran rayon work serially, so
+            // `rayon::spawn` would not reach the pool: lanes stay off.
+            return;
+        }
+        RELAY.get_or_init(|| super::relay::Relay::start(rayon::spawn));
         READY.store(threads, Ordering::Relaxed);
     }
 
@@ -592,13 +690,19 @@ mod imp {
         }
     }
 
-    /// On the pool, the calling thread waiting at the lane boundary
-    /// (`super::guard`): a lane's panic aborts its Worker, and the engine
-    /// thread then panics with its message instead of waiting forever.
+    /// On the pool through the relay, the calling thread waiting at the
+    /// lane boundary (`super::guard`): a lane's panic aborts its Worker, and
+    /// the engine thread then panics with its message instead of waiting
+    /// forever. A call from inside a lane (a pool Worker: og-physics's step
+    /// reading its contacts back) is already on the pool and runs there.
     fn guarded<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+        if super::in_lane() {
+            return f();
+        }
+        let relay = RELAY.get().expect("lanes split only once the relay runs");
         // SAFETY: the wasm aborts on a panic, so the engine thread never
         // returns to the frame `f` borrows from once it panicked.
-        unsafe { super::guard::run(|job| rayon::spawn(job), f) }
+        unsafe { super::guard::run(|job| relay.send(job), f) }
     }
 
     pub fn map<T: Sync, R: Send, F: Fn(&T) -> R + Sync + Send>(
@@ -621,8 +725,8 @@ mod imp {
         guarded(|| super::par::for_each_indexed(items, grain, f))
     }
 
-    pub fn install<R: Send>(_site: super::Site, _on: bool, f: impl FnOnce() -> R + Send) -> R {
-        f()
+    pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+        guarded(|| super::lane(f))
     }
 }
 
@@ -651,7 +755,11 @@ mod imp {
         items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
     }
 
-    pub fn install<R>(_site: super::Site, _on: bool, f: impl FnOnce() -> R) -> R {
+    pub fn install<R>(f: impl FnOnce() -> R) -> R {
+        f()
+    }
+
+    pub fn serial<R>(f: impl FnOnce() -> R) -> R {
         f()
     }
 }
@@ -791,5 +899,98 @@ mod tests {
 
     fn report_on() -> bool {
         report().on
+    }
+
+    fn physics_calls() -> SiteCount {
+        report().sites[Site::Physics as usize]
+    }
+
+    /// Below a grain of items for every pool thread `install` never wakes
+    /// the pool: the library finds one thread (its serial paths) on the
+    /// calling thread; from there, with lanes on, it finds the pool and the
+    /// call is counted with its items. Only this test uses the physics site.
+    #[test]
+    fn install_splits_from_two_grains_and_runs_inline_below() {
+        // The last parallel site names a lane's panic: none of the panic tests' meanwhile.
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        let caller = std::thread::current().id();
+        let enough = 128 * report().threads.max(2) as usize;
+        let before = physics_calls();
+        let (threads, thread, pooled) = install(Site::Physics, enough - 1, 128, |pooled| {
+            (
+                rayon::current_num_threads(),
+                std::thread::current().id(),
+                pooled,
+            )
+        });
+        assert_eq!((threads, thread, pooled), (1, caller, false));
+        assert_eq!(physics_calls(), before);
+        // Rayon called on this thread outside `install` stays on it too.
+        assert_eq!(rayon::current_num_threads(), 1);
+
+        let on = report_on();
+        let (threads, sum, pooled) = install(Site::Physics, enough, 128, |pooled| {
+            use rayon::prelude::*;
+            let sum: u64 = (0..10_000u64).into_par_iter().map(|i| i * i).sum();
+            (rayon::current_num_threads(), sum, pooled)
+        });
+        assert_eq!(sum, (0..10_000u64).map(|i| i * i).sum::<u64>());
+        assert_eq!(pooled, on);
+        let after = physics_calls();
+        if on {
+            assert_eq!(threads as u32, report().threads);
+            assert_eq!(after.calls, before.calls + 1);
+            assert_eq!(after.items, before.items + enough as u64);
+        } else {
+            assert_eq!((threads, after), (1, before));
+        }
+    }
+
+    /// The lanes wasm's path onto the pool, on a native pool: a caller that
+    /// belongs to its own one-thread pool (as the engine thread does once a
+    /// call ran serially) sends a job through the relay, and rayon inside
+    /// the job runs on the relay's pool, whose threads all take part.
+    #[test]
+    fn the_relay_reaches_its_pool_from_a_thread_in_another() {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
+        let relay = relay::Relay::start(|job| pool.spawn(job));
+        // The latch also wakes on a recorded panic: none of another test's.
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        clear_panic();
+        std::thread::spawn(move || {
+            assert_eq!(one::serial(rayon::current_num_threads), 1);
+            assert_eq!(rayon::current_num_threads(), 1, "in the one-thread pool");
+            for _ in 0..3 {
+                // SAFETY: nothing here panics, so the job ends before this returns.
+                let (threads, workers, sum) = unsafe {
+                    guard::run(
+                        |job| relay.send(job),
+                        || {
+                            use rayon::prelude::*;
+                            let seen = std::sync::Mutex::new(std::collections::BTreeSet::new());
+                            let sum: u64 = (0..4096u32)
+                                .into_par_iter()
+                                .with_max_len(16)
+                                .map(|i| {
+                                    seen.lock().unwrap().insert(rayon::current_thread_index());
+                                    std::thread::sleep(Duration::from_micros(20));
+                                    u64::from(i)
+                                })
+                                .sum();
+                            let workers = seen.into_inner().unwrap().len();
+                            (rayon::current_num_threads(), workers, sum)
+                        },
+                    )
+                };
+                assert_eq!(threads, 4);
+                assert!(workers > 1, "{workers} pool thread(s) took part");
+                assert_eq!(sum, 4095 * 4096 / 2);
+            }
+        })
+        .join()
+        .unwrap();
     }
 }

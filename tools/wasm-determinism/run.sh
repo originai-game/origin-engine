@@ -12,8 +12,10 @@
 #
 # Builds: host debug, host release, wasm32 release (scalar), wasm32 release
 # with +simd128. The host release runs twice, lanes off (OG_LANES=off) and
-# on (OG_LANES=4: the rapier step on four threads, crates/og-lanes; the
-# walk's few skeletons stay below og-anim's grain, the native lanes test
+# on (OG_LANES=4: the 1,000-body pen's rapier step on four threads,
+# crates/og-lanes, while the beyond scenario's few bodies stay below
+# og-physics's grain and step serially; the walk's few skeletons stay
+# below og-anim's grain, the native lanes test
 # packages/engine/tests/lanes.test.ts splits a crowd), and the lanes run
 # must have run in parallel, so the comparison is never between two serial
 # runs. Needs cargo, the wasm32-unknown-unknown target and node.
@@ -90,10 +92,11 @@ if [ -n "$report" ]; then
     printf 'glam is built with `scalar-math`; the math digest covers `og_core::math`\n'
     printf 'and glam Vec3A/Vec4/Quat/Mat4 arithmetic (1.4M results); the world is\n'
     printf '`crates/og-ecs/tests/support/bouncing_boxes.rs`, seed 42, 3600 ticks.\n'
-    printf 'The host release runs with lanes off and on (crates/og-lanes: the rapier\n'
-    printf "step on a four-thread pool; the walk's few skeletons stay below og-anim's\n"
+    printf 'The host release runs with lanes off and on (crates/og-lanes: the\n'
+    printf "1,000-body pen's rapier step on a four-thread pool, the beyond scenario\n"
+    printf "below og-physics's grain; the walk's few skeletons stay below og-anim's\n"
     printf 'grain, so animation runs serially either way); the wasm builds are\n'
-    printf 'single-threaded.\n\n'
+    printf 'single-threaded, with rapier built without its parallel feature.\n\n'
     printf '| build | math digest | bouncing boxes world_hash | physics world hashes | anim world hash and retarget |\n|---|---|---|---|---|\n'
     printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5 }'
     printf '\n'

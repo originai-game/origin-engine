@@ -150,6 +150,9 @@ fn local_pose(c: &Collider, scale: Vec3) -> rp::Pose {
 /// deeper, it keeps moving so the solver can push it out.
 const REST_PENETRATION: f32 = 0.002;
 
+/// The contact pairs of one lane task when the step reads them back.
+const PAIR_GRAIN: usize = 512;
+
 /// `v` without the components its body's `lock` bits forbid.
 fn unlocked(v: Velocity, lock: u32) -> Velocity {
     let keep = |bit: u32, x: f32| if lock & bit != 0 { 0.0 } else { x };
@@ -326,6 +329,15 @@ fn insert_body(
 /// Brings the persistent rapier world in line with `scene`, steps it
 /// `substeps` times and reads the dynamic bodies and the touching pairs
 /// back. On an error `sim` is left half-updated; the caller drops it.
+///
+/// All of it runs where og-lanes puts it: from [`crate::BODY_GRAIN`] bodies
+/// for every lane thread, on the lanes pool (natively and in the lanes
+/// wasm), where rapier's `parallel` build splits its broad phase, narrow
+/// phase and solver and the contact readout splits by pairs; below that,
+/// and with lanes off, on the calling thread, where rapier finds one thread
+/// and runs serially. Rapier computes the same bits on any number of
+/// threads (`enhanced-determinism`, its solver's layout fixed for eight
+/// workers whatever the pool), so the world is the same either way.
 pub(crate) fn step(
     settings: &Physics,
     dt: f32,
@@ -333,6 +345,27 @@ pub(crate) fn step(
     scene: &Scene,
     shared: &mut Shared,
     sim: &mut Sim,
+) -> Result<StepOut> {
+    // The bodies this tick steps, or last tick's when ragdolls and vehicles
+    // added their own.
+    let bodies = scene.bodies.len().max(sim.world.bodies.len());
+    og_lanes::install(
+        og_lanes::Site::Physics,
+        bodies,
+        crate::BODY_GRAIN,
+        |split| step_here(settings, dt, tick, scene, shared, sim, split),
+    )
+}
+
+/// [`step`] on the thread `install` chose; `split` when that is the pool.
+fn step_here(
+    settings: &Physics,
+    dt: f32,
+    tick: u64,
+    scene: &Scene,
+    shared: &mut Shared,
+    sim: &mut Sim,
+    split: bool,
 ) -> Result<StepOut> {
     let substeps = settings.substeps.clamp(1, 16);
     let mut out = StepOut::default();
@@ -346,16 +379,11 @@ pub(crate) fn step(
     ext::water(scene, settings, dt, sim, &handles, &mut out)?;
     let pre = rest_poses(scene, sim, &handles);
 
-    // On the lanes pool natively (rapier's parallel build), on one thread
-    // when lanes are off and in the wasm; the same result either way.
-    let world = &mut sim.world;
-    og_lanes::install(og_lanes::Site::Physics, || {
-        for _ in 0..substeps {
-            world.step();
-        }
-    });
+    for _ in 0..substeps {
+        sim.world.step();
+    }
 
-    let (touching, moved) = after_step(settings, scene, sim, &handles, pre);
+    let (touching, moved) = after_step(settings, scene, sim, &handles, pre, split);
     out.touching = touching;
     out.moved = moved;
     ext::characters(scene, settings, dt, sim, &poses, &mut out)?;
@@ -517,6 +545,7 @@ fn after_step(
     sim: &mut Sim,
     handles: &BTreeMap<u64, rp::RigidBodyHandle>,
     before: Vec<rp::Pose>,
+    split: bool,
 ) -> (
     Vec<(Contact, Vec3, Vec3)>,
     Vec<Option<(Vec3, Quat, Option<Velocity>)>>,
@@ -526,12 +555,19 @@ fn after_step(
         bodies: tracked,
         ..
     } = sim;
-    let mut touching = Vec::new();
-    for pair in w.narrow_phase.contact_pairs() {
-        if !pair.has_any_active_contact() {
-            continue;
-        }
-        let (c1, c2) = (&w.colliders[pair.collider1], &w.colliders[pair.collider2]);
+    // The solid pairs: each one's contact (its entities in order, the
+    // deepest point and normal), its deepest penetration and the bodies it
+    // touches, by pair on the lanes when the step is on them; in pair order
+    // either way.
+    let pairs: Vec<&rp::ContactPair> = w
+        .narrow_phase
+        .contact_pairs()
+        .filter(|pair| pair.has_any_active_contact())
+        .collect();
+    let grain = if split { PAIR_GRAIN } else { pairs.len() };
+    let colliders = &w.colliders;
+    let read = og_lanes::map(og_lanes::Site::Physics, &pairs, grain, |pair| {
+        let (c1, c2) = (&colliders[pair.collider1], &colliders[pair.collider2]);
         let (e1, e2) = (entity_of(c1).to_bits(), entity_of(c2).to_bits());
         let (mut point, mut normal) = (Vec3::ZERO, Vec3::ZERO);
         if let Some((manifold, contact)) = pair.find_deepest_contact() {
@@ -543,7 +579,30 @@ fn after_step(
         } else {
             (e2, e1, -normal)
         };
-        touching.push((Contact { a, b, sensor: 0 }, point, normal));
+        let depth = pair
+            .manifolds()
+            .iter()
+            .flat_map(|m| m.points.iter().map(|p| p.dist))
+            .fold(f32::INFINITY, f32::min);
+        let body = |c: &rp::Collider| c.parent().map(|p| p.into_raw_parts().0 as usize);
+        (
+            (Contact { a, b, sensor: 0 }, point, normal),
+            depth,
+            [body(c1), body(c2)],
+        )
+    });
+    // The deepest penetration of each body that has a solid contact, by
+    // body handle index.
+    let mut deepest: Vec<Option<f32>> = Vec::new();
+    let mut touching = Vec::with_capacity(read.len());
+    for (contact, depth, parents) in read {
+        touching.push(contact);
+        for i in parents.into_iter().flatten() {
+            if i >= deepest.len() {
+                deepest.resize(i + 1, None);
+            }
+            deepest[i] = Some(deepest[i].map_or(depth, |x| x.min(depth)));
+        }
     }
     for (h1, h2, intersecting) in w.narrow_phase.intersection_pairs() {
         if !intersecting {
@@ -570,28 +629,6 @@ fn after_step(
     }
     touching.sort_by_key(|t| t.0);
 
-    // The deepest penetration of each body that has a solid contact, by
-    // body handle index.
-    let mut deepest: Vec<Option<f32>> = Vec::new();
-    for pair in w.narrow_phase.contact_pairs() {
-        if !pair.has_any_active_contact() {
-            continue;
-        }
-        let depth = pair
-            .manifolds()
-            .iter()
-            .flat_map(|m| m.points.iter().map(|p| p.dist))
-            .fold(f32::INFINITY, f32::min);
-        for c in [pair.collider1, pair.collider2] {
-            if let Some(parent) = w.colliders[c].parent() {
-                let i = parent.into_raw_parts().0 as usize;
-                if i >= deepest.len() {
-                    deepest.resize(i + 1, None);
-                }
-                deepest[i] = Some(deepest[i].map_or(depth, |x| x.min(depth)));
-            }
-        }
-    }
     let rest = settings.rest_speed;
     let mut before = before.into_iter();
     let mut moved = Vec::with_capacity(scene.bodies.len());

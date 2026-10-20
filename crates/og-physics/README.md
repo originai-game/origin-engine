@@ -82,6 +82,49 @@ its residual velocity.
 Meshes are assets, not world state: register them again in a fresh engine
 before or after restoring.
 
+
+## The step on the lanes
+
+The whole step (bringing the rapier world in line, rapier's step, the
+contact and body readout, characters, platformers, soft bodies) runs inside
+`og_lanes::install` at the `physics` site. A world of at least `BODY_GRAIN`
+(200) bodies for every lane thread (800 on four lanes, 1,600 on eight) steps
+on the lanes pool: rapier's `parallel` build splits its broad phase, narrow
+phase and staged solver across the pool's threads, and the readout of the
+contact pairs splits by 512 pairs a task (`og_lanes::map`). Below that, and
+with lanes off, the step runs on the calling thread inside its one-thread
+pool, where rapier finds one thread and takes its serial paths, so a small
+world never pays for waking the pool. The pool is rayon natively and
+wasm-bindgen-rayon's Workers in the lanes wasm (rapier is built with
+`parallel` there too, `cfg(target_feature = "atomics")`); the
+single-threaded wasm builds rapier without it.
+
+Why the world is the same on any number of threads: rapier under
+`enhanced-determinism` promises bitwise-identical results for any pool size
+and between its `parallel` and sequential builds (its
+`tests/thread_count_determinism.rs` and `tests/parallel_path_parity.rs`):
+its solver lays constraints out for a fixed eight workers whatever the pool
+has, its parallel passes write to precomputed disjoint slots or concatenate
+in the sequential order, and its narrow phase applies pair transitions in a
+fixed order. og-physics's own split, the contact readout, is a map whose
+results come back in pair order and are folded serially (the deepest
+penetration per body is a minimum). What checks it here:
+`tests/pile.rs` (a pen of the pile's bodies large enough for the pool,
+stepped with lanes on and off, the same world and snapshot),
+`tools/wasm-determinism` (a 1,000-body pen on the host's four-lane release
+and on the single-threaded wasm, built without `parallel`: one hash) and
+`packages/engine/tests/lanes.test.ts` (a 1,000-box pile through the native
+engine with lanes off and on four threads). The lanes wasm itself is checked
+in the browser (the same hashes as the single-threaded module).
+
+The grain was measured with `examples/lanes_costs.rs` on the M4 Pro
+(8 performance and 4 efficiency cores, a shared machine):
+`tests/evidence/P4/physics-lanes/`. Four lanes pay from about 500 bodies
+(-20 % at 1,000, -32 % at 2,000), eight only from about 1,500 (-15 % at
+2,000): rapier's stages wait for their slowest worker, and with eight
+threads some land on an efficiency core or a busy one. One grain a thread
+for both keeps eight lanes never slower than serial and leaves four lanes'
+7 to 15 % between 500 and 800 bodies serial.
 ## Beyond rigid bodies (the E5 round)
 
 Components over the same rapier world and state block (`src/schema_ext.rs`,
@@ -202,10 +245,11 @@ layering, mixing, emitters and sinks mean the same in both.
 `cargo test -p og-physics`: `bodies.rs` (write-back, events, sensors,
 layers, kinematic, locks, errors), `edits.rs` (component changes reaching
 the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
-`pile.rs` (determinism and restore; set `OG_PHYSICS_PILE_REPORT` to write
-its JSON report), and the E5 round's `joints.rs`, `controllers.rs`,
+`pile.rs` (determinism and restore, set `OG_PHYSICS_PILE_REPORT` to write
+its JSON report; lanes on and off on a pen large enough for the pool), and the E5 round's `joints.rs`, `controllers.rs`,
 `vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`, and phase 2's `fluid3d.rs`. The dev profile builds og-physics and rapier at
-`opt-level = 3`; the pile takes about 15 s.
+`opt-level = 3`; the pile takes about 15 s. `examples/lanes_costs.rs`
+times the step with lanes off and on (`OG_LANES=off|4|8`, release).
 
 ## Status 2026-10-18 (what phase 1 still owes)
 
