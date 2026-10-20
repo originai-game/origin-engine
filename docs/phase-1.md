@@ -22,8 +22,8 @@ wave's end is being measured in the `origin-engine-measure` worktree.
 
 **Wave-end figures** (the `--all` and web-reference runs at 767ecf84 in
 the measure worktree, logs not in the repository, stated here once; the
-web-reference and lavapipe bullets are completed after the WebGL2 outline
-fix below lands).
+web-reference and lavapipe bullets were completed after the WebGL2 TAA fix,
+cf5f2b9, which the first web-reference run led to).
 
 - **`scripts/check.sh --all`** at 767ecf84: 8 of 9 steps, failed at
   bun-test (fmt 3 s, clippy 46 s, wasm-build 554 s with the shipping
@@ -40,20 +40,21 @@ fix below lands).
   219 s, api-runtime 5 of 5 in 161 s, reflect-string 5 of 5 in 227 s,
   ui-text 5 of 5 in 184 s, render-style 5 of 5 in 147 s. The lane on the
   cook fix: 5 of 5 in 117 s (the section below).
-- **`scripts/check.sh web-reference`** at 767ecf84: failed in 457 s, on
-  one thing. WebGPU passed everything against `metal`: og-tests gfx 83
-  scenes (38 s), the fx-showcase stations and the looks station's 37
-  frames, the og-ui kit frames, third-person, Ember Vale, a11y 26 of 26.
-  WebGL2 passed the same (gfx 83 scenes in 60 s, a11y 26 of 26) except
-  30 of the 37 looks frames, which fail against `metal` at RMSE 0.0104 to
-  0.0461 and up to 3.1 % outliers; the seven that pass are the presets
-  without ink or material outlines, and a diff of heavy-ink-shadows is
-  all edges (the lantern's emissive sphere carries a solid outline on
-  WebGL2 and none on `metal`). Before wave 7 all 37 passed on both tiers.
-  The cause is render-style's object id in the prepass, which the WebGL2
-  (lean) path carries differently; the fix is in flight on
-  `render-style-2`, after which web-reference runs again and this bullet
-  takes its figures.
+- **`scripts/check.sh web-reference`**: passed in 379 s at cf5f2b9 (the
+  measure worktree, after the TAA still-camera fix): og-tests gfx 83
+  scenes per tier (WebGPU 31 s, WebGL2 49 s), the fx-showcase stations
+  and the looks station's 37 frames per tier (WebGL2's worst against
+  `metal` neon-vector 0.0098, paper-craft and voxel-worlds against their
+  own by design), the og-ui kit frames, third-person, Ember Vale, a11y 26
+  of 26 per tier. The first run, at 767ecf84, had failed in 457 s on one
+  thing: WebGL2's 30 ink, outline and posterize looks frames at RMSE
+  0.0104 to 0.0461 against `metal` (WebGPU passed everything). A bisect
+  in the browser put the same failure at 721886b7, 26649d4c, 6c804499 and
+  167579c6 (the same 30 frames, equal to four decimals), and no WebGL2
+  looks reference had ever existed: the looks station had never passed
+  on WebGL2 on record, so this was a defect the measurement exposed, not
+  a wave 7 regression. Its cause and fix are in the render-style round
+  two section below.
 - **Wasm** (brotli -q 11, per download, the shipping `wasm` profile) at
   767ecf84: lanes 3,496,803 B (83.4 % of 4 MiB, the largest download), 3D
   publish 3,075,241 B (73.3 %), 2D publish 2,909,811 B (69.4 %). Against
@@ -224,6 +225,59 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Wave 7, render-style round two: TAA on the GL backend (cf5f2b9)
+
+The first web-reference run of the wave (above) failed WebGL2's looks
+station on 30 of 37 frames, and a browser bisect showed the failure
+predated wave 7 (same 30 frames at 721886b7, before render parity). Three
+diagnostics in the browser, each the looks station captured on both
+tiers and WebGL2 compared against WebGPU rather than `metal`: with FXAA
+in place of TAA, 34 of 37 agree within RMSE 0.003 (the stylise chain
+renders the same on both tiers); with TAA's jitter zeroed and its
+history kept, 36 of 37 still differ; with TAA's jitter kept and its
+history discarded every frame, 34 of 37 agree. So the single jittered
+renders are identical on both tiers and the divergence is in the
+resolve's history loop on the GL backend: with a still camera the
+history crept sideways frame after frame (0 px at the left of the
+frame, 1 px in the middle, 2 px at the right), which the looks'
+posterize, ink and outlines turned into whole moved lines, while the
+plain stations absorbed it (RMSE 0.005 to 0.008 on WebGL2 against 0.001
+to 0.002 on WebGPU). The three that disagree in every diagnostic,
+paper-craft, voxel-worlds and sculpted-clay, turn on `PostEffects.ao`,
+which is GTAO on the full tier and SSAO on WebGL2 by design (og-render
+README, "Ambient occlusion by tier").
+
+- 617fb862 (93d433b6): TAA takes the pixel's centre from the window
+  position rather than the interpolated uv, for the reprojection and the
+  history read, and a pixel where nothing moved reads its own history
+  texel unfiltered. Metal: all 37 looks frames byte-identical,
+  `taa-sharp` (a sliding camera) moved by RMSE 0.00029 and was
+  re-recorded. It did not change the WebGL2 outcome.
+- cf5f2b9e: the CPU decides a still camera (the history's view-projection
+  equal to the current one within a millionth per entry) and passes it in
+  the TAA uniform; then every pixel reads its own history texel with no
+  reprojection computed on the GPU. Moving cameras keep the reprojecting
+  path. Metal byte-identical, `taa-sharp` included. On WebGL2 the looks
+  station then passes against `metal` on 35 frames (worst neon-vector
+  0.0098); paper-craft (0.0187) and voxel-worlds (0.0113) keep WebGL2
+  references of their own by the AO rule (95ea28a; sculpted-clay, 0.0062,
+  is judged against `metal`), and docs/ci.md's reference-frame rule says
+  so.
+- 17675497: the og-render README's TAA note corrected (the first commit
+  had not fixed WebGL2) and the AO-by-tier paragraph.
+
+What is not explained: why the GL backend's reprojected read of the
+history differs from WebGPU's for a view-projection that is bit-identical
+on the CPU (the shader's own motion test did not pass there). The fix
+removes the computation for the still case rather than finding the
+arithmetic difference; a moving camera on WebGL2 still takes the
+reprojecting path, and whether it drifts there is not measured (no looks
+frame moves its camera). Owed row 68.
+
+Functional lane on each merge: 617fb862 5 of 5 in 229 s, cf5f2b9e 5 of
+5 in 125 s. web-reference at cf5f2b9: 379 s, every frame (the gate
+section above).
 
 ## Wave 7, render-style (2026-10-21)
 
@@ -2908,7 +2962,8 @@ resource only the owner can give.
 | 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | open |
 | 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | open |
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |
-| 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | vulkan-cpu closed at 9bd0064 (the lavapipe pass above); the browser tiers ran at 617fb862: WebGPU passes every frame against `metal`, WebGL2 fails 30 of the 37 looks frames (TAA on the GL backend, under diagnosis; paper-craft, voxel-worlds and sculpted-clay differ by design: SSAO on WebGL2, GTAO on the full tier) |
+| 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | closed: vulkan-cpu at 9bd0064 (the lavapipe pass), the browser tiers at cf5f2b9 (web-reference 379 s, every frame; WebGL2 keeps paper-craft and voxel-worlds by design, 95ea28a) |
+| 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | open |
 
 ## 0. Rules that shape the plan
 
