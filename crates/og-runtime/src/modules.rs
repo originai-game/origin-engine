@@ -125,15 +125,18 @@ pub(crate) fn mount_front(
             SystemDesc::new(UI_BEGIN)
                 .read::<og_probe::Input>()
                 .read::<og_input::Gamepad>()
-                .read::<og_input::Pointers>(),
+                .read::<og_input::Pointers>()
+                .read::<og_input::TextInput>(),
             move |ctx| {
                 let pad = ctx.resource::<og_input::Gamepad>().ok().map(|g| *g);
                 let pointers = ctx.resource::<og_input::Pointers>().ok().map(|p| *p);
+                let typed = ctx.events::<og_input::TextInput>().unwrap_or_default();
                 let input = ctx
                     .resource::<og_probe::Input>()
                     .map(|i| InputFrame::read(&*i))
                     .unwrap_or_default()
-                    .with(pad.as_ref(), pointers.as_ref());
+                    .with(pad.as_ref(), pointers.as_ref())
+                    .with_text(&typed);
                 let viewport = viewport_of(engine_id);
                 shared.lock().begin(input, viewport);
                 BUILDING.with(|b| b.set(Some(engine_id)));
@@ -860,6 +863,15 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 Some(f) => Some(f),
                 None => skin_font(2)?,
             },
+            rounded: font("roundedFont")?,
+            fallbacks: match d["fallbackFonts"].as_array() {
+                Some(list) => list
+                    .iter()
+                    .filter_map(Value::as_f64)
+                    .map(|h| ui_font(&eng, h))
+                    .collect::<Result<Vec<_>, _>>()?,
+                None => Vec::new(),
+            },
             fallback: skin_font(3)?,
             // The locale's chain (og.i18n) stays.
             chain: Vec::new(),
@@ -998,12 +1010,12 @@ pub fn og_load_skin(world: u32, path: String) -> String {
 /// the renderer draws the other pages from the same layout.
 pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
     let index = super::assets::index_of(handle).ok_or_else(|| format!("{handle} is not a font"))?;
-    let (render, ttf) = eng
+    let (render, file) = eng
         .assets
         .borrow()
         .fonts
         .get(index)
-        .map(|f| (f.render, f.ttf.clone()))
+        .map(|f| (f.render, f.file.clone()))
         .ok_or_else(|| format!("font {handle} is not alive"))?;
     let mut rs = eng.render.borrow_mut();
     let pages = rs
@@ -1019,9 +1031,7 @@ pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
         .ok_or("the font's first page is missing")?;
     rs.ui_pages.insert(first, pages);
     let mut font = UiFont::new(first, &msdf);
-    font.metrics = font
-        .metrics
-        .with_shaper(ttf.and_then(og_ui::shape::Shaper::new));
+    font.metrics = font.metrics.with_file(file);
     Ok(font)
 }
 
@@ -1179,12 +1189,13 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
             },
             nowrap: d["nowrap"].as_bool().unwrap_or(false),
             width: size_or(&d["width"], Size::fit()),
-            font: match d["font"].as_str() {
-                Some("display") => FontRole::Display,
-                Some("mono") => FontRole::Mono,
-                _ => FontRole::Body,
-            },
+            font: d["font"]
+                .as_str()
+                .and_then(FontRole::from_name)
+                .unwrap_or(FontRole::Body),
             heading: d["heading"].as_bool().unwrap_or(false),
+            ellipsis: d["ellipsis"].as_bool().unwrap_or(false),
+            max_lines: d["maxLines"].as_u64().unwrap_or(0) as u32,
         };
         ui.label(id.as_str(), &text, l)
     });
@@ -1204,11 +1215,10 @@ pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> Stri
             },
             nowrap: d["nowrap"].as_bool().unwrap_or(false),
             width: size_or(&d["width"], Size::fit()),
-            font: match d["font"].as_str() {
-                Some("display") => FontRole::Display,
-                Some("mono") => FontRole::Mono,
-                _ => FontRole::Body,
-            },
+            font: d["font"]
+                .as_str()
+                .and_then(FontRole::from_name)
+                .unwrap_or(FontRole::Body),
         };
         ui.rich_text(id.as_str(), &markup, desc)
     })
@@ -1317,17 +1327,31 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
     json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
 }
 
+pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let mut text = value;
+    let r = with_ui("og.ui.textArea", |ui| {
+        let ad = og_ui::TextAreaDesc {
+            placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
+            width: size(&d["width"]),
+            rows: d["rows"].as_u64().unwrap_or(0) as u32,
+            max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
+        };
+        ui.text_area(id.as_str(), &mut text, &ad)
+    });
+    json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
+}
+
 pub fn og_ui_counter(id: String, value: f64, desc: Option<String>) -> f64 {
     let d = desc_of(desc);
     with_ui("og.ui.counter", |ui| {
         let t = *ui.theme();
         let c = og_ui::CounterDesc {
             step: d["step"].as_str().and_then(|s| step(&t, s)),
-            font: match d["font"].as_str() {
-                Some("display") => FontRole::Display,
-                Some("mono") => FontRole::Mono,
-                _ => FontRole::Body,
-            },
+            font: d["font"]
+                .as_str()
+                .and_then(FontRole::from_name)
+                .unwrap_or(FontRole::Body),
             color: paint(&t, &d["color"]),
             align: match d["align"].as_str() {
                 Some("center") => TextAlign::Center,

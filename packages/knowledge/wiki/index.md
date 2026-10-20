@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-853 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+857 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -575,6 +575,7 @@ Field units the docs and Tune use.
 | [`og.terrain.sample`](terrain.md#fn-sample) | function | terrain | `og_terrain_sample` |
 | [`og.terrain.setLayer`](terrain.md#fn-setLayer) | function | terrain | `og_terrain_set_layer` |
 | [`og.TerrainScatter`](terrain.md#record-TerrainScatter) | component | terrain | — |
+| [`og.TextInput`](input.md#record-TextInput) | event | input | — |
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
 | [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |
@@ -687,6 +688,7 @@ Field units the docs and Tune use.
 | [`og.ui.spotlight`](ui.md#fn-spotlight) | function | ui | `og_ui_spotlight` |
 | [`og.ui.stepper`](ui.md#fn-stepper) | function | ui | `og_ui_stepper` |
 | [`og.ui.tabs`](ui.md#fn-tabs) | function | ui | `og_ui_tabs` |
+| [`og.ui.textArea`](ui.md#fn-textArea) | function | ui | `og_ui_text_area` |
 | [`og.ui.textField`](ui.md#fn-textField) | function | ui | `og_ui_text_field` |
 | [`og.ui.theme`](ui.md#fn-theme) | function | ui | `og_ui_theme` |
 | [`og.ui.tick`](ui.md#fn-tick) | function | ui | `og_ui_tick` |
@@ -899,7 +901,9 @@ Field units the docs and Tune use.
 | [`TerrainSample`](terrain.md#type-TerrainSample) | struct | terrain | — |
 | [`TerrainSampleDesc`](terrain.md#type-TerrainSampleDesc) | desc struct | terrain | — |
 | [`TextAlign`](ui.md#type-TextAlign) | enum | ui | — |
+| [`TextAreaDesc`](ui.md#type-TextAreaDesc) | desc struct | ui | — |
 | [`TextDesc`](render.md#type-TextDesc) | desc struct | render | — |
+| [`TextEntry`](input.md#type-TextEntry) | struct | input | — |
 | [`TextMeasureDesc`](render.md#type-TextMeasureDesc) | desc struct | render | — |
 | [`TextMetrics`](render.md#type-TextMetrics) | struct | render | — |
 | [`Texture`](render.md#type-Texture) | handle | render | — |

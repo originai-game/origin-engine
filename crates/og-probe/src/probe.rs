@@ -655,7 +655,8 @@ impl Probe {
                 }
                 InjectedInput::Pointer { .. }
                 | InjectedInput::Key { .. }
-                | InjectedInput::Gamepad(_) => {}
+                | InjectedInput::Gamepad(_)
+                | InjectedInput::Text { .. } => {}
             }
         }
         accepted
@@ -983,30 +984,51 @@ impl Probe {
                 if joined.is_empty() {
                     return Err("missing argument; write `type:<text>`".into());
                 }
-                let mut skipped = Vec::new();
+                // Per character, one tick apart from the next by two: the
+                // key that types it (a press: down one tick, up the next,
+                // Shift for capitals and symbols) and the character itself
+                // as typed text (og.TextInput), which a text field inserts;
+                // a character no key types (é, 中) is typed text alone.
                 let mut at = tick;
                 for c in joined.chars() {
-                    let Some((key, shift)) = key_for_char(c) else {
-                        skipped.push(c);
-                        continue;
-                    };
-                    let event = InjectedInput::Key {
-                        key,
-                        action: KeyAction::Press,
-                        modifiers: Modifiers {
-                            shift,
-                            ..Modifiers::default()
-                        },
-                    };
-                    // One press per two ticks: down for one tick, up for the next.
+                    if let Some((key, shift)) = key_for_char(c) {
+                        let event = InjectedInput::Key {
+                            key,
+                            action: KeyAction::Press,
+                            modifiers: Modifiers {
+                                shift,
+                                ..Modifiers::default()
+                            },
+                        };
+                        self.seq += 1;
+                        self.queue.insert((at, self.seq), Queued::Inject(event));
+                    }
                     self.seq += 1;
-                    self.queue.insert((at, self.seq), Queued::Inject(event));
+                    self.queue.insert(
+                        (at, self.seq),
+                        Queued::Inject(InjectedInput::Text {
+                            text: c.to_string(),
+                            composing: false,
+                        }),
+                    );
                     at += 2;
                 }
-                if skipped.is_empty() {
+                Ok(())
+            }
+            "compose" | "commit" => {
+                // An input method: `compose` shows its composition so far
+                // (empty ends it), `commit` inserts the committed text.
+                let event = InjectedInput::Text {
+                    text: joined.clone(),
+                    composing: step.action == "compose",
+                };
+                if step.action == "commit" && joined.is_empty() {
+                    return Err("missing argument; write `commit:<text>`".into());
+                }
+                if self.deliver(world, &event) {
                     Ok(())
                 } else {
-                    Err(format!("no key types {skipped:?}; the rest is typed"))
+                    Err("the input layer refused the text (no og.TextInput in this world)".into())
                 }
             }
             "teleport" => {

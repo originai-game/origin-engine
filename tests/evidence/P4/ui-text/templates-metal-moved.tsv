@@ -1,0 +1,49 @@
+templates/archetypes/idle/references/metal/card.png	moved	0.01% px	0.002% outliers	RMSE 0.00077	box 778,356-815,365
+templates/archetypes/idle/references/metal/orbit.png	moved	0.03% px	0.018% outliers	RMSE 0.00380	box 69,25-114,40
+templates/archetypes/match3/references/metal/cascade.png	moved	0.01% px	0.001% outliers	RMSE 0.00079	box 452,96-642,552
+templates/archetypes/match3/references/metal/clearing.png	moved	0.00% px	0.000% outliers	RMSE 0.00016	box -,---,-
+templates/archetypes/match3/references/metal/dealt.png	moved	0.00% px	0.000% outliers	RMSE 0.00004	box -,---,-
+templates/archetypes/rhythm/references/metal/highway.png	moved	0.14% px	0.050% outliers	RMSE 0.00743	box 34,30-1145,485
+templates/archetypes/rhythm/references/metal/results.png	moved	0.25% px	0.119% outliers	RMSE 0.01103	box 457,188-750,526
+templates/archetypes/rhythm/references/metal/title.png	moved	0.49% px	0.284% outliers	RMSE 0.01884	box 493,191-786,521
+templates/archetypes/roguelike/references/metal/dive.png	moved	0.01% px	0.002% outliers	RMSE 0.00077	box 34,30-1154,698
+templates/archetypes/roguelike/references/metal/over.png	moved	0.07% px	0.004% outliers	RMSE 0.00137	box 469,200-815,477
+templates/archetypes/roguelike/references/metal/title.png	moved	0.07% px	0.003% outliers	RMSE 0.00123	box 506,248-771,459
+templates/archetypes/runner/references/metal/frames-coin.png	moved	0.02% px	0.001% outliers	RMSE 0.00068	box 547,192-770,212
+templates/archetypes/runner/references/metal/frames-crash.png	moved	0.01% px	0.001% outliers	RMSE 0.00064	box 527,118-550,126
+templates/archetypes/runner/references/metal/frames-title.png	moved	0.07% px	0.001% outliers	RMSE 0.00106	box 564,183-750,309
+templates/archetypes/topdown/references/metal/crit.png	moved	0.00% px	0.000% outliers	RMSE 0.00018	box 1175,37-1175,37
+templates/archetypes/topdown/references/metal/dash.png	moved	0.00% px	0.000% outliers	RMSE 0.00018	box 1175,37-1175,37
+templates/archetypes/topdown/references/metal/east.png	moved	0.00% px	0.000% outliers	RMSE 0.00017	box 1175,37-1175,37
+templates/archetypes/topdown/references/metal/start.png	moved	0.00% px	0.000% outliers	RMSE 0.00018	box 1175,37-1175,37
+templates/archetypes/tower-defense/references/metal/end.png	moved	0.43% px	0.192% outliers	RMSE 0.01466	box 475,212-729,503
+templates/archetypes/tower-defense/references/metal/title.png	moved	0.68% px	0.284% outliers	RMSE 0.02249	box 494,256-786,470
+templates/archetypes/tower-defense/references/metal/wave.png	moved	0.10% px	0.048% outliers	RMSE 0.00563	box 1135,32-1235,387
+templates/fx-showcase/references/metal/2d.png	moved	0.19% px	0.118% outliers	RMSE 0.01254	box 42,27-1251,690
+templates/fx-showcase/references/metal/cloth.png	moved	0.21% px	0.122% outliers	RMSE 0.01013	box 69,29-1251,690
+templates/fx-showcase/references/metal/controller.png	moved	0.25% px	0.149% outliers	RMSE 0.01027	box 68,29-1251,690
+templates/fx-showcase/references/metal/fluid.png	moved	0.21% px	0.133% outliers	RMSE 0.01472	box 68,27-1251,690
+templates/fx-showcase/references/metal/fluids.png	moved	0.22% px	0.141% outliers	RMSE 0.01471	box 67,27-1251,690
+templates/fx-showcase/references/metal/fluids3d.png	moved	0.21% px	0.125% outliers	RMSE 0.01164	box 111,29-1251,690
+templates/fx-showcase/references/metal/fx.png	moved	0.18% px	0.116% outliers	RMSE 0.01362	box 42,27-1251,690
+templates/fx-showcase/references/metal/joints.png	moved	0.22% px	0.116% outliers	RMSE 0.00910	box 68,29-1251,690
+templates/fx-showcase/references/metal/lens.png	moved	0.20% px	0.112% outliers	RMSE 0.00875	box 42,29-1251,690
+templates/fx-showcase/references/metal/lights.png	moved	0.19% px	0.124% outliers	RMSE 0.01486	box 111,27-1251,690
+templates/fx-showcase/references/metal/materials.png	moved	0.22% px	0.128% outliers	RMSE 0.01133	box 111,29-1251,690
+templates/fx-showcase/references/metal/moon.png	moved	0.18% px	0.115% outliers	RMSE 0.01424	box 111,27-1251,690
+templates/fx-showcase/references/metal/physical.png	moved	0.21% px	0.121% outliers	RMSE 0.00971	box 69,29-1251,690
+templates/fx-showcase/references/metal/post.png	moved	0.20% px	0.113% outliers	RMSE 0.00908	box 42,29-1251,690
+templates/fx-showcase/references/metal/ragdoll2d.png	moved	0.26% px	0.178% outliers	RMSE 0.01470	box 67,29-1251,690
+templates/fx-showcase/references/metal/retarget.png	moved	0.24% px	0.141% outliers	RMSE 0.01018	box 69,29-1251,690
+templates/fx-showcase/references/metal/rope.png	moved	0.20% px	0.110% outliers	RMSE 0.00887	box 68,29-1251,690
+templates/fx-showcase/references/metal/shaders.png	moved	0.23% px	0.132% outliers	RMSE 0.00920	box 68,29-1251,690
+templates/fx-showcase/references/metal/skinned.png	moved	0.20% px	0.117% outliers	RMSE 0.00885	box 112,29-1251,690
+templates/fx-showcase/references/metal/sky.png	moved	0.19% px	0.107% outliers	RMSE 0.01011	box 68,29-1251,690
+templates/fx-showcase/references/metal/stylised.png	moved	0.23% px	0.136% outliers	RMSE 0.00951	box 42,29-1251,690
+templates/fx-showcase/references/metal/terrain.png	moved	0.21% px	0.128% outliers	RMSE 0.00978	box 69,29-1251,690
+templates/fx-showcase/references/metal/water.png	moved	0.21% px	0.117% outliers	RMSE 0.00882	box 68,29-1251,690
+templates/fx-showcase/references/metal/weather.png	moved	0.23% px	0.139% outliers	RMSE 0.01058	box 68,29-1251,690
+templates/archetypes/third-person/references/metal/beacon.png	moved	0.06% px changed	0.018% outliers	RMSE 0.00383
+templates/archetypes/third-person/references/metal/dawn.png	moved	0.38% px changed	0.148% outliers	RMSE 0.01324
+templates/archetypes/third-person/references/metal/title.png	moved	0.91% px changed	0.545% outliers	RMSE 0.03599
+templates/fx-showcase/references/metal/environment.png	moved	0.23% px	0.146% outliers	RMSE 0.01237	(against main 20a6d47's fresh frame)

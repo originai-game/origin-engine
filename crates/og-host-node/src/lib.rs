@@ -361,6 +361,8 @@ pub fn og_node_views_mode() -> String {
 struct OffscreenBackend {
     renderer: og_render::Renderer,
     tier: String,
+    /// The last frame's `FrameStats::missing_glyphs`.
+    missing: u32,
 }
 
 impl RenderBackend for OffscreenBackend {
@@ -382,8 +384,11 @@ impl RenderBackend for OffscreenBackend {
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
-            .map(|_| ())
+            .map(|s| self.missing = s.missing_glyphs)
             .map_err(|e| e.to_string())
+    }
+    fn missing_glyphs(&self) -> u32 {
+        self.missing
     }
     fn capture(
         &mut self,
@@ -450,6 +455,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                 Some(Box::new(OffscreenBackend {
                     renderer,
                     tier: tier.clone(),
+                    missing: 0,
                 })),
             )?;
             Ok(tier)

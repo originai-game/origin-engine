@@ -130,7 +130,7 @@ rm -rf "$here/dist/web-publish-2d"
 mkdir -p "$here/dist/web-publish-2d"
 for v in "publish physics3d web-publish" "publish2d physics2d web-publish-2d"; do
   set -- $v
-  cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib --no-default-features --features "publish,$2" --target-dir "$target/wasm-$1"
+  cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib --no-default-features --features "publish,$2,shaping" --target-dir "$target/wasm-$1"
   wasm-bindgen --target web --out-dir "$here/dist/$3" --out-name origin-engine "$target/wasm-$1/wasm32-unknown-unknown/wasm/og_host_web.wasm"
   # What ships is optimised for size by the gate's own wasm-opt invocation
   # (scripts/wasm-opt.sh), so it is the module the size gate measures; without

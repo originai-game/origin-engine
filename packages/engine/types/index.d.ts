@@ -1207,6 +1207,18 @@ export interface WheelInput {
 }
 
 /**
+ * Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them.
+ */
+export interface TextEntry {
+  /** The text. */
+  readonly text: string;
+  /**
+   * An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text.
+   */
+  readonly composing?: boolean;
+}
+
+/**
  * One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it.
  */
 export type InjectedInput =
@@ -1217,7 +1229,9 @@ export type InjectedInput =
   /** A wheel event. */
   | ({ readonly kind: "wheel" } & WheelInput)
   /** A gamepad's state. */
-  | ({ readonly kind: "gamepad" } & GamepadInput);
+  | ({ readonly kind: "gamepad" } & GamepadInput)
+  /** Typed or composed text. */
+  | ({ readonly kind: "text" } & TextEntry);
 
 /**
  * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
@@ -1764,6 +1778,22 @@ export interface KeyDown {
    * @range -1..1
    */
   readonly at: number;
+}
+
+/**
+ * Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one.
+ *
+ * The payload of the `TextInput` event (token `og.TextInput`).
+ */
+export interface TextInput {
+  /** The text (whole characters). */
+  readonly text: string;
+  /**
+   * An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert.
+   */
+  readonly composing: boolean;
+  /** Continues the composition of the event before it (a composition longer than one event). */
+  readonly more: boolean;
 }
 
 /**
@@ -10779,12 +10809,13 @@ export type Cross = "start" | "center" | "end" | "stretch";
 export type TextAlign = "start" | "center" | "end";
 
 /**
- * Which configured font text uses; display and mono fall back to body.
+ * Which configured font text uses; display and mono fall back to body, rounded to display, then body.
  * - `"body"`: The body font.
  * - `"display"`: The display font.
  * - `"mono"`: The monospaced font.
+ * - `"rounded"`: The rounded font, for levels and scores (the design language's font-rounded).
  */
-export type FontRole = "body" | "display" | "mono";
+export type FontRole = "body" | "display" | "mono" | "rounded";
 
 /**
  * Button looks, as the design language's buttons.
@@ -11139,6 +11170,18 @@ export interface LabelDesc {
    * @default false
    */
   readonly heading?: boolean;
+  /**
+   * Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text.
+   *
+   * @default false
+   */
+  readonly ellipsis?: boolean;
+  /**
+   * The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out.
+   *
+   * @default 0
+   */
+  readonly maxLines?: number;
 }
 
 /**
@@ -11388,6 +11431,38 @@ export interface FieldDesc {
 }
 
 /**
+ * A multi-line text area.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextAreaDesc {
+  /**
+   * Shown, dimmed, while the area is empty.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Lines shown at once; 0 is 4. More scroll.
+   *
+   * @default 0
+   */
+  readonly rows?: number;
+  /**
+   * The most characters it takes, line breaks included; 0 is no limit.
+   *
+   * @default 0
+   */
+  readonly maxChars?: number;
+}
+
+/**
  * What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick.
  */
 export interface Response {
@@ -11507,6 +11582,18 @@ export interface UiDesc {
    * @default null
    */
   readonly monoFont?: Font | null;
+  /**
+   * The rounded font (levels and scores); null uses the display font, then the body font.
+   *
+   * @default null
+   */
+  readonly roundedFont?: Font | null;
+  /**
+   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole.
+   *
+   * @default []
+   */
+  readonly fallbackFonts?: readonly Font[];
   /**
    * Standard or high contrast.
    *
@@ -11775,6 +11862,7 @@ export interface RichTextResult {
   /** The link under the pointer. */
   readonly hovered: string | null;
 }
+
 
 
 
@@ -14671,7 +14759,9 @@ export interface AlertDesc {
  * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
  * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
  * - `"key_up"`: `key_up:<Key>`: release a key.
- * - `"type"`: `type:<text>`: type text, one key press per character.
+ * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone.
+ * - `"compose"`: `compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it.
+ * - `"commit"`: `commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends.
  * - `"move_to_text"`: `move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`).
  * - `"teleport"`: `teleport:<entity>:x,y,z`: set an entity's position.
  * - `"frame_entity"`: `frame_entity:<entity>`: point the camera at an entity.
@@ -14687,7 +14777,7 @@ export interface AlertDesc {
  * - `"quit"`: `quit`: exit.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -16045,6 +16135,10 @@ export declare namespace og {
    * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
    */
   const KeyDown: EventType<KeyDown>;
+  /**
+   * Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one.
+   */
+  const TextInput: EventType<TextInput>;
   /** A key went up. */
   const KeyUp: EventType<KeyUp>;
   /** A pointer button went down (or a touch landed). */
@@ -17442,13 +17536,21 @@ export declare namespace og {
      */
     function toggle(id: string, on: boolean, label: string): ToggleResult;
     /**
-     * One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
+     * One line of text: a press focuses it with the caret at the press and a drag selects; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects; Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
      *
      * @param id Its id.
      * @param value The text from game state.
      * @param desc Placeholder, width and length limit.
      */
     function textField(id: string, value: string, desc?: FieldDesc): FieldResult;
+    /**
+     * Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, the text wrapped between words at the area's width and scrolled to keep the caret's line in view. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
+     *
+     * @param id Its id.
+     * @param value The text from game state.
+     * @param desc Placeholder, width, rows and length limit.
+     */
+    function textArea(id: string, value: string, desc?: TextAreaDesc): FieldResult;
     /**
      * A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text.
      *

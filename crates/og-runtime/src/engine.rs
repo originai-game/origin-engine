@@ -1235,14 +1235,42 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let behind = eng.state.borrow().accumulator_ms;
+    let (text, copy) = text_entry(&eng);
     let probe = eng.probe.borrow();
     // `behind`: real time the accumulator holds that no tick has simulated
     // yet, so a host can place an input event within the next tick.
-    json!({
+    // `text`: the focused text control (where the page's text target goes,
+    // the selection a copy takes), `copy`: text a Ctrl/Cmd+C or X took.
+    let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
-    })
-    .to_string()
+        "text": text,
+    });
+    if let Some(c) = copy {
+        answer["copy"] = json!(c);
+    }
+    answer.to_string()
+}
+
+/// The UI's focused text control as the web shell takes it (`null`: none),
+/// and the text a copy or cut took since the last frame.
+fn text_entry(eng: &Engine) -> (Value, Option<String>) {
+    let Some(ui) = eng.state.borrow().ui.clone() else {
+        return (Value::Null, None);
+    };
+    let mut ui = ui.lock();
+    let copy = ui.take_clipboard();
+    let text = match &ui.frame().text_input {
+        Some(t) => json!({
+            "path": t.path,
+            "rect": [t.rect.x, t.rect.y, t.rect.width, t.rect.height],
+            "multiline": t.multiline,
+            "selection": t.selection,
+            "composing": t.composing,
+        }),
+        None => Value::Null,
+    };
+    (text, copy)
 }
 
 fn render(eng: &Engine) -> Result<bool, String> {
@@ -1257,6 +1285,14 @@ fn render(eng: &Engine) -> Result<bool, String> {
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {
             b.render(&rs.scene)?;
+            let missing = b.missing_glyphs();
+            if missing > 0 && !rs.missing_warned {
+                rs.missing_warned = true;
+                let which = missing_chars(&rs.scene);
+                rs.notes.push(format!(
+                    "a frame drew {missing} character(s) of text its fonts lack (FrameStats::missing_glyphs: {which}): cook them (`font {{ chars }}`) or ship the font file (`font {{ runtime true }}`)"
+                ));
+            }
         }
         std::mem::take(&mut rs.notes)
     };
@@ -1269,6 +1305,34 @@ fn render(eng: &Engine) -> Result<bool, String> {
         }
     }
     Ok(true)
+}
+
+/// The characters a scene's texts draw that their fonts lack (at most 8,
+/// as `"x" U+0078` each), for the missing-glyph warning.
+fn missing_chars(scene: &og_render::RenderScene) -> String {
+    let mut out: Vec<char> = Vec::new();
+    let texts = scene
+        .texts
+        .iter()
+        .chain(scene.overlay.iter().flat_map(|o| o.texts.iter()));
+    for t in texts {
+        let Some(font) = scene.font(t.font) else {
+            continue;
+        };
+        for c in t.text.chars() {
+            if !c.is_whitespace()
+                && !out.contains(&c)
+                && !font.glyphs.iter().any(|g| g.codepoint == c)
+            {
+                out.push(c);
+            }
+        }
+    }
+    out.iter()
+        .take(8)
+        .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// `og_engine_call`: the probe's JSON-RPC entry.

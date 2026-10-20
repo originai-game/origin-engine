@@ -825,6 +825,14 @@ module input {
     }
   }
 
+  struct TextEntry {
+    doc "Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them."
+    field text String "The text."
+    field composing bool "An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text." {
+      optional true
+    }
+  }
+
   union InjectedInput {
     doc "One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it."
     tag kind
@@ -832,6 +840,7 @@ module input {
     case pointer PointerInput "A pointer event."
     case wheel WheelInput "A wheel event."
     case gamepad GamepadInput "A gamepad's state."
+    case text TextEntry "Typed or composed text."
   }
 
   resource Input {
@@ -1167,6 +1176,13 @@ module input {
       min -1
       max 1
     }
+  }
+
+  event TextInput {
+    doc "Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one."
+    field text String "The text (whole characters)."
+    field composing bool "An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert."
+    field more bool "Continues the composition of the event before it (a composition longer than one event)."
   }
 
   event KeyUp {
@@ -7116,10 +7132,11 @@ module ui {
   }
 
   enum FontRole {
-    doc "Which configured font text uses; display and mono fall back to body."
+    doc "Which configured font text uses; display and mono fall back to body, rounded to display, then body."
     variant body "The body font."
     variant display "The display font."
     variant mono "The monospaced font."
+    variant rounded "The rounded font, for levels and scores (the design language's font-rounded)."
   }
 
   enum ButtonVariant {
@@ -7321,6 +7338,8 @@ module ui {
     field width Option.Size "Its width; null fits the text."
     field font FontRole "Which font."
     field heading bool "A heading: a skin with a flourish frames it."
+    field ellipsis bool "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text."
+    field maxLines u32 "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out."
   }
 
   struct ButtonDesc {
@@ -7399,6 +7418,15 @@ module ui {
     field maxChars u32 "The most characters it takes; 0 is no limit."
   }
 
+  struct TextAreaDesc {
+    doc "A multi-line text area."
+    desc true
+    field placeholder String "Shown, dimmed, while the area is empty."
+    field width Option.Size "Its width; null grows."
+    field rows u32 "Lines shown at once; 0 is 4. More scroll."
+    field maxChars u32 "The most characters it takes, line breaks included; 0 is no limit."
+  }
+
   struct Response {
     doc "What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick."
     field hovered bool "The pointer is over it and no other element holds the press."
@@ -7454,6 +7482,8 @@ module ui {
     field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
     field displayFont Option.Font "The display font; null uses the body font."
     field monoFont Option.Font "The monospaced font; null uses the body font."
+    field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
+    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole."
     field contrast Contrast "Standard or high contrast."
     field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
     field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
@@ -7697,10 +7727,18 @@ module ui {
   }
 
   fn textField {
-    doc "One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    doc "One line of text: a press focuses it with the caret at the press and a drag selects; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects; Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
     param id String "Its id."
     param value String "The text from game state."
     param desc FieldDesc "Placeholder, width and length limit."
+    returns FieldResult
+  }
+
+  fn textArea {
+    doc "Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, the text wrapped between words at the area's width and scrolled to keep the caret's line in view. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc TextAreaDesc "Placeholder, width, rows and length limit."
     returns FieldResult
   }
 
@@ -9424,7 +9462,9 @@ module commands {
     variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
     variant key_down "`key_down:<Key>`: hold a key by its code."
     variant key_up "`key_up:<Key>`: release a key."
-    variant type "`type:<text>`: type text, one key press per character."
+    variant type "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone."
+    variant compose "`compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it."
+    variant commit "`commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends."
     variant move_to_text "`move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`)."
     variant teleport "`teleport:<entity>:x,y,z`: set an entity's position."
     variant frame_entity "`frame_entity:<entity>`: point the camera at an entity."

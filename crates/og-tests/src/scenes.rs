@@ -918,6 +918,7 @@ pub fn load_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, Strin
         distance_range: number("distanceRange")?,
         line_height: number("lineHeight")?,
         glyphs,
+        kerning: Vec::new(),
     }))
 }
 

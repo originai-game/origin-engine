@@ -25,11 +25,8 @@ impl Rig {
             seed: 1,
         })
         .expect("world");
-        let mut probe = Probe::with_input(
-            &mut world,
-            Box::new(ProbeInput(og_input::InputLayer::new())),
-        )
-        .expect("probe");
+        // The probe's default sink is og-input's layer: og.Input as the UI reads it.
+        let mut probe = Probe::new(&mut world).expect("probe");
         let ui = SharedUi::new(ui_with_font(test_font_metrics()));
         let sample = Arc::new(Mutex::new(Sample::default()));
         let state = sample.clone();

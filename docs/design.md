@@ -169,8 +169,11 @@ lighting falls back to a forward tile table built on the CPU).
 - Particles: GPU simulation on WebGPU, CPU on GL; one emitter asset format.
 - Terrain: clipmap heightfield with splat materials. Decals: deferred-style
   projection in the forward pass.
-- Text: MSDF for UI and world text; CJK coverage through the platform's
-  subset fonts; RTL shaping through rustybuzz.
+- Text: MSDF for UI and world text, kerned from the font's GPOS pairs;
+  CJK coverage through the platform's subset fonts, and characters outside
+  a cooked charset rendered at run time from the font's outlines (`font {
+  runtime true }`); bidi (UAX #9) and shaping (Arabic, Indic) through
+  rustybuzz, behind og-ui's `shaping` feature.
 - Capture: a readback path from the render graph, used by the probe's
   `capture` on both hosts; on the web it reads the OffscreenCanvas target, so
   no `preserveDrawingBuffer`.

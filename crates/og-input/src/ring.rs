@@ -19,7 +19,12 @@
 //! 8–15); a pointer slot carries its pointer id (0 to 4) in word 8 instead.
 //! A gamepad slot is the pad's whole state: word 2 the pad, word 3
 //! connected (0 or 1), words 4–7 the axes (left x, y, right x, y), word 8
-//! the button mask, words 9–10 the triggers. A key or pointer slot carries
+//! the button mask, words 9–10 the triggers. A text slot (kind 4, an
+//! engine extension) carries word 1 0 for committed text or 1 for an input
+//! method's composition, word 2 1 when it continues the text of the slot
+//! before it (a text longer than [`TEXT_BYTES`] is split between characters
+//! over several slots, which [`drain`] joins), word 3 the UTF-8 length and
+//! the text in words 4–15. A key or pointer slot carries
 //! the event's time in words 6–7 (an f64: the page's
 //! `performance.timeOrigin + timeStamp`, ms; 0 unknown), which the Worker
 //! turns into the event's `at` (IDL `KeyInput.at`) before it injects it;
@@ -45,8 +50,10 @@ pub const SLOTS: usize = 256;
 pub const KEY_BYTES: usize = 32;
 /// The ring's size in bytes.
 pub const BYTE_LEN: usize = (HEADER_WORDS + SLOTS * SLOT_WORDS) * 4;
+/// Bytes of text a text slot holds (words 4–15).
+pub const TEXT_BYTES: usize = 48;
 /// `kind` values, by index.
-pub const KINDS: [&str; 4] = ["key", "pointer", "wheel", "gamepad"];
+pub const KINDS: [&str; 5] = ["key", "pointer", "wheel", "gamepad", "text"];
 /// `action` values, by index.
 pub const ACTIONS: [&str; 5] = ["press", "down", "up", "click", "move"];
 /// `button` values, by index.
@@ -82,6 +89,21 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
     }
     let w = |i: usize| word(slot, i);
     let f = |i: usize| f32::from_bits(w(i));
+    if w(0) == 4 {
+        let len = w(3) as usize;
+        if len > TEXT_BYTES {
+            return Err(format!("text length {}", w(3) as i32));
+        }
+        let text = std::str::from_utf8(&slot[16..16 + len])
+            .map_err(|_| "text that is not UTF-8".to_owned())?;
+        return match w(1) {
+            0 | 1 => Ok(InjectedInput::Text {
+                text: text.to_owned(),
+                composing: w(1) == 1,
+            }),
+            a => Err(format!("text action {}", a as i32)),
+        };
+    }
     let action = ACTIONS
         .get(w(1) as usize)
         .copied()
@@ -171,6 +193,17 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
     let mut slot = [0u8; SLOT_WORDS * 4];
     let index =
         |table: &[&str], name: &str| table.iter().position(|n| *n == name).unwrap_or(0) as u32;
+    if let InjectedInput::Text { text, composing } = event {
+        let mut cut = text.len().min(TEXT_BYTES);
+        while !text.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        set_word(&mut slot, 0, 4);
+        set_word(&mut slot, 1, u32::from(*composing));
+        set_word(&mut slot, 3, cut as u32);
+        slot[16..16 + cut].copy_from_slice(&text.as_bytes()[..cut]);
+        return slot;
+    }
     let (kind, action, button, xy, delta) = match event {
         InjectedInput::Key { key, action, .. } => {
             let bytes = &key.as_bytes()[..key.len().min(KEY_BYTES)];
@@ -212,6 +245,7 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             set_word(&mut slot, 10, g.triggers[1].to_bits());
             (3, 0, g.pad, (g.axes[0], g.axes[1]), (g.axes[2], g.axes[3]))
         }
+        InjectedInput::Text { .. } => unreachable!("encoded above"),
     };
     set_word(&mut slot, 0, kind);
     set_word(&mut slot, 1, action);
@@ -235,13 +269,40 @@ pub fn write(ring: &mut [u8], event: &InjectedInput) -> bool {
     if ring.len() != BYTE_LEN {
         return false;
     }
+    // A text longer than a slot takes several, the later ones continuing it.
+    let slots: Vec<[u8; SLOT_WORDS * 4]> = match event {
+        InjectedInput::Text { text, composing } => {
+            let mut out = Vec::new();
+            let mut rest = text.as_str();
+            loop {
+                let mut cut = rest.len().min(TEXT_BYTES);
+                while !rest.is_char_boundary(cut) {
+                    cut -= 1;
+                }
+                let (head, tail) = rest.split_at(cut);
+                let mut slot = encode_slot(&InjectedInput::Text {
+                    text: head.to_owned(),
+                    composing: *composing,
+                });
+                set_word(&mut slot, 2, u32::from(!out.is_empty()));
+                out.push(slot);
+                if tail.is_empty() {
+                    break out;
+                }
+                rest = tail;
+            }
+        }
+        e => vec![encode_slot(e)],
+    };
     let (w, r) = (word(ring, 0), word(ring, 1));
-    if w.wrapping_sub(r) as usize >= SLOTS {
+    if w.wrapping_sub(r) as usize + slots.len() > SLOTS {
         return false;
     }
-    let at = (HEADER_WORDS + (w as usize % SLOTS) * SLOT_WORDS) * 4;
-    ring[at..at + SLOT_WORDS * 4].copy_from_slice(&encode_slot(event));
-    set_word(ring, 0, w.wrapping_add(1));
+    for (k, slot) in slots.iter().enumerate() {
+        let at = (HEADER_WORDS + (w.wrapping_add(k as u32) as usize % SLOTS) * SLOT_WORDS) * 4;
+        ring[at..at + SLOT_WORDS * 4].copy_from_slice(slot);
+    }
+    set_word(ring, 0, w.wrapping_add(slots.len() as u32));
     true
 }
 
@@ -267,7 +328,17 @@ pub fn drain(ring: &[u8]) -> Drained {
     }
     while r != w {
         let at = (HEADER_WORDS + (r as usize % SLOTS) * SLOT_WORDS) * 4;
-        match decode_slot(&ring[at..at + SLOT_WORDS * 4]) {
+        let slot = &ring[at..at + SLOT_WORDS * 4];
+        match decode_slot(slot) {
+            // A text slot that continues the one before joins it.
+            Ok(InjectedInput::Text { text, composing })
+                if word(slot, 2) == 1
+                    && matches!(out.events.last(), Some(InjectedInput::Text { composing: c, .. }) if *c == composing) =>
+            {
+                if let Some(InjectedInput::Text { text: before, .. }) = out.events.last_mut() {
+                    before.push_str(&text);
+                }
+            }
             Ok(event) => out.events.push(event),
             Err(reason) => out.skipped.push(format!("event {r}: {reason}")),
         }

@@ -5,7 +5,11 @@
 // engine pointer id (0 the primary, 1 to 4 further touches) in word 8
 // instead. A gamepad slot (kind 3) is a pad's whole state: word 2 the pad,
 // word 3 connected, words 4-7 the axes, word 8 the button mask, words 9-10
-// the triggers. A key or pointer slot carries the event's time in words
+// the triggers. A text slot (kind 4) carries typed or composed text: word 1
+// 0 committed or 1 composing, word 2 1 when it continues the slot before it
+// (text past 48 bytes is split between characters over several slots,
+// joined again by drainRing), word 3 the UTF-8 length, the text in words
+// 4-15. A key or pointer slot carries the event's time in words
 // 6-7 (an f64: performance.timeOrigin + the event's timeStamp, ms; 0 when
 // unknown), which the Worker turns into the event's `at` within the tick.
 // Without cross-origin isolation the shell posts the same events as
@@ -44,6 +48,12 @@ export type InjectedInput =
       axes: number[];
       /** Left and right analog triggers, 0..1. */
       triggers: number[];
+    }
+  | {
+      kind: "text";
+      /** Typed text (a key's character, a paste, an IME commit), or with `composing` an input method's composition so far (empty ends it). */
+      text: string;
+      composing?: boolean;
     };
 
 export type GamepadButtonName = (typeof GAMEPAD_BUTTONS)[number];
@@ -58,7 +68,25 @@ const SLOT = 16;
 const HEADER = 2; // write index, read index (monotonic)
 export const RING_SLOTS = 256;
 
-const KINDS = ["key", "pointer", "wheel", "gamepad"] as const;
+const KINDS = ["key", "pointer", "wheel", "gamepad", "text"] as const;
+/** Bytes of text one slot holds (words 4-15). */
+const TEXT_BYTES = 48;
+
+/** UTF-8 pieces of at most TEXT_BYTES, split between characters. */
+function textPieces(text: string): Uint8Array[] {
+  const encoder = new TextEncoder();
+  const out: Uint8Array[] = [];
+  let piece = "";
+  for (const ch of text) {
+    if (encoder.encode(piece + ch).length > TEXT_BYTES) {
+      out.push(encoder.encode(piece));
+      piece = "";
+    }
+    piece += ch;
+  }
+  out.push(encoder.encode(piece));
+  return out;
+}
 const ACTIONS = ["press", "down", "up", "click", "move"] as const;
 const BUTTONS = ["none", "left", "middle", "right"] as const;
 
@@ -73,6 +101,21 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   const write = Atomics.load(ints, 0);
   const read = Atomics.load(ints, 1);
   if (write - read >= RING_SLOTS) return false;
+  if (event.kind === "text") {
+    const pieces = textPieces(event.text);
+    if (write - read + pieces.length > RING_SLOTS) return false;
+    pieces.forEach((bytes, k) => {
+      const at = HEADER + ((write + k) % RING_SLOTS) * SLOT;
+      new Int32Array(buffer, at * 4, SLOT).fill(0);
+      ints[at] = KINDS.indexOf("text");
+      ints[at + 1] = event.composing ? 1 : 0;
+      ints[at + 2] = k > 0 ? 1 : 0;
+      ints[at + 3] = bytes.length;
+      new Uint8Array(buffer, (at + 4) * 4, TEXT_BYTES).set(bytes);
+    });
+    Atomics.store(ints, 0, write + pieces.length);
+    return true;
+  }
   const at = HEADER + (write % RING_SLOTS) * SLOT;
   new Int32Array(buffer, at * 4, SLOT).fill(0);
   ints[at] = KINDS.indexOf(event.kind);
@@ -111,6 +154,14 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
   for (; read < write; read++) {
     const at = HEADER + (read % RING_SLOTS) * SLOT;
     const kind = KINDS[ints[at]!];
+    if (kind === "text") {
+      const text = new TextDecoder().decode(new Uint8Array(buffer, (at + 4) * 4, ints[at + 3]!).slice());
+      const composing = ints[at + 1] === 1;
+      const last = out[out.length - 1];
+      if (ints[at + 2] === 1 && last?.kind === "text" && (last.composing ?? false) === composing) last.text += text;
+      else out.push(composing ? { kind, text, composing } : { kind, text });
+      continue;
+    }
     if (kind === "gamepad") {
       const mask = ints[at + 8]!;
       out.push({
