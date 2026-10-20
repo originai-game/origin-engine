@@ -10,6 +10,7 @@
 
 import { og } from "@origingame/engine";
 import type { Geometry, Material, Texture, Vector3 as Vec3, World } from "@origingame/engine";
+import { LOOK_PRESETS } from "./look-presets.ts";
 
 export const LOOK_STATIONS = ["looks"] as const;
 export type LookStation = (typeof LOOK_STATIONS)[number];
@@ -17,17 +18,8 @@ export type LookStation = (typeof LOOK_STATIONS)[number];
 /** Where the station lives along x. */
 export const LOOK_ORIGIN: Record<LookStation, number> = { looks: 2800 };
 
-/** The presets the station cycles, in the catalogue's order. */
-export const LOOK_PRESETS = [
-  "expressionist-painting", "bold-comic-illustration", "watercolor-wash", "pixel-3d-hybrid", "faceted-low-poly",
-  "sculpted-clay", "8bit-pixel", "voxel-worlds", "illuminated-manuscript", "rubber-hose-animation",
-  "pencil-hatching", "gothic-contour", "lush-painted-worlds", "decorative-storybook", "classical-painting-collage",
-  "detailed-doodle", "black-figure-pottery", "heavy-ink-shadows", "monochrome-pixel", "16bit-pixel",
-  "detailed-pixel", "luminous-pixel", "topdown-tile-pixel", "low-resolution-3d", "coarse-pixel",
-  "anime-cel-3d", "inked-comic-3d", "paper-craft", "miniature-diorama", "painterly-3d",
-  "cinematic-realism", "muted-cinematic-3d", "layered-silhouette", "minimal-geometric", "neon-vector",
-  "monochrome-dither-3d", "luminous-layered-painting",
-] as const;
+/** The presets the station cycles, in the catalogue's order (look-presets.ts). */
+export { LOOK_PRESETS };
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);

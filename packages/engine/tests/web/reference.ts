@@ -33,6 +33,13 @@
 // cells a row; --record composes and writes the sheet): og-ui's kit in
 // reference-ui.ts.
 //
+// --looks runs templates/fx-showcase's looks station instead of its five
+// stations: tests/looks-script.ts's commands (the playtest's, without its
+// screenshots and quit) in one run, one shot per preset of the catalogue at
+// its screenshot's tick (37), each compared with references/<tier>/
+// looks-<slug>.png, else metal's; its output defaults to
+// dist/test-reference/looks.
+//
 // --time <n> then drives n more frames after the last shot and reports the
 // wall time of each `frame` call (one tick, one render submitted: median and
 // p95) and of the n frames plus one capture, whose readback waits for the
@@ -56,6 +63,7 @@ import { serve } from "./serve.ts";
 import { ogBin } from "../support/og-bin.ts";
 import { decodePng, type Image } from "../support/png.ts";
 import { encodePng } from "../../src/node/png.ts";
+import { LOOK_COMMANDS, LOOK_FRAMES, LOOK_SHOTS } from "../../../../templates/fx-showcase/tests/looks-script.ts";
 
 declare const Bun: {
   build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }>;
@@ -71,8 +79,9 @@ const project = join(repo, opt("--project") ?? join("templates", "fx-showcase"))
 const webgl = args.includes("--webgl");
 const tier = webgl ? "webgl2" : "webgpu";
 const record = args.includes("--record");
+const looks = args.includes("--looks");
 const work = join(pkg, "dist", "test-reference");
-const out = resolve(opt("--out") ?? join(work, "out"));
+const out = resolve(opt("--out") ?? join(work, looks ? "looks" : "out"));
 const chrome = chromePath(args);
 const TICK_RATE = 60;
 const [WIDTH, HEIGHT] = (opt("--size") ?? "1280x720").split("x").map(Number) as [number, number];
@@ -85,7 +94,13 @@ const SHEET = opt("--sheet")
 
 /** The playtest's stations (tests/frames.og.ts): switched at `at` seconds, captured at tick `tick`, the tick its `screenshot` runs at. */
 const SHOTS = opt("--shots");
-const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = SHOTS
+const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = looks
+  ? LOOK_SHOTS.filter((s) => LOOK_FRAMES.includes(s.file)).map((s) => ({
+      name: s.file.replace(/\.png$/, ""),
+      at: 0,
+      tick: Math.round(s.at * TICK_RATE),
+    }))
+  : SHOTS
   ? SHOTS.split(",").map((s) => {
       const [name, tick] = s.split("@");
       return { name: name!.replace(/\.png$/, ""), at: 0, tick: Number(tick) };
@@ -97,7 +112,9 @@ const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = SHOT
       { name: "2d", at: 4.1, tick: 300 },
       { name: "stylised", at: 5.1, tick: 420 },
     ];
-const SCRIPT = opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
+const SCRIPT = looks
+  ? LOOK_COMMANDS.join(";")
+  : opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
 
 /** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`). */
 const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01 };
