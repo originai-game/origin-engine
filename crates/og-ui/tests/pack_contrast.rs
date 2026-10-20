@@ -485,7 +485,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
         // polish frame before accentInk moved). The status tones (success,
         // warn, danger, info) and the neutral badge on the screen are
         // printed, not held: their inks are the tone dots' colours, which
-        // meters, toasts and dots share (docs/phase-1.md's owed table).
+        // meters, toasts and dots share, a palette round of their own.
         for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
             for (tone_name, tone) in [
                 ("neutral", Tone::Neutral),
