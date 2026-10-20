@@ -18,7 +18,7 @@ import type { World } from "@origingame/engine";
 import { Ending, Game, LANTERN_COUNT, Phase, Prefs, Tuning } from "./components.ts";
 import { FEET, HeroMove, spawnHero, View } from "./hero.ts";
 import { Lanterns, lightLantern } from "./lanterns.ts";
-import { Slimes, spawnSlimes } from "./slimes.ts";
+import { hurt, Slimes, spawnSlimes } from "./slimes.ts";
 import { spawnVoices, Voices } from "./sound.ts";
 import { configureUi, LANGUAGES, nameOf, score, startRun, toTitle, Ui } from "./ui.ts";
 import { buildVale, groundY, HOURS, LANTERNS, must, setHour } from "./world.ts";
@@ -78,9 +78,15 @@ function light(world: World, args: readonly string[]): void {
   lightLantern(world, g, i);
 }
 
-/** `hearts:<n>`: set the hearts left (0 ends the run). */
+/** `hearts:<n>`: set the hearts left (0 ends the run); a heart lost in a run lands as a slime's touch does. */
 function hearts(world: World, args: readonly string[]): void {
-  gameOf(world).hearts = num(args[0], "n");
+  const g = gameOf(world);
+  const n = num(args[0], "n");
+  if (g.phase === Phase.Play && g.ending === Ending.None && n < g.hearts) {
+    const p = must(world.get(g.hero as unknown as never, og.Transform)).position;
+    hurt(world, g, must(world.resource(Tuning)), p, p);
+  }
+  g.hearts = n;
 }
 
 /** `dusk:<seconds>`: jump the run's clock to this many seconds played (night at Tuning.duskSeconds). */

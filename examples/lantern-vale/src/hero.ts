@@ -128,6 +128,8 @@ export const HeroMove = defineSystem(
     const hs = Math.hypot(v.x, v.z);
     g.speed = hs;
     let stepClock = me.stepClock;
+    // Setting off (or breaking into a run) is heard at once: the first step lands on the press.
+    if (speed > 0 && g.knock === 0 && (hs < 0.4 || (run && hs < t.runSpeed - 0.5))) stepClock = Math.max(stepClock, 1.6);
     if (cc.grounded && hs > 0.4) {
       stepClock += hs * dt;
       const stride = hs > 4.5 ? 1.5 : 1.05;
@@ -144,7 +146,8 @@ export const HeroMove = defineSystem(
     g.grounded = cc.grounded;
     must(world.set(hero, Hero, { airTime: cc.grounded ? 0 : me.airTime + dt, stepClock }));
 
-    // How far the pile has been shoved (a fact the physics playtest reads).
+    // How far the pile has been shoved (a fact the physics playtest reads), every sixth tick.
+    if (time.tick % 6 !== 0) return;
     let moved = 0;
     for (let i = 0; ; i++) {
       const e = world.find(`rock-${i}`);

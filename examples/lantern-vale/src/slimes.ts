@@ -55,10 +55,10 @@ export function spawnSlimes(world: World): void {
     const e = must(world.instantiate(model, { name: `slime-${i}`, position: { x: ax, y, z: az } }));
     must(world.insert(e, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
     must(world.insert(e, og.AnimationPlayer, { clip: rig.idle, loop: true, fade: 0.12, stepFps: STEP_FPS, speed: 1 + i * 0.07 }));
-    must(world.insert(e, Slime, { index: i, ax, az, bx, bz, leg: 1 }));
+    must(world.insert(e, Slime, { index: i, ax, az, bx, bz, leg: 1, idleClip: rig.idle as unknown as number, chaseClip: rig.chase as unknown as number }));
     // The bubble: a child sprite in the xy plane, standing over the slime, its shadow cast on the ground.
     const face = must(world.spawn({ name: `slime-${i}-face`, position: { x: ax, y: y + 1.05, z: az } }));
-    must(world.insert(face, og.Sprite, { array: faces.array, arrayLayer: Face.Calm, width: 0.62, height: 0.62, anchor: { x: 0.5, y: 0 }, dropShadow: 0.45, layer: 1, color: { r: 0.8, g: 0.8, b: 0.8 } }));
+    must(world.insert(face, og.Sprite, { array: faces.array, arrayLayer: Face.Calm, width: 0.9, height: 0.9, anchor: { x: 0.5, y: 0 }, dropShadow: 0.45, layer: 1, color: { r: 0.62, g: 0.6, b: 0.58 } }));
   });
 }
 
@@ -72,8 +72,8 @@ function resetSlimes(world: World, g: GameV): void {
   });
 }
 
-/** A slime touched the hero: a heart, the hit's weight, the hero thrown back. */
-function hurt(world: World, g: GameV, t: Value<typeof Tuning>, at: { x: number; y: number; z: number }, hero: { x: number; y: number; z: number }): void {
+/** A slime touched the hero: a heart, the hit's weight, the hero thrown back (away from `at`). */
+export function hurt(world: World, g: GameV, t: Value<typeof Tuning>, at: { x: number; y: number; z: number }, hero: { x: number; y: number; z: number }): void {
   const dx = hero.x - at.x;
   const dz = hero.z - at.z;
   const d = Math.max(0.01, Math.hypot(dx, dz));
@@ -101,7 +101,6 @@ export const Slimes = defineSystem(
     if (g.start) resetSlimes(world, g);
     const dt = time.scaledDt;
     if (dt === 0) return;
-    const rig = clips(world);
     const playing = g.phase === Phase.Play && g.ending === Ending.None;
     const heroAt = must(world.get(g.hero as unknown as Entity, og.Transform)).position;
     const hero = { x: heroAt.x, y: heroAt.y - FEET, z: heroAt.z };
@@ -112,6 +111,8 @@ export const Slimes = defineSystem(
       const p = must(world.get(e, og.Transform)).position;
       const d = Math.hypot(hero.x - p.x, hero.z - p.z);
       let { chasing, face, faceTime, leg, heading, bounce, hits } = s;
+      const idle = s.idleClip as unknown as ClipAsset;
+      const chaseClip = s.chaseClip as unknown as ClipAsset;
       faceTime += dt;
       const night = g.phase === Phase.Over || g.ending === Ending.Night;
       if (playing && !chasing && bounce <= 0 && g.invulnerable <= 0 && d < t.sight) {
@@ -164,13 +165,13 @@ export const Slimes = defineSystem(
       const face3 = world.find(`slime-${i}-face`);
       if (face3 !== null) must(world.set(face3, og.Sprite, { arrayLayer: face }));
       if (face3 !== null) must(world.set(face3, og.Transform, { position: { x: nx, y: ny + 1.05, z: nz } }));
-      if (chasing !== s.chasing) must(world.set(e, og.AnimationPlayer, { clip: chasing ? rig.chase : rig.idle }));
+      if (chasing !== s.chasing) must(world.set(e, og.AnimationPlayer, { clip: chasing ? chaseClip : idle }));
       if (playing && g.invulnerable <= 0 && d < TOUCH && Math.abs(hero.y - ny) < 1.2) {
         hurt(world, g, t, { x: nx, y: ny, z: nz }, heroAt);
         chasing = false;
         bounce = 0.9;
         hits += 1;
-        must(world.set(e, og.AnimationPlayer, { clip: rig.idle }));
+        must(world.set(e, og.AnimationPlayer, { clip: idle }));
       }
       must(world.set(e, Slime, { chasing, face, faceTime, leg, heading, bounce, hits }));
     }

@@ -61,7 +61,7 @@ export const Game = defineResource("Game", {
   look: u32(0, { doc: "The look applied: 0 dusk (looks/lantern-vale.ogt), 1 dawn (looks/dawn.ogt, the results)." }),
   dusk: f64(0, { doc: "og.load.look of looks/lantern-vale.ogt." }),
   dawn: f64(0, { doc: "og.load.look of looks/dawn.ogt." }),
-  far: u32(0, { doc: "The far-side streaming group's state (StreamState's order: 0 unloaded … 3 resident, 4 failed), from og.StreamEvent." }),
+  far: u32(0, { doc: "The far-side streaming group's state (StreamState's order: 0 unloaded … 3 resident, 4 failed), from og.stream.status." }),
   farLoads: u32(0, { doc: "Times the far side became resident." }),
   farUsed: f64(0, { unit: "bytes", doc: "og.stream.budget().used, copied each tick for scripts." }),
   musicChunks: u32(0, { doc: "og.load.soundInfo(music).chunks: the track was cooked in chunks." }),
@@ -125,6 +125,8 @@ export const Slime = defineComponent("Slime", {
   heading: f32(0, { unit: "rad" }),
   hits: u32(0),
   bounce: f32(0, { unit: "s", doc: "Seconds it reels back after a hit." }),
+  idleClip: f64(0, { doc: "The `idle` clip of models/slime.glb (og.load.animation's)." }),
+  chaseClip: f64(0, { doc: "The `chase` clip." }),
 });
 
 /** A rock of the pile: where it was set, to measure how far the hero pushed it. */

@@ -96,7 +96,7 @@ export function buildVale(world: World): void {
 /** The four lanterns: a lacquered voxel model on a solid on the lantern layer, a glow, a light and a burst. */
 function buildLanterns(world: World, g: { terrain: number }): void {
   const model = must(og.load.gltf(world, "models/lantern.vox"));
-  const glowGeo = must(og.render.sphereGeometry(world, { radius: 0.17, widthSegments: 12, heightSegments: 8 }));
+  const glowGeo = must(og.render.sphereGeometry(world, { radius: 0.19, widthSegments: 12, heightSegments: 8 }));
   const burst = must(og.load.emitter(world, "fx/burst.ogt"));
   LANTERNS.forEach((at, i) => {
     const y = groundY(world, g, at.x, at.z) - 0.05;

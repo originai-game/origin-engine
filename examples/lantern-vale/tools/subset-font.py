@@ -5,7 +5,7 @@
 Reads every string of assets/strings/*.ogt (and EXTRA: what the playtests
 type into the name field), subsets the engine's project-template font
 (templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf, OFL) to those
-characters plus Latin-1, and writes assets/fonts/NotoSansSC-subset.ttf with
+characters (no Latin: the skin's faces draw it), and writes assets/fonts/NotoSansSC-subset.ttf with
 its import settings (`chars` naming every CJK character, so the cook's
 atlas holds them all). Needs fontTools (pip install fonttools): bun has no
 font subsetter, which is why this one tool is Python (FINDINGS.md).
@@ -40,7 +40,9 @@ def strings():
 def main():
     chars = strings()
     cjk = sorted(c for c in chars if ord(c) > 0x2E7F)
-    text = "".join(sorted(chars)) + "".join(chr(c) for c in range(0x20, 0x100))
+    # CJK only (with the CJK punctuation and the space): the Latin of a
+    # label mixing scripts then stays in the skin's face, run by run.
+    text = "".join(cjk) + " \u3001\u3002\uff0c\uff1f\uff01\uff1a\u300c\u300d"
     out = os.path.join(ASSETS, "fonts", "NotoSansSC-subset.ttf")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     opts = subset.Options()
@@ -54,8 +56,8 @@ def main():
     subset.save_font(font, out, opts)
     with open(out + ".ogt", "w", encoding="utf-8") as f:
         f.write("type import\nversion 1\n---\n")
-        f.write("# Latin-1, CJK punctuation and every CJK character of assets/strings/*.ogt and the playtests' typed name (tools/subset-font.py).\n")
-        f.write("font {\n  charset latin cjk-punct\n")
+        f.write("# CJK punctuation and every CJK character of assets/strings/*.ogt and the playtests' typed name (tools/subset-font.py).\n")
+        f.write("font {\n  charset cjk-punct\n")
         f.write('  chars "' + "".join(cjk) + '"\n')
         f.write("  em_px 32\n  px_range 4\n}\n")
     print(f"{out}: {len(cjk)} CJK characters, {os.path.getsize(out)} bytes")

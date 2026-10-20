@@ -15,7 +15,7 @@
 // settings in og.platform and counts the accessibility tree's unnamed
 // controls for the playtests.
 
-import { og, defineSystem } from "@origingame/engine";
+import { og, defineSystem, STREAM_RESIDENT } from "@origingame/engine";
 import type { Look, Sound as SoundHandle, Value, World } from "@origingame/engine";
 import { Ending, Game, HEARTS, LANTERN_COUNT, NAME_CHARS, Phase, Prefs, Sound, Tuning } from "./components.ts";
 import { HOURS, must, setHour } from "./world.ts";
@@ -143,7 +143,6 @@ function platform(world: World, p: PrefsV): void {
 /** The clock and the endings: night at HOURS.night, the hearts gone, or (src/lanterns.ts) all four lit. */
 function clock(world: World, g: GameV, dt: number): void {
   const t = must(world.resource(Tuning));
-  if (g.phase === Phase.Over) setHour(world, HOURS.dawn);
   if (g.phase !== Phase.Play) return;
   if (g.ending === Ending.None) {
     g.time += dt;
@@ -166,7 +165,8 @@ function clock(world: World, g: GameV, dt: number): void {
       g.best = score(world, g);
     }
     // The results are the next dawn: the night has passed.
-    setHour(world, HOURS.dawn);
+    g.hour = HOURS.dawn;
+    setHour(world, g.hour);
   }
 }
 
@@ -178,16 +178,25 @@ function looks(world: World, g: GameV): void {
   g.look = want;
 }
 
-/** The far side's streaming group: its state from og.StreamEvent, a toast the first time it wakes in a run. */
+const STREAM_STATES = ["unloaded", "queued", "loading", "resident", "failed"] as const;
+
+/**
+ * The far side's streaming group: og.StreamEvent says when it changes (a
+ * toast when it becomes resident in a run), og.stream.status where it is
+ * and og.stream.budget what the groups take, every tenth tick.
+ */
 function stream(world: World, g: GameV): void {
   for (const e of world.events(og.StreamEvent)) {
-    if (e.group !== "far-side") continue;
-    if (e.state !== g.far) g.far = e.state;
-    if (e.state === 3) {
-      g.farLoads += 1;
-      if (g.phase === Phase.Play) og.ui.toast(world, say(world, "hud.far"));
-    }
+    if (e.group !== "far-side" || e.state !== STREAM_RESIDENT) continue;
+    g.farLoads += 1;
+    if (g.phase === Phase.Play) og.ui.toast(world, say(world, "hud.far"));
   }
+  const status = og.stream.status(world, "far-side");
+  if (status.ok) {
+    const state = STREAM_STATES.indexOf(status.value.state);
+    if (state !== g.far) g.far = state;
+  }
+  if (world.tick % 10 !== 0) return;
   const b = og.stream.budget(world);
   if (b.ok && b.value.used !== g.farUsed) g.farUsed = b.value.used;
   if (g.musicChunks === 0 && g.music !== 0) {
@@ -242,7 +251,7 @@ function hud(world: World, g: GameV): void {
 
 function settings(world: World, g: GameV, p: PrefsV): void {
   let done = false;
-  const before = JSON.stringify(prefsValue(p));
+  const before = g.settingsOpen ? JSON.stringify(prefsValue(p)) : "";
   const m = og.ui.modal("Settings", g.settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(440, og.ui.frameViewport().width - 32)) }, () => {
     // A label mixing scripts: the Latin in the skin's face, the Chinese from the fallback.
     og.ui.label("About", say(world, "settings.about"), { color: { token: "fgMuted" }, width: grow });
@@ -271,7 +280,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
       if (og.ui.button("Done", say(world, "settings.done"), { variant: "primary" }).clicked) done = true;
     });
   });
-  if (JSON.stringify(prefsValue(p)) !== before) applyPrefs(world, p);
+  if (g.settingsOpen && JSON.stringify(prefsValue(p)) !== before) applyPrefs(world, p);
   if (g.settingsOpen && (done || m.dismissed)) {
     g.settingsOpen = false;
     must(og.platform.saveSettings(world, prefsValue(p)));
@@ -371,6 +380,8 @@ export const Ui = defineSystem(
       if (c === "menu") toTitle(world, g);
     }
     settings(world, g, p);
+    // The accessibility tree, for the playtests: every half second, and on every tick a dialog is open.
+    if (!g.settingsOpen && !g.paused && time.tick % 30 !== 0) return;
     const tree = og.ui.a11y();
     const unnamed = tree.nodes.filter((n) => n.states.includes("focusable") && n.name === "").length;
     if (unnamed !== g.a11yUnnamed) g.a11yUnnamed = unnamed;

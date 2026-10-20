@@ -502,7 +502,38 @@ function voxBytes(v: Vox): Uint8Array {
     if (c) rgba.push(...hex(c), 255);
     else rgba.push(0, 0, 0, 0);
   }
-  const children = [...chunkOf("SIZE", size), ...chunkOf("XYZI", xyzi), ...chunkOf("RGBA", rgba)];
+  // A scene graph (root transform 0, group 1, transform 2 at the origin, shape 3 of model 0): without
+  // one, og cook places a lone model with its corner, not its centre, at the origin (FINDINGS.md).
+  const str = (a: number[], t: string) => {
+    u32(a, t.length);
+    for (const ch of t) a.push(ch.charCodeAt(0));
+  };
+  const trn = (node: number, child: number, frame: [string, string][]) => {
+    const b: number[] = [];
+    u32(b, node);
+    u32(b, 0);
+    u32(b, child);
+    u32(b, 0xffffffff);
+    u32(b, 0);
+    u32(b, 1);
+    u32(b, frame.length);
+    for (const [k, v] of frame) {
+      str(b, k);
+      str(b, v);
+    }
+    return b;
+  };
+  const grp: number[] = [];
+  u32(grp, 1);
+  u32(grp, 0);
+  u32(grp, 1);
+  u32(grp, 2);
+  const shp: number[] = [];
+  for (const n of [3, 0, 1, 0, 0]) u32(shp, n);
+  const children = [
+    ...chunkOf("SIZE", size), ...chunkOf("XYZI", xyzi), ...chunkOf("RGBA", rgba),
+    ...chunkOf("nTRN", trn(0, 1, [])), ...chunkOf("nGRP", grp), ...chunkOf("nTRN", trn(2, 3, [["_t", "0 0 0"]])), ...chunkOf("nSHP", shp),
+  ];
   for (const ch of "VOX ") out.push(ch.charCodeAt(0));
   u32(out, 150);
   for (const ch of "MAIN") out.push(ch.charCodeAt(0));
@@ -552,10 +583,15 @@ function lantern(): Grid {
   g.box(2, 2, 2, 4, 4, 15, lacquer);
   g.box(2, 2, 2, 4, 2, 15, lacquerDark);
   g.box(1, 1, 16, 5, 5, 16, brass);
-  // The cage: iron corners, amber panes.
-  g.box(1, 1, 17, 5, 5, 22, glass);
+  // The cage: iron corners and a brass rim round an open middle, where the game hangs the glowing wick (src/world.ts).
   for (const [x, y] of [[1, 1], [1, 5], [5, 1], [5, 5]] as const) g.box(x, y, 17, x, y, 22, iron);
-  g.box(2, 2, 17, 4, 4, 22, glass);
+  for (const z of [17, 22]) {
+    g.box(1, 1, z, 5, 1, z, brass);
+    g.box(1, 5, z, 5, 5, z, brass);
+    g.box(1, 1, z, 1, 5, z, brass);
+    g.box(5, 1, z, 5, 5, z, brass);
+  }
+  g.set(3, 3, 17, glass);
   g.box(0, 0, 23, 6, 6, 23, lacquer);
   g.box(1, 1, 24, 5, 5, 24, lacquer);
   g.box(2, 2, 25, 4, 4, 25, lacquerDark);
