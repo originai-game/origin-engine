@@ -14,6 +14,10 @@
 //!   after an undo, a new edit keeps the redo, a text the game set is undone
 //!   into, the history grows without bound or is not saved →
 //!   `undo_and_redo_step_through_the_history`
+//! - words by character classes again (a CJK run one word, an apostrophe
+//!   ending a word, a Thai run one word), a double click on a Han character
+//!   taking its neighbours, IME commits of Han text undone all at once →
+//!   `words_are_uax_29_words`
 //! - Command taken for Control (or the other way round) under mac keys:
 //!   Cmd+←/→ moving by words or characters, Option+← by characters, Ctrl+A
 //!   selecting all, Cmd+Backspace one character, Ctrl+Z undoing; or Command
@@ -513,4 +517,60 @@ fn mac_keys_tell_command_from_control() {
         "hello brave, new world",
         "Ctrl+E is nothing"
     );
+}
+
+#[test]
+fn words_are_uax_29_words() {
+    let mut rig = Rig::new("Score 原点42 can't", "");
+    rig.focus_field();
+    // From the end: "can't" is one word, "42" another, then each Han
+    // character on its own.
+    let alt_left = |rig: &mut Rig| rig.keys(&[UiKey::Left], false, false, true);
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score 原点42 |can't");
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score 原点|42 can't");
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score 原|点42 can't");
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score |原点42 can't");
+    rig.keys(&[UiKey::Right], false, true, false);
+    assert_eq!(rig.caret_marked(), "Score 原|点42 can't");
+    // Ctrl+Backspace deletes one Han character.
+    rig.keys(&[UiKey::Right], false, true, false);
+    rig.keys(&[UiKey::Backspace], false, true, false);
+    assert_eq!(rig.value, "Score 原42 can't");
+    // A double click on a Han character selects it alone.
+    rig.value = "Score 原点42".into();
+    rig.focus_field();
+    let (_, y, _, h) = rig.rect("Name");
+    let at = Vec2::new((rig.field_x(7) + rig.field_x(8)) / 2.0, y + h / 2.0);
+    rig.click(at);
+    rig.click(at);
+    assert_eq!(rig.selection(), "点");
+    rig.idle(40);
+    // Thai has no spaces between words and UAX #29 no dictionary: a word
+    // move takes one cluster (a consonant with its tone mark).
+    rig.value = "ไทยง่าย".into();
+    rig.focus_field();
+    // (The test face has no Thai: End, not the press, puts the caret at the end.)
+    rig.keys(&[UiKey::End], false, false, false);
+    rig.keys(&[UiKey::Left, UiKey::Left, UiKey::Left], false, true, false);
+    assert_eq!(rig.caret_marked(), "ไทย|ง่าย");
+
+    // Undo: each commit of Han text is a word of its own; Thai typed a
+    // character at a time groups to the space, as Latin does.
+    let mut rig = Rig::new("", "");
+    rig.focus_field();
+    let undo = |rig: &mut Rig| rig.keys(&[UiKey::KeyZ], false, true, false);
+    rig.typed("原点");
+    rig.typed("引擎");
+    rig.type_slowly("ไทย");
+    assert_eq!(rig.value, "原点引擎ไทย");
+    undo(&mut rig);
+    assert_eq!(rig.value, "原点引擎", "the Thai typed on is one step");
+    undo(&mut rig);
+    assert_eq!(rig.value, "原点", "a commit after Han text is a step");
+    undo(&mut rig);
+    assert_eq!(rig.value, "");
 }

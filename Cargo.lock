@@ -1835,6 +1835,7 @@ name = "og-i18n"
 version = "0.0.1"
 dependencies = [
  "og-core",
+ "unicode-segmentation",
 ]
 
 [[package]]

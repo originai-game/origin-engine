@@ -162,63 +162,67 @@ pub(crate) struct EditDesc {
     pub inner: Option<Rect>,
 }
 
-/// A character's class for word moves and word selection: space, a word's
-/// letters and digits (and marks), or other punctuation and symbols.
-fn class(c: char) -> u8 {
-    if c.is_whitespace() {
-        0
-    } else if c.is_alphanumeric() || c == '_' || c == '\'' || c == '’' {
-        1
-    } else {
-        2
-    }
+/// The segment holding character `i` (UAX #29 words: og-i18n's
+/// [`og_i18n::word_segments`]).
+fn segment_at(segs: &[og_i18n::WordSegment], i: usize) -> Option<usize> {
+    segs.iter().position(|s| s.start <= i && i < s.end)
 }
 
-/// Where Alt or Ctrl+← puts the caret from `k`: back over spaces, then to
-/// the start of the word (or the run of punctuation) before it.
+/// Spaces and line breaks: what a word move passes over.
+fn blank(s: &og_i18n::WordSegment) -> bool {
+    matches!(s.kind, og_i18n::WordKind::Space | og_i18n::WordKind::Break)
+}
+
+/// Where a word move left puts the caret from `k`: back over spaces, then
+/// to the start of the word (or the run of punctuation) before it. Words
+/// are UAX #29's ([`og_i18n::word_segments`]): a Han character or a Thai
+/// cluster is one.
 pub(crate) fn word_left(chars: &[char], k: usize) -> usize {
-    let mut k = k.min(chars.len());
-    while k > 0 && class(chars[k - 1]) == 0 {
-        k -= 1;
-    }
+    let k = k.min(chars.len());
     if k == 0 {
         return 0;
     }
-    let c = class(chars[k - 1]);
-    while k > 0 && class(chars[k - 1]) == c {
-        k -= 1;
+    let segs = og_i18n::word_segments(chars);
+    let Some(mut i) = segment_at(&segs, k - 1) else {
+        return 0;
+    };
+    while blank(&segs[i]) {
+        if i == 0 {
+            return 0;
+        }
+        i -= 1;
     }
-    k
+    segs[i].start
 }
 
-/// Where Alt or Ctrl+→ puts the caret from `k`: on over spaces, then to the
-/// end of the word (or the run of punctuation) after it.
+/// Where a word move right puts the caret from `k`: on over spaces, then to
+/// the end of the word (or the run of punctuation) after it.
 pub(crate) fn word_right(chars: &[char], k: usize) -> usize {
     let n = chars.len();
-    let mut k = k.min(n);
-    while k < n && class(chars[k]) == 0 {
-        k += 1;
-    }
-    if k == n {
+    let segs = og_i18n::word_segments(chars);
+    let Some(mut i) = segment_at(&segs, k.min(n)) else {
         return n;
+    };
+    while blank(&segs[i]) {
+        i += 1;
+        if i == segs.len() {
+            return n;
+        }
     }
-    let c = class(chars[k]);
-    while k < n && class(chars[k]) == c {
-        k += 1;
-    }
-    k
+    segs[i].end
 }
 
-/// The word a double click at boundary `k` selects: the run of one class
-/// (a word, spaces or punctuation) holding the character after `k`, or the
-/// one before it at a word's end or the text's.
+/// The word a double click at boundary `k` selects: the segment (a word,
+/// spaces or punctuation) holding the character after `k`, or the one
+/// before it at a word's end or the text's.
 pub(crate) fn word_at(chars: &[char], k: usize) -> (usize, usize) {
     let n = chars.len();
     if n == 0 {
         return (0, 0);
     }
     let k = k.min(n);
-    let i = if k < n && (class(chars[k]) != 0 || k == 0 || class(chars[k - 1]) == 0) {
+    let space = |c: char| c.is_whitespace();
+    let i = if k < n && (!space(chars[k]) || k == 0 || space(chars[k - 1])) {
         k
     } else {
         k - 1
@@ -226,15 +230,29 @@ pub(crate) fn word_at(chars: &[char], k: usize) -> (usize, usize) {
     if chars[i] == '\n' {
         return (k, k);
     }
-    let c = class(chars[i]);
-    let (mut a, mut b) = (i, i + 1);
-    while a > 0 && class(chars[a - 1]) == c && chars[a - 1] != '\n' {
-        a -= 1;
+    let segs = og_i18n::word_segments(chars);
+    match segment_at(&segs, i) {
+        Some(j) if segs[j].kind != og_i18n::WordKind::Break => (segs[j].start, segs[j].end),
+        _ => (k, k),
     }
-    while b < n && class(chars[b]) == c && chars[b] != '\n' {
-        b += 1;
+}
+
+/// Whether typing `inserted` at `at` of `after` (the text with it) starts
+/// a new word for the undo history: after spaces, or next to a word of one
+/// character (Han and Hiragana, where UAX #29 puts a boundary between every
+/// two; an input method commits them a phrase at a time). Thai and other
+/// scripts without spaces group to the next space, as Latin does.
+fn starts_word(last: &str, after: &[char], at: usize) -> bool {
+    let first = after.get(at).copied();
+    if last.ends_with(char::is_whitespace) {
+        return first.is_some_and(|c| !c.is_whitespace());
     }
-    (a, b)
+    let (Some(prev), Some(next)) = (at.checked_sub(1).and_then(|i| after.get(i)), first) else {
+        return false;
+    };
+    (og_i18n::word_per_character(*prev) || og_i18n::word_per_character(next))
+        && prev.is_alphanumeric()
+        && next.is_alphanumeric()
 }
 
 /// The line a triple click at `k` selects: from the line break before it
@@ -378,11 +396,9 @@ impl History {
         {
             let grows = match kind {
                 EditKind::Typing => {
-                    let word_ended = last.inserted.ends_with(char::is_whitespace)
-                        && !inserted.starts_with(char::is_whitespace);
                     removed.is_empty()
                         && p == last.at + last.inserted.chars().count()
-                        && !word_ended
+                        && !starts_word(&last.inserted, after, p)
                 }
                 EditKind::Back => inserted.is_empty() && p + removed.chars().count() == last.at,
                 EditKind::Forward => inserted.is_empty() && p == last.at,
