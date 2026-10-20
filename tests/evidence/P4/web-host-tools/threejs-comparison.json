@@ -1,0 +1,538 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "frames": 600,
+ "warm": 60,
+ "rounds": 2,
+ "size": "1280x720",
+ "summary": [
+  {
+   "scene": "reference",
+   "mode": "engine WebGPU",
+   "p50": 1.535,
+   "p95": 4.805,
+   "sustainedMs": 2.021,
+   "fps": 495,
+   "rounds": 2
+  },
+  {
+   "scene": "reference",
+   "mode": "engine WebGL2",
+   "p50": 2.715,
+   "p95": 5.793,
+   "sustainedMs": 3.046,
+   "fps": 328,
+   "rounds": 2
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, InstancedMesh",
+   "p50": 3.763,
+   "p95": 7.047,
+   "sustainedMs": 3.923,
+   "fps": 255,
+   "rounds": 2
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, one Mesh each",
+   "p50": 4.425,
+   "p95": 8.175,
+   "sustainedMs": 4.559,
+   "fps": 219,
+   "rounds": 2
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGPU",
+   "p50": 174.69,
+   "p95": 186.837,
+   "sustainedMs": 173.872,
+   "fps": 6,
+   "rounds": 2
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGL2",
+   "p50": 175.258,
+   "p95": 188.183,
+   "sustainedMs": 173.948,
+   "fps": 6,
+   "rounds": 2
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, InstancedMesh",
+   "p50": 2.485,
+   "p95": 4.425,
+   "sustainedMs": 2.646,
+   "fps": 378,
+   "rounds": 2
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, one Mesh each",
+   "p50": 12.788,
+   "p95": 15.825,
+   "sustainedMs": 13.117,
+   "fps": 76,
+   "rounds": 2
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGPU, InstancedMesh",
+   "p50": 1.533,
+   "p95": 3.013,
+   "sustainedMs": 1.65,
+   "fps": 606,
+   "rounds": 2
+  }
+ ],
+ "runs": [
+  {
+   "scene": "reference",
+   "mode": "engine WebGPU",
+   "round": 1,
+   "load": "47.25 40.89 36.18",
+   "info": {
+    "tier": "webgpu",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "reference"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 1.635,
+    "p95": 4.91,
+    "p99": 7.555,
+    "max": 8.91,
+    "mean": 2.117
+   },
+   "sustainedMs": 2.117,
+   "fps": 472,
+   "shot": "threejs-reference-engine-webgpu.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "engine WebGL2",
+   "round": 1,
+   "load": "43.87 40.61 36.21",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "reference"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.775,
+    "p95": 6.3,
+    "p99": 8.865,
+    "max": 11.96,
+    "mean": 3.168
+   },
+   "sustainedMs": 3.168,
+   "fps": 316,
+   "shot": "threejs-reference-engine-webgl2.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 1,
+   "load": "48.16 41.88 36.80",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer",
+    "draws": "4 InstancedMesh",
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 3.855,
+    "p95": 7.38,
+    "p99": 10.085,
+    "max": 11.84,
+    "mean": 4.006
+   },
+   "sustainedMs": 4.006,
+   "fps": 250,
+   "shot": "threejs-reference-three-webgl2-instancedmesh.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, one Mesh each",
+   "round": 1,
+   "load": "44.97 41.77 36.94",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer",
+    "draws": "500 meshes",
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 4.27,
+    "p95": 8.655,
+    "p99": 10.55,
+    "max": 12.635,
+    "mean": 4.619
+   },
+   "sustainedMs": 4.619,
+   "fps": 216,
+   "shot": "threejs-reference-three-webgl2-one-mesh-each.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGPU",
+   "round": 1,
+   "load": "40.68 41.03 36.81",
+   "info": {
+    "tier": "webgpu",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "spheres"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 175.385,
+    "p95": 186.39,
+    "p99": 191.425,
+    "max": 205.065,
+    "mean": 174.102
+   },
+   "sustainedMs": 174.102,
+   "fps": 6,
+   "shot": "threejs-spheres-engine-webgpu.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGL2",
+   "round": 1,
+   "load": "41.23 41.83 37.81",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "spheres"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 174.64,
+    "p95": 187.53,
+    "p99": 193.945,
+    "max": 203.48,
+    "mean": 173.157
+   },
+   "sustainedMs": 173.157,
+   "fps": 6,
+   "shot": "threejs-spheres-engine-webgl2.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 1,
+   "load": "107.77 66.04 48.01",
+   "info": {
+    "renderer": "three WebGLRenderer",
+    "draws": 1,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.48,
+    "p95": 4.255,
+    "p99": 6.19,
+    "max": 7.15,
+    "mean": 2.646
+   },
+   "sustainedMs": 2.646,
+   "fps": 378,
+   "shot": "threejs-spheres-three-webgl2-instancedmesh.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, one Mesh each",
+   "round": 1,
+   "load": "101.02 67.91 49.21",
+   "info": {
+    "renderer": "three WebGLRenderer",
+    "draws": 20000,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 12.245,
+    "p95": 15.355,
+    "p99": 30,
+    "max": 31.495,
+    "mean": 12.611
+   },
+   "sustainedMs": 12.611,
+   "fps": 79,
+   "shot": "threejs-spheres-three-webgl2-one-mesh-each.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGPU, InstancedMesh",
+   "round": 1,
+   "load": "92.74 70.10 50.88",
+   "info": {
+    "renderer": "three WebGPURenderer",
+    "draws": 1,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 1.55,
+    "p95": 3.075,
+    "p99": 4.885,
+    "max": 5.85,
+    "mean": 1.661
+   },
+   "sustainedMs": 1.661,
+   "fps": 602,
+   "shot": "threejs-spheres-three-webgpu-instancedmesh.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "engine WebGPU",
+   "round": 2,
+   "load": "84.27 70.27 51.61",
+   "info": {
+    "tier": "webgpu",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "reference"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 1.435,
+    "p95": 4.7,
+    "p99": 6.41,
+    "max": 8.245,
+    "mean": 1.925
+   },
+   "sustainedMs": 1.925,
+   "fps": 520,
+   "shot": "threejs-reference-engine-webgpu.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "engine WebGL2",
+   "round": 2,
+   "load": "81.12 69.85 51.57",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "reference"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.655,
+    "p95": 5.285,
+    "p99": 7.405,
+    "max": 11.57,
+    "mean": 2.924
+   },
+   "sustainedMs": 2.924,
+   "fps": 342,
+   "shot": "threejs-reference-engine-webgl2.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 2,
+   "load": "79.67 69.73 51.64",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer",
+    "draws": "4 InstancedMesh",
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 3.67,
+    "p95": 6.715,
+    "p99": 8.875,
+    "max": 10.465,
+    "mean": 3.84
+   },
+   "sustainedMs": 3.84,
+   "fps": 260,
+   "shot": "threejs-reference-three-webgl2-instancedmesh.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, one Mesh each",
+   "round": 2,
+   "load": "74.15 68.88 51.55",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer",
+    "draws": "500 meshes",
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 4.58,
+    "p95": 7.695,
+    "p99": 9.665,
+    "max": 11.65,
+    "mean": 4.498
+   },
+   "sustainedMs": 4.498,
+   "fps": 222,
+   "shot": "threejs-reference-three-webgl2-one-mesh-each.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGPU",
+   "round": 2,
+   "load": "72.54 68.64 51.57",
+   "info": {
+    "tier": "webgpu",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "spheres"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 173.995,
+    "p95": 187.285,
+    "p99": 195.69,
+    "max": 208.04,
+    "mean": 173.641
+   },
+   "sustainedMs": 173.641,
+   "fps": 6,
+   "shot": "threejs-spheres-engine-webgpu.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGL2",
+   "round": 2,
+   "load": "83.45 71.72 54.85",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "spheres"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 175.875,
+    "p95": 188.835,
+    "p99": 197.46,
+    "max": 222.49,
+    "mean": 174.739
+   },
+   "sustainedMs": 174.739,
+   "fps": 6,
+   "shot": "threejs-spheres-engine-webgl2.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 2,
+   "load": "90.00 76.69 59.06",
+   "info": {
+    "renderer": "three WebGLRenderer",
+    "draws": 1,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.49,
+    "p95": 4.595,
+    "p99": 6.485,
+    "max": 9.685,
+    "mean": 2.647
+   },
+   "sustainedMs": 2.647,
+   "fps": 378,
+   "shot": "threejs-spheres-three-webgl2-instancedmesh.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, one Mesh each",
+   "round": 2,
+   "load": "119.96 85.37 62.82",
+   "info": {
+    "renderer": "three WebGLRenderer",
+    "draws": 20000,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 13.33,
+    "p95": 16.295,
+    "p99": 32.13,
+    "max": 34.685,
+    "mean": 13.623
+   },
+   "sustainedMs": 13.623,
+   "fps": 73,
+   "shot": "threejs-spheres-three-webgl2-one-mesh-each.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGPU, InstancedMesh",
+   "round": 2,
+   "load": "116.09 86.27 63.54",
+   "info": {
+    "renderer": "three WebGPURenderer",
+    "draws": 1,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 1.515,
+    "p95": 2.95,
+    "p99": 4.605,
+    "max": 8.18,
+    "mean": 1.638
+   },
+   "sustainedMs": 1.638,
+   "fps": 611,
+   "shot": "threejs-spheres-three-webgpu-instancedmesh.png"
+  }
+ ]
+}
