@@ -366,6 +366,59 @@ fn particles_bounce_off_the_depth_buffer() {
     assert!(without < -1.0, "without collision the lowest is {without}");
 }
 
+/// The CPU path (WebGL2's, `ParticleSimulation::Cpu` here) bounces
+/// particles off the scene's colliders: a ground plane, a flat height
+/// field or a box under the fountain each keep them above the ground,
+/// some on their way back up; without colliders they fall through and the
+/// system is counted as skipped.
+#[test]
+fn cpu_particles_bounce_off_the_scene_colliders() {
+    let desc = RenderDesc {
+        particles: ParticleSimulation::Cpu,
+        ..small()
+    };
+    let run_with = |colliders: Vec<og_render::ParticleCollider>| {
+        let mut scene = collision_scene(true);
+        scene.particle_colliders = colliders;
+        let (_, stats, r) = run(&desc, &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
+        let live: Vec<_> = r
+            .read_particles(1)
+            .expect("system")
+            .into_iter()
+            .filter(|p| p.alive())
+            .collect();
+        let lowest = live.iter().map(|p| p.pos_age[1]).fold(f32::MAX, f32::min);
+        // Rising again below the emitter: bounced.
+        let bounced = live
+            .iter()
+            .filter(|p| p.vel_life[1] > 0.0 && p.pos_age[1] < 1.0)
+            .count();
+        (lowest, bounced, stats.particle_collision_skipped)
+    };
+    let (without, _, skipped) = run_with(Vec::new());
+    assert!(without < -1.0, "without colliders the lowest is {without}");
+    assert_eq!(skipped, 1);
+    let plane = og_render::ParticleCollider::Plane {
+        normal: Vec3::Y,
+        offset: 0.0,
+    };
+    let field = og_render::ParticleCollider::HeightField {
+        data: og_render::TerrainData::flat(Vec2::splat(40.0), 9, 9),
+        transform: Mat4::IDENTITY,
+    };
+    let block = og_render::ParticleCollider::Box {
+        transform: Mat4::from_translation(Vec3::new(0.0, -1.0, 0.0)),
+        half_extents: Vec3::new(10.0, 1.0, 10.0),
+    };
+    for (name, c) in [("plane", plane), ("height field", field), ("box", block)] {
+        let (lowest, bounced, skipped) = run_with(vec![c]);
+        println!("{name}: lowest {lowest}, {bounced} bounced");
+        assert_eq!(skipped, 0, "{name}");
+        assert!(lowest > -0.1, "{name}: a particle sank to {lowest}");
+        assert!(bounced > 5, "{name}: {bounced} bounced");
+    }
+}
+
 fn collision_scene(collide: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     let ground = scene.add_mesh(shapes::plane(20.0, 1.0));

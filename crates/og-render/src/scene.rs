@@ -1009,6 +1009,10 @@ pub struct RenderScene {
     pub tick_rate: f32,
     /// Running particle systems (state is kept by their id).
     pub particles: Vec<ParticleSystem>,
+    /// What CPU-simulated particles with collision bounce off (the
+    /// no-compute tier's stand-in for the depth buffer the compute path
+    /// reads; [`crate::ParticleCollider`]). Empty by default.
+    pub particle_colliders: Vec<crate::ParticleCollider>,
     pub trails: Vec<Trail>,
     pub ribbons: Vec<Ribbon>,
     pub beams: Vec<Beam>,
@@ -1108,6 +1112,7 @@ impl RenderScene {
             tick: 0,
             tick_rate: 60.0,
             particles: Vec::new(),
+            particle_colliders: Vec::new(),
             trails: Vec::new(),
             ribbons: Vec::new(),
             beams: Vec::new(),

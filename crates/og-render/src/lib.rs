@@ -89,8 +89,9 @@ pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
-    ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
-    ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet,
+    ParticleBlend, ParticleCollider, ParticleCollision, ParticleEmitter, ParticleNoise,
+    ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace,
+    SpriteSheet,
 };
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;

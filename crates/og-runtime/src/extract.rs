@@ -356,6 +356,8 @@ pub(crate) struct DrawLayouts {
     /// og.Terrain and og.TerrainScatter (`super::terrain`).
     pub terrain: Option<Layout>,
     pub scatter: Option<Layout>,
+    /// og.Collider: what CPU-simulated particles bounce off.
+    pub collider: Option<Layout>,
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
@@ -596,6 +598,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::environment::extract(world, rs);
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, &mut h));
+    particle_colliders(world, rs, &mut h);
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.
@@ -719,4 +722,57 @@ pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedF
         }));
     }
     FontPages { pages }
+}
+
+/// The colliders CPU-simulated particles bounce off
+/// (`RenderScene::particle_colliders`): every og.Collider that is a box, a
+/// sphere or a terrain's height field, placed as physics places it, while
+/// a particle system of the frame has collision. The compute path reads the
+/// depth buffer instead; WebGL2 (and `ParticleSimulation::Cpu`) reads these,
+/// so sparks bounce on the ground and on solid shapes on every tier.
+fn particle_colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
+    rs.scene.particle_colliders.clear();
+    let colliding = rs.scene.particles.iter().any(|s| {
+        rs.scene
+            .emitter(s.emitter)
+            .is_some_and(|e| e.collision.is_some())
+    });
+    let Some(layout) = rs.draw.collider.clone().filter(|_| colliding) else {
+        return;
+    };
+    for (e, v) in rows(world, &layout) {
+        let world_m = h.world_of(e);
+        let rotation = &v["rotation"];
+        let q = Quat::from_xyzw(
+            rotation["x"].as_f64().unwrap_or(0.0) as f32,
+            rotation["y"].as_f64().unwrap_or(0.0) as f32,
+            rotation["z"].as_f64().unwrap_or(0.0) as f32,
+            rotation["w"].as_f64().unwrap_or(1.0) as f32,
+        )
+        .normalize();
+        let local = Mat4::from_rotation_translation(q, vec3(&v["offset"]));
+        let m = world_m * local;
+        let collider = match v["shape"].as_u64().unwrap_or(0) {
+            0 => og_render::ParticleCollider::Box {
+                transform: m,
+                half_extents: vec3(&v["size"]) * 0.5,
+            },
+            1 => {
+                let scale = world_m.to_scale_rotation_translation().0.max_element();
+                og_render::ParticleCollider::Sphere {
+                    center: m.transform_point3(Vec3::ZERO),
+                    radius: f(&v, "radius", 0.5) * scale,
+                }
+            }
+            6 => {
+                let geometry = v["mesh"].as_f64().unwrap_or(0.0) as u64;
+                let Some(data) = super::terrain::field_of_geometry(&rs.terrain, geometry) else {
+                    continue;
+                };
+                og_render::ParticleCollider::HeightField { data, transform: m }
+            }
+            _ => continue,
+        };
+        rs.scene.particle_colliders.push(collider);
+    }
 }
