@@ -2023,6 +2023,10 @@ pub fn og_load_lut(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value)))
 }
 
+pub fn og_load_texture_array(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| assets::load_texture_array(&eng, &path)))
+}
+
 pub fn og_load_environment(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| super::environment::load(&eng, &path).map(asset_value)))
 }
@@ -2064,7 +2068,7 @@ pub fn og_load_sound_info(world: u32, sound: f64) -> String {
             .ok_or_else(|| format!("sound {sound} is not alive"))?;
         let m = &s.meta;
         Ok(json!({
-            "rate": m.sample_rate, "channels": m.channels, "frames": m.frames,
+            "rate": m.sample_rate, "channels": m.channels, "frames": m.frames, "chunks": m.chunk_count,
             "seconds": f64::from(m.frames) / f64::from(m.sample_rate.max(1)),
         }))
     })())

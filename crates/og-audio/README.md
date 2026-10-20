@@ -29,7 +29,7 @@ ordinary dependency).
 | `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
 | `schema` | `AudioSource`, `AudioListener`, `Audio`, `SoundStarted`, `SoundEnded`, `end_reason`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
-| `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` |
+| `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
 | `sink` | `HeadlessSink` (`Null` / `Capture`), `wav(pcm, channels, rate)` |
 
@@ -168,7 +168,8 @@ playhead. Only the regular commands are hashed.
 - **Sounds**: a sound up to 6 s (`DEFAULT_RESIDENT_SECONDS`) is decoded at
   insert and shared; a longer one streams: each voice decodes the QOA frames
   (5120 samples, self-contained) it reaches into two slots, so a frame
-  boundary or a loop seam never decodes twice.
+  boundary or a loop seam never decodes twice. A sound cooked in chunks
+  keeps only some of its QOA bytes in memory (§Chunked sounds).
 - **Voices**: linear-interpolation resampling at `pitch × source rate /
   output rate`; at a loop seam the interpolation reads `loopStart` as the
   frame after `loopEnd − 1`, so a sample-continuous loop region is seamless.
@@ -237,6 +238,63 @@ reverb tail, scheduled starts on their sample and stems aligned, the music
 clock and a stinger on the bar line, a two-second crossfade, the voice cap,
 occlusion and distance dulling, and the same PCM twice with `listen`
 returning its last second (`$OG_EVIDENCE_DIR/M6/e6-mix.{wav,json}`).
+
+## Chunked sounds
+
+og-cook cooks a long sound (`sound { stream true chunk 4 }` in its import
+settings, or any whose QOA file would pass 1 MiB unless `stream false`) in
+chunks of whole QOA frames: the sound's blob holds the QOA header and the
+first chunk, each other chunk is a blob `<id>#chunk<n>`. A QOA frame
+carries its predictor's state, so the chunks are the whole file's frames
+cut apart, and decode to its samples exactly.
+
+- `SoundBank::insert_chunked(id, head, per_chunk, count)` adds one with its
+  first chunk, which stays resident (a play starts at once);
+  `put_chunk(handle, n, frames)` puts chunk `n` in place (its shape
+  checked); a voice reaching a chunk that is not there plays silence and
+  looks again on its next frame.
+- `chunks_wanted(world, bank)` reads the playheads (`og.AudioPlayback`):
+  per voice of a chunked sound, the chunks from `CHUNK_BEHIND_SECONDS`
+  (0.5) behind its cursor to `CHUNK_AHEAD_SECONDS` (4) ahead at its pitch,
+  and for a loop its start's chunk and the next. `keep_chunks(&wanted)`
+  drops every other chunk and returns the ones to read. og-runtime calls
+  both at each tick boundary and after the ticks, before the host pumps
+  the mixer, so a voice started in the tick (part-way too) has its chunk
+  before its first sample; natively the read completes at once, on the web
+  the chunk is fetched like a streaming group's pack (not preloaded, taken
+  from the Worker's files when read, cached by the service worker) and put
+  in place at a later call, four seconds being the fetch's margin.
+- A voice holds the chunk it reads and the next, so one fading out after
+  its playhead is gone (a crossfade's outgoing track) keeps its samples
+  while the bank drops them.
+- `set_chunk_loader(handle, loader)`: natively og-runtime gives each
+  chunked sound a loader that reads a missing chunk's file on the mixing
+  thread (type and cook stamp checked), so a long `advance` mixed at once
+  (og run) still hears every sample.
+- `resident_bytes()` sums what the sounds hold in memory (decoded PCM, a
+  streamed sound's QOA file, a chunked sound's resident chunks).
+
+Nothing here reaches the world: the tick side times a sound by its rate
+and length alone, so `world_hash` is the same chunked or whole.
+
+Tests: `tests/chunks.rs` (each broken once: without the voice's held
+chunks the crossfade's tail went silent at sample 5,765,120; with chunks
+indexed past their last frame a wrong-length chunk was accepted). A
+3-minute stereo 48 kHz track (6.99 MB of QOA, 46 chunks of 3.9 s) looping
+from 20 s with a 120 bpm `og.Music` clock and, at 60 s, a two-second
+crossfade to a second voice of it started 100 s in (wrapping at 180 s),
+190 s in all: the chunked mix is sample-identical to the whole-file mix
+(9,120,000 frames), the music clock beats the same 380 times, and at most
+918,200 B (6 chunks) are resident at once against the whole file's
+6,989,848 B; with a loader and the mixer pumped every 600 ticks it is
+identical again; a missing chunk plays silence, then sound once put;
+wrong-length chunks and wrong chunk counts are refused
+(`$OG_EVIDENCE_DIR/M6/chunks.json`). og-cook's `tests/sound_chunks.rs`
+checks the cook (the chunks laid end to end are the whole file's bytes,
+the settings re-cook only that sound, the threshold, a chunked sound
+refused in a stream group), and `packages/engine/tests/sound-chunks.test.ts`
+runs the idle archetype's music cooked whole and in 2-second chunks
+through `og run --audio` for 35 s (the loop wraps): the same WAV.
 
 ## Ring (web)
 
@@ -330,32 +388,32 @@ cargo check --target wasm32-unknown-unknown -p og-audio
 cargo clippy -p og-audio --all-targets --all-features -- -D warnings
 ```
 
-## Status 2026-10-18 (what phase 1 still owes)
+## Status 2026-10-20
 
-At 49ed935 the mixer, the command stream and both hosts' sink modules
-(`og-host-web/src/audio.rs`, `og-host-node/src/audio.rs`,
-`packages/engine/src/{web,node}/audio*.ts`) are committed, but the wiring
-listed under §Host contract is not done: the `og-api` runtime does not
-`install` og-audio or publish the link, `og run` and the web shell/Worker
-open no sink, and `api.ogt` has `load.sound`/`Sound` but no
-`AudioSource`/`AudioListener`/`Audio` records or `SoundStarted`/`SoundEnded`
-events, so games cannot play sound yet. §Records' note about `u32` flags is
-partly stale (`spatial` and `playing` are `bool` now; `bus` is still `u32`).
-Evidence of the crate itself: `tests/evidence/M6/audio-*`.
+The wiring §Host contract lists is in: og-runtime installs og-audio in
+every engine (`modules.rs`) and publishes the link, `og.load.sound` puts
+the cooked sound in the engine's bank and answers that handle, `og run`
+opens a `null` sink (`capture` with `--audio out.wav`, `device` when
+asked), the web shell and engine Worker attach `WorkerAudio` and pump
+after each frame, `hello` lists `audio`, and `api.ogt`'s `audio` module
+declares the records, resources and events above (E6 added its own,
+§E6). Of §Records' note, `loop`, `spatial` and `playing` are `bool` now;
+`bus` is still a `u32` index. Evidence of the crate:
+`tests/evidence/M6/audio-*`, the E6 mix (`tests/evidence/E6/`) and
+chunked sounds (`tests/evidence/P4/cook/sound-chunks.md`).
 
 ## What phase 2 owes
 
-- **Effects**: per-bus insert chains (filters, reverb send, compressor),
-  ducking music under dialogue, a real bus graph instead of folded gains.
-- **Occlusion and propagation**: ray-cast occlusion against physics,
-  low-pass by distance and obstruction, Doppler, HRTF for headphones, cone
-  directivity, `MatrixWorld` (parented sources and listeners) instead of
-  the local `Transform`.
-- **Music transitions**: tempo-aware cues, crossfades and stingers on bar
-  boundaries, layered stems, sample-accurate scheduled starts (`startAt`).
-- Better resampling (windowed sinc), per-voice priority and a voice cap
-  with virtualisation, retrigger without a level change, seek/offset.
-- Streaming chunks from the network for very long tracks (today a streamed
-  sound's QOA bytes are in memory), and decoding off the engine Worker.
-- Audio capture into the probe (`og run --audio`), and a `listen` probe
-  member returning the last second as a WAV.
+Effects, ducking, ray-cast occlusion, distance low-pass, music clock and
+crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
+--audio` and chunked streaming of long sounds have landed (§E6, §Chunked
+sounds). Still owed:
+
+- **Propagation**: Doppler, HRTF for headphones, cone directivity,
+  `MatrixWorld` (parented sources and listeners) instead of the local
+  `Transform`.
+- Better resampling (windowed sinc), voice virtualisation (a culled voice
+  resuming where it would be), retrigger without a level change.
+- Decoding off the engine Worker (the mixer decodes QOA frames as voices
+  reach them), and a chunk's fetch prioritised by how soon its playhead
+  needs it.

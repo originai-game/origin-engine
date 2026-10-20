@@ -87,6 +87,8 @@ pub(crate) struct Assets {
     pub warnings: Vec<String>,
     /// The game bundle's streaming groups.
     pub stream: super::stream::Streams,
+    /// og.load.textureArray's answers, by asset id.
+    pub texture_arrays: BTreeMap<String, Value>,
 }
 
 pub(crate) fn handle(index: usize) -> u64 {
@@ -171,7 +173,7 @@ impl Assets {
     }
 
     /// The ready bundle holding `id` (the default bundle first).
-    fn bundle_for(&self, id: &str) -> Result<(&Bundle, &str), String> {
+    pub(crate) fn bundle_for(&self, id: &str) -> Result<(&Bundle, &str), String> {
         let order = self.default_bundle.into_iter().chain(0..self.entries.len());
         let mut open = 0;
         for i in order {
@@ -587,6 +589,64 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     Ok(i)
 }
 
+/// `og.load.textureArray`: a cooked `type texture-array`, its layers
+/// decoded through the host's texture hook (each an `og.Texture` the web
+/// Worker transcoded with the bundle) and uploaded as one 2D-array
+/// texture. Loading a path again answers the same array.
+pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(v) = eng.assets.borrow().texture_arrays.get(&id) {
+        return Ok(v.clone());
+    }
+    let formats = texture_formats(eng);
+    let (array, layers) = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        let array = bundle
+            .texture_array(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?;
+        let mut layers = Vec::with_capacity(array.layers.len());
+        for l in &array.layers {
+            let (bytes, bundle) = assets.blob(l)?;
+            let tex = bundle
+                .texture(l, bytes.bytes())
+                .map_err(|e| e.to_string())?;
+            match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
+                Some(Fetch::Ready(d)) => layers.push(d),
+                Some(Fetch::Pending) => {
+                    return Err(format!("{l}: the layer is still being transcoded"));
+                }
+                Some(Fetch::Failed(e)) => return Err(format!("{l}: {e}")),
+                None => return Err("no host is installed to decode textures".into()),
+            }
+        }
+        (array, layers)
+    };
+    let data = og_render::TextureArrayData { layers };
+    let info = data.info().map_err(|e| format!("{id}: {e}"))?;
+    let added = eng
+        .render
+        .borrow_mut()
+        .scene
+        .add_texture_array(data)
+        .map_err(|e| format!("{id}: {e}"))?;
+    let value = json!({
+        "array": handle(added.index()) as f64,
+        "width": info.width,
+        "height": info.height,
+        "layers": info.layers,
+        "levels": info.levels,
+        "format": info.format.name(),
+        "bytes": info.bytes as f64,
+    });
+    debug_assert_eq!(array.meta.layers, info.layers);
+    eng.assets
+        .borrow_mut()
+        .texture_arrays
+        .insert(id, value.clone());
+    Ok(value)
+}
+
 pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
     let id = og_cook::runtime::asset_id(path).to_string();
     if let Some(i) = eng.assets.borrow().sounds.iter().position(|s| s.id == id) {
@@ -611,16 +671,57 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
     // The engine's audio bank holds the sound the mixer plays; its handle is
     // the one AudioSource.sound names.
     let handle = match og_audio::link(eng.id) {
+        // Cooked in chunks: the first is here, the others are read as the
+        // playheads near them (stream::sound_chunks).
+        Some(link) if sound.chunked() => link
+            .bank()
+            .insert_chunked(
+                &sound.id,
+                &sound.qoa,
+                sound.meta.chunk_frames,
+                sound.meta.chunk_count,
+            )
+            .map_err(|e| e.reason().to_string())?,
         Some(link) => link
             .bank()
             .insert_qoa(&sound.id, &sound.qoa)
             .map_err(|e| e.reason().to_string())?,
         None => return Err(format!("{id}: this engine has no audio")),
     };
+    #[cfg(not(target_arch = "wasm32"))]
+    if sound.chunked()
+        && let Some(link) = og_audio::link(eng.id)
+    {
+        link.bank()
+            .set_chunk_loader(handle, chunk_loader(&eng.assets.borrow(), &sound));
+    }
     let mut assets = eng.assets.borrow_mut();
     assets.sounds.push(sound);
     assets.sound_handles.push(handle);
     Ok(assets.sounds.len() - 1)
+}
+
+/// Natively, a chunk a voice reaches before stream::sound_chunks put it in
+/// the bank (a long advance mixed at once) is read from its file there
+/// and then, on whichever thread mixes, its type and cook stamp checked.
+#[cfg(not(target_arch = "wasm32"))]
+fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
+    let files: Vec<Option<(String, u64)>> = (0..sound.meta.chunk_count)
+        .map(|n| {
+            let id = og_cook::runtime::chunk_id(&sound.id, n);
+            let (bundle, dir) = assets.bundle_for(&id).ok()?;
+            let out = bundle.output(&id).ok()?;
+            Some((format!("{dir}/{}", out.file), out.stamp))
+        })
+        .collect();
+    std::sync::Arc::new(move |n| {
+        let (path, stamp) = files.get(n as usize)?.as_ref()?;
+        let bytes = std::fs::read(path).ok()?;
+        match og_cook::runtime::sound_chunk_of(&bytes, path, *stamp) {
+            Ok((k, qoa)) if k == n => Some(qoa),
+            _ => None,
+        }
+    })
 }
 
 /// The `sounds` index of a sound handle.

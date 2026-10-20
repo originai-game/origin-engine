@@ -16,7 +16,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9446</sub>
+<sub>`api.ogt` line 9470</sub>
 
 ## Contents
 
@@ -65,7 +65,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 9521</sub>
+<sub>`api.ogt` line 9545</sub>
 
 <a id="fn-parse"></a>
 
@@ -93,7 +93,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 9529</sub>
+<sub>`api.ogt` line 9553</sub>
 
 <a id="fn-help"></a>
 
@@ -121,7 +121,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 9535</sub>
+<sub>`api.ogt` line 9559</sub>
 
 <a id="fn-schedule"></a>
 
@@ -151,7 +151,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 9541</sub>
+<sub>`api.ogt` line 9565</sub>
 
 ## Types
 
@@ -228,7 +228,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 9452</sub>
+<sub>`api.ogt` line 9476</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -255,7 +255,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 9484</sub>
+<sub>`api.ogt` line 9508</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -279,7 +279,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 9490</sub>
+<sub>`api.ogt` line 9514</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -304,7 +304,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 9497</sub>
+<sub>`api.ogt` line 9521</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -329,7 +329,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 9506</sub>
+<sub>`api.ogt` line 9530</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -352,4 +352,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 9514</sub>
+<sub>`api.ogt` line 9538</sub>

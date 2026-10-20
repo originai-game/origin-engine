@@ -49,6 +49,11 @@ pub struct Info {
     /// Whether the DFD declares an alpha channel.
     pub has_alpha: bool,
     pub sgd: (usize, usize),
+    /// `KTXorientation` (`rd`: x right, y down, as the engine reads
+    /// texels), when the file says.
+    pub orientation: Option<String>,
+    /// `KTXswizzle` (`rgba`: as stored), when the file says.
+    pub swizzle: Option<String>,
 }
 
 fn u32_at(b: &[u8], at: usize) -> Result<u32, String> {
@@ -116,7 +121,16 @@ pub fn parse(bytes: &[u8]) -> Result<Info, String> {
         166 => channel(0) == 3,
         _ => samples >= 4,
     };
+    let kv = metadata(bytes)?;
+    let text = |key: &str| {
+        kv.iter().find(|(k, _)| k == key).map(|(_, v)| {
+            let v = v.strip_suffix(&[0]).unwrap_or(v);
+            String::from_utf8_lossy(v).into_owned()
+        })
+    };
     Ok(Info {
+        orientation: text("KTXorientation"),
+        swizzle: text("KTXswizzle"),
         vk_format,
         width,
         height,
@@ -129,18 +143,100 @@ pub fn parse(bytes: &[u8]) -> Result<Info, String> {
     })
 }
 
-fn kvd(writer: &str) -> Vec<u8> {
-    let key = b"KTXwriter\0";
+/// The key/value data: `(key, value)` pairs, values as stored (a text
+/// value ends in NUL).
+pub fn metadata(bytes: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let (off, len) = (u32_at(bytes, 56)? as usize, u32_at(bytes, 60)? as usize);
+    let block = bytes
+        .get(off..off + len)
+        .ok_or("KTX2 key/value data runs past the end")?;
+    let mut out = Vec::new();
+    let mut at = 0;
+    while at + 4 <= block.len() {
+        let n = u32::from_le_bytes(block[at..at + 4].try_into().expect("4 bytes")) as usize;
+        let pair = block
+            .get(at + 4..at + 4 + n)
+            .ok_or("KTX2 key/value pair runs past its block")?;
+        let k = pair
+            .iter()
+            .position(|&b| b == 0)
+            .ok_or("KTX2 key without its NUL")?;
+        out.push((
+            String::from_utf8_lossy(&pair[..k]).into_owned(),
+            pair[k + 1..].to_vec(),
+        ));
+        at += 4 + n;
+        at += (4 - at % 4) % 4;
+    }
+    Ok(out)
+}
+
+fn kvd(writer: &str, extra: &[(String, Vec<u8>)]) -> Vec<u8> {
     let mut value = writer.as_bytes().to_vec();
     value.push(0);
+    let mut pairs: Vec<(&str, &[u8])> = vec![("KTXwriter", &value)];
+    pairs.extend(
+        extra
+            .iter()
+            .filter(|(k, _)| k != "KTXwriter")
+            .map(|(k, v)| (k.as_str(), v.as_slice())),
+    );
+    // The specification sorts the pairs by key.
+    pairs.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
     let mut out = Vec::new();
-    out.extend_from_slice(&((key.len() + value.len()) as u32).to_le_bytes());
-    out.extend_from_slice(key);
-    out.extend_from_slice(&value);
-    while out.len() % 4 != 0 {
+    for (k, v) in pairs {
+        out.extend_from_slice(&((k.len() + 1 + v.len()) as u32).to_le_bytes());
+        out.extend_from_slice(k.as_bytes());
         out.push(0);
+        out.extend_from_slice(v);
+        while out.len() % 4 != 0 {
+            out.push(0);
+        }
     }
     out
+}
+
+/// The same KTX2 with `entries` (text values) set in its key/value data,
+/// the rest kept: texels, DFD and supercompression data are untouched.
+pub fn with_metadata(bytes: &[u8], entries: &[(&str, &str)]) -> Result<Vec<u8>, String> {
+    let info = parse(bytes)?;
+    let mut kv: Vec<(String, Vec<u8>)> = metadata(bytes)?
+        .into_iter()
+        .filter(|(k, _)| !entries.iter().any(|(e, _)| e == k))
+        .collect();
+    for (k, v) in entries {
+        let mut value = v.as_bytes().to_vec();
+        value.push(0);
+        kv.push((k.to_string(), value));
+    }
+    let writer = kv
+        .iter()
+        .find(|(k, _)| k == "KTXwriter")
+        .map(|(_, v)| String::from_utf8_lossy(v.strip_suffix(&[0]).unwrap_or(v)).into_owned())
+        .unwrap_or_default();
+    let (dfd_off, dfd_len) = (u32_at(bytes, 48)? as usize, u32_at(bytes, 52)? as usize);
+    Ok(assemble(Parts {
+        vk_format: info.vk_format,
+        type_size: u32_at(bytes, 16)?,
+        width: info.width,
+        height: info.height,
+        supercompression: info.supercompression,
+        dfd: bytes[dfd_off..dfd_off + dfd_len].to_vec(),
+        sgd: bytes[info.sgd.0..info.sgd.0 + info.sgd.1].to_vec(),
+        levels: info
+            .levels
+            .iter()
+            .map(|l| {
+                (
+                    bytes[l.offset..l.offset + l.length].to_vec(),
+                    l.uncompressed_length,
+                )
+            })
+            .collect(),
+        level_align: 16,
+        writer: &writer,
+        extra: kv,
+    }))
 }
 
 struct Parts<'a> {
@@ -155,6 +251,8 @@ struct Parts<'a> {
     levels: Vec<(Vec<u8>, usize)>,
     level_align: usize,
     writer: &'a str,
+    /// Key/value pairs besides `KTXwriter`.
+    extra: Vec<(String, Vec<u8>)>,
 }
 
 fn assemble(p: Parts) -> Vec<u8> {
@@ -162,7 +260,7 @@ fn assemble(p: Parts) -> Vec<u8> {
     let mut out = vec![0u8; HEADER_SIZE + 24 * n];
     let dfd_off = out.len();
     out.extend_from_slice(&p.dfd);
-    let kvd = kvd(p.writer);
+    let kvd = kvd(p.writer, &p.extra);
     let kvd_off = out.len();
     out.extend_from_slice(&kvd);
     let mut sgd_off = 0;
@@ -302,6 +400,7 @@ pub fn write_rgba8_zlib(
         levels,
         level_align: 1,
         writer,
+        extra: Vec::new(),
     })
 }
 
@@ -539,6 +638,7 @@ pub fn from_basis(basis: &[u8], srgb: bool, zstd: bool, writer: &str) -> Result<
         levels,
         level_align: align,
         writer,
+        extra: Vec::new(),
     }))
 }
 

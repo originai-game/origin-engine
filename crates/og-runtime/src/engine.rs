@@ -1147,6 +1147,7 @@ pub fn point_shadows_name(p: og_render::PointShadows) -> &'static str {
 fn tick_boundary(eng: &Engine) {
     eng.assets.borrow_mut().poll();
     super::stream::update(eng);
+    super::stream::sound_chunks(eng);
     super::environment::resolve(eng);
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
@@ -1168,6 +1169,7 @@ fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
         let chunk = left.min(og_probe::PLAYTEST_MAX_TICKS);
         let stepped = rprobe::with_probe(eng, false, |p, w| p.advance(w, chunk));
         super::modules::end_of_ticks();
+        super::stream::sound_chunks(eng);
         let tick = stepped?.map_err(err)?;
         left -= chunk;
         if left == 0 || eng.probe.borrow().quit_requested() {
@@ -1222,6 +1224,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let t0 = rprobe::now_ms();
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
     super::modules::end_of_ticks();
+    super::stream::sound_chunks(&eng);
     let ticks = match stepped {
         Ok(Ok(n)) => n,
         Ok(Err(e)) => return refuse(err(e)),

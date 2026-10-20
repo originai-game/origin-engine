@@ -112,7 +112,7 @@ impl Hooks for WebHooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         // A pack is read once per load: taken, not copied, and fetched
         // again (a failure too) the next time its group loads.
-        let known = if is_stream_pack(path) {
+        let known = if is_stream_pack(path) || is_sound_chunk(path) {
             FILES.with(|f| f.borrow_mut().remove(path))
         } else {
             FILES.with(|f| f.borrow().get(path).cloned())
@@ -215,6 +215,15 @@ fn is_stream_pack(path: &str) -> bool {
     path.rsplit_once('/').is_some_and(|(dir, name)| {
         dir.ends_with("/stream") && name.len() > ".ogb".len() && name.ends_with(".ogb")
     })
+}
+
+/// `cooked/<sound>.chunk<n>.ogb`: a chunk of a sound cooked in chunks,
+/// read once each time its playhead nears it (taken, so the Worker never
+/// holds a long track whole).
+fn is_sound_chunk(path: &str) -> bool {
+    path.strip_suffix(".ogb")
+        .and_then(|p| p.rsplit_once(".chunk"))
+        .is_some_and(|(_, n)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
 }
 
 fn drop_textures(ids: &[String]) {

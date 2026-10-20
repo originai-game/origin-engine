@@ -191,6 +191,42 @@ fn be_u64(b: &[u8], at: usize) -> Option<u64> {
     Some(u64::from_be_bytes(b.get(at..at + 8)?.try_into().ok()?))
 }
 
+/// Splits a QOA file into chunks of `per_chunk` frames (a frame is
+/// self-contained: its header carries the predictor's state, so a chunk's
+/// frames decode exactly as they do in the whole file). The first is the
+/// file's header (the whole length) followed by the first chunk's frames;
+/// the others are frames only.
+pub fn split(bytes: &[u8], per_chunk: usize) -> Result<Vec<Vec<u8>>, String> {
+    let bad = |what: &str| format!("malformed QOA: {what}");
+    let header = be_u64(bytes, 0).ok_or_else(|| bad("no header"))?;
+    if (header >> 32) as u32 != MAGIC {
+        return Err(bad("wrong magic"));
+    }
+    if per_chunk == 0 {
+        return Err("a chunk holds at least one frame".into());
+    }
+    let mut chunks = vec![bytes[..8].to_vec()];
+    let (mut pos, mut in_chunk) = (8, 0);
+    while pos < bytes.len() {
+        let fh = be_u64(bytes, pos).ok_or_else(|| bad("truncated frame header"))?;
+        let size = (fh & 0xffff) as usize;
+        if size < 8 || pos + size > bytes.len() {
+            return Err(bad("frame size"));
+        }
+        if in_chunk == per_chunk {
+            chunks.push(Vec::new());
+            in_chunk = 0;
+        }
+        chunks
+            .last_mut()
+            .expect("a chunk")
+            .extend_from_slice(&bytes[pos..pos + size]);
+        in_chunk += 1;
+        pos += size;
+    }
+    Ok(chunks)
+}
+
 /// Decodes a QOA file.
 pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
     let bad = |what: &str| format!("malformed QOA: {what}");
