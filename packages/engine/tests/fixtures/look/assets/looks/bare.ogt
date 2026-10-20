@@ -1,0 +1,9 @@
+type look
+version 1
+---
+# Claims Stylise and PostEffects with no fields: applying it resets both.
+name "Bare"
+Stylise {
+}
+PostEffects {
+}

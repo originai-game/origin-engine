@@ -16,6 +16,7 @@ mod e6;
 mod environment;
 mod flipbook;
 mod font;
+pub mod look;
 mod model;
 mod scene;
 pub mod sfx;
@@ -409,6 +410,8 @@ enum Kind {
     Rig,
     Terrain,
     Environment,
+    Look,
+    Palette,
 }
 
 impl Kind {
@@ -432,6 +435,8 @@ impl Kind {
             Kind::Rig => "rig",
             Kind::Terrain => "terrain",
             Kind::Environment => "environment",
+            Kind::Look => "look",
+            Kind::Palette => "palette",
         }
     }
 }
@@ -468,6 +473,8 @@ enum Work<'a> {
     Rig(&'a Source),
     Terrain(&'a Source),
     Environment(&'a Source),
+    Look(&'a Source),
+    Palette(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -628,6 +635,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,
             "tmj" | "ldtk" => Kind::Tilemap,
+            "hex" | "gpl" => Kind::Palette,
             "ogt" => {
                 let text = std::fs::read_to_string(path)
                     .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
@@ -659,12 +667,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
+                    Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -966,6 +975,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     st,
                     Work::Environment(s),
                 ));
+            }
+            Kind::Look => {
+                let deps = look::look_dependencies(s, &assets_dir, &|id| known.contains(id));
+                let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Look::NAME, st, Work::Look(s)));
+            }
+            Kind::Palette => {
+                let st = stamp(&[b"palette 1", &hash]);
+                outs.push((s.rel.clone(), format::Palette::NAME, st, Work::Palette(s)));
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
@@ -1442,6 +1460,8 @@ fn run(
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Environment(s) => environment::cook_environment(s, p.stamp),
+        Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),
+        Work::Palette(s) => look::cook_palette(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

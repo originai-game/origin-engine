@@ -419,6 +419,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 
     // Settings: environment, sky, bloom, exposure, tone mapping.
     if let Some(s) = &settings {
+        // RenderSettings.exposure scales every camera's, as three.js
+        // toneMappingExposure does the whole frame's.
+        exposure *= f(s, "exposure", 1.0).max(0.0);
         scene.environment.intensity = f(s, "environmentIntensity", 0.55);
         if on(s, "sky", false) {
             scene.environment.background = og_render::Background::Sky;

@@ -514,6 +514,16 @@ pub fn og_render_set_shader_param(world: u32, material: f64, name: String, value
 }
 
 #[wasm_bindgen]
+pub fn og_render_apply_look(world: u32, look: f64) -> String {
+    <Host as RenderApi>::og_render_apply_look(&Host, world, look)
+}
+
+#[wasm_bindgen]
+pub fn og_render_look(world: u32) -> String {
+    <Host as RenderApi>::og_render_look(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_render_capabilities(world: u32) -> String {
     <Host as RenderApi>::og_render_capabilities(&Host, world)
 }
@@ -591,6 +601,21 @@ pub fn og_load_texture(world: u32, path: String) -> String {
 #[wasm_bindgen]
 pub fn og_load_skin(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_skin(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_look(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_look(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_look_info(world: u32, look: f64) -> String {
+    <Host as LoadApi>::og_load_look_info(&Host, world, look)
+}
+
+#[wasm_bindgen]
+pub fn og_load_palette(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_palette(&Host, world, path)
 }
 
 #[wasm_bindgen]

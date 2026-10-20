@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2925</sub>
+<sub>`api.ogt` line 3188</sub>
 
 ## Contents
 
@@ -51,6 +51,9 @@ module load {
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
+| [`og.load.look`](#fn-look) | function | Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path. |
+| [`og.load.lookInfo`](#fn-lookInfo) | function | What a loaded look holds and sets. |
+| [`og.load.palette`](#fn-palette) | function | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
 | [`og.load.status`](#fn-status) | function | Where a load is. |
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
@@ -92,7 +95,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3008</sub>
+<sub>`api.ogt` line 3271</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -122,7 +125,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3015</sub>
+<sub>`api.ogt` line 3278</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -150,7 +153,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3022</sub>
+<sub>`api.ogt` line 3285</sub>
 
 <a id="fn-gltf"></a>
 
@@ -182,7 +185,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3028</sub>
+<sub>`api.ogt` line 3291</sub>
 
 <a id="fn-scene"></a>
 
@@ -212,7 +215,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3036</sub>
+<sub>`api.ogt` line 3299</sub>
 
 <a id="fn-font"></a>
 
@@ -242,7 +245,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3043</sub>
+<sub>`api.ogt` line 3306</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -272,7 +275,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3050</sub>
+<sub>`api.ogt` line 3313</sub>
 
 <a id="fn-sound"></a>
 
@@ -302,7 +305,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3057</sub>
+<sub>`api.ogt` line 3320</sub>
 
 <a id="fn-lut"></a>
 
@@ -332,7 +335,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3064</sub>
+<sub>`api.ogt` line 3327</sub>
 
 <a id="fn-environment"></a>
 
@@ -362,7 +365,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3071</sub>
+<sub>`api.ogt` line 3334</sub>
 
 <a id="fn-emitter"></a>
 
@@ -392,7 +395,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3078</sub>
+<sub>`api.ogt` line 3341</sub>
 
 <a id="fn-shader"></a>
 
@@ -422,7 +425,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3085</sub>
+<sub>`api.ogt` line 3348</sub>
 
 <a id="fn-texture"></a>
 
@@ -452,7 +455,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3092</sub>
+<sub>`api.ogt` line 3355</sub>
 
 <a id="fn-skin"></a>
 
@@ -482,7 +485,97 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3099</sub>
+<sub>`api.ogt` line 3362</sub>
+
+<a id="fn-look"></a>
+
+### `og.load.look`
+
+Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path.
+
+```ts
+og.load.look(world: World, path: string): Result<Look>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `looks/main.ogt`. |
+
+**Returns** `Result<Look>`: Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load.
+
+Binding symbol `og_load_look` · publish builds: kept
+
+```ogt
+fn look {
+  doc "Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut \"luts/warm.cube\"`, `palette \"palettes/dusk.hex\"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `looks/main.ogt`."
+  returns Result.Look "Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load."
+}
+```
+
+<sub>`api.ogt` line 3369</sub>
+
+<a id="fn-lookInfo"></a>
+
+### `og.load.lookInfo`
+
+What a loaded look holds and sets.
+
+```ts
+og.load.lookInfo(world: World, look: Look): Result<LookInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the look. |
+| `look` | `Look` | no | The look. |
+
+**Returns** `Result<LookInfo>`: Refused for a look not loaded in this world.
+
+Binding symbol `og_load_look_info` · publish builds: kept
+
+```ogt
+fn lookInfo {
+  doc "What a loaded look holds and sets."
+  param world World "The world that owns the look."
+  param look Look "The look."
+  returns Result.LookInfo "Refused for a look not loaded in this world."
+}
+```
+
+<sub>`api.ogt` line 3376</sub>
+
+<a id="fn-palette"></a>
+
+### `og.load.palette`
+
+A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path.
+
+```ts
+og.load.palette(world: World, path: string): Result<Palette>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `palettes/dusk.hex`. |
+
+**Returns** `Result<Palette>`: Refused for a path not in the bundle (the reason says to run og cook).
+
+Binding symbol `og_load_palette` · publish builds: kept
+
+```ogt
+fn palette {
+  doc "A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `palettes/dusk.hex`."
+  returns Result.Palette "Refused for a path not in the bundle (the reason says to run og cook)."
+}
+```
+
+<sub>`api.ogt` line 3383</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -512,7 +605,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3106</sub>
+<sub>`api.ogt` line 3390</sub>
 
 <a id="fn-status"></a>
 
@@ -542,7 +635,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3113</sub>
+<sub>`api.ogt` line 3397</sub>
 
 <a id="fn-error"></a>
 
@@ -572,7 +665,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3120</sub>
+<sub>`api.ogt` line 3404</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -602,7 +695,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3127</sub>
+<sub>`api.ogt` line 3411</sub>
 
 <a id="fn-animation"></a>
 
@@ -632,7 +725,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3134</sub>
+<sub>`api.ogt` line 3418</sub>
 
 <a id="fn-rig"></a>
 
@@ -662,7 +755,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3141</sub>
+<sub>`api.ogt` line 3425</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -692,7 +785,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3148</sub>
+<sub>`api.ogt` line 3432</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -722,7 +815,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3155</sub>
+<sub>`api.ogt` line 3439</sub>
 
 ## Components, resources and events
 
@@ -745,7 +838,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3003</sub>
+<sub>`api.ogt` line 3266</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -768,7 +861,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3162</sub>
+<sub>`api.ogt` line 3446</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -793,7 +886,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3168</sub>
+<sub>`api.ogt` line 3452</sub>
 
 ## Types
 
@@ -809,7 +902,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 2931</sub>
+<sub>`api.ogt` line 3194</sub>
 
 <a id="type-Font"></a>
 
@@ -823,7 +916,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 2932</sub>
+<sub>`api.ogt` line 3195</sub>
 
 <a id="type-Sound"></a>
 
@@ -837,7 +930,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 2933</sub>
+<sub>`api.ogt` line 3196</sub>
 
 <a id="type-Skin"></a>
 
@@ -851,7 +944,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 2934</sub>
+<sub>`api.ogt` line 3197</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -876,7 +969,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2950</sub>
+<sub>`api.ogt` line 3213</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -902,7 +995,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2957</sub>
+<sub>`api.ogt` line 3220</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -927,7 +1020,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2965</sub>
+<sub>`api.ogt` line 3228</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -950,7 +1043,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2973</sub>
+<sub>`api.ogt` line 3236</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -981,7 +1074,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2980</sub>
+<sub>`api.ogt` line 3243</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1010,7 +1103,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2991</sub>
+<sub>`api.ogt` line 3254</sub>
 
 ## Column kinds
 
@@ -1030,7 +1123,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2936</sub>
+<sub>`api.ogt` line 3199</sub>
 
 ```ogt
 column Sound {
@@ -1041,4 +1134,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2943</sub>
+<sub>`api.ogt` line 3206</sub>

@@ -55,6 +55,7 @@ mod scene;
 pub mod shapes;
 mod skin;
 mod sprites;
+mod stylise;
 mod terrain;
 mod terrain_tiles;
 mod texture;
@@ -96,6 +97,10 @@ pub use scatter::ScatterDraw;
 pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
+};
+pub use stylise::{
+    DepthBands, DitherPattern, Halftone, Hatching, Ink, MAX_PALETTE_COLORS, MaterialStyle, Paint,
+    Palette, PaletteHandle, PixelScale, Quantize, Retro3d, STYLISE_DRAWN, Stylise,
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
