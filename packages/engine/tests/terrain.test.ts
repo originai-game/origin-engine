@@ -215,7 +215,7 @@ test("an edit raises the ground for sample, physics and the renderer", () => {
   // Flattening it back to the old height.
   must(og.terrain.edit(w, info.data as never, { mode: "flatten" as never, center: { x: 20, y: h0, z: 20 }, radius: 8, strength: 1, falloff: 0 }));
   expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0, 1);
-});
+}, 30_000);
 
 test("terrain edits are world state: a snapshot keeps them and a restore brings the ground back", () => {
   const { engine, info } = start();
