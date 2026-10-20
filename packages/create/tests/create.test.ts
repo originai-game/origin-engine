@@ -5,6 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
+import { pickStyle, readCatalogue, words } from "../bin/create.ts";
 import { fileURLToPath } from "node:url";
 
 declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
@@ -29,7 +30,13 @@ function walk(root: string, at = root): string[] {
 // The template keeps its Git attributes as `gitattributes` (this repository
 // stores media as plain blobs); a scaffold gets them as `.gitattributes`.
 const scaffolded = (f: string) => (f === "gitattributes" ? ".gitattributes" : f);
-const sourceFiles = walk(template).filter((f) => !/^(cooked|dist|og-out|node_modules|\.og)\//.test(f)).map(scaffolded).sort();
+const copied = (root: string) => walk(root).filter((f) => !/^(cooked|dist|og-out|node_modules|\.og)\//.test(f)).map(scaffolded);
+/** What a scaffold of `root` holds: its files, its look renamed to the game's id (or added), and a README. */
+function expected(root: string, id: string): string[] {
+  const files = copied(root).filter((f) => !f.startsWith("assets/looks/"));
+  return [...new Set([...files, `assets/looks/${id}.ogt`, "README.md"])].sort();
+}
+const sourceFiles = copied(template).sort();
 
 function git(cwd: string, ...args: string[]): string {
   const r = Bun.spawnSync(["git", ...args], { cwd });
@@ -42,7 +49,7 @@ test("scaffolds every template file with the game's name and id", () => {
   expect(r.code).toBe(0);
   expect(r.out).toContain("og run .");
   const dir = join(scratch, "space-run");
-  expect(walk(dir).sort()).toEqual(sourceFiles);
+  expect(walk(dir).sort()).toEqual(expected(template, "space-run"));
   expect(sourceFiles).toContain("project.ogt");
   expect(sourceFiles.some((f) => f.startsWith("assets/"))).toBeTrue();
   const manifest = readFileSync(join(dir, "project.ogt"), "utf8");
@@ -90,15 +97,14 @@ test("build output in the template is never copied", () => {
   for (const f of ["cooked/a.ogb", "dist/game.js", "node_modules/x/i.js", "src/main.ts"]) writeFileSync(join(fake, f), "x");
   const r = Bun.spawnSync(["bun", "-e", `import { create } from ${JSON.stringify(join(pkg, "bin", "create.ts"))}; create({ dir: ${JSON.stringify(join(scratch, "clean"))}, name: "Clean", template: ${JSON.stringify(fake)} });`]);
   expect(r.exitCode).toBe(0);
-  expect(walk(join(scratch, "clean")).sort()).toEqual(["project.ogt", "src/main.ts"]);
+  expect(walk(join(scratch, "clean")).sort()).toEqual(["README.md", "assets/looks/clean.ogt", "project.ogt", "src/main.ts"]);
 });
 
 test("--archetype scaffolds an archetype game instead of the template", () => {
   const archetype = join(pkg, "..", "..", "templates", "archetypes", "runner");
   const r = cli("dash", "--archetype", "runner", "--name", "Dash");
   expect(r.code).toBe(0);
-  const want = walk(archetype).filter((f) => !/^(cooked|dist|node_modules|og-out|\.og)\//.test(f)).map(scaffolded).sort();
-  expect(walk(join(scratch, "dash")).sort()).toEqual(want);
+  expect(walk(join(scratch, "dash")).sort()).toEqual(expected(archetype, "dash"));
   expect(readFileSync(join(scratch, "dash", "project.ogt"), "utf8")).toContain('name "Dash"');
   const unknown = cli("nope", "--archetype", "no-such-game");
   expect(unknown.code).not.toBe(0);
@@ -130,4 +136,100 @@ test("a scaffolded project routes media through Git LFS; the engine repository d
   for (const media of ["templates/game/assets/models/dropship.glb", "templates/archetypes/runner/assets/x.png", "templates/archetypes/topdown/a.wav"]) {
     expect(git(repo, "check-attr", "filter", media).trim()).toBe(`${media}: filter: unspecified`);
   }
+});
+
+// The look: every game gets assets/looks/<id>.ogt, named by GameDesc.look.
+
+const read = (...p: string[]) => readFileSync(join(scratch, ...p), "utf8");
+const topLevel = (text: string, key: string) => new RegExp(`^${key} "([^"]*)"$`, "m").exec(text)?.[1] ?? null;
+const lookKeys = (main: string) => [...main.matchAll(/^\s*look: "([^"]+)",$/gm)].map((m) => m[1]);
+const styles = readCatalogue();
+
+test("the template's look becomes the game's: renamed to its id, named by GameDesc.look, explained in the README", () => {
+  expect(cli("lantern", "--name", "Lantern", "--no-prompt").code).toBe(0);
+  const look = read("lantern", "assets", "looks", "lantern.ogt");
+  expect(look.startsWith("type look\nversion 1\n---\n")).toBeTrue();
+  expect(topLevel(look, "name")).toBe("Lantern");
+  // templates/game/assets/looks/origin-game.ogt's preset, kept when no premise or --look is given.
+  expect(topLevel(look, "extends")).toBe(topLevel(readFileSync(join(template, "assets", "looks", "origin-game.ogt"), "utf8"), "extends"));
+  expect(existsSync(join(scratch, "lantern", "assets", "looks", "origin-game.ogt"))).toBeFalse();
+  expect(lookKeys(read("lantern", "src", "main.ts"))).toEqual(["looks/lantern.ogt"]);
+  const readme = read("lantern", "README.md");
+  expect(readme).toContain("## The look");
+  expect(readme).toContain("`assets/looks/lantern.ogt`");
+  expect(readme).toContain('look: "looks/lantern.ogt"');
+  expect(readme).toContain("extends \"<slug>\"");
+});
+
+test("--look extends the catalogue preset it names; an unknown slug is refused with the slugs", () => {
+  const r = cli("cel", "--look", "anime-cel-3d");
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("extends anime-cel-3d (--look)");
+  const look = read("cel", "assets", "looks", "cel.ogt");
+  expect(topLevel(look, "extends")).toBe("anime-cel-3d");
+  expect(look).toContain("skins/neon"); // the style's skin pack, as the catalogue gives it
+  expect(read("cel", "README.md")).toContain("It extends `anime-cel-3d`, chosen with `--look`");
+  const bad = cli("nope-look", "--look", "photoreal-ultra");
+  expect(bad.code).not.toBe(0);
+  expect(bad.err).toContain("no look preset 'photoreal-ultra'");
+  expect(bad.err).toContain("16bit-pixel");
+  expect(existsSync(join(scratch, "nope-look"))).toBeFalse(); // refused before anything is written
+});
+
+test("--premise picks the catalogue style whose premise fits", () => {
+  const r = cli("synth", "--premise", "A neon arcade shooter: electric, hypnotic synthwave racing");
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("extends neon-vector (from the premise)");
+  expect(topLevel(read("synth", "assets", "looks", "synth.ogt"), "extends")).toBe("neon-vector");
+  expect(read("synth", "README.md")).toContain("chosen from the game's premise");
+  // No word of the premise matches a style: the template's look stays, and the output says why.
+  const none = cli("vague", "--premise", "zzz qqq");
+  expect(none.code).toBe(0);
+  expect(none.out).toContain("no catalogue style matched the premise");
+  expect(topLevel(read("vague", "assets", "looks", "vague.ogt"), "extends")).toBe("faceted-low-poly");
+});
+
+test("pickStyle weighs genre over mood over the rest, prefers full support on a tie, and never picks a style without a preset", () => {
+  const pick = (p: string) => pickStyle(p, styles)?.style.slug ?? null;
+  expect(pick("a cosy city builder with a tabletop charm")).toBe("miniature-diorama");
+  expect(pick("survival horror with lonely, uncanny corridors")).toBe("low-resolution-3d");
+  expect(pick("16-bit platformer, energetic and heroic")).toBe("16bit-pixel");
+  expect(pick("a sandbox about building and destruction")).toBe("voxel-worlds");
+  expect(pick("Cozy Puzzles")).not.toBeNull();
+  expect(pick("")).toBeNull();
+  expect(words("Cozy Platformers in Sci-Fi colors, hand-drawn")).toEqual(["cosy", "platformer", "sci", "colour", "hand-drawn", "hand", "drawn"]);
+  const noPresets = styles.map((s) => ({ ...s, look: { ...s.look, presetReady: false } }));
+  expect(pickStyle("neon arcade shooter", noPresets)).toBeNull();
+  // Every slug the catalogue offers is one --look accepts, and each has its preset in templates/looks/.
+  for (const s of styles) expect(existsSync(join(pkg, "..", "..", "templates", "looks", `${s.slug}.ogt`))).toBe(s.look.presetReady);
+});
+
+test("an archetype without a look gets one: GameDesc.look inserted into og.game({...}), its frames untouched until a preset is chosen", () => {
+  expect(cli("run2", "--archetype", "runner", "--no-prompt").code).toBe(0);
+  const main = read("run2", "src", "main.ts");
+  expect(lookKeys(main)).toEqual(["looks/run2.ogt"]);
+  expect(main).toMatch(/export default og\.game\(\{\n  \/\/ The art direction as data[^\n]*\n  look: "looks\/run2\.ogt",\n/);
+  const look = read("run2", "assets", "looks", "run2.ogt");
+  expect(topLevel(look, "extends")).toBeNull();
+  expect(look.split("\n").filter((l) => l !== "" && !l.startsWith("#"))).toEqual(["type look", "version 1", "---", 'name "Run2"']);
+  // With a preset, the reference frames will move: the output and the README say so.
+  const r = cli("run3", "--archetype", "runner", "--look", "16bit-pixel");
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("the frames in references/ show the archetype's own look; with 16bit-pixel they will differ");
+  expect(read("run3", "README.md")).toContain("OG_FX_CAPTURE=1 og test .");
+});
+
+test("the idle archetype's look carries over: its skin and render settings stay, a preset goes under them", () => {
+  expect(cli("orb", "--archetype", "idle").code).toBe(0);
+  const plain = read("orb", "assets", "looks", "orb.ogt");
+  expect(topLevel(plain, "skin")).toBe("skins/sparkorb/skin.ogt");
+  expect(plain).toContain("RenderSettings {\n  toneMapped false\n  environmentIntensity 0\n}");
+  expect(topLevel(plain, "extends")).toBeNull();
+  expect(existsSync(join(scratch, "orb", "assets", "looks", "idle.ogt"))).toBeFalse();
+  expect(lookKeys(read("orb", "src", "main.ts"))).toEqual(["looks/orb.ogt"]);
+  expect(cli("orb2", "--archetype", "idle", "--look", "luminous-pixel").code).toBe(0);
+  const lit = read("orb2", "assets", "looks", "orb2.ogt");
+  expect(topLevel(lit, "extends")).toBe("luminous-pixel");
+  expect(topLevel(lit, "skin")).toBe("skins/sparkorb/skin.ogt");
+  expect(lit.indexOf('extends "luminous-pixel"')).toBeLessThan(lit.indexOf("RenderSettings {"));
 });

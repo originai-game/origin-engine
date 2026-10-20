@@ -10,8 +10,8 @@
 
 use crate::effects::{
     AmbientOcclusion, CameraShake, ChromaticAberration, ColorGrading, ColorLut, Decal,
-    DepthOfField, FilmGrain, Glow, GodRays, Light2d, Lighting2d, LutHandle, MotionBlur, Occluder2d,
-    Outline, ScreenFlash, SpriteFx, Vignette,
+    DepthOfField, FilmGrain, Glow, GodRays, Light2d, Lighting2d, MotionBlur, Occluder2d, Outline,
+    ScreenFlash, SpriteFx, Vignette,
 };
 use crate::material::StandardMaterial;
 use crate::particles::{EmitterHandle, ParticleEmitter, ParticleSystem};
@@ -359,14 +359,19 @@ handle!(
     TextureArrayHandle
 );
 handle!(
+    /// A colour LUT added to a [`RenderScene`] ([`RenderScene::add_lut`]).
+    LutHandle
+);
+handle!(
     /// A colour palette added to a [`RenderScene`] for
     /// [`crate::Stylise`]'s quantisation ([`RenderScene::add_palette`]).
     PaletteHandle
 );
 
 /// A sprite drawn from a layer of a texture array instead of its texture
-/// ([`RenderScene::sprite_arrays`]): a sheet of same-sized frames batched
-/// into one draw whichever frame each sprite shows.
+/// ([`RenderScene::sprite_arrays`], [`Overlay::sprite_arrays`]): a sheet of
+/// same-sized frames batched into one draw whichever frame each sprite
+/// shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SpriteArray {
     /// The index in [`RenderScene::sprites`].
@@ -976,6 +981,10 @@ impl Text {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Overlay {
     pub sprites: Vec<Sprite>,
+    /// Overlay sprites drawn from a layer of a texture array instead of
+    /// their texture ([`SpriteArray::sprite`] indexes [`Overlay::sprites`]):
+    /// one draw per array whichever layer each shows, as in the world.
+    pub sprite_arrays: Vec<SpriteArray>,
     pub texts: Vec<Text>,
     /// Glass panels: the frame under each, blurred ([`Glass`]).
     pub glass: Vec<Glass>,
@@ -998,6 +1007,7 @@ impl Overlay {
     pub fn new(width: f32, height: f32, scale: f32) -> Overlay {
         Overlay {
             sprites: Vec::new(),
+            sprite_arrays: Vec::new(),
             texts: Vec::new(),
             glass: Vec::new(),
             width,
@@ -1068,6 +1078,8 @@ pub struct RenderScene {
     morphs: Vec<Option<MorphTargets>>,
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
+    /// Per LUT slot, bumped when it is filled again or emptied.
+    lut_revisions: Vec<u64>,
     palettes: Vec<crate::Palette>,
     /// Per palette, environment map and texture array: how many times its
     /// slot was refilled or emptied (the renderer uploads or frees it again).
@@ -1171,6 +1183,11 @@ pub struct RenderScene {
     /// index wins). Sprites of one array draw as one run whatever their
     /// layers, so a sheet of frames in an array batches across frames.
     pub sprite_arrays: Vec<SpriteArray>,
+    /// Drop shadows of single world sprites, by sprite index (the last
+    /// entry for an index wins): each a flattened dark copy of the sprite
+    /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
+    /// before every sprite of its layer.
+    pub sprite_shadows: Vec<SpriteShadow>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// Live slots and generations of the removable kinds.
@@ -1181,6 +1198,7 @@ pub struct RenderScene {
     environment_map_slots: Slots,
     texture_array_slots: Slots,
     palette_slots: Slots,
+    lut_slots: Slots,
 }
 
 impl Default for RenderScene {
@@ -1219,6 +1237,7 @@ impl RenderScene {
             morphs: Vec::new(),
             emitters: Vec::new(),
             luts: Vec::new(),
+            lut_revisions: Vec::new(),
             palettes: Vec::new(),
             palette_revisions: Vec::new(),
             environment_maps: Vec::new(),
@@ -1259,6 +1278,7 @@ impl RenderScene {
             tile_layers: Vec::new(),
             trail_layers: Vec::new(),
             sprite_arrays: Vec::new(),
+            sprite_shadows: Vec::new(),
             texture_filters: Vec::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
@@ -1267,6 +1287,7 @@ impl RenderScene {
             environment_map_slots: Slots::default(),
             texture_array_slots: Slots::default(),
             palette_slots: Slots::default(),
+            lut_slots: Slots::default(),
         }
     }
 
@@ -1487,10 +1508,58 @@ impl RenderScene {
         self.emitters.get(handle.index())
     }
 
-    /// Adds a 32³ colour grading table ([`ColorLut`]).
+    /// Adds a 32³ colour grading table ([`ColorLut`]). A slot freed by
+    /// [`RenderScene::remove_lut`] is reused under a new generation.
     pub fn add_lut(&mut self, lut: ColorLut) -> LutHandle {
-        self.luts.push(lut);
-        LutHandle(self.luts.len() as u32 - 1)
+        let (i, generation, reused) = self.lut_slots.take(self.luts.len(), true);
+        if reused {
+            self.luts[i] = lut;
+            self.lut_revisions[i] += 1;
+        } else {
+            self.luts.push(lut);
+            self.lut_revisions.push(0);
+        }
+        LutHandle::from_parts(i, generation)
+    }
+
+    /// Removes a colour LUT: the renderer frees its 3D texture before the
+    /// next frame and a later add reuses the slot under a new generation.
+    /// A frame whose colour grading still names it is refused
+    /// ([`crate::RenderError::InvalidHandle`]). False for a handle that is
+    /// not live.
+    pub fn remove_lut(&mut self, handle: LutHandle) -> bool {
+        let i = handle.index();
+        if !self.lut_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.luts[i] = ColorLut {
+            size: 0,
+            rgba: Vec::new(),
+        };
+        self.lut_revisions[i] += 1;
+        self.lut_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a LUT of this scene that was not removed.
+    pub fn contains_lut(&self, handle: LutHandle) -> bool {
+        self.lut_slots.live(handle.index(), handle.generation())
+    }
+
+    /// A live LUT.
+    pub fn lut(&self, handle: LutHandle) -> Option<&ColorLut> {
+        self.contains_lut(handle)
+            .then(|| &self.luts[handle.index()])
+    }
+
+    pub(crate) fn lut_revisions(&self) -> &[u64] {
+        &self.lut_revisions
+    }
+
+    /// Whether slot `index` holds a live LUT.
+    pub(crate) fn lut_live(&self, index: usize) -> bool {
+        let g = self.lut_slots.generation(index);
+        self.lut_slots.live(index, g)
     }
 
     /// Adds a prefiltered environment map (an asset; og-cook's `type
@@ -2081,10 +2150,11 @@ impl RenderScene {
     }
 
     /// Every per-frame reference to a removed mesh, material, texture,
-    /// font, environment map, texture array or palette: instances, skinned
-    /// instances, sprites (and the arrays they draw from), texts, the
-    /// overlay's, the environment map and the stylisation's palette
-    /// (nothing to look at until something was removed).
+    /// font, environment map, texture array, palette or LUT: instances,
+    /// skinned instances, sprites (and the arrays they draw from), texts,
+    /// the overlay's, the environment map, the colour grading's LUT and the
+    /// stylisation's palette (nothing to look at until something was
+    /// removed).
     pub(crate) fn stale_handle(&self) -> Option<String> {
         let (m, t, mat, f) = (
             &self.mesh_slots,
@@ -2098,7 +2168,8 @@ impl RenderScene {
             || f.any_removed
             || self.environment_map_slots.any_removed
             || self.texture_array_slots.any_removed
-            || self.palette_slots.any_removed)
+            || self.palette_slots.any_removed
+            || self.lut_slots.any_removed)
         {
             return None;
         }
@@ -2106,6 +2177,14 @@ impl RenderScene {
             && !self.contains_environment_map(e.map)
         {
             return Some(format!("the environment map {} was removed", e.map.index()));
+        }
+        if let Some(g) = self.post.color_grading
+            && !self.contains_lut(g.lut)
+        {
+            return Some(format!(
+                "the colour grading's lut {} was removed",
+                g.lut.index()
+            ));
         }
         if let Some(p) = self.stylise.quantize.and_then(|q| q.palette)
             && !self.contains_palette(p)
@@ -2119,6 +2198,15 @@ impl RenderScene {
             if !self.contains_texture_array(s.array) {
                 return Some(format!(
                     "sprite {}: texture array {} was removed",
+                    s.sprite,
+                    s.array.index()
+                ));
+            }
+        }
+        for s in self.overlay.iter().flat_map(|o| &o.sprite_arrays) {
+            if !self.contains_texture_array(s.array) {
+                return Some(format!(
+                    "overlay sprite {}: texture array {} was removed",
                     s.sprite,
                     s.array.index()
                 ));
@@ -2349,6 +2437,115 @@ pub enum TextureFilter {
     /// The nearest texel: crisp pixel art at any scale.
     Nearest,
 }
+
+/// A sprite's drop shadow ([`RenderScene::sprite_shadows`]): the sprite's
+/// quad as it stands, projected along the sun onto its [`ShadowGround`]
+/// (by default the plane y = 0; lifted by [`SPRITE_SHADOW_LIFT`] over a
+/// ground mesh there), its texture's alpha in black at `opacity` times the
+/// sprite's own alpha, faded where the ground already lies in the sun's
+/// cascaded shadow (a shadow inside a shadow is no darker). With the sun
+/// at or below the horizon there is none; a low sun's shadow is at most
+/// five times as long as the sprite is tall. For pixel sprites standing in
+/// 3D sets (a perspective camera over the xz ground); a 2D camera looking
+/// down -z sees the plane edge on.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SpriteShadow {
+    /// The index in [`RenderScene::sprites`].
+    pub sprite: u32,
+    /// How dark, 0 to 1.
+    pub opacity: f32,
+    /// The ground the shadow falls on.
+    pub ground: ShadowGround,
+}
+
+/// The ground a [`SpriteShadow`] falls on: the plane through the point
+/// at `height` under the sprite's anchor with the normal `normal` (og-runtime
+/// fits it to the terrain under the sprite with [`ShadowGround::fit`], or
+/// takes `SpriteDesc.dropShadowHeight`). The default is the plane y = 0.
+/// A normal steeper than about 70° from up is taken as that steep.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadowGround {
+    pub height: f32,
+    pub normal: Vec3,
+}
+
+impl Default for ShadowGround {
+    fn default() -> Self {
+        ShadowGround {
+            height: 0.0,
+            normal: Vec3::Y,
+        }
+    }
+}
+
+impl ShadowGround {
+    /// A level plane at `height`.
+    pub fn level(height: f32) -> ShadowGround {
+        ShadowGround {
+            height,
+            normal: Vec3::Y,
+        }
+    }
+
+    /// The plane a drop shadow of `sprite` lies on over uneven ground
+    /// (`height_at(x, z)`, a terrain's height in metres), under the sun
+    /// towards `direction_to_light`: through the ground at the anchor,
+    /// along the slope from there to where the shadow's tip falls and
+    /// across the slope over the sprite's width, raised where the ground
+    /// between bulges above that plane, so no part of the shadow sinks
+    /// into a hill (over a hollow it lies a little above the ground). A
+    /// level plane at the anchor's ground with the sun at or below the
+    /// horizon.
+    pub fn fit(
+        height_at: impl Fn(f32, f32) -> f32,
+        sprite: &crate::Sprite,
+        direction_to_light: Vec3,
+    ) -> ShadowGround {
+        let at = glam::Vec2::new(sprite.position.x, sprite.position.z);
+        let h0 = height_at(at.x, at.y);
+        let Some(g) = crate::sprites::shadow_ground(direction_to_light) else {
+            return ShadowGround::level(h0);
+        };
+        let step = glam::Vec2::new(g[1], g[2]) * sprite.size.y.abs();
+        let length = step.length();
+        if !(length > 1e-3 && length.is_finite()) {
+            return ShadowGround::level(h0);
+        }
+        let along = step / length;
+        let across = along.perp() * (sprite.size.x.abs() * 0.5).max(0.05);
+        let mid = at + step * 0.5;
+        let tip = height_at(at.x + step.x, at.y + step.y);
+        let (left, right) = (
+            height_at(mid.x - across.x, mid.y - across.y),
+            height_at(mid.x + across.x, mid.y + across.y),
+        );
+        // The rise per metre along the shadow and across it, as a gradient
+        // over x and z.
+        let gradient = along * (tip - h0) / length
+            + across.normalize() * (right - left) / (2.0 * across.length());
+        let bulge = (height_at(mid.x, mid.y) - (h0 + tip) * 0.5).max(0.0);
+        ShadowGround {
+            height: h0 + bulge,
+            normal: Vec3::new(-gradient.x, 1.0, -gradient.y).normalize(),
+        }
+    }
+
+    /// How the ground rises per metre along x and z (0, 0 for a level
+    /// plane, or a normal that is not finite or points down).
+    pub fn slope(&self) -> [f32; 2] {
+        let n = self.normal;
+        if !n.is_finite() || n.y <= 1e-4 {
+            return [0.0, 0.0];
+        }
+        // At most about 70° (a rise of about 3 per metre).
+        let ny = n.y.max(0.34 * n.length());
+        [-n.x / ny, -n.z / ny]
+    }
+}
+
+/// How far above y = 0 a sprite's drop shadow lies (metres), so it never
+/// fights a ground mesh at 0 for depth.
+pub const SPRITE_SHADOW_LIFT: f32 = 0.01;
 
 /// A sprite's sort key within its layer ([`RenderScene::sprite_order`]).
 #[derive(Clone, Copy, Debug, PartialEq)]

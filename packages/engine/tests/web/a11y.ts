@@ -9,6 +9,10 @@
 //   dialog, the section tabs with Audio selected, the Master slider at
 //   100 %, the Mute switch unchecked, the Done button), and Chrome's own
 //   accessibility tree reads them as a screen reader would.
+// - A screen reader's adjust gesture on the Master slider (mirrored as a
+//   native range: its value moved and an `input` event, what VoiceOver's
+//   swipe dispatches) lowers the volume, and the range returns to its
+//   middle step.
 // - A screen-reader-style click (`element.click()`: a click event with no
 //   pointer, what VoiceOver's and NVDA's default action dispatches) on the
 //   mirrored Mute switch reaches the UI as input: the setting toggles
@@ -173,6 +177,23 @@ try {
   // An unchanged screen sends no tree.
   const quiet = await frames(20);
   check(quiet === 0, `a settled screen's frames carry no tree (${quiet} of 20 did)`);
+
+  // A screen reader's own adjust gesture on the mirrored slider (VoiceOver's
+  // swipe down): it moves the native range's value and fires `input`.
+  const masterPath = master?.path ?? "";
+  const range = `document.querySelector('[data-og-path="${masterPath}"]')`;
+  const tag = await t.eval<string>(`${range}?.tagName ?? ""`);
+  check(tag === "INPUT", "the Master slider is mirrored as a native range", tag);
+  await t.eval(`(() => { const el = ${range}; el.value = "0"; el.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+  await frames(4);
+  const lowered = (await t.eval<Mirrored[]>(MIRROR)).find((d) => d.path === masterPath);
+  check(
+    !!lowered && lowered.attrs["aria-valuetext"] !== master?.attrs["aria-valuetext"],
+    "the range's input event reached the UI as a decrement: the Master volume went down",
+    { before: master?.attrs["aria-valuetext"], after: lowered?.attrs["aria-valuetext"] },
+  );
+  const middle = await t.eval<string>(`${range}.value`);
+  check(middle === "1", "and the range is back at its middle step", middle);
 
   // A screen reader's click on the mirrored switch.
   const mutePath = mute?.path ?? "";

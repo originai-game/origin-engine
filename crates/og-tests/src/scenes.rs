@@ -82,6 +82,11 @@ pub const SCENES: &[&str] = &[
     "stylise-retro",
     "stylise-material",
     "sprites-array",
+    "stylise-ink-depth",
+    "sprites-shadow",
+    "sprites-array-fx",
+    "sprites-shadow-terrain",
+    "stylise-surface",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -296,6 +301,24 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // three-layer smooth array (linear, mipmapped) added, around one
         // plain textured sprite; one draw per array and blend.
         "sprites-array" => g.scene = sprite_array_scene(),
+        // Pixel figures standing in a 3D set, each with a drop shadow on
+        // the ground along the sun (one without, one from a texture
+        // array), beside a pillar and a crate casting their own.
+        "sprites-shadow" => g.scene = sprites_shadow_scene(),
+        // Drop shadows off the plane y = 0: figures on a hilly terrain
+        // (each shadow on the plane of the slope under its feet), one on a
+        // raised deck (its shadow at the deck's height), and one beside a
+        // wall whose cascaded shadow its drop shadow fades into.
+        "sprites-shadow-terrain" => g.scene = sprites_shadow_terrain_scene(),
+        // Texture arrays through every sprite path: glowing array sprites
+        // (the glow pass), two 2D particle emitters drawing from arrays
+        // (layers by age, and at random with the soft dot's round edge,
+        // glowing), and overlay sprites from an array beside a plain one.
+        "sprites-array-fx" => {
+            g.scene = sprite_array_fx_scene();
+            g.frames = 60;
+            g.update = Some(fx::tick_update);
+        }
         // MSDF text at several sizes, rotated, Latin and CJK.
         "text-msdf" => g.scene = text_scene()?,
         // E4: a 256x256 tilemap with four layers (one animated, one at half
@@ -433,6 +456,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-bands" => g.scene = crate::stylise_scenes::bands_scene()?,
         "stylise-retro" => g.scene = crate::stylise_scenes::retro_scene(),
         "stylise-material" => g.scene = crate::stylise_scenes::material_scene(),
+        "stylise-ink-depth" => g.scene = crate::stylise_scenes::ink_depth_scene(),
+        "stylise-surface" => g.scene = crate::stylise_scenes::surface_scene(),
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
@@ -932,6 +957,434 @@ pub fn flipbook_frame(frame: u32) -> TextureData {
     t
 }
 
+/// A 16 x 16 pixel-art figure (head, tunic of `tunic`, legs), feet on
+/// the bottom row; transparent round it.
+fn pixel_figure(tunic: [u8; 3]) -> TextureData {
+    let mut t = texture(16, ColorSpace::Srgb, |u, v| {
+        let (x, y) = ((u * 16.0) as i32, (v * 16.0) as i32);
+        let skin = [236, 188, 150, 255];
+        let dark = [40, 32, 48, 255];
+        match (x, y) {
+            // Hair and head.
+            (6..=9, 1) => dark,
+            (5..=10, 2..=5) if (x - 7).abs() + (y - 3).abs() <= 4 => {
+                if y == 2 {
+                    dark
+                } else {
+                    skin
+                }
+            }
+            // Arms and tunic.
+            (4 | 11, 7..=10) => skin,
+            (5..=10, 6..=11) => [tunic[0], tunic[1], tunic[2], 255],
+            // Legs and boots.
+            (6 | 9, 12..=13) => [70, 60, 90, 255],
+            (5..=6 | 9..=10, 14..=15) => dark,
+            _ => [0, 0, 0, 0],
+        }
+    });
+    t.mips = Mips::None;
+    t
+}
+
+/// The `sprites-shadow` scene (see [`build`]).
+pub fn sprites_shadow_scene() -> RenderScene {
+    use og_render::{SpriteArray, SpriteShadow, TextureArrayData, TextureFilter, TextureSource};
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 40.0, 1.0, 0.9);
+    // The set: a pillar and a crate casting their own shadows.
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.7, 0.66, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.8, 2.6, 0.8)));
+    let crate_mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(0.9)));
+    scene.add_instance(
+        pillar,
+        stone,
+        Mat4::from_translation(Vec3::new(3.2, 1.3, -2.0)),
+    );
+    scene.add_instance(
+        crate_mesh,
+        stone,
+        Mat4::from_translation(Vec3::new(-3.4, 0.45, 0.4)) * Mat4::from_rotation_y(0.4),
+    );
+    let figures: Vec<_> = [[200, 60, 60], [60, 120, 210], [80, 170, 90]]
+        .into_iter()
+        .map(|tunic| {
+            let t = scene.add_texture(pixel_figure(tunic));
+            scene.set_texture_filter(t, TextureFilter::Nearest);
+            t
+        })
+        .collect();
+    let wheel = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..8)
+                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
+                .collect(),
+        })
+        .expect("eight frames of one size");
+    scene.set_texture_array_filter(wheel, TextureFilter::Nearest);
+    let stand = |x: f32, z: f32, size: f32| Sprite {
+        position: Vec3::new(x, 0.0, z),
+        size: Vec2::splat(size),
+        anchor: Vec2::new(0.5, 0.0),
+        ..Default::default()
+    };
+    // Three figures with drop shadows, the third darker; a fourth without
+    // one beside the pillar; a wheel drawn from the texture array with one.
+    let add = |scene: &mut RenderScene, sprite: Sprite, shadow: f32| {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        if shadow > 0.0 {
+            scene.sprite_shadows.push(SpriteShadow {
+                sprite: i,
+                opacity: shadow,
+                ..Default::default()
+            });
+        }
+        i
+    };
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[0]),
+            ..stand(-1.6, 0.6, 1.4)
+        },
+        0.5,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[1]),
+            ..stand(0.2, -0.4, 1.4)
+        },
+        0.5,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[2]),
+            ..stand(1.4, 1.2, 1.4)
+        },
+        0.8,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[1]),
+            ..stand(2.2, -1.6, 1.4)
+        },
+        0.0,
+    );
+    let w = add(&mut scene, stand(-0.6, -2.2, 1.2), 0.6);
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: w,
+        array: wheel,
+        layer: 3,
+    });
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.6, 0.8, 0.5),
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.6, 7.5),
+        target: Vec3::new(0.0, 0.6, -0.4),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The `sprites-shadow-terrain` hills: heights in metres at world x, z.
+fn shadow_hills(x: f32, z: f32) -> f32 {
+    0.55 * (0.45 * x + 0.3).sin() * (0.38 * z).cos() + 0.25 * (0.9 * z + 1.1).sin() + 0.6
+}
+
+/// The `sprites-shadow-terrain` scene (see [`build`]).
+pub fn sprites_shadow_terrain_scene() -> RenderScene {
+    use og_render::{
+        ShadowGround, SpriteShadow, Terrain, TerrainData, TerrainLayer, TextureFilter,
+    };
+    let mut scene = RenderScene::new();
+    // 48 m of hills sampled every half metre (the clipmap's finest level),
+    // checkered so the slopes read.
+    let (columns, rows, size) = (97u32, 97u32, Vec2::splat(48.0));
+    let cell = size / Vec2::new(columns as f32 - 1.0, rows as f32 - 1.0);
+    let heights: Vec<f32> = (0..rows)
+        .flat_map(|r| {
+            (0..columns).map(move |c| {
+                let p = -size * 0.5 + Vec2::new(c as f32, r as f32) * cell;
+                shadow_hills(p.x, p.y)
+            })
+        })
+        .collect();
+    let data = TerrainData {
+        size,
+        columns,
+        rows,
+        heights: heights.into(),
+        control: None,
+    };
+    let checker = scene.add_texture(shapes::checker(512, 16));
+    let handle = scene.add_terrain(data.clone());
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(checker),
+            color: Vec3::new(0.85, 0.95, 0.75),
+            tile: 4.0,
+            ..Default::default()
+        }],
+        ..Terrain::new(handle)
+    });
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.7, 0.66, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    // A deck whose top is 1.9 m up, and a wall casting the sun's shadow.
+    let deck_top = 1.9;
+    let deck = scene.add_mesh(shapes::cuboid(Vec3::new(2.4, 2.0, 1.8)));
+    scene.add_instance(
+        deck,
+        stone,
+        Mat4::from_translation(Vec3::new(2.7, deck_top - 1.0, 0.2)),
+    );
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(2.6, 4.0, 0.4)));
+    scene.add_instance(
+        wall,
+        stone,
+        Mat4::from_translation(Vec3::new(-2.2, 1.6, -2.2)),
+    );
+    let figures: Vec<_> = [[200, 60, 60], [60, 120, 210], [80, 170, 90]]
+        .into_iter()
+        .map(|tunic| {
+            let t = scene.add_texture(pixel_figure(tunic));
+            scene.set_texture_filter(t, TextureFilter::Nearest);
+            t
+        })
+        .collect();
+    // Each figure stands on the ground under it; its shadow falls on the
+    // plane fitted to the terrain under it (ShadowGround::fit, as
+    // og-runtime fits it), or on the deck.
+    let sun = Vec3::new(0.35, 0.75, -0.6);
+    let stand = |scene: &mut RenderScene, x: f32, z: f32, figure: usize, deck: bool| {
+        let height = if deck {
+            deck_top
+        } else {
+            data.height(Vec2::new(x, z))
+        };
+        let sprite = Sprite {
+            texture: Some(figures[figure % figures.len()]),
+            position: Vec3::new(x, height, z),
+            size: Vec2::splat(1.4),
+            anchor: Vec2::new(0.5, 0.0),
+            ..Default::default()
+        };
+        let ground = if deck {
+            ShadowGround::level(deck_top)
+        } else {
+            ShadowGround::fit(|x, z| data.height(Vec2::new(x, z)), &sprite, sun)
+        };
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        scene.sprite_shadows.push(SpriteShadow {
+            sprite: i,
+            opacity: 0.6,
+            ground,
+        });
+    };
+    // On the hills: down a slope facing away from the sun, up one facing
+    // it, and in a hollow.
+    stand(&mut scene, 0.6, 2.2, 0, false);
+    stand(&mut scene, 0.4, -1.2, 1, false);
+    stand(&mut scene, -3.6, 2.4, 2, false);
+    // On the deck.
+    stand(&mut scene, 3.5, -0.4, 2, true);
+    // Beside the wall: its drop shadow runs into the wall's shadow.
+    stand(&mut scene, -2.8, 0.1, 0, false);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 5.6, 8.5),
+        target: Vec3::new(0.0, 0.8, -0.2),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+/// Layer `k` of the `sprites-array` smooth array: a soft disc, orange,
+/// green or blue.
+fn glow_layer(k: usize) -> og_render::TextureSource {
+    og_render::TextureSource::Rgba(texture(64, ColorSpace::Srgb, |u, v| {
+        let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
+        let a = ((1.0 - d) * 2.0).clamp(0.0, 1.0);
+        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k];
+        [rgb[0], rgb[1], rgb[2], (a * 255.0) as u8]
+    }))
+}
+
+/// The `sprites-array-fx` scene (see [`build`]): the `sprites-array`
+/// flipbook and smooth arrays through the paths that scene leaves out.
+/// Top: four flipbook sprites glowing (PostEffects glow) over a dim plain
+/// strip. Bottom left: a fountain of round, glowing, added particles whose
+/// layers of the smooth array are picked at random; bottom right: a
+/// sprite-mode emitter stepping each particle through the flipbook's eight
+/// layers over its life. Top left of the screen: four overlay sprites of
+/// the flipbook's layers 0, 2, 4 and 6 (one draw) beside a plain one.
+pub fn sprite_array_fx_scene() -> RenderScene {
+    use og_render::{
+        Burst, EmitterShape, Glow, Overlay, ParticleBlend, ParticleEmitter, ParticleRender,
+        ParticleSystem, SheetMode, SpriteArray, SpriteFx, SpriteSheet, TextureArrayData,
+        TextureFilter, TextureSource,
+    };
+    let mut scene = RenderScene::new();
+    let flipbook = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..8)
+                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
+                .collect(),
+        })
+        .expect("eight frames of one size");
+    scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
+    let glows = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..3).map(glow_layer).collect(),
+        })
+        .expect("three layers of one size");
+    let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
+        let on = ((u * 4.0) as u32 + (v * 4.0) as u32).is_multiple_of(2);
+        if on {
+            [120, 120, 130, 255]
+        } else {
+            [40, 40, 50, 255]
+        }
+    }));
+    // The strip under the glowing row.
+    scene.add_sprite(Sprite {
+        texture: Some(plain),
+        position: Vec3::new(0.0, 2.5, 0.0),
+        size: Vec2::new(14.0, 1.2),
+        layer: 0,
+        ..Default::default()
+    });
+    // Four glowing flipbook sprites: one draw, and one glow draw.
+    for (n, k) in [1u32, 3, 5, 7].into_iter().enumerate() {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(Sprite {
+            position: Vec3::new(-4.5 + n as f32 * 3.0, 2.5, 0.0),
+            size: Vec2::splat(2.0),
+            layer: 1,
+            ..Default::default()
+        });
+        scene.sprite_arrays.push(SpriteArray {
+            sprite: i,
+            array: flipbook,
+            layer: k,
+        });
+        scene.sprite_fx.push(SpriteFx {
+            sprite: i,
+            glow: 0.25 + n as f32 * 0.25,
+            ..Default::default()
+        });
+    }
+    // Round, glowing, added particles from the smooth array, a random layer each.
+    let motes = scene.add_emitter(ParticleEmitter {
+        max_particles: 96,
+        shape: EmitterShape::Cone {
+            angle_degrees: 40.0,
+            radius: 0.3,
+        },
+        rate: 30.0,
+        bursts: vec![Burst::once(0.0, 12)],
+        lifetime: [1.4, 2.0],
+        speed: [3.0, 4.5],
+        size: [0.5, 0.9],
+        gravity: Vec3::new(0.0, -3.0, 0.0),
+        array: Some(glows),
+        round: true,
+        sheet: SpriteSheet {
+            mode: SheetMode::Random,
+            ..Default::default()
+        },
+        blend: ParticleBlend::Additive,
+        render: ParticleRender::Sprite { layer: 2 },
+        glow: 0.6,
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        1,
+        motes,
+        Mat4::from_translation(Vec3::new(-4.0, -4.5, 0.0)),
+        5,
+        0,
+    ));
+    // The flipbook's eight layers over each particle's life, alpha blended.
+    let wheels = scene.add_emitter(ParticleEmitter {
+        max_particles: 64,
+        shape: EmitterShape::Cone {
+            angle_degrees: 45.0,
+            radius: 0.2,
+        },
+        rate: 6.0,
+        bursts: vec![Burst::once(0.0, 6)],
+        lifetime: [2.0, 2.0],
+        speed: [3.0, 4.0],
+        size: [1.0, 1.0],
+        gravity: Vec3::new(0.0, -2.5, 0.0),
+        array: Some(flipbook),
+        sheet: SpriteSheet {
+            mode: SheetMode::OverLife { cycles: 1.0 },
+            ..Default::default()
+        },
+        blend: ParticleBlend::Alpha,
+        render: ParticleRender::Sprite { layer: 2 },
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        2,
+        wheels,
+        Mat4::from_translation(Vec3::new(4.0, -4.5, 0.0)),
+        6,
+        0,
+    ));
+    // The overlay: four flipbook layers (one draw) and a plain sprite.
+    let mut overlay = Overlay::new(1280.0, 720.0, 0.0);
+    for (n, k) in [0u32, 2, 4, 6].into_iter().enumerate() {
+        let i = overlay.sprites.len() as u32;
+        overlay.sprites.push(Sprite {
+            position: Vec3::new(24.0 + n as f32 * 72.0, 24.0, 0.0),
+            size: Vec2::splat(64.0),
+            anchor: Vec2::ZERO,
+            ..Default::default()
+        });
+        overlay.sprite_arrays.push(SpriteArray {
+            sprite: i,
+            array: flipbook,
+            layer: k,
+        });
+    }
+    overlay.sprites.push(Sprite {
+        texture: Some(plain),
+        position: Vec3::new(24.0 + 4.0 * 72.0, 24.0, 0.0),
+        size: Vec2::splat(64.0),
+        anchor: Vec2::ZERO,
+        ..Default::default()
+    });
+    scene.overlay = Some(overlay);
+    scene.post.glow = Some(Glow { intensity: 0.8 });
+    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.post.tonemap = Tonemap::None;
+    scene
+}
+
 /// The `sprites-array` scene (see [`build`]).
 pub fn sprite_array_scene() -> RenderScene {
     use og_render::{
@@ -948,16 +1401,7 @@ pub fn sprite_array_scene() -> RenderScene {
     scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
     let glows = scene
         .add_texture_array(TextureArrayData {
-            layers: (0..3)
-                .map(|k| {
-                    TextureSource::Rgba(texture(64, ColorSpace::Srgb, |u, v| {
-                        let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
-                        let a = ((1.0 - d) * 2.0).clamp(0.0, 1.0);
-                        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k];
-                        [rgb[0], rgb[1], rgb[2], (a * 255.0) as u8]
-                    }))
-                })
-                .collect(),
+            layers: (0..3).map(glow_layer).collect(),
         })
         .expect("three layers of one size");
     let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {

@@ -29,6 +29,11 @@ import { dirname, join } from "node:path";
 import { ogBin } from "./support/og-bin.ts";
 import { fileURLToPath } from "node:url";
 
+// The functional lane may run with a web module older than the native addon
+// (scripts/check.sh bun-functional): the tests that compare the two hosts
+// skip there and run in the full lane.
+const STALE_WASM = process.env.OG_WASM_STALE === "1";
+
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
@@ -44,7 +49,7 @@ function run<T = Record<string, unknown>>(host: string, which: string): T {
 
 type Rng = { advanced: { ok: boolean }; repro: Record<string, number>; rng: { seed: number; state: number }; hash: string };
 
-test("og.Rng in reads forks a deterministic stream without moving the main one, alike on both hosts", () => {
+test.skipIf(STALE_WASM)("og.Rng in reads forks a deterministic stream without moving the main one, alike on both hosts", () => {
   const node = run<Rng>("node", "rng");
   const web = run<Rng>("web", "rng");
   for (const r of [node, web]) {
@@ -112,7 +117,7 @@ type Time = {
   systemSkewMs: number;
 };
 
-test("og.platform.now and the answers' time follow the host's clock, as host input, alike on both hosts", () => {
+test.skipIf(STALE_WASM)("og.platform.now and the answers' time follow the host's clock, as host input, alike on both hosts", () => {
   const node = run<Time>("node", "time");
   const web = run<Time>("web", "time");
   for (const r of [node, web]) {
@@ -150,7 +155,7 @@ test("og test keeps the local store across a playtest's processes with store: ke
 
 type Seen = { seen: Array<{ tick: number; kind: string; key?: string; id?: number; at: number }>; hash: string };
 
-test("input events carry their time within the tick, from the host's stamp and from the command channel, alike on both hosts", () => {
+test.skipIf(STALE_WASM)("input events carry their time within the tick, from the host's stamp and from the command channel, alike on both hosts", () => {
   const node = run<Seen>("node", "input");
   const web = run<Seen>("web", "input");
   expect(node.seen).toEqual([

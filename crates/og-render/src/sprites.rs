@@ -22,28 +22,37 @@ pub(crate) struct SpriteInstance {
     /// rgb: the flash colour, a: how far the sprite mixes towards it.
     flash: [u8; 4],
     /// x: glow strength, y: 1 when 2D lighting applies, z: 1 for a soft dot
-    /// (untextured particles).
+    /// (untextured particles). A drop shadow (none of those) carries its
+    /// ground's slope in yz instead: the rise per metre along x and z.
     fx: [f32; 3],
+    /// A drop shadow's projection (`SpriteShadow`): x 1 projects the
+    /// standing quad onto the ground, yz the x and z it moves per metre of
+    /// height, w the ground's height under the anchor. All 0 for every
+    /// other instance.
+    ground: [f32; 4],
     /// The texture array layer an array sprite draws (sprite_array.wgsl;
     /// the other sprite pipelines do not read it).
     layer: u32,
 }
+
+/// An instance that stands where it is drawn.
+const NO_GROUND: [f32; 4] = [0.0; 4];
 
 pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u64;
 
 pub(crate) const SPRITE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: SPRITE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4],
 };
 
-/// [`SPRITE_LAYOUT`] with the instance's layer (location 6), for the array
+/// [`SPRITE_LAYOUT`] with the instance's layer (location 7), for the array
 /// sprite pipelines.
 pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> =
     wgpu::VertexBufferLayout {
         array_stride: SPRITE_STRIDE,
         step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Uint32],
+        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4, 7 => Uint32],
     };
 
 /// What one run draws with.
@@ -146,7 +155,8 @@ impl FontLayout {
 pub(crate) struct SpriteFrame {
     pub instances: Vec<SpriteInstance>,
     pub runs: Vec<SpriteRun>,
-    /// Glowing sprites again, after `instances` in the buffer, by texture.
+    /// Glowing sprites again, after `instances` in the buffer, by texture
+    /// or array (`RunSource::Sprite` or `RunSource::Array`, additive).
     pub glow_runs: Vec<SpriteRun>,
     pub sprites: u32,
     pub glyphs: u32,
@@ -178,8 +188,68 @@ fn sprite_instance(
             NO_FLASH
         },
         fx: [glow, lit as u32 as f32, soft as u32 as f32],
+        ground: NO_GROUND,
         layer: 0,
     }
+}
+
+/// A 2D particle as the batch draws it: its sprite, blend and glow, the
+/// soft dot's round edge (an untextured particle's, or an emitter's
+/// `round`), and the texture array layer it shows instead of its texture.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ExtraSprite {
+    pub sprite: Sprite,
+    pub blend: SpriteBlend,
+    pub glow: f32,
+    pub soft: bool,
+    pub array: Option<(TextureArrayHandle, u32)>,
+}
+
+/// Sprites drawn from texture arrays, by sprite index (the last entry for
+/// an index wins), checked against `count` sprites and the arrays' layers
+/// (`array_layers`: `None` for an array not uploaded or removed).
+pub(crate) fn array_entries(
+    entries: &[crate::SpriteArray],
+    count: usize,
+    what: &str,
+    array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
+) -> Result<HashMap<u32, (TextureArrayHandle, u32)>, RenderError> {
+    let mut arrays = HashMap::new();
+    for a in entries {
+        if a.sprite as usize >= count {
+            return Err(RenderError::InvalidHandle(format!(
+                "{what} arrays: sprite {} of {count}",
+                a.sprite
+            )));
+        }
+        let layers = array_layers(a.array).ok_or_else(|| {
+            RenderError::InvalidHandle(format!(
+                "{what} {}: texture array {}",
+                a.sprite,
+                a.array.index()
+            ))
+        })?;
+        if a.layer >= layers {
+            return Err(RenderError::InvalidData(format!(
+                "{what} {}: layer {} of a texture array of {layers}",
+                a.sprite, a.layer
+            )));
+        }
+        arrays.insert(a.sprite, (a.array, a.layer));
+    }
+    Ok(arrays)
+}
+
+/// The drop-shadow projection of a scene's sun (`SpriteInstance::ground`):
+/// `None` with the sun at or below the horizon. A low sun is raised to
+/// about 11° so a shadow is at most five times the sprite's height.
+pub(crate) fn shadow_ground(direction_to_light: glam::Vec3) -> Option<[f32; 4]> {
+    let l = direction_to_light;
+    if l.y.is_nan() || l.y <= 1e-4 {
+        return None;
+    }
+    let ly = l.y.max(0.2 * l.length());
+    Some([1.0, -l.x / ly, -l.z / ly, crate::SPRITE_SHADOW_LIFT])
 }
 
 /// The world rectangle an orthographic camera sees (for culling tiles).
@@ -245,6 +315,7 @@ fn tile_instances(
                     color: layer.color,
                     flash: NO_FLASH,
                     fx: [0.0, 0.0, 0.0],
+                    ground: NO_GROUND,
                     layer: 0,
                 });
             }
@@ -273,21 +344,21 @@ fn tile_instances(
     (quads, chunks)
 }
 
-/// Sorts the scene's sprites, the frame's 2D particles (`extra`: sprite,
-/// blend, glow) and texts into runs, with the tile layers and the layered
-/// strips placed before the sprites of their layer. `font(i)` is the layout
-/// of the scene's font `i`; `array_layers(a)` the layers of an uploaded
-/// texture array (`None`: not uploaded or removed); `lit` says which layers
-/// 2D lighting applies to; `view` culls tile chunks (orthographic cameras).
-/// A sprite drawn from an array ([`RenderScene::sprite_arrays`]) joins its
-/// array's run and never the glow pass.
+/// Sorts the scene's sprites, the frame's 2D particles (`extra`) and texts
+/// into runs, with the tile layers and the layered strips placed before
+/// the sprites of their layer. `font(i)` is the layout of the scene's font
+/// `i`; `array_layers(a)` the layers of an uploaded texture array (`None`:
+/// not uploaded or removed); `lit` says which layers 2D lighting applies
+/// to; `view` culls tile chunks (orthographic cameras). A sprite or
+/// particle drawn from an array ([`RenderScene::sprite_arrays`]) joins its
+/// array's run, and the glow pass by array when it glows.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     scene: &RenderScene,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
-    extra: &[(Sprite, SpriteBlend, f32)],
+    extra: &[ExtraSprite],
     lit: impl Fn(i32) -> bool,
     view: Option<ViewRect>,
     strips: &[LayeredStrip],
@@ -316,36 +387,32 @@ pub(crate) fn build<'a>(
         order.insert(o.sprite, if o.key.is_finite() { o.key } else { 0.0 });
     }
     // Sprites drawn from texture arrays, by index (the last entry wins).
-    let mut arrays: HashMap<u32, (TextureArrayHandle, u32)> = HashMap::new();
-    for a in &scene.sprite_arrays {
-        if a.sprite as usize >= scene.sprites.len() {
+    let arrays = array_entries(
+        &scene.sprite_arrays,
+        scene.sprites.len(),
+        "sprite",
+        &array_layers,
+    )?;
+    // Drop shadows by sprite index (the last entry wins), under a sun.
+    let mut shadows: HashMap<u32, (f32, crate::ShadowGround)> = HashMap::new();
+    for s in &scene.sprite_shadows {
+        if s.sprite as usize >= scene.sprites.len() {
             return Err(RenderError::InvalidHandle(format!(
-                "sprite_arrays: sprite {} of {}",
-                a.sprite,
+                "sprite_shadows: sprite {} of {}",
+                s.sprite,
                 scene.sprites.len()
             )));
         }
-        let layers = array_layers(a.array).ok_or_else(|| {
-            RenderError::InvalidHandle(format!(
-                "sprite {}: texture array {}",
-                a.sprite,
-                a.array.index()
-            ))
-        })?;
-        if a.layer >= layers {
-            return Err(RenderError::InvalidData(format!(
-                "sprite {}: layer {} of a texture array of {layers}",
-                a.sprite, a.layer
-            )));
-        }
-        arrays.insert(a.sprite, (a.array, a.layer));
+        shadows.insert(s.sprite, (s.opacity.clamp(0.0, 1.0), s.ground));
     }
+    let ground = shadow_ground(scene.light.direction_to_light).filter(|_| !shadows.is_empty());
+    let mut shadow_count = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
         scene.text_outlines.iter().map(|o| (o.text, o)).collect();
     // (layer, key, source, instance), in submission order.
     let mut keyed: Vec<(i32, f32, RunSource, SpriteInstance)> =
         Vec::with_capacity(scene.sprites.len() + extra.len());
-    let mut glowing: Vec<(Option<TextureHandle>, SpriteInstance)> = Vec::new();
+    let mut glowing: Vec<(RunSource, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
         if let Some(t) = s.texture
             && t.index() >= texture_count
@@ -366,25 +433,76 @@ pub(crate) fn build<'a>(
         };
         let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
         let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
+        // Its drop shadow: the same quad and texel alpha in black, projected
+        // onto the ground, before every sprite of the layer.
+        if let (Some(g), Some(&(opacity, on))) = (ground, shadows.get(&(i as u32)))
+            && opacity > 0.0
+        {
+            let mut shadow = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
+            shadow.color = [0.0, 0.0, 0.0, opacity * s.color[3]];
+            let height = if on.height.is_finite() {
+                on.height
+            } else {
+                0.0
+            };
+            shadow.ground = [g[0], g[1], g[2], g[3] + height];
+            let [rise_x, rise_z] = on.slope();
+            shadow.fx = [0.0, rise_x, rise_z];
+            let source = match arrays.get(&(i as u32)) {
+                Some(&(array, layer)) => {
+                    shadow.layer = layer;
+                    RunSource::Array(SpriteBlend::Alpha, array)
+                }
+                None => RunSource::Sprite(SpriteBlend::Alpha, s.texture),
+            };
+            keyed.push((s.layer, f32::MIN, source, shadow));
+            shadow_count += 1;
+        }
         if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
             inst.layer = layer;
+            if glow > 0.0 {
+                glowing.push((RunSource::Array(SpriteBlend::Additive, array), inst));
+            }
             keyed.push((s.layer, key, RunSource::Array(blend, array), inst));
             continue;
         }
         if glow > 0.0 {
-            glowing.push((s.texture, inst));
+            glowing.push((RunSource::Sprite(SpriteBlend::Additive, s.texture), inst));
         }
         keyed.push((s.layer, key, RunSource::Sprite(blend, s.texture), inst));
     }
-    for (s, blend, glow) in extra {
-        let soft = s.texture.is_none();
-        let inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], *glow, lit(s.layer), soft);
-        if *glow > 0.0 {
-            glowing.push((s.texture, inst));
+    for e in extra {
+        let s = &e.sprite;
+        let mut inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], e.glow, lit(s.layer), e.soft);
+        let array = match e.array {
+            Some((array, layer)) => {
+                let layers = array_layers(array).ok_or_else(|| {
+                    RenderError::InvalidHandle(format!(
+                        "a 2D particle's texture array {}",
+                        array.index()
+                    ))
+                })?;
+                if layer >= layers {
+                    return Err(RenderError::InvalidData(format!(
+                        "a 2D particle: layer {layer} of a texture array of {layers}"
+                    )));
+                }
+                inst.layer = layer;
+                Some(array)
+            }
+            None => None,
+        };
+        let run = |b: SpriteBlend| match array {
+            Some(a) => RunSource::Array(b, a),
+            None => RunSource::Sprite(b, s.texture),
+        };
+        if e.glow > 0.0 {
+            glowing.push((run(SpriteBlend::Additive), inst));
         }
-        keyed.push((s.layer, 0.0, RunSource::Sprite(*blend, s.texture), inst));
+        keyed.push((s.layer, 0.0, run(e.blend), inst));
     }
-    let sprites = keyed.len() as u32;
+    let sprites = keyed.len() as u32 - shadow_count;
+    let after_sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
     for (i, text) in scene.texts.iter().enumerate() {
         let font = font(text.font.index()).ok_or_else(|| {
@@ -434,13 +552,14 @@ pub(crate) fn build<'a>(
                         color: text.color,
                         flash: outline_color,
                         fx: [outline, 0.0, 0.0],
+                        ground: NO_GROUND,
                         layer: 0,
                     },
                 ));
             }
         });
     }
-    let glyphs = keyed.len() as u32 - sprites;
+    let glyphs = keyed.len() as u32 - after_sprites;
     // Stable: within a (layer, key, source) run, submission order is kept.
     keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.cmp(&b.2)));
     // Tile layers and layered strips, each before the sprites of its layer
@@ -514,17 +633,16 @@ pub(crate) fn build<'a>(
         push(&mut runs, source, index, 1);
     }
     place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
-    // The glow pass: by texture (additive, so order does not matter).
-    glowing.sort_by_key(|(t, _)| *t);
+    // The glow pass: by texture or array (additive, so order does not
+    // matter; a stable sort keeps the plain textures' order as before).
+    glowing.sort_by_key(|(source, _)| *source);
     let mut glow_runs: Vec<SpriteRun> = Vec::new();
-    for (t, inst) in glowing {
+    for (source, inst) in glowing {
         let index = instances.len() as u32;
         match glow_runs.last_mut() {
-            Some(run) if run.source == RunSource::Sprite(SpriteBlend::Additive, t) => {
-                run.count += 1
-            }
+            Some(run) if run.source == source => run.count += 1,
             _ => glow_runs.push(SpriteRun {
-                source: RunSource::Sprite(SpriteBlend::Additive, t),
+                source,
                 first: index,
                 count: 1,
             }),
@@ -541,4 +659,142 @@ pub(crate) fn build<'a>(
         tiles,
         tile_chunks,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SpriteShadow;
+    use glam::Vec3;
+
+    fn frame(scene: &RenderScene) -> SpriteFrame {
+        build(scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).expect("a frame")
+    }
+
+    #[test]
+    fn a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun() {
+        let mut scene = RenderScene::new();
+        scene.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
+        let sprite = |x: f32, layer: i32| Sprite {
+            position: Vec3::new(x, 0.0, 0.0),
+            size: glam::Vec2::new(1.0, 2.0),
+            anchor: glam::Vec2::new(0.5, 0.0),
+            color: [1.0, 1.0, 1.0, 0.5],
+            layer,
+            ..Default::default()
+        };
+        scene.sprites = vec![sprite(0.0, 1), sprite(2.0, 1), sprite(4.0, 0)];
+        scene.sprite_shadows = vec![SpriteShadow {
+            sprite: 1,
+            opacity: 0.8,
+            ..Default::default()
+        }];
+        let f = frame(&scene);
+        assert_eq!(f.sprites, 3, "a shadow is not a sprite of the frame");
+        // Layer 0's sprite, then layer 1: the shadow before both sprites.
+        let xs: Vec<f32> = f.instances.iter().map(|i| i.position_rotation[0]).collect();
+        assert_eq!(xs, [4.0, 2.0, 0.0, 2.0]);
+        let shadow = &f.instances[1];
+        assert_eq!(shadow.color, [0.0, 0.0, 0.0, 0.4]);
+        // Per metre of height: -x/y and -z/y of the direction to the sun.
+        assert_eq!(shadow.ground, [1.0, -0.5, 0.25, crate::SPRITE_SHADOW_LIFT]);
+        assert!(f.instances.iter().filter(|i| i.ground[0] > 0.0).count() == 1);
+        // No sun above the horizon, no shadow; an index past the sprites is refused.
+        scene.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
+        assert_eq!(frame(&scene).instances.len(), 3);
+        scene.sprite_shadows[0].sprite = 3;
+        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).is_err());
+    }
+
+    #[test]
+    fn a_drop_shadow_lies_on_its_ground_at_its_height_and_slope() {
+        use crate::ShadowGround;
+        let mut scene = RenderScene::new();
+        scene.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
+        scene.sprites = vec![
+            Sprite {
+                position: Vec3::new(0.0, 2.0, 0.0),
+                size: glam::Vec2::new(1.0, 2.0),
+                ..Default::default()
+            };
+            2
+        ];
+        scene.sprite_shadows = vec![
+            SpriteShadow {
+                sprite: 0,
+                opacity: 1.0,
+                ground: ShadowGround::level(2.0),
+            },
+            SpriteShadow {
+                sprite: 1,
+                opacity: 1.0,
+                ground: ShadowGround {
+                    height: 1.5,
+                    normal: Vec3::new(-0.5, 1.0, 0.25).normalize(),
+                },
+            },
+        ];
+        let f = frame(&scene);
+        let shadows: Vec<_> = f.instances.iter().filter(|i| i.ground[0] > 0.0).collect();
+        assert_eq!(shadows.len(), 2);
+        // A level ground at 2 m: no slope, the lift over it.
+        assert_eq!(shadows[0].ground[3], 2.0 + crate::SPRITE_SHADOW_LIFT);
+        assert_eq!(shadows[0].fx, [0.0, 0.0, 0.0]);
+        // A slope: the rise per metre along x and z, carried in fx.yz.
+        assert_eq!(shadows[1].ground[3], 1.5 + crate::SPRITE_SHADOW_LIFT);
+        let [_, rx, rz] = shadows[1].fx;
+        assert!(
+            (rx - 0.5).abs() < 1e-5 && (rz + 0.25).abs() < 1e-5,
+            "{rx} {rz}"
+        );
+        // A cliff is taken at about 70 degrees; a normal pointing down is level.
+        let cliff = ShadowGround {
+            height: 0.0,
+            normal: Vec3::X,
+        };
+        assert_eq!(cliff.slope(), [0.0, 0.0]);
+        let steep = ShadowGround {
+            height: 0.0,
+            normal: Vec3::new(-1.0, 0.1, 0.0),
+        };
+        assert!(
+            (2.5..3.0).contains(&steep.slope()[0]),
+            "{:?}",
+            steep.slope()
+        );
+    }
+
+    #[test]
+    fn a_fitted_ground_follows_the_terrain_under_the_shadow() {
+        use crate::ShadowGround;
+        let sun = Vec3::new(0.0, 1.0, -1.0);
+        let sprite = Sprite {
+            position: Vec3::new(1.0, 0.0, 2.0),
+            size: glam::Vec2::new(1.0, 2.0),
+            ..Default::default()
+        };
+        // A plane rising 0.5 per metre along x and falling 0.25 along z.
+        let plane = |x: f32, z: f32| 1.0 + 0.5 * x - 0.25 * z;
+        let g = ShadowGround::fit(plane, &sprite, sun);
+        assert!((g.height - plane(1.0, 2.0)).abs() < 1e-5, "{g:?}");
+        let [rx, rz] = g.slope();
+        assert!(
+            (rx - 0.5).abs() < 1e-4 && (rz + 0.25).abs() < 1e-4,
+            "{rx} {rz}"
+        );
+        // A hill under the middle of the shadow lifts the plane over it.
+        let hill = |_x: f32, z: f32| if (z - 3.0).abs() < 0.5 { 0.3 } else { 0.0 };
+        let g = ShadowGround::fit(hill, &sprite, sun);
+        assert!((g.height - 0.3).abs() < 1e-5, "{g:?}");
+        // No sun above the horizon: level at the anchor's ground.
+        let g = ShadowGround::fit(plane, &sprite, Vec3::NEG_Y);
+        assert_eq!(g, ShadowGround::level(plane(1.0, 2.0)));
+    }
+
+    #[test]
+    fn a_low_sun_casts_at_most_five_heights() {
+        let g = shadow_ground(Vec3::new(1.0, 0.01, 0.0)).unwrap();
+        assert!((g[1].abs() - 5.0).abs() < 0.01, "{g:?}");
+        assert_eq!(shadow_ground(Vec3::new(1.0, 0.0, 0.0)), None);
+    }
 }

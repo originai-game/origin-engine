@@ -69,6 +69,20 @@ pub(crate) struct QueuedSprite {
     pub order: f32,
     /// Drawn from this layer of a texture array instead of its texture.
     pub array: Option<(og_render::TextureArrayHandle, u32)>,
+    /// `SpriteDesc.dropShadow`: a flattened dark copy on the ground (0 none).
+    pub drop_shadow: f32,
+    /// `SpriteDesc.dropShadowHeight`: the level ground under it (a higher
+    /// terrain wins, `terrain::ground_drop_shadows`).
+    pub drop_shadow_height: f32,
+}
+
+/// One `og.load.lut`: its renderer LUT while resident.
+#[derive(Clone, Debug)]
+pub(crate) struct LoadedLut {
+    pub id: String,
+    /// `None` while its streaming group is not resident: released when the
+    /// group unloaded, added again once it is resident (`resolve_luts`).
+    pub handle: Option<og_render::LutHandle>,
 }
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
@@ -92,9 +106,15 @@ pub(crate) struct SkinnedModel {
 /// The effect side of a render state.
 #[derive(Default)]
 pub(crate) struct FxState {
-    /// `og.load.lut` and `og.load.emitter` handles by load index.
-    pub luts: Vec<og_render::LutHandle>,
+    /// `og.load.lut` by load index.
+    pub luts: Vec<LoadedLut>,
+    /// `og.load.emitter` handles by load index.
     pub emitters: Vec<og_render::EmitterHandle>,
+    /// The texture array (its load index in RenderState::texture_arrays)
+    /// of each emitter that draws from one, by the emitter's load index:
+    /// the renderer's emitter follows the array's handle, and a system of
+    /// it draws nothing while the array's streaming group is not resident.
+    pub emitter_arrays: BTreeMap<usize, usize>,
     pub by_path: BTreeMap<String, usize>,
     /// Trail styles made from Trail components, by their fields' bits.
     pub trail_styles: BTreeMap<Vec<u32>, TrailStyleHandle>,
@@ -278,7 +298,10 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 intensity: f(&p, "glowIntensity", 1.0),
             });
         }
-        if let Some(&lut) = handle_index(&p["lut"]).and_then(|i| fx.luts.get(i)) {
+        if let Some(lut) = handle_index(&p["lut"])
+            .and_then(|i| fx.luts.get(i))
+            .and_then(|l| l.handle)
+        {
             post.color_grading = Some(ColorGrading {
                 lut,
                 intensity: f(&p, "lutIntensity", 1.0),
@@ -403,12 +426,20 @@ fn stylise(
         let palette = handle_index(&s["palette"]).and_then(|i| palettes.get(i)?.1);
         let dither = match variant(
             &s["dither"],
-            &["none", "bayer2", "bayer4", "bayer8", "blueNoise"],
+            &[
+                "none",
+                "bayer2",
+                "bayer4",
+                "bayer8",
+                "blueNoise",
+                "interleavedGradient",
+            ],
         ) {
             1 => og_render::DitherPattern::Bayer2,
             2 => og_render::DitherPattern::Bayer4,
             3 => og_render::DitherPattern::Bayer8,
             4 => og_render::DitherPattern::BlueNoise,
+            5 => og_render::DitherPattern::InterleavedGradient,
             _ => og_render::DitherPattern::None,
         };
         if posterize > 0 || palette.is_some() || dither != og_render::DitherPattern::None {
@@ -420,6 +451,10 @@ fn stylise(
                 dither_scale: u(&s, "ditherScale", 1).max(1),
             });
         }
+        let space = |v: &Value| match variant(v, &["screen", "surface"]) {
+            1 => og_render::StyliseSpace::Surface,
+            _ => og_render::StyliseSpace::Screen,
+        };
         let halftone = f(&s, "halftone", 0.0);
         if halftone > 0.0 {
             out.halftone = Some(og_render::Halftone {
@@ -427,6 +462,7 @@ fn stylise(
                 size: f(&s, "halftoneSize", 6.0),
                 angle_degrees: f(&s, "halftoneAngle", 45.0),
                 color: rgb(&s["halftoneColor"], Vec3::new(0.02, 0.02, 0.03)),
+                space: space(&s["halftoneSpace"]),
             });
         }
         let hatching = f(&s, "hatching", 0.0);
@@ -437,6 +473,7 @@ fn stylise(
                 levels: u(&s, "hatchingLevels", 4),
                 angle_degrees: f(&s, "hatchingAngle", 45.0),
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
+                space: space(&s["hatchingSpace"]),
             });
         }
         let paint = og_render::Paint {
@@ -447,6 +484,8 @@ fn stylise(
             canvas: texture(&s["paintCanvas"]),
             canvas_strength: f(&s, "paintCanvasStrength", 0.0),
             canvas_scale: f(&s, "paintCanvasScale", 1.0),
+            canvas_space: space(&s["paintCanvasSpace"]),
+            canvas_world_scale: f(&s, "paintCanvasWorldScale", 128.0),
         };
         if paint.radius > 0.0
             || paint.edge_darkening > 0.0
@@ -460,6 +499,9 @@ fn stylise(
                 threshold: f(&s, "inkThreshold", 0.1),
                 width: f(&s, "inkWidth", 1.0),
                 color: rgb(&s["inkColor"], Vec3::new(0.02, 0.02, 0.03)),
+                depth: f(&s, "inkDepth", 0.0),
+                depth_threshold: f(&s, "inkDepthThreshold", 0.04),
+                normal_threshold: f(&s, "inkNormalThreshold", 0.4),
             });
         }
         let bands = u(&s, "depthBands", 0);
@@ -515,6 +557,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         scene,
         fx,
         textures,
+        texture_arrays,
         draw,
         ..
     } = rs;
@@ -566,9 +609,27 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         if !on(&v, "visible", true) {
             continue;
         }
-        let Some(&emitter) = handle_index(&v["emitter"]).and_then(|i| fx.emitters.get(i)) else {
+        let Some(index) = handle_index(&v["emitter"]) else {
             continue;
         };
+        let Some(&emitter) = fx.emitters.get(index) else {
+            continue;
+        };
+        // An emitter drawing from a texture array follows the array's
+        // renderer handle (a streaming group may have released and added
+        // it again), and draws nothing while it is not resident.
+        if let Some(&a) = fx.emitter_arrays.get(&index) {
+            let Some(handle) = texture_arrays.get(a).and_then(|a| a.handle) else {
+                continue;
+            };
+            if let Some(e) = scene.emitter(emitter).filter(|e| e.array != Some(handle)) {
+                let e = og_render::ParticleEmitter {
+                    array: Some(handle),
+                    ..e.clone()
+                };
+                scene.set_emitter(emitter, e);
+            }
+        }
         let stop = u(&v, "stopTick", 0);
         scene.particles.push(ParticleSystem {
             id: e,
@@ -687,6 +748,13 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
                 .overlay
                 .get_or_insert_with(|| og_render::Overlay::new(viewport.0, viewport.1, 0.0));
             let clip = q.clip.map(|c| o.add_clip(c));
+            if let Some((array, layer)) = q.array {
+                o.sprite_arrays.push(og_render::SpriteArray {
+                    sprite: o.sprites.len() as u32,
+                    array,
+                    layer,
+                });
+            }
             o.sprites.push(og_render::Sprite { clip, ..q.sprite });
             continue;
         }
@@ -709,6 +777,13 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
             scene
                 .occluders_2d
                 .push(og_render::Occluder2d::from_sprite(&q.sprite, 0.0));
+        }
+        if q.drop_shadow > 0.0 {
+            scene.sprite_shadows.push(og_render::SpriteShadow {
+                sprite: index,
+                opacity: q.drop_shadow.min(1.0),
+                ground: og_render::ShadowGround::level(q.drop_shadow_height),
+            });
         }
         if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive {
             scene.sprite_fx.push(og_render::SpriteFx {
@@ -880,27 +955,60 @@ pub(crate) fn viewport(rs: &RenderState) -> (f32, f32) {
     }
 }
 
-/// `og.load.lut`: a cooked `.cube` table added to the renderer once.
+/// Reads a cooked `.cube` table and adds it to the renderer.
+fn add_lut(eng: &super::engine::Engine, id: &str) -> Result<og_render::LutHandle, String> {
+    let lut = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(id)?;
+        bundle.lut(id, bytes.bytes()).map_err(|e| e.to_string())?
+    };
+    Ok(eng.render.borrow_mut().scene.add_lut(lut))
+}
+
+/// `og.load.lut`: a cooked `.cube` table added to the renderer once. One
+/// in a streaming group's pack loads once its group is resident (refused
+/// before, naming the group); when the group unloads the renderer lets it
+/// go (`super::stream`) and PostEffects.lut grades nothing with it until
+/// the group is resident again, when it comes back under the same handle.
 pub(crate) fn load_lut(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_cook::runtime::asset_id(path).to_string();
     let key = format!("lut:{id}");
     if let Some(&i) = eng.render.borrow().fx.by_path.get(&key) {
         return Ok(i);
     }
-    let lut = {
-        let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
-        bundle.lut(&id, bytes.bytes()).map_err(|e| e.to_string())?
-    };
+    let h = add_lut(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
-    let h = rs.scene.add_lut(lut);
-    rs.fx.luts.push(h);
+    rs.fx.luts.push(LoadedLut {
+        id,
+        handle: Some(h),
+    });
     let i = rs.fx.luts.len() - 1;
     rs.fx.by_path.insert(key, i);
     Ok(i)
 }
 
-/// `og.load.emitter`: a cooked emitter, its textures loaded with it.
+/// At a tick boundary: adds again the LUTs whose streaming group is
+/// resident again after an unload released them.
+pub(crate) fn resolve_luts(eng: &super::engine::Engine) {
+    let pending: Vec<(usize, String)> = eng
+        .render
+        .borrow()
+        .fx
+        .luts
+        .iter()
+        .enumerate()
+        .filter(|(_, l)| l.handle.is_none())
+        .map(|(i, l)| (i, l.id.clone()))
+        .collect();
+    for (i, id) in pending {
+        if let Ok(h) = add_lut(eng, &id) {
+            eng.render.borrow_mut().fx.luts[i].handle = Some(h);
+        }
+    }
+}
+
+/// `og.load.emitter`: a cooked emitter, its textures (or its texture
+/// array) loaded with it.
 pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_cook::runtime::asset_id(path).to_string();
     let key = format!("emitter:{id}");
@@ -914,15 +1022,32 @@ pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<us
             .emitter_text(&id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
-    let emitter = og_cook::fx::parse_emitter(&text, &mut |tex| {
-        let i = super::assets::load_texture(eng, tex)?;
-        Ok(eng.render.borrow().textures.get(i).copied())
-    })
+    let mut array = None;
+    let emitter = og_cook::fx::parse_emitter_with(
+        &text,
+        &mut |tex| {
+            let i = super::assets::load_texture(eng, tex)?;
+            Ok(eng.render.borrow().textures.get(i).copied())
+        },
+        &mut |a| {
+            let i = super::assets::load_texture_array_index(eng, a)?;
+            array = Some(i);
+            Ok(eng
+                .render
+                .borrow()
+                .texture_arrays
+                .get(i)
+                .and_then(|a| a.handle))
+        },
+    )
     .map_err(|e| format!("{id}: {e}"))?;
     let mut rs = eng.render.borrow_mut();
     let h = rs.scene.add_emitter(emitter);
     rs.fx.emitters.push(h);
     let i = rs.fx.emitters.len() - 1;
+    if let Some(a) = array {
+        rs.fx.emitter_arrays.insert(i, a);
+    }
     rs.fx.by_path.insert(key, i);
     Ok(i)
 }

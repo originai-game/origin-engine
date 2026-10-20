@@ -121,7 +121,10 @@ impl Pairs {
     /// twice as many buckets as particles) and finds the pairs: each
     /// particle against its own cell and the 13 cells after it (half the
     /// 26 around, so each pair is met once), the bucket's other cells
-    /// (hash collisions) told apart by their coordinates.
+    /// (hash collisions) told apart by their coordinates. The search runs
+    /// by ranges of particles on the lanes from two grains of them
+    /// (`crate::lanes::ranges`), the ranges' pairs joined in particle
+    /// order: the pairs a single thread finds, in its order.
     pub fn find(positions: &[Vec3], h: f32) -> Pairs {
         let n = positions.len();
         let inv = 1.0 / h;
@@ -148,25 +151,34 @@ impl Pairs {
         }
         let h2 = h * h;
         // Each pair once, as (lower, higher); then grouped by the lower.
-        let mut found: Vec<(u32, u32)> = Vec::with_capacity(n * 24);
-        for (i, p) in positions.iter().enumerate() {
-            let c = cells[i];
-            for &[dx, dy, dz] in &FORWARD {
-                let cell = [c[0] + dx, c[1] + dy, c[2] + dz];
-                let b = bucket_of(cell, mask) as usize;
-                let range = first[b] as usize..first[b + 1] as usize;
-                let own = dx == 0 && dy == 0 && dz == 0;
-                for (&j, (q, cj)) in sorted[range.clone()].iter().zip(&packed[range]) {
-                    if *cj != cell || (own && j as usize <= i) {
-                        continue;
-                    }
-                    if (*q - *p).length_squared() < h2 {
-                        let i = i as u32;
-                        found.push(if i < j { (i, j) } else { (j, i) });
+        let search = |particles: std::ops::Range<usize>| {
+            let mut found: Vec<(u32, u32)> = Vec::with_capacity(particles.len() * 24);
+            for i in particles {
+                let (p, c) = (positions[i], cells[i]);
+                for &[dx, dy, dz] in &FORWARD {
+                    let cell = [c[0] + dx, c[1] + dy, c[2] + dz];
+                    let b = bucket_of(cell, mask) as usize;
+                    let range = first[b] as usize..first[b + 1] as usize;
+                    let own = dx == 0 && dy == 0 && dz == 0;
+                    for (&j, (q, cj)) in sorted[range.clone()].iter().zip(&packed[range]) {
+                        if *cj != cell || (own && j as usize <= i) {
+                            continue;
+                        }
+                        if (*q - p).length_squared() < h2 {
+                            let i = i as u32;
+                            found.push(if i < j { (i, j) } else { (j, i) });
+                        }
                     }
                 }
             }
-        }
+            found
+        };
+        let mut parts = crate::lanes::map_ranges(n, crate::lanes::now().particles_3d, search);
+        let found = if parts.len() == 1 {
+            parts.pop().unwrap_or_default()
+        } else {
+            parts.concat()
+        };
         let mut start = vec![0u32; n + 1];
         for &(i, _) in &found {
             start[i as usize + 1] += 1;
@@ -539,31 +551,40 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
             }
             // Solids, the terrain and each member's container: pushed out,
             // the velocity into them dropped (pushing out adds none, so
-            // a resting particle does not bounce) and sliding slowed.
-            for i in 0..n {
-                let m = &members[owner[i] as usize];
-                let r_particle = m.fluid.radius.max(0.02) * 0.25;
-                let (p, v) = (&mut positions[i], &mut velocities[i]);
-                if let Some((q, normal)) = solids.push_out(*p, r_particle) {
-                    *p = q;
-                    let along = v.dot(normal);
-                    let slide = *v - normal * along;
-                    *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
-                }
-                let half = m.fluid.bounds * 0.5;
-                for k in 0..3 {
-                    if half[k] > 0.0 {
-                        let (lo, hi) = (m.centre[k] - half[k], m.centre[k] + half[k]);
-                        if p[k] < lo {
-                            p[k] = lo;
-                            v[k] = v[k].max(0.0);
-                        } else if p[k] > hi {
-                            p[k] = hi;
-                            v[k] = v[k].min(0.0);
+            // a resting particle does not bounce) and sliding slowed. Each
+            // particle alone, so by ranges on the lanes from two grains.
+            let shared: &[Member<'_>] = members;
+            let owner = &owner;
+            crate::lanes::for_each_chunk(
+                &mut positions,
+                &mut velocities,
+                crate::lanes::now().particles_3d,
+                |at, ps, vs| {
+                    for (k, (p, v)) in ps.iter_mut().zip(vs.iter_mut()).enumerate() {
+                        let m = &shared[owner[at + k] as usize];
+                        let r_particle = m.fluid.radius.max(0.02) * 0.25;
+                        if let Some((q, normal)) = solids.push_out(*p, r_particle) {
+                            *p = q;
+                            let along = v.dot(normal);
+                            let slide = *v - normal * along;
+                            *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
+                        }
+                        let half = m.fluid.bounds * 0.5;
+                        for k in 0..3 {
+                            if half[k] > 0.0 {
+                                let (lo, hi) = (m.centre[k] - half[k], m.centre[k] + half[k]);
+                                if p[k] < lo {
+                                    p[k] = lo;
+                                    v[k] = v[k].max(0.0);
+                                } else if p[k] > hi {
+                                    p[k] = hi;
+                                    v[k] = v[k].min(0.0);
+                                }
+                            }
                         }
                     }
-                }
-            }
+                },
+            );
         }
         // Back into each member.
         let mut at = 0;

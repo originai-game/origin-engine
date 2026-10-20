@@ -187,6 +187,10 @@ pub struct FlipbookSheet {
     /// The texture's size in pixels (the cook fills it in from the image).
     pub size: [u32; 2],
     pub filter: SheetFilter,
+    /// `array true`: the cook cuts the frames into the layers of a texture
+    /// array (`<sheet id>#array`, every frame one size) and the sprite
+    /// draws frame `n` as layer `n` instead of a region of the texture.
+    pub array: bool,
     pub frames: Vec<SheetFrame>,
     pub clips: Vec<FlipClip>,
 }
@@ -211,6 +215,7 @@ impl FlipbookSheet {
             texture: String::new(),
             size: [0, 0],
             filter: SheetFilter::Nearest,
+            array: false,
             frames: Vec::new(),
             clips: Vec::new(),
         };
@@ -248,6 +253,18 @@ impl FlipbookSheet {
                             return Err(parse_err(
                                 e.line,
                                 format!("filter is nearest or linear, not `{w}`"),
+                            ));
+                        }
+                    }
+                }
+                "array" => {
+                    sheet.array = match e.word(0).unwrap_or("") {
+                        "true" => true,
+                        "false" => false,
+                        w => {
+                            return Err(parse_err(
+                                e.line,
+                                format!("array is true or false, not `{w}`"),
                             ));
                         }
                     }
@@ -472,6 +489,9 @@ impl FlipbookSheet {
                 "linear"
             }
         );
+        if self.array {
+            s += "array true\n";
+        }
         for f in &self.frames {
             s += &format!(
                 "frame {} {} {} {} {} {} {}\n",

@@ -728,6 +728,12 @@ impl Bundle {
         self.texture(id, &self.read(id)?)
     }
 
+    /// Reads a texture array (native): its size, kind and layer ids.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_texture_array(&self, id: &str) -> Result<CookedTextureArray, LoadError> {
+        self.texture_array(id, &self.read(id)?)
+    }
+
     /// Reads a sound (native).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn load_sound(&self, id: &str) -> Result<CookedSound, LoadError> {

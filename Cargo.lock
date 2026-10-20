@@ -1882,6 +1882,7 @@ dependencies = [
  "og-lanes",
  "rapier2d",
  "rapier3d",
+ "rayon",
  "serde",
 ]
 

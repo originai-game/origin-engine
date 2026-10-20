@@ -29,9 +29,11 @@
 //! memory its assets take once loaded, and every output of a grouped asset
 //! names its group. A grouped glTF without skins also gets a `#proxy`: its
 //! coarsest LOD without textures, in the boot bundle, drawn while the group
-//! is not resident. A grouped texture array, environment map, palette or
-//! look has no stand-in: the runtime loads it once its group is resident
-//! and lets it go when the group unloads (og-runtime's `stream`). Assets in
+//! is not resident. A grouped texture array, flipbook (an `array true`
+//! sheet's array and layers come with it), environment map, palette, look
+//! or colour LUT (`.cube`) has no stand-in: the runtime loads it once its
+//! group is resident and lets it go when the group unloads (og-runtime's
+//! `stream`). Assets in
 //! no group are the first group: what a page downloads and precaches
 //! before the game starts.
 
@@ -259,6 +261,10 @@ pub(super) fn memory_of(ty: &str, bytes: &[u8]) -> u64 {
             .map_or(fallback, |m| m.texel_count as u64 * 4),
         // A 256 x 1 RGBA8 texture.
         "og.Palette" => 256 * 4,
+        // A size³ RGBA8 3D texture.
+        "og.Lut" => rows::<format::LutMeta>(&blob, "meta")
+            .first()
+            .map_or(fallback, |m| u64::from(m.size).pow(3) * 4),
         "og.Sound" => rows::<format::SoundMeta>(&blob, "meta")
             .first()
             .map_or(fallback, |m| {

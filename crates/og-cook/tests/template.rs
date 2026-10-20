@@ -132,8 +132,11 @@ fn cooking_twice_gives_identical_bytes() {
     };
     let second = cook_project(&root, &options).unwrap();
     assert!(second.ok(), "{:?}", second.errors());
-    let a = files(&first.root.join("cooked"));
-    let b = files(&root.join("cooked"));
+    // Every file but the cook times (wall-clock milliseconds, beside the
+    // manifest and never shipped) is the same.
+    let mut a = files(&first.root.join("cooked"));
+    let mut b = files(&root.join("cooked"));
+    assert!(a.remove(og_cook::COOK_TIMES).is_some() && b.remove(og_cook::COOK_TIMES).is_some());
     assert_eq!(a.keys().collect::<Vec<_>>(), b.keys().collect::<Vec<_>>());
     for (k, v) in &a {
         assert!(v == &b[k], "cooked/{k} differs between the two cooks");
@@ -201,6 +204,22 @@ fn a_gltf_edit_recooks_exactly_its_outputs() {
         noop.cooked_outputs()
     );
     assert_eq!(files(&root.join("cooked")), before);
+    // Each asset's time is the one recorded when it last cooked.
+    let recorded = og_cook::CookTimes::read(&root.join("cooked"));
+    assert_eq!(recorded.assets.len(), noop.assets.len());
+    for a in &noop.assets {
+        assert_eq!(
+            Some(a.cook_ms),
+            recorded.assets.get(&a.source).copied(),
+            "{}",
+            a.source
+        );
+    }
+    let slowest = noop.slowest(10);
+    assert_eq!(slowest.len(), 10.min(noop.assets.len()));
+    assert!(slowest.windows(2).all(|w| w[0].cook_ms >= w[1].cook_ms));
+    assert_eq!(slowest[0].source, recorded.slowest(1)[0].0);
+    assert!(noop.to_markdown().contains("## The slowest ten"));
 
     let glb = root.join("assets/models/trickster.glb");
     let mut bytes = std::fs::read(&glb).unwrap();
@@ -227,12 +246,26 @@ fn a_gltf_edit_recooks_exactly_its_outputs() {
     assert_eq!(
         changed,
         [
+            ".cook-times.ogt",
             ".cook.ogt",
             "models/trickster.glb.anim.ogb",
             "models/trickster.glb.ogb"
         ]
     );
     assert_eq!(before.len(), after.len());
+    // Only the glTF's time moved: this run's, its two outputs' summed.
+    let times = og_cook::CookTimes::read(&root.join("cooked"));
+    let ms: f64 = report.cooked_outputs().iter().map(|o| o.ms).sum();
+    let trickster = times.assets["models/trickster.glb"];
+    assert!(
+        (trickster - ms).abs() <= 0.05,
+        "{trickster} recorded, {ms} cooked"
+    );
+    for (source, t) in &times.assets {
+        if source != "models/trickster.glb" {
+            assert_eq!(Some(t), recorded.assets.get(source), "{source}");
+        }
+    }
 
     let b = Bundle::open(&root.join("cooked")).unwrap();
     let model = b.load_model("assets/models/trickster.glb").unwrap();

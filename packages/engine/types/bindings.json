@@ -148,6 +148,18 @@
       "value": "DitherPattern"
     },
     {
+      "name": "StyliseSpace",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "StyliseSpace"
+    },
+    {
+      "name": "TextureArray",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "TextureArray"
+    },
+    {
       "name": "Asset",
       "array": "Uint32Array",
       "stride": 2,
@@ -1163,6 +1175,16 @@
           "default": 0
         },
         {
+          "name": "array",
+          "column": "TextureArray",
+          "default": 0
+        },
+        {
+          "name": "arrayLayer",
+          "column": "u32",
+          "default": 0
+        },
+        {
           "name": "width",
           "column": "f32",
           "default": 1,
@@ -1305,6 +1327,17 @@
             "x": 0,
             "y": 0
           }
+        },
+        {
+          "name": "dropShadow",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "dropShadowHeight",
+          "column": "f32",
+          "default": 0
         },
         {
           "name": "visible",
@@ -3091,6 +3124,12 @@
           "name": "fade",
           "column": "f32",
           "default": 0.2,
+          "tunable": true
+        },
+        {
+          "name": "stepFps",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {
@@ -5402,6 +5441,11 @@
           }
         },
         {
+          "name": "halftoneSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
+        },
+        {
           "name": "hatching",
           "column": "f32",
           "default": 0,
@@ -5430,6 +5474,11 @@
             "g": 0.035,
             "b": 0.03
           }
+        },
+        {
+          "name": "hatchingSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
         },
         {
           "name": "paintRadius",
@@ -5471,6 +5520,16 @@
           "default": 1
         },
         {
+          "name": "paintCanvasSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
+        },
+        {
+          "name": "paintCanvasWorldScale",
+          "column": "f32",
+          "default": 128
+        },
+        {
           "name": "ink",
           "column": "bool",
           "default": false
@@ -5495,6 +5554,22 @@
             "g": 0.02,
             "b": 0.03
           }
+        },
+        {
+          "name": "inkDepth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "inkDepthThreshold",
+          "column": "f32",
+          "default": 0.04
+        },
+        {
+          "name": "inkNormalThreshold",
+          "column": "f32",
+          "default": 0.4
         },
         {
           "name": "depthBands",

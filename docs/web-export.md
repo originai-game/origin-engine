@@ -148,9 +148,18 @@ their columns; in the wasm a row's decode is allocations behind one
 allocator lock, so the wasm decodes serially) and frustum
 culling per view (og-render, 1024 bounds a task; scheduling only: the
 recording stays on the engine thread, on the web the engine Worker), and
-rapier's solver natively (its `parallel` feature, bit for bit what the
-sequential build computes under enhanced-determinism; the wasm keeps the
-sequential build, so physics is single-threaded on the web). A call splits
+physics (og-physics, natively and in the lanes wasm): the whole step
+through `og_lanes::install_from`, where rapier's `parallel` build (bit for
+bit what the sequential build computes under enhanced-determinism; the
+single-threaded wasm keeps the sequential build) splits its broad phase,
+narrow phase and solver from `og_physics::pool_bodies` bodies for the
+pool's thread count (500 on two to four, 1,000 on five or six, 1,500 from
+seven), the contact readout by pairs, ropes, cloths and fluid sets
+stepped side by side, and the fluids' neighbour search and collisions by
+ranges of particles (`og_physics::Grains`). Physics work outside the step
+(raycasts, shape casts, overlaps) runs through `og_lanes::serial`, on the
+engine thread inside its one-thread pool, so parry's own `rayon::join`
+never reaches a Worker. A call splits
 only from two tasks' worth of items: waking the pool costs tens of
 microseconds on an idle machine and milliseconds on a loaded one, while a
 character evaluates in about a microsecond and a row decodes in less, so
@@ -214,7 +223,13 @@ runs what the engine thread sends it, started by `og_lanes_ready`, since
 `rayon::spawn` from the engine thread would queue in its own one-thread
 pool once a call, a physics step below its grain, ran serially there) and
 waits on a latch of og-lanes' own, which the call's end or a recorded panic rings (checked
-every 250 ms besides). The panic hook records the lane's panic (message,
+every 250 ms besides). Once the relay runs, `og_lanes_ready` puts the
+engine thread in its own one-thread pool for good, so rayon reached from it
+outside every og-lanes call (a library's own `rayon::join`) runs inline
+instead of entering the pool behind rayon's latch, which no panic rings:
+the relay is the only way from the engine thread onto the Workers, and a
+panic in work the engine thread runs itself (a physics query, through
+`og_lanes::serial`) traps it at once with the structured crash. The panic hook records the lane's panic (message,
 location, tick, site) and rings it; the engine thread then panics with
 that line, traps, and the Worker reports the crash with the lane's report
 (§Errors), within a frame or two of the panic rather than never

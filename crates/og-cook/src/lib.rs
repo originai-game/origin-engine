@@ -41,4 +41,4 @@ pub mod shader;
 pub mod cook;
 
 #[cfg(feature = "cook")]
-pub use cook::{CookError, CookOptions, Report, cook_project};
+pub use cook::{COOK_TIMES, CookError, CookOptions, CookTimes, Report, cook_project};

@@ -1779,7 +1779,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                     .ok_or_else(|| format!("texture {t} is not alive"))?,
             ),
         };
-        // A layer of a texture array in place of the texture (world sprites).
+        // A layer of a texture array in place of the texture (world or screen).
         let array = match d["array"].as_f64() {
             None => None,
             Some(a) => {
@@ -1799,11 +1799,6 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                         loaded.id,
                         loaded.layers - 1
                     ));
-                }
-                if d["screen"].as_bool().unwrap_or(false) {
-                    return Err(
-                        "a sprite of a texture array is drawn in the world (screen false)".into(),
-                    );
                 }
                 Some((handle, layer as u32, loaded.size))
             }
@@ -1899,6 +1894,8 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                 clip: clip_of(&d["clip"]),
                 order,
                 array: array.map(|(h, layer, _)| (h, layer)),
+                drop_shadow: num(&d, "dropShadow", 0.0).clamp(0.0, 1.0),
+                drop_shadow_height: num(&d, "dropShadowHeight", 0.0),
             });
         }
         Ok(())

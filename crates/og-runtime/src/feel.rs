@@ -186,15 +186,24 @@ pub(crate) struct Feel {
     pub flipbooks: FlipbookSystem,
     pub tiles: Arc<Mutex<TileShared>>,
     pub shared: Arc<Mutex<FeelShared>>,
-    /// Per flipbook sheet handle: its texture index in RenderState::textures.
-    pub sheet_textures: Arc<Mutex<BTreeMap<u64, usize>>>,
+    /// Per flipbook sheet handle: what its frames are drawn from.
+    pub sheet_textures: Arc<Mutex<BTreeMap<u64, SheetImage>>>,
+}
+
+/// What a flipbook sheet's frames are drawn from: a region of its texture
+/// (an index in RenderState::textures), or, for an `array true` sheet, a
+/// layer of its texture array (an index in RenderState::texture_arrays).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SheetImage {
+    Texture(usize),
+    Array(usize),
 }
 
 /// The assets the feel modules hold per engine, replayed into a reloaded world.
 #[derive(Clone, Default)]
 pub(crate) struct FeelAssets {
     next: u64,
-    pub sheets: BTreeMap<u64, (FlipbookSheet, Option<usize>)>,
+    pub sheets: BTreeMap<u64, (FlipbookSheet, Option<SheetImage>)>,
     pub maps: BTreeMap<u64, Arc<MapAsset>>,
     loaded: BTreeMap<String, Value>,
 }
@@ -1134,16 +1143,26 @@ fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
             .flipbook(&id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
-    let texture = super::assets::load_texture(eng, &sheet.texture)
-        .map_err(|e| format!("{id}: texture {}: {e}", sheet.texture))?;
-    set_filter(eng, texture, sheet.filter == og_anim::SheetFilter::Nearest);
+    // An `array true` sheet draws from the texture array the cook cut its
+    // frames into; any other from regions of its texture.
+    let image = if sheet.array {
+        let array_id = format!("{id}#array");
+        let i = super::assets::load_texture_array_index(eng, &array_id)
+            .map_err(|e| format!("{id}: texture array {array_id}: {e}"))?;
+        SheetImage::Array(i)
+    } else {
+        let texture = super::assets::load_texture(eng, &sheet.texture)
+            .map_err(|e| format!("{id}: texture {}: {e}", sheet.texture))?;
+        set_filter(eng, texture, sheet.filter == og_anim::SheetFilter::Nearest);
+        SheetImage::Texture(texture)
+    };
     let feel = feel_of(eng)?;
     let mut st = eng.state.borrow_mut();
     let handle = st.feel_assets.mint();
     feel.flipbooks
         .add_sheet(handle, sheet.clone())
         .map_err(|e| format!("{id}: {}", e.reason()))?;
-    lock(&feel.sheet_textures).insert(handle, texture);
+    lock(&feel.sheet_textures).insert(handle, image);
     let clips: Vec<Value> = sheet
         .clips
         .iter()
@@ -1164,13 +1183,20 @@ fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
     let first = sheet.frames.first().map_or([0; 4], |f| f.rect);
     let answer = json!({
         "sheet": handle as f64,
-        "texture": super::assets::handle(texture) as f64,
+        "texture": match image {
+            SheetImage::Texture(t) => super::assets::handle(t) as f64,
+            SheetImage::Array(_) => 0.0,
+        },
+        "array": match image {
+            SheetImage::Texture(_) => 0.0,
+            SheetImage::Array(a) => super::assets::handle(a) as f64,
+        },
         "clips": clips,
         "frames": sheet.frames.len(),
         "frameWidth": first[2],
         "frameHeight": first[3],
     });
-    st.feel_assets.sheets.insert(handle, (sheet, Some(texture)));
+    st.feel_assets.sheets.insert(handle, (sheet, Some(image)));
     st.feel_assets.loaded.insert(key, answer.clone());
     Ok(answer)
 }
@@ -1829,11 +1855,25 @@ struct SpriteOut {
     glow: f32,
     additive: bool,
     cast_shadow: bool,
+    /// Drawn from this layer of a texture array instead of its texture.
+    array: Option<(og_render::TextureArrayHandle, u32)>,
+    /// `Sprite.dropShadow`: a flattened dark copy on the ground (0 none),
+    /// and `Sprite.dropShadowHeight`, the level ground under it (a higher
+    /// terrain wins, `terrain::ground_drop_shadows`).
+    drop_shadow: f32,
+    drop_shadow_height: f32,
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
     let index = scene.sprites.len() as u32;
     scene.sprites.push(s.sprite);
+    if let Some((array, layer)) = s.array {
+        scene.sprite_arrays.push(og_render::SpriteArray {
+            sprite: index,
+            array,
+            layer,
+        });
+    }
     if let Some(key) = s.key {
         scene
             .sprite_order
@@ -1843,6 +1883,13 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
         scene
             .occluders_2d
             .push(og_render::Occluder2d::from_sprite(&s.sprite, 0.0));
+    }
+    if s.drop_shadow > 0.0 {
+        scene.sprite_shadows.push(og_render::SpriteShadow {
+            sprite: index,
+            opacity: s.drop_shadow.min(1.0),
+            ground: og_render::ShadowGround::level(s.drop_shadow_height),
+        });
     }
     if s.flash[3] > 0.0 || s.glow > 0.0 || s.additive {
         scene.sprite_fx.push(og_render::SpriteFx {
@@ -1858,20 +1905,80 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
     }
 }
 
-/// The texture, uv region and anchor a flipbook frame gives a sprite.
+/// What a sprite is drawn from: a texture (`None`: solid), or a layer of a
+/// texture array.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Image {
+    Texture(Option<og_render::TextureHandle>),
+    Array(og_render::TextureArrayHandle, u32),
+}
+
+impl Image {
+    fn texture(self) -> Option<og_render::TextureHandle> {
+        match self {
+            Image::Texture(t) => t,
+            Image::Array(..) => None,
+        }
+    }
+
+    fn array(self) -> Option<(og_render::TextureArrayHandle, u32)> {
+        match self {
+            Image::Texture(_) => None,
+            Image::Array(a, layer) => Some((a, layer)),
+        }
+    }
+}
+
+/// The image, uv region and anchor a flipbook frame gives a sprite: a
+/// region of the sheet's texture, or the whole layer of an `array true`
+/// sheet's array (`None` while that array is not in the renderer).
 fn sheet_frame(
     feel: &Feel,
-    rs_textures: &[og_render::TextureHandle],
+    rs: (&[og_render::TextureHandle], &[super::assets::LoadedArray]),
     sheet: u64,
     clip: u32,
     frame: u32,
-) -> Option<(og_render::TextureHandle, [f32; 4], Vec2)> {
+) -> Option<(Image, [f32; 4], Vec2)> {
     let s = feel.flipbooks.sheet(sheet)?;
     let c = s.clips.get(clip as usize)?;
     let index = *c.frames.get(frame as usize)?;
     let f = s.frames.get(index as usize)?;
-    let tex = *rs_textures.get(*lock(&feel.sheet_textures).get(&sheet)?)?;
-    Some((tex, s.uv(index), Vec2::new(f.pivot[0], f.pivot[1])))
+    let pivot = Vec2::new(f.pivot[0], f.pivot[1]);
+    match *lock(&feel.sheet_textures).get(&sheet)? {
+        SheetImage::Texture(t) => Some((Image::Texture(Some(*rs.0.get(t)?)), s.uv(index), pivot)),
+        SheetImage::Array(a) => {
+            let loaded = rs.1.get(a)?;
+            let layer = index.min(loaded.layers.saturating_sub(1));
+            Some((
+                Image::Array(loaded.handle?, layer),
+                [0.0, 0.0, 1.0, 1.0],
+                pivot,
+            ))
+        }
+    }
+}
+
+/// An og.Sprite's own image: its texture array's layer when it names one
+/// (`None` while the array's streaming group is not resident: nothing is
+/// drawn), else its texture.
+fn sprite_image(
+    v: &Value,
+    textures: &[og_render::TextureHandle],
+    arrays: &[super::assets::LoadedArray],
+) -> Option<Image> {
+    match super::fx::handle_index(&v["array"]) {
+        Some(i) => {
+            let loaded = arrays.get(i)?;
+            let layer = v["arrayLayer"].as_u64().unwrap_or(0) as u32;
+            Some(Image::Array(
+                loaded.handle?,
+                layer.min(loaded.layers.saturating_sub(1)),
+            ))
+        }
+        None => Some(Image::Texture(
+            super::fx::handle_index(&v["texture"]).and_then(|i| textures.get(i).copied()),
+        )),
+    }
 }
 
 fn flipped(mut uv: [f32; 4], mut anchor: Vec2, flip: u8) -> ([f32; 4], Vec2) {
@@ -1907,6 +2014,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     }
     let blob = rs.feel.blob;
     let textures = rs.textures.clone();
+    let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
     for (e, v) in sprites {
         if !on(&v, "visible", true) {
@@ -1919,8 +2027,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let scale = Vec2::new(xa.length(), m.y_axis.truncate().length());
         let size = Vec2::new(f(&v, "width", 1.0), f(&v, "height", 1.0));
         let flip = on(&v, "flipX", false) as u8 | (on(&v, "flipY", false) as u8) << 1;
-        let mut texture =
-            super::fx::handle_index(&v["texture"]).and_then(|i| textures.get(i).copied());
+        // A texture array whose streaming group is not resident draws nothing.
+        let Some(mut image) = sprite_image(&v, &textures, arrays) else {
+            continue;
+        };
         let lo = v2(&v["uvMin"], Vec2::ZERO);
         let hi = v2(&v["uvMax"], Vec2::ONE);
         let mut uv = [lo.x, lo.y, hi.x, hi.y];
@@ -1932,10 +2042,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 fb["frame"].as_u64().unwrap_or(0) as u32,
             )
         });
-        if let Some((tex, fuv, pivot)) =
-            flipbook.and_then(|(s, c, fr)| sheet_frame(&feel, &textures, s, c, fr))
+        if let Some((img, fuv, pivot)) =
+            flipbook.and_then(|(s, c, fr)| sheet_frame(&feel, (&textures, arrays), s, c, fr))
         {
-            texture = Some(tex);
+            image = img;
             uv = fuv;
             anchor = pivot;
         }
@@ -1949,7 +2059,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let glow = f(&v, "glow", 0.0).max(0.0);
         let additive = v["blend"].as_str() == Some("additive");
         let base = og_render::Sprite {
-            texture,
+            texture: image.texture(),
             position: pos,
             size: size * scale,
             anchor,
@@ -1986,6 +2096,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     glow: 0.0,
                     additive: false,
                     cast_shadow: false,
+                    array: None,
+                    drop_shadow: 0.0,
+                    drop_shadow_height: 0.0,
                 },
             );
         }
@@ -2002,10 +2115,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 if alpha <= 0.0 {
                     continue;
                 }
-                let (gt, guv, ganchor) = sheet_frame(&feel, &textures, g.sheet, g.clip, g.frame)
-                    .map(|(t, u, a)| (Some(t), u, a))
-                    .unwrap_or((
-                        texture,
+                let (gimage, guv, ganchor) =
+                    sheet_frame(&feel, (&textures, arrays), g.sheet, g.clip, g.frame).unwrap_or((
+                        image,
                         [lo.x, lo.y, hi.x, hi.y],
                         v2(&v["anchor"], Vec2::splat(0.5)),
                     ));
@@ -2014,7 +2126,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     scene,
                     SpriteOut {
                         sprite: og_render::Sprite {
-                            texture: gt,
+                            texture: gimage.texture(),
                             position: g.position,
                             size: size * g.scale,
                             anchor: ganchor,
@@ -2029,13 +2141,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         glow: 0.0,
                         additive: add,
                         cast_shadow: false,
+                        array: gimage.array(),
+                        drop_shadow: 0.0,
+                        drop_shadow_height: 0.0,
                     },
                 );
             }
         }
         let sx = v2(&v["sliceX"], Vec2::ZERO);
         let sy = v2(&v["sliceY"], Vec2::ZERO);
-        let pieces = match texture.and_then(|t| scene.texture_size(t)) {
+        let size_of = match image {
+            Image::Texture(t) => t.and_then(|t| scene.texture_size(t)),
+            Image::Array(h, _) => arrays.iter().find(|a| a.handle == Some(h)).map(|a| a.size),
+        };
+        let pieces = match size_of {
             Some(tsize) if sx != Vec2::ZERO || sy != Vec2::ZERO => og_render::nine_slice(
                 &base,
                 [sx.x, sy.x, sx.y, sy.y],
@@ -2045,6 +2164,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             _ => vec![base],
         };
         let cast = on(&v, "castShadow", false);
+        let drop_shadow = f(&v, "dropShadow", 0.0).clamp(0.0, 1.0);
+        let drop_shadow_height = f(&v, "dropShadowHeight", 0.0);
         for (i, p) in pieces.into_iter().enumerate() {
             push(
                 scene,
@@ -2055,6 +2176,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     glow,
                     additive,
                     cast_shadow: cast && i == 0,
+                    array: image.array(),
+                    drop_shadow,
+                    drop_shadow_height,
                 },
             );
         }

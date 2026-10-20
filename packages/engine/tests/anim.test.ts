@@ -8,6 +8,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
 
+// The functional lane may run with a web module older than the native addon
+// (scripts/check.sh bun-functional): the tests that compare the two hosts
+// skip there and run in the full lane.
+const STALE_WASM = process.env.OG_WASM_STALE === "1";
+
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -21,7 +26,7 @@ function run(host: string, ...extra: string[]) {
   return JSON.parse(out.trim().split("\n").pop()!) as Record<string, any>;
 }
 
-test("og.anim poses the walker the same way on both hosts", () => {
+test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", () => {
   // An incremental cook: free when cooked/ is current, and a cooker
   // version bump re-cooks instead of reading stale output.
   const c = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });

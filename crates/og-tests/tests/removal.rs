@@ -1,7 +1,7 @@
 //! Resources can be removed (og-render's `RenderScene::remove_mesh`,
 //! `remove_texture`, `remove_material`, `remove_font`,
-//! `remove_environment_map`, `remove_texture_array`, `remove_palette`): a
-//! removed slot is
+//! `remove_environment_map`, `remove_texture_array`, `remove_palette`,
+//! `remove_lut`): a removed slot is
 //! freed on the GPU before the next frame, the next add of its kind reuses
 //! it under a new generation, and an old handle never reaches the new
 //! resource: the setters refuse it and a frame that still draws with it is
@@ -10,17 +10,19 @@
 //! Broken once by keeping a slot's generation when it is emptied: the
 //! reused slot's handle equals the removed one's, so nothing could tell
 //! a stale handle from the new mesh's (the generation check fails). The
-//! environment maps, texture arrays and palettes a streaming group loaded
-//! leave the frame's texture bytes when removed (broken once by summing
-//! the cache's arrays whether or not their slot was emptied: the bytes
-//! stay).
+//! environment maps, texture arrays, palettes and colour LUTs a streaming
+//! group loaded leave the frame's texture bytes when removed (broken once
+//! by summing the cache's arrays whether or not their slot was emptied:
+//! the bytes stay; and once by keeping a removed LUT's 3D texture: the
+//! LUT's 128 KiB stay).
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Camera, ColorSpace, DitherPattern, ENVIRONMENT_MAP_MIN_SIZE, EnvironmentMap,
-    EnvironmentMapData, Glyph, MAX_PALETTE_COLORS, MsdfFont, Palette, Quantize, RenderError,
-    RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, SpriteArray, StandardMaterial, Text,
-    TextureArrayData, TextureData, TextureSource, Tonemap, rgb9e5, shapes,
+    Background, Camera, ColorGrading, ColorLut, ColorSpace, DitherPattern,
+    ENVIRONMENT_MAP_MIN_SIZE, EnvironmentMap, EnvironmentMapData, Glyph, MAX_PALETTE_COLORS,
+    MsdfFont, Palette, Quantize, RenderError, RenderScene, RenderTarget, Renderer, RgbaImage,
+    Sprite, SpriteArray, StandardMaterial, Text, TextureArrayData, TextureData, TextureSource,
+    Tonemap, rgb9e5, shapes,
 };
 use og_tests::scenes;
 
@@ -294,6 +296,66 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
     let array2_bytes = renderer.texture_array_info(array2).expect("uploaded").bytes;
     assert_eq!(again, after + env_bytes + array2_bytes + palette_bytes);
     assert!(renderer.texture_array_info(array).is_none(), "stale handle");
+}
+
+/// A colour LUT can be removed: the frame that still grades with it is
+/// refused naming it, the frame's bytes drop by the LUT's 32³ RGBA8, and
+/// the slot comes back under a new generation that grades again (the old
+/// handle stays stale).
+#[test]
+fn a_removed_lut_is_refused_and_its_bytes_freed() {
+    let mut scene = flat_scene();
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let plain = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame")
+        .texture_bytes;
+    let lut = scene.add_lut(ColorLut::identity());
+    scene.post.color_grading = Some(ColorGrading {
+        lut,
+        intensity: 1.0,
+    });
+    let graded = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame")
+        .texture_bytes;
+    let lut_bytes = 32u64 * 32 * 32 * 4;
+    assert_eq!(graded - plain, lut_bytes, "the LUT's 3D texture counts");
+    assert!(scene.remove_lut(lut));
+    assert!(!scene.remove_lut(lut), "a stale handle");
+    assert!(scene.lut(lut).is_none() && !scene.contains_lut(lut));
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidHandle(m)) => {
+            assert!(m.contains("lut 0 was removed"), "{m}")
+        }
+        other => panic!("a frame graded by a removed lut: {:?}", other.map(|_| ())),
+    }
+    scene.post.color_grading = None;
+    let after = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("nothing stale is left")
+        .texture_bytes;
+    assert_eq!(after, plain, "freed");
+    let lut2 = scene.add_lut(ColorLut::from_fn(|c| Vec3::ONE - c));
+    assert_eq!(lut2.index(), lut.index());
+    assert_ne!(lut2.generation(), lut.generation());
+    scene.post.color_grading = Some(ColorGrading {
+        lut,
+        intensity: 1.0,
+    });
+    assert!(
+        renderer.render(&scene, &RenderTarget::Offscreen).is_err(),
+        "the old handle does not reach the new LUT"
+    );
+    scene.post.color_grading = Some(ColorGrading {
+        lut: lut2,
+        intensity: 1.0,
+    });
+    let again = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame")
+        .texture_bytes;
+    assert_eq!(again, plain + lut_bytes);
 }
 
 #[test]

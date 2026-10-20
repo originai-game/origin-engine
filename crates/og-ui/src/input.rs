@@ -35,10 +35,14 @@ pub enum UiKey {
     KeyC,
     /// With Control or Command: cut.
     KeyX,
+    /// With Control or Command: undo (with Shift: redo).
+    KeyZ,
+    /// With Control or Command: redo.
+    KeyY,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 16] = [
+    pub const ALL: [UiKey; 18] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -55,6 +59,8 @@ impl UiKey {
         UiKey::KeyA,
         UiKey::KeyC,
         UiKey::KeyX,
+        UiKey::KeyZ,
+        UiKey::KeyY,
     ];
 
     /// Its `KeyboardEvent.code`.
@@ -76,6 +82,8 @@ impl UiKey {
             UiKey::KeyA => "KeyA",
             UiKey::KeyC => "KeyC",
             UiKey::KeyX => "KeyX",
+            UiKey::KeyZ => "KeyZ",
+            UiKey::KeyY => "KeyY",
         }
     }
 }
@@ -101,8 +109,12 @@ pub trait InputSource {
     fn shift(&self) -> bool {
         false
     }
-    /// A Control or Command key is held (Ctrl/Cmd+A, C, X in a text field).
+    /// A Control or Command key is held (Ctrl/Cmd+A, C, X, Z, Y in a text field).
     fn ctrl(&self) -> bool {
+        false
+    }
+    /// An Alt (Option) key is held (Alt+←/→ move by words in a text field).
+    fn alt(&self) -> bool {
         false
     }
     /// The first gamepad (standard mapping); `og.Input` alone has none, and
@@ -247,6 +259,10 @@ impl InputSource for og_input::Input {
             || self.down("MetaLeft")
             || self.down("MetaRight")
     }
+
+    fn alt(&self) -> bool {
+        self.down("AltLeft") || self.down("AltRight")
+    }
 }
 
 /// One tick of input, as the UI consumes it.
@@ -274,6 +290,8 @@ pub struct InputFrame {
     pub shift: bool,
     /// A Control or Command key is held.
     pub ctrl: bool,
+    /// An Alt (Option) key is held.
+    pub alt: bool,
     /// The first gamepad.
     pub gamepad: GamepadFrame,
     /// Pads 1 to 3 (`og.Gamepad`): each moves a focus of its own while the
@@ -309,6 +327,7 @@ impl InputFrame {
             typed_stream: false,
             shift: source.shift(),
             ctrl: source.ctrl(),
+            alt: source.alt(),
             gamepad: source.gamepad(),
             extra_pads: [GamepadFrame::default(); 3],
             pointers: og_input::Pointers::default(),

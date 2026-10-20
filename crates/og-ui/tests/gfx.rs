@@ -3,6 +3,8 @@
 //! channel off by more than 32/255 is an outlier; fail above 0.5 % outliers
 //! or RGB RMSE 0.01). `OG_UI_CAPTURE=1` records this tier's reference. A tier
 //! without its own reference is compared with the `metal` one and says so.
+//! The text-fields-2 scene (`support::text_fields_shot`) is judged the same
+//! way, with the scroll clipping, glow and glass checks below.
 
 mod support;
 
@@ -756,4 +758,63 @@ fn text_glow_cost() {
         best[1],
         best[1] - best[0]
     );
+}
+
+/// `references/<tier>/text-fields-2.png` (`support::text_fields_shot`): a
+/// word a double click selected, a field after an undo, and a text area a
+/// drag below it scrolled part way with its selection over the lines it
+/// passed. Ways it could fail: the word's selection fill off the glyphs,
+/// the undone text or the caret drawn wrong, the area's lines not cut at
+/// its top edge mid-line (a scroll by whole lines), a missing glyph.
+#[test]
+fn text_fields_match_their_reference_frame() {
+    let shot = with_test_font(text_fields_shot);
+    let frame = shot.ui.frame();
+    assert!(frame.warnings.is_empty(), "{:?}", frame.warnings);
+    assert_eq!(
+        frame.text_input.clone().expect("the words field").selection,
+        "select"
+    );
+    let mut renderer = Renderer::new_blocking(&shot.desc).expect("a headless adapter");
+    let stats = renderer
+        .render(&shot.scene, &RenderTarget::Offscreen)
+        .expect("render");
+    assert_eq!(stats.missing_glyphs, 0);
+    let image = renderer.read_offscreen().expect("read back");
+    let tier = renderer.info().backend_tier();
+    let actual = out_dir().join(format!("text-fields-2-{tier}.png"));
+    image::save_buffer(
+        &actual,
+        &image.pixels,
+        image.width,
+        image.height,
+        image::ColorType::Rgba8,
+    )
+    .expect("write frame");
+    let own = reference_dir(&tier).join("text-fields-2.png");
+    if std::env::var_os("OG_UI_CAPTURE").is_some() {
+        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
+        std::fs::copy(&actual, &own).expect("record reference");
+        println!("recorded {}", own.display());
+    }
+    let reference = if own.exists() {
+        own
+    } else {
+        println!("no {tier} reference for text-fields-2; comparing with metal");
+        reference_dir("metal").join("text-fields-2.png")
+    };
+    let expected = image::open(&reference)
+        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
+        .to_rgba8();
+    match compare(&image.pixels, expected.as_raw()) {
+        Ok((rmse, outliers)) => println!(
+            "text-fields-2 {tier}: RMSE {rmse:.5}, outliers {:.3}%",
+            outliers * 100.0
+        ),
+        Err(e) => panic!(
+            "{} differs from {}: {e}",
+            actual.display(),
+            reference.display()
+        ),
+    }
 }

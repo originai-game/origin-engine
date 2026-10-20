@@ -493,8 +493,9 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
 }
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
-/// coarsePointer?, reducedMotion?, highContrast? }` in CSS pixels (the last
-/// two the page's `prefers-reduced-motion` and `prefers-contrast`).
+/// coarsePointer?, reducedMotion?, highContrast?, reducedTransparency? }` in
+/// CSS pixels (the last three the page's `prefers-reduced-motion`,
+/// `prefers-contrast` and `prefers-reduced-transparency`).
 /// Answers wire JSON.
 #[wasm_bindgen]
 pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {

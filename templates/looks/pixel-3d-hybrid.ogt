@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# A pixel grid over a 3D set with sprites snapped to it, and a tilt-shift depth of field.
+# A pixel grid over a 3D set with sprites snapped to it, and a tilt-shift depth of field (give the sprites SpriteDesc.dropShadow or Sprite.dropShadow for shadows along the sun).
 name "Pixel sprites in 3D worlds"
 antialias off
 Stylise {

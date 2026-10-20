@@ -71,10 +71,20 @@ the variant names given.
 | `loop` | bool | true | wrap; otherwise hold the end and set `finished` |
 | `weight` | f32, 0…1, tunable | 1 | how much of the pose it decides (over the graph when there is one, else over the rest pose) |
 | `fade` | f32 s, 0…10, tunable | 0.2 | cross-fade duration on a clip change |
+| `stepFps` | f32, 0…60, tunable | 0 | stepped playback: the pose sampled at the clip time floored to 1/stepFps (`pose::stepped`); 0 samples every tick |
 | `finished` | bool | false | written: a one-shot clip reached its end |
 
 A clip change starts the new clip at 0 (or at `time` if the game wrote it in
 the same tick).
+
+**Stepped playback** (`stepFps`, the sculpted-clay look's stop motion "on
+twos" at 12): only the sampled pose steps. `time` advances every tick as
+before, so markers fire in the tick playback passes them and root motion
+travels smoothly; the pose (of the clip and of the one fading out) is
+sampled at `floor(time × stepFps) / stepFps`, so it holds for a whole step
+whatever the tick rate, and a one-shot that reached its end shows its last
+frame. A pure function of the clip time: nothing new in the state block,
+snapshots and restores as before.
 
 ### `og.AnimationGraph` (component)
 
@@ -223,7 +233,7 @@ chain; palettes use exact `Mat4` products.
 | Test | Asserts |
 |---|---|
 | `walk.rs` | 20 walkers (state machine + additive layer, cross-fading players, planar root motion, blendshapes, 60 IK chains) for 3600 ticks give the same hash twice; a snapshot at 1800 restored into a fresh world continues to the same hashes and palettes; both graph states visited, footsteps fired, every walker travelled, chains reached; writes `anim-walk-determinism.json` |
-| `playback.rs` | markers fire in the tick playback passes them (forwards, backwards, at double speed, at 0 and at the loop seam); a clip change cross-fades and fires both clips' markers by weight, ending bit-identical to the new clip; a seek fires nothing; a one-shot holds its end; poses at sampled times are the clip's samples |
+| `playback.rs` | markers fire in the tick playback passes them (forwards, backwards, at double speed, at 0 and at the loop seam); a clip change cross-fades and fires both clips' markers by weight, ending bit-identical to the new clip; a seek fires nothing; a one-shot holds its end; poses at sampled times are the clip's samples; a 12-step player at 60 Hz changes pose 12 times a second (smooth: 60), each held pose the clip's sample at its twelfth, its time continuous |
 | `ik.rs` | two-bone reaches within 1e-3 and bends to the pole, keeps bone lengths, clamps an unreachable target straight at full length with `reached` false; world targets; FABRIK reaches and clamps; half weight; a bad tip is refused |
 | `output.rs` | the bind-pose palette is the identity and moves with a clip; component weights write through to the output and the sink; clip weights drive the component; root motion moves the Transform and pins the hips; unregistered assets refused with the entity |
 | `graph.rs` | transitions fire in the tick their condition holds and cross-fade; blend1d and the additive layer; bad text refused with its line |
@@ -335,6 +345,7 @@ version 1
 texture "hero.png"        # relative to the sheet when that file exists, else an asset id
 size 64 32                # the texture in pixels (the cook fills it in)
 filter nearest            # nearest (default, pixel art) | linear
+array false               # true: the frames become the layers of a texture array (one size each)
 pivot 0.5 0               # the frame point at the entity's position, from the bottom left
 margin 1                  # grid only
 spacing 0
@@ -355,6 +366,14 @@ turned to the bottom left) and tags into clips (`reverse` reversed,
 `pingpong` as `pingPong`, the frames' own durations), lets a clip the
 sheet declares win over a tag of the same name, and stores the canonical
 text (`FlipbookSheet::to_text`, which parses back equal).
+
+`array true` asks the cook to cut every frame out of the texture into
+the layers of a texture array (`<sheet id>#array`, a `type texture-array`
+output with its layers `<sheet id>#array#layer<n>`, sampled nearest under
+`filter nearest`); every frame must then have one size. The sheet keeps
+its frames, pivots and clips; the runtime draws frame `n` as layer `n`
+(the whole layer), so every sprite of the sheet is one draw whichever
+frame each shows.
 
 ### `og.Flipbook` (component)
 
@@ -378,8 +397,9 @@ entered since the clip started) and the whole cycles taken off `time`, so a
 restored world sends the same events on the same ticks.
 
 Drawing is the runtime's: an entity with `og.Flipbook` and `og.Sprite` is
-drawn with the sheet's texture, the current frame's region and pivot; the
-sprite keeps its size, colour, flips and layer.
+drawn with the sheet's texture, the current frame's region and pivot (an
+`array true` sheet: its array's layer of that frame, whole, and the
+pivot); the sprite keeps its size, colour, flips and layer.
 
 Tests: `tests/flipbook.rs` (the sheet's grid and named frames, mistakes by
 line, the canonical round trip; a loop at 10 fps changing frame every six

@@ -28,6 +28,7 @@
 //! ```
 
 mod atmosphere;
+mod blue_noise;
 mod capture;
 mod clusters;
 mod cull_gpu;
@@ -109,8 +110,9 @@ pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use stylise::{
-    DepthBands, DitherPattern, Halftone, Hatching, Ink, MAX_PALETTE_COLORS, MaterialStyle, Paint,
-    Palette, PaletteHandle, PixelScale, Quantize, Retro3d, STYLISE_DRAWN, Stylise,
+    DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
+    MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelScale, Quantize,
+    Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
@@ -923,7 +925,10 @@ struct SceneCache {
     morph_data: Vec<[f32; 4]>,
     /// Whether `morph_data` changed since it was uploaded.
     morphs_dirty: bool,
-    luts: Vec<wgpu::TextureView>,
+    /// Colour LUTs as 3D textures with the bytes each allocates (`None`:
+    /// removed), and the scene's revision of each when it was uploaded.
+    luts: Vec<Option<(wgpu::TextureView, u64)>>,
+    lut_revisions: Vec<u64>,
     /// Environment maps as cube textures (kept for their views; `None`:
     /// removed), and the scene's revision of each when it was uploaded.
     environment_maps: Vec<Option<GpuEnvironmentMap>>,
@@ -2115,7 +2120,11 @@ impl Renderer {
             lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
         let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
-        let sprite_shader = shader(&device, "sprite", format!("{FRAME_WGSL}{SPRITE_WGSL}"));
+        let sprite_shader = shader(
+            &device,
+            "sprite",
+            format!("{FRAME_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}"),
+        );
         let ribbon_shader = shader(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
         let shadow_shader = shader(
             &device,
@@ -2681,8 +2690,8 @@ impl Renderer {
         Ok(())
     }
 
-    /// GPU bytes of the scene's environment maps, texture arrays and
-    /// palettes (removed ones are freed and count nothing).
+    /// GPU bytes of the scene's environment maps, texture arrays, palettes
+    /// and colour LUTs (removed ones are freed and count nothing).
     fn asset_bytes(&self) -> u64 {
         let maps: u64 = self
             .cache
@@ -2699,7 +2708,8 @@ impl Renderer {
             .map(|a| a.info.bytes)
             .sum();
         let palettes = self.cache.palettes.iter().flatten().count() as u64 * PALETTE_BYTES;
-        maps + arrays + palettes
+        let luts: u64 = self.cache.luts.iter().flatten().map(|l| l.1).sum();
+        maps + arrays + palettes + luts
     }
 
     /// The array sprite pipelines and the bind group of `array` (made on
@@ -2848,12 +2858,28 @@ impl Renderer {
             self.cache.skins.push(skin);
         }
         self.sync_assets(scene)?;
-        for (index, lut) in scene.luts()[self.cache.luts.len()..].iter().enumerate() {
-            lut.validate().map_err(|e| {
-                RenderError::InvalidData(format!("lut {}: {e}", self.cache.luts.len() + index))
-            })?;
-            let view = post::lut_texture(&self.device, &self.queue, lut);
-            self.cache.luts.push(view);
+        let revisions = scene.lut_revisions();
+        for (i, &revision) in revisions.iter().enumerate() {
+            let fresh = i >= self.cache.luts.len();
+            if !fresh && self.cache.lut_revisions[i] == revision {
+                continue;
+            }
+            let gpu = if scene.lut_live(i) {
+                let lut = &scene.luts()[i];
+                lut.validate()
+                    .map_err(|e| RenderError::InvalidData(format!("lut {i}: {e}")))?;
+                let bytes = u64::from(lut.size).pow(3) * 4;
+                Some((post::lut_texture(&self.device, &self.queue, lut), bytes))
+            } else {
+                None
+            };
+            if fresh {
+                self.cache.luts.push(gpu);
+                self.cache.lut_revisions.push(revision);
+            } else {
+                self.cache.luts[i] = gpu;
+                self.cache.lut_revisions[i] = revision;
+            }
         }
         if self.cache.textures.len() < scene.textures().len() {
             // Every texture is checked before any is recorded: an error
@@ -4187,8 +4213,13 @@ impl Renderer {
         let god_rays = post_fx.god_rays;
         let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
+        // Ink on depth edges reads the prepass in the lines pass, a canvas,
+        // hatching or halftone on surfaces in the paint or lines pass.
+        let ink_depth = scene.stylise.ink.is_some_and(|i| i.depth > 0.0);
         let prepass = ao.is_some()
             || depth_bands.is_some()
+            || ink_depth
+            || scene.stylise.on_surfaces()
             || outline
             || dof.is_some()
             || motion_blur.is_some()
@@ -4214,11 +4245,20 @@ impl Renderer {
         self.particles
             .ensure_pipelines(&self.device, &particle_frame, self.samples);
         let fonts = &self.cache.fonts;
+        let arrays = &self.cache.texture_arrays;
+        let array_layers = |a: TextureArrayHandle| {
+            scene
+                .contains_texture_array(a)
+                .then(|| arrays.get(a.index()).and_then(Option::as_ref))
+                .flatten()
+                .map(|g| g.info.layers)
+        };
         let overlay_frame = match &scene.overlay {
             Some(o) => Some(overlay::build(
                 o,
                 |i| fonts.get(i).map(|f| &f.layout),
                 self.cache.textures.len(),
+                array_layers,
             )?),
             None => None,
         };
@@ -4226,6 +4266,21 @@ impl Renderer {
             let textures: Vec<_> = overlay::run_textures(of).collect();
             for t in textures {
                 self.sprite_group(t);
+            }
+            let arrays: Vec<_> = overlay::run_arrays(of).collect();
+            for a in &arrays {
+                self.sprite_array_group(scene, *a);
+            }
+            if !arrays.is_empty() {
+                self.sprite_arrays
+                    .as_mut()
+                    .expect("made with the groups")
+                    .make_overlay(
+                        &self.device,
+                        &self.overlay.layout,
+                        self.overlay.output_format,
+                        self.overlay.linear_format,
+                    );
             }
         }
         // Glass: the tonemap renders into the glass source, which becomes
@@ -4364,11 +4419,17 @@ impl Renderer {
             )));
         }
         let lut_index = post_fx.color_grading.map(|g| g.lut.index());
-        if let Some(i) = lut_index
-            && i >= self.cache.luts.len()
+        if let Some(g) = post_fx.color_grading
+            && !(scene.contains_lut(g.lut)
+                && self
+                    .cache
+                    .luts
+                    .get(g.lut.index())
+                    .is_some_and(Option::is_some))
         {
             return Err(RenderError::InvalidHandle(format!(
-                "colour grading lut {i}"
+                "colour grading lut {}",
+                g.lut.index()
             )));
         }
         let glow = post_fx.glow.is_some() && !sprite_frame.glow_runs.is_empty();
@@ -5253,7 +5314,8 @@ impl Renderer {
                 Some(DitherPattern::Bayer2) => 2.0,
                 Some(DitherPattern::Bayer4) => 4.0,
                 Some(DitherPattern::Bayer8) => 8.0,
-                Some(DitherPattern::BlueNoise) => -1.0,
+                Some(DitherPattern::InterleavedGradient) => -1.0,
+                Some(DitherPattern::BlueNoise) => -2.0,
                 _ => 0.0,
             };
             let palette_count = q
@@ -5264,6 +5326,37 @@ impl Renderer {
             let hc = st.hatching;
             let pt = st.paint;
             let ink = st.ink;
+            // Surface space: positions from the surface origin (f64 on the
+            // CPU, so a camera far from 0 keeps the patterns' precision),
+            // and the canvas uv there.
+            let origin = post::surface_origin(camera.position);
+            let surface_eye = (camera.position.as_dvec3() - origin).as_vec3();
+            let canvas_world_scale = pt.map_or(0.0, |p| {
+                if p.canvas_world_scale > 0.0 {
+                    p.canvas_world_scale.min(4096.0)
+                } else {
+                    stylise::DEFAULT_CANVAS_WORLD_SCALE
+                }
+            });
+            let canvas_size = pt
+                .and_then(|p| p.canvas)
+                .and_then(|t| scene.texture_size(t))
+                .map_or(glam::DVec2::ONE, |(w, h)| {
+                    glam::DVec2::new(w.max(1) as f64, h.max(1) as f64)
+                });
+            let canvas_origin = {
+                // The uv of the origin along x (u), y (v) and z (u on the
+                // x plane, v on the y plane), as stylise.wgsl's
+                // `canvas_surface` lays the three planes.
+                let k = canvas_world_scale as f64;
+                let c = |o: f64, size: f64| ((o * k / size).rem_euclid(1.0)) as f32;
+                [
+                    c(origin.x, canvas_size.x),
+                    c(origin.y, canvas_size.y),
+                    c(origin.z, canvas_size.x),
+                    c(origin.z, canvas_size.y),
+                ]
+            };
             let u = post::StyliseUniform {
                 screen: [w, h, 1.0 / w, 1.0 / h],
                 output: [
@@ -5320,9 +5413,33 @@ impl Renderer {
                     ]
                 }),
                 ink: ink.map_or([0.0; 4], |i| {
-                    [1.0, i.threshold.clamp(0.0, 1.0), i.width.max(0.5), 0.0]
+                    [
+                        1.0,
+                        i.threshold.clamp(0.0, 1.0),
+                        i.width.max(0.5),
+                        i.depth.clamp(0.0, 1.0),
+                    ]
                 }),
                 ink_color: ink.map_or([0.0; 4], |i| [i.color[0], i.color[1], i.color[2], 1.0]),
+                ink_depth: ink.map_or([camera.far, 0.04, 0.4, 0.0], |i| {
+                    [
+                        camera.far,
+                        i.depth_threshold.max(0.0),
+                        i.normal_threshold.max(0.0),
+                        0.0,
+                    ]
+                }),
+                inv_proj: cam.proj.inverse().to_cols_array_2d(),
+                view_rotation: glam::Mat4::from_mat3(glam::Mat3::from_mat4(cam.view.inverse()))
+                    .to_cols_array_2d(),
+                eye: surface_eye.extend(0.0).to_array(),
+                surface: [
+                    pt.is_some_and(|p| p.canvas_on_surfaces()) as u32 as f32,
+                    canvas_world_scale,
+                    hc.is_some_and(|h| h.space == StyliseSpace::Surface) as u32 as f32,
+                    ht.is_some_and(|h| h.space == StyliseSpace::Surface) as u32 as f32,
+                ],
+                canvas_origin,
             };
             self.post.write_stylise(&self.queue, &u);
         }
@@ -5330,7 +5447,7 @@ impl Renderer {
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
         let lut_view = match lut_index {
-            Some(i) => &self.cache.luts[i],
+            Some(i) => &self.cache.luts[i].as_ref().expect("checked above").0,
             None => &self.post.identity_lut,
         };
         // Transmissive draws refract a copy of the opaque scene with its
@@ -6550,14 +6667,35 @@ impl Renderer {
                         occlusion_query_set: None,
                         multiview_mask: None,
                     });
-                    pass.set_pipeline(&self.sprite_glow_pipeline);
                     pass.set_bind_group(0, frame_bind_group, &[]);
                     pass.set_bind_group(2, glow_fx_group, &[]);
+                    // Plain sprites first (sorted before arrays), then each array's.
+                    let mut on_array = None;
                     for run in &sprite_frame.glow_runs {
+                        let array = matches!(run.source, RunSource::Array(..));
+                        if on_array != Some(array) {
+                            pass.set_pipeline(match array {
+                                false => &self.sprite_glow_pipeline,
+                                true => {
+                                    &self
+                                        .sprite_arrays
+                                        .as_ref()
+                                        .expect("made before the pass")
+                                        .glow
+                                }
+                            });
+                            on_array = Some(array);
+                        }
                         let group = match run.source {
                             RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
                                 .as_ref()
                                 .expect("made before the pass"),
+                            RunSource::Array(_, a) => {
+                                &self.cache.sprite_array_groups[a.index()]
+                                    .as_ref()
+                                    .expect("made before the pass")
+                                    .0
+                            }
                             _ => &self.white_sprite_group,
                         };
                         pass.set_bind_group(1, group, &[]);
@@ -6664,7 +6802,7 @@ impl Renderer {
                 pass.set_bind_group(0, &self.overlay.group, &[]);
                 let mut bound: Option<u8> = None;
                 for run in &runs[from..to] {
-                    // 0 sprite, 1 MSDF text, 2 glass.
+                    // 0 sprite, 1 MSDF text, 2 glass, 3 a texture array's sprites.
                     let (kind, group) = match run.source {
                         RunSource::Sprite(_, None) => (0u8, &self.white_sprite_group),
                         RunSource::Sprite(_, Some(t)) => (
@@ -6682,15 +6820,27 @@ impl Renderer {
                                 .expect("made with the overlay's glass")
                                 .overlay_group,
                         ),
-                        RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Array(..) => {
-                            unreachable!("the overlay has no strips, fluids or array sprites")
+                        RunSource::Array(_, a) => (
+                            3,
+                            &self.cache.sprite_array_groups[a.index()]
+                                .as_ref()
+                                .expect("made before the pass")
+                                .0,
+                        ),
+                        RunSource::Strip(..) | RunSource::Metaballs(_) => {
+                            unreachable!("the overlay has no strips or fluids")
                         }
                     };
                     if bound != Some(kind) {
                         pass.set_pipeline(match kind {
                             0 => &pipelines.sprite,
                             1 => &pipelines.msdf,
-                            _ => &pipelines.glass,
+                            2 => &pipelines.glass,
+                            _ => self
+                                .sprite_arrays
+                                .as_ref()
+                                .expect("made before the pass")
+                                .overlay(overlay_view.is_some()),
                         });
                         bound = Some(kind);
                     }

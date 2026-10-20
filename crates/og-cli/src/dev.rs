@@ -30,7 +30,8 @@ use std::time::{Duration, Instant, SystemTime};
 pub const BUDGET_MS: f64 = 300.0;
 const USAGE: &str = "usage: og dev [project] [--port P] [--exit-after N] [--json]";
 
-fn snapshot(dir: &Path, out: &mut BTreeMap<PathBuf, SystemTime>) {
+/// Every file's modification time under `dir` (dot files skipped).
+pub(crate) fn snapshot(dir: &Path, out: &mut BTreeMap<PathBuf, SystemTime>) {
     let Ok(read) = std::fs::read_dir(dir) else {
         return;
     };
@@ -48,7 +49,8 @@ fn snapshot(dir: &Path, out: &mut BTreeMap<PathBuf, SystemTime>) {
     }
 }
 
-fn changed(
+/// The files added, modified or removed between two snapshots.
+pub(crate) fn changed(
     before: &BTreeMap<PathBuf, SystemTime>,
     now: &BTreeMap<PathBuf, SystemTime>,
 ) -> Vec<PathBuf> {
@@ -261,7 +263,12 @@ pub fn run(args: &[&str]) -> ExitCode {
         let assets = changes.iter().any(|c| c.starts_with(p.root.join("assets")));
         if assets {
             match crate::cook::cook(&p.root, 0) {
-                Ok(r) => eprintln!("{}", crate::cook::summary(&r)),
+                Ok(r) => {
+                    eprintln!("{}", crate::cook::summary(&r));
+                    for line in crate::cook::cooked_lines(&r) {
+                        eprintln!("{line}");
+                    }
+                }
                 Err(e) => {
                     eprintln!("{e}");
                     continue;

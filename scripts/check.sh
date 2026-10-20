@@ -82,7 +82,7 @@ packages/engine/types packages/engine/schema packages/engine/src/generated \
 crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
 }
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/ui-kit templates/archetypes/third-person $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/archetypes/third-person $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -452,8 +452,17 @@ bun_test_packages() {
 # signal; the web module's own tests are the full lane's.
 step_bun_functional() {
   if [ -s "$OG_WASM_OUT/opt-all.txt" ]; then
-    og_say "bun-functional: the web module is the last full lane's ($OG_WASM_OUT/opt-all.txt); wasm-build refreshes it"
-    OG_GATE=1 bun_test_packages packages/*/
+    # The web module is the last full lane's. When a crate changed since,
+    # it no longer matches the native addon, and the tests that compare the
+    # two hosts' hashes skip (OG_WASM_STALE; the full lane runs them).
+    # shellcheck disable=SC2046 # the rule is a word list
+    if og_unchanged wasm-build $(rule_wasm); then
+      og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) is current"
+      OG_GATE=1 bun_test_packages packages/*/
+    else
+      og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) predates a crate change; the cross-host tests skip (OG_WASM_STALE=1), the full lane runs them"
+      OG_GATE=1 OG_WASM_STALE=1 bun_test_packages packages/*/
+    fi
   else
     og_say "bun-functional: no wasm built here yet; the packages that need none"
     # shellcheck disable=SC2086
@@ -482,7 +491,7 @@ step_bun_quick() {
 # §Browser reference tiers; `make web-reference`). In no lane: CI has no
 # Chrome for Testing.
 step_web_reference() {
-  local a b c d e f g h i j k l m
+  local a b c d e f g h i j k l m n o
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
@@ -490,6 +499,10 @@ step_web_reference() {
   # The E5 stations, each a fresh run like its playtest.
   (cd packages/engine && bun tests/web/reference-e5.ts); c=$?
   (cd packages/engine && bun tests/web/reference-e5.ts --webgl); d=$?
+  # The looks station: every preset of the catalogue in one run, each
+  # frame against its tier's reference, else metal's (tests/looks-script.ts).
+  (cd packages/engine && bun tests/web/reference.ts --looks); n=$?
+  (cd packages/engine && bun tests/web/reference.ts --webgl --looks); o=$?
   # og-tests' scenes against their tier's reference, else metal's.
   (cd packages/engine && bun tests/web/reference-gfx.ts); e=$?
   (cd packages/engine && bun tests/web/reference-gfx.ts --webgl); f=$?
@@ -511,7 +524,7 @@ step_web_reference() {
   # reader's click, the live region and the page's preferences.
   (cd packages/engine && bun tests/web/a11y.ts); l=$?
   (cd packages/engine && bun tests/web/a11y.ts --webgl); m=$?
-  return $((a | b | c | d | e | f | g | h | i | j | k | l | m))
+  return $((a | b | c | d | e | f | g | h | i | j | k | l | m | n | o))
 }
 
 # --- Scheduling ---------------------------------------------------------------

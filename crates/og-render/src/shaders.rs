@@ -68,7 +68,12 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(
         "sprite",
-        format!("{}{}", crate::FRAME_WGSL, crate::SPRITE_WGSL),
+        format!(
+            "{}{}{}",
+            crate::FRAME_WGSL,
+            crate::LIGHTING_WGSL,
+            crate::SPRITE_WGSL
+        ),
     );
     add("sprite array", crate::sprite_array::source());
     add(
@@ -104,6 +109,10 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
     }
     add("glass", crate::glass::GLASS_WGSL.to_string());
     add("overlay", crate::overlay::OVERLAY_WGSL.to_string());
+    add(
+        "overlay array",
+        crate::sprite_array::OVERLAY_ARRAY_WGSL.to_string(),
+    );
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
     add("ibl", crate::ibl::IBL_WGSL.to_string());
     add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());

@@ -1,14 +1,24 @@
-//! `og cook [project] [--threads N] [--report out.md] [--json]`: assets/ into
-//! cooked/ through og-cook's `cook_project`, incrementally by stamp. `og run`,
-//! `og build`, `og dev` and `og test` cook first, so a run never reads stale
-//! blobs.
+//! `og cook [project] [--threads N] [--report [out.md]] [--json] [--watch
+//! [--exit-after N]]`: assets/ into cooked/ through og-cook's
+//! `cook_project`, incrementally by stamp. `og run`, `og build`, `og dev` and
+//! `og test` cook first, so a run never reads stale blobs.
+//!
+//! `--report` prints the ten assets whose last cook took longest (each
+//! asset's time is recorded in `cooked/.cook-times.ogt`, so an up-to-date
+//! asset keeps the time of the cook that made it), and with a path ending in
+//! `.md` writes the whole report there. `--watch` cooks, then cooks again
+//! whenever a file under assets/ changes, printing each cooked asset's time
+//! and the cook's against the 300 ms reload budget (`--exit-after N` stops
+//! after N of them; `--json` prints one JSON line per cook).
 
 use crate::project::Project;
 use og_cook::{CookOptions, Report, cook_project};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::ExitCode;
+use std::time::Duration;
 
-const USAGE: &str = "usage: og cook [project] [--threads N] [--report out.md] [--json]";
+const USAGE: &str = "usage: og cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]";
 
 /// The engine's own components as the cook packs scene tables with them
 /// (`Transform`, `Model`, the lights), by the names scenes use.
@@ -124,11 +134,148 @@ pub fn summary(r: &Report) -> String {
     s
 }
 
+/// One line per asset cooked in this run, slowest first: its time (its
+/// outputs' summed) and how many outputs it cooked.
+pub fn cooked_lines(r: &Report) -> Vec<String> {
+    r.cooked_assets()
+        .iter()
+        .map(|a| {
+            let n = a.outputs.iter().filter(|o| o.cooked).count();
+            format!(
+                "og cook: {} cooked in {:.3} ms ({n} output{})",
+                a.source,
+                a.cook_ms,
+                if n == 1 { "" } else { "s" }
+            )
+        })
+        .collect()
+}
+
+/// The slowest ten as aligned text lines (`og cook --report`).
+pub fn slowest_lines(r: &Report) -> Vec<String> {
+    let rows = r.slowest(10);
+    let width = rows.iter().map(|a| a.source.len()).max().unwrap_or(0);
+    let mut out = vec![format!(
+        "og cook: the slowest {} asset(s) by their last cook (cooked/{}):",
+        rows.len(),
+        og_cook::COOK_TIMES
+    )];
+    for (i, a) in rows.iter().enumerate() {
+        out.push(format!(
+            "  {:>2}. {:<width$}  {:>10.3} ms  {}{}",
+            i + 1,
+            a.source,
+            a.cook_ms,
+            a.kind,
+            if a.outputs.iter().any(|o| o.cooked) {
+                ", cooked now"
+            } else {
+                ""
+            }
+        ));
+    }
+    out
+}
+
+/// `--watch`: cooks again on every change under assets/, printing what
+/// cooked and how long it took against the reload budget.
+fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> ExitCode {
+    let assets = root.join("assets");
+    let take = || {
+        let mut m = BTreeMap::new();
+        crate::dev::snapshot(&assets, &mut m);
+        m
+    };
+    let mut seen = take();
+    let budget = crate::dev::BUDGET_MS;
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({ "event": "watching", "root": root.display().to_string(), "budgetMs": budget })
+        );
+    } else {
+        println!(
+            "og cook: watching {}; each change cooks what it reaches (budget {budget} ms)",
+            assets.display()
+        );
+    }
+    let mut cooks = 0usize;
+    loop {
+        std::thread::sleep(Duration::from_millis(25));
+        let now = take();
+        let changes = crate::dev::changed(&seen, &now);
+        if changes.is_empty() {
+            continue;
+        }
+        seen = now;
+        cooks += 1;
+        let changed: Vec<String> = changes
+            .iter()
+            .filter_map(|c| c.strip_prefix(&assets).ok())
+            .map(|c| c.to_string_lossy().replace('\\', "/"))
+            .collect();
+        let options = CookOptions {
+            threads,
+            schemas: engine_schemas(),
+            ..CookOptions::default()
+        };
+        match cook_project(root, &options) {
+            Ok(r) if json => {
+                let cooked: Vec<serde_json::Value> = r
+                    .cooked_assets()
+                    .iter()
+                    .map(|a| {
+                        serde_json::json!({
+                            "source": a.source,
+                            "ms": (a.cook_ms * 1000.0).round() / 1000.0,
+                            "outputs": a.outputs.iter().filter(|o| o.cooked).count(),
+                        })
+                    })
+                    .collect();
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "event": "cook", "n": cooks, "ok": r.ok(),
+                        "changed": changed, "assets": cooked, "errors": r.errors(),
+                        "ms": (r.elapsed_ms * 10.0).round() / 10.0,
+                        "budgetMs": budget, "withinBudget": r.elapsed_ms <= budget,
+                    })
+                );
+            }
+            Ok(r) => {
+                for line in cooked_lines(&r) {
+                    println!("{line}");
+                }
+                for e in r.errors() {
+                    eprintln!("og cook: {e}");
+                }
+                println!(
+                    "og cook: {} in {:.0} ms (budget {budget} ms{})",
+                    match r.cooked_assets().len() {
+                        0 => "nothing to cook".to_string(),
+                        1 => "1 asset cooked".to_string(),
+                        n => format!("{n} assets cooked"),
+                    },
+                    r.elapsed_ms,
+                    if r.elapsed_ms <= budget { "" } else { ", OVER" }
+                );
+            }
+            Err(e) => eprintln!("og cook: {e}"),
+        }
+        if exit_after.is_some_and(|n| cooks >= n) {
+            return ExitCode::SUCCESS;
+        }
+    }
+}
+
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
     let mut threads = 0;
     let mut report = None;
+    let mut slowest = false;
     let mut json = false;
+    let mut watching = false;
+    let mut exit_after = None;
     let mut i = 0;
     while i < args.len() {
         match args[i] {
@@ -141,14 +288,23 @@ pub fn run(args: &[&str]) -> ExitCode {
                 i += 1;
             }
             "--report" => {
-                let Some(p) = args.get(i + 1) else {
-                    eprintln!("og cook: --report takes a path. {USAGE}");
-                    return ExitCode::from(2);
-                };
-                report = Some(p.to_string());
-                i += 1;
+                slowest = true;
+                // The path is optional: a file ending in .md.
+                if let Some(p) = args.get(i + 1).filter(|p| p.ends_with(".md")) {
+                    report = Some(p.to_string());
+                    i += 1;
+                }
             }
             "--json" => json = true,
+            "--watch" => watching = true,
+            "--exit-after" => {
+                let Some(n) = args.get(i + 1).and_then(|v| v.parse().ok()) else {
+                    eprintln!("og cook: --exit-after takes a number. {USAGE}");
+                    return ExitCode::from(2);
+                };
+                exit_after = Some(n);
+                i += 1;
+            }
             a if a.starts_with('-') => {
                 eprintln!("og cook: unknown option `{a}`. {USAGE}");
                 return ExitCode::from(2);
@@ -176,12 +332,28 @@ pub fn run(args: &[&str]) -> ExitCode {
                 eprintln!("og cook: cannot write {path}: {e}");
                 return ExitCode::FAILURE;
             }
+            if watching {
+                if !json {
+                    println!("{}", summary(&r));
+                }
+                return watch(&p.root, threads, json, exit_after);
+            }
             if json {
                 println!("{}", r.to_json());
             } else {
                 println!("{}", summary(&r));
+                if slowest {
+                    for line in slowest_lines(&r) {
+                        println!("{line}");
+                    }
+                }
             }
             ExitCode::SUCCESS
+        }
+        // A watch keeps going: the next change may fix the failing asset.
+        Err(e) if watching => {
+            eprintln!("{e}");
+            watch(&p.root, threads, json, exit_after)
         }
         Err(e) => {
             eprintln!("{e}");

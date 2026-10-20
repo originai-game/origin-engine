@@ -150,9 +150,6 @@ fn local_pose(c: &Collider, scale: Vec3) -> rp::Pose {
 /// deeper, it keeps moving so the solver can push it out.
 const REST_PENETRATION: f32 = 0.002;
 
-/// The contact pairs of one lane task when the step reads them back.
-const PAIR_GRAIN: usize = 512;
-
 /// `v` without the components its body's `lock` bits forbid.
 fn unlocked(v: Velocity, lock: u32) -> Velocity {
     let keep = |bit: u32, x: f32| if lock & bit != 0 { 0.0 } else { x };
@@ -330,8 +327,8 @@ fn insert_body(
 /// `substeps` times and reads the dynamic bodies and the touching pairs
 /// back. On an error `sim` is left half-updated; the caller drops it.
 ///
-/// All of it runs where og-lanes puts it: from [`crate::BODY_GRAIN`] bodies
-/// for every lane thread, on the lanes pool (natively and in the lanes
+/// All of it runs where og-lanes puts it: from [`crate::pool_bodies`] for
+/// the pool's thread count, on the lanes pool (natively and in the lanes
 /// wasm), where rapier's `parallel` build splits its broad phase, narrow
 /// phase and solver and the contact readout splits by pairs; below that,
 /// and with lanes off, on the calling thread, where rapier finds one thread
@@ -349,10 +346,10 @@ pub(crate) fn step(
     // The bodies this tick steps, or last tick's when ragdolls and vehicles
     // added their own.
     let bodies = scene.bodies.len().max(sim.world.bodies.len());
-    og_lanes::install(
+    og_lanes::install_from(
         og_lanes::Site::Physics,
         bodies,
-        crate::BODY_GRAIN,
+        crate::pool_bodies(og_lanes::threads()),
         |split| step_here(settings, dt, tick, scene, shared, sim, split),
     )
 }
@@ -564,7 +561,11 @@ fn after_step(
         .contact_pairs()
         .filter(|pair| pair.has_any_active_contact())
         .collect();
-    let grain = if split { PAIR_GRAIN } else { pairs.len() };
+    let grain = if split {
+        crate::lanes::now().pairs
+    } else {
+        pairs.len()
+    };
     let colliders = &w.colliders;
     let read = og_lanes::map(og_lanes::Site::Physics, &pairs, grain, |pair| {
         let (c1, c2) = (&colliders[pair.collider1], &colliders[pair.collider2]);

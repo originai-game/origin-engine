@@ -41,12 +41,25 @@
 //! collision 0.4 0.2                 # <bounce> <friction> (depth-buffer collision, full tier)
 //! render billboard                  # billboard | sprite <layer> (2D: drawn as sprites)
 //! glow 0                            # sprite mode: strength in the 2D glow buffer
+//! array "fx/smoke.ogt" random       # sprite mode: draw from a texture array (`type texture-array`)
+//!                                   #   instead of `texture`, a layer per particle:
+//!                                   #   [<layers>] [off | life <cycles> | fps <n> | random]
+//! round false                       # sprite mode: the soft dot's round edge over the texture or layer
 //! ```
+//!
+//! `array` names a texture array's asset id and picks each particle's layer
+//! as `sheet` picks a frame: `life <cycles>` steps through the layers over
+//! the particle's life (by age), `fps <n>` at a fixed rate, `random` one
+//! layer per particle for its whole life, `off` (the default) the first;
+//! `<layers>` uses the first that many (default every layer). Every
+//! particle of the emitter is one draw whichever layers they show. A
+//! billboard emitter with an array is refused by the renderer.
 
 use og_core::ogt::{Document, Entry, Value};
 use og_render::{
     Burst, ColorCurve, ColorLut, Curve, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend,
-    ParticleCollision, ParticleEmitter, ParticleRender, SheetMode, SimulationSpace, TextureHandle,
+    ParticleCollision, ParticleEmitter, ParticleRender, SheetMode, SimulationSpace,
+    TextureArrayHandle, TextureHandle,
 };
 
 /// The `.ogt` type of an emitter file.
@@ -93,12 +106,40 @@ fn word(e: &Entry, i: usize) -> Result<&str, String> {
     })
 }
 
-/// The texture asset ids an emitter names (the cook checks they exist).
+/// A `sheet` or `array` line's mode: off | life <cycles> | fps <n> | random.
+fn sheet_mode(line: usize, key: &str, rest: &[Value]) -> Result<SheetMode, String> {
+    Ok(match rest.first().and_then(Value::as_word) {
+        None | Some("off") => SheetMode::Off,
+        Some("random") => SheetMode::Random,
+        Some(m @ ("life" | "fps")) => {
+            let n = rest
+                .get(1)
+                .and_then(Value::as_number)
+                .map(|n| n.as_f32())
+                .ok_or_else(|| format!("line {line}: {key} ... {m} <number>"))?;
+            if m == "life" {
+                SheetMode::OverLife { cycles: n }
+            } else {
+                SheetMode::Fps(n)
+            }
+        }
+        Some(other) => {
+            return Err(format!(
+                "line {line}: {key} mode `{other}` (off, life, fps, random)"
+            ));
+        }
+    })
+}
+
+/// The texture and texture array asset ids an emitter names (the cook
+/// checks they exist).
 pub fn emitter_references(text: &str) -> Vec<String> {
     Document::parse(text)
         .map(|d| {
             d.body
-                .get_all("texture")
+                .entries
+                .iter()
+                .filter(|e| e.key == "texture" || e.key == "array")
                 .filter_map(|e| e.values.first().and_then(Value::as_str).map(str::to_string))
                 .collect()
         })
@@ -106,10 +147,21 @@ pub fn emitter_references(text: &str) -> Vec<String> {
 }
 
 /// Parses an emitter file. `texture` resolves a texture asset id to the
-/// scene's handle (the cook passes one that accepts anything).
+/// scene's handle (the cook passes one that accepts anything); an `array`
+/// line's texture array resolves to none (see [`parse_emitter_with`]).
 pub fn parse_emitter(
     text: &str,
     texture: &mut dyn FnMut(&str) -> Result<Option<TextureHandle>, String>,
+) -> Result<ParticleEmitter, String> {
+    parse_emitter_with(text, texture, &mut |_| Ok(None))
+}
+
+/// [`parse_emitter`] with `array` resolving a texture array's asset id
+/// (an `array` line) to the scene's handle.
+pub fn parse_emitter_with(
+    text: &str,
+    texture: &mut dyn FnMut(&str) -> Result<Option<TextureHandle>, String>,
+    array: &mut dyn FnMut(&str) -> Result<Option<TextureArrayHandle>, String>,
 ) -> Result<ParticleEmitter, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     if doc.ty != EMITTER_TYPE {
@@ -283,27 +335,7 @@ pub fn parse_emitter(
                 em.sheet.rows = v[1] as u32;
                 em.sheet.frames = v.get(2).map_or(0, |f| *f as u32);
                 let rest = &e.values[v.len()..];
-                em.sheet.mode = match rest.first().and_then(Value::as_word) {
-                    None | Some("off") => SheetMode::Off,
-                    Some("random") => SheetMode::Random,
-                    Some(m @ ("life" | "fps")) => {
-                        let n = rest
-                            .get(1)
-                            .and_then(Value::as_number)
-                            .map(|n| n.as_f32())
-                            .ok_or_else(|| format!("line {line}: sheet ... {m} <number>"))?;
-                        if m == "life" {
-                            SheetMode::OverLife { cycles: n }
-                        } else {
-                            SheetMode::Fps(n)
-                        }
-                    }
-                    Some(other) => {
-                        return Err(format!(
-                            "line {line}: sheet mode `{other}` (off, life, fps, random)"
-                        ));
-                    }
-                };
+                em.sheet.mode = sheet_mode(line, "sheet", rest)?;
             }
             "blend" => {
                 em.blend = match word(e, 0)? {
@@ -363,6 +395,34 @@ pub fn parse_emitter(
                 }
             }
             "glow" => em.glow = one(e)?.max(0.0),
+            "array" => {
+                let id = e.values.first().and_then(Value::as_str).ok_or_else(|| {
+                    format!("line {line}: array \"<asset id>\" [<layers>] [mode]")
+                })?;
+                em.array = array(id).map_err(|r| format!("line {line}: array {id}: {r}"))?;
+                let mut rest = &e.values[1..];
+                em.sheet.columns = 1;
+                em.sheet.rows = 1;
+                em.sheet.frames = 0;
+                if let Some(n) = rest.first().and_then(Value::as_number) {
+                    let n = n.as_f32();
+                    if !(n >= 1.0 && n.fract() == 0.0) {
+                        return Err(format!(
+                            "line {line}: array ... <layers> is a whole number from 1"
+                        ));
+                    }
+                    em.sheet.frames = n as u32;
+                    rest = &rest[1..];
+                }
+                em.sheet.mode = sheet_mode(line, "array", rest)?;
+            }
+            "round" => {
+                em.round = e
+                    .values
+                    .first()
+                    .and_then(Value::as_bool)
+                    .ok_or_else(|| format!("line {line}: round true | false"))?
+            }
             other => return Err(format!("line {line}: unknown emitter setting `{other}`")),
         }
     }

@@ -552,6 +552,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprite_order.clear();
     scene.sprite_fx.clear();
     scene.sprite_arrays.clear();
+    scene.sprite_shadows.clear();
     scene.text_outlines.clear();
     scene.tile_layers.clear();
     scene.trail_layers.clear();
@@ -838,6 +839,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Sprites and ribbons queued this tick.
     super::fx::queued(rs, fresh, vp);
     super::fx::motion(rs, &keys, tick);
+    // Drop shadows over the terrain under their sprites.
+    super::terrain::ground_drop_shadows(rs);
 
     // The UI, over everything else, in the overlay.
     super::modules::emit(rs);

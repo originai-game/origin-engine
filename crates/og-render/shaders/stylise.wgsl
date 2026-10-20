@@ -5,11 +5,16 @@
 //
 //   paint     painterly smoothing (a Kuwahara filter, its sectors turned
 //             along the image's edges by `anisotropy`), pigment pooling at
-//             the edges, colour bleeding, a canvas laid over the frame;
+//             the edges, colour bleeding, a canvas laid over the frame or,
+//             in surface space, on the surfaces;
 //   lines     cross-hatching from the tone, halftone dots on a rotated
-//             grid, ink lines on luminance edges;
+//             grid (both over the frame or, in surface space, on the
+//             surfaces), ink lines on luminance edges and, with
+//             `inkDepth`, on the depth-normal prepass's silhouettes and
+//             creases;
 //   quantize  posterised channels and/or the nearest palette colour, mixed
-//             by an ordered (Bayer) or interleaved-gradient dither;
+//             by an ordered (Bayer), blue-noise or interleaved-gradient
+//             dither;
 //   upscale   the logical frame scaled up by a whole number with nearest
 //             filtering, centred in the output with the background round it.
 //
@@ -19,15 +24,21 @@ struct Stylise {
   output: vec4<f32>,          // output w, h, the whole-number upscale, 0
   offset: vec4<f32>,          // xy: where the scaled frame starts in the output, z: 1 with a canvas, w: palette colours
   background: vec4<f32>,      // the display colour round the frame (linear)
-  quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient), z: strength in steps, w: cell size
+  quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient, -2 blue noise), z: strength in steps, w: cell size
   halftone: vec4<f32>,        // x: strength, y: pitch, z: angle (rad)
   halftone_color: vec4<f32>,
   hatching: vec4<f32>,        // x: strength, y: spacing, z: levels, w: angle (rad)
   hatching_color: vec4<f32>,
   paint: vec4<f32>,           // x: radius, y: anisotropy, z: edge darkening, w: bleed
   canvas: vec4<f32>,          // x: strength, y: texels per logical pixel
-  ink: vec4<f32>,             // x: 1 on, y: threshold, z: width
+  ink: vec4<f32>,             // x: 1 on, y: threshold, z: width, w: depth edges' strength (0: luminance only)
   ink_color: vec4<f32>,
+  ink_depth: vec4<f32>,       // x: the camera's far plane (sky), y: relative depth step, z: normal turn (1 - cos)
+  inv_proj: mat4x4<f32>,      // view space from clip space
+  view_rotation: mat4x4<f32>, // world from view space, no translation
+  eye: vec4<f32>,             // xyz: the camera from the surface origin (a 1024 m grid point)
+  surface: vec4<f32>,         // x: 1 canvas on surfaces, y: its texels per metre, z: 1 hatching on surfaces, w: 1 halftone on surfaces
+  canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -35,6 +46,9 @@ struct Stylise {
 @group(0) @binding(3) var palette: texture_2d<f32>;   // 256 x 1 sRGB colours, linear when sampled
 @group(0) @binding(4) var canvas: texture_2d<f32>;
 @group(0) @binding(5) var repeat_sampler: sampler;
+@group(0) @binding(6) var blue_noise: texture_2d<f32>;  // 64 x 64 thresholds (blue_noise.rs), R8
+@group(0) @binding(7) var pre_depth: texture_2d<f32>;   // the prepass view depth (R32Float); far without a prepass
+@group(0) @binding(8) var pre_normal: texture_2d<f32>;  // the prepass's oct-encoded world normal (xy)
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let lo = c * 12.92;
@@ -61,6 +75,83 @@ fn luma(c: vec3<f32>) -> f32 {
 // quantise and stroke.
 fn tone(c: vec3<f32>) -> f32 {
   return luma(srgb_encode(c));
+}
+
+// --- surfaces -------------------------------------------------------------
+
+fn view_depth(px: vec2<i32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(pre_depth));
+  return textureLoad(pre_depth, clamp(px, vec2<i32>(0), size - 1), 0).r;
+}
+
+fn oct_decode(e: vec2<f32>) -> vec3<f32> {
+  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
+  if (n.z < 0.0) {
+    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
+  }
+  return normalize(n);
+}
+
+fn normal_at(px: vec2<i32>) -> vec3<f32> {
+  let size = vec2<i32>(textureDimensions(pre_normal));
+  return oct_decode(textureLoad(pre_normal, clamp(px, vec2<i32>(0), size - 1), 0).xy);
+}
+
+// The point at view depth `d` under the logical pixel position `p`, from
+// the surface origin (fxpost.wgsl view_pos, turned into the world).
+fn surface_pos(p: vec2<f32>, d: f32) -> vec3<f32> {
+  let uv = p * st.screen.zw;
+  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+  let a = st.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
+  let b = st.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
+  let p0 = a.xyz / a.w;
+  let p1 = b.xyz / b.w;
+  let t = (d + p0.z) / (p0.z - p1.z);
+  return st.eye.xyz + (st.view_rotation * vec4<f32>(mix(p0, p1, t), 0.0)).xyz;
+}
+
+// What the patterns in surface space read at a pixel: its point from the
+// surface origin, its world normal and how wide one logical pixel is
+// there (metres). `ok` is false on the sky, which keeps the screen pattern.
+struct Surf {
+  p: vec3<f32>,
+  n: vec3<f32>,
+  pixel: f32,
+  ok: bool,
+};
+
+fn surface_at(p: vec2<f32>) -> Surf {
+  let px = vec2<i32>(p);
+  let d = view_depth(px);
+  var s: Surf;
+  s.ok = d > 0.0 && d < st.ink_depth.x * 0.999;
+  s.p = surface_pos(p, d);
+  s.pixel = max(length(surface_pos(p + vec2<f32>(1.0, 0.0), d) - s.p), 1e-5);
+  s.n = normal_at(px);
+  return s;
+}
+
+// The triplanar weights of a normal: the planes facing x, y and z.
+fn tri_weights(n: vec3<f32>) -> vec3<f32> {
+  let w = pow(abs(n), vec3<f32>(4.0));
+  return w / max(w.x + w.y + w.z, 1e-6);
+}
+
+// A point's coordinates on the plane facing axis `a` (0 x, 1 y, 2 z).
+fn plane_uv(p: vec3<f32>, a: i32) -> vec2<f32> {
+  if (a == 0) { return p.zy; }
+  if (a == 1) { return p.xz; }
+  return p.xy;
+}
+
+// The octaves a pattern `pixels` logical pixels wide is drawn at on a
+// surface: (the finer spacing in metres, a power of two, and how far
+// towards the next coarser one, 0 to 1). A tonal art map's levels: the
+// pattern keeps about its screen size while it stays on the surface.
+fn octave(pixels: f32, pixel: f32) -> vec2<f32> {
+  let l = clamp(log2(pixels * pixel), -16.0, 10.0);
+  let lo = floor(l);
+  return vec2<f32>(exp2(lo), l - lo);
 }
 
 // --- paint ---------------------------------------------------------------
@@ -145,12 +236,39 @@ fn paint(in: VsOut) -> vec3<f32> {
     c *= 1.0 - st.paint.z * clamp(g * 1.5, 0.0, 1.0) * 0.6;
   }
   if (st.offset.z > 0.5 && st.canvas.x > 0.0) {
-    let size = vec2<f32>(textureDimensions(canvas));
-    let uv = in.pos.xy * st.canvas.y / size;
-    let grain = textureSample(canvas, repeat_sampler, uv).r;
+    var grain = 0.0;
+    if (st.surface.x > 0.5) {
+      grain = canvas_surface(in.pos.xy);
+    } else {
+      let size = vec2<f32>(textureDimensions(canvas));
+      let uv = in.pos.xy * st.canvas.y / size;
+      grain = textureSample(canvas, repeat_sampler, uv).r;
+    }
     c *= mix(1.0, grain * 0.5 + 0.5, st.canvas.x);
   }
   return c;
+}
+
+// The canvas on the surfaces: sampled triplanar at the pixel's point
+// (canvas texels per metre, st.surface.y), its level from one pixel's
+// footprint, so the grain stays on the scene as the camera moves. The sky
+// keeps the screen canvas.
+fn canvas_surface(p: vec2<f32>) -> f32 {
+  let size = vec2<f32>(textureDimensions(canvas));
+  let s = surface_at(p);
+  if (!s.ok) {
+    let lod = log2(max(st.canvas.y, 1.0));
+    return textureSampleLevel(canvas, repeat_sampler, p * st.canvas.y / size, lod).r;
+  }
+  let k = st.surface.y;
+  let lod = log2(max(k * s.pixel, 1.0));
+  let w = tri_weights(s.n);
+  let o = st.canvas_origin;
+  let q = s.p * k;
+  let gx = textureSampleLevel(canvas, repeat_sampler, q.zy / size + o.zy, lod).r;
+  let gy = textureSampleLevel(canvas, repeat_sampler, q.xz / size + o.xw, lod).r;
+  let gz = textureSampleLevel(canvas, repeat_sampler, q.xy / size + o.xy, lod).r;
+  return gx * w.x + gy * w.y + gz * w.z;
 }
 
 @fragment
@@ -172,33 +290,147 @@ fn stroke(p: vec2<f32>, angle: f32, spacing: f32, width: f32) -> f32 {
   return 1.0 - smoothstep(width * 0.5, width * 0.5 + 0.75, f);
 }
 
+// 1 where the prepass breaks within the line's width: a neighbour farther
+// by more than the depth step (a silhouette, drawn on the nearer surface)
+// or one of about the same depth turned past the crease threshold, as the
+// outline pass finds them (fxpost.wgsl fs_outline); 0 on the sky.
+fn depth_edge(px: vec2<i32>) -> f32 {
+  let d0 = view_depth(px);
+  if (d0 >= st.ink_depth.x * 0.999) { return 0.0; }
+  let n0 = normal_at(px);
+  let r = max(st.ink.z, 1.0);
+  for (var i = 0; i < 8; i++) {
+    let a = f32(i) * 0.7853982;
+    let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
+    let d = view_depth(q);
+    if (d > d0 * (1.0 + st.ink_depth.y)) { return 1.0; }
+    if (abs(d - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(q), n0) > st.ink_depth.z) {
+      return 1.0;
+    }
+  }
+  return 0.0;
+}
+
+// The hatching's ink at tone `t` over the frame: darker tones add stroke
+// sets, each turned a little further.
+fn hatch_screen(p: vec2<f32>, t: f32) -> f32 {
+  let levels = max(st.hatching.z, 1.0);
+  var ink = 0.0;
+  for (var k = 0.0; k < levels; k += 1.0) {
+    let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
+    if (t < threshold) {
+      let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
+      ink = max(ink, stroke(p, turn, st.hatching.y, 1.0) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
+    }
+  }
+  return ink;
+}
+
+// A stroke set on a surface plane: lines through every multiple of
+// `spacing` (so a coarser octave's lines are among a finer one's), `width`
+// wide with an edge of `aa`, all in metres.
+fn stroke_on(q: vec2<f32>, angle: f32, spacing: f32, width: f32, aa: f32) -> f32 {
+  let d = q.x * cos(angle) + q.y * sin(angle);
+  let f = abs(fract(d / spacing + 0.5) - 0.5) * spacing;
+  return 1.0 - smoothstep(width * 0.5, width * 0.5 + aa, f);
+}
+
+// The tonal art map on one plane at one octave: the screen hatching's
+// stroke sets and thresholds, laid in metres.
+fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, pixel: f32) -> f32 {
+  let levels = max(st.hatching.z, 1.0);
+  var ink = 0.0;
+  for (var k = 0.0; k < levels; k += 1.0) {
+    let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
+    if (t < threshold) {
+      let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
+      ink = max(ink, stroke_on(q, turn, spacing, pixel, 0.75 * pixel) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
+    }
+  }
+  return ink;
+}
+
+// The hatching on the surfaces: the stroke sets laid triplanar in world
+// space, so they wrap round forms and stay on them as the camera moves;
+// the spacing keeps about st.hatching.y pixels by fading every other line
+// out between two octaves.
+fn hatch_surface(s: Surf, t: f32) -> f32 {
+  let o = octave(st.hatching.y, s.pixel);
+  let w = tri_weights(s.n);
+  var ink = 0.0;
+  for (var a = 0; a < 3; a++) {
+    if (w[a] < 0.002) { continue; }
+    let q = plane_uv(s.p, a);
+    let fine = hatch_plane(q, t, o.x, s.pixel);
+    let coarse = hatch_plane(q, t, o.x * 2.0, s.pixel);
+    ink += w[a] * mix(fine, coarse, o.y);
+  }
+  return ink;
+}
+
+// Halftone dots over the frame, larger where the tone is darker.
+fn dots_screen(p: vec2<f32>, t: f32) -> f32 {
+  let a = st.halftone.z;
+  let r = vec2<f32>(p.x * cos(a) - p.y * sin(a), p.x * sin(a) + p.y * cos(a)) / st.halftone.y;
+  let cell = fract(r) - 0.5;
+  let radius = (1.0 - t) * 0.72;
+  return 1.0 - smoothstep(radius - 0.08, radius + 0.08, length(cell));
+}
+
+// Dots on a surface plane at one octave: centred on every multiple of
+// `pitch`, so a coarser octave's dots are among a finer one's.
+fn dots_plane(q: vec2<f32>, t: f32, pitch: f32, pixel: f32) -> f32 {
+  let a = st.halftone.z;
+  let r = vec2<f32>(q.x * cos(a) - q.y * sin(a), q.x * sin(a) + q.y * cos(a)) / pitch;
+  let cell = fract(r + 0.5) - 0.5;
+  let radius = (1.0 - t) * 0.72;
+  let edge = 0.5 * pixel / pitch;
+  return 1.0 - smoothstep(radius - edge, radius + edge, length(cell));
+}
+
+// The halftone on the surfaces, as hatch_surface lays the strokes.
+fn dots_surface(s: Surf, t: f32) -> f32 {
+  let o = octave(st.halftone.y, s.pixel);
+  let w = tri_weights(s.n);
+  var cover = 0.0;
+  for (var a = 0; a < 3; a++) {
+    if (w[a] < 0.002) { continue; }
+    let q = plane_uv(s.p, a);
+    cover += w[a] * mix(dots_plane(q, t, o.x, s.pixel), dots_plane(q, t, o.x * 2.0, s.pixel), o.y);
+  }
+  return cover;
+}
+
 fn lines(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   let p = in.pos.xy;
   var c = load(px);
   let t = tone(c);
+  var surf: Surf;
+  surf.ok = false;
+  if (st.surface.z > 0.5 || st.surface.w > 0.5) {
+    surf = surface_at(p);
+  }
   if (st.hatching.x > 0.0) {
     // Darker tones add stroke sets, each turned a little further, over a
     // paper-light ground.
-    let levels = max(st.hatching.z, 1.0);
     var ink = 0.0;
-    for (var k = 0.0; k < levels; k += 1.0) {
-      let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
-      if (t < threshold) {
-        let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
-        ink = max(ink, stroke(p, turn, st.hatching.y, 1.0) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
-      }
+    if (st.surface.z > 0.5 && surf.ok) {
+      ink = hatch_surface(surf, t);
+    } else {
+      ink = hatch_screen(p, t);
     }
     let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.85);
     c = mix(ground, st.hatching_color.rgb, ink * st.hatching.x);
   }
   if (st.halftone.x > 0.0) {
     // Dots on a rotated grid, larger where the image is darker.
-    let a = st.halftone.z;
-    let r = vec2<f32>(p.x * cos(a) - p.y * sin(a), p.x * sin(a) + p.y * cos(a)) / st.halftone.y;
-    let cell = fract(r) - 0.5;
-    let radius = (1.0 - t) * 0.72;
-    let dot_cover = 1.0 - smoothstep(radius - 0.08, radius + 0.08, length(cell));
+    var dot_cover = 0.0;
+    if (st.surface.w > 0.5 && surf.ok) {
+      dot_cover = dots_surface(surf, t);
+    } else {
+      dot_cover = dots_screen(p, t);
+    }
     let paper = mix(c, vec3<f32>(1.0), st.halftone.x);
     c = mix(paper, st.halftone_color.rgb, dot_cover * st.halftone.x);
   }
@@ -211,7 +443,10 @@ fn lines(in: VsOut) -> vec3<f32> {
         edge = max(edge, length(gradient(px + vec2<i32>(x, y))));
       }
     }
-    let k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
+    var k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
+    if (st.ink.w > 0.0) {
+      k = max(k, depth_edge(px) * st.ink.w);
+    }
     c = mix(c, st.ink_color.rgb, k);
   }
   return c;
@@ -252,8 +487,15 @@ fn ign(p: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
 }
 
+// The void-and-cluster tile, repeated: byte v is the threshold (v + 0.5) / 256.
+fn blue(cell: vec2<u32>) -> f32 {
+  let v = textureLoad(blue_noise, vec2<i32>(cell % vec2<u32>(64u)), 0).r;
+  return (round(v * 255.0) + 0.5) / 256.0;
+}
+
 fn dither_at(pos: vec2<f32>) -> f32 {
   let cell = vec2<u32>(pos / max(st.quantize.w, 1.0));
+  if (st.quantize.y < -1.5) { return blue(cell); }
   if (st.quantize.y < 0.0) { return ign(vec2<f32>(cell)); }
   if (st.quantize.y >= 2.0) { return bayer(cell, u32(st.quantize.y)); }
   return 0.5;

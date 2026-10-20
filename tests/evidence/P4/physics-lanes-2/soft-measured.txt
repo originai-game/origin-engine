@@ -1,0 +1,212 @@
+# soft_lanes_costs at 0dfb6940 (the committed grains)
+## round 1 OG_LANES=off load 9.35 11.10 11.05
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| 8 ropes (17 points, 12 iterations) | 1632 | 0.050 | c8376246eab4ff51 | 0 |
+| 16 ropes (17 points, 12 iterations) | 3264 | 0.099 | d62b013dd42fa9fb | 0 |
+| 32 ropes (17 points, 12 iterations) | 6528 | 0.195 | 18a7fc14843fcbe3 | 0 |
+| 64 ropes (17 points, 12 iterations) | 13056 | 0.400 | e015107d46213a92 | 0 |
+| 128 ropes (17 points, 12 iterations) | 26112 | 0.933 | d253e45fc75a59c3 | 0 |
+| 2 cloths (12 × 12, 8 iterations) | 2304 | 0.060 | 5840f1e74b632ce3 | 0 |
+| 4 cloths (12 × 12, 8 iterations) | 4608 | 0.122 | b2a34a0aa253d559 | 0 |
+| 8 cloths (12 × 12, 8 iterations) | 9216 | 0.249 | 4c503731aed4798c | 0 |
+| 16 cloths (12 × 12, 8 iterations) | 18432 | 0.486 | 753c8a542db0f9f7 | 0 |
+| 32 cloths (12 × 12, 8 iterations) | 36864 | 1.256 | 4f8ab3172ffc40a6 | 0 |
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.265 | 440c4bf24713bea3 | 0 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.610 | d1f9ecfc37601109 | 0 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 1.282 | 1235328b60395556 | 0 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.464 | c3399bec3f9d657b | 0 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 3.038 | 656c30afa4119a76 | 0 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 6.380 | a9353309da8d37e3 | 0 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.686 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.813 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.233 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 11.962 | 08ee29fc9fc9e8af | 0 |
+| 2 2D fluids of 250 (2 substeps) | 1000 | 0.485 | c15a235f8e50d833 | 0 |
+| 2 2D fluids of 500 (2 substeps) | 2000 | 1.220 | c57ef5b397c1774a | 0 |
+| 4 2D fluids of 500 (2 substeps) | 4000 | 2.510 | e5bc719772351a1e | 0 |
+| 4 2D fluids of 1000 (2 substeps) | 8000 | 5.793 | ad90446336b7ec0e | 0 |
+| a 2D fluid of 1000 (2 substeps) | 2000 | 1.400 | 0aaca73fdce65122 | 0 |
+| a 2D fluid of 2000 (2 substeps) | 4000 | 3.131 | 6ede0b23832e5bae | 0 |
+| a 2D fluid of 4000 (2 substeps) | 8000 | 6.982 | 19832cfcd511093c | 0 |
+| a 2D fluid of 8000 (2 substeps) | 16000 | 15.190 | e540acb3f629ec66 | 0 |
+| 16 ragdolls (3 bones, half limp) | 48 | 0.030 | 3668c2cd89b43628 | 0 |
+| 64 ragdolls (3 bones, half limp) | 192 | 0.112 | 973f99ca9b753217 | 0 |
+| 256 ragdolls (3 bones, half limp) | 768 | 0.333 | 8a568a9fa61e62f8 | 0 |
+## round 1 OG_LANES=4 load 8.66 10.77 10.93
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| 8 ropes (17 points, 12 iterations) | 1632 | 0.043 | c8376246eab4ff51 | 420 |
+| 16 ropes (17 points, 12 iterations) | 3264 | 0.061 | d62b013dd42fa9fb | 420 |
+| 32 ropes (17 points, 12 iterations) | 6528 | 0.086 | 18a7fc14843fcbe3 | 420 |
+| 64 ropes (17 points, 12 iterations) | 13056 | 0.151 | e015107d46213a92 | 420 |
+| 128 ropes (17 points, 12 iterations) | 26112 | 0.284 | d253e45fc75a59c3 | 420 |
+| 2 cloths (12 × 12, 8 iterations) | 2304 | 0.053 | 5840f1e74b632ce3 | 420 |
+| 4 cloths (12 × 12, 8 iterations) | 4608 | 0.064 | b2a34a0aa253d559 | 420 |
+| 8 cloths (12 × 12, 8 iterations) | 9216 | 0.099 | 4c503731aed4798c | 420 |
+| 16 cloths (12 × 12, 8 iterations) | 18432 | 0.190 | 753c8a542db0f9f7 | 420 |
+| 32 cloths (12 × 12, 8 iterations) | 36864 | 0.387 | 4f8ab3172ffc40a6 | 420 |
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.194 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.394 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.465 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.865 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 0.970 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 2.017 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.713 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.624 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.754 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.949 | 08ee29fc9fc9e8af | 1680 |
+| 2 2D fluids of 250 (2 substeps) | 1000 | 0.344 | c15a235f8e50d833 | 420 |
+| 2 2D fluids of 500 (2 substeps) | 2000 | 0.715 | c57ef5b397c1774a | 420 |
+| 4 2D fluids of 500 (2 substeps) | 4000 | 0.746 | e5bc719772351a1e | 420 |
+| 4 2D fluids of 1000 (2 substeps) | 8000 | 1.616 | ad90446336b7ec0e | 7140 |
+| a 2D fluid of 1000 (2 substeps) | 2000 | 0.751 | 0aaca73fdce65122 | 1680 |
+| a 2D fluid of 2000 (2 substeps) | 4000 | 1.591 | 6ede0b23832e5bae | 1680 |
+| a 2D fluid of 4000 (2 substeps) | 8000 | 3.075 | 19832cfcd511093c | 1680 |
+| a 2D fluid of 8000 (2 substeps) | 16000 | 7.170 | e540acb3f629ec66 | 1680 |
+| 16 ragdolls (3 bones, half limp) | 48 | 0.031 | 3668c2cd89b43628 | 0 |
+| 64 ragdolls (3 bones, half limp) | 192 | 0.112 | 973f99ca9b753217 | 0 |
+| 256 ragdolls (3 bones, half limp) | 768 | 0.339 | 8a568a9fa61e62f8 | 419 |
+## round 1 OG_LANES=8 load 8.44 10.61 10.88
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| 8 ropes (17 points, 12 iterations) | 1632 | 0.051 | c8376246eab4ff51 | 0 |
+| 16 ropes (17 points, 12 iterations) | 3264 | 0.103 | d62b013dd42fa9fb | 0 |
+| 32 ropes (17 points, 12 iterations) | 6528 | 0.107 | 18a7fc14843fcbe3 | 420 |
+| 64 ropes (17 points, 12 iterations) | 13056 | 0.173 | e015107d46213a92 | 420 |
+| 128 ropes (17 points, 12 iterations) | 26112 | 0.269 | d253e45fc75a59c3 | 420 |
+| 2 cloths (12 × 12, 8 iterations) | 2304 | 0.060 | 5840f1e74b632ce3 | 0 |
+| 4 cloths (12 × 12, 8 iterations) | 4608 | 0.090 | b2a34a0aa253d559 | 420 |
+| 8 cloths (12 × 12, 8 iterations) | 9216 | 0.121 | 4c503731aed4798c | 420 |
+| 16 cloths (12 × 12, 8 iterations) | 18432 | 0.218 | 753c8a542db0f9f7 | 420 |
+| 32 cloths (12 × 12, 8 iterations) | 36864 | 0.338 | 4f8ab3172ffc40a6 | 420 |
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.218 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.425 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.515 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.866 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 0.967 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.484 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.693 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.642 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.755 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.477 | 08ee29fc9fc9e8af | 1680 |
+| 2 2D fluids of 250 (2 substeps) | 1000 | 0.357 | c15a235f8e50d833 | 420 |
+| 2 2D fluids of 500 (2 substeps) | 2000 | 0.700 | c57ef5b397c1774a | 420 |
+| 4 2D fluids of 500 (2 substeps) | 4000 | 0.820 | e5bc719772351a1e | 420 |
+| 4 2D fluids of 1000 (2 substeps) | 8000 | 1.397 | ad90446336b7ec0e | 7140 |
+| a 2D fluid of 1000 (2 substeps) | 2000 | 0.906 | 0aaca73fdce65122 | 1680 |
+| a 2D fluid of 2000 (2 substeps) | 4000 | 1.719 | 6ede0b23832e5bae | 1680 |
+| a 2D fluid of 4000 (2 substeps) | 8000 | 2.895 | 19832cfcd511093c | 1680 |
+| a 2D fluid of 8000 (2 substeps) | 16000 | 5.781 | e540acb3f629ec66 | 1680 |
+| 16 ragdolls (3 bones, half limp) | 48 | 0.031 | 3668c2cd89b43628 | 0 |
+| 64 ragdolls (3 bones, half limp) | 192 | 0.112 | 973f99ca9b753217 | 0 |
+| 256 ragdolls (3 bones, half limp) | 768 | 0.338 | 8a568a9fa61e62f8 | 0 |
+## round 2 OG_LANES=off load 28.75 17.18 13.38
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| 8 ropes (17 points, 12 iterations) | 1632 | 0.058 | c8376246eab4ff51 | 0 |
+| 16 ropes (17 points, 12 iterations) | 3264 | 0.115 | d62b013dd42fa9fb | 0 |
+| 32 ropes (17 points, 12 iterations) | 6528 | 0.231 | 18a7fc14843fcbe3 | 0 |
+| 64 ropes (17 points, 12 iterations) | 13056 | 0.481 | e015107d46213a92 | 0 |
+| 128 ropes (17 points, 12 iterations) | 26112 | 1.101 | d253e45fc75a59c3 | 0 |
+| 2 cloths (12 × 12, 8 iterations) | 2304 | 0.067 | 5840f1e74b632ce3 | 0 |
+| 4 cloths (12 × 12, 8 iterations) | 4608 | 0.145 | b2a34a0aa253d559 | 0 |
+| 8 cloths (12 × 12, 8 iterations) | 9216 | 0.283 | 4c503731aed4798c | 0 |
+| 16 cloths (12 × 12, 8 iterations) | 18432 | 0.601 | 753c8a542db0f9f7 | 0 |
+| 32 cloths (12 × 12, 8 iterations) | 36864 | 1.518 | 4f8ab3172ffc40a6 | 0 |
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.338 | 440c4bf24713bea3 | 0 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.755 | d1f9ecfc37601109 | 0 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 1.613 | 1235328b60395556 | 0 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 2.019 | c3399bec3f9d657b | 0 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 4.211 | 656c30afa4119a76 | 0 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 7.694 | a9353309da8d37e3 | 0 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.839 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.331 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 6.226 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 14.030 | 08ee29fc9fc9e8af | 0 |
+| 2 2D fluids of 250 (2 substeps) | 1000 | 0.483 | c15a235f8e50d833 | 0 |
+| 2 2D fluids of 500 (2 substeps) | 2000 | 1.354 | c57ef5b397c1774a | 0 |
+| 4 2D fluids of 500 (2 substeps) | 4000 | 2.571 | e5bc719772351a1e | 0 |
+| 4 2D fluids of 1000 (2 substeps) | 8000 | 6.784 | ad90446336b7ec0e | 0 |
+| a 2D fluid of 1000 (2 substeps) | 2000 | 1.404 | 0aaca73fdce65122 | 0 |
+| a 2D fluid of 2000 (2 substeps) | 4000 | 3.188 | 6ede0b23832e5bae | 0 |
+| a 2D fluid of 4000 (2 substeps) | 8000 | 8.865 | 19832cfcd511093c | 0 |
+| a 2D fluid of 8000 (2 substeps) | 16000 | 15.474 | e540acb3f629ec66 | 0 |
+| 16 ragdolls (3 bones, half limp) | 48 | 0.030 | 3668c2cd89b43628 | 0 |
+| 64 ragdolls (3 bones, half limp) | 192 | 0.115 | 973f99ca9b753217 | 0 |
+| 256 ragdolls (3 bones, half limp) | 768 | 0.331 | 8a568a9fa61e62f8 | 0 |
+## round 2 OG_LANES=4 load 21.18 16.59 13.33
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| 8 ropes (17 points, 12 iterations) | 1632 | 0.046 | c8376246eab4ff51 | 420 |
+| 16 ropes (17 points, 12 iterations) | 3264 | 0.055 | d62b013dd42fa9fb | 420 |
+| 32 ropes (17 points, 12 iterations) | 6528 | 0.088 | 18a7fc14843fcbe3 | 420 |
+| 64 ropes (17 points, 12 iterations) | 13056 | 0.147 | e015107d46213a92 | 420 |
+| 128 ropes (17 points, 12 iterations) | 26112 | 0.293 | d253e45fc75a59c3 | 420 |
+| 2 cloths (12 × 12, 8 iterations) | 2304 | 0.050 | 5840f1e74b632ce3 | 420 |
+| 4 cloths (12 × 12, 8 iterations) | 4608 | 0.060 | b2a34a0aa253d559 | 420 |
+| 8 cloths (12 × 12, 8 iterations) | 9216 | 0.097 | 4c503731aed4798c | 420 |
+| 16 cloths (12 × 12, 8 iterations) | 18432 | 0.191 | 753c8a542db0f9f7 | 420 |
+| 32 cloths (12 × 12, 8 iterations) | 36864 | 0.473 | 4f8ab3172ffc40a6 | 420 |
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.207 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.402 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.497 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.877 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.047 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.863 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.701 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.707 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.961 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.668 | 08ee29fc9fc9e8af | 1680 |
+| 2 2D fluids of 250 (2 substeps) | 1000 | 0.302 | c15a235f8e50d833 | 420 |
+| 2 2D fluids of 500 (2 substeps) | 2000 | 0.683 | c57ef5b397c1774a | 420 |
+| 4 2D fluids of 500 (2 substeps) | 4000 | 0.734 | e5bc719772351a1e | 420 |
+| 4 2D fluids of 1000 (2 substeps) | 8000 | 1.599 | ad90446336b7ec0e | 7140 |
+| a 2D fluid of 1000 (2 substeps) | 2000 | 0.750 | 0aaca73fdce65122 | 1680 |
+| a 2D fluid of 2000 (2 substeps) | 4000 | 1.508 | 6ede0b23832e5bae | 1680 |
+| a 2D fluid of 4000 (2 substeps) | 8000 | 3.013 | 19832cfcd511093c | 1680 |
+| a 2D fluid of 8000 (2 substeps) | 16000 | 6.703 | e540acb3f629ec66 | 1680 |
+| 16 ragdolls (3 bones, half limp) | 48 | 0.032 | 3668c2cd89b43628 | 0 |
+| 64 ragdolls (3 bones, half limp) | 192 | 0.113 | 973f99ca9b753217 | 0 |
+| 256 ragdolls (3 bones, half limp) | 768 | 0.349 | 8a568a9fa61e62f8 | 419 |
+## round 2 OG_LANES=8 load 18.25 16.17 13.23
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| 8 ropes (17 points, 12 iterations) | 1632 | 0.049 | c8376246eab4ff51 | 0 |
+| 16 ropes (17 points, 12 iterations) | 3264 | 0.099 | d62b013dd42fa9fb | 0 |
+| 32 ropes (17 points, 12 iterations) | 6528 | 0.080 | 18a7fc14843fcbe3 | 420 |
+| 64 ropes (17 points, 12 iterations) | 13056 | 0.130 | e015107d46213a92 | 420 |
+| 128 ropes (17 points, 12 iterations) | 26112 | 0.243 | d253e45fc75a59c3 | 420 |
+| 2 cloths (12 × 12, 8 iterations) | 2304 | 0.061 | 5840f1e74b632ce3 | 0 |
+| 4 cloths (12 × 12, 8 iterations) | 4608 | 0.089 | b2a34a0aa253d559 | 420 |
+| 8 cloths (12 × 12, 8 iterations) | 9216 | 0.116 | 4c503731aed4798c | 420 |
+| 16 cloths (12 × 12, 8 iterations) | 18432 | 0.170 | 753c8a542db0f9f7 | 420 |
+| 32 cloths (12 × 12, 8 iterations) | 36864 | 0.317 | 4f8ab3172ffc40a6 | 420 |
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.191 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.377 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.432 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.831 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 0.916 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.262 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.711 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.509 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.591 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.347 | 08ee29fc9fc9e8af | 1680 |
+| 2 2D fluids of 250 (2 substeps) | 1000 | 0.339 | c15a235f8e50d833 | 420 |
+| 2 2D fluids of 500 (2 substeps) | 2000 | 0.813 | c57ef5b397c1774a | 420 |
+| 4 2D fluids of 500 (2 substeps) | 4000 | 0.778 | e5bc719772351a1e | 420 |
+| 4 2D fluids of 1000 (2 substeps) | 8000 | 1.372 | ad90446336b7ec0e | 7140 |
+| a 2D fluid of 1000 (2 substeps) | 2000 | 0.860 | 0aaca73fdce65122 | 1680 |
+| a 2D fluid of 2000 (2 substeps) | 4000 | 1.482 | 6ede0b23832e5bae | 1680 |
+| a 2D fluid of 4000 (2 substeps) | 8000 | 3.092 | 19832cfcd511093c | 1680 |
+| a 2D fluid of 8000 (2 substeps) | 16000 | 8.531 | e540acb3f629ec66 | 1680 |
+| 16 ragdolls (3 bones, half limp) | 48 | 0.030 | 3668c2cd89b43628 | 0 |
+| 64 ragdolls (3 bones, half limp) | 192 | 0.150 | 973f99ca9b753217 | 0 |
+| 256 ragdolls (3 bones, half limp) | 768 | 1.018 | 8a568a9fa61e62f8 | 0 |
+DONE

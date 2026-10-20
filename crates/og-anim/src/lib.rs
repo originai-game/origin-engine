@@ -45,7 +45,7 @@ pub use graph::{
     Condition, GraphAsset, Layer, LayerMode, Motion, MotionNode, Op, State, Transition,
 };
 pub use ik::{IkResult, chain as ik_chain, fabrik, two_bone};
-pub use pose::{Pose, sample};
+pub use pose::{Pose, sample, stepped};
 pub use retarget::{
     HUMAN_BONE_COUNT, HUMAN_BONES, HumanoidMap, RetargetOptions, Retargeted, RigAsset, SCHEMES,
     human_bone, retarget,

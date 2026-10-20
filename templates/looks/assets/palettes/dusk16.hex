@@ -1,0 +1,18 @@
+; Sixteen colours of a dusk: near-black through purples and oranges to cream, and a cool sea ramp.
+; The engine's built-in palette @palettes/dusk16 (templates/looks/assets/generate.ts), CC0.
+100c18
+281838
+482458
+703068
+a04068
+c85860
+e88058
+f8b060
+fcd888
+fff4c8
+304860
+407080
+60a098
+98d0b0
+d0f0d0
+ffffff

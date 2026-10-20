@@ -730,9 +730,26 @@ pub const CHUNK_AHEAD_SECONDS: f64 = 4.0;
 /// behind its cursor to [`CHUNK_AHEAD_SECONDS`] ahead at its pitch, and
 /// for a loop the chunk its loop start is in. The first chunk is always
 /// resident and not listed. Read at a tick boundary; it never changes the
-/// world.
+/// world. The keys of [`chunk_distances`].
 pub fn chunks_wanted(world: &og_ecs::World, bank: &SoundBank) -> BTreeMap<u64, BTreeSet<u32>> {
-    let mut out: BTreeMap<u64, BTreeSet<u32>> = BTreeMap::new();
+    chunk_distances(world, bank)
+        .into_iter()
+        .map(|(h, chunks)| (h, chunks.into_keys().collect()))
+        .collect()
+}
+
+/// [`chunks_wanted`] with, per chunk, how soon a playhead needs it: the
+/// seconds (of the device, at the voice's pitch) until the nearest voice
+/// reaches the chunk's first frame; 0 for a chunk a playhead is in or has
+/// just left (a free-running device may still be rendering it); for a
+/// loop's start chunk and the next, the time to the loop's wrap plus their
+/// offset from the loop start. A host fetching chunks fetches the smallest
+/// first (og-runtime's streaming fetches).
+pub fn chunk_distances(
+    world: &og_ecs::World,
+    bank: &SoundBank,
+) -> BTreeMap<u64, BTreeMap<u32, f64>> {
+    let mut out: BTreeMap<u64, BTreeMap<u32, f64>> = BTreeMap::new();
     let Ok(rows) = world.query(&og_ecs::QueryDesc::new().read::<crate::schema::AudioPlayback>())
     else {
         return out;
@@ -748,18 +765,33 @@ pub fn chunks_wanted(world: &og_ecs::World, bank: &SoundBank) -> BTreeMap<u64, B
         };
         let rate = f64::from(s.sample_rate.max(1));
         let pitch = f64::from(p.pitch.clamp(1.0 / 16.0, 16.0));
-        let lo = (p.cursor - CHUNK_BEHIND_SECONDS * rate * pitch).max(0.0);
-        let hi = p.cursor.max(0.0) + CHUNK_AHEAD_SECONDS * rate * pitch;
+        // Frames of the sound a second of the device plays.
+        let speed = rate * pitch;
+        let lo = (p.cursor - CHUNK_BEHIND_SECONDS * speed).max(0.0);
+        let hi = p.cursor.max(0.0) + CHUNK_AHEAD_SECONDS * speed;
         let last = u64::from(count - 1);
         let set = out.entry(p.sound).or_default();
+        let mut want = |chunk: u64, seconds: f64| {
+            let d = set.entry(chunk.min(last) as u32).or_insert(f64::INFINITY);
+            *d = d.min(seconds.max(0.0));
+        };
         let (a, b) = ((lo as u64 / per).min(last), (hi as u64 / per).min(last));
-        set.extend((a..=b).map(|c| c as u32));
+        for c in a..=b {
+            want(c, ((c * per) as f64 - p.cursor) / speed);
+        }
         if p.flags & 1 != 0 {
             // The wrap: the loop start's chunk, and the one after it when
             // the playhead is within reach of the loop's end.
+            let end = if p.loop_end > 0 {
+                f64::from(p.loop_end)
+            } else {
+                s.frames as f64
+            };
+            let wrap = (end - p.cursor).max(0.0) / speed;
             let start = u64::from(p.loop_start) / per;
-            set.insert(start.min(last) as u32);
-            set.insert((start + 1).min(last) as u32);
+            want(start, wrap);
+            let next = ((start + 1) * per) as f64 - f64::from(p.loop_start);
+            want(start + 1, wrap + next / speed);
         }
         set.remove(&0);
     }

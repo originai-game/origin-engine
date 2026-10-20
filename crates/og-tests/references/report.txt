@@ -1,1 +1,3 @@
-sprites-array: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=4 batches=0 instances=0 culled=0 triangles=0 shadow_passes=0 shadow_casters=0 lights=0 sprites=23 glyphs=0 sprite_draws=3 setup+first=426.4ms
+sprites-shadow-terrain: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=22 batches=2 instances=2 culled=0 triangles=14360 shadow_passes=3 shadow_casters=4 lights=0 sprites=5 glyphs=0 sprite_draws=6 setup+first=596.7ms
+stylise-surface: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=18 batches=3 instances=6 culled=0 triangles=18458 shadow_passes=3 shadow_casters=15 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=339.1ms
+sprites-20k: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=4 batches=0 instances=0 culled=0 triangles=0 shadow_passes=0 shadow_casters=0 lights=0 sprites=20000 glyphs=0 sprite_draws=3 setup+first=178.4ms vs reference: rmse=0.00005 max_diff=2 outliers=0

@@ -13,7 +13,7 @@
 //!   a fluid group, ragdolls in 3D and 2D), 3D and 2D, after 600 ticks, and
 //!   of a pen of 1,000 of the pile's bodies (`tests/support/pile.rs`) after
 //!   300, enough bodies for the step to go to four lanes (og-physics's
-//!   `BODY_GRAIN`, 200, a thread), so the host's lanes run steps it on
+//!   `pool_bodies`: 500 on four), so the host's lanes run steps it on
 //!   rapier's parallel build;
 //! - [`anim_hash`]: the world hash of og-anim's walk scenario
 //!   (`crates/og-anim/tests/support/walk.rs`: graphs, players, root motion,

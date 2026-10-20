@@ -229,3 +229,147 @@ fn sheet_mistakes_are_refused_by_name() {
         assert!(errors.contains(says), "{errors}");
     }
 }
+
+/// `array true`: the frames, cut out of the texture, are the layers of
+/// `<sheet>#array` (pixel art under `filter nearest`), the sheet keeps its
+/// frames and clips; a sheet whose frames differ in size is refused.
+/// Broken once by cutting each layer from the texture's first rows (every
+/// layer is frame 0's row): layer 5's texels are frame 1's.
+#[test]
+fn an_array_sheet_cooks_its_frames_into_a_texture_array() {
+    // Each 16x16 cell its own colour, shaded across x and y.
+    let cells = image::RgbaImage::from_fn(64, 32, |x, y| {
+        let n = (x / 16 + 4 * (y / 16)) as u8;
+        image::Rgba([n * 30, (x % 16) as u8 * 16, (y % 16) as u8 * 16, 255])
+    });
+    let mut cells_png = Vec::new();
+    cells
+        .write_to(
+            &mut std::io::Cursor::new(&mut cells_png),
+            image::ImageFormat::Png,
+        )
+        .unwrap();
+    const ARRAY: &str = "type flipbook\nversion 1\n---\ntexture \"hero.png\"\narray true\ngrid 16 16\nclip run {\n  frames 0 1 2 3 4 5 6 7\n  fps 8\n}\n";
+    let root = project(
+        "array",
+        &[
+            ("sprites/hero.png", cells_png.clone()),
+            ("sprites/run.ogt", ARRAY.as_bytes().to_vec()),
+        ],
+    );
+    let bundle = cooked(&root);
+    let sheet = bundle.load_flipbook("sprites/run.ogt").unwrap();
+    assert!(sheet.array);
+    assert_eq!(sheet.frames.len(), 8);
+    let array = bundle.load_texture_array("sprites/run.ogt#array").unwrap();
+    assert_eq!(
+        (array.meta.width, array.meta.height, array.meta.layers),
+        (16, 16, 8)
+    );
+    assert_eq!(
+        array.meta.kind,
+        og_cook::format::kind::PIXEL,
+        "filter nearest"
+    );
+    assert_eq!(array.layers[5], "sprites/run.ogt#array#layer5");
+    // Layer n is frame n: 16x16 at (16 (n % 4), 16 (n / 4)) of the texture.
+    let source = cells;
+    for n in [0usize, 5, 7] {
+        let layer = bundle
+            .load_texture(&array.layers[n])
+            .unwrap()
+            .to_texture_data()
+            .unwrap();
+        assert_eq!((layer.width, layer.height), (16, 16));
+        let (fx, fy) = (16 * (n as u32 % 4), 16 * (n as u32 / 4));
+        for (x, y) in [(0u32, 0u32), (3, 1), (15, 15)] {
+            let i = ((y * 16 + x) * 4) as usize;
+            assert_eq!(
+                &layer.rgba[i..i + 4],
+                &source.get_pixel(fx + x, fy + y).0,
+                "layer {n} at {x},{y}"
+            );
+        }
+    }
+    // Frames of two sizes cannot be one array's layers.
+    let root = project(
+        "array-sizes",
+        &[
+            ("sprites/hero.png", png()),
+            (
+                "sprites/run.ogt",
+                ARRAY
+                    .replace("grid 16 16\n", "frame a 0 0 16 16\nframe b 16 0 8 8\n")
+                    .replace("frames 0 1 2 3 4 5 6 7", "frames a b")
+                    .into_bytes(),
+            ),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors().join("\n");
+    assert!(errors.contains("frames are one size"), "{errors}");
+}
+
+/// An `array true` sheet and a texture array in a streaming group: the
+/// sheet, its array and every layer are packed into the group's pack and
+/// name the group in the manifest (the web build ships none of them in the
+/// first group), and the group's memory counts the layers' texels.
+#[test]
+fn an_array_sheet_in_a_streaming_group_is_packed_with_its_array_and_layers() {
+    const ARRAY: &str = "type flipbook\nversion 1\n---\ntexture \"hero.png\"\narray true\ngrid 16 16\nclip run {\n  frames 0 1 2 3\n  fps 8\n}\n";
+    const FRAMES: &str =
+        "type texture-array\nversion 1\n---\nkind pixel\nlayer \"hero.png\"\nlayer \"hero.png\"\n";
+    const SCENE: &str = "type scene\nversion 1\n---\nname \"Cave\"\nstream \"cave\" {\n  asset \"sprites/run.ogt\"\n  asset \"sprites/frames.ogt\"\n}\n";
+    let cells = image::RgbaImage::from_fn(64, 16, |x, y| {
+        image::Rgba([(x / 16) as u8 * 60, x as u8 * 4, y as u8 * 16, 255])
+    });
+    let mut png = Vec::new();
+    cells
+        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .unwrap();
+    let root = project(
+        "array-grouped",
+        &[
+            ("sprites/hero.png", png),
+            ("sprites/run.ogt", ARRAY.as_bytes().to_vec()),
+            ("sprites/frames.ogt", FRAMES.as_bytes().to_vec()),
+            ("scenes/cave.ogt", SCENE.as_bytes().to_vec()),
+        ],
+    );
+    let bundle = cooked(&root);
+    let group = &bundle.streams()[0];
+    assert_eq!(group.name, "cave");
+    let grouped: Vec<String> = bundle
+        .manifest()
+        .outputs()
+        .filter(|o| o.group.as_deref() == Some("cave"))
+        .map(|o| o.id.clone())
+        .collect();
+    let mut want = vec![
+        "sprites/frames.ogt".to_string(),
+        "sprites/frames.ogt#layer0".into(),
+        "sprites/frames.ogt#layer1".into(),
+        "sprites/run.ogt".into(),
+        "sprites/run.ogt#array".into(),
+    ];
+    want.extend((0..4).map(|n| format!("sprites/run.ogt#array#layer{n}")));
+    let mut got = grouped.clone();
+    got.sort();
+    want.sort();
+    assert_eq!(got, want);
+    // The pack holds exactly those outputs' files, byte for byte.
+    let pack = std::fs::read(root.join("cooked").join(&group.file)).unwrap();
+    let files = og_cook::runtime::unpack(&pack).unwrap();
+    assert_eq!(files.len(), want.len());
+    for (file, bytes) in &files {
+        assert_eq!(
+            &std::fs::read(root.join("cooked").join(file)).unwrap(),
+            bytes,
+            "{file}"
+        );
+    }
+    // Six 16 x 16 RGBA8 layers at least (pixel art: no mips).
+    assert!(group.memory >= 6 * 16 * 16 * 4, "{}", group.memory);
+    // The texture the sheet is cut from stays an asset of the first group.
+    assert_eq!(bundle.output("sprites/hero.png").unwrap().group, None);
+}

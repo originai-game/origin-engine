@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3244</sub>
+<sub>`api.ogt` line 3298</sub>
 
 ## Contents
 
@@ -29,6 +29,7 @@ module load {
 | [`Sound`](#type-Sound) | handle | A cooked sound: QOA-encoded PCM the audio module plays. |
 | [`Skin`](#type-Skin) | handle | A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure. |
 | [`TextureArray`](#type-TextureArray) | handle | A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray). |
+| [`TextureArray()`](#column-TextureArray) | column kind | A TextureArray handle field (0 is none). |
 | [`Asset()`](#column-Asset) | column kind | An Asset handle field. |
 | [`Sound()`](#column-Sound) | column kind | A Sound handle field. |
 | [`LoadStatus`](#type-LoadStatus) | enum | Where a load is. |
@@ -47,9 +48,9 @@ module load {
 | [`og.load.font`](#fn-font) | function | Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. |
 | [`og.load.fontInfo`](#fn-fontInfo) | function | A loaded font's metrics. |
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
-| [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. |
-| [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
-| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path. |
+| [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle. |
+| [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
+| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
@@ -63,7 +64,7 @@ module load {
 | [`og.load.gltfInfo`](#fn-gltfInfo) | function | What a ready glTF holds. |
 | [`og.load.animation`](#fn-animation) | function | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles. |
 | [`og.load.rig`](#fn-rig) | function | Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle. |
-| [`og.load.flipbook`](#fn-flipbook) | function | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles. |
+| [`og.load.flipbook`](#fn-flipbook) | function | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. A sheet in a streaming group (its array and layers with it) loads once its group is resident (refused naming the group before), and its sprites draw nothing while the group is away. Loading the same path again answers the same handles. |
 | [`og.load.tilemap`](#fn-tilemap) | function | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
@@ -98,7 +99,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3341</sub>
+<sub>`api.ogt` line 3402</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -128,7 +129,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3348</sub>
+<sub>`api.ogt` line 3409</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -156,7 +157,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3355</sub>
+<sub>`api.ogt` line 3416</sub>
 
 <a id="fn-gltf"></a>
 
@@ -188,7 +189,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3361</sub>
+<sub>`api.ogt` line 3422</sub>
 
 <a id="fn-scene"></a>
 
@@ -218,7 +219,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3369</sub>
+<sub>`api.ogt` line 3430</sub>
 
 <a id="fn-font"></a>
 
@@ -248,7 +249,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3376</sub>
+<sub>`api.ogt` line 3437</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -278,7 +279,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3383</sub>
+<sub>`api.ogt` line 3444</sub>
 
 <a id="fn-sound"></a>
 
@@ -311,13 +312,13 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3390</sub>
+<sub>`api.ogt` line 3451</sub>
 
 <a id="fn-lut"></a>
 
 ### `og.load.lut`
 
-A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path.
+A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle.
 
 ```ts
 og.load.lut(world: World, path: string): Result<Lut>
@@ -334,20 +335,20 @@ Binding symbol `og_load_lut` · publish builds: kept
 
 ```ogt
 fn lut {
-  doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path."
+  doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `luts/warm.cube`."
   returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
 }
 ```
 
-<sub>`api.ogt` line 3398</sub>
+<sub>`api.ogt` line 3459</sub>
 
 <a id="fn-environment"></a>
 
 ### `og.load.environment`
 
-A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
+A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
 
 ```ts
 og.load.environment(world: World, path: string): Result<EnvironmentMap>
@@ -364,20 +365,20 @@ Binding symbol `og_load_environment` · publish builds: kept
 
 ```ogt
 fn environment {
-  doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
+  doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `env/studio.ogt`."
   returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
 }
 ```
 
-<sub>`api.ogt` line 3405</sub>
+<sub>`api.ogt` line 3466</sub>
 
 <a id="fn-emitter"></a>
 
 ### `og.load.emitter`
 
-A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.
+A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
 
 ```ts
 og.load.emitter(world: World, path: string): Result<ParticleEmitter>
@@ -388,20 +389,20 @@ og.load.emitter(world: World, path: string): Result<ParticleEmitter>
 | `world` | `World` | no | The world whose renderer owns it. |
 | `path` | `string` | no | The asset id, such as `fx/sparks.ogt`. |
 
-**Returns** `Result<ParticleEmitter>`: Refused for a path not in the bundle or a texture it cannot load.
+**Returns** `Result<ParticleEmitter>`: Refused for a path not in the bundle, or a texture or texture array it cannot load.
 
 Binding symbol `og_load_emitter` · publish builds: kept
 
 ```ogt
 fn emitter {
-  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path."
+  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `fx/sparks.ogt`."
-  returns Result.ParticleEmitter "Refused for a path not in the bundle or a texture it cannot load."
+  returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture or texture array it cannot load."
 }
 ```
 
-<sub>`api.ogt` line 3412</sub>
+<sub>`api.ogt` line 3473</sub>
 
 <a id="fn-shader"></a>
 
@@ -431,7 +432,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3419</sub>
+<sub>`api.ogt` line 3480</sub>
 
 <a id="fn-texture"></a>
 
@@ -464,7 +465,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3426</sub>
+<sub>`api.ogt` line 3487</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -472,7 +473,7 @@ fn texture {
 
 Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.
 
-SpriteDesc.array draws sprites from its layers (one draw per array, whatever layer each shows; materials and terrain layers do not sample arrays yet); TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go and sprites of it are refused until the group is resident again, when it comes back under the same handle.
+SpriteDesc.array (world and screen sprites), og.Sprite.array and 2D particle emitters (an emitter's `array` line) draw from its layers, one draw per array whatever layer each shows, with glow and the additive blend; an `array true` flipbook sheet cooks its frames into one (materials and terrain layers do not sample arrays yet). TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go, og.render.sprite of it is refused and og.Sprite and particles of it draw nothing until the group is resident again, when it comes back under the same handle.
 
 ```ts
 og.load.textureArray(world: World, path: string): Result<TextureArrayInfo>
@@ -490,14 +491,14 @@ Binding symbol `og_load_texture_array` · publish builds: kept
 ```ogt
 fn textureArray {
   doc "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array."
-  doc "SpriteDesc.array draws sprites from its layers (one draw per array, whatever layer each shows; materials and terrain layers do not sample arrays yet); TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go and sprites of it are refused until the group is resident again, when it comes back under the same handle."
+  doc "SpriteDesc.array (world and screen sprites), og.Sprite.array and 2D particle emitters (an emitter's `array` line) draw from its layers, one draw per array whatever layer each shows, with glow and the additive blend; an `array true` flipbook sheet cooks its frames into one (materials and terrain layers do not sample arrays yet). TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go, og.render.sprite of it is refused and og.Sprite and particles of it draw nothing until the group is resident again, when it comes back under the same handle."
   param world World "The world whose renderer owns the array."
   param path String "The array's asset id, such as `tiles/ground.ogt`."
   returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
 }
 ```
 
-<sub>`api.ogt` line 3434</sub>
+<sub>`api.ogt` line 3495</sub>
 
 <a id="fn-skin"></a>
 
@@ -527,7 +528,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3442</sub>
+<sub>`api.ogt` line 3503</sub>
 
 <a id="fn-look"></a>
 
@@ -557,7 +558,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3449</sub>
+<sub>`api.ogt` line 3510</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -587,7 +588,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3456</sub>
+<sub>`api.ogt` line 3517</sub>
 
 <a id="fn-palette"></a>
 
@@ -617,7 +618,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 3463</sub>
+<sub>`api.ogt` line 3524</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -647,7 +648,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3470</sub>
+<sub>`api.ogt` line 3531</sub>
 
 <a id="fn-status"></a>
 
@@ -677,7 +678,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3477</sub>
+<sub>`api.ogt` line 3538</sub>
 
 <a id="fn-error"></a>
 
@@ -707,7 +708,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3484</sub>
+<sub>`api.ogt` line 3545</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -737,7 +738,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3491</sub>
+<sub>`api.ogt` line 3552</sub>
 
 <a id="fn-animation"></a>
 
@@ -770,7 +771,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3498</sub>
+<sub>`api.ogt` line 3559</sub>
 
 <a id="fn-rig"></a>
 
@@ -800,13 +801,13 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3506</sub>
+<sub>`api.ogt` line 3567</sub>
 
 <a id="fn-flipbook"></a>
 
 ### `og.load.flipbook`
 
-Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.
+Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. A sheet in a streaming group (its array and layers with it) loads once its group is resident (refused naming the group before), and its sprites draw nothing while the group is away. Loading the same path again answers the same handles.
 
 ```ts
 og.load.flipbook(world: World, path: string): Result<FlipbookInfo>
@@ -823,14 +824,14 @@ Binding symbol `og_load_flipbook` · publish builds: kept
 
 ```ogt
 fn flipbook {
-  doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles."
+  doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. A sheet in a streaming group (its array and layers with it) loads once its group is resident (refused naming the group before), and its sprites draw nothing while the group is away. Loading the same path again answers the same handles."
   param world World "The world whose animation and renderer own it."
   param path String "The sheet's asset id, such as `sprites/hero.ogt`."
   returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
 }
 ```
 
-<sub>`api.ogt` line 3513</sub>
+<sub>`api.ogt` line 3574</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -860,7 +861,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3520</sub>
+<sub>`api.ogt` line 3581</sub>
 
 ## Components, resources and events
 
@@ -883,7 +884,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3336</sub>
+<sub>`api.ogt` line 3397</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -906,7 +907,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3527</sub>
+<sub>`api.ogt` line 3588</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -931,7 +932,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3533</sub>
+<sub>`api.ogt` line 3594</sub>
 
 ## Types
 
@@ -947,7 +948,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 3250</sub>
+<sub>`api.ogt` line 3304</sub>
 
 <a id="type-Font"></a>
 
@@ -961,7 +962,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 3251</sub>
+<sub>`api.ogt` line 3305</sub>
 
 <a id="type-Sound"></a>
 
@@ -975,7 +976,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 3252</sub>
+<sub>`api.ogt` line 3306</sub>
 
 <a id="type-Skin"></a>
 
@@ -989,7 +990,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 3253</sub>
+<sub>`api.ogt` line 3307</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1003,7 +1004,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 3254</sub>
+<sub>`api.ogt` line 3308</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1028,7 +1029,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 3270</sub>
+<sub>`api.ogt` line 3331</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1054,7 +1055,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 3277</sub>
+<sub>`api.ogt` line 3338</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1079,7 +1080,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3285</sub>
+<sub>`api.ogt` line 3346</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1102,7 +1103,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3293</sub>
+<sub>`api.ogt` line 3354</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1135,7 +1136,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3300</sub>
+<sub>`api.ogt` line 3361</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1166,7 +1167,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3312</sub>
+<sub>`api.ogt` line 3373</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1197,16 +1198,28 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 3325</sub>
+<sub>`api.ogt` line 3386</sub>
 
 ## Column kinds
 
-Each is a factory, `Asset(value?, options?)`, that makes one field of a component or resource layout.
+Each is a factory, `TextureArray(value?, options?)`, that makes one field of a component or resource layout.
 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
+| <a id="column-TextureArray"></a>`TextureArray` | `TextureArray` | `Uint32Array` | 2 | A TextureArray handle field (0 is none). |
 | <a id="column-Asset"></a>`Asset` | `Asset` | `Uint32Array` | 2 | An Asset handle field. |
 | <a id="column-Sound"></a>`Sound` | `Sound` | `Uint32Array` | 2 | A Sound handle field. |
+
+```ogt
+column TextureArray {
+  doc "A TextureArray handle field (0 is none)."
+  array Uint32Array
+  stride 2
+  value TextureArray
+}
+```
+
+<sub>`api.ogt` line 3310</sub>
 
 ```ogt
 column Asset {
@@ -1217,7 +1230,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 3256</sub>
+<sub>`api.ogt` line 3317</sub>
 
 ```ogt
 column Sound {
@@ -1228,4 +1241,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 3263</sub>
+<sub>`api.ogt` line 3324</sub>

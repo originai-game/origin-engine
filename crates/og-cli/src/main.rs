@@ -61,8 +61,9 @@ commands:
                       cook and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
                       only the player-facing probe members and adds the PWA (sw.js, manifest)
-  cook [project] [--threads N] [--report out.md] [--json]
-                      assets/ into cooked/, incrementally
+  cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]
+                      assets/ into cooked/, incrementally; --report prints the ten slowest
+                      assets by their last cook; --watch cooks each change, timing it
   sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>]
   sfx library <dir>
                       the procedural sound presets (coin, jump, hit, click, ...): list them,

@@ -22,7 +22,8 @@ let env = bundle.load_environment("env/studio.ogt")?;                         //
 
 `og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]`
 is a development binary; `og cook` (og-cli) is the user-facing command and
-calls `cook_project`.
+calls `cook_project` (`--report` for the slowest ten, `--watch` to cook each
+change as it is saved: §Cook times).
 
 ## Features
 
@@ -55,23 +56,55 @@ calls `cook_project`.
 | Source | Output (`cooked/…`) | What happens |
 |---|---|---|
 | glTF 2.0 | `<path>.ogb` (`og.Model`) + `<path>.tex<n>.ogb` per texture use | Per primitive (glTF order): positions, normals (flat when missing), uv0, colour0, tangents (MikkTSpace for normal-mapped primitives that lack them, via unwelding); weld; quantise (position u16×3 over the bounds, normal oct snorm16×2, uv u16×2 over the uv range, colour u8×4, tangent oct snorm16×2 + sign); weld again; meshopt vertex-cache and overdraw (1.05) ordering; LOD chain by `meshopt_simplify` (3 levels, each half the previous, max error 5 % of the extent, stops when a level saves < 5 %); vertex-fetch reorder over all LODs; meshopt vertex codec v1 and index codec v1. Materials (metallic-roughness, emissive strength, alpha mode, double-sided) plus a default material, nodes in topological order, scenes and their roots. Skins, animations and morph targets go to the `#anim` blob (next row). Welding keys skinned and morphed vertices by their skin and morph data, so it never merges vertices that deform apart. |
-| MagicaVoxel `.vox` | as glTF 2.0 (`og.Model`) | `cook/vox.rs`: `SIZE`/`XYZI` models (every one of a `PACK`), the `RGBA` palette (MagicaVoxel's default without one) and the `nTRN`/`nGRP`/`nSHP` graph (translations and the `_r` axis permutation; without a graph the models sit side by side along x) become one glTF binary in memory: per placed model, a greedy mesh (per face direction and slice, maximal rectangles of one colour whose face is exposed; a 32³ block of one colour is 12 triangles) of unwelded quads with face normals and the palette colour as `COLOR_0` (linear), z-up turned to y-up (`(x, y, z)` → `(x, z, -y)`), one voxel one metre, the pivot at the model's centre floored, under a node at its translation, with one white rough material. Then the glTF row above. |
+| MagicaVoxel `.vox` | as glTF 2.0 (`og.Model`) | `cook/vox.rs`: `SIZE`/`XYZI` models (every one of a `PACK`), the `RGBA` palette (MagicaVoxel's default without one) and the `nTRN`/`nGRP`/`nSHP` graph (translations and the `_r` signed axis permutation; one with a negative determinant mirrors the model and its triangles' winding is flipped, so every face stays counter-clockwise from outside; without a graph the models sit side by side along x, the first with its corner at the origin) become one glTF binary in memory: per placed model, a greedy mesh (per face direction and slice, maximal rectangles of one colour whose face is exposed; a 32³ block of one colour is 12 triangles) of unwelded quads with face normals and the palette colour as `COLOR_0` (linear), z-up turned to y-up (`(x, y, z)` → `(x, z, -y)`), `voxScale` metres a voxel (import settings `model { }`, default 1), the pivot at the model's centre floored, under a node at its translation; `voxOrigin bottom` lifts the whole file so its lowest voxel stands on y = 0 (`center`, the default, keeps the editor's origin); one white rough material. Then the glTF row above. |
 | glTF skins, animations, morph targets | `<path>.anim.ogb` (`og.Animation`, id `<path>#anim`) | Only when the glTF has any. The node hierarchy in the model blob's order; skins (joints, inverse bind matrices, `skeleton`); per clip, every channel evaluated by the glTF sampler (STEP, LINEAR with shortest-arc slerp, CUBICSPLINE Hermite; f64; a key within 1 µs of a sample counts as reached) at `i / rate` and at the end, `rate` = the import settings' `animation { rate }` or the source's key rate rounded (1–120 Hz), the source rate kept; markers from `animations[i].extras."og.events"` (`[{"name", "time"}]`) and `animation { event "<clip>" "<name>" <s> }`; samples f32 by default (a channel whose frames are all the same bits stored once), or with `animation { compress true }` quantised with keyframe reduction within `tolerance` (§Animation samples); per skinned primitive joints u16×4 and weights unorm16×4 (summing to 65535) per cooked vertex; per morphed primitive, sparse, each target's moved vertices (a delta with any bit set) with their indices, position (and normal) deltas, names from `mesh.extras.targetNames`, default weights; streams meshopt-encoded. |
 | PNG/JPEG | `<path>.ogb` (`og.Texture`) | Decoded to RGBA8, then KTX2: colour → ETC1S/BasisLZ, sRGB, quality 128; `kind normal` → UASTC level 1 + RDO 1.0 + Zstandard, linear, tuned for normal maps, x y z in RGB and y again in alpha (Basis transcoders take BC5's and EAC RG11's second channel from alpha; `has_alpha` 1 says a map carries it, and the settings string's "normal y in alpha" recooks older maps); `kind linear` → the same without the normal-map tuning. Full mip chain. `kind pixel` → RGBA8 + zlib, sRGB, lossless, one level; the runtime samples it nearest (sprite sheets, tilesets). In a glTF, base colour and emissive are colour, metallic-roughness and occlusion linear, normal normal. |
 | KTX2 | `<path>.ogb` (`og.Texture`) | `src/cook/ktx2_source.rs`. Basis ETC1S or UASTC, or RGBA8 (none or zlib), its `KTXorientation` and `KTXswizzle` honoured: a file that is `rd` and `rgba` (or says neither), of a colour or linear kind matching its transfer function, is taken byte for byte; any other is decoded (Basis through the native transcoder), flipped to rows top to bottom and columns left to right, swizzled (`r g b a 0 1` per channel) and cooked again as an image of its kind (`texture { kind }`, else sRGB colour or linear). The report says which. `toktx`'s own output goes through the same check. |
-| texture array `.ogt` (`type texture-array`) | `<path>.ogb` (`og.TextureArray`) + `<path>.layer<n>.ogb` (`og.Texture`, id `<path>#layer<n>`) per layer | `src/cook/texture_array.rs`: `kind color|normal|linear|pixel` and 1–256 `layer "<file>"` images (beside the file, else under `assets/`) of one size (a layer of another size is refused naming both); each layer cooked as a texture of the kind; the array blob holds the size, kind, level count and the layers' ids. The runtime uploads the layers as one `D2Array` texture (`og.load.textureArray`, og-render's `RenderScene::add_texture_array`; padded with the last layer when WebGL2 would take the count for a 2D or cube texture). Nothing samples an array yet. |
+| texture array `.ogt` (`type texture-array`) | `<path>.ogb` (`og.TextureArray`) + `<path>.layer<n>.ogb` (`og.Texture`, id `<path>#layer<n>`) per layer | `src/cook/texture_array.rs`: `kind color|normal|linear|pixel` and 1–256 `layer "<file>"` images (beside the file, else under `assets/`) of one size (a layer of another size is refused naming both); each layer cooked as a texture of the kind; the array blob holds the size, kind, level count and the layers' ids. The runtime uploads the layers as one `D2Array` texture (`og.load.textureArray`, og-render's `RenderScene::add_texture_array`; padded with the last layer when WebGL2 would take the count for a 2D or cube texture). World and overlay sprites (`SpriteDesc.array`, `og.Sprite.array`) and 2D particle emitters (an emitter's `array` line, `src/fx.rs`) draw from it, one draw per array whatever the layers. |
 | WAV | `<path>.ogb` (`og.Sound`), and for a sound cooked in chunks `<path>.chunk<n>.ogb` (`og.SoundChunk`, id `<path>#chunk<n>`) | 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit, then QOA (in-crate encoder: 3.2 bits per sample). With `sound { stream true }`, or when the QOA file would pass 1 MiB (27 s of 48 kHz stereo) unless `stream false`, the file is encoded once and cut between QOA frames into chunks of about `chunk` seconds (default 4, whole frames): the sound's blob holds the QOA header and the first chunk, each other chunk a blob of its own, which the runtime reads ahead of the playheads and drops behind them (og-audio's README §Chunked sounds). A QOA frame carries its predictor's state, so the chunks decode to the whole file's samples exactly. A chunked sound cannot join a stream group. |
 | TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, generated in f32 and passed through msdfgen's error correction (fdsm's `correct_error_mtsdf`: edge priority, distance checks at edges, before the sign correction) so channels that would interpolate into a false edge at a sharp corner become single-channel; shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle), ascender/descender/line gap and a kerning table: the pair adjustments of every `kern` feature's GPOS lookups (pair positioning formats 1 and 2, every script's; the first subtable of a lookup that takes a pair decides it, lookups add), else the legacy `kern` table, between the cooked characters, in em. A charset with a shaped script (Arabic, Devanagari and og-i18n's other `needs_shaping` scripts) adds every glyph the font's substitutions reach (joining forms, ligatures, conjuncts) under U+F0000 + glyph id, and the font file; so does `runtime true`, for characters outside the charset that og-ui renders from the outlines when a text needs them. |
 | rig `.ogt` (`type rig`) | `<path>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): `scheme` (auto, mixamo, vrm, unity, rigify, ue, blender) and standard bones named outright or `none`; validated and stored as canonical text, loaded with `og.load.rig`. A model's `animation { rig }` names it for the cook's retargeting. |
 | animation library (a glTF named by another model's `animation { library }`) | into the naming model's `#anim` | The library is cooked like any glTF (its own `#anim`, loadable with `og.load.animation`); the naming model's `#anim` gets the library's clips after its own, each rewritten by `og_anim::retarget` from the library's skeleton (its humanoid map from its own `animation { rig }` or detected) onto the model's (its `rig` or detected): rest corrections, the model's bone lengths, the hips' travel scaled by the leg ratio, the legs solved for the feet unless `footIk false`. A clip the model has of its own wins over a library's of the same name (a note says so); a library naming libraries is refused. |
-| flipbook `.ogt` (`type flipbook`) | `<path>.ogb` (`og.Flipbook`) | The canonical sheet text (og-anim's README): grid and `frame` lines, an `atlas` (Aseprite frames and tags, TexturePacker frames and pivots) resolved into frames and clips, the texture's size read from the image, paths relative to the sheet when the file exists. The stamp covers the texture's and the atlas's bytes. |
+| flipbook `.ogt` (`type flipbook`) | `<path>.ogb` (`og.Flipbook`) | The canonical sheet text (og-anim's README): grid and `frame` lines, an `atlas` (Aseprite frames and tags, TexturePacker frames and pivots) resolved into frames and clips, the texture's size read from the image, paths relative to the sheet when the file exists. The stamp covers the texture's and the atlas's bytes. With `array true` the frames, cut out of the texture, also cook into a texture array: `<path>#array` (`og.TextureArray`) with a layer `<path>#array#layer<n>` (`og.Texture`, pixel art under `filter nearest`, colour otherwise) per frame, frame `n` being layer `n`; every frame must then have one size (two sizes are refused naming both) and lie inside the texture, at most 256 of them. The runtime draws an `og.Flipbook` of such a sheet from the array (one draw per sheet whichever frames its sprites show). |
 | scene `.ogt` | `<path>.ogb` (`og.Scene`) | Entities depth-first (parent before child), `model` references checked against the project's assets, one packed table per component type keyed by its reflected name. |
 | tileset `.ogt` (`type tileset`) | `<path>.ogb` (`og.Tileset`) | Parsed and validated by og-tilemap (grid, solid and partial collision, animated tiles, blob47/bitmask16 terrains); its `texture` must be an asset. The canonical text is stored and parsed again at load. |
 | tilemap `.ogt` (`type tilemap`), Tiled `.tmj`, LDtk `.ldtk` | `<path>.ogb` (`og.Tilemap`) | One `og_tilemap::TilemapAsset` whatever the source (`src/cook/tilemap.rs`, native only). **Tiled**: orthogonal, finite maps; layer data as a JSON array or uncompressed base64 (zlib/gzip/zstd refused: save as CSV or Base64); flip bits kept (diagonal refused); `offsetx/y`, `parallaxx/y`, `opacity`, `visible`, `repeatx/y`, group layers flattened; custom properties `collision` (bool), `z` (int), `autotile` (a terrain of the layer's tileset: nonzero gids mean filled), `repeatx`/`repeaty`; an external tileset `x.tsx`/`x.tsj` is the sibling `x.ogt` (refused when missing, naming the path), an embedded one (single image) is imported with its tiles' `animation`, first `objectgroup` rectangle (collision) and boolean `solid` property; one tileset per layer; object layers become objects (`type` or `class` as kind, string-valued properties; tile objects anchored at their bottom). **LDtk**: one level (the first or `level`; separate level files refused), every layer on one grid size; `Tiles`/`AutoLayer`/IntGrid auto tiles become tile layers (tile id `t` or from `src`; flips from `f`; one tile per cell, the last of a stack wins), drawn in reverse list order (LDtk's first layer on top); IntGrid values listed in `solid` (default 1) become an invisible collision layer `<name>.collision` over an embedded one-tile solid tileset; a tileset image with a sibling `<stem>.ogt` uses that tileset, else one is embedded from `tileGridSize`, `__cWid`, `__cHei`, `padding`, `spacing`; `Entities` become objects at their top-left (pivot applied), kind the identifier, name the `name` field or the `iid`, fields as properties. Units: `unit` world units per tile width (default 1); object positions and offsets in map-local world units, y up from the top-left corner. Referenced tilesets and images must be assets. |
-| environment `.ogt` (`type environment`, phase 4) | `<path>.ogb` (`og.EnvironmentMap`) | `src/cook/environment.rs`: its `source` (an equirectangular Radiance `.hdr` or OpenEXR `.exr`, linear RGB, twice as wide as tall; read beside the file, else under `assets/`; part of the environment like a terrain's heightmap: not cooked or listed on its own, its bytes in the stamp) decoded by the `image` crate and prefiltered by og-render's `bake`: `size` (level 0's face, a power of two 16..2048, default 128), `intensity` (default 1), `rotation` (degrees about +y, what was at +x moving towards -z; default 0) and `samples` (GGX samples per texel, 16..4096, default 256) into five cube levels of RGB9E5 texels, level m GGX-prefiltered at roughness m/4 (og-render's IBL convention; level 0 the radiance), and the diffuse irradiance as nine order-2 harmonics. fx-showcase's 256 × 128 studio at size 128 cooks in 0.52 s (a dev build, six threads) into a 132 KB blob (511 KiB of texels, zlib'd to 128 KiB). Loaded by `og.load.environment` (`Bundle::environment`), lit by through `og.Environment`. KTX2 cube-map sources are not taken: an equirectangular image is what HDR libraries ship. |
+| environment `.ogt` (`type environment`, phase 4) | `<path>.ogb` (`og.EnvironmentMap`) | `src/cook/environment.rs`: its `source` (an equirectangular Radiance `.hdr` or OpenEXR `.exr`, linear RGB, twice as wide as tall, decoded by the `image` crate; or a KTX2 cube map, `src/cook/cube_source.rs`: six square faces +x −x +y −y +z −z with rows from the top, level 0 of RGBA16F, RGB16F, RGBA32F, RGB32F, RGB9E5, B10G11R11 or BC6H, unsigned or signed, decoded at cook time by `src/cook/bc6h.rs`, stored plain, Zstandard or zlib, `KTXorientation` `rd` or none) or its `faces` (six square `.hdr`/`.exr` images of one size, in that order); read beside the file, else under `assets/`; part of the environment like a terrain's heightmap: not cooked or listed on its own, their bytes in the stamp) prefiltered by og-render's `bake` (`bake::bake`, or `bake::bake_cube` for a cube: the same radiance cube, read from the source's box-filtered level of at most twice the bake's face): `size` (level 0's face, a power of two 16..2048, default 128), `intensity` (default 1), `rotation` (degrees about +y, what was at +x moving towards -z; default 0) and `samples` (GGX samples per texel, 16..4096, default 256) into five cube levels of RGB9E5 texels, level m GGX-prefiltered at roughness m/4 (og-render's IBL convention; level 0 the radiance), and the diffuse irradiance as nine order-2 harmonics. fx-showcase's 256 × 128 studio at size 128 cooks in 0.52 s (a dev build, six threads) into a 132 KB blob (511 KiB of texels, zlib'd to 128 KiB). Loaded by `og.load.environment` (`Bundle::environment`), lit by through `og.Environment`. The studio given as a 64² cube (RGBA16F) bakes within 0.2 % mean per texel and 0.17 % in irradiance of the equirectangular studio it was cut from (`tests/environment.rs`). |
 | terrain `.ogt` (`type terrain`, phase 2) | `<path>.ogb` (`og.Terrain`) | `src/cook/terrain.rs`: its `heightmap` (a 16- or 8-bit grey PNG, its first channel at 16 bits; or an EXR, its first channel, through the `image` crate's `exr` feature) mapped by `height <min> <max>` (PNG default 0 100; EXR default 0 1, metres as stored), its `size` in metres (default one per sample), rows from -z (the image's top) and columns from -x; cut into `tile` × `tile` sample tiles (default 128; the last ones smaller), each quantised to 16 bits over its own range (finer than a 16-bit source's step over the whole range) and zlib'd; the `control` map (RGBA, one channel per layer) zlib'd; up to four `layer { albedo normal color roughness tile triplanar normalStrength slope slopeFade altitude altitudeFade }`, their textures assets of their own (give a normal map `texture { kind normal }`); `heightBlend`, `castShadows`, `collision`, `lod { spacing ring }`. The heightmap and control map are read beside the terrain file (else under `assets/`) and are the terrain's, not textures: the walk does not cook them, and the terrain's stamp covers their bytes. A navmesh `.ogt`'s `terrain "<file>" { position x y z step n }` bakes the terrain's surface (every `step`th sample, each cell split along the renderer's diagonal, only the cells inside the navmesh's `bounds`) with the agent's slope limit. |
-| look `.ogt` (`type look`) | `<path>.ogb` (`og.Look`) | `src/look.rs` (the grammar, merging, hex colours) and `src/cook/look.rs`: a frame's art direction as data. Top-level `name`, `extends`, `skin` (a UI skin's asset id) and `antialias` (tier, off, msaa4, taa), then one block per resource it sets (`RenderSettings`, `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky`, `Environment`) with its fields by reflected name. `extends "<slug>"` resolves to the game's own `assets/looks/<slug>.ogt` (never the file itself), else the built-in preset `templates/looks/<slug>.ogt` (`PRESETS`, compiled in); `extends "looks/base.ogt"` to another look; chains up to 8 deep, cycles refused; the look is laid over its base field by field, its name its own. Every field is checked against the IDL's records (`og_api::host::RECORDS`): it exists and is writable, a number is in range and whole for u32/i32, an enum takes one of its variants, a colour is three linear numbers or an sRGB `"#rrggbb"` (stored linear), a handle field (`Texture`, `Lut`, `Palette`, `EnvironmentMap`) names an asset of its kind in the bundle. `PostEffects.flash` and `shakeTrauma`, animated by game code, are refused. The blob holds the flattened canonical text with `extends` listing the chain; the stamp covers every base's text and whether each named asset exists. Loaded by `og.load.look` (`Bundle::look`), applied by `og.render.applyLook` and `GameDesc.look`. |
+| look `.ogt` (`type look`) | `<path>.ogb` (`og.Look`) | `src/look.rs` (the grammar, merging, hex colours) and `src/cook/look.rs`: a frame's art direction as data. Top-level `name`, `extends`, `skin` (a UI skin's asset id) and `antialias` (tier, off, msaa4, taa), then one block per resource it sets (`RenderSettings`, `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky`, `Environment`) with its fields by reflected name. `extends "<slug>"` resolves to the game's own `assets/looks/<slug>.ogt` (never the file itself), else the built-in preset `templates/looks/<slug>.ogt` (`PRESETS`, compiled in); `extends "looks/base.ogt"` to another look; chains up to 8 deep, cycles refused; the look is laid over its base field by field, its name its own. Every field is checked against the IDL's records (`og_api::host::RECORDS`): it exists and is writable, a number is in range and whole for u32/i32, an enum takes one of its variants, a colour is three linear numbers or an sRGB `"#rrggbb"` (stored linear), a handle field (`Texture`, `Lut`, `Palette`, `EnvironmentMap`) names an asset of its kind in the bundle, or one of the engine's built-in assets (below) as `"@canvas/<name>"` / `"@palettes/<name>"`. `PostEffects.flash` and `shakeTrauma`, animated by game code, are refused. The blob holds the flattened canonical text with `extends` listing the chain; the stamp covers every base's text and whether each named asset exists. Loaded by `og.load.look` (`Bundle::look`), applied by `og.render.applyLook` and `GameDesc.look`. |
 | palette `.hex`, GIMP `.gpl` | `<path>.ogb` (`og.Palette`) | Up to 256 sRGB colours in file order: `.hex` one `rrggbb` per line (`#` optional, blank lines and `;` comments skipped), `.gpl` after its `GIMP Palette` header (`Name:`/`Columns:` and `#` lines skipped, `r g b [name]` per colour). Loaded by `og.load.palette` (`Bundle::palette`) for `Stylise.palette`. |
+
+### Built-in look assets
+
+The engine ships a few assets a look can name without the game owning a
+copy (`BUILTINS` in `src/cook/look.rs`, compiled into the cook from
+`templates/looks/assets/`, made by `generate.ts` there and CC0):
+
+| Name in a look | Bundle id | What it is |
+|---|---|---|
+| `"@canvas/paper"` | `@canvas/paper.png` | a fine, light paper grain with scattered fibres (256², 39 KB) |
+| `"@canvas/linen"` | `@canvas/linen.png` | a rough woven canvas, a plain weave of 4 px threads (256², 48 KB) |
+| `"@canvas/watercolor"` | `@canvas/watercolor.png` | cold-pressed watercolour paper: soft bumps, shallow pits (256², 37 KB) |
+| `"@palettes/lcd2"` | `@palettes/lcd2.hex` | two greens of a monochrome LCD |
+| `"@palettes/handheld4"` | `@palettes/handheld4.hex` | four greens of a green-screen handheld |
+| `"@palettes/dusk16"` | `@palettes/dusk16.hex` | sixteen dusk colours and a cool sea ramp |
+| `"@palettes/bright32"` | `@palettes/bright32.hex` | thirty-two bright colours for 16-bit-era pixel art |
+| `"@palettes/1bit"` | `@palettes/1bit.hex` | black and white |
+
+The canvases are tileable grey (`Stylise.paintCanvas` reads the red channel
+as the grain), the palettes `.hex`. A handle field of a look
+(`Stylise.paintCanvas "@canvas/paper"`, `Stylise.palette
+"@palettes/handheld4"`; the extension may be left out), itself or through
+the looks it extends, names one: the cooked look stores the bundle id, and
+`cook_project` adds every built-in its looks name to the bundle under that
+id as a texture or palette source of its own (once, whatever names it), so
+the runtime loads it like any other asset and `og.load.texture("@canvas/paper.png")`
+finds it too in a game whose look names it. A built-in no look names is not
+cooked. An `@` name that is not a built-in is refused with the list of the
+kind's built-ins; a game's own path under `assets/` starting with `@` is
+refused (the namespace is the engine's). Tests: `look_builtins.rs`, and
+`cook::look`'s `the_built_ins_are_the_template_assets` (the table lists the
+directory, PNGs within 64 KB, palettes of their named size).
 
 ### Import settings
 
@@ -102,6 +135,10 @@ font {
 sound {                     # a .wav
   stream true               # cook in chunks: true | false (default: when the QOA file passes 1 MiB)
   chunk 4                   # seconds per chunk, 1..=60 (rounded up to whole 5120-sample QOA frames)
+}
+model {                     # a MagicaVoxel .vox
+  voxScale 0.1              # metres per voxel (default 1)
+  voxOrigin bottom          # center (the editor's origin, default) | bottom (the lowest voxel on y = 0)
 }
 tilemap {                   # a .tmj, .ldtk or tilemap .ogt
   unit 1                    # world units per tile width
@@ -136,6 +173,31 @@ the key resolves exactly as written. Without a schema the cook infers one
 `inferred` and the report says so. Each table stores its schema JSON next to
 its rows, so a host migrates rows to its registered layout by field name.
 
+### Streaming groups
+
+A scene's `stream "<name>" { asset ... }` blocks (`src/cook/stream.rs`)
+group glTF models without skins or morph targets, textures, texture
+arrays, flipbooks (an `array true` sheet's `#array` and its layers go with
+it), sounds (not chunked), environment maps, palettes, looks and colour
+LUTs (`.cube`); any other kind is refused naming the scene. Each group's
+outputs are packed into `cooked/stream/<name>.ogb`, and the manifest lists
+the group with the memory its assets take once loaded (`memory_of`: a
+texture's RGBA8 with mips, a model's vertices and indices, a sound's
+samples, an environment map's RGB9E5 texels, a palette's 256 x 1 RGBA8, a
+LUT's 32³ RGBA8). The runtime loads a grouped texture array, flipbook,
+environment map, palette, look or LUT once its group is resident and lets
+it go when the group unloads (og-runtime's `stream`): a sheet's array is
+kept while a sprite of the sheet draws from it, its sprites draw nothing
+while it is away, and they follow it back under its new renderer handle
+(og-runtime's `tests/stream_release.rs`).
+
+A particle emitter (`type particles`, `src/fx.rs`) may name a texture
+array instead of a texture: `array "<id>" [<layers>] [off | life <cycles>
+| fps <n> | random]` draws a sprite-mode emitter's particles from the
+array's layers (by age, at a rate, or one at random per particle), and
+`round true` gives them the soft dot's round edge; the cook checks the
+array exists like a texture.
+
 ## Formats
 
 Every blob is an `.ogb` container (`crates/og-blob/README.md`). Its root is a
@@ -162,6 +224,22 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Terrain` | `TerrainMeta` (size, samples, tile size and count, height range, layer count, control map size, height blend, lod, cast shadows, collision) | `tiles` `TerrainTileRow` (first sample, size, range, byte range in `heights`), `heights` (per tile u16 LE, zlib), `layers` `TerrainLayerRow` (texture names as ranges of `strings`, og-render's layer fields), `strings`, `control` (RGBA8, zlib) |
 | `og.Look` | `LookMeta` (text bytes) | `text` (the canonical, flattened look) |
 | `og.Palette` | `PaletteMeta` (colour count) | `rgb` (3 bytes per colour, sRGB) |
+| `og.Lut` | `LutMeta` (side, 32) | `rgba` (size³ RGBA8, red fastest) |
+| `og.Flipbook` | `FlipbookMeta` (text bytes) | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size, `array`) |
+| `og.Rig` | `RigMeta` (text bytes) | `text` (the canonical humanoid map: its scheme and the bones it names) |
+| `og.ParticleEmitter` | `EmitterMeta` (text bytes) | `text` (the validated emitter file) |
+| `og.UiSkin` | `SkinMeta` (text bytes) | `text` (the validated skin file) |
+| `og.MaterialShader` | `ShaderMeta` (text bytes) | `text` (the canonical shader file, its code inlined) |
+| `og.Behaviour` | `BehaviourMeta` (text bytes) | `text` (the validated behaviour file) |
+| `og.Strings` | `StringsMeta` (text bytes) | `text` (the validated string table) |
+| `og.NavMesh` | `NavMeshMeta` (cell size and height, the agent's height, radius, climb and slope, tile size, max error, origin, grid width and depth, tile count) | `columns` `NavColumnRow`, `spans` `NavSpanRow` (the walkable heightfield), `tiles` `NavTileRow`, `verts` `NavVertRow`, `polys` `NavPolyRow`, `poly_verts` (u32) |
+| `og.StreamPack` (`cooked/stream/<group>.ogb`) | `StreamPackMeta` (file count) | `files` `StreamFileRow` (name and data ranges), `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
+
+Besides the blobs, `cooked/` holds the manifest `.cook.ogt` (§Asset ids)
+and the cook times `.cook-times.ogt` (§Cook times), both `.ogt` text. A
+cube map an environment reads is not a blob of its own: it is decoded at
+cook time (§Importers), so the runtime never sees KTX2 cubes, BC6H or
+half floats, only the `og.EnvironmentMap`'s RGB9E5 levels.
 
 KTX2 files are standard: ETC1S as BasisLZ with basisu's DFD and global-data
 layout, UASTC with Zstandard (scheme 2), lossless RGBA8 with zlib (scheme 3).
@@ -260,6 +338,28 @@ So a material edit in a glTF re-cooks its model blob and nothing else (its
 textures keep their stamps); a texture option change re-cooks textures only;
 a new cooker version re-cooks everything.
 
+### Cook times
+
+Beside the manifest, `cooked/.cook-times.ogt` (type `cook-times`, `asset
+"<source>" <ms>` lines, `CookTimes`) records what each asset's last cook
+took: its outputs' times summed, to the microsecond. An up-to-date asset
+keeps the time of the cook that made it, so the record describes the whole
+bundle however little the last run cooked; the file is written only when
+an asset cooked or went. The manifest itself holds no times, so it stays
+the same bytes for the same sources (§Determinism); the times are the one
+file two cooks write differently, and `og build` leaves them out of the
+export. `Report::slowest(n)` and `AssetReport::cook_ms` read them:
+
+- `og cook --report [out.md]` prints the ten slowest assets by their last
+  cook (and writes the whole report, which leads with the same table, to
+  `out.md`);
+- `og cook --watch [--exit-after N] [--json]` cooks, then cooks again on
+  every change under `assets/` (only what the change reaches), printing
+  each cooked asset with its time and the run's time against the 300 ms
+  reload budget (`--json`: one line per cook, `{"event":"cook","changed",
+  "assets":[{source,ms,outputs}],"ms","withinBudget"}`); `og dev` prints
+  the same lines after its re-cooks.
+
 ## Options
 
 `CookOptions { threads, mesh: MeshOptions, texture: TextureOptions, font: FontSettings, schemas }`.
@@ -302,7 +402,8 @@ font's own (`crates/og-ui/README.md` §Text). The UI kit's Chinese font does.
 
 The same sources, options and **cooker build** give byte-identical `cooked/`
 (the test cooks the template twice, on all cores and on one thread, and
-compares every file). Two caveats the integrator must decide on:
+compares every file but `.cook-times.ogt`, the wall-clock record of §Cook
+times). Two caveats the integrator must decide on:
 
 - The C++ encoders (basisu, meshoptimizer) are compiled by `cc` with the
   profile's optimisation level and clang's default `-ffp-contract=on`. A debug
@@ -334,8 +435,8 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 
 | Test | Asserts |
 |---|---|
-| `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files; cooked ≤ 60 % of the sources; writes the report and the two hashes |
-| `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob and the manifest |
+| `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files (the cook times aside); cooked ≤ 60 % of the sources; writes the report and the two hashes |
+| `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing, each asset reporting its recorded cook time and the slowest ten in order; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob, the manifest and the cook times, where only its time moved (to this run's) |
 | `a_stale_blob_is_refused_with_both_stamps` | an old blob behind a new manifest is refused with the path and both stamps (`og_core::ErrorKind::Schema` through the API); wrong type and unknown ids are refused |
 | `meshes_keep_their_triangles_and_bounds` | per primitive: LOD 0 triangle count equals the source's, decoded vertex bounds within 1 % of the source accessor's, LODs shrink, normals unit length; per model: decoded default-scene bounds within 1 % of og-render's own glTF loader |
 | `textures_decode_close_to_their_sources` | transcoded level 0 against the source pixels: ETC1S ≥ 30 dB (glTF base colour ≥ 27 dB), UASTC ≥ 35–38 dB; a row-flipped decode scores worse (orientation) |
@@ -343,11 +444,15 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | `animation.rs` (separate file) | every cooked clip sample of `walker.glb` (source rates and 60 Hz) and `trickster.glb` equals an independent glTF sampler within 1e-5; skins, inverse binds, joints, weights and morph deltas follow the cooked vertices; markers from extras and import settings, bad ones refused; a cooked walker plays in og-anim; evidence `anim-cook-resample.json` |
 | `anim_compress.rs` (separate file) | every committed animated model cooked f32 and compressed: every frame of every channel within the tolerance, every node within 0.5 mm per metre of the skeleton, smaller samples, the same skins and morphs; the trickster posed mid-clip by each cook within og-tests' default frame tolerance; the settings parse and enter the stamp; evidence `P4/cook/anim-compress.json` and the two frames |
 | `sound_chunks.rs` (separate file) | a 12.5 s WAV with `sound { stream true chunk 1.5 }` cooks to 8 chunks whose head and chunk blobs laid end to end are the bytes of the same WAV cooked whole, and go into og-audio's bank; nothing re-cooks unchanged, a chunk length edit re-cooks only that sound and removes the old chunks; the 1 MiB threshold and `stream false`; bad settings refused by line; a chunked sound in a stream group refused |
+| `vox.rs` (separate file; and `cook::vox`'s unit tests) | a `.vox` with `model { voxScale 0.25 voxOrigin bottom }` cooks to those bounds (its settings file sorts after it, so the conversion waits for it); an unchanged project cooks nothing, a settings edit re-cooks the model; a bad `voxOrigin` fails it naming the line; every one of the 48 signed axis permutations an `nTRN` frame holds keeps every triangle counter-clockwise about its normal (the 24 mirrors failed with the flip removed); `voxScale` and `voxOrigin bottom` place one and two models |
+| `flipbook.rs` (separate file) | atlases into sheets, and an `array true` sheet's frames cut into its texture array's layers texel for texel (broken once by cutting every layer from the texture's top rows), frames of two sizes refused; such a sheet and a texture array in a streaming group pack the sheet, the array and every layer (each naming the group, the pack's bytes the files'), the group's memory counting the layers, the sheet's texture staying in the first group |
+| `fx.rs` (separate file) | a `.cube` and an emitter cook and load with every line reaching its field; an emitter's `array` line (its layers and mode, `round`), a missing array refused; a streaming group holding a LUT, its memory the LUT's 32³ RGBA8 |
 | `textures_p4.rs` (separate file) | an RGBA8 KTX2 tagged `ru`/`bgra` cooks to the source texels exactly; an `rd` RGBA8 or Basis KTX2 is taken byte for byte; a Basis KTX2 tagged `ru` is re-encoded the right way up (53.9 dB against 23.7 as stored); a texture array's layers cook in order, each also a texture, upload as one `D2Array` texture whose layers read back exactly (RGBA8) or in the device's block format (BC7 on Metal), counted in the frame's texture bytes; layers of two sizes refused; with `toktx` on PATH (else skipped with the reason printed), the template's two textures cook through it (40.8 and 45.9 dB, `rd`, its version in the stamp) and toktx's own `--lower_left_maps_to_s0t0` (`ru`) output is flipped back (40.3 dB); evidence `P4/cook/textures-*.json` |
 | `retarget.rs` (separate file) | fx-showcase's animation library retargeted at cook time into `strider.glb` (Mixamo names, armature scale 0.01, a rig file) and `stout.glb` (Unreal names, detected): the clips and markers arrive, and on every frame the library's walk plants a foot the character's foot is on its own ground within 2 mm and does not slide (0 m measured; 2.9 cm without foot IK); an edit of the rig file re-cooks only the model naming it, an edit of the library's settings both; a rig naming a missing node fails with the file and line; evidence `retarget-contacts.json` |
 | `cooked_models_render_the_gltf_reference_scene` | og-tests' `gltf-reference` scene with the models swapped for cooked ones renders within RMSE 0.02 of `crates/og-tests/references/<tier>/gltf-reference.png` (0.0043 on Metal) |
 | `compressed.rs` (separate file) | the template's Basis textures reach each block family the GPU takes (BC7/BC5, ASTC 4x4, ETC2/EAC RG11) by kind, with sRGB only on colour and every cooked level at its exact size; RGBA8 without a renderer or with compression off; stone boards near and far (small levels) draw within RMSE 0.012 and 0.5 % outliers of their RGBA8 frame, which the normal map read flipped exceeds; the cooked models with compressed textures stay within RMSE 0.02 and 1 % outliers of `gltf-reference`; `FrameStats::texture_bytes` shrinks (evidence under `tests/evidence/P2/render/`) |
-| `environment.rs` (separate file) | a `type environment` with og-tests' 64 × 32 studio `.hdr` (size 32, intensity 1.5, rotation 30, 64 samples) cooks into exactly og-render's `bake` of the same image and settings and loads back through `Bundle::load_environment`; the image is not listed as ignored; an unchanged project cooks nothing, an edited image recooks the map; a missing or non-HDR source, a bad size and an unknown key are refused by name |
+| `environment.rs` (separate file) | a `type environment` with og-tests' 64 × 32 studio `.hdr` (size 32, intensity 1.5, rotation 30, 64 samples) cooks into exactly og-render's `bake` of the same image and settings and loads back through `Bundle::load_environment`; the image is not listed as ignored; an unchanged project cooks nothing, an edited image recooks the map; a missing or non-HDR source, a bad size and an unknown key are refused by name. The studio cut into a 64² cube and given as an RGBA16F KTX2 (Zstandard) cooks into exactly `bake_cube` of its texels and within 0.5 % mean, 3 % worst prefiltered texel and 0.5 % irradiance of the equirectangular map; the same cube as RGB9E5, BC6H (zlib) and six `.hdr` faces within their precision of it; one face edited re-cooks only its environment; a KTX2 of one face, of RGBA8, oriented `ru`, short of its faces or holding a NaN, five faces, faces of two sizes, and a source with faces are refused by what is wrong. `cook::bc6h`'s unit tests: every mode, unsigned and signed, decodes 256 random blocks to a reference decoder's texels (bcdec; it agreed on 2,000,000 random blocks; a swapped header bit in one mode fails) |
+| `look_builtins.rs` (separate file) | a look naming `@canvas/paper` and `@palettes/handheld4`, and one extending `watercolor-wash` (which names `@canvas/watercolor`), cook with those three built-ins in the bundle under their ids and no other, loadable as a texture and a palette; the cooked look holds the ids; a second cook re-cooks nothing; a game's own `assets/@canvas/…` is refused |
 | `tilemap.rs` (separate file) | a tileset `.ogt`, a hand-written map, a Tiled `.tmj` (external and embedded tilesets, flips, base64 data, offsets, parallax, properties, an `autotile` layer, objects) and an LDtk project (tiles with flips, IntGrid collision, an entity at its pivot) cook and load into og-tilemap assets equal to the sources, with resolved terrain and merged collision; a compressed Tiled layer, a missing sibling tileset `.ogt` and an unknown LDtk level are refused by name; import settings pick the unit, the level and the solid IntGrid values |
 
 Each covered path was broken once and its test failed (font glyph order by
@@ -361,15 +466,17 @@ without base colour textures), then restored.
   characters outside the charset and msdfgen's error correction landed in
   the phase 4 UI text round; `tests/template.rs` checks the template
   font's pairs and bounds its corner clashes.)
-- **Texture arrays**: nothing samples a `TextureArray` yet (a sprite
-  layer, a material or terrain binding is renderer work); environment
-  cube maps from KTX2 cube sources (environment maps take equirectangular
-  HDR images, `type environment`).
+- **Texture arrays**: sprites, overlay sprites, flipbooks and 2D particle
+  emitters sample them; a material or a terrain layer binding one is
+  renderer work still owed.
 - **Animation**: compressed clips are rebuilt to f32 at load, so a
   resident clip is not smaller in memory; sampling quantised keys in
   og-anim would be.
-- **Audio**: chunks are fetched by distance to the playhead only, not
-  prioritised against other fetches.
+- **Environment cube maps** are read at level 0 only: a KTX2 whose own
+  mip chain is already prefiltered (cmgen's, IBLBaker's) is filtered
+  again from its radiance, never taken as is; and `.vox` rotations keep
+  the editor's integer pivot, unverified against MagicaVoxel for odd-sized
+  models turned or mirrored on an axis.
 
 Done since phase 1 (kept here for the record): the measured M4 "glTF edit
 → reload ≤ 300 ms" run is filed (`tests/evidence/P2/tooling/m4-m5-tooling.md`:
@@ -380,4 +487,14 @@ the `runner` and `match3` archetypes exist (`templates/archetypes/`);
 animation sample compression and sparse morph targets, audio streaming
 chunks, KTX2 orientation and swizzle, texture arrays and the `toktx`
 fallback's test landed in P4 (§Animation samples, the importers above,
-`tests/evidence/P4/cook/`).
+`tests/evidence/P4/cook/`). The cook's third round: environments from KTX2
+cube maps (RGBA16F, RGB9E5, BC6H decoded at cook time and the other HDR
+formats) and from six faces, baked like the equirectangular path
+(`tests/environment.rs`); sound chunks fetched nearest the playhead first,
+ahead of streaming packs by priority, four reads in flight (og-audio's
+§Chunked sounds, og-runtime's `tests/stream_fetch.rs`); flipbooks and
+their arrays in streaming groups (§Streaming groups); each asset's cook
+time recorded, `og cook --report` printing the slowest ten and `og cook
+--watch` timing each change against the 300 ms reload budget (§Cook
+times); `.vox` mirrors flipping their winding and `model { voxScale
+voxOrigin }`.

@@ -1,9 +1,14 @@
 //! Text editing, shared by the one-line field and the multi-line area: the
-//! caret and the selection (Shift with the arrows, Home and End; a press
-//! places the caret, a drag selects; Ctrl or Cmd with A, C and X), typed
+//! caret and the selection (Shift with the arrows, Home and End; Alt or
+//! Ctrl with the arrows by words, with Backspace and Delete a word, Ctrl
+//! with Home and End to the text's ends; a press places the caret, a drag
+//! selects and scrolls the text past its edge, a double click selects a
+//! word and a triple click the line; Ctrl or Cmd with A, C and X), typed
 //! text (og-input's `og.TextInput` stream, or the keys before one exists)
 //! replacing the selection, an input method's composition shown underlined
-//! at the caret until it commits, and the caret's blink by the tick.
+//! at the caret until it commits, undo and redo (Ctrl or Cmd with Z,
+//! Shift+Z and Y; a bounded history per control, typing grouped by words),
+//! and the caret's blink by the tick.
 //!
 //! Positions come from the same visual layout the text is drawn with
 //! (`FontMetrics::visual`: kerning, bidi runs, shaped clusters), so a press
@@ -14,6 +19,7 @@ use crate::input::UiKey;
 use crate::layout::{FontRole, Rect};
 use crate::text::FontMetrics;
 use crate::ui::Ui;
+use og_core::glam::Vec2;
 use og_i18n::Direction;
 
 /// A glyph's box on its line, CSS px from the line's start.
@@ -149,6 +155,290 @@ pub(crate) struct EditDesc {
     pub inner: Option<Rect>,
 }
 
+/// A character's class for word moves and word selection: space, a word's
+/// letters and digits (and marks), or other punctuation and symbols.
+fn class(c: char) -> u8 {
+    if c.is_whitespace() {
+        0
+    } else if c.is_alphanumeric() || c == '_' || c == '\'' || c == '’' {
+        1
+    } else {
+        2
+    }
+}
+
+/// Where Alt or Ctrl+← puts the caret from `k`: back over spaces, then to
+/// the start of the word (or the run of punctuation) before it.
+pub(crate) fn word_left(chars: &[char], k: usize) -> usize {
+    let mut k = k.min(chars.len());
+    while k > 0 && class(chars[k - 1]) == 0 {
+        k -= 1;
+    }
+    if k == 0 {
+        return 0;
+    }
+    let c = class(chars[k - 1]);
+    while k > 0 && class(chars[k - 1]) == c {
+        k -= 1;
+    }
+    k
+}
+
+/// Where Alt or Ctrl+→ puts the caret from `k`: on over spaces, then to the
+/// end of the word (or the run of punctuation) after it.
+pub(crate) fn word_right(chars: &[char], k: usize) -> usize {
+    let n = chars.len();
+    let mut k = k.min(n);
+    while k < n && class(chars[k]) == 0 {
+        k += 1;
+    }
+    if k == n {
+        return n;
+    }
+    let c = class(chars[k]);
+    while k < n && class(chars[k]) == c {
+        k += 1;
+    }
+    k
+}
+
+/// The word a double click at boundary `k` selects: the run of one class
+/// (a word, spaces or punctuation) holding the character after `k`, or the
+/// one before it at a word's end or the text's.
+pub(crate) fn word_at(chars: &[char], k: usize) -> (usize, usize) {
+    let n = chars.len();
+    if n == 0 {
+        return (0, 0);
+    }
+    let k = k.min(n);
+    let i = if k < n && (class(chars[k]) != 0 || k == 0 || class(chars[k - 1]) == 0) {
+        k
+    } else {
+        k - 1
+    };
+    if chars[i] == '\n' {
+        return (k, k);
+    }
+    let c = class(chars[i]);
+    let (mut a, mut b) = (i, i + 1);
+    while a > 0 && class(chars[a - 1]) == c && chars[a - 1] != '\n' {
+        a -= 1;
+    }
+    while b < n && class(chars[b]) == c && chars[b] != '\n' {
+        b += 1;
+    }
+    (a, b)
+}
+
+/// The line a triple click at `k` selects: from the line break before it
+/// to the one after it (a field's whole text).
+pub(crate) fn line_at(chars: &[char], k: usize) -> (usize, usize) {
+    let k = k.min(chars.len());
+    let a = chars[..k]
+        .iter()
+        .rposition(|&c| c == '\n')
+        .map_or(0, |i| i + 1);
+    let b = chars[k..]
+        .iter()
+        .position(|&c| c == '\n')
+        .map_or(chars.len(), |i| k + i);
+    (a, b)
+}
+
+/// The presses a text control counts into double and triple clicks.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Click {
+    /// The tick of the last press, and where it landed.
+    pub tick: u64,
+    pub at: Vec2,
+    /// Presses in a row (1 a click, 2 a double click selecting words, 3 a
+    /// triple click selecting lines; 0 none).
+    pub count: u8,
+    /// The press moved past the slop: the next press starts again.
+    pub moved: bool,
+    /// The word or line the press selected (a drag extends by them).
+    pub origin: (usize, usize),
+}
+
+/// How far a press may land from the last one, CSS px, and still count
+/// as the next click of a double or triple click (and how far it may move
+/// before it is a drag).
+const CLICK_SLOP: f32 = 4.0;
+
+/// The ticks within which a press is the next click of a double or triple
+/// click: 500 ms, the platforms' usual default.
+pub(crate) fn click_ticks(ticks_per_second: u32) -> u64 {
+    ((ticks_per_second.max(1) as f32 * 0.5).round() as u64).max(1)
+}
+
+/// The kind of an edit, for grouping the undo history: typing on groups
+/// with the typing before it (a word and its spaces at a time), Backspace
+/// with the Backspaces before it, Delete with the Deletes; anything else
+/// (a cut, a paste, a line break, an undo) stands alone.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum EditKind {
+    #[default]
+    Other = 0,
+    Typing = 1,
+    Back = 2,
+    Forward = 3,
+}
+
+impl EditKind {
+    pub fn from_u8(v: u8) -> EditKind {
+        match v {
+            1 => EditKind::Typing,
+            2 => EditKind::Back,
+            3 => EditKind::Forward,
+            _ => EditKind::Other,
+        }
+    }
+}
+
+/// One step of a text control's undo history: at character `at`, the text
+/// `removed` became `inserted`, the caret and anchor moving from `before`
+/// to `after`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Change {
+    pub at: usize,
+    pub removed: String,
+    pub inserted: String,
+    pub kind: EditKind,
+    pub before: (usize, usize),
+    pub after: (usize, usize),
+}
+
+/// A text control's undo and redo stacks.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct History {
+    pub undo: Vec<Change>,
+    pub redo: Vec<Change>,
+    /// The hash of the text after the last change it knows: a text that
+    /// hashes otherwise was set by the game, and the history starts again.
+    pub seen: u64,
+    /// The last change may still grow (typing or deleting on).
+    pub open: bool,
+    /// The tick it was last edited (the oldest goes first past
+    /// [`HISTORY_FIELDS`]).
+    pub used: u64,
+}
+
+/// Steps each text control keeps.
+pub(crate) const HISTORY_DEPTH: usize = 100;
+/// Text controls whose history is kept (the least recently edited goes).
+pub(crate) const HISTORY_FIELDS: usize = 8;
+
+/// FNV-1a over a text's characters.
+pub(crate) fn text_hash(chars: &[char]) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for &c in chars {
+        for b in (c as u32).to_le_bytes() {
+            h ^= u64::from(b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    h
+}
+
+impl History {
+    /// Records the edit from `before` to `after` (the characters before
+    /// and after it, the caret and anchor before and after it), grouping it
+    /// with the last change when both are typing on, or deleting on, at the
+    /// same place.
+    pub fn record(
+        &mut self,
+        before: &[char],
+        after: &[char],
+        kind: EditKind,
+        sel_before: (usize, usize),
+        sel_after: (usize, usize),
+    ) {
+        let p = before.iter().zip(after).take_while(|(a, b)| a == b).count();
+        let room = before.len().min(after.len()) - p;
+        let s = before
+            .iter()
+            .rev()
+            .zip(after.iter().rev())
+            .take(room)
+            .take_while(|(a, b)| a == b)
+            .count();
+        let removed: String = before[p..before.len() - s].iter().collect();
+        let inserted: String = after[p..after.len() - s].iter().collect();
+        self.redo.clear();
+        if self.open
+            && let Some(last) = self.undo.last_mut()
+            && last.kind == kind
+        {
+            let grows = match kind {
+                EditKind::Typing => {
+                    let word_ended = last.inserted.ends_with(char::is_whitespace)
+                        && !inserted.starts_with(char::is_whitespace);
+                    removed.is_empty()
+                        && p == last.at + last.inserted.chars().count()
+                        && !word_ended
+                }
+                EditKind::Back => inserted.is_empty() && p + removed.chars().count() == last.at,
+                EditKind::Forward => inserted.is_empty() && p == last.at,
+                EditKind::Other => false,
+            };
+            if grows {
+                match kind {
+                    EditKind::Typing => last.inserted.push_str(&inserted),
+                    EditKind::Back => {
+                        last.removed.insert_str(0, &removed);
+                        last.at = p;
+                    }
+                    _ => last.removed.push_str(&removed),
+                }
+                last.after = sel_after;
+                return;
+            }
+        }
+        self.undo.push(Change {
+            at: p,
+            removed,
+            inserted,
+            kind,
+            before: sel_before,
+            after: sel_after,
+        });
+        if self.undo.len() > HISTORY_DEPTH {
+            self.undo.remove(0);
+        }
+        self.open = kind != EditKind::Other;
+    }
+
+    /// Undoes the last change in `chars`: the caret and anchor it leaves.
+    pub fn undo(&mut self, chars: &mut Vec<char>) -> Option<(usize, usize)> {
+        let c = self.undo.pop()?;
+        let n = c.inserted.chars().count();
+        if c.at + n > chars.len() {
+            *self = History::default();
+            return None;
+        }
+        chars.splice(c.at..c.at + n, c.removed.chars());
+        self.open = false;
+        let to = c.before;
+        self.redo.push(c);
+        Some(to)
+    }
+
+    /// Redoes the last change undone: the caret and anchor it leaves.
+    pub fn redo(&mut self, chars: &mut Vec<char>) -> Option<(usize, usize)> {
+        let c = self.redo.pop()?;
+        let n = c.removed.chars().count();
+        if c.at + n > chars.len() {
+            *self = History::default();
+            return None;
+        }
+        chars.splice(c.at..c.at + n, c.inserted.chars());
+        self.open = false;
+        let to = c.after;
+        self.undo.push(c);
+        Some(to)
+    }
+}
+
 /// What an edit did this tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct Edited {
@@ -166,14 +456,15 @@ pub(crate) fn blink_half(ticks_per_second: u32) -> u64 {
 
 impl Ui {
     /// Edits `value` as the focused text control `key`: pointer, typed and
-    /// composed text, editing keys. The caret, selection anchor and
-    /// composition live in the UI state (and its saved bytes).
+    /// composed text, editing keys, undo and redo. The caret, selection
+    /// anchor, composition, click count and history live in the UI state
+    /// (and its saved bytes).
     pub(crate) fn edit(&mut self, key: u64, value: &mut String, d: &EditDesc) -> Edited {
         let mut out = Edited::default();
         let dir = self.direction;
         let tick = self.state.tick;
         let mut chars: Vec<char> = value.chars().collect();
-        let before = chars.clone();
+        let mut before = chars.clone();
         // Focus arrived: the caret at the end (a press moves it below).
         if self.state.edit_key != key {
             self.state.edit_key = key;
@@ -185,11 +476,27 @@ impl Ui {
         }
         let mut caret = self.state.caret.min(chars.len());
         let mut anchor = self.state.anchor.min(chars.len());
+        let mut sel_before = (caret, anchor);
         let mut composition = std::mem::take(&mut self.state.composition);
         let mut clipboard = None;
+        // This control's history; a text the game set since starts it again.
+        let mut history = self.state.histories.remove(&key).unwrap_or_default();
+        if history.seen != text_hash(&chars) {
+            history = History::default();
+        }
+        let mut kind: Option<EditKind> = None;
+        let note = |kind: &mut Option<EditKind>, k: EditKind| {
+            *kind = Some(match *kind {
+                Some(was) if was != k => EditKind::Other,
+                _ => k,
+            });
+        };
+        let mut click = self.state.click;
+        // A drag past the edge scrolled the text this tick: it owns the scroll.
+        let mut autoscrolled = false;
         {
             let m = &self.fonts.for_text(d.role, value).metrics;
-            let scroll = self.state.edit_scroll;
+            let mut scroll = self.state.edit_scroll;
             let (size, tracking) = (d.size, d.tracking);
             // The text's lines now: (start, end, boxes, y from the text's top).
             let layout = |chars: &[char]| -> Vec<(usize, usize, Vec<GlyphBox>)> {
@@ -224,14 +531,56 @@ impl Ui {
                     inner.x
                 }
             };
-            // A press places the caret, a drag (the press held) selects.
+            // A press places the caret, a drag (the press held) selects; a
+            // second press in a row selects a word, a third the line, and a
+            // drag from them extends by words or lines.
             let pressed_here = self.input.pressed && self.state.active == key;
             let dragging = !self.input.pressed && self.input.down && self.state.active == key;
             if (pressed_here || dragging)
                 && let Some(inner) = d.inner
             {
-                let p = self.input.pointer;
+                let mut p = self.input.pointer;
                 let lines = layout(&chars);
+                // A drag past the text's edge scrolls it, faster the further
+                // out, and selects up to the edge.
+                if dragging {
+                    let lh = d.line_height.max(1.0);
+                    let speed =
+                        |over: f32| over.signum() * (over.abs() * 0.25).clamp(lh * 0.25, lh * 2.0);
+                    if d.multiline {
+                        let over = if p.y < inner.y {
+                            p.y - inner.y
+                        } else if p.y > inner.bottom() {
+                            p.y - inner.bottom()
+                        } else {
+                            0.0
+                        };
+                        if over != 0.0 {
+                            let content = lines.len() as f32 * d.line_height;
+                            let most = (content - inner.height).max(0.0);
+                            scroll = (scroll + speed(over)).clamp(0.0, most);
+                            p.y = p.y.clamp(inner.y, (inner.bottom() - 0.01).max(inner.y));
+                            autoscrolled = true;
+                        }
+                    } else {
+                        let over = if p.x < inner.x {
+                            p.x - inner.x
+                        } else if p.x > inner.right() {
+                            p.x - inner.right()
+                        } else {
+                            0.0
+                        };
+                        if over != 0.0 {
+                            let width = lines[0].2.last().map_or(0.0, |b| b.x1);
+                            let room = (inner.width - 1.0).max(1.0);
+                            let most = (width - room).max(0.0);
+                            scroll = (scroll + speed(over)).clamp(0.0, most);
+                            p.x = p.x.clamp(inner.x, inner.right());
+                            autoscrolled = true;
+                        }
+                    }
+                    self.state.edit_scroll = scroll;
+                }
                 let (y0, x0) = if d.multiline {
                     (inner.y - scroll, 0.0)
                 } else {
@@ -242,9 +591,50 @@ impl Ui {
                 let l = &lines[li];
                 let x = p.x - line_x0(l, &inner) - x0;
                 let k = l.0 + nearest(&l.2, l.1 - l.0, x);
-                caret = k;
-                if pressed_here && !self.input.shift {
-                    anchor = k;
+                let unit = |count: u8, k: usize| match count {
+                    2 => word_at(&chars, k),
+                    3 if d.multiline => line_at(&chars, k),
+                    3 => (0, chars.len()),
+                    _ => (k, k),
+                };
+                if pressed_here {
+                    let near = (p - click.at).length() <= CLICK_SLOP;
+                    let soon =
+                        tick.saturating_sub(click.tick) <= click_ticks(self.ticks_per_second);
+                    click.count = if click.count > 0 && !click.moved && near && soon {
+                        (click.count + 1).min(3)
+                    } else {
+                        1
+                    };
+                    click.tick = tick;
+                    click.at = p;
+                    click.moved = false;
+                    if self.input.shift {
+                        click.count = 1;
+                        caret = k;
+                    } else {
+                        let (a, b) = unit(click.count, k);
+                        click.origin = (a, b);
+                        anchor = a;
+                        caret = b;
+                    }
+                } else {
+                    if (self.input.pointer - click.at).length() > CLICK_SLOP {
+                        click.moved = true;
+                    }
+                    if click.count >= 2 {
+                        let (o0, o1) = click.origin;
+                        let (a, b) = unit(click.count, k);
+                        if a < o0 {
+                            anchor = o1;
+                            caret = a;
+                        } else {
+                            anchor = o0;
+                            caret = b.max(o1);
+                        }
+                    } else {
+                        caret = k;
+                    }
                 }
             }
             // An input method's composition replaces the selection as it starts.
@@ -254,6 +644,7 @@ impl Ui {
                     chars.drain(a..b);
                     caret = a;
                     anchor = a;
+                    note(&mut kind, EditKind::Typing);
                 }
                 composition = c.clone();
             }
@@ -275,9 +666,12 @@ impl Ui {
                     }
                 }
                 anchor = caret;
+                note(&mut kind, EditKind::Typing);
             }
             let shift = self.input.shift;
             let ctrl = self.input.ctrl;
+            // Alt (Option) or Ctrl moves and deletes by words.
+            let word = self.input.alt || ctrl;
             for k in self.input.keys.iter().copied() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 let selected = a != b;
@@ -287,20 +681,38 @@ impl Ui {
                         chars.drain(a..b);
                         caret = a;
                         anchor = a;
+                        note(&mut kind, EditKind::Other);
                     }
                     UiKey::Backspace if caret > 0 => {
-                        chars.remove(caret - 1);
-                        caret -= 1;
+                        let from = if word {
+                            word_left(&chars, caret)
+                        } else {
+                            caret - 1
+                        };
+                        chars.drain(from..caret);
+                        caret = from;
                         anchor = caret;
+                        note(&mut kind, EditKind::Back);
                     }
                     UiKey::Delete if caret < chars.len() => {
-                        chars.remove(caret);
+                        let to = if word {
+                            word_right(&chars, caret)
+                        } else {
+                            caret + 1
+                        };
+                        chars.drain(caret..to);
                         anchor = caret;
+                        note(&mut kind, EditKind::Forward);
                     }
+                    UiKey::Left if word => moved = Some(word_left(&chars, caret)),
+                    UiKey::Right if word => moved = Some(word_right(&chars, caret)),
                     UiKey::Left if selected && !shift => moved = Some(a),
                     UiKey::Right if selected && !shift => moved = Some(b),
                     UiKey::Left => moved = Some(caret.saturating_sub(1)),
                     UiKey::Right => moved = Some((caret + 1).min(chars.len())),
+                    // Ctrl/Cmd with Home and End: the text's ends.
+                    UiKey::Home if ctrl => moved = Some(0),
+                    UiKey::End if ctrl => moved = Some(chars.len()),
                     UiKey::Home | UiKey::End => {
                         let lines = layout(&chars);
                         let (li, _) = locate(&lines, caret);
@@ -337,7 +749,32 @@ impl Ui {
                             chars.drain(a..b);
                             caret = a;
                             anchor = a;
+                            note(&mut kind, EditKind::Other);
                         }
+                    }
+                    // Undo and redo: what this tick did so far is a step first.
+                    UiKey::KeyZ | UiKey::KeyY if ctrl && composition.is_empty() => {
+                        if chars != before {
+                            history.record(
+                                &before,
+                                &chars,
+                                kind.unwrap_or_default(),
+                                sel_before,
+                                (caret, anchor),
+                            );
+                        }
+                        let to = if k == UiKey::KeyZ && !shift {
+                            history.undo(&mut chars)
+                        } else {
+                            history.redo(&mut chars)
+                        };
+                        if let Some((c, a)) = to {
+                            caret = c.min(chars.len());
+                            anchor = a.min(chars.len());
+                        }
+                        before = chars.clone();
+                        sel_before = (caret, anchor);
+                        kind = None;
                     }
                     UiKey::Enter | UiKey::NumpadEnter if d.multiline => {
                         chars.drain(a..b);
@@ -347,6 +784,7 @@ impl Ui {
                             caret += 1;
                         }
                         anchor = caret;
+                        note(&mut kind, EditKind::Other);
                     }
                     UiKey::Enter | UiKey::NumpadEnter => {
                         out.submitted = true;
@@ -362,8 +800,11 @@ impl Ui {
                     }
                 }
             }
-            // Keep the caret in view: horizontally in a field, by lines in an area.
-            if let Some(inner) = d.inner {
+            // Keep the caret in view: horizontally in a field, by lines in an
+            // area (not while a drag past the edge scrolls it).
+            if let Some(inner) = d.inner
+                && !(autoscrolled && self.input.keys.is_empty() && self.input.text.is_empty())
+            {
                 let mut shown = chars.clone();
                 let comp: Vec<char> = composition.chars().collect();
                 let at = caret.min(shown.len());
@@ -396,8 +837,37 @@ impl Ui {
                 self.state.edit_scroll = s;
             }
         }
+        // The tick's edit is a step of the history; a move ends the step
+        // typing or deleting was growing.
         if chars != before {
-            *value = chars.iter().collect();
+            history.record(
+                &before,
+                &chars,
+                kind.unwrap_or_default(),
+                sel_before,
+                (caret, anchor),
+            );
+        } else if (caret, anchor) != sel_before {
+            history.open = false;
+        }
+        history.seen = text_hash(&chars);
+        history.used = tick;
+        self.state.histories.insert(key, history);
+        if self.state.histories.len() > HISTORY_FIELDS
+            && let Some(oldest) = self
+                .state
+                .histories
+                .iter()
+                .filter(|(k, _)| **k != key)
+                .min_by_key(|(_, h)| h.used)
+                .map(|(k, _)| *k)
+        {
+            self.state.histories.remove(&oldest);
+        }
+        self.state.click = click;
+        let text: String = chars.iter().collect();
+        if text != *value {
+            *value = text;
             out.changed = true;
         }
         if out.changed

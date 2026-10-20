@@ -199,6 +199,12 @@ or play once.
   the pivot at the feet (`pivot 0.5 0`).
 - Pixel art: `texture { kind pixel }` import settings (lossless, nearest)
   and whole-pixel scales: ortho `height` = visible tiles; one tile one unit.
+- Skinned 3D characters can hold poses the same way: `og.AnimationPlayer`'s
+  `stepFps` 12 animates on twos and 8 on threes, so clay, puppet and paper
+  styles read as stop motion while the character still moves smoothly
+  through the world (only the pose steps; events and root motion stay
+  continuous). Keep the camera and effects smooth: stepping everything
+  reads as a low frame rate, not a style.
 
 ## 10. Sprite sorting and layers
 

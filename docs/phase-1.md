@@ -132,7 +132,8 @@ Branch `r-perf` from main at 5dc3aa0. Evidence: `tests/evidence/P4/perf/`.
   `remove_texture_array` and `remove_palette` the same way, and a group's
   maps, arrays, palettes and looks are let go when it unloads (kept with a
   warning while the frame uses them); `FrameStats::texture_bytes` counts
-  arrays, maps and palettes.*
+  arrays, maps and palettes. The sprites-arrays round adds `remove_lut`, LUTs
+  in groups, and the kept assets' bytes in the stream budget (`kept`).*
 - **Shaders** (912e333, 8779ca8, bd193d1): every WGSL module of both tiers
   validated by naga and translated to MSL, SPIR-V or GLSL ES 3.0 in the
   gate; a Vulkan pipeline cache across runs (`OG_PIPELINE_CACHE`); lavapipe
@@ -282,6 +283,21 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   og-physics's `tests/pile.rs`, lanes.test.ts's 1,000-box pile).
   Native timings: `tests/evidence/P4/physics-lanes/`; the browser timing
   and the lanes wasm's hashes are the coordinator's measurement.
+- **Round two** (2026-10-21, branch `physics-lanes-2`): the step's pool
+  threshold is per thread count (`og_physics::pool_bodies`: 500 bodies on
+  two to four lanes, 1,000 on five or six, 1,500 from seven, through
+  `og_lanes::install_from`), so four lanes no longer leave their 7 to 15 %
+  between 500 and 800 bodies serial; ropes, cloths and fluid sets step side
+  by side and the fluids' neighbour search and collisions split by ranges
+  of particles (`og_physics::Grains`; ragdolls measured and left serial);
+  queries outside the step run through `og_lanes::serial`, and the lanes
+  wasm's engine thread belongs to its one-thread pool from
+  `og_lanes_ready` on, so nothing reaches a rayon pool from the engine
+  thread but the relay with its panic latch (og-physics `tests/lanes.rs`
+  injects a panic in a query). The determinism tool's physics hash does not
+  move (18126409214070009362). `bench/lanes.ts --chrome --pile` times the
+  lanes wasm's step on 1,000 and 2,000 boxes: the coordinator's run.
+  Native measurements: `tests/evidence/P4/physics-lanes-2/`.
 - **Gate**: not completed on this branch (the main gate at 50eb7f7 above
   passed everything). `OG_GATE_JOBS=2 scripts/check.sh
   --all` at 1f56ad7, 2026-10-19, M4 Pro at load 127 to 237: fmt, clippy,
@@ -1594,7 +1610,7 @@ resource only the owner can give.
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | done (the engine's part), 53a36fd: 3D publish 2,853,865 B (68 %), 2D publish 2,688,261 B (64 %), lanes (both profiles, as before) 3,230,782 B (77 %, the largest download), measured after merging main at 9b7f45c (physical materials); the budget per download in design §7, docs/ci.md §Updating a budget, docs/web-export.md §Variants |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, P2 UI | done, d00f20c |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, P2 UI | done, 54b59df |
-| 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, which keeps its own reference by design: compute-only particle collision, MSAA against TAA) | P2 showcase | S | engine, phase 2 | open |
+| 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, which keeps its own reference by design: compute-only particle collision, MSAA against TAA) | P2 showcase | S | engine, phase 2 | done 2026-10-21: the three frames recorded on lavapipe (og-lavapipe-bun, the cross-built addon; `tests/frames.og.ts` with `OG_FX_CAPTURE=1`, 360 s under emulation) sit within RMSE 0.0043 of `metal` with no outlier pixel (title 0.0041, beacon 0.0043, dawn 0.0029), so by docs/ci.md §Browser reference tiers they are judged against `metal` and no `vulkan-cpu` copy is kept; the WebGL2 beacon stays by design |
 | 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | done, 718fb43 (polish contrast 100, lowest 4.65:1; UI sounds 3 of 3 on the phone; `crates/og-ui/tests/pack_contrast.rs`) |
 | 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | done, 868d1b2 |
 | 50 | The engine's render cost per instance of one mesh: 20,000 moving spheres take 174 ms a frame on WebGPU and WebGL2 (extraction plus og-render; the tick 0.3 ms), doubling near 4,096 instances and about 8.7 us an instance beyond (`tests/evidence/P4/web-host-tools/threejs-comparison.md`; the spike drew the same field in 4.6 ms) | P4 web host | M | engine, phase 4 | done dedf817: extraction decoded every og.Mesh row to JSON on the lanes, and the lanes wasm's Workers waited on one allocator (85 % of the frame in og_lanes::wait_for); og.Mesh and og.Transform are read from their columns, the wasm decodes rows serially. The field's frame went from 137.6 to about 4 ms; what remains against three.js is the lit pass's GPU cost per instance (P4 perf round, `tests/evidence/P4/perf/`). That remainder (branch `r-lean`, bddb7411): plain materials draw through lean lit, prepass and shadow pipelines (10 interpolated floats instead of 23, only the attributes read, no discard where no screen derivative is taken; og-render README, Lit pipeline variants); natively spheres-20k 7.1 to 4.6 ms a frame on an M4 Pro, the §7 reference scene unchanged, every Metal og-gfx frame byte-identical (`tests/evidence/P4/lean/`); the instance transform stays 64 bytes (a 3x4 would save a quarter of an upload costing 0.04 ms). The browser comparison with three.js is to be run again |

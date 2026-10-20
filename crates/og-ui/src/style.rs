@@ -242,6 +242,9 @@ pub struct Theme {
     pub outline: bool,
     /// `prefers-reduced-motion`: transitions keep opacity and drop movement and scale; skeleton sheens stop.
     pub reduced_motion: bool,
+    /// `prefers-reduced-transparency`: glass parts are opaque surfaces (no
+    /// blur of the frame under them, their frame at full opacity).
+    pub reduced_transparency: bool,
     /// The game's look beyond the tokens (`crate::skin`); the default dresses nothing.
     pub skin: crate::skin::Skin,
     /// The card edge (`shadow-edge`): inset layers drawn inside the edge of
@@ -285,6 +288,7 @@ impl Theme {
             contrast: Contrast::Standard,
             outline: false,
             reduced_motion: false,
+            reduced_transparency: false,
             skin: crate::skin::Skin::default(),
             edge: match scheme {
                 Scheme::Light => tokens::SHADOW_EDGE_LIGHT,

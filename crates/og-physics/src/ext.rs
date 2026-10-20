@@ -34,11 +34,10 @@ pub(crate) struct Near<'a> {
 impl<'a> Near<'a> {
     /// Every solid collider whose box (grown by `margin`) meets `min`..`max`,
     /// in collider-set order.
-    pub fn around(w: &'a rp::PhysicsWorld, min: Vec3, max: Vec3, margin: f32) -> Near<'a> {
+    pub fn around(colliders: &'a rp::ColliderSet, min: Vec3, max: Vec3, margin: f32) -> Near<'a> {
         let lo = flat(min) - Vec3::splat(margin);
         let hi = flat(max) + Vec3::splat(margin);
-        let near = w
-            .colliders
+        let near = colliders
             .iter()
             .filter(|(_, c)| !c.is_sensor() && c.collision_groups().memberships.bits() != 0)
             .filter(|(_, c)| {
@@ -48,10 +47,7 @@ impl<'a> Near<'a> {
             })
             .map(|(h, _)| h)
             .collect();
-        Near {
-            colliders: &w.colliders,
-            near,
-        }
+        Near { colliders, near }
     }
 }
 
@@ -681,6 +677,12 @@ fn final_position(scene: &Scene, out: &StepOut, entity: u64) -> Option<Vec3> {
 }
 
 /// Steps every rope and cloth, fluid and water after the bodies moved.
+///
+/// Each rope, each cloth and each fluid (alone, or its group's set) steps
+/// from its own state and the solid colliders around it, read only, so
+/// they step side by side on the lanes once their work gives two tasks of
+/// a grain (`crate::lanes`), each one exactly as it would alone; building
+/// and rebuilding them stays serial, in entity order.
 pub(crate) fn soft(
     scene: &Scene,
     settings: &Physics,
@@ -689,11 +691,15 @@ pub(crate) fn soft(
     sim: &mut Sim,
     out: &mut StepOut,
 ) -> Result<()> {
+    use crate::lanes::soft_grain;
+    let site = og_lanes::Site::Physics;
+    let grains = crate::lanes::now();
     let flat2 = DIM == 2;
     let gravity = flat(settings.gravity);
     // Ropes.
     let live: BTreeSet<u64> = scene.ropes.iter().map(|r| r.0.to_bits()).collect();
     sim.ropes.retain(|e, _| live.contains(e));
+    let mut ropes: BTreeMap<u64, (&Rope, Vec3, Option<Vec3>)> = BTreeMap::new();
     for (e, position, rope) in &scene.ropes {
         let start = flat_keep(*position + rope.offset, position.z, flat2);
         let end = if rope.end != 0 {
@@ -710,14 +716,26 @@ pub(crate) fn soft(
         if rebuild {
             sim.ropes.insert(key, RopeState::new(rope, start, end));
         }
-        let state = sim.ropes.get_mut(&key).expect("inserted");
-        let (min, max) = bounds(&state.points, rope.length);
-        let near = Near::around(&sim.world, min, max, rope.radius * 2.0 + 0.1);
-        state.step(rope, dt, gravity, start, end, flat2, &near);
+        ropes.insert(key, (rope, start, end));
     }
+    let colliders = &sim.world.colliders;
+    let mut jobs: Vec<_> = sim.ropes.iter_mut().map(|(k, s)| (s, &ropes[k])).collect();
+    let work = jobs
+        .iter()
+        .map(|(s, (rope, ..))| s.points.len() * rope.iterations.clamp(1, 64) as usize)
+        .sum();
+    let grain = soft_grain(jobs.len(), work, grains.rope_work);
+    og_lanes::for_each_mut(site, &mut jobs, grain, |job| {
+        let (rope, start, end) = *job.1;
+        let state = &mut *job.0;
+        let (min, max) = bounds(&state.points, rope.length);
+        let near = Near::around(colliders, min, max, rope.radius * 2.0 + 0.1);
+        state.step(rope, dt, gravity, start, end, flat2, &near);
+    });
     // Cloth.
     let live: BTreeSet<u64> = scene.cloths.iter().map(|c| c.0.to_bits()).collect();
     sim.cloths.retain(|e, _| live.contains(e));
+    let mut cloths: BTreeMap<u64, (&Cloth, Vec3, Quat)> = BTreeMap::new();
     for (e, position, rotation, cloth) in &scene.cloths {
         let key = e.to_bits();
         let rotation = if flat2 { Quat::IDENTITY } else { *rotation };
@@ -731,13 +749,33 @@ pub(crate) fn soft(
             sim.cloths
                 .insert(key, ClothState::new(cloth, *position, rotation));
         }
-        let state = sim.cloths.get_mut(&key).expect("inserted");
+        cloths.insert(key, (cloth, *position, rotation));
+    }
+    let colliders = &sim.world.colliders;
+    let mut jobs: Vec<_> = sim
+        .cloths
+        .iter_mut()
+        .map(|(k, s)| (s, &cloths[k]))
+        .collect();
+    let work = jobs
+        .iter()
+        .map(|(s, (cloth, ..))| {
+            s.points.len()
+                * cloth.iterations.clamp(1, 64) as usize
+                * cloth.substeps.clamp(1, 16) as usize
+        })
+        .sum();
+    let grain = soft_grain(jobs.len(), work, grains.cloth_work);
+    og_lanes::for_each_mut(site, &mut jobs, grain, |job| {
+        let (cloth, position, rotation) = *job.1;
+        let state = &mut *job.0;
         let size = cloth.spacing * (cloth.columns.max(cloth.rows)) as f32;
         let (min, max) = bounds(&state.points, size);
-        let near = Near::around(&sim.world, min, max, cloth.radius * 2.0 + 0.1);
-        state.step(cloth, dt, tick, gravity, *position, rotation, flat2, &near);
-    }
-    // Fluids: each alone, or with the others of its group.
+        let near = Near::around(colliders, min, max, cloth.radius * 2.0 + 0.1);
+        state.step(cloth, dt, tick, gravity, position, rotation, flat2, &near);
+    });
+    // Fluids: each alone, or with the others of its group (the first four
+    // in entity order); each set steps from its own particles.
     let live: BTreeSet<u64> = scene.fluids.iter().map(|f| f.0.to_bits()).collect();
     sim.fluids.retain(|e, _| live.contains(e));
     let g = Vec2::new(settings.gravity.x, settings.gravity.y);
@@ -756,6 +794,7 @@ pub(crate) fn soft(
             groups.entry(fluid.group).or_default().push(k);
         }
     }
+    let mut sets: Vec<Vec<usize>> = Vec::new();
     let mut grouped: BTreeSet<u64> = BTreeSet::new();
     for members in groups.values_mut() {
         members.sort_by_key(|&k| scene.fluids[k].0.to_bits());
@@ -763,56 +802,70 @@ pub(crate) fn soft(
         if members.len() < 2 {
             continue;
         }
-        let mut taken: Vec<(u64, FluidState)> = Vec::with_capacity(members.len());
-        let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
-        let (mut z, mut reach) = (0.0f32, 0.0f32);
-        for (slot, &k) in members.iter().enumerate() {
-            let (e, position, fluid) = &scene.fluids[k];
-            let mut state = sim.fluids.remove(&e.to_bits()).expect("built above");
-            state.join(slot as u32);
-            for p in &state.positions {
-                min = min.min(*p);
-                max = max.max(*p);
-            }
-            if slot == 0 {
-                z = position.z;
-            }
-            reach = reach.max(fluid.radius * 2.0);
-            grouped.insert(e.to_bits());
-            taken.push((e.to_bits(), state));
-        }
-        let near = Near::around(
-            &sim.world,
-            Vec3::new(min.x, min.y, z),
-            Vec3::new(max.x, max.y, z),
-            reach,
-        );
-        {
-            let mut list: Vec<crate::fluid::Member<'_>> = taken
-                .iter_mut()
-                .zip(members.iter())
-                .map(|((_, state), &k)| {
-                    let (_, position, fluid) = &scene.fluids[k];
-                    crate::fluid::Member {
-                        fluid,
-                        state,
-                        centre: Vec2::new(position.x, position.y),
-                    }
-                })
-                .collect();
-            crate::fluid::step_group(&mut list, dt, g, z, &near);
-        }
-        for (key, state) in taken {
-            sim.fluids.insert(key, state);
+        grouped.extend(members.iter().map(|&k| scene.fluids[k].0.to_bits()));
+        sets.push(members.clone());
+    }
+    for (k, (e, ..)) in scene.fluids.iter().enumerate() {
+        if !grouped.contains(&e.to_bits()) {
+            sets.push(vec![k]);
         }
     }
-    for (e, position, fluid) in &scene.fluids {
-        let key = e.to_bits();
-        if grouped.contains(&key) {
-            continue;
-        }
+    let mut jobs: Vec<FluidSet<'_, FluidState>> = sets
+        .iter()
+        .map(|members| {
+            let taken = members
+                .iter()
+                .map(|&k| {
+                    let key = scene.fluids[k].0.to_bits();
+                    (key, sim.fluids.remove(&key).expect("built above"))
+                })
+                .collect();
+            (members.as_slice(), taken)
+        })
+        .collect();
+    let work = jobs
+        .iter()
+        .map(|(members, taken)| {
+            let particles: usize = taken.iter().map(|(_, s)| s.positions.len()).sum();
+            let substeps = members
+                .iter()
+                .map(|&k| scene.fluids[k].2.substeps.clamp(1, 8))
+                .max()
+                .unwrap_or(1);
+            particles * substeps as usize
+        })
+        .sum();
+    let grain = soft_grain(jobs.len(), work, grains.fluid_work);
+    let colliders = &sim.world.colliders;
+    og_lanes::for_each_mut(site, &mut jobs, grain, |job| {
+        let (members, taken) = (job.0, &mut job.1);
+        fluid_set(scene, members, taken, dt, g, colliders);
+    });
+    for (_, taken) in jobs {
+        sim.fluids.extend(taken);
+    }
+    fluids3(scene, settings, dt, sim);
+    Ok(())
+}
+
+/// A fluid set as it steps: its members (indices into the scene's fluids)
+/// and their states, taken out of the simulation by entity.
+type FluidSet<'a, S> = (&'a [usize], Vec<(u64, S)>);
+
+/// One tick of a 2D fluid alone (`members` one index into `scene.fluids`)
+/// or of a group's fluids together, against the solids around them.
+fn fluid_set(
+    scene: &Scene,
+    members: &[usize],
+    taken: &mut [(u64, FluidState)],
+    dt: f32,
+    g: Vec2,
+    colliders: &rp::ColliderSet,
+) {
+    if let [k] = members {
+        let (_, position, fluid) = &scene.fluids[*k];
         let centre = Vec2::new(position.x, position.y);
-        let state = sim.fluids.get_mut(&key).expect("built above");
+        let state = &mut taken[0].1;
         state.leave();
         let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
         for p in &state.positions {
@@ -820,19 +873,53 @@ pub(crate) fn soft(
             max = max.max(*p);
         }
         let near = Near::around(
-            &sim.world,
+            colliders,
             Vec3::new(min.x, min.y, position.z),
             Vec3::new(max.x, max.y, position.z),
             fluid.radius * 2.0,
         );
         state.step(fluid, dt, g, centre, position.z, &near);
+        return;
     }
-    fluids3(scene, settings, dt, sim);
-    Ok(())
+    let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+    let (mut z, mut reach) = (0.0f32, 0.0f32);
+    for (slot, ((_, state), &k)) in taken.iter_mut().zip(members).enumerate() {
+        let (_, position, fluid) = &scene.fluids[k];
+        state.join(slot as u32);
+        for p in &state.positions {
+            min = min.min(*p);
+            max = max.max(*p);
+        }
+        if slot == 0 {
+            z = position.z;
+        }
+        reach = reach.max(fluid.radius * 2.0);
+    }
+    let near = Near::around(
+        colliders,
+        Vec3::new(min.x, min.y, z),
+        Vec3::new(max.x, max.y, z),
+        reach,
+    );
+    let mut list: Vec<crate::fluid::Member<'_>> = taken
+        .iter_mut()
+        .zip(members.iter())
+        .map(|((_, state), &k)| {
+            let (_, position, fluid) = &scene.fluids[k];
+            crate::fluid::Member {
+                fluid,
+                state,
+                centre: Vec2::new(position.x, position.y),
+            }
+        })
+        .collect();
+    crate::fluid::step_group(&mut list, dt, g, z, &near);
 }
 
 /// Steps the 3D fluids (the 3D profile only: the 2D one keeps none), each
-/// alone or with the others of its group, as the 2D fluids are grouped.
+/// alone or with the others of its group, as the 2D fluids are grouped:
+/// each set from its own particles, side by side on the lanes as
+/// [`soft`] steps the 2D ones.
 fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
     use crate::fluid3d::{Fluid3State, Member, step};
     if DIM != 3 {
@@ -873,14 +960,43 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
             sets.insert((group, 0), members);
         }
     }
-    for members in sets.values() {
+    let mut jobs: Vec<FluidSet<'_, Fluid3State>> = sets
+        .values()
+        .map(|members| {
+            let taken = members
+                .iter()
+                .map(|&k| {
+                    let key = scene.fluids3[k].0.to_bits();
+                    (key, sim.fluids3.remove(&key).expect("built above"))
+                })
+                .collect();
+            (members.as_slice(), taken)
+        })
+        .collect();
+    let substeps_of = |members: &[usize]| {
+        members
+            .iter()
+            .map(|&k| scene.fluids3[k].2.substeps.clamp(1, 8))
+            .max()
+            .unwrap_or(1)
+    };
+    let work = jobs
+        .iter()
+        .map(|(members, taken)| {
+            let particles: usize = taken.iter().map(|(_, s)| s.positions.len()).sum();
+            particles * substeps_of(members) as usize
+        })
+        .sum();
+    let grain = crate::lanes::soft_grain(jobs.len(), work, crate::lanes::now().fluid_work);
+    let colliders = &sim.world.colliders;
+    let gravity = flat(settings.gravity);
+    og_lanes::for_each_mut(og_lanes::Site::Physics, &mut jobs, grain, |job| {
+        let (members, taken) = (job.0, &mut job.1);
         let grouped = members.len() > 1;
-        let mut taken: Vec<(u64, Fluid3State)> = Vec::with_capacity(members.len());
         let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
         let mut reach = 0.0f32;
-        for (slot, &k) in members.iter().enumerate() {
-            let (e, position, fluid) = &scene.fluids3[k];
-            let mut state = sim.fluids3.remove(&e.to_bits()).expect("built above");
+        for (slot, ((_, state), &k)) in taken.iter_mut().zip(members).enumerate() {
+            let (_, position, fluid) = &scene.fluids3[k];
             if grouped {
                 state.join(slot as u32);
             } else {
@@ -898,39 +1014,29 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
                 max = max.max(at + r);
             }
             reach = reach.max(fluid.radius.max(0.02) * 2.0);
-            taken.push((e.to_bits(), state));
         }
         if min.x > max.x {
-            for (key, state) in taken {
-                sim.fluids3.insert(key, state);
-            }
-            continue;
+            return;
         }
         // A particle moves at most half the radius a substep.
-        let substeps = members
-            .iter()
-            .map(|&k| scene.fluids3[k].2.substeps.clamp(1, 8))
-            .max()
-            .unwrap_or(1) as f32;
-        let near = Near::around(&sim.world, min, max, reach * (1.0 + substeps * 0.25));
-        {
-            let mut list: Vec<Member<'_>> = taken
-                .iter_mut()
-                .zip(members.iter())
-                .map(|((_, state), &k)| {
-                    let (_, position, fluid) = &scene.fluids3[k];
-                    Member {
-                        fluid,
-                        state,
-                        centre: *position,
-                    }
-                })
-                .collect();
-            step(&mut list, dt, flat(settings.gravity), &near);
-        }
-        for (key, state) in taken {
-            sim.fluids3.insert(key, state);
-        }
+        let substeps = substeps_of(members) as f32;
+        let near = Near::around(colliders, min, max, reach * (1.0 + substeps * 0.25));
+        let mut list: Vec<Member<'_>> = taken
+            .iter_mut()
+            .zip(members.iter())
+            .map(|((_, state), &k)| {
+                let (_, position, fluid) = &scene.fluids3[k];
+                Member {
+                    fluid,
+                    state,
+                    centre: *position,
+                }
+            })
+            .collect();
+        step(&mut list, dt, gravity, &near);
+    });
+    for (_, taken) in jobs {
+        sim.fluids3.extend(taken);
     }
 }
 
