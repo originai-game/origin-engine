@@ -50,11 +50,15 @@ stream "zone" {
 }
 "#;
 
-/// The project, cooked once per test binary.
+/// The project, cooked once per test process (nextest runs each test in
+/// its own, so the directory carries the process id: two tests rebuilding
+/// one directory at once raced, and one read a file the other had just
+/// removed).
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
     ROOT.get_or_init(|| {
-        let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-runtime-stream-release");
+        let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+            .join(format!("og-runtime-stream-release-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let write = |path: &str, bytes: &[u8]| {
             let p = root.join("assets").join(path);
