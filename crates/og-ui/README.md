@@ -71,7 +71,7 @@ Any container with `interactive: true` reports its response from `close()`.
 |---|---|---|
 | `tabs(id, items, &mut usize, TabsDesc)` | a segmented control: `fill` track, the chosen tab on `thumb` | `Tab#i`, the labels |
 | `select(id, options, &mut usize, &SelectDesc)` | a field-like trigger and chevron; opens `<id>.menu` (a popover layer and focus scope) with `Option#i`; a press outside or Back closes it | the chosen label |
-| `stepper(id, &mut f32, StepperDesc)` | `Dec`, `Value`, `Inc`; bounded; Left/Right step while a button is focused | `−`, the value, `+` |
+| `stepper(id, &mut f32, StepperDesc)` | `Dec`, `Value`, `Inc`; bounded; Left/Right step while a button is focused; a screen reader's increment/decrement on the spinbutton | `−`, the value, `+` |
 | `radio(id, options, &mut usize, RadioDesc)` | `Option#i` rows: a ring, amber with a dot when chosen | the labels |
 | `checkbox(id, &mut bool, label)`, `checkbox_list(id, labels, &mut [bool])` | a box, amber with a tick (two rotated bars) | the label(s) |
 | `chip(id, text, ChipDesc)` | a capsule on `fill`; selected inverts to `fg` | the text |
@@ -202,12 +202,17 @@ as input: a click on a mirrored element (its default action) is og-input's
 `increment`/`decrement` step an adjustable one (`InputFrame::a11y`; nav.rs
 `apply_a11y` resolves the path against the last frame and acts as Enter,
 Left and Right would, within the topmost dialog, also on a screen that
-turned navigation off). A slider with no child nodes is mirrored as an
-`<input type="range">` held at the middle of three steps: a screen
-reader's own adjust gesture (VoiceOver's swipe up or down, TalkBack's
-volume keys) moves the native value and fires `input`, which the mirror
-sends as `increment` or `decrement` before putting the value back (the UI
-owns the value; `aria-valuetext` reads it). Keys pressed while a mirrored
+turned navigation off). A slider and a stepper's spinbutton are mirrored
+as an `<input type="range">` with their role, held at the UI's value one
+step from either end (`aria-valuenow` and `aria-valuetext` read it): a
+screen reader's own adjust gesture (VoiceOver's swipe up or down,
+TalkBack's volume keys) moves the native value, or sets it from
+`aria-valuenow` and the step, and fires `input`, which the mirror sends as
+`increment` or `decrement` before putting the value back (the UI owns the
+value and its step). A stepper's `−` and `+` follow its range as siblings
+(an input holds no children); og-ui steps the stepper for a request
+naming its spinbutton when one of its buttons is in reach. A native range
+takes `tabindex=-1`, out of the page's Tab order. Keys pressed while a mirrored
 element has the DOM focus still reach the engine as keys (the shell keeps
 the arrows from the native range, so a key steps once). The native host creates no mirror
 and its frame answers carry no tree. `tests/a11y.rs` covers the requests
@@ -400,8 +405,15 @@ its hover, active, ink, soft and focus tones the way the tokens derive them
 from amber (the same mix towards white or black, the same alpha; amber in
 gives the token palette back exactly), picking `accent-fg` or the light `fg`
 as the ink on it by contrast. `reduced_motion` and `reduced_transparency`
-(a skin's glass parts drawn as opaque surfaces: no blur of the frame under
-them, their frame at full opacity) are theme flags. The generator
+are theme flags; `to_reduced_transparency()` is the flat variant: a skin's
+glass parts drawn as opaque surfaces (no blur of the frame under them,
+their frame at full opacity), the translucent fills (`fill`,
+`fill-strong`, `accent-soft`, the `material-*` grounds,
+`material-control`) the opaque colours they make over `surface`, and the
+scrim the one it makes over `bg`, so a dialog's backdrop hides the game
+rather than dimming it; highlights (sheens, edges, glows) stay. A game
+reads the flags (`UiTheme.reducedTransparency`, `reducedMotion`,
+`contrast` from `og.ui.theme`/`frameTheme`) to flatten and still its own. The generator
 still owns every value (`src/theme.rs`); variants are mappings over it.
 
 **The page's preferences.** `Viewport::reduced_motion`, `high_contrast`
@@ -410,8 +422,8 @@ and `reduced_transparency` are what the page asks for (the web shell reads
 `prefers-reduced-transparency: reduce` into the viewport and sends it again
 when any changes); every frame the UI applies them over the configured
 theme (`Ui::set_theme`; `UiDesc.reducedTransparency` in TypeScript):
-reduced motion and reduced transparency turn their flags on, more contrast
-takes the high-contrast variant. A game's own settings can add to what the
+reduced motion turns its flag on, reduced transparency (the page's or the
+game's) takes the flat variant, more contrast the high-contrast one. A game's own settings can add to what the
 page asks, not take it away. `Ui::theme` answers the effective theme.
 
 **The edge light.** `Theme::edge` is the tokens' card edge (`shadow.edge`,
@@ -447,10 +459,14 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   (`templates/ui-kit/tools/make-faces.py`).
 - **A font per run.** A label that mixes scripts no one font covers
   (`Score 42: مرحبا`, `Level 3 古い水車小屋` with no locale face) takes
-  each run from the fallback chain: each character from the first of the
-  role's font, the chain, the fallbacks and the skin's fallback whose atlas
-  has it (else whose file renders it), spaces, punctuation and marks
-  staying with the run before them (a leading one with the first letter's).
+  each run from the fallback chain, a grapheme cluster at a time
+  (og-i18n's `graphemes`, UAX #29: a base and its marks, a conjunct, an
+  emoji sequence): a cluster takes its base's font when that font has all
+  of it, else the first of the role's font, the chain, the fallbacks and
+  the skin's fallback whose atlas has all of it (else whose atlas or file
+  does), else its base's; joiners and variation selectors are not asked
+  of any face; spaces and punctuation stay with the run before them (a
+  leading one with the first letter's).
   `Fonts::link` builds each role's mixed font (`Ui` links the fonts it is
   given), a `FontMetrics` that measures, breaks, kerns (within a run),
   shapes and hit-tests run by run (`is_mixed`; each `VisualGlyph` names its
@@ -503,18 +519,25 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   direction. The selection is a neutral fill (`fill-strong`) under the
   glyphs, the composition a hairline under its own, the caret an amber bar
   that blinks: shown for 530 ms (32 ticks at 60 Hz) after the last edit or
-  move, hidden as long, by the tick (steady under reduced motion). Alt
-  (Option) or Ctrl with ←/→ moves by words (to a word's start leftwards,
-  its end rightwards; a run of punctuation is a word), with Backspace and
-  Delete deletes one; Ctrl with Home/End goes to the text's ends. A second
-  press within 500 ms and 4 px of the last (which did not drag) selects the
-  word under it, a third the line (between its breaks in an area, the
-  whole field), and a drag from them extends by words or lines. Ctrl/Cmd+Z
-  undoes and Ctrl/Cmd+Shift+Z or Ctrl+Y redoes, from a history per control
-  (100 steps, the 8 most recently edited controls): typing groups a word
-  and its spaces into a step, Backspaces and Deletes in a row one each, a
-  move ends the step; a text the game set in between starts the history
-  again. A drag past a text area's top or bottom (a field's ends) scrolls
+  move, hidden as long, by the tick (steady under reduced motion). The
+  word key (Option under mac keys, Ctrl or Alt elsewhere: §Input) with
+  ←/→ moves by words (to a word's start leftwards, its end rightwards),
+  with Backspace and Delete deletes one; Ctrl with Home/End goes to the
+  text's ends, and under mac keys Cmd+←/→ to the line's. Words are UAX
+  #29's (og-i18n's `word_segments`): letters, digits and marks with the
+  apostrophes and points inside them (`can't`, `3.14`), a run of
+  punctuation one word, each Han or Hiragana character one, a Katakana run
+  one, Thai and the other dictionary scripts a grapheme cluster each. A
+  second press within 500 ms and 4 px of the last (which did not drag)
+  selects the word under it, a third the line (between its breaks in an
+  area, the whole field), and a drag from them extends by words or lines.
+  The shortcut key (Cmd under mac keys, else Ctrl or Cmd) with Z undoes
+  and with Shift+Z or Y redoes, from a history per control (100 steps, the
+  8 most recently edited controls): typing groups a word and its spaces
+  into a step (a Han or Hiragana word, an input method's commit, is a
+  step of its own; Thai typed on groups to the space), Backspaces and
+  Deletes in a row one each, a move ends the step; a text the game set in
+  between starts the history again. A drag past a text area's top or bottom (a field's ends) scrolls
   it every tick, a quarter of the distance out per tick between a quarter
   of a line and two lines, and selects to the edge. The caret, anchor,
   composition, scroll, blink phase, click count and histories are in
@@ -775,8 +798,8 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/text.rs` | Shift+arrows select and typing replaces the selection, Ctrl/Cmd+A, C (the clipboard) and X; a drag selects from the press and a Shift+press extends; a text area breaks lines on Enter, ↑/↓ move between lines and stay out of focus navigation, it wraps; a composition shows at the caret, replaces the selection as it starts, commits, ends when empty; the caret shows 32 ticks and hides 32 at 60 Hz and never blinks under reduced motion; once a typed-text stream exists keys type nothing; labels cut with an ellipsis on one line and at two lines, the probe reading the whole text; the edit state survives a save and restore |
 | `tests/rtl.rs` | Arabic shaped into joined forms in visual order; UAX #9 orders runs (digits, neutrals at a line's end, brackets mirrored, Hebrew reversed); Devanagari's conjunct and pre-base sign; kerning pairs tighten the measure and the visual layout alike; a right-to-left UI mirrors |
 | `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
-| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state |
-| `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice |
+| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all |
+| `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; a base and its combining mark go to one face together, a joiner keeps its letter's face; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice |
 | `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook): every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
 | `tests/support/scenes.rs` | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
 | `tests/gfx.rs` | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (an amber bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; `text-fields-2` (a double-clicked word, an undone field, an area a drag scrolled part way) matches its reference with no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
@@ -785,7 +808,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/skin.rs` | a skinned card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default theme emits no skin piece; a skin file names the wrong line (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
 | `tests/packs.rs` | the six packs parse, name only existing assets, and every ink a template draws on a skinned surface is at least 4.5:1 over the frame art under it (and `fg` on a selected tab) |
 | `tests/pack_contrast.rs` | every pack (the six and Ember Vale's copy of fantasy): each button role's label in each state, and `fg`, `fgMuted`, `fgSubtle`, against the draw commands composited over the atlas texels: a label on a panel at 4.5:1, a primary or secondary label at rest or hovered at 7:1; prints every row with its ink and ground |
-| `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, and the tree's digest moves with what a mirror shows; the page's reduced motion, contrast and transparency reach the theme and leave again |
+| `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
 | `tests/materials_gfx.rs` | `references/<tier>/materials.png`: a dark card with its edge light, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled; no missing glyph |
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
 | `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; every screen in each style pack matches its cell of `references/<tier>/kit-skin-<pack>.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
@@ -827,28 +850,35 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
 - **Text**: og-ui's cooked-font text frames in the browser tiers
   (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their
   fonts, which og-tests-web cannot; `text-fields-2` draws the test font and
-  runs there). A mixed text picks its font per character, not per grapheme
-  cluster (a base and its marks stay together only where the mark is in the
-  base's face), and its runs share the role face's baseline and line box.
-  Words are character classes (letters and digits, punctuation, spaces),
-  not UAX #29: a run of CJK is one word, with no dictionary segmentation;
-  word moves are logical, so in a right-to-left run Alt+← moves back in the
-  text, not leftwards. A `[wave]`, `[shake]` or `[pulse]` span that mixes
-  faces is drawn still. (A font per run inside one label, word-wise moves,
-  double- and triple-click selection, undo and redo, and drag autoscroll
-  landed in the fields round; the display and rounded faces, kerning, bidi
-  inside one rich-text span, shaping with rustybuzz, run-time CJK glyphs,
-  ellipsis truncation, selection, text areas, IME composition and the caret
-  blink in the phase 4 UI text round; rich text in the phase 2 UI round.)
-- **Accessibility**: a stepper is mirrored as a `spinbutton` with its
-  buttons inside it, not a native range, so a screen reader's adjust
-  gesture on it has no event (its buttons activate); reduced transparency
-  makes glass opaque but leaves scrims and translucent fills as they are.
-  (Sliders mirrored as native ranges and `prefers-reduced-transparency`
-  landed in the fields round; the tree in the phase 2 UI round; the
-  shell's mirror, live regions, focus following, requests from the DOM and
-  the page's motion and contrast preferences in the phase 4 UI shell
-  round.)
+  runs there). A mixed text's runs share the role face's baseline and line
+  box. Words are UAX #29's without a dictionary: Thai, Lao, Khmer and
+  Myanmar move a grapheme cluster at a time, Han and Hiragana a character
+  at a time, a Katakana run as one word; word moves are logical, so in a
+  right-to-left run Alt+← moves back in the text, not leftwards. The caret
+  and Backspace still step by character, not by grapheme cluster (a base
+  and its mark take two). Under mac keys the emacs keys beyond Ctrl+A and
+  E (Ctrl+K, F, B, N, P) do nothing; native hosts report standard keys on
+  macOS too, so `og run` on a Mac edits with Ctrl. A `[wave]`, `[shake]` or
+  `[pulse]` span that mixes faces is drawn still. (Cmd told apart from
+  Ctrl with macOS's editing keys, UAX #29 words for moves, double clicks
+  and undo, and a font per grapheme cluster landed in the ui-4 round; a
+  font per run inside one label, word-wise moves, double- and
+  triple-click selection, undo and redo, and drag autoscroll in the fields
+  round; the display and rounded faces, kerning, bidi inside one
+  rich-text span, shaping with rustybuzz, run-time CJK glyphs, ellipsis
+  truncation, selection, text areas, IME composition and the caret blink
+  in the phase 4 UI text round; rich text in the phase 2 UI round.)
+- **Accessibility**: the spinbutton's and the slider's mirror carry no
+  `aria-valuemin`/`-max` (the tree has no bounds; a percent value takes
+  0–100); a reader's adjust on Chrome and Safari reaches the UI through
+  the native range's `input` event, not checked with VoiceOver itself in
+  this round. (A stepper's spinbutton adjustable like the slider, and
+  reduced transparency flattening scrims and translucent fills with
+  `UiTheme.reducedTransparency`, landed in the ui-4 round; sliders
+  mirrored as native ranges and `prefers-reduced-transparency` in the
+  fields round; the tree in the phase 2 UI round; the shell's mirror, live
+  regions, focus following, requests from the DOM and the page's motion
+  and contrast preferences in the phase 4 UI shell round.)
 - **Materials**: an icon set's field is one true distance, not three
   channels, so a miter join draws round (under 0.2 units of iconoir's 24);
   the kit's screens other than `materials` keep the 32-cell PNG grid
