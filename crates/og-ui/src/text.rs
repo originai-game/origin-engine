@@ -7,10 +7,11 @@
 //! direction (`crate::shape`), and drawn with the resulting placements.
 //!
 //! A text that mixes scripts no one font covers is laid out per run
-//! ([`FontMetrics::is_mixed`]): each character takes the first of the UI's
-//! fonts that has it (the role's, the locale's, the game's fallbacks, the
-//! skin's), neutral characters and marks stay with the run before them,
-//! and each run is measured, kerned, shaped and drawn with its own font.
+//! ([`FontMetrics::is_mixed`]): each grapheme cluster (a base and its
+//! marks) takes the first of the UI's fonts that has it whole (the role's,
+//! the locale's, the game's fallbacks, the skin's), neutral characters stay
+//! with the run before them, and each run is measured, kerned, shaped and
+//! drawn with its own font.
 
 use crate::shape::FontFile;
 use og_i18n::Direction;
@@ -255,8 +256,39 @@ impl FontMetrics {
             .unwrap_or(prev.unwrap_or(0))
     }
 
+    /// The font (as [`FontMetrics::font_of`]) that draws a grapheme
+    /// cluster (a base and its combining marks, a conjunct, an emoji
+    /// sequence) whole: its base's font when that font has every character
+    /// of it; else the first font whose atlas has them all, else the first
+    /// whose atlas or file does; else its base's (a mark no font has is
+    /// missing beside its base, not drawn from another face). Joiners and
+    /// variation selectors, which no face need draw, are not asked for.
+    fn font_of_cluster(&self, cluster: &str, prev: Option<usize>) -> usize {
+        let mut chars = cluster.chars();
+        let Some(base) = chars.next() else {
+            return prev.unwrap_or(0);
+        };
+        let k = self.font_of(base, prev);
+        let Some(runs) = &self.runs else { return k };
+        let drawn = || cluster.chars().filter(|&c| !invisible(c));
+        if chars.as_str().is_empty() || cluster.chars().skip(1).all(invisible) {
+            return k;
+        }
+        let m = |k: usize| self.part(k).expect("a font of the run");
+        if drawn().all(|c| m(k).own_has(c)) {
+            return k;
+        }
+        let n = runs.len() + 1;
+        (0..n)
+            .find(|&f| drawn().all(|c| m(f).in_atlas(c)))
+            .or_else(|| (0..n).find(|&f| drawn().all(|c| m(f).own_has(c))))
+            .unwrap_or(k)
+    }
+
     /// A mixed text's font runs in logical order: byte ranges and the font
-    /// each takes (one run of font 0 for a font that is not mixed).
+    /// each takes (one run of font 0 for a font that is not mixed). The
+    /// choice is per grapheme cluster ([`og_i18n::graphemes`]), so a base
+    /// letter and its marks stay in one run.
     pub(crate) fn font_runs(&self, text: &str) -> Vec<(Range<usize>, usize)> {
         if self.runs.is_none() {
             return vec![(0..text.len(), 0)];
@@ -267,11 +299,18 @@ impl FontMetrics {
             .chars()
             .find(|&c| !sticks(c))
             .map(|c| self.font_of(c, None));
-        for (i, c) in text.char_indices() {
-            let k = self.font_of(c, prev);
+        // Character index to byte offset.
+        let bytes: Vec<usize> = text
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain([text.len()])
+            .collect();
+        for (a, b) in og_i18n::graphemes(text) {
+            let range = bytes[a]..bytes[b];
+            let k = self.font_of_cluster(&text[range.clone()], prev);
             match out.last_mut() {
-                Some((r, f)) if *f == k => r.end = i + c.len_utf8(),
-                _ => out.push((i..i + c.len_utf8(), k)),
+                Some((r, f)) if *f == k => r.end = range.end,
+                _ => out.push((range, k)),
             }
             prev = Some(k);
         }
@@ -546,6 +585,11 @@ fn sticks(c: char) -> bool {
             | 0x0900..=0x0903 | 0x093a..=0x094f | 0x0951..=0x0957 | 0x0962..=0x0963
             | 0x1ab0..=0x1aff | 0x1dc0..=0x1dff | 0x200c..=0x200d | 0x20d0..=0x20ff
             | 0xfe00..=0xfe0f)
+}
+
+/// Characters no face need draw: joiners and variation selectors.
+fn invisible(c: char) -> bool {
+    matches!(c as u32, 0x200c..=0x200d | 0x2060 | 0xfe00..=0xfe0f | 0xe0100..=0xe01ef)
 }
 
 /// Whether a line needs the bidi algorithm or shaping to be drawn.
