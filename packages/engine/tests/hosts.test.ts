@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 
+// The functional lane may run with a web module older than the native addon
+// (scripts/check.sh bun-functional): the tests that compare the two hosts
+// skip there and run in the full lane.
+const STALE_WASM = process.env.OG_WASM_STALE === "1";
+
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,7 +21,7 @@ function hello(host: string, ...extra: string[]): { tick: number; hash: string; 
   return JSON.parse(out.trim().split("\n").pop()!);
 }
 
-test("the native and the web host agree on the world hash after 600 ticks", () => {
+test.skipIf(STALE_WASM)("the native and the web host agree on the world hash after 600 ticks", () => {
   const node = hello("node");
   const web = hello("web");
   expect(node.tick).toBe(600);
@@ -28,7 +33,7 @@ test("the native and the web host agree on the world hash after 600 ticks", () =
   expect(hello("node", "--seed", "7").hash).not.toBe(node.hash);
 }, 120_000);
 
-test("a probe argument of the wrong type is refused alike on both hosts, and the engine keeps running", () => {
+test.skipIf(STALE_WASM)("a probe argument of the wrong type is refused alike on both hosts, and the engine keeps running", () => {
   const run = (host: string) => {
     const r = Bun.spawnSync(["bun", "tests/support/probe-refusal.ts", "--host", host], { cwd: pkg });
     const out = new TextDecoder().decode(r.stdout);
@@ -70,7 +75,7 @@ for (const profile of ["3d", "2d"]) {
   }, 180_000);
 }
 
-test("tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts and replay from a snapshot", () => {
+test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts and replay from a snapshot", () => {
   const run = (host: string, ...extra: string[]) => {
     const r = Bun.spawnSync(["bun", "tests/support/feel-hash.ts", "--host", host, ...extra], { cwd: pkg });
     const out = new TextDecoder().decode(r.stdout);

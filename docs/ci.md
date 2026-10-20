@@ -49,7 +49,7 @@ step.
 
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
-| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host with the last full lane's wasm); no wasm build, size, determinism or browser tiers | about the full lane's test step |
+| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host); the web module is the last full lane's, and when a crate changed since, the tests that compare the two hosts' hashes skip (`OG_WASM_STALE`) and run in the full lane; no wasm build, size, determinism or browser tiers | 90–160 s |
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
 | `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` on every PR and push to main | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 

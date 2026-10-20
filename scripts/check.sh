@@ -452,8 +452,17 @@ bun_test_packages() {
 # signal; the web module's own tests are the full lane's.
 step_bun_functional() {
   if [ -s "$OG_WASM_OUT/opt-all.txt" ]; then
-    og_say "bun-functional: the web module is the last full lane's ($OG_WASM_OUT/opt-all.txt); wasm-build refreshes it"
-    OG_GATE=1 bun_test_packages packages/*/
+    # The web module is the last full lane's. When a crate changed since,
+    # it no longer matches the native addon, and the tests that compare the
+    # two hosts' hashes skip (OG_WASM_STALE; the full lane runs them).
+    # shellcheck disable=SC2046 # the rule is a word list
+    if og_unchanged wasm-build $(rule_wasm); then
+      og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) is current"
+      OG_GATE=1 bun_test_packages packages/*/
+    else
+      og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) predates a crate change; the cross-host tests skip (OG_WASM_STALE=1), the full lane runs them"
+      OG_GATE=1 OG_WASM_STALE=1 bun_test_packages packages/*/
+    fi
   else
     og_say "bun-functional: no wasm built here yet; the packages that need none"
     # shellcheck disable=SC2086
