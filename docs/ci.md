@@ -375,16 +375,22 @@ the table go to `target/evidence/wave-end/`.
 |---|---|
 | `gate` | `scripts/check.sh --all` |
 | `web` | `scripts/check.sh web-reference` |
-| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx` and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
+| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx`, of og-ui's GPU test binaries (`--test gfx --test kit_gfx --test materials_gfx --test text_gfx`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
 | `prepare` | each template cooked (`og cook`, the gate's dev `og`) and bundled for the native host into `<template>/.og/game.native.js`, as `og test` does, on the Mac |
 | `gfx` | `og-gfx --all --capture target/lava-gfx` in `og-lavapipe-bun:local` (`docker run --rm -v <checkout>:<checkout> -w <checkout>`, `OG_TEST_ASSETS=<checkout>/crates/og-tests/assets`, the og-gfx binary as `--entrypoint`; no `--platform`: the amd64 image runs under emulation, and the checkout sits at its own path because the bundles hold absolute paths) |
+| `ui` | og-ui's GPU test binaries in the image, against `crates/og-ui/references/vulkan-cpu/` (else `metal`) |
 | `playtests` | every playtest of the templates with vulkan-cpu frames (fx-showcase, ui-kit, match3, runner, topdown; `--templates` names others) through `bun packages/engine/src/node/playtest-run.ts --file <playtest> --entry <template>/.og/game.native.js --root <template>`, in one container |
 | `table` | `scripts/frames-vs-metal.ts`: outliers and RMSE (og-tests' rule, fx-showcase's `difference`) of the captured og-tests frames against `metal` and against the committed `vulkan-cpu`, and of every committed `references/vulkan-cpu/` frame (og-ui, the templates) against its `metal`; printed and written to `vulkan-cpu-vs-metal.tsv` |
 
 Nothing is recorded unless `--record` names it: `<template>` or
 `<template>/<playtest>` runs those playtests with `OG_FX_CAPTURE=1` and
 `OG_UI_CAPTURE=1`, `gfx` or `gfx/<scene>` copies the capture into
-`crates/og-tests/references/vulkan-cpu/`. `--stages cross,gfx,table` runs
+`crates/og-tests/references/vulkan-cpu/`, `og-ui` runs og-ui's GPU tests
+with `OG_UI_CAPTURE=1`. A frame recorded there is what CI's trixie
+container renders (§CI): a rendering change that lands on main with its
+metal frames alone leaves the vulkan-cpu one stale, and CI red, until the
+wave's end records it (2026-10-21: text-bidi after a2c5e44b, stylised
+after the render-style merge). `--stages cross,gfx,table` runs
 some stages (in their order); `--dry-run` prints every command and runs
 none.
 

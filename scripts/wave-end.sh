@@ -9,11 +9,13 @@
 #   gate       scripts/check.sh --all
 #   web        scripts/check.sh web-reference
 #   cross      cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31:
-#              og-tests' og-gfx and og-host-node, the addon copied to
-#              packages/engine/native/origin-engine.linux-x64.node
+#              og-tests' og-gfx, og-ui's GPU test binaries and og-host-node,
+#              the addon copied to packages/engine/native/origin-engine.linux-x64.node
 #   prepare    each template cooked (`og cook`, the gate's dev og) and bundled
 #              for the native host (<template>/.og/game.native.js), on this machine
 #   gfx        og-gfx --all --capture target/lava-gfx in the lavapipe image
+#   ui         og-ui's GPU tests (gfx, kit_gfx, materials_gfx, text_gfx) in the
+#              image, against crates/og-ui/references/vulkan-cpu (else metal)
 #   playtests  each template's playtests through playtest-run.ts in the image
 #   table      every vulkan-cpu frame's outliers and RMSE against metal
 #              (scripts/frames-vs-metal.ts), in target/evidence/wave-end/
@@ -23,9 +25,11 @@
 #              vulkan-cpu frames: fx-showcase ui-kit match3 runner topdown)
 # --record     what to record on vulkan-cpu instead of compare, a comma list:
 #              <template> (every playtest of it), <template>/<playtest>,
-#              gfx (every og-tests scene) or gfx/<scene>. A playtest named runs
-#              with OG_FX_CAPTURE=1 and OG_UI_CAPTURE=1; a gfx scene's capture
-#              is copied into crates/og-tests/references/vulkan-cpu/.
+#              gfx (every og-tests scene), gfx/<scene>, or og-ui (its GPU
+#              tests' frames). A playtest named runs with OG_FX_CAPTURE=1 and
+#              OG_UI_CAPTURE=1; a gfx scene's capture is copied into
+#              crates/og-tests/references/vulkan-cpu/; og-ui runs its tests
+#              with OG_UI_CAPTURE=1.
 #              Nothing is recorded without it.
 # --dry-run    print every command and run none.
 #
@@ -44,12 +48,13 @@ cd "$OG_ROOT" || exit 1
 
 IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
 TRIPLE=x86_64-unknown-linux-gnu
-ALL_STAGES="gate web cross prepare gfx playtests table"
+ALL_STAGES="gate web cross prepare gfx ui playtests table"
+UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
 stages="$ALL_STAGES"
 templates="fx-showcase ui-kit match3 runner topdown"
 record=""
 dry=0
-usage() { sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1 ;;
@@ -116,7 +121,16 @@ stage_gate() { run scripts/check.sh --all; }
 stage_web() { run scripts/check.sh web-reference; }
 
 stage_cross() {
+  local t tests=()
   run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-tests --bin og-gfx || return 1
+  # og-ui's GPU test binaries; cargo's JSON names each executable.
+  for t in $UI_TESTS; do tests+=(--test "$t"); done
+  local ui=(cargo zigbuild --release --target "$TRIPLE.2.31" -p og-ui "${tests[@]}" --message-format=json-render-diagnostics)
+  say "+ $(printf '%q ' "${ui[@]}")> $OUT/og-ui-tests.json"
+  if [ "$dry" != 1 ]; then
+    "${ui[@]}" > "$OUT/og-ui-tests.json" || return 1
+    grep '"reason":"compiler-artifact"' "$OUT/og-ui-tests.json" | grep -o '"executable":"[^"]*"' | cut -d'"' -f4 > "$OUT/og-ui-tests.txt"
+  fi
   run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-host-node || return 1
   run cp "$RELEASE/libog_host_node.so" packages/engine/native/origin-engine.linux-x64.node
 }
@@ -150,6 +164,32 @@ stage_gfx() {
   done
   case " $record " in *" gfx"*) [ "$dry" != 1 ] || say "(--record: each captured scene named is copied to crates/og-tests/references/vulkan-cpu/)" ;; esac
   return 0
+}
+
+# og-ui's GPU tests on lavapipe, every binary in one container; with
+# --record og-ui, OG_UI_CAPTURE=1 records each frame on vulkan-cpu.
+stage_ui() {
+  local b script="$OUT/og-ui.sh" capture=""
+  case " $record " in *" og-ui "*) capture="OG_UI_CAPTURE=1 " ;; esac
+  {
+    echo "#!/bin/sh"
+    echo "# Written by scripts/wave-end.sh; runs in $IMAGE."
+    echo "rc=0"
+    if [ "$dry" = 1 ]; then
+      echo "# one line per executable the cross stage lists in $OUT/og-ui-tests.txt, as:"
+      echo "${capture}<og-ui test executable> --test-threads=2 || rc=1"
+    else
+      [ -s "$OUT/og-ui-tests.txt" ] || { og_err "no og-ui test binaries in $OUT/og-ui-tests.txt: run the cross stage"; return 1; }
+      while IFS= read -r b; do
+        [ -x "$b" ] || { og_err "$b is not there: run the cross stage"; return 1; }
+        printf 'echo "== %s"\n%s%s --test-threads=2 || rc=1\n' "$(basename "$b")" "$capture" "$b"
+      done < "$OUT/og-ui-tests.txt"
+    fi
+    # shellcheck disable=SC2016 # expands in the generated script
+    echo 'exit "$rc"'
+  } > "$script" || return 1
+  [ "$dry" != 1 ] || sed 's/^/  | /' "$script"
+  docker_run --entrypoint sh "$IMAGE" "$script"
 }
 
 # One container for every playtest: a POSIX sh script the image runs, one
