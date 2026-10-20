@@ -72,9 +72,24 @@ fix below lands).
   spheres-20k baselines (6.675 to 5.245 ms, spheres-20k-moving 7.759 to
   5.276 ms) by the perf test's method with the release og-gfx; the perf
   lane itself did not run on its branch.
-- **vulkan-cpu**: the lavapipe pass runs after the WebGL2 outline fix
-  lands; until then row 67 (render-style and Lantern Vale) is open on top
-  of row 54.
+- **vulkan-cpu** (the og-lavapipe image, og-gfx and the node addon
+  cross-built with zigbuild at 617fb862): every og-tests scene captured
+  (77) and judged against `metal` by the reference-frame rule; the copies
+  settled at 9bd0064: `sprites-shadow-terrain` added (2.4 % outliers
+  against `metal`), `stylise-pixel` (RMSE 0.023, 3.8 %) and
+  `terrain-near` (1.2 %) re-recorded, and the stale copies of
+  `stylise-bands`, `stylise-halftone`, `stylise-material`, `stylised`,
+  `skinned-hooks`, `overlay` and `showcase` dropped (each within RMSE
+  0.007 and 0.16 % of `metal`); the four new scenes and `materials-array`
+  within tolerance of `metal` (no copy). fx-showcase's looks station: all
+  37 captured, 17 copies kept and re-recorded (the pixel, dither,
+  hatching, pattern and heavy-ink presets: RMSE 0.007 to 0.045, up to
+  16 % outliers against `metal`), 20 dropped (within RMSE 0.008 and 0.5 %
+  of `metal`); the suite then passes on lavapipe (78 checks). Lantern
+  Vale: `start` keeps a copy (0.8 % outliers), the other six judged
+  against `metal` (RMSE 0.002 to 0.003); the frames suite passes on
+  lavapipe (17 checks). Not run on lavapipe: og-ui's reference frames
+  (row 54 keeps those).
 - **Not run here**: the phone paths of `--device`, the three.js
   comparison (row 51), the lanes wasm's physics step in Chrome (row 52),
   the native device latency tests (row 40).
@@ -2880,7 +2895,7 @@ resource only the owner can give.
 | 51 | The three.js comparison (`tools/bench/threejs-compare.ts`) run again after the lean pipelines: before them the 20,000-sphere field was 0.31x of three.js's WebGPU InstancedMesh and 0.48x of WebGL2's, the §7 reference scene 2.04x and 1.54x | P4 lean | S | engine, phase 4 (a wave-end measurement) | open (render parity, 26649d4c, measured natively only: `tests/evidence/P4/parity/`) |
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | open (round three, 1f0ecdc3, measured natively only; `og.physics.stats` through the web host is unmeasured too) |
 | 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` is in flight on `ci-green`; wave 7's run is in progress (Main gate, wave 7: its figures pending) |
-| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | open |
+| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | og-tests and the looks frames closed by wave 7's lavapipe pass (9bd0064: copies kept only where they differ from `metal` by design, the rest judged against `metal`); still open for og-ui `text-fields-2`, `text-mixed-runs` and `text-bidi`, which no lavapipe pass has run |
 | 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | open |
@@ -2893,7 +2908,7 @@ resource only the owner can give.
 | 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | open |
 | 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | open |
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |
-| 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | open |
+| 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | vulkan-cpu closed at 9bd0064 (the lavapipe pass above); the browser tiers ran at 617fb862: WebGPU passes every frame against `metal`, WebGL2 fails 30 of the 37 looks frames (TAA on the GL backend, under diagnosis; paper-craft, voxel-worlds and sculpted-clay differ by design: SSAO on WebGL2, GTAO on the full tier) |
 
 ## 0. Rules that shape the plan
 
