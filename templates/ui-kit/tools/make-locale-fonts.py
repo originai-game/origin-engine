@@ -11,7 +11,10 @@ NotoSansKR-subset.otf and NotoSansArabic-subset.ttf with fontTools'
 subsetter, keeping the layout features (the Arabic joining forms and
 ligatures og-ui shapes with), and each font's import settings (.ogt) with
 the same characters. zh-CN uses the kit's existing NotoSansSC subset; its
-import settings gain the table's characters.
+import settings gain the table's characters and `runtime true`: the strings
+in RUNTIME_KEYS (the main menu's greeting) are left out of zh-CN's and ja's
+characters, so the Chinese font renders them from its outlines at run time
+(og-ui's CJK strategy, crates/og-ui/README.md §Text).
 """
 import re
 import sys
@@ -24,11 +27,16 @@ KIT = Path(__file__).resolve().parent.parent
 STRINGS = KIT / "assets" / "strings"
 FONTS = KIT / "assets" / "fonts"
 ASCII = "".join(chr(c) for c in range(0x20, 0x7F))
+# Strings drawn with run-time glyphs in zh-CN and ja (not cooked).
+RUNTIME_KEYS = {"menu.greeting"}
 
 
 def chars_of(locale: str) -> str:
     text = (STRINGS / f"{locale}.ogt").read_text(encoding="utf-8")
-    used = "".join(m.group(1) for m in re.finditer(r'^string "[^"]*" "(.*)"$', text, re.M))
+    skip = RUNTIME_KEYS if locale in ("zh-CN", "ja") else set()
+    used = "".join(
+        m.group(2) for m in re.finditer(r'^string "([^"]*)" "(.*)"$', text, re.M) if m.group(1) not in skip
+    )
     return "".join(sorted(set(used + ASCII)))
 
 
@@ -44,12 +52,13 @@ def write_subset(font: TTFont, text: str, out: Path) -> None:
     font.save(out)
 
 
-def settings(name: str, charset: str, chars: str) -> None:
+def settings(name: str, charset: str, chars: str, runtime: bool = False) -> None:
     body = "".join(c for c in chars if ord(c) > 0x7E and c not in '"\\')
+    extra = "  runtime true\n" if runtime else ""
     (FONTS / f"{name}.ogt").write_text(
         "type import\nversion 1\n---\n"
         "# The characters the UI kit's string tables use (tools/make-locale-fonts.py).\n"
-        f"font {{\n  charset {charset}\n  chars \"{body}\"\n  em_px 32\n  px_range 4\n}}\n",
+        f"font {{\n  charset {charset}\n  chars \"{body}\"\n  em_px 32\n  px_range 4\n{extra}}}\n",
         encoding="utf-8",
     )
 
@@ -66,7 +75,7 @@ def main() -> None:
     write_subset(TTFont(sys.argv[2]), text, FONTS / "NotoSansArabic-subset.ttf")
     settings("NotoSansArabic-subset.ttf", "ascii arabic", "")
     sc = chars_of("zh-CN")
-    settings("NotoSansSC-Regular-subset.ttf", "latin cjk-punct", "简体中文原点引擎设置" + sc)
+    settings("NotoSansSC-Regular-subset.ttf", "latin cjk-punct", "简体中文原点引擎设置" + sc, runtime=True)
     for p in sorted(FONTS.glob("Noto*-subset.*")):
         if p.suffix in (".otf", ".ttf"):
             print(f"{p.name}: {p.stat().st_size} bytes")

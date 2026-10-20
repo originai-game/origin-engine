@@ -2065,8 +2065,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
 
 fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
     let list = lock(&feel.shared).floating.clone();
-    let body = rs.ui.as_ref().and_then(|u| u.lock().fonts().body.handle);
+    let ui = rs.ui.clone();
     for t in list {
+        // No font of its own: the UI's for this text (its body face, or the
+        // locale's or a fallback when the body face lacks a character).
+        let body = ui.as_ref().and_then(|u| {
+            u.lock()
+                .fonts()
+                .for_text(og_ui::FontRole::Body, &t.text)
+                .handle
+        });
         let age = (now - t.start) as f32;
         if age < 0.0 || age > t.lifetime {
             continue;
@@ -2094,18 +2102,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
         let Some(first) = pages.first().and_then(|p| rs.scene.font(*p)) else {
             continue;
         };
-        let width: f32 = t
-            .text
-            .chars()
-            .map(|ch| {
-                first
-                    .glyphs
-                    .iter()
-                    .find(|g| g.codepoint == ch)
-                    .map_or(0.0, |g| g.advance)
-            })
-            .sum::<f32>()
-            * size;
+        let width: f32 = first.measure(&t.text) * size;
         let position = Vec3::new(
             t.position.x + t.drift * k - width / 2.0,
             t.position.y + rise,
@@ -2125,6 +2122,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
                 tracking: 0.0,
                 weight: 0.0,
                 glow: None,
+                placements: Vec::new(),
             });
             if t.outline > 0.0 {
                 rs.scene.text_outlines.push(og_render::TextOutline {

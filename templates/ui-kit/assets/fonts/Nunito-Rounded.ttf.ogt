@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# Made by tools/make-faces.py.
+font {
+  charset latin
+  chars "–—‘’‚“”„•…′″‹›€™−×"
+  em_px 48
+  px_range 4
+}

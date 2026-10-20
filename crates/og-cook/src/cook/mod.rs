@@ -145,6 +145,10 @@ pub struct FontSettings {
     pub px_range: f32,
     /// Atlas page edge in pixels.
     pub page_size: u32,
+    /// Ship the font file with the atlas, so characters outside the charset
+    /// are rendered from its outlines when a text needs them (CJK UIs that
+    /// show player text).
+    pub runtime: bool,
 }
 
 impl Default for FontSettings {
@@ -155,6 +159,7 @@ impl Default for FontSettings {
             em_px: 32.0,
             px_range: 4.0,
             page_size: 1024,
+            runtime: false,
         }
     }
 }
@@ -162,12 +167,13 @@ impl Default for FontSettings {
 impl FontSettings {
     fn describe(&self) -> String {
         format!(
-            "charset {} chars {:?} em {} range {} page {} mtsdf",
+            "charset {} chars {:?} em {} range {} page {} mtsdf ec kern{}",
             self.charset.join(" "),
             self.chars,
             self.em_px,
             self.px_range,
-            self.page_size
+            self.page_size,
+            if self.runtime { " runtime" } else { "" }
         )
     }
 }
@@ -595,6 +601,12 @@ fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String
                 "chars" => f.chars = e.string(0).map_err(err)?.to_string(),
                 "em_px" => f.em_px = e.f32(0).map_err(err)?,
                 "px_range" => f.px_range = e.f32(0).map_err(err)?,
+                "runtime" => {
+                    f.runtime =
+                        e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                            format!("line {}: runtime takes true or false", e.line)
+                        })?
+                }
                 "page_size" => {
                     f.page_size = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32
                 }

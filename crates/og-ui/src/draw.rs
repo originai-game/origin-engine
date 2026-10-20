@@ -87,6 +87,9 @@ pub enum DrawCmd {
         weight: f32,
         /// A glow from the font's distance field: linear RGBA and radius, CSS px.
         glow: Option<([f32; 4], f32)>,
+        /// A visual line's placements (bidi runs, shaped glyphs), one per
+        /// character of `text`; empty: the font's advances and kerning.
+        placements: Vec<og_render::GlyphPlacement>,
     },
 }
 
@@ -374,6 +377,7 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 tracking,
                 weight,
                 glow,
+                placements,
                 ..
             } => {
                 let c = clip_index(overlay, &mut known, clip);
@@ -389,6 +393,7 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                     tracking: *tracking,
                     weight: *weight,
                     glow: glow.map(|(color, radius)| og_render::TextGlow { color, radius }),
+                    placements: placements.clone(),
                 });
             }
         }

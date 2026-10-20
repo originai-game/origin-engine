@@ -44,12 +44,16 @@ impl SharedUi {
         F: Fn(&mut Ui, &SystemContext<'_>) -> og_core::Result<()> + Send + 'static,
     {
         let shared = self.clone();
-        let desc = SystemDesc::new(name).read::<OgInput>();
+        let desc = SystemDesc::new(name)
+            .read::<OgInput>()
+            .read::<og_input::TextInput>();
         let run = move |ctx: &mut SystemContext<'_>| {
+            let typed = ctx.events::<og_input::TextInput>().unwrap_or_default();
             let input = match ctx.resource::<OgInput>() {
                 Ok(i) => InputFrame::read(&*i),
                 Err(_) => InputFrame::default(),
-            };
+            }
+            .with_text(&typed);
             let mut ui = shared.lock();
             ui.begin(input, viewport());
             let built = build(&mut ui, ctx);

@@ -1009,11 +1009,13 @@
         "PointerInput",
         "GamepadInput",
         "WheelInput",
+        "TextEntry",
         "InjectedInput",
         "Input",
         "Pointers",
         "Gamepad",
         "KeyDown",
+        "TextInput",
         "KeyUp",
         "PointerDown",
         "PointerUp",
@@ -4231,6 +4233,7 @@
         "ProgressDesc",
         "SliderDesc",
         "FieldDesc",
+        "TextAreaDesc",
         "Response",
         "SliderResult",
         "ToggleResult",
@@ -4747,7 +4750,7 @@
         },
         {
           "name": "textField",
-          "doc": "One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
+          "doc": "One line of text: a press focuses it with the caret at the press and a drag selects; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects; Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
           "params": [
             {
               "name": "id",
@@ -4766,6 +4769,32 @@
               "type": "FieldDesc",
               "optional": true,
               "doc": "Placeholder, width and length limit."
+            }
+          ],
+          "returns": "FieldResult",
+          "publish": true
+        },
+        {
+          "name": "textArea",
+          "doc": "Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, the text wrapped between words at the area's width and scrolled to keep the caret's line in view. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "optional": false,
+              "doc": "The text from game state."
+            },
+            {
+              "name": "desc",
+              "type": "TextAreaDesc",
+              "optional": true,
+              "doc": "Placeholder, width, rows and length limit."
             }
           ],
           "returns": "FieldResult",
@@ -8242,6 +8271,26 @@
       ],
       "additionalProperties": false
     },
+    "TextEntry": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The text."
+        },
+        "composing": {
+          "type": "boolean",
+          "description": "An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text."
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "InjectedInput": {
       "x-og-kind": "union",
       "x-og-module": "input",
@@ -8414,6 +8463,29 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "GamepadInput"
+        },
+        {
+          "description": "Typed or composed text.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string",
+              "description": "The text."
+            },
+            "composing": {
+              "type": "boolean",
+              "description": "An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text."
+            }
+          },
+          "required": [
+            "kind",
+            "text"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "TextEntry"
         }
       ]
     },
@@ -8999,6 +9071,32 @@
         "key",
         "repeat",
         "at"
+      ],
+      "additionalProperties": false
+    },
+    "TextInput": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The text (whole characters)."
+        },
+        "composing": {
+          "type": "boolean",
+          "description": "An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert."
+        },
+        "more": {
+          "type": "boolean",
+          "description": "Continues the composition of the event before it (a composition longer than one event)."
+        }
+      },
+      "required": [
+        "text",
+        "composing",
+        "more"
       ],
       "additionalProperties": false
     },
@@ -19646,17 +19744,19 @@
     "FontRole": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "Which configured font text uses; display and mono fall back to body.",
+      "description": "Which configured font text uses; display and mono fall back to body, rounded to display, then body.",
       "type": "string",
       "enum": [
         "body",
         "display",
-        "mono"
+        "mono",
+        "rounded"
       ],
       "x-og-variants": {
         "body": "The body font.",
         "display": "The display font.",
-        "mono": "The monospaced font."
+        "mono": "The monospaced font.",
+        "rounded": "The rounded font, for levels and scores (the design language's font-rounded)."
       }
     },
     "ButtonVariant": {
@@ -20276,6 +20376,18 @@
           "type": "boolean",
           "description": "A heading: a skin with a flourish frames it.",
           "default": false
+        },
+        "ellipsis": {
+          "type": "boolean",
+          "description": "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text.",
+          "default": false
+        },
+        "maxLines": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out.",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -20635,6 +20747,46 @@
       },
       "additionalProperties": false
     },
+    "TextAreaDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A multi-line text area.",
+      "type": "object",
+      "properties": {
+        "placeholder": {
+          "type": "string",
+          "description": "Shown, dimmed, while the area is empty.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lines shown at once; 0 is 4. More scroll.",
+          "default": 0
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most characters it takes, line breaks included; 0 is no limit.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
     "Response": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
@@ -20869,6 +21021,26 @@
           ],
           "description": "The monospaced font; null uses the body font.",
           "default": null
+        },
+        "roundedFont": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Font"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The rounded font (levels and scores); null uses the display font, then the body font.",
+          "default": null
+        },
+        "fallbackFonts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Font"
+          },
+          "description": "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole.",
+          "default": []
         },
         "contrast": {
           "$ref": "#/$defs/Contrast",
@@ -24965,6 +25137,8 @@
         "key_down",
         "key_up",
         "type",
+        "compose",
+        "commit",
         "move_to_text",
         "teleport",
         "frame_entity",
@@ -24992,7 +25166,9 @@
         "gamepad": "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.",
         "key_down": "`key_down:<Key>`: hold a key by its code.",
         "key_up": "`key_up:<Key>`: release a key.",
-        "type": "`type:<text>`: type text, one key press per character.",
+        "type": "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone.",
+        "compose": "`compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it.",
+        "commit": "`commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends.",
         "move_to_text": "`move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`).",
         "teleport": "`teleport:<entity>:x,y,z`: set an entity's position.",
         "frame_entity": "`frame_entity:<entity>`: point the camera at an entity.",

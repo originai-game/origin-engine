@@ -309,9 +309,38 @@ fn markup_it_cannot_read_shows_as_text_with_a_warning() {
 }
 
 #[test]
-fn a_right_to_left_paragraph_runs_its_spans_from_the_right() {
-    let mut ui = rich_ui();
+fn a_right_to_left_paragraph_runs_its_spans_by_the_bidi_algorithm() {
+    // Fixed advances, so the test font's missing Hebrew still takes room.
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(UiFont {
+        metrics: FontMetrics::fixed(0.5),
+        ..font
+    });
     ui.set_direction(og_i18n::Direction::Rtl);
+    let x = |ui: &Ui, s: &str| {
+        let t = texts(ui);
+        t.iter()
+            .find(|p| p.0 == s)
+            .unwrap_or_else(|| panic!("no piece {s:?} in {t:?}"))
+            .1
+    };
+    // Right-to-left spans run from the right: the first span is rightmost.
+    for _ in 0..2 {
+        step(
+            &mut ui,
+            InputFrame::default(),
+            "שלום [b]עולם[/b] טוב",
+            Size::fit(),
+        );
+    }
+    assert!(
+        x(&ui, " םולש") > x(&ui, "םלוע") && x(&ui, "םלוע") > x(&ui, "בוט "),
+        "the spans run from the right, each reversed: {:?}",
+        texts(&ui)
+    );
+    // Latin in a right-to-left UI is one left-to-right run (UAX #9): its
+    // spans keep their reading order (the old rule mirrored them).
     for _ in 0..2 {
         step(
             &mut ui,
@@ -320,16 +349,44 @@ fn a_right_to_left_paragraph_runs_its_spans_from_the_right() {
             Size::fit(),
         );
     }
-    let t = texts(&ui);
-    let x = |s: &str| {
-        t.iter()
-            .find(|p| p.0 == s)
-            .unwrap_or_else(|| panic!("no piece {s:?} in {t:?}"))
-            .1
-    };
-    // Reading from the right: one, 2, the stop, its space, three.
     assert!(
-        x("one ") > x("2") && x("2") > x(" .") && x(" .") > x("three"),
-        "the spans run from the right: {t:?}"
+        x(&ui, "one ") < x(&ui, "2") && x(&ui, "2") < x(&ui, "three"),
+        "a left-to-right run reads left to right: {:?}",
+        texts(&ui)
+    );
+}
+
+#[test]
+fn runs_of_either_direction_reorder_inside_one_span() {
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(UiFont {
+        metrics: FontMetrics::fixed(0.5),
+        ..font
+    });
+    // One span holding a right-to-left run between Latin words: the run is a
+    // segment of its own, reversed, between them (README §Text: bidi inside
+    // a span, not only between pieces).
+    for _ in 0..2 {
+        step(
+            &mut ui,
+            InputFrame::default(),
+            "[color=danger]go שלום עולם now[/color] ok",
+            Size::fit(),
+        );
+    }
+    let t = texts(&ui);
+    let find = |s: &str| {
+        t.iter()
+            .position(|p| p.0 == s)
+            .unwrap_or_else(|| panic!("no piece {s:?} in {t:?}"))
+    };
+    let (a, b, c) = (find("go "), find("םלוע םולש"), find(" now"));
+    assert!(t[a].1 < t[b].1 && t[b].1 < t[c].1, "{t:?}");
+    assert_eq!(t[a].3, t[b].3, "the run keeps its span's ink");
+    // The probe still reads the logical text.
+    assert_eq!(
+        ui.frame().element("Hint").expect("p").text,
+        "go שלום עולם now ok"
     );
 }

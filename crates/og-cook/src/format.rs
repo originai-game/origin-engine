@@ -16,7 +16,7 @@
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
-//! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `atlas.<n>` (KTX2 RGBA8, zlib) |
+//! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
@@ -443,12 +443,22 @@ row!(
     }
 );
 
+row!(
+    /// One kerning pair: `adjust` em added to the advance of `left` when
+    /// `right` follows it (negative pulls them together).
+    KernRow, "og.FontKern", 1 {
+        left: u32,
+        right: u32,
+        adjust: f32,
+    }
+);
+
 /// The font blob.
 pub struct Font;
 impl BlobKind for Font {
     const NAME: &'static str = "og.Font";
     fn schemas() -> Vec<Schema> {
-        vec![FontMeta::schema(), GlyphRow::schema()]
+        vec![FontMeta::schema(), GlyphRow::schema(), KernRow::schema()]
     }
 }
 

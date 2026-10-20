@@ -60,7 +60,7 @@ calls `cook_project`.
 | KTX2 | `<path>.ogb` (`og.Texture`) | `src/cook/ktx2_source.rs`. Basis ETC1S or UASTC, or RGBA8 (none or zlib), its `KTXorientation` and `KTXswizzle` honoured: a file that is `rd` and `rgba` (or says neither), of a colour or linear kind matching its transfer function, is taken byte for byte; any other is decoded (Basis through the native transcoder), flipped to rows top to bottom and columns left to right, swizzled (`r g b a 0 1` per channel) and cooked again as an image of its kind (`texture { kind }`, else sRGB colour or linear). The report says which. `toktx`'s own output goes through the same check. |
 | texture array `.ogt` (`type texture-array`) | `<path>.ogb` (`og.TextureArray`) + `<path>.layer<n>.ogb` (`og.Texture`, id `<path>#layer<n>`) per layer | `src/cook/texture_array.rs`: `kind color|normal|linear|pixel` and 1–256 `layer "<file>"` images (beside the file, else under `assets/`) of one size (a layer of another size is refused naming both); each layer cooked as a texture of the kind; the array blob holds the size, kind, level count and the layers' ids. The runtime uploads the layers as one `D2Array` texture (`og.load.textureArray`, og-render's `RenderScene::add_texture_array`; padded with the last layer when WebGL2 would take the count for a 2D or cube texture). Nothing samples an array yet. |
 | WAV | `<path>.ogb` (`og.Sound`), and for a sound cooked in chunks `<path>.chunk<n>.ogb` (`og.SoundChunk`, id `<path>#chunk<n>`) | 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit, then QOA (in-crate encoder: 3.2 bits per sample). With `sound { stream true }`, or when the QOA file would pass 1 MiB (27 s of 48 kHz stereo) unless `stream false`, the file is encoded once and cut between QOA frames into chunks of about `chunk` seconds (default 4, whole frames): the sound's blob holds the QOA header and the first chunk, each other chunk a blob of its own, which the runtime reads ahead of the playheads and drops behind them (og-audio's README §Chunked sounds). A QOA frame carries its predictor's state, so the chunks decode to the whole file's samples exactly. A chunked sound cannot join a stream group. |
-| TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle) and ascender/descender/line gap. |
+| TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, generated in f32 and passed through msdfgen's error correction (fdsm's `correct_error_mtsdf`: edge priority, distance checks at edges, before the sign correction) so channels that would interpolate into a false edge at a sharp corner become single-channel; shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle), ascender/descender/line gap and a kerning table: the pair adjustments of every `kern` feature's GPOS lookups (pair positioning formats 1 and 2, every script's; the first subtable of a lookup that takes a pair decides it, lookups add), else the legacy `kern` table, between the cooked characters, in em. A charset with a shaped script (Arabic, Devanagari and og-i18n's other `needs_shaping` scripts) adds every glyph the font's substitutions reach (joining forms, ligatures, conjuncts) under U+F0000 + glyph id, and the font file; so does `runtime true`, for characters outside the charset that og-ui renders from the outlines when a text needs them. |
 | rig `.ogt` (`type rig`) | `<path>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): `scheme` (auto, mixamo, vrm, unity, rigify, ue, blender) and standard bones named outright or `none`; validated and stored as canonical text, loaded with `og.load.rig`. A model's `animation { rig }` names it for the cook's retargeting. |
 | animation library (a glTF named by another model's `animation { library }`) | into the naming model's `#anim` | The library is cooked like any glTF (its own `#anim`, loadable with `og.load.animation`); the naming model's `#anim` gets the library's clips after its own, each rewritten by `og_anim::retarget` from the library's skeleton (its humanoid map from its own `animation { rig }` or detected) onto the model's (its `rig` or detected): rest corrections, the model's bone lengths, the hips' travel scaled by the leg ratio, the legs solved for the feet unless `footIk false`. A clip the model has of its own wins over a library's of the same name (a note says so); a library naming libraries is refused. |
 | flipbook `.ogt` (`type flipbook`) | `<path>.ogb` (`og.Flipbook`) | The canonical sheet text (og-anim's README): grid and `frame` lines, an `atlas` (Aseprite frames and tags, TexturePacker frames and pivots) resolved into frames and clips, the texture's size read from the image, paths relative to the sheet when the file exists. The stamp covers the texture's and the atlas's bytes. |
@@ -89,11 +89,12 @@ animation {
   tolerance 0.0001            # the most compression may move a sampled value (default 1e-4)
 }
 font {
-  charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | all
+  charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | hangul | arabic | all
   chars "开始游戏"           # extra characters (UI strings)
   em_px 32
   px_range 4
   page_size 1024
+  runtime true              # ship the font file: characters outside the charset render at run time (default false)
 }
 sound {                     # a .wav
   stream true               # cook in chunks: true | false (default: when the QOA file passes 1 MiB)
@@ -149,7 +150,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.TextureArray` | `TextureArrayMeta` (size, layers, levels, kind) | `layers` `ArrayLayerRow` (the layers' texture ids in `strings`), `strings` |
 | `og.Sound` | `SoundMeta` (rate, channels, frames, QOA frames per chunk, chunk count; 0 0 when whole) | `qoa`: a complete QOA file, or of a chunked sound its header and first chunk |
 | `og.SoundChunk` | `SoundChunkMeta` (chunk, first QOA frame, frame count) | `qoa`: the chunk's QOA frames |
-| `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point, `atlas.<n>` KTX2 RGBA8/zlib |
+| `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point (shaped forms at U+F0000 + glyph id), `kerning` `KernRow` (left, right, adjust in em) sorted by pair, `atlas.<n>` KTX2 RGBA8/zlib, `ttf` (the font file, with a shaped script or `runtime true`) |
 | `og.Animation` | `AnimMeta` (counts) | `nodes` `NodeRow`, `skins` `SkinRow`, `joints` (u32), `inverse_binds` (f32 ×16 per joint, column-major), `clips` `ClipRow` (name, duration, rate, source rate, frames, channel and event ranges), `channels` `ChannelRow` (node, path, source interpolation, lanes, sample offset, codec, keys, packed offset), `samples` (f32), `packed` (u16 quantised keys), `events` `EventRow`, `skin_streams` `SkinStreamRow` + `skin_data`, `morphs` `MorphRow` (moved-vertex count, data and index streams) + `targets` `TargetRow` (moved range) + `morph_data`, `strings` |
 | `og.Scene` | `SceneMeta` (counts, name) | `entities` `EntityRow` (name, parent, instance), `refs` `RefRow` (asset ids), `components` `ComponentRow` (name, layout hash, rows, inferred), `strings`, `c.<Type>` rows (`u32` entity index + packed fields), `s.<Type>` schema JSON |
 | `og.Tileset` | `TilesetMeta` (text bytes) | `text` (the canonical tileset `.ogt`) |
@@ -285,8 +286,10 @@ a 387 KB model blob (LODs 18,641 / 9,320 / 6,724 triangles).
 **CJK fonts.** `charset all` on the platform's subset (7,831 glyphs: GB2312,
 kana, punctuation) cooks to 10 pages of 1024² in 4.9 s and **19.8 MB** — eight
 times the TTF. Games should declare the characters they show (`chars`), as
-the template does; full CJK coverage needs runtime glyph generation into a
-paged atlas (phase 2) or a smaller `em_px`.
+the template does, and add `runtime true` for text they cannot know (a
+player's name, chat): the blob then carries the 2.5 MB font file and og-ui
+renders what the charset left out from its outlines into pages of the
+font's own (`crates/og-ui/README.md` §Text). The UI kit's Chinese font does.
 
 ## Determinism
 
@@ -347,8 +350,10 @@ without base colour textures), then restored.
 
 ## What phase 2 owes
 
-- **Fonts**: kerning and shaping (rustybuzz), runtime glyph generation for
-  CJK (the ui-text stream on main covers part of this; see its notes).
+- (Fonts: kerning, shaped forms keyed by glyph id, `runtime true` for
+  characters outside the charset and msdfgen's error correction landed in
+  the phase 4 UI text round; `tests/template.rs` checks the template
+  font's pairs and bounds its corner clashes.)
 - **Texture arrays**: nothing samples a `TextureArray` yet (a sprite
   layer, a material or terrain binding is renderer work); environment
   cube maps from KTX2 cube sources (environment maps take equirectangular

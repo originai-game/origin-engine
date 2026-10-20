@@ -30,7 +30,8 @@
 // second while frames play, which the shell's frame deadline watches;
 // { type: "log", lines } with
 // the engine's log and the Worker's console (the crash card shows the last
-// 200); { type: "result", id, value | error } for `call` (`advance`,
+// 200); { type: "text", target } when the UI's focused text control changes
+// and { type: "copy", text } when a copy took text (text-input.ts); { type: "result", id, value | error } for `call` (`advance`,
 // `command`, `hash`, `frame`, `probe`, and `timings`: the played frames'
 // display intervals and engine work); { type: "rpc",
 // frame } for an answer that did not cross the ring.
@@ -521,6 +522,8 @@ export function startWorker(game: GameToken): void {
 
   /** Real time not yet simulated after the last frame (its answer's `behind`), ms. */
   let behind = 0;
+  /** The text target last sent to the shell, as JSON. */
+  let textTarget = "null";
   /**
    * The played frames' timings, the last FRAME_RECORDS of them (the shell's
    * `timings` call, which `og run --device` reads): the display interval
@@ -617,6 +620,13 @@ export function startWorker(game: GameToken): void {
           recorded++;
         }
         behind = answered.behind ?? 0;
+        // The UI's focused text control, for the shell's text target (text-input.ts).
+        const target = JSON.stringify(answered.text ?? null);
+        if (target !== textTarget) {
+          textTarget = target;
+          self.postMessage({ type: "text", target: answered.text ?? null });
+        }
+        if (answered.copy !== undefined) self.postMessage({ type: "copy", text: answered.copy });
         if (typeof answered.tick === "number") lastTick = answered.tick;
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;

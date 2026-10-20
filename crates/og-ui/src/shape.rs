@@ -1,168 +1,187 @@
-//! Shaping and visual order for labels (E6 localization). A font cooked
-//! with a shaped script (Arabic and og-i18n's other `needs_shaping`
-//! scripts) carries its font file and its contextual forms as glyphs under
-//! U+F0000 + glyph id; a word in such a script is shaped with rustybuzz and
-//! drawn as those private-use characters, in the visual order rustybuzz
-//! answers. Lines are broken in logical order (words measured shaped) and
-//! turned visual for drawing: words of a right-to-left paragraph run right
-//! to left, a run of right-to-left words inside a left-to-right paragraph is
-//! reversed, and digits and Latin words keep their own order.
+//! A cooked font's file at run time: shaping (rustybuzz, the `shaping`
+//! feature) and the metrics of characters outside its atlas.
+//!
+//! A font cooked with a shaped script (Arabic, Devanagari and og-i18n's
+//! other `needs_shaping` scripts) carries its font file and every glyph its
+//! substitutions reach from the charset (contextual forms, ligatures,
+//! conjuncts) under U+F0000 + glyph id. A run of such a script is shaped
+//! with rustybuzz in its direction and drawn as those private-use
+//! characters, placed where rustybuzz puts them (marks over their bases,
+//! a right-to-left run already in visual order).
+//!
+//! A font cooked with `runtime true` carries its file too: a character
+//! outside the charset is measured from the file's metrics and recorded,
+//! and the host renders it into a page of its own (`crate::glyphs`) before
+//! the frame is drawn.
 
-use og_i18n::{Direction, is_rtl_char, needs_shaping, paragraph_direction};
+#[cfg(feature = "shaping")]
 use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
 /// Where shaped glyphs are drawn from: U+F0000 + glyph id (og-cook's font cook).
 pub const GLYPH_PUA: u32 = 0xF_0000;
 
-/// A font file for run-time shaping, with a cache of shaped words.
-pub struct Shaper {
+/// One shaped glyph, in em.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Shaped {
+    /// U+F0000 + glyph id.
+    pub ch: char,
+    pub advance: f32,
+    /// The glyph's offset from the pen (y up).
+    pub x: f32,
+    pub y: f32,
+    /// The byte offset in the run of the first character it draws.
+    pub cluster: u32,
+}
+
+/// A shaped run in visual order, or `None` when the font cannot shape it
+/// with the glyphs its atlas has.
+pub type ShapedRun = Option<Arc<Vec<Shaped>>>;
+
+/// A cooked font's file: shaping and run-time glyph metrics.
+pub struct FontFile {
     ttf: Arc<Vec<u8>>,
-    cache: Mutex<HashMap<String, Option<String>>>,
+    units_per_em: f32,
+    #[cfg(feature = "shaping")]
+    shaped: Mutex<HashMap<(String, bool), ShapedRun>>,
+    /// Characters outside the atlas: their advance in em (`None`: not in the font).
+    extra: Mutex<BTreeMap<char, Option<f32>>>,
+    /// Characters outside the atlas laid out since the host last took them.
+    wanted: Mutex<BTreeSet<char>>,
 }
 
-impl std::fmt::Debug for Shaper {
+impl std::fmt::Debug for FontFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Shaper({} bytes)", self.ttf.len())
+        write!(f, "FontFile({} bytes)", self.ttf.len())
     }
 }
 
-/// The most shaped words a font remembers before it starts over.
-const CACHE_WORDS: usize = 4096;
-
-impl Shaper {
-    pub fn new(ttf: Arc<Vec<u8>>) -> Option<Arc<Shaper>> {
-        rustybuzz::Face::from_slice(&ttf, 0)?;
-        Some(Arc::new(Shaper {
-            ttf,
-            cache: Mutex::new(HashMap::new()),
-        }))
-    }
-
-    /// One word shaped: private-use glyph characters in visual order, or
-    /// `None` when the font cannot (the word is drawn as written).
-    pub fn word(&self, word: &str, has: &dyn Fn(char) -> bool) -> Option<String> {
-        if let Some(hit) = self.cache.lock().ok()?.get(word) {
-            return hit.clone();
-        }
-        let shaped = (|| {
-            let face = rustybuzz::Face::from_slice(&self.ttf, 0)?;
-            let mut buf = rustybuzz::UnicodeBuffer::new();
-            buf.push_str(word);
-            buf.guess_segment_properties();
-            let out = rustybuzz::shape(&face, &[], buf);
-            let mut s = String::with_capacity(out.len() * 4);
-            for g in out.glyph_infos() {
-                let c = char::from_u32(GLYPH_PUA + g.glyph_id)?;
-                if !has(c) {
-                    return None;
-                }
-                s.push(c);
-            }
-            Some(s)
-        })();
-        if let Ok(mut c) = self.cache.lock() {
-            if c.len() >= CACHE_WORDS {
-                c.clear();
-            }
-            c.insert(word.to_string(), shaped.clone());
-        }
-        shaped
-    }
-}
-
-impl PartialEq for Shaper {
+impl PartialEq for FontFile {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.ttf, &other.ttf)
     }
 }
 
-fn is_rtl_word(w: &str) -> bool {
-    w.chars().any(|c| is_rtl_char(c) && c.is_alphabetic())
-}
+/// The most shaped runs a font remembers before it starts over.
+#[cfg(feature = "shaping")]
+const CACHE_RUNS: usize = 4096;
 
-/// A word as drawn: shaped when it needs it and the font can, reversed
-/// when it is right to left and unshaped (Hebrew), else as written.
-fn draw_word(word: &str, shaper: Option<&Shaper>, has: &dyn Fn(char) -> bool) -> String {
-    if word.chars().any(needs_shaping)
-        && let Some(s) = shaper.and_then(|s| s.word(word, has))
-    {
-        return s;
+impl FontFile {
+    /// The file of a cooked font (`None`: not a font ttf-parser reads).
+    pub fn new(ttf: Arc<Vec<u8>>) -> Option<Arc<FontFile>> {
+        let face = ttf_parser::Face::parse(&ttf, 0).ok()?;
+        let units_per_em = f32::from(face.units_per_em());
+        Some(Arc::new(FontFile {
+            ttf,
+            units_per_em,
+            #[cfg(feature = "shaping")]
+            shaped: Mutex::new(HashMap::new()),
+            extra: Mutex::new(BTreeMap::new()),
+            wanted: Mutex::new(BTreeSet::new()),
+        }))
     }
-    if is_rtl_word(word) {
-        return word.chars().rev().collect();
-    }
-    word.to_string()
-}
 
-/// Whether a line needs any work to be drawn (shaping or reordering).
-pub fn needs_visual(line: &str) -> bool {
-    line.chars().any(|c| needs_shaping(c) || is_rtl_char(c))
-}
+    /// The font file's bytes.
+    pub fn bytes(&self) -> &Arc<Vec<u8>> {
+        &self.ttf
+    }
 
-/// One line in drawing order (see the module docs). `default` is the UI's
-/// direction, for a line with no strong character.
-pub fn visual(
-    line: &str,
-    default: Direction,
-    shaper: Option<&Shaper>,
-    has: &dyn Fn(char) -> bool,
-) -> String {
-    if !needs_visual(line) {
-        return line.to_string();
+    /// Whether this build shapes (the `shaping` feature).
+    pub fn shapes() -> bool {
+        cfg!(feature = "shaping")
     }
-    // Words and the spaces between them, in logical order.
-    let mut tokens: Vec<(String, bool)> = Vec::new();
-    for c in line.chars() {
-        let space = c == ' ';
-        match tokens.last_mut() {
-            Some((t, s)) if *s == space => t.push(c),
-            _ => tokens.push((c.to_string(), space)),
-        }
-    }
-    let drawn: Vec<(String, bool, bool)> = tokens
-        .iter()
-        .map(|(t, space)| {
-            (
-                if *space {
-                    t.clone()
-                } else {
-                    draw_word(t, shaper, has)
-                },
-                *space,
-                !*space && is_rtl_word(t),
-            )
-        })
-        .collect();
-    let mut out = String::with_capacity(line.len() * 2);
-    match paragraph_direction(line, default) {
-        Direction::Rtl => {
-            for (t, _, _) in drawn.iter().rev() {
-                out.push_str(t);
+
+    /// A run shaped in its direction, in visual order; `None` when this
+    /// build does not shape or the atlas lacks a glyph the result needs
+    /// (`has`), so the run is drawn as written.
+    pub fn shape(&self, run: &str, rtl: bool, has: &dyn Fn(char) -> bool) -> ShapedRun {
+        #[cfg(feature = "shaping")]
+        {
+            let key = (run.to_string(), rtl);
+            if let Some(hit) = self.shaped.lock().ok()?.get(&key) {
+                return hit.clone();
             }
-        }
-        Direction::Ltr => {
-            // Runs of right-to-left words (with the spaces between them) reverse.
-            let mut i = 0;
-            while i < drawn.len() {
-                if drawn[i].2 {
-                    let mut j = i;
-                    while j + 1 < drawn.len()
-                        && (drawn[j + 1].2
-                            || (drawn[j + 1].1 && drawn.get(j + 2).is_some_and(|d| d.2)))
-                    {
-                        j += 1;
-                    }
-                    for (t, _, _) in drawn[i..=j].iter().rev() {
-                        out.push_str(t);
-                    }
-                    i = j + 1;
-                } else {
-                    out.push_str(&drawn[i].0);
-                    i += 1;
+            let shaped = self.shape_now(run, rtl, has).map(Arc::new);
+            if let Ok(mut c) = self.shaped.lock() {
+                if c.len() >= CACHE_RUNS {
+                    c.clear();
                 }
+                c.insert(key, shaped.clone());
             }
+            shaped
+        }
+        #[cfg(not(feature = "shaping"))]
+        {
+            let _ = (run, rtl, has);
+            None
         }
     }
-    out
+
+    #[cfg(feature = "shaping")]
+    fn shape_now(&self, run: &str, rtl: bool, has: &dyn Fn(char) -> bool) -> Option<Vec<Shaped>> {
+        let face = rustybuzz::Face::from_slice(&self.ttf, 0)?;
+        let mut buf = rustybuzz::UnicodeBuffer::new();
+        buf.push_str(run);
+        buf.guess_segment_properties();
+        buf.set_direction(if rtl {
+            rustybuzz::Direction::RightToLeft
+        } else {
+            rustybuzz::Direction::LeftToRight
+        });
+        let out = rustybuzz::shape(&face, &[], buf);
+        let em = self.units_per_em;
+        let mut glyphs = Vec::with_capacity(out.len());
+        for (g, p) in out.glyph_infos().iter().zip(out.glyph_positions()) {
+            let ch = char::from_u32(GLYPH_PUA + g.glyph_id)?;
+            if !has(ch) {
+                return None;
+            }
+            glyphs.push(Shaped {
+                ch,
+                advance: p.x_advance as f32 / em,
+                x: p.x_offset as f32 / em,
+                y: p.y_offset as f32 / em,
+                cluster: g.cluster,
+            });
+        }
+        Some(glyphs)
+    }
+
+    /// A character outside the atlas: its advance in em from the font's
+    /// metrics, recorded for the host to render; `None` when the font does
+    /// not have it either.
+    pub fn advance(&self, c: char) -> Option<f32> {
+        let a = self.lookup(c);
+        if a.is_some()
+            && !c.is_whitespace()
+            && let Ok(mut w) = self.wanted.lock()
+        {
+            w.insert(c);
+        }
+        a
+    }
+
+    /// Whether the font file has `c` (without recording it).
+    pub fn covers(&self, c: char) -> bool {
+        self.lookup(c).is_some()
+    }
+
+    fn lookup(&self, c: char) -> Option<f32> {
+        let mut extra = self.extra.lock().ok()?;
+        *extra.entry(c).or_insert_with(|| {
+            let face = ttf_parser::Face::parse(&self.ttf, 0).ok()?;
+            let g = face.glyph_index(c)?;
+            Some(f32::from(face.glyph_hor_advance(g).unwrap_or(0)) / self.units_per_em)
+        })
+    }
+
+    /// The characters outside the atlas laid out since the last call, in
+    /// code point order: what the host renders before drawing the frame.
+    pub fn take_wanted(&self) -> Vec<char> {
+        self.wanted
+            .lock()
+            .map(|mut w| std::mem::take(&mut *w).into_iter().collect())
+            .unwrap_or_default()
+    }
 }

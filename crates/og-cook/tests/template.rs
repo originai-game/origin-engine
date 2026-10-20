@@ -590,6 +590,64 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     );
     assert!(f.meta.ascender > 0.5 && f.meta.descender < 0.0);
 
+    // Kerning: the GPOS `kern` pairs between cooked characters, sorted and
+    // unique, in em; Latin pairs the font tightens ("AV", "To") come out
+    // negative, a pair it does not kern ("HH") is absent.
+    assert!(!f.kerning.is_empty(), "the template font kerns");
+    assert!(
+        f.kerning
+            .windows(2)
+            .all(|w| (w[0].left, w[0].right) < (w[1].left, w[1].right)),
+        "sorted by (left, right), no duplicate"
+    );
+    let kern = |a: char, b: char| {
+        f.kerning
+            .iter()
+            .find(|k| k.left == a as u32 && k.right == b as u32)
+            .map(|k| k.adjust)
+    };
+    assert!(kern('A', 'V').is_some_and(|k| k < 0.0) && kern('T', 'o').is_some_and(|k| k < -0.05));
+    assert_eq!(kern('H', 'H'), None);
+    // Error correction (msdfgen's): between two neighbouring texels that
+    // the true distance (alpha) puts on the same side, well away from an
+    // edge, the interpolated multi-channel median stays on that side, so no
+    // corner draws a false spike or notch where the channels clash.
+    let mut clashes = 0;
+    for g in f
+        .glyphs
+        .iter()
+        .filter(|g| g.atlas_w > 0 && g.codepoint < 0xF_0000)
+    {
+        let page = &f.pages[g.page as usize];
+        let px = |x: u32, y: u32| &page.rgba[((y * page.width + x) * 4) as usize..][..4];
+        for y in g.atlas_y..g.atlas_y + g.atlas_h {
+            for x in g.atlas_x..g.atlas_x + g.atlas_w {
+                let a = px(x, y);
+                for (nx, ny) in [(x + 1, y), (x, y + 1)] {
+                    if nx >= g.atlas_x + g.atlas_w || ny >= g.atlas_y + g.atlas_h {
+                        continue;
+                    }
+                    let b = px(nx, ny);
+                    let (ta, tb) = (a[3] as i32 - 128, b[3] as i32 - 128);
+                    if ta.signum() != tb.signum() || ta.abs() < 24 || tb.abs() < 24 {
+                        continue;
+                    }
+                    let mid: Vec<u8> = (0..3)
+                        .map(|c| ((a[c] as u32 + b[c] as u32) / 2) as u8)
+                        .collect();
+                    if (median(&mid) as i32 - 128).signum() != ta.signum() {
+                        clashes += 1;
+                    }
+                }
+            }
+        }
+    }
+    // Measured on this font: 474 such clashes without the correction, 224
+    // with it (what remains is the sharp corners the median keeps and the
+    // rounded true distance does not); a clash per two glyphs is the bound.
+    let drawn = f.glyphs.iter().filter(|g| g.atlas_w > 0).count();
+    assert!(clashes * 2 < drawn, "{clashes} clashes over {drawn} glyphs");
+
     // Scene: entities, nesting, model instances and the Transform table.
     let scene = b.load_scene("scenes/main.ogt").unwrap();
     assert_eq!(scene.name, "Main");

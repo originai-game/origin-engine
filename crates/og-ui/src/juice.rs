@@ -249,6 +249,8 @@ impl Ui {
             align: desc.align,
             wrap: false,
             font: desc.font,
+            ellipsis: false,
+            max_lines: 0,
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.

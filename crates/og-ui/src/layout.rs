@@ -74,6 +74,16 @@ impl Rect {
     }
 
     /// Grown by `d` on every side.
+    /// The rectangle less `pad` on each side (never negative).
+    pub fn inset(&self, pad: &Insets) -> Rect {
+        Rect::new(
+            self.x + pad.left,
+            self.y + pad.top,
+            (self.width - pad.horizontal()).max(0.0),
+            (self.height - pad.vertical()).max(0.0),
+        )
+    }
+
     pub fn outset(&self, d: f32) -> Rect {
         Rect::new(
             self.x - d,
@@ -459,6 +469,32 @@ pub enum FontRole {
     Display,
     /// Code, ids and prices (falls back to `Body`).
     Mono,
+    /// Levels and scores (the design language's `font-rounded`; falls back
+    /// to `Display`, then `Body`).
+    Rounded,
+}
+
+impl FontRole {
+    /// The role a skin's text effects are keyed by (`body`, `display`,
+    /// `numeric`): a rounded text takes the display role's.
+    pub fn skin_index(self) -> usize {
+        match self {
+            FontRole::Body => 0,
+            FontRole::Display | FontRole::Rounded => 1,
+            FontRole::Mono => 2,
+        }
+    }
+
+    /// The role an IDL name names (`body`, `display`, `mono`, `rounded`).
+    pub fn from_name(name: &str) -> Option<FontRole> {
+        Some(match name {
+            "body" => FontRole::Body,
+            "display" => FontRole::Display,
+            "mono" => FontRole::Mono,
+            "rounded" => FontRole::Rounded,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -469,6 +505,11 @@ pub(crate) struct TextContent {
     pub align: TextAlign,
     pub wrap: bool,
     pub font: FontRole,
+    /// Cut with "…" where it does not fit: a one-line text at its width, a
+    /// wrapping one at its last line (`max_lines`).
+    pub ellipsis: bool,
+    /// The most lines a wrapping text shows (0: no limit).
+    pub max_lines: u32,
 }
 
 impl TextContent {
@@ -484,6 +525,42 @@ impl TextContent {
         } else {
             self.step.line_height
         }
+    }
+}
+
+/// The ellipsis a font draws: "…" when it has the character, else "...".
+pub(crate) fn ellipsis_of(m: &FontMetrics) -> &'static str {
+    if m.has('…') { "…" } else { "..." }
+}
+
+/// Ellipsis truncation: lines past `max_lines` go, and the last line kept
+/// (or a one-line text) wider than `width` loses characters from its end
+/// until it fits with the ellipsis after it (a cut between words drops the
+/// space before the ellipsis).
+fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMetrics, width: f32) {
+    let (size, tracking) = (t.step.size, t.tracking());
+    let cut = t.max_lines > 0 && lines.len() > t.max_lines as usize;
+    if cut {
+        lines.truncate(t.max_lines as usize);
+    }
+    let Some(last) = lines.last_mut() else {
+        return;
+    };
+    if !cut && last.width <= width {
+        return;
+    }
+    let dots = ellipsis_of(m);
+    let mut chars: Vec<char> = last.text.chars().collect();
+    loop {
+        let body: String = chars.iter().collect();
+        let text = format!("{}{dots}", body.trim_end());
+        let w = m.measure_tracked(&text, size, tracking);
+        if w <= width || chars.is_empty() {
+            last.text = text;
+            last.width = w;
+            return;
+        }
+        chars.pop();
     }
 }
 
@@ -528,13 +605,33 @@ pub(crate) enum Widget {
     Toggle {
         on: bool,
     },
-    Field {
-        focused: bool,
-        caret: Option<usize>,
+    Field(EditView),
+    /// A multi-line text area: its text (the value with any composition),
+    /// wrapped at draw time, and its placeholder.
+    TextArea {
+        edit: EditView,
+        text: String,
+        placeholder: String,
+        line_height: f32,
     },
     Tooltip,
     /// A virtualised list or grid's filler: no drawing.
     Spacer,
+}
+
+/// A focused text control's caret, selection and composition, in
+/// characters of the text it shows, and its scroll.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct EditView {
+    pub focused: bool,
+    pub caret: usize,
+    /// The selection `[start, end)` (empty: none).
+    pub selection: (usize, usize),
+    /// The composition's range, drawn underlined.
+    pub composition: Option<(usize, usize)>,
+    pub scroll: f32,
+    /// The caret shows this tick (its blink).
+    pub caret_on: bool,
 }
 
 pub(crate) const NONE: usize = usize::MAX;
@@ -563,6 +660,8 @@ pub(crate) struct Node {
     /// A disabled control (the probe reports it; contrast rules exempt it).
     pub disabled: bool,
     pub focusable: bool,
+    /// A multi-line text control: ↑ and ↓ belong to it while it is edited.
+    pub multiline: bool,
     /// For a floating element: the node it is placed against.
     pub anchor: usize,
     /// How it is placed when it is a layer of its own.
@@ -635,6 +734,7 @@ impl Node {
             probe_text: String::new(),
             disabled: false,
             focusable: false,
+            multiline: false,
             anchor: NONE,
             float: Float::None,
             fx: None,
@@ -821,7 +921,11 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         Content::Text(t) => {
             let m = fonts.metrics_for(t.font, &t.text);
             let pref = widest_line(&t.text, m, t.step.size, t.tracking());
-            let min = if t.wrap {
+            let min = if t.ellipsis {
+                // It can shrink to its ellipsis.
+                m.measure_tracked(ellipsis_of(m), t.step.size, t.tracking())
+                    .min(pref)
+            } else if t.wrap {
                 longest_word(&t.text, m, t.step.size, t.tracking())
             } else {
                 pref
@@ -919,13 +1023,16 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         let m = fonts.metrics_for(t.font, &t.text);
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.
-        let lines = break_lines(
+        let mut lines = break_lines(
             &t.text,
             m,
             t.step.size,
             t.tracking(),
             t.wrap.then_some(inner + 0.5),
         );
+        if t.ellipsis {
+            truncate_lines(&mut lines, t, m, inner + 0.5);
+        }
         nodes[i].lines = lines;
         return;
     }

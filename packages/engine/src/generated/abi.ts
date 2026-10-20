@@ -425,6 +425,8 @@ export interface HostAbi<A, V> {
   og_ui_toggle(id: string, on: boolean, label: string): string;
   /** `og.ui.textField` */
   og_ui_text_field(id: string, value: string, desc: string | undefined): string;
+  /** `og.ui.textArea` */
+  og_ui_text_area(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.tooltip` */
   og_ui_tooltip(text: string): void;
   /** `og.ui.breakpoint` */
@@ -808,6 +810,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_slider",
   "og_ui_toggle",
   "og_ui_text_field",
+  "og_ui_text_area",
   "og_ui_tooltip",
   "og_ui_breakpoint",
   "og_ui_frame_viewport",

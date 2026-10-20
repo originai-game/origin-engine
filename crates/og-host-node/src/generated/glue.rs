@@ -1263,6 +1263,12 @@ pub fn og_ui_text_field(env: Env, id: String, value: String, desc: Option<String
     <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
 }
 
+#[napi(js_name = "og_ui_text_area")]
+pub fn og_ui_text_area(env: Env, id: String, value: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_text_area(&Host, id, value, desc)
+}
+
 #[napi(js_name = "og_ui_tooltip")]
 pub fn og_ui_tooltip(env: Env, text: String) {
     let _env = crate::EnvScope::enter(&env);

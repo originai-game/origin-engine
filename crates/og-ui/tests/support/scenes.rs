@@ -302,6 +302,7 @@ pub fn add_font(scene: &mut RenderScene, files: &FontFiles) -> UiFont {
         distance_range: number("atlas", "distanceRange"),
         line_height: number("metrics", "lineHeight"),
         glyphs,
+        kerning: Vec::new(),
     };
     // yOrigin top: the JSON's ascender is negative, its descender positive.
     let metrics = FontMetrics::from_msdf(&font).with_extents(

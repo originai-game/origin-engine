@@ -99,29 +99,3 @@ pub fn out_dir() -> PathBuf {
     std::fs::create_dir_all(&dir).expect("out dir");
     dir
 }
-
-/// og-input's layer behind og-probe's `InputSink`, until og-probe adopts
-/// og-input: the probe's injected events (the same protocol 5 shape) are
-/// handed to `og_input::InputLayer`, so the world holds og-input's `og.Input`.
-pub struct ProbeInput(pub og_input::InputLayer);
-
-impl og_probe::InputSink for ProbeInput {
-    fn attach(&mut self, world: &mut og_ecs::World) -> og_core::Result<()> {
-        og_input::InputSink::attach(&mut self.0, world)
-    }
-
-    fn inject(&mut self, world: &mut og_ecs::World, event: &og_probe::InjectedInput) -> bool {
-        match og_input::InjectedInput::from_json(&event.to_json()) {
-            Some(e) => og_input::InputSink::inject(&mut self.0, world, &e),
-            None => false,
-        }
-    }
-
-    fn end_tick(&mut self, world: &mut og_ecs::World) {
-        og_input::InputSink::end_tick(&mut self.0, world);
-    }
-
-    fn accepted(&self) -> u32 {
-        og_input::InputSink::accepted(&self.0)
-    }
-}

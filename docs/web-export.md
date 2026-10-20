@@ -251,8 +251,8 @@ never downloads the physics of the other profile:
 
 | Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-20, with main's physical materials) |
 |---|---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d` | rapier3d | 2,853,865 B (68 %) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d` | rapier2d | 2,688,261 B (64 %) |
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 2,853,865 B (68 %) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,shaping` | rapier2d | 2,688,261 B (64 %) |
 | lanes | `dist/web-publish/origin-engine-lanes*` | `--features publish` (both profiles), wasm atomics (§Lanes) | both | 3,230,782 B (77 %, the largest download) |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both | not shipped |
 
