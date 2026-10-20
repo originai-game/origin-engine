@@ -8,9 +8,11 @@
 // the time away (the save's answer's time less that) is credited at half
 // the rate.
 //
-// `start` loads the skin, the strings, the sounds and the orb's art and
-// spawns the rows: the orb and its glow, 48 motes (12 per generator), the
-// burst pools, a voice per sound and the music. The systems are in
+// The look (GameDesc.look, a file under assets/looks/) sets the frame's
+// treatment and the UI skin before start runs. `start` loads the strings,
+// the sounds and the orb's art and spawns the rows: the orb and its glow,
+// 48 motes (12 per generator), the burst pools, a voice per sound and the
+// music. The systems are in
 // src/systems.ts, the formulas and big numbers in src/numbers.ts, the
 // screens and the save in src/ui.ts and the state in src/components.ts.
 
@@ -33,13 +35,12 @@ function must<T>(r: { ok: true; value?: T } | { ok: false; reason: string }): T 
 
 function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
-  const skin = must(og.load.skin(world, "skins/sparkorb/skin.ogt"));
+  // GameDesc.look set the frame and loaded the skin before start; the UI
+  // keeps that skin and adds the sounds.
+  const skin = og.render.look(world)?.skin ?? null;
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, { skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
 
-  const settings = must(world.resource(og.RenderSettings));
-  settings.environmentIntensity = 0;
-  settings.toneMapped = false;
   const camera = must(world.resource(og.Camera));
   camera.orthographic = true;
   camera.height = 10;
@@ -206,6 +207,7 @@ export default og.game({
   resources: [Game, Tuning, Prefs],
   systems: [Ui, OrbTap, Economy, Motes, Bursts, Voices],
   render: { antialias: "off" },
+  look: "looks/idle.ogt",
   start,
   commands: { play, sparks, own, supernova, relaunch, stale_save: staleSave, viewport, language },
   commandHelp: {

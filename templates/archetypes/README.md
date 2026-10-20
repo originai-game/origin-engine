@@ -61,6 +61,11 @@ commands its playtests use and what a Maker changes first.
   og.CharacterController with blend trees and IK, navmesh sentinels on
   og.ai, particles, decals and the post stack, on the fantasy style pack
   (its README).
+- **The look as data.** `idle/` names its frame treatment and skin in
+  `assets/looks/idle.ogt` through `GameDesc.look` (og-taste §12); the
+  others set theirs in `start` until they move to a look. A look that
+  extends a catalogue preset changes the frames, so `references/` are
+  recorded again with it.
 - **Pools, not spawning in systems.** Obstacles, coins and tiles are spawned
   in `start` and recycled by systems.
 - **Tunables.** The `Tuning` block (the scene's, or the component's
@@ -87,4 +92,8 @@ cd my-dive && bun install && og test . && og run .
 It copies the directory (without `cooked/`, `dist/`, `og-out/` and
 `.og/`), sets `name` and `id` in `project.ogt` and `package.json`, and
 writes the archetype's `gitattributes` (media through Git LFS) as
-`.gitattributes`.
+`.gitattributes`. It gives the game its look, `assets/looks/<id>.ogt`
+named by `GameDesc.look` (the archetype's own carried over, or one that
+sets nothing), and `--look <slug>` or `--premise "<line>"` makes it extend
+a catalogue preset: the archetype's reference frames then no longer match,
+and create says to record them again (`packages/create/README.md`).

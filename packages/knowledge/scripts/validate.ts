@@ -80,6 +80,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
 
   skills(rules, files, problems);
   coherence(files, problems);
+  apiNames(roots, files, problems);
   looks(roots, files, problems);
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
@@ -281,6 +282,85 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
   }
 }
 
+/** The names the generated API answers to, read from packages/engine/schema/api.schema.json. */
+export interface ApiNames {
+  /** `og.<name>`: root functions, component, resource and event tokens, and module namespaces. */
+  root: Set<string>;
+  /** `og.<module>.<name>`: a namespace module's functions and values. */
+  members: Map<string, Set<string>>;
+  /** `<Type>.<field>` and `og.<Token>.<field>`: the fields of every struct, desc, component, resource and event. */
+  fields: Map<string, Set<string>>;
+}
+
+/** `og.` names a skill may write that are not API: each with why. */
+export const NOT_API: Record<string, string> = {
+  "og.settings": "the platform store key settings are saved under (og-platform-sdk §2)",
+  "og.AudioPlayback": "an engine-owned component dump_entity shows while a voice plays; game code never names it",
+  "og.AudioStream": "an engine-owned component dump_entity shows on a streamed voice; game code never names it",
+  "og.physics.queries": "the engine system dump_world lists that records the colliders a system's queries see",
+};
+
+export function readApiNames(engine: string): ApiNames | undefined {
+  const path = join(engine, "schema", "api.schema.json");
+  if (!existsSync(path)) return undefined;
+  const schema = JSON.parse(readFileSync(path, "utf8")) as {
+    "x-og-modules"?: { name: string; place: string; functions?: { name: string }[]; values?: { name: string }[] }[];
+    $defs?: Record<string, { "x-og-kind"?: string; properties?: Record<string, unknown> }>;
+  };
+  const names: ApiNames = { root: new Set(), members: new Map(), fields: new Map() };
+  for (const m of schema["x-og-modules"] ?? []) {
+    const fns = [...(m.functions ?? []), ...(m.values ?? [])].map((f) => f.name);
+    if (m.place === "root") for (const f of fns) names.root.add(f);
+    if (m.place === "namespace") {
+      names.root.add(m.name);
+      names.members.set(m.name, new Set(fns));
+    }
+  }
+  for (const [name, def] of Object.entries(schema.$defs ?? {})) {
+    const kind = def["x-og-kind"] ?? "";
+    if (["component", "resource", "event"].includes(kind)) names.root.add(name);
+    if (def.properties) names.fields.set(name, new Set(Object.keys(def.properties)));
+  }
+  return names;
+}
+
+/**
+ * Every API name a skill writes resolves in the generated API: `og.<x>` is a
+ * root function, a component, resource or event token or a module
+ * namespace; `og.<module>.<y>` one of the module's functions or values;
+ * `og.<Token>.<field>` and `<Type>.<field>` (for a struct, desc, component,
+ * resource or event the IDL declares) one of its fields. Code blocks are
+ * read too: an example is API as much as prose is. A file name such as
+ * `away.og.ts` is not a name.
+ */
+function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+  const api = readApiNames(roots.engine);
+  if (!api) return;
+  for (const f of files) {
+    const m = /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path);
+    if (!m || !isText(f.bytes)) continue;
+    const at = `skills/${m[1]}/SKILL.md`;
+    const text = decoder.decode(f.bytes);
+    const bad = new Set<string>();
+    for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?/g)) {
+      const [whole, head, member] = [x[0], x[1]!, x[2]];
+      if (whole in NOT_API || `og.${head}` in NOT_API) continue;
+      if (!api.root.has(head)) {
+        bad.add(`og.${head}`);
+        continue;
+      }
+      if (member === undefined) continue;
+      const ok = api.members.has(head) ? api.members.get(head)!.has(member) : (api.fields.get(head)?.has(member) ?? false);
+      if (!ok) bad.add(whole);
+    }
+    for (const x of text.matchAll(/(?<![\w./@-])([A-Z][A-Za-z0-9]*)\.([a-z]\w*)\b/g)) {
+      const have = api.fields.get(x[1]!);
+      if (have && !have.has(x[2]!)) bad.add(x[0]);
+    }
+    for (const b of bad) problems.push(`${at}: names \`${b}\`, which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts`);
+  }
+}
+
 /** A style catalogue entry (looks/catalogue.json; og-taste §12). */
 interface Style {
   slug: string;
@@ -376,6 +456,14 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
       else if (existsSync(preset) && !/^type look\s*$/m.test(readFileSync(preset, "utf8"))) problems.push(`${id}: ${look.preset} is not an .ogt of type look`);
     }
     if (tasteText && !tasteText.includes(`\`${s.slug}\``)) problems.push(`skills/og-taste/SKILL.md: the style catalogue (§12) does not list \`${s.slug}\``);
+    else if (tasteText) {
+      // §12's row for the style says what the catalogue says: family, name, support, skin.
+      const row = new RegExp(`^\\| \`${s.slug.replace(/[-]/g, "\\-")}\` \\| ([^|]+) \\| ([^|]+) \\| ([^|]+) \\| \`([^\`]+)\` \\|$`, "m").exec(tasteText);
+      const want = [cat.categories?.[s.category] ?? s.category, s.name, look.support, s.skin];
+      const have = row?.slice(1, 5).map((x) => x.trim());
+      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | family | style | support | skin |)`);
+      else if (have.join("|") !== want.join("|")) problems.push(`skills/og-taste/SKILL.md: §12's row for \`${s.slug}\` reads ${have.join(", ")}; the catalogue says ${want.join(", ")}`);
+    }
     const all = JSON.stringify(s);
     if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
   }
