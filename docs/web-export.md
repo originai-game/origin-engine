@@ -249,11 +249,11 @@ One engine module per download (owed row 44). A publish build ships the
 variant of the game's physics profile (project.ogt `profile`), so a page
 never downloads the physics of the other profile:
 
-| Variant | Where | Built with (og-host-web) | Physics | brotli (2026-10-20) |
+| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-20) |
 |---|---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d` | rapier3d | see below |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d` | rapier2d | see below |
-| lanes | `dist/web-publish/origin-engine-lanes*` | `--features publish` (both profiles), wasm atomics (§Lanes) | both | see below |
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d` | rapier3d | 2,835,470 B (67 %) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d` | rapier2d | 2,672,388 B (63 %) |
+| lanes | `dist/web-publish/origin-engine-lanes*` | `--features publish` (both profiles), wasm atomics (§Lanes) | both | 3,211,102 B (76 %, the largest download) |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both | not shipped |
 
 `og build --publish` copies the variant of `profile` as
