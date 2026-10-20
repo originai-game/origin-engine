@@ -22,7 +22,8 @@ function stage(name: string, settings: string | null): string {
   const dir = join(work, name);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
-  cpSync(template, dir, { recursive: true, filter: (p) => !/\/(cooked|node_modules|out)(\/|$)/.test(p) });
+  cpSync(template, dir, { recursive: true });
+  for (const d of ["cooked", "node_modules", "out"]) rmSync(join(dir, d), { recursive: true, force: true });
   if (settings !== null) writeFileSync(join(dir, "assets", "audio", "orbit.wav.ogt"), settings);
   return dir;
 }
