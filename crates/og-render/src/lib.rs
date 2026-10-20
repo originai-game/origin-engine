@@ -715,6 +715,11 @@ pub struct FrameStats {
     /// instances drawn come from different frames and need not add up to
     /// `instances`.
     pub counts_lag: u32,
+    /// Whether TAA blended this frame with the earlier frames' history:
+    /// false on the first frame, after [`Renderer::reset_history`] (a camera
+    /// cut), a resize, a new scene, a change of the stylisation's
+    /// primitives ([`Stylise::chain_bits`]), and without TAA.
+    pub taa_history: bool,
 }
 
 /// An RGBA8 frame, rows top to bottom.
@@ -1183,6 +1188,9 @@ pub struct Renderer {
     culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
+    /// The last frame's stylisation primitives, on or off
+    /// ([`Stylise::chain_bits`]): a change resets the TAA history.
+    stylise_chain: Option<u16>,
     /// The array sprite pipelines, made on the first frame that draws one.
     sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
 }
@@ -2334,6 +2342,7 @@ impl Renderer {
             gpu_cull: None,
             culling_counts: false,
             taa_history: None,
+            stylise_chain: None,
             sprite_arrays: None,
         })
     }
@@ -3904,6 +3913,14 @@ impl Renderer {
             return Err(RenderError::InvalidHandle(stale));
         }
         self.sync(scene)?;
+        // A look that switches the stylisation on or off (passes added or
+        // removed, the pixel grid, the material style) is a cut: no ghost of
+        // the old look in the first frame of the new one.
+        let chain = scene.stylise.chain_bits();
+        if self.stylise_chain.is_some_and(|c| c != chain) {
+            self.taa_history = None;
+        }
+        self.stylise_chain = Some(chain);
         let (grid, upscale, grid_offset) = self.pixel_grid(scene.stylise.pixel);
         self.scene_size(grid.0, grid.1);
         self.grow_local_shadows(scene);
@@ -4892,6 +4909,7 @@ impl Renderer {
         self.queue
             .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
         let slot = (self.frame_index % 2) as usize;
+        let taa_blend = taa && self.taa_history.is_some();
         if taa {
             let prev = self.taa_history.unwrap_or(cam.view_proj);
             let taa_uniform = post::TaaUniform {
@@ -5276,6 +5294,7 @@ impl Renderer {
             occluders_2d,
             skinned_instances: scene.skinned_instances.len() as u32,
             joints: joint_matrices.len() as u32,
+            taa_history: taa_blend,
             ..Default::default()
         };
         if let Some((lagged, occluder_draws)) = gpu_counts {
