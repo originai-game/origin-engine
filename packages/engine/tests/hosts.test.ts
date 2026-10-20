@@ -59,7 +59,7 @@ function physics(host: string, ...extra: string[]) {
 }
 
 for (const profile of ["3d", "2d"]) {
-  test(`a ${profile} physics scene gives the same world hash on both hosts after 600 ticks`, () => {
+  test.skipIf(STALE_WASM)(`a ${profile} physics scene gives the same world hash on both hosts after 600 ticks`, () => {
     const node = physics("node", "--profile", profile);
     const web = physics("web", "--profile", profile);
     expect(node.tick).toBe(600);
