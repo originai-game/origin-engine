@@ -1,8 +1,25 @@
 // The standard lit fragment shader, after pbr.wgsl. The physical
 // pipelines use physical.wgsl's instead.
 
+// False in the lean pipelines (pbr_lean.wgsl) whose fragments take no
+// screen derivative: a plain material has no alpha cut-off and no
+// dissolve, so it never discards, and a shader without a discard keeps
+// the early depth test (Apple's hidden surface removal among them): the
+// same pixels, each shaded once. Where derivatives are taken (flat
+// shading, the frame's decals) the discard stays even though it is never
+// taken: on Metal a shader with a discard computes screen derivatives
+// differently from one without (flat-shaded normals moved by up to
+// 122/255, decal texels by 5/255 in og-gfx runs), and the lean pixels
+// must be the full path's.
+override DISCARD: bool = true;
+
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
+  return lit_fragment(in);
+}
+
+// The lit shading of a fragment (`fs`, and `fs_lean`).
+fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
   let base_sample = textureSample(base_color_tex, material_sampler, uv);
   // A material shader's hooks (identities with the built-in hooks).
@@ -17,8 +34,9 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let base = surface_color(hook, params, material.base_color * base_sample * in.color);
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
-  // One discard for the alpha cut-off and the dissolve (see dissolve_at).
-  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5) {
+  // One discard for the alpha cut-off and the dissolve (see dissolve_at);
+  // none in most lean pipelines (DISCARD).
+  if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5)) {
     discard;
   }
   let dissolve_edge = dissolve.rgb;

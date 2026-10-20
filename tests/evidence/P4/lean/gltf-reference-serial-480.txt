@@ -1,0 +1,16 @@
+base gpu=3.943
+base gpu=4.204
+base gpu=4.244
+base gpu=4.418
+base gpu=4.465
+base gpu=4.504
+base gpu=4.545
+base gpu=4.833
+final gpu=1.968
+final gpu=4.071
+final gpu=4.078
+final gpu=4.093
+final gpu=4.096
+final gpu=4.295
+final gpu=4.304
+final gpu=4.608

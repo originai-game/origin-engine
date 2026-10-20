@@ -8,13 +8,17 @@
 
 use crate::{clusters::LightTables, skin::PaletteMode};
 
-/// One module: a label, whether the GL tier compiles it, and its WGSL.
+/// One module: a label, whether the GL tier compiles it, its WGSL and the
+/// pipeline-overridable constants a pipeline sets on it.
 #[derive(Clone, Debug)]
 pub struct ShaderSource {
     pub label: String,
     /// The GL tier (WebGL2) compiles this module (translated to GLSL ES 3.0).
     pub gl: bool,
     pub wgsl: String,
+    /// Overrides set for this variant (the rest keep their defaults): the
+    /// lean lit pipelines' `DISCARD` false, which drops the fragment discard.
+    pub constants: Vec<(String, f64)>,
 }
 
 /// Every module the renderer can compile on the full tier (`full`) or the
@@ -29,6 +33,7 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             label: label.to_string(),
             gl: !full,
             wgsl,
+            constants: Vec::new(),
         })
     };
     let tables = if full {
@@ -113,6 +118,20 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             crate::cull_gpu::hiz_source(true),
         );
         add("occluder depth", crate::cull_gpu::DEPTH_WGSL.to_string());
+    }
+    // The lean lit pipelines' variant of the standard lit module (plain
+    // materials, `pbr_lean.wgsl`): `DISCARD` false, no discard.
+    for &palette in palettes {
+        let p = match palette {
+            PaletteMode::Storage => "storage palette",
+            PaletteMode::Texture => "texture palette",
+        };
+        out.push(ShaderSource {
+            label: format!("pbr lean ({p})"),
+            gl: !full,
+            wgsl: crate::lit_source_with(&hooks, palette, tables),
+            constants: vec![("DISCARD".to_string(), 0.0)],
+        });
     }
     out
 }

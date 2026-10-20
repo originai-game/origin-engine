@@ -517,6 +517,43 @@ is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
 (`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
 and adapter, compared with 15 % tolerance.
 
+### Lit pipeline variants
+
+The standard lit shader (`pbr.wgsl`, `pbr_fs.wgsl`, `pbr_prepass.wgsl`)
+serves every material: a vertex reads the whole 64-byte `Vertex`
+(position, normal, uv, colour, tangent) and hands on 23 interpolated
+floats for maps, normal maps, the dissolve, retro 3D's affine uv and the
+material shader hooks. Its pipelines are keyed (side, blended, skinned,
+effects); `EFFECTS` false compiles the toon, rim, flash, dissolve, decal
+and AO code out. Physical materials take `physical.wgsl`'s.
+
+A **plain** material takes the lean pipelines (`pbr_lean.wgsl`;
+`GpuMaterial::lean`): opaque, not physical, no texture of any kind, no
+toon, rim, flash, dissolve or outline, no alpha cut and no material
+shader (the material style counts: a styled material is judged as
+styled). Its unskinned instances draw with `vs_lean` / `fs_lean`, which
+read position, normal and colour and interpolate 10 floats (world
+position, normal, colour), and in the prepass with `vs_prepass_lean` /
+`fs_prepass_lean` (position and normal in; world position, normal and the
+two motion clips out, 14 floats). Positions come from the same
+`lit_place` as the full path's (retro 3D's snap included) and the
+fragments run the full path's shading (`lit_fragment`,
+`prepass_targets`; the white default maps are still sampled, at uv 0),
+so the pixels are the full pipeline's byte for byte. The `DISCARD`
+override drops the fragment discard a plain material never takes, which
+keeps the early depth test (hidden surface removal on Apple GPUs), except
+where the fragments take screen derivatives (flat shading, or decals in
+the frame; `Batch::derivatives`): on Metal a shader with a discard
+computes derivatives differently, so there the discard stays. The lean
+pipelines are keyed (side, effects, derivatives), the lean prepass (side,
+derivatives), made at first use: one of each for a typical scene, at most
+12 and 6. Shadow casters that are not skinned, dissolving or hooked read
+their position alone whatever their material (`shadow.wgsl` `vs_lean` /
+`fs_lean`: the world position the only varying; no extra pipeline).
+spheres-20k on an M4 Pro (dev og-gfx): 7.1 to 4.6 ms a frame, every
+Metal `--all` frame byte-identical to the full path's
+(`tests/evidence/P4/lean/`).
+
 ## The 2D batch (E4)
 
 Everything world-space 2D goes through one sorted list per frame: sprites,
@@ -1212,8 +1249,14 @@ with their mips, chosen per tier and reported in
     134 us to upload, encode and submit and 279 to 385 us of GPU on Metal
     (`tests/evidence/P4/perf/clusters-compute.md`,
     og-tests `tests/cluster_compute.rs`). The CPU build stays on both tiers.
-- Still owed: the per-instance GPU cost of the lit pass (the sphere field's
-  frame is GPU-bound at about 4 ms in Chrome against three.js's 1.5 ms on
-  WebGPU: a 64-byte vertex and 23 interpolated floats a vertex, where
-  three.js's standard material interpolates about 7;
-  `tests/evidence/P4/perf/threejs-spheres.md`).
+  - **The lit pass's per-instance GPU cost** (owed row 50's remainder,
+    branch `r-lean`): plain materials draw through lean lit, prepass and
+    shadow pipelines ([Lit pipeline variants](#lit-pipeline-variants)):
+    10 interpolated floats instead of 23, only the attributes read, no
+    discard where no derivative is taken. spheres-20k natively 7.1 to
+    4.6 ms (GPU-bound to about CPU-bound in the dev build), the §7
+    reference scene unchanged, every Metal `og-gfx --all` frame
+    byte-identical to main's (`tests/evidence/P4/lean/`). The instance
+    transform stays 64 bytes: a 3x4 would save a quarter of an upload that
+    costs 0.04 ms natively. The browser comparison with three.js
+    (`tools/bench/threejs-compare.ts`) has not been run again.

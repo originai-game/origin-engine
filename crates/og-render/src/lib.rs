@@ -162,6 +162,8 @@ const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
 const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
 const PBR_FS_WGSL: &str = include_str!("../shaders/pbr_fs.wgsl");
 const PBR_PREPASS_WGSL: &str = include_str!("../shaders/pbr_prepass.wgsl");
+/// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
+const PBR_LEAN_WGSL: &str = include_str!("../shaders/pbr_lean.wgsl");
 const PHYSICAL_WGSL: &str = include_str!("../shaders/physical.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
@@ -174,7 +176,7 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
@@ -757,6 +759,57 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLay
     attributes: &wgpu::vertex_attr_array![4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4],
 };
 
+/// One attribute of [`Vertex`] at its offset in the shared vertex buffer.
+const fn vertex_attribute(
+    format: wgpu::VertexFormat,
+    offset: usize,
+    location: u32,
+) -> wgpu::VertexAttribute {
+    wgpu::VertexAttribute {
+        format,
+        offset: offset as u64,
+        shader_location: location,
+    }
+}
+
+const POSITION_ATTRIBUTE: wgpu::VertexAttribute = vertex_attribute(
+    wgpu::VertexFormat::Float32x3,
+    std::mem::offset_of!(Vertex, position),
+    0,
+);
+const NORMAL_ATTRIBUTE: wgpu::VertexAttribute = vertex_attribute(
+    wgpu::VertexFormat::Float32x3,
+    std::mem::offset_of!(Vertex, normal),
+    1,
+);
+const COLOR_ATTRIBUTE: wgpu::VertexAttribute = vertex_attribute(
+    wgpu::VertexFormat::Float32x4,
+    std::mem::offset_of!(Vertex, color),
+    3,
+);
+
+/// The shared vertex buffer as the lean lit stage reads it
+/// (`pbr_lean.wgsl` `vs_lean`): position, normal and colour.
+const LEAN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: std::mem::size_of::<Vertex>() as u64,
+    step_mode: wgpu::VertexStepMode::Vertex,
+    attributes: &[POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE, COLOR_ATTRIBUTE],
+};
+
+/// As the lean prepass reads it (`vs_prepass_lean`): position and normal.
+const POSITION_NORMAL_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: std::mem::size_of::<Vertex>() as u64,
+    step_mode: wgpu::VertexStepMode::Vertex,
+    attributes: &[POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE],
+};
+
+/// As the lean shadow caster reads it (`shadow.wgsl` `vs_lean`): position.
+const POSITION_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: std::mem::size_of::<Vertex>() as u64,
+    step_mode: wgpu::VertexStepMode::Vertex,
+    attributes: &[POSITION_ATTRIBUTE],
+};
+
 struct GpuMesh {
     vertices: wgpu::Buffer,
     indices: wgpu::Buffer,
@@ -791,6 +844,14 @@ struct GpuMaterial {
     /// Writes exactly the depth of its triangles (opaque, no alpha cut,
     /// dissolve or shader): GPU culling may draw it as an occluder.
     occluder: bool,
+    /// Plain: an occluder with no texture, no effect (toon, rim, flash,
+    /// outline) and not physical. Its unskinned instances draw through the
+    /// lean lit and prepass pipelines (`pbr_lean.wgsl`): the same pixels
+    /// with fewer attributes read, fewer varyings and (without screen
+    /// derivatives) no discard.
+    lean: bool,
+    /// Flat-shaded: its normals come from screen derivatives.
+    flat: bool,
 }
 
 struct GpuTexture {
@@ -925,6 +986,12 @@ struct Batch {
     effects: bool,
     /// Its material's shader.
     shader: Option<usize>,
+    /// Drawn with the lean pipelines ([`GpuMaterial::lean`]; never skinned).
+    lean: bool,
+    /// Its fragments take screen derivatives (flat shading, or the frame's
+    /// decals): its lean pipelines keep the discard (`DISCARD` in
+    /// pbr_fs.wgsl), so the derivatives are the full pipeline's.
+    derivatives: bool,
 }
 
 /// The effect bind groups and what they were made from.
@@ -951,6 +1018,13 @@ struct SkinnedFrame {
 type PbrKey = (Side, bool, bool, bool);
 /// The shadow pipelines: (side, skinned, dissolving).
 type ShadowKey = (Side, bool, bool);
+/// What a lit pass's draws switch pipelines on: (side, blended, effects,
+/// material shader, physical, lean, derivatives).
+type LitDrawKey = (Side, bool, bool, Option<usize>, bool, bool, bool);
+/// The lean lit pipelines: (side, effects, derivatives); `effects` as in
+/// [`PbrKey`] (a plain material has none of its own: the frame's decals
+/// or AO), `derivatives` as [`Batch::derivatives`].
+type LeanKey = (Side, bool, bool);
 
 /// What one pass draws: (batch, first instance, count) ranges in the instance buffer.
 #[derive(Default)]
@@ -1113,6 +1187,10 @@ pub struct Renderer {
     shadow_pipelines: HashMap<ShadowKey, wgpu::RenderPipeline>,
     /// Prepass pipelines by (side, skinned).
     prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    /// The lean lit pipelines of plain materials, made at first use.
+    lean_pipelines: HashMap<LeanKey, wgpu::RenderPipeline>,
+    /// Their prepass pipelines by (side, derivatives).
+    lean_prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
     sky_pipeline: wgpu::RenderPipeline,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
@@ -1459,6 +1537,37 @@ fn lit_pipeline(
     )
 }
 
+/// The lean lit pipeline of a plain material ([`GpuMaterial::lean`]) for
+/// (side, effects, derivatives): opaque and unskinned by construction,
+/// `pbr_lean.wgsl`'s entry points with `EFFECTS` as [`lit_pipeline`]'s and
+/// without the discard unless the fragments take derivatives.
+fn lean_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    module: &wgpu::ShaderModule,
+    (side, effects, derivatives): LeanKey,
+    samples: u32,
+) -> wgpu::RenderPipeline {
+    let constants = [("EFFECTS", effects as u32 as f64), ("DISCARD", 0.0)];
+    hdr_pipeline_with(
+        device,
+        &constants[..if derivatives { 1 } else { 2 }],
+        HdrPipeline {
+            label: "pbr lean",
+            layout,
+            module,
+            vs: "vs_lean",
+            fs: "fs_lean",
+            buffers: &[Some(LEAN_VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)],
+            cull: cull_mode(side),
+            depth_write: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            blend: None,
+            samples,
+        },
+    )
+}
+
 /// `PrevIn` in pbr.wgsl: the previous transform (motion vectors).
 const PREV_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: INSTANCE_STRIDE,
@@ -1466,19 +1575,36 @@ const PREV_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBuff
     attributes: &wgpu::vertex_attr_array![11 => Float32x4, 12 => Float32x4, 13 => Float32x4, 14 => Float32x4],
 };
 
-/// The depth-normal prepass pipeline for (side, skinned).
+/// The depth-normal prepass pipeline for (side, skinned); `lean`: a plain
+/// material's (unskinned, `pbr_lean.wgsl`'s entry points), as
+/// `Some(derivatives)` ([`Batch::derivatives`]: with them the discard stays).
 fn prepass_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
     side: Side,
     skinned: bool,
+    lean: Option<bool>,
 ) -> wgpu::RenderPipeline {
+    let (lean, derivatives) = (lean.is_some(), lean == Some(true));
     let plain = [
-        Some(VERTEX_LAYOUT),
+        Some(if lean {
+            POSITION_NORMAL_LAYOUT
+        } else {
+            VERTEX_LAYOUT
+        }),
         Some(INSTANCE_LAYOUT),
         Some(PREV_INSTANCE_LAYOUT),
     ];
+    let constants = [("DISCARD", 0.0)];
+    let options = wgpu::PipelineCompilationOptions {
+        constants: if lean && !derivatives {
+            &constants
+        } else {
+            &[]
+        },
+        ..Default::default()
+    };
     let skin = [
         Some(VERTEX_LAYOUT),
         Some(skin::SKINNED_INSTANCE_LAYOUT),
@@ -1492,16 +1618,16 @@ fn prepass_pipeline(
         })
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("prepass"),
+        label: Some(if lean { "prepass lean" } else { "prepass" }),
         layout: Some(if skinned { layouts.1 } else { layouts.0 }),
         vertex: wgpu::VertexState {
             module,
-            entry_point: Some(if skinned {
-                "vs_prepass_skinned"
-            } else {
-                "vs_prepass"
+            entry_point: Some(match (skinned, lean) {
+                (true, _) => "vs_prepass_skinned",
+                (false, true) => "vs_prepass_lean",
+                (false, false) => "vs_prepass",
             }),
-            compilation_options: Default::default(),
+            compilation_options: options.clone(),
             buffers: if skinned { &skin } else { &plain },
         },
         primitive: wgpu::PrimitiveState {
@@ -1518,8 +1644,12 @@ fn prepass_pipeline(
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module,
-            entry_point: Some("fs_prepass"),
-            compilation_options: Default::default(),
+            entry_point: Some(if lean && !skinned {
+                "fs_prepass_lean"
+            } else {
+                "fs_prepass"
+            }),
+            compilation_options: options,
             targets: &[
                 target(post::GBUFFER_FORMAT),
                 target(post::LINDEPTH_FORMAT),
@@ -1533,7 +1663,9 @@ fn prepass_pipeline(
 
 /// The shadow pipeline for casters drawn with (side, skinned, dissolve);
 /// `hooked`: with the module's material shader (its vertex offset and
-/// surface colour, the material bound).
+/// surface colour, the material bound). Casters that are neither skinned,
+/// dissolving nor hooked need only their positions: `shadow.wgsl`'s lean
+/// entry points (the same depths).
 fn shadow_pipeline(
     device: &wgpu::Device,
     layouts: &[wgpu::PipelineLayout; 3],
@@ -1541,7 +1673,11 @@ fn shadow_pipeline(
     (side, skinned, dissolve): ShadowKey,
     hooked: bool,
 ) -> wgpu::RenderPipeline {
-    let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
+    let lean = !skinned && !dissolve && !hooked;
+    let plain = [
+        Some(if lean { POSITION_LAYOUT } else { VERTEX_LAYOUT }),
+        Some(INSTANCE_LAYOUT),
+    ];
     let skin = [
         Some(VERTEX_LAYOUT),
         Some(skin::SKINNED_INSTANCE_LAYOUT),
@@ -1561,6 +1697,7 @@ fn shadow_pipeline(
                 (true, true) => "vs_skinned_hooked",
                 (true, false) => "vs_skinned",
                 (false, true) => "vs_hooked",
+                (false, false) if lean => "vs_lean",
                 (false, false) => "vs",
             }),
             compilation_options: Default::default(),
@@ -1591,6 +1728,7 @@ fn shadow_pipeline(
             entry_point: Some(match (hooked, dissolve) {
                 (true, _) => "fs_hooked",
                 (false, true) => "fs_dissolve",
+                (false, false) if lean => "fs_lean",
                 (false, false) => "fs",
             }),
             compilation_options: Default::default(),
@@ -2292,6 +2430,8 @@ impl Renderer {
             pbr_pipelines,
             shadow_pipelines,
             prepass_pipelines: HashMap::new(),
+            lean_pipelines: HashMap::new(),
+            lean_prepass_pipelines: HashMap::new(),
             sky_pipeline,
             sky_look_pipeline,
             water,
@@ -2834,6 +2974,16 @@ impl Renderer {
                     && !material.dissolves()
                     && material.alphaTest <= 0.0
                     && hooked.is_none(),
+                lean: false,
+                flat: material.flatShading != 0,
+            };
+            let gpu = GpuMaterial {
+                lean: gpu.occluder
+                    && gpu.physical.is_none()
+                    && !gpu.effects
+                    && !gpu.outline
+                    && material.textures().iter().all(Option::is_none),
+                ..gpu
             };
             if i < self.cache.materials.len() {
                 self.cache.materials[i] = gpu;
@@ -3446,6 +3596,8 @@ impl Renderer {
                         dissolve: m.dissolve,
                         effects: m.effects,
                         shader: m.shader,
+                        lean: m.lean,
+                        derivatives: m.flat,
                     })
                 }
             }
@@ -3614,6 +3766,9 @@ impl Renderer {
     /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
     /// its material shader's or the built-in one, physical or standard.
     fn lit_pipeline_of(&self, b: &Batch, skinned: bool, physical: bool) -> &wgpu::RenderPipeline {
+        if b.lean && !skinned {
+            return &self.lean_pipelines[&(b.side, b.effects, b.derivatives)];
+        }
         let key = (b.side, b.blend, skinned, b.effects);
         match (physical, b.shader) {
             (true, None) => &self.physical.as_ref().expect("a physical batch").pipelines[&key],
@@ -3698,12 +3853,40 @@ impl Renderer {
                         &self.cache.shaders[sh],
                         b.side,
                         is_skinned,
+                        None,
                     );
                     self.cache.hook_prepass_pipelines.insert(key, p);
                 }
             }
+            if b.lean && !is_skinned {
+                // A plain material: the lean lit and prepass pipelines (its
+                // shadows take the shadow pipeline below, lean as well).
+                let key = (b.side, b.effects, b.derivatives);
+                if !self.lean_pipelines.contains_key(&key) {
+                    let p = lean_pipeline(
+                        &self.device,
+                        &self.pbr_layout,
+                        &self.pbr_shader,
+                        key,
+                        self.samples,
+                    );
+                    self.lean_pipelines.insert(key, p);
+                }
+                let key = (b.side, b.derivatives);
+                if prepass && !self.lean_prepass_pipelines.contains_key(&key) {
+                    let p = prepass_pipeline(
+                        &self.device,
+                        (&self.pbr_layout, &self.pbr_skinned_layout),
+                        &self.pbr_shader,
+                        b.side,
+                        false,
+                        Some(b.derivatives),
+                    );
+                    self.lean_prepass_pipelines.insert(key, p);
+                }
+            }
             let key = (b.side, b.blend, is_skinned, b.effects);
-            if !self.pbr_pipelines.contains_key(&key) {
+            if !(b.lean && !is_skinned) && !self.pbr_pipelines.contains_key(&key) {
                 let p = pbr_pipeline(
                     &self.device,
                     (&self.pbr_layout, &self.pbr_skinned_layout),
@@ -3726,6 +3909,7 @@ impl Renderer {
             }
             if prepass
                 && !b.transparent
+                && !(b.lean && !is_skinned)
                 && !self.prepass_pipelines.contains_key(&(b.side, is_skinned))
             {
                 let p = prepass_pipeline(
@@ -3734,6 +3918,7 @@ impl Renderer {
                     &self.pbr_shader,
                     b.side,
                     is_skinned,
+                    None,
                 );
                 self.prepass_pipelines.insert((b.side, is_skinned), p);
             }
@@ -3823,6 +4008,8 @@ impl Renderer {
                         dissolve: m.dissolve,
                         effects: m.effects,
                         shader: m.shader,
+                        lean: false,
+                        derivatives: m.flat,
                     });
                 }
             }
@@ -4010,13 +4197,17 @@ impl Renderer {
             // Water and 3D fluids read the depth below them.
             || !scene.water.is_empty()
             || fluids_3d;
-        // Decals and screen-space AO need the effect shader on every batch.
+        // Decals and screen-space AO need the effect shader on every batch;
+        // decals take screen derivatives (the lean pipelines keep the discard).
         if ao.is_some() || !scene.decals.is_empty() {
+            let decals = !scene.decals.is_empty();
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
                 b.effects = true;
+                b.derivatives |= decals;
             }
             for b in skinned_visible.iter_mut() {
                 b.effects = true;
+                b.derivatives |= decals;
             }
         }
         self.ensure_pipelines(&batches, &skinned_batches, prepass);
@@ -5517,7 +5708,7 @@ impl Renderer {
         // the passes that draw physical materials with theirs.
         let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
         // Draws a list's ranges. Lit passes switch the pipeline when the
-        // batch's (side, blending, effects, shader, physical) changes and
+        // batch's (side, blending, effects, shader, physical, lean) changes and
         // bind each batch's material (and, between standard and physical,
         // the effect group: `physical_fx`); shadow passes switch on the
         // side and dissolve (with the material).
@@ -5525,7 +5716,7 @@ impl Renderer {
             |pass: &mut wgpu::RenderPass,
              list: &DrawList,
              lit: bool,
-             current: &mut Option<(Side, bool, bool, Option<usize>, bool)>,
+             current: &mut Option<LitDrawKey>,
              physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>| {
                 let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
                 let mut physical_bound = false;
@@ -5539,6 +5730,8 @@ impl Renderer {
                             batch.effects,
                             batch.shader,
                             physical,
+                            batch.lean,
+                            batch.derivatives,
                         );
                         if *current != Some(key) {
                             pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
@@ -5821,14 +6014,18 @@ impl Renderer {
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
                         let batch = &batches[b as usize];
-                        if current != Some((batch.side, batch.shader)) {
+                        let key = (batch.side, batch.shader, batch.lean, batch.derivatives);
+                        if current != Some(key) {
                             p.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_prepass_pipelines[&(sh, batch.side, false)]
                                 }
+                                None if batch.lean => {
+                                    &self.lean_prepass_pipelines[&(batch.side, batch.derivatives)]
+                                }
                                 None => &self.prepass_pipelines[&(batch.side, false)],
                             });
-                            current = Some((batch.side, batch.shader));
+                            current = Some(key);
                         }
                         p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
                         let mesh = &self.cache.meshes[batch.mesh];
@@ -5966,7 +6163,7 @@ impl Renderer {
                         &mut pass,
                         list,
                         true,
-                        &mut Some((Side::Front, false, false, None, false)),
+                        &mut Some((Side::Front, false, false, None, false, false, false)),
                         None,
                     );
                     stats.draw_calls += list.ranges.len() as u32;
@@ -6091,7 +6288,7 @@ impl Renderer {
                         &mut pass,
                         &main_list,
                         true,
-                        &mut Some((Side::Front, false, false, None, false)),
+                        &mut Some((Side::Front, false, false, None, false, false, false)),
                         physical_fx,
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;

@@ -11,6 +11,12 @@ struct PrepassTargets {
 
 @fragment
 fn fs_prepass(in: PrepassOut) -> PrepassTargets {
+  return prepass_targets(in);
+}
+
+// What the prepass writes for a fragment (`fs_prepass`, and
+// `fs_prepass_lean`, which may drop the discard: DISCARD in pbr_fs.wgsl).
+fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
   // A material shader's colour (and alpha cut) as in the lit pass.
   var hook: Hook;
@@ -22,7 +28,7 @@ fn fs_prepass(in: PrepassOut) -> PrepassTargets {
   hook.time = frame.time.x;
   let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
-  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) {
+  if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved)) {
     discard;
   }
   var n = normalize(in.normal);
