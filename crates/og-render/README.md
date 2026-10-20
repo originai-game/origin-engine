@@ -315,24 +315,24 @@ WebGPU (`taa-sharp` 0.55 against `taa` 0.49 ms) and about 0.1 ms on
 metal.
 
 **Where TAA reads its history.** The pixel's centre in uv is
-`in.pos.xy / size` (the window position, exact on every backend), never
+`in.pos.xy / size` (the window position, exact on every backend), not
 the interpolated `in.uv`, and a pixel nothing moved under (a reprojection
 of less than a thousandth of a pixel) reads its own history texel with
-`textureLoad`, unfiltered. On WebGL2 (Chrome over ANGLE) the interpolated
-uv arrives a fraction of a pixel off, the error growing across the frame
-(none at the left edge, about 0.3 px at the right); sampled there every
-frame, the history moved by that much each frame and the converged image
-settled a pixel or two to one side. Plain frames hid it under the tolerance
-(0.005 to 0.008 RMSE against metal), but posterize, ink and outlines turned
-the shifted edges into whole moved lines: 30 of fx-showcase's 37 looks
-frames failed on WebGL2 at RMSE 0.010 to 0.046 while WebGPU matched.
-Diagnosed natively: the same history sampled 0.3 px to the side on metal
-reproduces the WebGL2 captures (heavy-ink-shadows from 0.0496 to 0.0116
-against WebGL2, gothic-contour 0.0276 to 0.0059, cinematic-realism 0.0076
-to 0.0006) and the per-tile shifts (0 at the left, 1 to 2 px to the
-right). The still path is byte for byte the old frames on metal (the 37
-looks frames, `taa`); the moving path's uv from the window position moves
-`taa-sharp` (a sliding camera) by RMSE 0.00029, max 4 levels.
+`textureLoad`, unfiltered, so no sampler or varying precision can move
+the history of a still camera. On metal the still path is byte for byte
+the old frames (the 37 looks frames, `taa`); the moving path moved
+`taa-sharp` (a sliding camera) by RMSE 0.00029, max 4 levels. It did
+not change the WebGL2 looks station's frames (still 30 of 37 apart from
+metal, to four decimals), so that divergence lies elsewhere: open, see
+the AO note below and docs/phase-1.md's wave 7 web-reference entry.
+
+**Ambient occlusion by tier.** `AoMethod::Auto` (the default, and what
+`PostEffects.ao` asks for) is GTAO on the full tier and SSAO on WebGL2 by
+design (GTAO's horizon search is too heavy there), so any frame with AO
+differs between the tiers: fx-showcase's paper-craft, voxel-worlds and
+sculpted-clay looks frames (RMSE 0.006 to 0.019 against WebGPU with
+FXAA) differ for this reason, and natively forcing the no-compute tier
+on metal reproduces exactly those three.
 
 ## The overlay
 
