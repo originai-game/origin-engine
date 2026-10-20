@@ -41,8 +41,9 @@ The idle archetype's music (`orbit.wav`, 26.7 s of 22,050 Hz mono, looped)
 cooked whole and with `sound { stream true chunk 2 }` (13 chunks of 9 QOA
 frames; 12 chunk files beside the head), each run by `og run --commands
 35:quit --audio run.wav` on the native host: the two WAVs have the same
-SHA-256, so the chunked music, its loop wrap included, is sample for
-sample the whole file's.
+SHA-256 (fb654b4d1ece8a983103083757d4363682e4777802625002fa5a3d45980fda85
+in the gate's run), so the chunked music, its loop wrap included, is
+sample for sample the whole file's.
 
 No committed template opts in, and none has a WAV whose QOA passes 1 MiB
 (the largest, roguelike's `tomb.wav`, 29 s of 22 kHz mono, is 0.25 MiB),
