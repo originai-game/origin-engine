@@ -422,3 +422,197 @@ pub fn object_scene() -> RenderScene {
     }
     scene
 }
+
+/// Voxels meshed as a MagicaVoxel import is (`.vox` through the cook):
+/// one quad per exposed voxel face, its four vertices its own, so every
+/// face carries its own normal (unwelded, flat-shaded), coloured per
+/// voxel. `solid(x, y, z)` says which cells of `size` are filled; `voxel`
+/// is the cell's edge in metres, the cluster centred on x and z and
+/// standing on y 0.
+fn voxel_mesh(
+    size: [i32; 3],
+    voxel: f32,
+    solid: impl Fn(i32, i32, i32) -> bool,
+    color: impl Fn(i32, i32, i32) -> [f32; 4],
+) -> og_render::MeshData {
+    let filled = |x: i32, y: i32, z: i32| {
+        (0..size[0]).contains(&x)
+            && (0..size[1]).contains(&y)
+            && (0..size[2]).contains(&z)
+            && solid(x, y, z)
+    };
+    let origin = Vec3::new(size[0] as f32 * 0.5, 0.0, size[2] as f32 * 0.5);
+    // (normal, u, v) per face: corners at the cell's centre + (n ± u ± v) / 2.
+    let faces = [
+        (Vec3::X, Vec3::NEG_Z, Vec3::Y),
+        (Vec3::NEG_X, Vec3::Z, Vec3::Y),
+        (Vec3::Y, Vec3::X, Vec3::NEG_Z),
+        (Vec3::NEG_Y, Vec3::X, Vec3::Z),
+        (Vec3::Z, Vec3::X, Vec3::Y),
+        (Vec3::NEG_Z, Vec3::NEG_X, Vec3::Y),
+    ];
+    let mut mesh = og_render::MeshData::default();
+    for x in 0..size[0] {
+        for y in 0..size[1] {
+            for z in 0..size[2] {
+                if !filled(x, y, z) {
+                    continue;
+                }
+                let centre = Vec3::new(x as f32, y as f32, z as f32) + Vec3::splat(0.5) - origin;
+                for (n, u, v) in faces {
+                    let (nx, ny, nz) = (n.x as i32, n.y as i32, n.z as i32);
+                    if filled(x + nx, y + ny, z + nz) {
+                        continue;
+                    }
+                    let base = mesh.vertices.len() as u32;
+                    for (cu, cv) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+                        let p = (centre + (n + u * cu + v * cv) * 0.5) * voxel;
+                        mesh.vertices.push(og_render::Vertex {
+                            position: p.to_array(),
+                            normal: n.to_array(),
+                            uv: [(cu + 1.0) * 0.5, (1.0 - cv) * 0.5],
+                            color: color(x, y, z),
+                            tangent: [0.0; 4],
+                        });
+                    }
+                    mesh.indices.extend_from_slice(&[
+                        base,
+                        base + 1,
+                        base + 2,
+                        base,
+                        base + 2,
+                        base + 3,
+                    ]);
+                }
+            }
+        }
+    }
+    mesh
+}
+
+/// A small hash of a cell (0..1), for the voxel scenes' ragged shapes and
+/// shades.
+fn cell_hash(x: i32, y: i32, z: i32) -> f32 {
+    let mut h = (x as u32).wrapping_mul(0x8da6_b343)
+        ^ (y as u32).wrapping_mul(0xd816_3841)
+        ^ (z as u32).wrapping_mul(0xcb1a_b31f);
+    h ^= h >> 13;
+    h = h.wrapping_mul(0x5bd1_e995);
+    h ^= h >> 15;
+    (h & 0xffff) as f32 / 65535.0
+}
+
+/// `stylise-outline-voxels`: the material style's outline (2.5 px, toon)
+/// over unwelded, flat-shaded voxel models, three-quarters from above as a
+/// top-down game sees them: a tree (a ragged canopy of 0.2 m voxels on a
+/// trunk), a slime-like mound and a stepped block of cubes, beside a
+/// smooth (welded) sphere. Each is outlined at its silhouette and where one
+/// part passes in front of another; the edges between its faces, every
+/// voxel step of the canopy, stay clean (lantern-vale FINDINGS #15).
+pub fn outline_voxels_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let lit = scene.add_standard_material(StandardMaterial {
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.32, 0.46, 0.28),
+        roughness: 1.0,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    // The tree: a trunk two voxels wide, a canopy of 9 x 7 x 9 rounded and
+    // ragged by the hash.
+    let tree = scene.add_mesh(voxel_mesh(
+        [9, 14, 9],
+        0.2,
+        |x, y, z| {
+            let (dx, dz) = (x as f32 - 4.0, z as f32 - 4.0);
+            if y < 6 {
+                return (3..5).contains(&x) && (3..5).contains(&z);
+            }
+            let dy = y as f32 - 9.5;
+            let r = (dx * dx + dz * dz + dy * dy * 1.4).sqrt();
+            r < 4.3 - cell_hash(x, y, z) * 1.3
+        },
+        |x, y, z| {
+            if y < 6 {
+                [0.36, 0.2, 0.1, 1.0]
+            } else {
+                let s = 0.75 + 0.25 * cell_hash(z, x, y);
+                [0.2 * s, 0.5 * s, 0.18 * s, 1.0]
+            }
+        },
+    ));
+    scene.add_instance(
+        tree,
+        lit,
+        Mat4::from_translation(Vec3::new(-1.6, 0.0, -0.4)) * Mat4::from_rotation_y(0.4),
+    );
+    // A slime-like mound of 0.15 m voxels.
+    let slime = scene.add_mesh(voxel_mesh(
+        [7, 5, 7],
+        0.15,
+        |x, y, z| {
+            let (dx, dy, dz) = (x as f32 - 3.0, y as f32 + 0.5, z as f32 - 3.0);
+            dx * dx + dz * dz + dy * dy * 1.6 < 13.0
+        },
+        |_, y, _| [0.35 + 0.05 * y as f32, 0.75, 0.42, 1.0],
+    ));
+    scene.add_instance(
+        slime,
+        lit,
+        Mat4::from_translation(Vec3::new(0.2, 0.0, 1.2)) * Mat4::from_rotation_y(-0.3),
+    );
+    // A stepped block of 0.4 m cubes: a staircase three high.
+    let steps = scene.add_mesh(voxel_mesh(
+        [3, 3, 2],
+        0.4,
+        |x, y, _| y <= 2 - x,
+        |x, y, z| {
+            let s = 0.8 + 0.2 * cell_hash(x, y, z);
+            [0.75 * s, 0.68 * s, 0.6 * s, 1.0]
+        },
+    ));
+    scene.add_instance(
+        steps,
+        lit,
+        Mat4::from_translation(Vec3::new(1.9, 0.0, -0.6)) * Mat4::from_rotation_y(-0.5),
+    );
+    // A smooth sphere for comparison.
+    let sphere = scene.add_mesh(shapes::sphere(48, 32));
+    let clay = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.8, 0.5, 0.35),
+        roughness: 0.7,
+        ..Default::default()
+    });
+    scene.add_instance(
+        sphere,
+        clay,
+        Mat4::from_translation(Vec3::new(1.4, 0.45, 1.5)) * Mat4::from_scale(Vec3::splat(0.9)),
+    );
+    scene.stylise.material = MaterialStyle {
+        toon: true,
+        outline_color: [0.04, 0.03, 0.06],
+        outline_width: 2.5,
+        rim_power: 3.0,
+        ..Default::default()
+    };
+    let sun = Vec3::new(-0.6, 0.7, 0.4);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 4.2, 5.6),
+        target: Vec3::new(0.0, 0.8, 0.0),
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    scene
+}

@@ -4384,7 +4384,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway).",
+                doc: "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead).",
                 variants: &[],
             },
             FieldDecl {
@@ -5714,7 +5714,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The outline width in pixels at outlineDistance for materials without their own; 0 is none.",
+                doc: "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean.",
                 variants: &[],
             },
             FieldDecl {

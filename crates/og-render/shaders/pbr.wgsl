@@ -125,7 +125,23 @@ struct PrepassOut {
   @location(4) local_pos: vec3<f32>,
   @location(5) cur_clip: vec4<f32>,
   @location(6) prev_clip: vec4<f32>,
+  // Which object this is (`object_id`), for the outline pass.
+  @location(8) @interpolate(flat) object: u32,
 };
+
+// An object's id in the prepass's outline target, 1 to 255, from its
+// instance's transform (0 is terrain and scattered copies): the outline
+// pass lines a crease only between two objects, never between the faces of
+// one. Neighbouring objects share one in 255.
+fn object_id(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, m3: vec3<f32>) -> u32 {
+  var h = 2166136261u;
+  for (var c = 0u; c < 3u; c++) {
+    h = (h ^ bitcast<u32>(m3[c])) * 16777619u;
+    h = (h ^ bitcast<u32>(m0[c] + m1[c] * 3.0 + m2[c] * 7.0)) * 16777619u;
+  }
+  h = h ^ (h >> 16u);
+  return 1u + h % 255u;
+}
 
 // A normal's world direction: through the inverse transpose of the model's
 // upper 3x3 (its cofactor matrix, flipped for a mirroring transform), so a
@@ -254,6 +270,7 @@ fn prepass_vertex(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn) -> Prepass
   p.local_pos = o.local_pos;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(o.world_pos, 1.0);
   p.prev_clip = mul_point(fx.prev_view_proj, prev * vec4<f32>(v.position, 1.0));
+  p.object = object_id(model[0].xyz, model[1].xyz, model[2].xyz, model[3].xyz);
   return p;
 }
 
@@ -265,7 +282,10 @@ fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PrepassOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
-  return prepass_vertex(model, model, morph_vertex(v, vi, i));
+  var p = prepass_vertex(model, model, morph_vertex(v, vi, i));
+  // The instance's, not the skinned vertex's (its joints move it).
+  p.object = object_id(i.m0, i.m1, i.m2, i.m3);
+  return p;
 }
 
 // False for materials and frames without effects: their code folds away.

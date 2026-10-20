@@ -778,7 +778,7 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 
 - **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied to
   the ambient term), outlines (depth and normal edges, per-scene or
-  per-instance colour), depth of field (`DofQuality::Low` / `High`), motion
+  per-material colour and width; below), depth of field (`DofQuality::Low` / `High`), motion
   blur from per-object and camera motion vectors (`fx.rs` carries the
   previous view-projection), god rays, colour grading by `ColorLut`,
   vignette, chromatic aberration, film grain seeded by the tick, screen
@@ -1522,6 +1522,34 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   diffuse), and `outline_distance` scales each material outline's width by
   that distance over the view depth in the prepass (never for an
   orthographic camera).
+- **Hull outlines** (`StandardMaterial::outlineWidth`, the style's
+  `outline_width`; fxpost.wgsl `fs_outline`): a material's own outline is
+  what toon shading's inverted hull draws, the object's silhouette (a
+  farther neighbour at the line's width), where one part of it passes in
+  front of another, and its creases against *other* objects (a box on
+  the floor, a character against a wall), never the edges between its
+  own faces. The prepass writes each fragment's object id (pbr.wgsl
+  `object_id`: 1 to 255, a hash of the instance's transform, the skinned
+  instance's and not its joints'; 0 for terrain and scattered copies)
+  into the outline target beside the colour and width (Rgba8Unorm read
+  as bytes: the colour in 5:6:5 over r and g, the width in eighths of a
+  pixel, the id; `outline_bytes`), and the outline pass lines a crease
+  only where the ids differ. *Chosen over smoothed outline normals*: an
+  outline here is a screen-space pass over the prepass, not an extruded
+  shell, and its crease test inked every edge of an unwelded mesh (a
+  `.vox` model's greedy quads, a flat-shaded rock): a voxel canopy became
+  a net of lines and a small voxel slime all ink (lantern-vale FINDINGS
+  #15). Smoothed normals would need a vertex stream and a prepass channel
+  the prepass has no room for (WebGL2's sixteen attributes are spent on
+  the skinned prepass) and still ink small hard-edged meshes whose
+  smoothed normals turn within the line's width; the id keeps every face
+  of one object clean whatever its topology, skinned included, at no
+  extra target. Neighbouring objects share an id one time in 255 (their
+  contact line then goes). The scene's outline (`PostEffects.outline`)
+  still lines every crease. og-tests `stylise-outline-voxels`: a voxel
+  tree, a voxel mound and a stepped block (unwelded, flat-shaded) and a
+  smooth sphere under a 2.5 px toon outline, each a clean silhouette
+  with its contact line on the ground.
 
 - **Built-in canvases and palettes**: a look names the engine's own
   `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` (tileable
@@ -1554,6 +1582,7 @@ of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
 `full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
 (`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
 halftone, as its check asks (ink marks painted onto surfaces).
+Round five adds `stylise-outline-voxels` (`metal`).
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the

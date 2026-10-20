@@ -704,7 +704,11 @@ og.render.look(world)?.name;                                              // the
   its default: `toon` (with a `gradientMap`), `shadowTint` and
   `shadowTintAmount`, `rimIntensity`, `outlineWidth` (with
   `outlineDistance` to thin lines with depth) and `flatShading`. Unlit and
-  shader materials, sprites and the UI are untouched.
+  shader materials, sprites and the UI are untouched. An outline is a hull
+  outline: each object's silhouette and its creases against other objects
+  (the ground under it), never the edges between its own faces, so `.vox`
+  models and flat-shaded meshes keep clean faces; for lines on every
+  crease, `Stylise.inkDepth`.
 - Built-in assets a look may name without owning a copy:
   `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` for
   `Stylise.paintCanvas`, and `"@palettes/lcd2"`, `"@palettes/handheld4"`,

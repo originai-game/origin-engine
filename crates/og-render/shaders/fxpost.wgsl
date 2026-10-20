@@ -191,16 +191,27 @@ fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
 }
 
 // Outlines inside silhouettes (a farther neighbour at the line width) and
-// along creases, in each object's own colour and width (tex_b: the prepass
-// outline target) or the scene's.
+// along creases (a neighbour of about the same depth turned past the
+// threshold), in each object's own colour and width (tex_b: the prepass
+// outline target, pbr_prepass.wgsl `outline_bytes`) or the scene's. An
+// object's own outline is a hull outline: a crease is lined only where it
+// meets another object (another id), never between its own faces, so a
+// voxel, flat-shaded or hard-edged mesh (normals split per face) keeps
+// clean faces inside its silhouette.
 @fragment
 fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
   let c = textureLoad(tex_a, px, 0);
-  let id = textureLoad(tex_b, px, 0);
-  var width = id.a * 32.0;
-  var color = vec4<f32>(id.rgb, 1.0);
-  if (width <= 0.0) {
+  let id = outline_texel(px);
+  var width = f32(id.z) / 8.0;
+  let packed = (id.x << 8u) | id.y;
+  var color = vec4<f32>(
+    f32(packed >> 11u) / 31.0,
+    f32((packed >> 5u) & 63u) / 63.0,
+    f32(packed & 31u) / 31.0,
+    1.0);
+  let own = width > 0.0;
+  if (!own) {
     width = fxp.outline.x;
     color = fxp.outline_color;
   }
@@ -215,12 +226,20 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
     let d = depth_at(q);
     if (d > d0 * (1.0 + fxp.outline.y)) {
       edges += 1.0;
-    } else if (abs(d - d0) < d0 * fxp.outline.y * 4.0 && 1.0 - dot(world_normal(q), n0) > fxp.outline.z) {
+    } else if (abs(d - d0) < d0 * fxp.outline.y * 4.0
+        && (!own || outline_texel(q).w != id.w)
+        && 1.0 - dot(world_normal(q), n0) > fxp.outline.z) {
       edges += 1.0;
     }
   }
   let k = clamp(edges, 0.0, 1.0) * color.a;
   return vec4<f32>(mix(c.rgb, color.rgb, k), c.a);
+}
+
+// The outline target's bytes at `px` (clamped to the image).
+fn outline_texel(px: vec2<i32>) -> vec4<u32> {
+  let size = vec2<i32>(textureDimensions(tex_b));
+  return vec4<u32>(round(textureLoad(tex_b, clamp(px, vec2<i32>(0), size - 1), 0) * 255.0));
 }
 
 // Flat colour bands by depth (stylise.rs DepthBands): the scene between
