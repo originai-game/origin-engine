@@ -8,6 +8,7 @@ import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
+import { slow } from "./support/slow.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -52,4 +53,4 @@ test("music cooked in chunks plays sample-identical to the whole file through og
   // 26.7 s at 22,050 Hz is 115 QOA frames; 2 s rounds up to 9 a chunk: 13 chunks, 12 files beside the head.
   const chunks = files(chunked).filter((f) => /\.chunk\d+\.ogb$/.test(f));
   expect(chunks.length).toBe(12);
-}, 240_000);
+}, slow(240_000));

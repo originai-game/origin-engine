@@ -17,6 +17,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
+import { slow } from "./support/slow.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -84,5 +85,5 @@ test(
     expect(new Set(resident.hashes).size).toBe(TICKS);
     expect(streamed.hashes).toEqual(resident.hashes);
   },
-  240_000,
+  slow(240_000),
 );

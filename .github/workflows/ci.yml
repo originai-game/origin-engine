@@ -34,6 +34,9 @@ env:
   # packages/engine's bun tests have the M4 Pro's 5 s default; a render
   # test on two vCPU of Lavapipe takes 5 to 25 s (docs/ci.md §CI).
   OG_BUN_TEST_TIMEOUT: "60000"
+  # A test's own longer limit, scaled (packages/engine/tests/support/slow.ts):
+  # the terrain station's two 600-tick og runs passed 240 s there.
+  OG_TEST_TIME_SCALE: "3"
 
 jobs:
   # The quick lane (docs/ci.md §Lanes): the loop's signal on every PR.

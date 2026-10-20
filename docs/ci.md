@@ -212,7 +212,11 @@ runner's speed, two vCPU of Lavapipe against the M4 Pro the tests were
 tuned on: `OG_BUN_TEST_TIMEOUT=60000` (every package's `bun run test` passes it to
 `bun test --timeout`, the default for a test that names no timeout of its
 own: render tests in packages/engine took 5 to 25 s against bun's 5 s,
-packages/knowledge's mount test 5.0 s),
+packages/knowledge's mount test 5.0 s), `OG_TEST_TIME_SCALE=3` (a test
+that names a long limit of its own through `slow()`,
+`packages/engine/tests/support/slow.ts`, gets three times it: the
+fx-showcase terrain station's two 600-tick `og run`s and the chunked music
+through `og run` passed their 240 s),
 and `OG_GATE_JOBS=1` in the gate job (bun-test beside test starved both,
 and twelve render tests and five of the slow integration tests ran out of
 time).
