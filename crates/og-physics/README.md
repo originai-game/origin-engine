@@ -23,7 +23,10 @@ bodies move in the xy plane and rotate about z; a transform keeps its z.
 | Item | What it is |
 |---|---|
 | `install(&mut World, Physics) -> PhysicsSystem` | registers the types, inserts `og.Physics`, schedules `og.physics` at the end of the schedule and adds the `og.physics` state block |
-| `PhysicsSystem` | `set_mesh(handle, MeshDesc)`, `remove_mesh(handle)`, `query(&World) -> PhysicsQuery` |
+| `PhysicsSystem` | `set_mesh(handle, MeshDesc)`, `remove_mesh(handle)`, `query(&World) -> PhysicsQuery`, `stats() -> PhysicsStats` |
+| `PhysicsStats`, `PhaseStats`, `Phase` | what the last step cost: its tick, bodies, threads, whether it ran on the lanes pool, the whole system's ms and each phase's ms and whether it split (`og.physics.stats` in TypeScript; below) |
+| `set_clock(fn() -> f64)` | the wall clock the stats are timed with (`Instant` natively; the web host gives each Worker's `performance.now`) |
+| `Grains`, `grains`, `set_grains`, `pool_bodies` | where the step's work runs on the lanes (below) |
 | `PhysicsQuery` | `raycast(&RaycastDesc)`, `shape_cast(&ShapeCastDesc)`, `overlap(&OverlapDesc)` over the colliders as the world holds them when it was built; `QueryFilter { mask, include_sensors, exclude }` |
 | `raycast`, `shape_cast`, `overlap` | the same, on a view built for one call |
 | `SYSTEM_NAME` | `og.physics`, the system's and the state block's name |
@@ -90,18 +93,29 @@ contact and body readout, characters, platformers, soft bodies) runs inside
 `og_lanes::install_from` at the `physics` site. A world of at least
 `pool_bodies(threads)` bodies for the pool's thread count steps on the
 lanes pool: rapier's `parallel` build splits its broad phase, narrow phase
-and staged solver across the pool's threads, and the readout of the
-contact pairs splits by 512 pairs a task (`og_lanes::map`). Below that, and
-with lanes off, the step runs on the calling thread inside its one-thread
-pool, where rapier finds one thread and takes its serial paths, so a small
-world never pays for waking the pool. The pool is rayon natively and
+and staged solver across the pool's threads. Below that, and with lanes
+off, the step runs on the calling thread inside its one-thread pool, where
+rapier finds one thread and takes its serial paths, so a small world never
+pays for waking the pool. The pool is rayon natively and
 wasm-bindgen-rayon's Workers in the lanes wasm (rapier is built with
 `parallel` there too, `cfg(target_feature = "atomics")`); the
 single-threaded wasm builds rapier without it.
 
-og-physics splits its own work besides, wherever the step runs (`src/lanes.rs`,
-`Grains`):
+og-physics splits its own work besides (`src/lanes.rs`, `Grains`):
 
+- **Around rapier.** The gather decodes each archetype's og.RigidBody and
+  og.Collider rows by ranges (`rows`, wherever the step runs). On the
+  pool, the readout reads the contact graph by ranges of edges (`pairs`)
+  and sorts the touching pairs by their key and index with
+  `og_lanes::sort`. The sync can plan each body (is it the body it was,
+  was it moved, its pose and velocity) and the readout read each body back
+  (the rest rule, its new values) by ranges of bodies (`bodies`), but that
+  does not pay: every rapier call stays in body order, since touching a
+  body puts it on rapier's modified list, which the snapshot and the hash
+  carry, and those calls, the deepest-contact fold, the walks of the
+  tracked map and the write-back are most of these phases. So the body
+  grain is off. The bodies that left are found, and the values physics
+  keeps per body stored, by one walk of the sorted keys each.
 - **Ropes, cloths and fluids side by side.** Each rope, each cloth and each
   fluid (alone, or its group's set of up to four, 2D and 3D) steps from
   its own state and the solid colliders around it, read only, so they step
@@ -113,12 +127,19 @@ og-physics splits its own work besides, wherever the step runs (`src/lanes.rs`,
   pairs with the particles after it) and the collisions with solids and
   the container run by ranges of particles from two grains, the ranges'
   pairs joined in particle order: the pairs, and their order, of one
-  thread. The viscosity, density and relaxation passes are Gauss-Seidel
-  over the pairs in index order and stay serial.
-- **Ragdolls are not split**: their sync before the step writes rapier's
-  bodies (kinematic targets, damping, the limp switch) a few calls a bone,
-  and 256 ragdolls (768 bones, half of them limp) cost 0.33 ms a tick in
-  all, rapier's step of their bones included.
+  thread. The density pass could gather each particle's sums in the order
+  its scatter visits them, bit for bit, but the pairs' transpose that needs
+  costs what the split saves (8,000 3D particles on four lanes: 8.37 ms
+  scattered, 8.45 gathered), so it stays the scatter. Viscosity,
+  relaxation and mixing are Gauss-Seidel over the pairs in index order:
+  particle i's pairs read what particle i - 1's wrote whenever they are
+  neighbours, a chain as long as the fluid, which only an order that
+  moves every bit (Jacobi, two colours) would split. They stay serial.
+- **Ragdolls** are planned alone (targets, blend, the limp and recover
+  switches, each bone's pose) by ranges of ragdolls (`ragdolls`) and synced
+  to rapier in ragdoll order. The split never pays: 1,024 ragdolls of
+  three bones spend 0.2 ms in their sync, most of it the rapier calls, so
+  the grain is off.
 - **Queries** (`PhysicsSystem::query`, `tick_query`, the raycast, shape
   cast and overlap) run through `og_lanes::serial`: on the calling thread
   inside its one-thread pool, so parry's own `rayon::join` runs inline and
@@ -134,46 +155,70 @@ its solver lays constraints out for a fixed eight workers whatever the pool
 has, its parallel passes write to precomputed disjoint slots or concatenate
 in the sequential order, and its narrow phase applies pair transitions in a
 fixed order. og-physics's own splits are maps whose results come back in
-item order (the contact readout's are folded serially, the deepest
-penetration per body a minimum) or passes whose items read only shared
-state and write only their own (a soft body, a range of particles). What
-checks it here: `tests/lanes.rs` (the beyond scenario in both profiles and
-a world of 48 ropes, 16 cloths and four 3D fluids and one of six 2D fluids,
-each with every pass split by `Grains::always`, with lanes off and with the
-measured grains: one hash and one snapshot), `tests/pile.rs` (a pen at
+item order and are applied serially in that order (the readout's pairs
+folded and every rapier call made in body or ragdoll order, the touching
+pairs sorted by key and index, so one order), or passes whose items read
+only shared state and write only their own (a soft body, a range of
+particles). What checks it here: `tests/lanes.rs` (the beyond scenario in
+both profiles, a world of 48 ropes, 16 cloths and four 3D fluids, one of
+six 2D fluids and 24 ragdolls in each profile going limp and recovering,
+each with every pass split by `Grains::always`, with lanes off and with
+the measured grains: one hash and one snapshot), `tests/pile.rs` (a pen at
 `pool_bodies` stepped with lanes on and off), `tools/wasm-determinism`
-(physics_hash 18126409214070009362 before and after this round, natively
-with lanes off, on four threads and with every pass split on four and on
-eight; the wasm's builds hash the same scenarios) and
+(physics_hash 18126409214070009362 before and after rounds two and three,
+natively with lanes off, on four and eight threads and with every pass
+split on four and on eight; the wasm's builds hash the same scenarios) and
 `packages/engine/tests/lanes.test.ts` (a 1,000-box pile through the native
 engine with lanes off and on four threads). The lanes wasm itself is
 checked in the browser (`bench/lanes.ts --chrome --pile`: the same capture
 in its three modes).
 
 The grains were measured on the M4 Pro (8 performance and 4 efficiency
-cores, a shared machine at load 8 to 17), `examples/lanes_costs.rs` for
-the step and `examples/soft_lanes_costs.rs` for the soft bodies:
-`tests/evidence/P4/physics-lanes/` and `tests/evidence/P4/physics-lanes-2/`.
+cores, shared with other builds), `examples/lanes_costs.rs` for the step
+and `examples/soft_lanes_costs.rs` for the soft bodies and ragdolls:
+`tests/evidence/P4/physics-lanes/`, `tests/evidence/P4/physics-lanes-2/`
+and `tests/evidence/P4/physics-3/`.
 
-| threads | step on the pool from | ropes split from | cloths from | fluid sets from | particles a task |
-|---|---|---|---|---|---|
-| 1 (lanes off) | never | never | never | never | never |
-| 2 to 4 | 500 bodies | 1,600 point passes (8 ropes of 16 segments) | 2,200 (2 cloths of 12 × 12) | 1,000 particle substeps (2 fluids of 250 at two substeps) | 2D 256, 3D 512 |
-| 5 or 6 | 1,000 | 4,800 (24 ropes) | 4,000 (4 cloths) | 1,000 | 2D 256, 3D 512 |
-| 7 and up | 1,500 | 4,800 | 4,000 | 1,000 | 2D 256, 3D 512 |
+| threads | step on the pool from | edges a task (on the pool) | rows a task | ropes split from | cloths from | fluid sets from | particles a task | bodies, ragdolls |
+|---|---|---|---|---|---|---|---|---|
+| 1 (lanes off) | never | never | never | never | never | never | never | never |
+| 2 to 4 | 500 bodies | 2,048 | 1,024 | 1,600 point passes (8 ropes of 16 segments) | 2,200 (2 cloths of 12 × 12) | 1,000 particle substeps (2 fluids of 250 at two substeps) | 2D 256, 3D 512 | never |
+| 5 | 1,000 | 2,048 | 1,024 | 1,600 (8 ropes) | 4,000 (4 cloths) | 1,000 | 2D 256, 3D 512 | never |
+| 6 | 1,000 | 2,048 | 1,024 | 3,200 (16 ropes) | 4,000 | 1,000 | 2D 256, 3D 512 | never |
+| 7 and up | 1,500 | 2,048 | 1,024 | 4,800 (24 ropes) | 4,000 | 1,000 | 2D 256, 3D 512 | never |
 
-Five or six threads take eight's soft-body grains (not measured apart; the
-step's threshold was).
 Rapier's stages wait for their slowest worker, and with more threads some
 land on an efficiency core or a busy one, so the step pays later the more
 threads it wakes: on four lanes from about 500 bodies (-35 % at 2,000), on
-six from about 1,000, on eight from about 1,500 (-13 % at 2,000). Ropes,
-cloths and fluid sets pay as soon as there are a few: 128 ropes 0.90 to
-0.29 ms on four lanes, 32 cloths 1.22 to 0.38, eight 3D fluids of 1,000
-6.5 to 1.8 (1.4 on eight lanes). One fluid gains from its split passes:
-a 2D fluid of 1,000 particles 1.39 to 0.77 ms, of 8,000 15.1 to 6.6; a
-3D fluid of 2,000 1.81 to 1.47, of 8,000 11.6 to 7.7 (its serial
-relaxation weighs more). Ragdolls stay flat either way.
+six from about 1,000, on eight from about 1,500 (-13 % at 2,000). Around
+rapier a pen of 2,000 now spends 1.24 ms lanes off and 1.20 on four lanes
+(gather, sync, readout and write-back; 1.51 and 1.64 before round three),
+a pen of 4,000 2.76 and 2.07 to 2.30 on the pools. Ropes, cloths and
+fluid sets pay as soon as there are a few: 128 ropes 0.90 to 0.29 ms on
+four lanes, 32 cloths 1.22 to 0.38, eight 3D fluids of 1,000 6.5 to 1.8
+(1.4 on eight lanes). One fluid gains from its split passes: a 2D fluid of
+1,000 particles 1.39 to 0.77 ms, of 8,000 15.1 to 6.6; a 3D fluid of
+2,000 1.81 to 1.47, of 8,000 11.6 to 7.7 (its serial relaxation weighs
+more).
+
+### Where the time goes: `stats`
+
+`PhysicsSystem::stats()` (`og.physics.stats` in TypeScript) says what the
+last step cost: its tick, its rapier bodies, the pool's threads, whether
+the step ran on the pool, the whole system's wall-clock ms and, for each
+phase in step order, its ms and whether any of it ran on the pool:
+`gather`, `sync`, `joints` (joints and vehicles), `ragdolls`, `water`,
+`rapier` (every substep), `readout`, `controllers`, `soft` (ropes and
+cloths), `fluids` (2D), `fluids3d` and `writeBack`. A phase's time is
+taken on the thread it runs on (the step's on a pool thread when it is on
+the pool); whether it split, from the parallel calls that thread started
+(`og_lanes::calls_here`), with rapier's step marked split when the step
+went to the pool. The clock is `Instant` natively and each Worker's
+`performance.now` on the web (`set_clock`, which og-runtime's
+`set_physics_clock` forwards). Stats are not world state: no snapshot, no
+hash, nothing in the simulation reads them. `lanes_costs --phases` prints
+their means.
+
 ## Beyond rigid bodies (the E5 round)
 
 Components over the same rapier world and state block (`src/schema_ext.rs`,
@@ -296,13 +341,17 @@ layers, kinematic, locks, errors), `edits.rs` (component changes reaching
 the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
 `pile.rs` (determinism and restore, set `OG_PHYSICS_PILE_REPORT` to write
 its JSON report; lanes on and off on a pen large enough for the pool),
-`lanes.rs` (every split pass against lanes off, the pool threshold, queries
-off rayon's global pool, a panic in a query), and the E5 round's `joints.rs`, `controllers.rs`,
+`lanes.rs` (every split pass against lanes off, ragdolls among them, the
+pool threshold, the stats' phases and where they ran, queries off
+rayon's global pool, a panic in a query), and the E5 round's `joints.rs`, `controllers.rs`,
 `vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`, and phase 2's `fluid3d.rs`. The dev profile builds og-physics and rapier at
 `opt-level = 3`; the pile takes about 15 s. `examples/lanes_costs.rs`
 times the step with lanes off and on (`OG_LANES=off|4|8`, release;
-`--forced` puts every step on the pool) and `examples/soft_lanes_costs.rs`
-the soft bodies (`--split`, `--particles N`).
+`--forced` puts every step on the pool, `--phases` prints the stats'
+phases, `--bodies`, `--pairs` and `--rows` set those grains) and
+`examples/soft_lanes_costs.rs` the soft bodies and ragdolls (`--split`,
+`--particles N`, `--ragdolls N`, `--rope-work N`, `--cloth-work N`,
+`--only`).
 
 ## Status 2026-10-18 (what phase 1 still owes)
 

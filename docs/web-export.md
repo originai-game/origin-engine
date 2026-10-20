@@ -154,9 +154,17 @@ bit what the sequential build computes under enhanced-determinism; the
 single-threaded wasm keeps the sequential build) splits its broad phase,
 narrow phase and solver from `og_physics::pool_bodies` bodies for the
 pool's thread count (500 on two to four, 1,000 on five or six, 1,500 from
-seven), the contact readout by pairs, ropes, cloths and fluid sets
-stepped side by side, and the fluids' neighbour search and collisions by
-ranges of particles (`og_physics::Grains`). Physics work outside the step
+seven), the components gathered by ranges of rows, the contact graph
+read by ranges of edges and its touching pairs sorted with
+`og_lanes::sort` on the pool, ropes, cloths and fluid sets stepped side
+by side, and the fluids' neighbour search and collisions by ranges of
+particles (`og_physics::Grains`). Every rapier call stays in body order;
+planning the bodies' sync and readout or the ragdolls by ranges was
+measured not to pay, and a fluid's density, viscosity, relaxation and
+mixing passes stay serial (tests/evidence/P4/physics-3/).
+`og.physics.stats` reports each phase's time and whether it went to the
+pool; the web host times it with each Worker's `performance.now`, since a
+step on the lanes runs on a pool Worker. Physics work outside the step
 (raycasts, shape casts, overlaps) runs through `og_lanes::serial`, on the
 engine thread inside its one-thread pool, so parry's own `rayon::join`
 never reaches a Worker. A call splits
