@@ -16,9 +16,9 @@ use glam::{Mat4, Quat, Vec3};
 use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
 use og_render::{
-    AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
-    TextureData, TextureDesc, TextureFormat, TextureFormats, TextureHandle, TextureSource,
-    TextureUpload, Vertex,
+    AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips,
+    PhysicalExtensions, RenderScene, StandardMaterial, TextureData, TextureDesc, TextureFormat,
+    TextureFormats, TextureHandle, TextureSource, TextureUpload, Vertex,
 };
 use std::collections::BTreeMap;
 use std::fmt;
@@ -809,6 +809,8 @@ pub struct CookedMaterial {
     pub normal_texture: Option<usize>,
     pub emissive_texture: Option<usize>,
     pub occlusion_texture: Option<usize>,
+    /// The `KHR_materials_*` physical extensions (`present` 0 without any).
+    pub physical: PhysicalExtensions<usize>,
 }
 
 /// A texture a model uses.
@@ -980,6 +982,34 @@ impl CookedModel {
                 normal_texture: tex(m.normal_texture)?,
                 emissive_texture: tex(m.emissive_texture)?,
                 occlusion_texture: tex(m.occlusion_texture)?,
+                physical: PhysicalExtensions {
+                    present: m.physical,
+                    clearcoat: m.clearcoat,
+                    clearcoat_texture: tex(m.clearcoat_texture)?,
+                    clearcoat_roughness: m.clearcoat_roughness,
+                    clearcoat_roughness_texture: tex(m.clearcoat_roughness_texture)?,
+                    clearcoat_normal_texture: tex(m.clearcoat_normal_texture)?,
+                    clearcoat_normal_scale: m.clearcoat_normal_scale,
+                    sheen_color: [m.sheen_r, m.sheen_g, m.sheen_b],
+                    sheen_color_texture: tex(m.sheen_color_texture)?,
+                    sheen_roughness: m.sheen_roughness,
+                    sheen_roughness_texture: tex(m.sheen_roughness_texture)?,
+                    transmission: m.transmission,
+                    transmission_texture: tex(m.transmission_texture)?,
+                    thickness: m.thickness,
+                    thickness_texture: tex(m.thickness_texture)?,
+                    attenuation_distance: m.attenuation_distance,
+                    attenuation_color: [m.attenuation_r, m.attenuation_g, m.attenuation_b],
+                    ior: m.ior,
+                    iridescence: m.iridescence,
+                    iridescence_texture: tex(m.iridescence_texture)?,
+                    iridescence_ior: m.iridescence_ior,
+                    iridescence_thickness: [m.iridescence_min, m.iridescence_max],
+                    iridescence_thickness_texture: tex(m.iridescence_thickness_texture)?,
+                    anisotropy: m.anisotropy,
+                    anisotropy_rotation: m.anisotropy_rotation,
+                    anisotropy_texture: tex(m.anisotropy_texture)?,
+                },
             });
         }
         let mut model_nodes = Vec::with_capacity(nodes.len());
@@ -1107,6 +1137,18 @@ impl CookedModel {
         }
     }
 
+    /// Material `index` with its physical extensions, as a standard
+    /// material: what [`CookedModel::add_to`] adds for a material that has
+    /// any (and the same as [`CookedModel::material`] for one without).
+    pub fn standard_material(&self, index: usize, textures: &[TextureHandle]) -> StandardMaterial {
+        let mut m = StandardMaterial::from(&self.material(index, textures));
+        self.materials[index]
+            .physical
+            .map(|i| textures.get(i).copied())
+            .apply(&mut m);
+        m
+    }
+
     /// Adds the model's textures, materials and LOD-0 meshes to `scene` and
     /// returns the parts of its default scene (every mesh node's primitives
     /// with the node's transform). `textures` are the decoded
@@ -1123,8 +1165,13 @@ impl CookedModel {
             .iter()
             .map(|t| scene.add_texture_source(t.clone()))
             .collect();
+        // A material with physical extensions is added as the standard
+        // material it draws as, the others in their glTF shape.
         let materials: Vec<MaterialHandle> = (0..self.materials.len())
-            .map(|i| scene.add_material(self.material(i, &handles)))
+            .map(|i| match self.materials[i].physical.present {
+                0 => scene.add_material(self.material(i, &handles)),
+                _ => scene.add_standard_material(self.standard_material(i, &handles)),
+            })
             .collect();
         let meshes: Vec<MeshHandle> = self
             .primitives

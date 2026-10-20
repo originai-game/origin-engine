@@ -30,7 +30,8 @@ use og_cook::runtime::{CookedSound, ManifestStream, StreamTrigger};
 use og_core::{Reflect, Str64};
 use og_ecs::{SystemDesc, World};
 use og_render::{
-    Material, MaterialHandle, MeshData, MeshHandle, TextureData, TextureHandle, TextureSource,
+    MaterialHandle, MeshData, MeshHandle, StandardMaterial, TextureData, TextureHandle,
+    TextureSource,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -105,8 +106,9 @@ enum Slot {
         id: String,
         /// Per primitive, the proxy's mesh handle and geometry.
         meshes: Vec<(MeshHandle, MeshData)>,
-        /// Per material, the proxy's handle and material.
-        materials: Vec<(MaterialHandle, Material)>,
+        /// Per material, the proxy's handle and material (as drawn: a
+        /// physical material has no glTF shape).
+        materials: Vec<(MaterialHandle, StandardMaterial)>,
         /// The full model's textures, made the first time it loads.
         textures: Vec<TextureHandle>,
     },
@@ -625,7 +627,12 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     rs.scene.set_mesh(*h, m);
                 }
                 for (i, (h, _)) in materials.iter().enumerate().take(model.materials.len()) {
-                    rs.scene.set_material(*h, model.material(i, textures));
+                    if model.materials[i].physical.present == 0 {
+                        rs.scene.set_material(*h, model.material(i, textures));
+                    } else {
+                        rs.scene
+                            .set_standard_material(*h, model.standard_material(i, textures));
+                    }
                 }
             }
             (Slot::Texture { handle, .. }, Full::Texture(d, pixel)) => {
@@ -714,7 +721,7 @@ fn downgrade(eng: &Engine, group: &str) {
                     rs.scene.set_mesh(*h, m.clone());
                 }
                 for (h, m) in materials.iter() {
-                    rs.scene.set_material(*h, m.clone());
+                    rs.scene.set_standard_material(*h, *m);
                 }
                 for h in textures.iter() {
                     rs.scene.set_texture(*h, placeholder());
@@ -742,7 +749,7 @@ pub(crate) fn add_model(
     group: &str,
     id: &str,
     meshes: Vec<(MeshHandle, MeshData)>,
-    materials: Vec<(MaterialHandle, Material)>,
+    materials: Vec<(MaterialHandle, StandardMaterial)>,
 ) {
     push(
         eng,

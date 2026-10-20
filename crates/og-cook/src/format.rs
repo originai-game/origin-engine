@@ -36,7 +36,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r2");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r3");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -168,10 +168,11 @@ pub mod alpha {
 }
 
 row!(
-    /// A glTF metallic-roughness material. Texture fields index the model's
+    /// A glTF metallic-roughness material with its physical extensions
+    /// (og-render's `PhysicalExtensions`). Texture fields index the model's
     /// `textures` table ([`NONE`] when absent). The last material of every
     /// model is the default one primitives without a material use.
-    MaterialRow, "og.ModelMaterial", 1 {
+    MaterialRow, "og.ModelMaterial", 2 {
         base_r: f32, base_g: f32, base_b: f32, base_a: f32,
         emissive_r: f32, emissive_g: f32, emissive_b: f32,
         metallic: f32,
@@ -188,6 +189,37 @@ row!(
         occlusion_texture: u32,
         name_offset: u32,
         name_len: u32,
+        /// Which `KHR_materials_*` extensions the material has
+        /// (`PhysicalExtensions::present` bits); the fields of the others
+        /// are glTF's defaults.
+        physical: u32,
+        clearcoat: f32,
+        clearcoat_roughness: f32,
+        clearcoat_normal_scale: f32,
+        sheen_r: f32, sheen_g: f32, sheen_b: f32,
+        sheen_roughness: f32,
+        transmission: f32,
+        thickness: f32,
+        /// 0: no absorption (glTF's +infinity).
+        attenuation_distance: f32,
+        attenuation_r: f32, attenuation_g: f32, attenuation_b: f32,
+        ior: f32,
+        iridescence: f32,
+        iridescence_ior: f32,
+        iridescence_min: f32,
+        iridescence_max: f32,
+        anisotropy: f32,
+        anisotropy_rotation: f32,
+        clearcoat_texture: u32,
+        clearcoat_roughness_texture: u32,
+        clearcoat_normal_texture: u32,
+        sheen_color_texture: u32,
+        sheen_roughness_texture: u32,
+        transmission_texture: u32,
+        thickness_texture: u32,
+        iridescence_texture: u32,
+        iridescence_thickness_texture: u32,
+        anisotropy_texture: u32,
     }
 );
 

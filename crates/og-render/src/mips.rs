@@ -72,8 +72,13 @@ impl MipGenerator {
         encoder: &mut wgpu::CommandEncoder,
         texture: &wgpu::Texture,
     ) {
-        let format = texture.format();
-        let pipeline = self.pipelines.entry(format).or_insert_with(|| {
+        self.prepare(device, texture.format());
+        self.record(device, encoder, texture);
+    }
+
+    /// Makes the pipeline for `format` ([`MipGenerator::record`] needs it).
+    pub(crate) fn prepare(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
+        self.pipelines.entry(format).or_insert_with(|| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("mipmap"),
                 layout: Some(&self.pipeline_layout),
@@ -100,6 +105,16 @@ impl MipGenerator {
                 cache: None,
             })
         });
+    }
+
+    /// [`MipGenerator::generate`] for a format made with [`MipGenerator::prepare`].
+    pub(crate) fn record(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        texture: &wgpu::Texture,
+    ) {
+        let pipeline = &self.pipelines[&texture.format()];
         let level = |mip: u32| {
             texture.create_view(&wgpu::TextureViewDescriptor {
                 label: Some("mip"),

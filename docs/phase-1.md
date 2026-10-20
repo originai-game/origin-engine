@@ -1103,7 +1103,8 @@ The publish wasm is **3,028,729 B brotli, 72.2 %** (main recorded
 3,013,367 B, +15,362 B).
 
 Left out: clearcoat maps (WebGL2's skinned lit pipeline has no texture slot
-left), a compute cluster build (the CPU build costs tens of microseconds),
+left; delivered in P4 with the other physical lobes, crates/og-render's
+README §Physical materials), a compute cluster build (the CPU build costs tens of microseconds),
 upload timings in the browser (the Worker's transcoding is timed, the GPU
 upload natively), and ASTC and ETC2 frames off Apple silicon (lavapipe and
 desktop Chrome take BC).

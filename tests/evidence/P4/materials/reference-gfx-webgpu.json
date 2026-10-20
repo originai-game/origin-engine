@@ -1,0 +1,43 @@
+{
+  "tier": "webgpu",
+  "buildMs": 631,
+  "scenes": {
+    "materials-physical": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 759.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00003,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials-physical.png",
+      "outliers": 0,
+      "rmse": 0.00003,
+      "ok": true,
+      "ms": 1271
+    },
+    "materials": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 33.1,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 307
+    }
+  },
+  "adapter": "",
+  "ms": 1803,
+  "log": []
+}

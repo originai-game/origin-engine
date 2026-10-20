@@ -294,7 +294,15 @@ fn the_default_material_is_the_schema_default() {
     let layout = Layout::of(&schema);
     let bytes = to_bytes(&StandardMaterial::default()).expect("encode");
     for (i, f) in schema.fields.iter().enumerate() {
-        let lanes = f.default.clone().unwrap_or_else(|| vec![0.0; f.ty.lanes()]);
+        // Compared as the f32 the field holds (three.js's 1.3 is not a
+        // binary fraction).
+        let lanes: Vec<f64> = f
+            .default
+            .clone()
+            .unwrap_or_else(|| vec![0.0; f.ty.lanes()])
+            .into_iter()
+            .map(|v| v as f32 as f64)
+            .collect();
         let raw = &bytes[layout.range(i)];
         let values: Vec<f64> = raw
             .as_chunks::<4>()
