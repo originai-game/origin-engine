@@ -15,7 +15,7 @@
 // (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
 // mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens).
 
-import { og, defineComponent, defineSystem, bool, f32, f64, u32 } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 
 export const SCREENS = [
@@ -371,13 +371,24 @@ function gallery(d: DemoState): void {
   });
 }
 
-/** The text screen's field and area values (UI text; the demo keeps them out of the world). */
-const typed = { name: "", notes: "" };
+/** The most characters the text screen's field and area take. */
+const NAME_CHARS = 24;
+const NOTES_CHARS = 256;
+
+/**
+ * The text screen's field and area values: world state like every other
+ * setting (snapshots, replays and `get:Typed` carry them). A str field holds
+ * bytes of UTF-8, at most four a character, so maxChars × 4 always fits.
+ */
+export const Typed = defineResource("Typed", {
+  name: str(NAME_CHARS * 4, "", { label: "Name" }),
+  notes: str(NOTES_CHARS * 4, "", { label: "Notes" }),
+});
 
 /** Type and scripts: the display and rounded faces kerned, labels cut with
  * an ellipsis, Arabic, Hebrew and Devanagari (shaped, in bidi order, a run
  * of Arabic inside a Latin span), a text field and a text area. */
-function textScreen(): void {
+function textScreen(world: World): void {
   const vp = og.ui.frameViewport();
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
   const t = og.ui.frameTheme();
@@ -405,8 +416,12 @@ function textScreen(): void {
       og.ui.label("Devanagari", "नमस्ते दुनिया", { nowrap: true });
       og.ui.label("Hindi", "हिन्दी भाषा", { nowrap: true });
     });
-    typed.name = og.ui.textField("Name", typed.name, { placeholder: "Your name", width: grow }).value;
-    typed.notes = og.ui.textArea("Notes", typed.notes, { placeholder: "Notes", rows: 3, width: grow }).value;
+    const typed = world.resource(Typed);
+    if (!typed.ok) return;
+    const name = og.ui.textField("Name", typed.value.name, { placeholder: "Your name", width: grow, maxChars: NAME_CHARS }).value;
+    if (name !== typed.value.name) typed.value.name = name;
+    const notes = og.ui.textArea("Notes", typed.value.notes, { placeholder: "Notes", rows: 3, width: grow, maxChars: NOTES_CHARS }).value;
+    if (notes !== typed.value.notes) typed.value.notes = notes;
   });
 }
 
@@ -585,7 +600,7 @@ export const Thud = defineSystem("Thud", { writes: [og.AudioSource], after: ["Ki
   }
 });
 
-export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q, time, world) => {
+export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo, Typed] }, (q, time, world) => {
   for (const a of q.archetypes()) {
     if (a.count === 0) continue;
     const cols = a.column(Demo) as unknown as Record<string, Float64Array>;
@@ -898,7 +913,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       back = og.ui.back();
       break;
     case "text":
-      textScreen();
+      textScreen(world);
       back = og.ui.back();
       break;
     case "materials":
@@ -951,6 +966,7 @@ export default og.game({
   tick: 60,
   seed: 1,
   systems: [Kit, Thud],
+  resources: [Typed],
   render: { antialias: "msaa4" },
   start(world) {
     const camera = world.resource(og.Camera);

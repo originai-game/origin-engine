@@ -451,6 +451,20 @@ impl<'a> Validator<'a, '_> {
     fn column(&mut self, c: &Column) {
         self.doc(&c.doc, c.line, || format!("column `{}`", c.name));
         self.ty(&c.value, &[], c.line);
+        if c.capacity {
+            // Text: a byte capacity per field, so no fixed stride and no
+            // value-type name to share.
+            if c.array != "Uint8Array" || c.value.to_string() != "String" || c.stride != 0 {
+                self.error(
+                    c.line,
+                    format!(
+                        "column `{}` has a capacity: it holds `String` in a Uint8Array whose stride is the capacity, so it declares no stride",
+                        c.name
+                    ),
+                );
+            }
+            return;
+        }
         if c.name != c.value.to_string() {
             self.error(
                 c.line,

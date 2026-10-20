@@ -40,6 +40,8 @@ export interface ColumnSpec {
   readonly name: string;
   readonly array: "Float32Array" | "Float64Array" | "Uint32Array" | "Int32Array" | "Uint8Array";
   readonly stride: number;
+  /** The stride is each field's capacity (`str(32)`), not the kind's. */
+  readonly capacity?: boolean;
 }
 
 export const COLUMNS: ReadonlyMap<string, ColumnSpec> = new Map(
@@ -107,6 +109,8 @@ export interface FieldSpec {
   readonly kind: string;
   readonly default: unknown;
   readonly options: Record<string, unknown>;
+  /** A `str` field's capacity in bytes. */
+  readonly capacity?: number;
 }
 
 export interface Token {
@@ -122,6 +126,7 @@ function fieldList(fields: Readonly<Record<string, FieldSpec>>): unknown[] {
     kind: spec?.kind,
     default: spec?.default,
     options: spec?.options ?? {},
+    ...(spec?.capacity === undefined ? {} : { capacity: spec.capacity }),
   }));
 }
 
@@ -296,9 +301,11 @@ function layoutOf(component: Token): { names: string[]; kinds: ColumnSpec[] } {
   if (!l) {
     const names = Object.keys(component.fields ?? {});
     const kinds = names.map((n) => {
-      const kind = COLUMNS.get(component.fields![n]!.kind);
+      const field = component.fields![n]!;
+      const kind = COLUMNS.get(field.kind);
       if (!kind) throw new Error(`'${component.name}.${n}' is not a column field`);
-      return kind;
+      // A str column's stride is the field's capacity: one byte lane per byte.
+      return kind.capacity ? { ...kind, stride: field.capacity ?? 0 } : kind;
     });
     layouts.set(component, (l = { names, kinds }));
   }

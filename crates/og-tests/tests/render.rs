@@ -308,7 +308,7 @@ fn the_default_material_is_the_schema_default() {
             .as_chunks::<4>()
             .0
             .iter()
-            .map(|c| match f.ty.name() {
+            .map(|c| match &*f.ty.name() {
                 "u32" => u32::from_le_bytes(*c) as f64,
                 _ => f32::from_le_bytes(*c) as f64,
             })

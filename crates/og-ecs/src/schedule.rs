@@ -393,7 +393,6 @@ impl<'w> SystemContext<'w> {
         if !self.world.is_alive(e) {
             return Err(dead(e));
         }
-        self.world.registry.check_not_event_only(id, "component")?;
         let bytes = self.world.registry.encode(id, &value)?;
         self.world.registry.check_value(id, &bytes)?;
         self.commands.push(Command::Insert(e, id, bytes));
@@ -433,7 +432,6 @@ impl<'w> SystemContext<'w> {
         if !self.world.is_alive(e) {
             return Err(dead(e));
         }
-        self.world.registry.check_not_event_only(id, "component")?;
         self.world.registry.check_value(id, bytes)?;
         self.commands.push(Command::Insert(e, id, bytes.to_vec()));
         Ok(())

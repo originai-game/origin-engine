@@ -237,13 +237,12 @@ fn bool_mat4_enum_and_string_fields_have_their_layout() {
             ("isLoud", FieldType::Bool),
             ("world", FieldType::Mat4),
             ("mood", FieldType::Enum),
-            ("text", FieldType::Str64),
-            ("long", FieldType::Str256),
+            ("text", FieldType::Str(64)),
+            ("long", FieldType::Str(256)),
             ("flag", FieldType::Bool),
         ]
     );
     assert_eq!(s.fields[2].variants, ["calm", "angry", "sad"]);
-    assert!(s.has_strings());
     let layout = Layout::of(&s);
     assert_eq!(layout.size(), 1 + 64 + 4 + 64 + 256 + 1);
 
@@ -328,7 +327,7 @@ fn new_field_types_validate_and_hash_their_meaning() {
     s.fields[0].default = Some(vec![2.0]);
     refuse(s, "is not a valid enum value");
     let mut s = base();
-    s.fields.push(FieldSchema::new("t", FieldType::Str64));
+    s.fields.push(FieldSchema::new("t", FieldType::Str(64)));
     s.fields[1].default = Some(vec![0.0]);
     refuse(s, "a string field starts empty");
     let mut s = base();
@@ -344,4 +343,150 @@ fn new_field_types_validate_and_hash_their_meaning() {
     let mut swapped = base();
     swapped.fields[0].variants.swap(0, 1);
     assert_ne!(swapped.layout_hash(), base().layout_hash());
+}
+
+/// A component with a fixed-capacity string, as `name: str(32)` declares it.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+struct Profile {
+    name: og_core::Str<32>,
+    level: u32,
+}
+
+#[test]
+fn a_string_field_is_its_capacity_in_zero_padded_utf8() {
+    let s = Profile::schema();
+    s.validate().unwrap();
+    assert_eq!(s.fields[0].ty, FieldType::Str(32));
+    assert_eq!(s.fields[0].ty.name(), "str32");
+    assert_eq!(s.fields[0].ty.capacity(), Some(32));
+    let layout = Layout::of(&s);
+    assert_eq!(layout.size(), 32 + 4);
+    assert_eq!(layout.range(1), 32..36);
+
+    let value = Profile {
+        name: og_core::Str::new("小灯").unwrap(),
+        level: 7,
+    };
+    let bytes = to_bytes(&value).unwrap();
+    assert_eq!(&bytes[..6], "小灯".as_bytes(), "UTF-8, six bytes");
+    assert!(bytes[6..32].iter().all(|b| *b == 0), "zero-padded");
+    assert_eq!(&bytes[32..], &7u32.to_le_bytes());
+    s.check_packed(&bytes).unwrap();
+    assert_eq!(from_bytes::<Profile>(&bytes).unwrap(), value);
+    assert_eq!(og_core::unpack_str(&bytes[..32]), "小灯");
+    assert_eq!(s.default_bytes(), vec![0u8; 36], "a string starts empty");
+
+    // The same text packs to the same bytes, so the same hash.
+    let again = og_core::pack_str("小灯", 32).unwrap();
+    assert_eq!(again, bytes[..32]);
+    assert_eq!(
+        og_core::pack_str("", 32).unwrap(),
+        vec![0u8; 32],
+        "empty is all zeros"
+    );
+}
+
+#[test]
+fn a_string_over_its_capacity_is_refused_with_the_fix_never_truncated() {
+    // 33 bytes: 32 ASCII and one more.
+    let long = "x".repeat(33);
+    let err = og_core::pack_str(&long, 32).unwrap_err();
+    assert!(
+        err.contains("is 33 bytes of UTF-8 and the field holds 32"),
+        "{err}"
+    );
+    assert!(err.contains("declare the field str(33) or larger"), "{err}");
+    // A multi-byte character counts its bytes: 11 × 3 = 33.
+    let err = og_core::pack_str(&"灯".repeat(11), 32).unwrap_err();
+    assert!(err.contains("33 bytes"), "{err}");
+    assert!(
+        og_core::pack_str(&"灯".repeat(10), 32).is_ok(),
+        "30 bytes fit"
+    );
+    assert!(
+        og_core::pack_str(&"x".repeat(32), 32).is_ok(),
+        "exactly full fits"
+    );
+    let err = og_core::Str::<32>::new(&long).unwrap_err();
+    assert_eq!(err.kind(), og_core::ErrorKind::Invalid);
+    assert!(og_core::pack_str("a\0b", 32).unwrap_err().contains("NUL"));
+    let err = og_core::pack_str(&"x".repeat(5000), 8).unwrap_err();
+    assert!(err.contains("holds at most 4096 bytes"), "{err}");
+}
+
+/// `Profile { name: str32 }`'s layout hash.
+const PINNED: u64 = 6_083_968_777_680_418_129;
+
+#[test]
+fn a_string_type_is_named_by_its_capacity_and_hashed_with_it() {
+    for (name, ty) in [
+        ("str1", FieldType::Str(1)),
+        ("str32", FieldType::Str(32)),
+        ("str64", FieldType::Str(64)),
+        ("str256", FieldType::Str(256)),
+        ("str4096", FieldType::Str(4096)),
+    ] {
+        assert_eq!(ty.name(), name);
+        assert_eq!(FieldType::parse(name), Some(ty));
+        assert_eq!(ty.size(), ty.lanes());
+        let json = serde_json::to_string(&ty).unwrap();
+        assert_eq!(json, format!("\"{name}\""));
+        assert_eq!(serde_json::from_str::<FieldType>(&json).unwrap(), ty);
+    }
+    for bad in [
+        "str", "str0", "str032", "str4097", "str-1", "str+3", "string",
+    ] {
+        assert_eq!(FieldType::parse(bad), None, "{bad}");
+    }
+    assert!(FieldType::string(0).is_err());
+    assert!(FieldType::string(4097).is_err());
+    assert_eq!(FieldType::string(12).unwrap(), FieldType::Str(12));
+
+    // The capacity is part of the layout; the hash is stable across runs
+    // (StableHasher, no per-process seed) and changes with the capacity.
+    let schema = |capacity: u16| Schema {
+        name: "Profile".into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![FieldSchema::new("name", FieldType::Str(capacity))],
+    };
+    assert_eq!(schema(32).layout_hash(), schema(32).layout_hash());
+    assert_eq!(
+        schema(32).layout_hash(),
+        PINNED,
+        "the layout hash of a str32 field is pinned: a change breaks every snapshot"
+    );
+    assert_ne!(schema(32).layout_hash(), schema(33).layout_hash());
+}
+
+#[test]
+fn a_string_field_has_no_range_default_or_tune() {
+    let base = || Schema {
+        name: "Profile".into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![FieldSchema::new("name", FieldType::Str(16))],
+    };
+    let refuse = |s: Schema, needle: &str| {
+        let err = s.validate().unwrap_err();
+        assert!(err.reason().contains(needle), "{}", err.reason());
+    };
+    base().validate().unwrap();
+    let mut s = base();
+    s.fields[0].ty = FieldType::Str(0);
+    refuse(s, "a string field holds 1 to 4096 bytes");
+    let mut s = base();
+    s.fields[0].max = Some(3.0);
+    refuse(s, "only numeric fields have one");
+    let mut s = base();
+    s.fields[0].tunable = true;
+    refuse(s, "publish numbers only");
+    let err =
+        Schema::from_json(r#"{"name":"P","version":1,"fields":[{"name":"n","type":"str0"}]}"#)
+            .unwrap_err();
+    assert!(
+        err.reason().contains("strN (N bytes, 1 to 4096)"),
+        "{}",
+        err.reason()
+    );
 }

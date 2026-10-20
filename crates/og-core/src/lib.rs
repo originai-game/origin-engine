@@ -36,7 +36,8 @@ pub use error::{Error, ErrorKind, Result};
 pub use handle::{Handle, HandleAllocator, Pool, RawHandle};
 pub use og_core_derive::Reflect;
 pub use reflect::{
-    Bool8, FieldSchema, FieldType, FieldValue, Layout, Reflect, ReflectField, Schema, Str64, Str256,
+    Bool8, FieldSchema, FieldType, FieldValue, Layout, Reflect, ReflectField, STR_MAX_CAPACITY,
+    Schema, Str, Str64, Str256, pack_str, unpack_str,
 };
 pub use rng::Rng;
 pub use time::{Time, TimeScale};

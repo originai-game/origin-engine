@@ -81,6 +81,17 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
 - Views belong to one system call. Never keep an `ArchetypeView` or a column
   array across ticks or in module state: a stale view throws with the tick
   and the system it belonged to.
+- Text is world state like a number: a `str(capacity)` field holds UTF-8 of
+  at most `capacity` bytes inline, zero-padded (`name: str(48)` takes any 12
+  characters, four bytes covering every script). `world.get`, `world.set`
+  and a resource's fields move it as a JS string; text over the capacity is
+  refused with the fix named (an error value from `world.insert`/`world.set`,
+  a throw from a resource's setter), never truncated. Its column is the raw
+  bytes (`Uint8Array`, stride the capacity). The probe reads it (`get:`,
+  `dump_entity`), `set:Prefs.name=Ada Lovelace` writes it (a JSON literal for
+  escapes: `set:Prefs.name=""`), a scene gives it one quoted string, and
+  snapshots and the world hash carry its bytes, so a name never lives in a
+  module variable or as numbers of code points.
 - Per-entity calls (`world.get`, `world.set`) are for commands and setup, not
   for hot loops. Inside a system a component it writes is borrowed by its
   views: `world.get` of it refuses, so read and write it through the
