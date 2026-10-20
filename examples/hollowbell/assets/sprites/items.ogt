@@ -1,0 +1,17 @@
+type texture-array
+version 1
+---
+# Written by tools/make-assets.ts: the items' frames, one layer each (16x16).
+kind pixel
+layer "items/glimmer-0.png"
+layer "items/glimmer-1.png"
+layer "items/glimmer-2.png"
+layer "items/glimmer-3.png"
+layer "items/chime-0.png"
+layer "items/chime-1.png"
+layer "items/chime-2.png"
+layer "items/chime-3.png"
+layer "items/heart.png"
+layer "items/lantern-dark.png"
+layer "items/lantern-lit-0.png"
+layer "items/lantern-lit-1.png"

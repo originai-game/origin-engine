@@ -1,0 +1,116 @@
+type skin
+version 1
+---
+# Hollowbell's skin: a copy of the engine's pixel style pack (templates/ui-kit/assets/skins/pixel;
+# CC0 art, OFL fonts; LICENSES.md), recoloured to the game's palette (palettes/hollowbell.hex):
+# the cave's violet ground, cream ink, the bell's gold as the one accent.
+# Its fallback is the game's own Chinese subset (tools/subset-font.py).
+name "hollowbell"
+base dark
+atlas "atlas.png" 384 256
+scale 1
+palette {
+  bg "#1a1726"
+  bgSubtle "#211c31"
+  surface "#2b2540"
+  surfaceRaised "#2b2540"
+  surfaceHover "#3a3152"
+  materialThick "#221d36f2"
+  materialRegular "#221d36e6"
+  materialThin "#221d36cc"
+  fg "#f6f3e4"
+  fgMuted "#d0c8b0"
+  fgSubtle "#b4ac96"
+  fgInverse "#14111f"
+  fill "#3d3558"
+  fillStrong "#4b4269"
+  border "#5b4f7d"
+  borderStrong "#a79ccf"
+  accent "#e0ae3c"
+  accentHover "#f7dc74"
+  accentActive "#b07a2a"
+  accentFg "#0b0a12"
+  accentInk "#f7dc74"
+  accentSoft "#e0ae3c33"
+  focus "#f7dc74"
+  thumb "#5b4f7d"
+  scrim "#0b0a12b3"
+  success "#8cc65e"
+  warn "#ffa53d"
+  danger "#ec7a5c"
+  info "#8fcbe8"
+  shadow "#00000099"
+}
+radius {
+  control 0
+  field 0
+  block 0
+  card 0
+  panel 0
+  sheet 0
+  button 0
+}
+ramp {
+  xs 12 16
+  meta 13 18
+  caption 13 18
+  sm 14 18
+  body 16 20
+  reading 16 22
+  base 16 22
+  lg 18 24
+  xl 22 28
+  xl2 24 28
+  xl3 28 32
+  displaySm 32 36
+  displayMd 36 40
+  displayLg 44 48
+}
+durations {
+  instant 80
+  fast 120
+  base 160
+  slow 320
+}
+fonts {
+  body "DotGothic16-Regular.ttf"
+  display "DotGothic16-Regular.ttf"
+  numeric "DotGothic16-Regular.ttf"
+  fallback "fonts/NotoSansSC-hollowbell.ttf"
+}
+icons "icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 8 tint
+slice card 104 4 64 64 4 tint
+slice button 172 4 48 48 6 tint
+slice buttonHover 224 4 48 48 6 tint
+slice buttonPressed 276 4 48 48 6 tint
+slice buttonDisabled 328 4 48 48 6 tint
+slice field 4 104 48 48 4 tint
+slice slot 56 104 48 48 4 tint
+slice tooltip 108 104 32 32 4 tint
+slice capsule 144 104 32 32 4 tint
+slice track 180 104 32 16 4 tint
+slice fill 216 104 32 16 4 tint
+soft 252 104 64 64 24
+divider 4 172 128 24 128 24 border
+flourish 136 172 64 24 32 12 accent 0
+tile 204 172 64 64 16 16 0.06 6 panel
+shadow panel 6 6 0 0 "#000000b0"
+shadow card 4 4 0 0 "#00000080"
+shadow button 0 4 0 0 "#000000a0"
+shadow capsule 3 3 0 0 "#00000080"
+shadow tooltip 3 3 0 0 "#00000080"
+textShadow display 3 3 0 "#000000c0"
+textShadow body 1 1 0 "#00000080"
+press 1.0 1.0 3
+hover -1 1.0
+motion {
+  enter slideDown
+  stagger 0
+  toast slideUp
+  progress 240
+  shake 4
+  pop 0.0
+}

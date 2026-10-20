@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a falling buzzy saw: og.load.sound(world, "<this file>") plays it.
+preset "hurt"
+seed 1
+pitch 1
+length 1
+volume 0.9

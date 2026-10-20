@@ -1,0 +1,22 @@
+type look
+version 1
+---
+# The results: the bell rings over the village at dawn, drawn as an old
+# handheld would (the engine's four-tone palette, a coarser grid). A
+# second look, applied with og.render.applyLook on the results screen and
+# taken off again for the next run.
+name "Hollowbell at dawn"
+extends "8bit-pixel"
+skin "skins/hollowbell/skin.ogt"
+antialias off
+Stylise {
+  pixelHeight 160
+  pixelSnap true
+  posterize 0
+  palette "@palettes/handheld4"
+  dither bayer2
+  ditherStrength 0.7
+}
+RenderSettings {
+  toneMapping none
+}

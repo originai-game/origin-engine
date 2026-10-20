@@ -1,0 +1,39 @@
+type flipbook
+version 1
+---
+# Written by tools/make-assets.ts. Wren faces right (flipX faces left); the
+# frames are 24x24 with the feet on the bottom row. The attack's strike is
+# its second frame (the `hit` event); the run's feet touch on frames 0 and 3.
+texture "wren.png"
+pivot 0.5 0
+grid 24 24 8 2
+clip idle {
+  frames 0 1
+  fps 3
+  mode pingPong
+}
+clip run {
+  frames 2 3 4 5 6 7
+  fps 12
+  event 0 "step"
+  event 3 "step"
+}
+clip jump {
+  frames 8
+  fps 1
+}
+clip fall {
+  frames 9
+  fps 1
+}
+clip attack {
+  frames 10 11 12 13
+  durations 0.05 0.07 0.08 0.08
+  mode once
+  event 1 "hit"
+}
+clip hurt {
+  frames 14 15
+  fps 10
+  mode once
+}

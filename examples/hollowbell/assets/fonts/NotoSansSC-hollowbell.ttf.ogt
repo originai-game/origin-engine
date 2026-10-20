@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# CJK punctuation and every CJK character of assets/strings/*.ogt and the playtests' typed name (tools/subset-font.py).
+font {
+  charset cjk-punct
+  chars "。一三上下与中么之乐了于井些交亮人什们伙会体你佳保做停光再减出击到动厅去发口名向吧呀咬响哎回在处复大失奔如字存它守完家对寻小少就层山已带并幽度录影往得微心态恢戏成我扎找把护拖换摊攀收效敌敲文斗新方旁旅无既时明易暂更最有木村来枚果标树根格桶棘次欢比洞深游满灯照玩用甲的穴空竟笔简篷糕纪经继续缺置翼老腹舌芯荆落虫蛋蛾蜂蜜行被角言设语谁谈败货购起跃跑跳迎返还这进远退道那醒里钟铃键面音颗题高鹪鼠！（），：？"
+  em_px 32
+  px_range 4
+}

@@ -1,0 +1,20 @@
+type particles
+version 1
+---
+# The caves' air: slow motes drifting up, each a layer of fx/motes-array.ogt at random.
+maxParticles 40
+shape box 14 6 0
+rate 3
+lifetime 4 7
+speed 0.05 0.2
+size 0.08 0.14
+sizeOverLife 0 0 0.2 1 0.8 1 1 0
+colorOverLife {
+  key 0 1 0.9 0.6 0
+  key 0.3 1 0.9 0.6 0.7
+  key 1 1 0.9 0.6 0
+}
+gravity 0 0.08 0
+noise 0.3 0.4 0.3
+array "fx/motes-array.ogt" random
+render sprite 6

@@ -1,0 +1,8 @@
+type texture-array
+version 1
+---
+# Written by tools/make-assets.ts: three mote shapes, one layer each (8x8).
+kind pixel
+layer "motes/dot.png"
+layer "motes/diamond.png"
+layer "motes/cross.png"
