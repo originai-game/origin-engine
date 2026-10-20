@@ -314,6 +314,26 @@ camera sliding 2 cm a frame, the mean absolute Laplacian of the luma is
 WebGPU (`taa-sharp` 0.55 against `taa` 0.49 ms) and about 0.1 ms on
 metal.
 
+**Where TAA reads its history.** The pixel's centre in uv is
+`in.pos.xy / size` (the window position, exact on every backend), not
+the interpolated `in.uv`, and a pixel nothing moved under (a reprojection
+of less than a thousandth of a pixel) reads its own history texel with
+`textureLoad`, unfiltered, so no sampler or varying precision can move
+the history of a still camera. On metal the still path is byte for byte
+the old frames (the 37 looks frames, `taa`); the moving path moved
+`taa-sharp` (a sliding camera) by RMSE 0.00029, max 4 levels. It did
+not change the WebGL2 looks station's frames (still 30 of 37 apart from
+metal, to four decimals), so that divergence lies elsewhere: open, see
+the AO note below and docs/phase-1.md's wave 7 web-reference entry.
+
+**Ambient occlusion by tier.** `AoMethod::Auto` (the default, and what
+`PostEffects.ao` asks for) is GTAO on the full tier and SSAO on WebGL2 by
+design (GTAO's horizon search is too heavy there), so any frame with AO
+differs between the tiers: fx-showcase's paper-craft, voxel-worlds and
+sculpted-clay looks frames (RMSE 0.006 to 0.019 against WebGPU with
+FXAA) differ for this reason, and natively forcing the no-compute tier
+on metal reproduces exactly those three.
+
 ## The overlay
 
 The screen-space layer for HUDs and og-ui. It is drawn after every post
