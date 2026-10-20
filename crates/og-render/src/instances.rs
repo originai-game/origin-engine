@@ -20,7 +20,14 @@ pub(crate) type GpuTransform = [[f32; 3]; 4];
 
 /// `m` as the GPU reads it ([`GpuTransform`]).
 pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
-    [m.x_axis, m.y_axis, m.z_axis, m.w_axis].map(|c| c.truncate().to_array())
+    // Written out: an array map is a loop of closure calls in the dev profile.
+    let (x, y, z, w) = (m.x_axis, m.y_axis, m.z_axis, m.w_axis);
+    [
+        [x.x, x.y, x.z],
+        [y.x, y.y, y.z],
+        [z.x, z.y, z.z],
+        [w.x, w.y, w.z],
+    ]
 }
 
 /// One (mesh, material) run of the sorted instances.
@@ -115,7 +122,7 @@ pub(crate) fn fold_box(
 }
 
 fn same_bits(a: &Mat4, b: &Mat4) -> bool {
-    bytemuck::bytes_of(a) == bytemuck::bytes_of(b)
+    bytemuck::cast_ref::<Mat4, [u32; 16]>(a) == bytemuck::cast_ref::<Mat4, [u32; 16]>(b)
 }
 
 impl SortedInstances {
@@ -133,26 +140,23 @@ impl SortedInstances {
         dequant: impl Fn(usize, usize) -> Option<Mat4>,
     ) -> Result<Sorted, RenderError> {
         let instances = &scene.instances;
-        for (i, inst) in instances.iter().enumerate() {
-            if inst.mesh.index() >= meshes {
-                return Err(RenderError::InvalidHandle(format!(
-                    "instance {i}: mesh {}",
-                    inst.mesh.index()
-                )));
-            }
-            if inst.material.index() >= materials {
-                return Err(RenderError::InvalidHandle(format!(
-                    "instance {i}: material {}",
-                    inst.material.index()
-                )));
-            }
-        }
-        // The submission's keys against the last frame's (and kept for the next).
+        // The submission's keys against the last frame's (and kept for the
+        // next), each checked against the scene's resources on the way.
         let mut same = self.scene == scene.id() && self.keys.len() == instances.len();
         self.scene = scene.id();
         self.keys.resize(instances.len(), (u32::MAX, u32::MAX));
-        for (key, inst) in self.keys.iter_mut().zip(instances) {
-            let k = (inst.mesh.index() as u32, inst.material.index() as u32);
+        for (i, (key, inst)) in self.keys.iter_mut().zip(instances).enumerate() {
+            let k = (inst.mesh.index(), inst.material.index());
+            if k.0 >= meshes || k.1 >= materials {
+                // Never kept: the next frame compares afresh.
+                self.keys.clear();
+                return Err(RenderError::InvalidHandle(if k.0 >= meshes {
+                    format!("instance {i}: mesh {}", k.0)
+                } else {
+                    format!("instance {i}: material {}", k.1)
+                }));
+            }
+            let k = (k.0 as u32, k.1 as u32);
             if *key != k {
                 *key = k;
                 same = false;
