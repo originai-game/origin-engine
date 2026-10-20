@@ -136,7 +136,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2833</sub>
+<sub>`api.ogt` line 2840</sub>
 
 <a id="fn-sprite"></a>
 
@@ -166,7 +166,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2958</sub>
+<sub>`api.ogt` line 2965</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -196,7 +196,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3132</sub>
+<sub>`api.ogt` line 3139</sub>
 
 <a id="fn-measureText"></a>
 
@@ -226,7 +226,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3139</sub>
+<sub>`api.ogt` line 3146</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -256,7 +256,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3199</sub>
+<sub>`api.ogt` line 3206</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -286,7 +286,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3206</sub>
+<sub>`api.ogt` line 3213</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -316,7 +316,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3213</sub>
+<sub>`api.ogt` line 3220</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -346,7 +346,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3236</sub>
+<sub>`api.ogt` line 3243</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -378,7 +378,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3243</sub>
+<sub>`api.ogt` line 3250</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -410,7 +410,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3253</sub>
+<sub>`api.ogt` line 3260</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -442,7 +442,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3261</sub>
+<sub>`api.ogt` line 3268</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -476,7 +476,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3269</sub>
+<sub>`api.ogt` line 3276</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -506,7 +506,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3278</sub>
+<sub>`api.ogt` line 3285</sub>
 
 <a id="fn-look"></a>
 
@@ -534,7 +534,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3285</sub>
+<sub>`api.ogt` line 3292</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -562,7 +562,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3291</sub>
+<sub>`api.ogt` line 3298</sub>
 
 <a id="fn-text"></a>
 
@@ -592,7 +592,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3297</sub>
+<sub>`api.ogt` line 3304</sub>
 
 ## Components, resources and events
 
@@ -1172,13 +1172,14 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `halftoneSize` | `number` | `6` | 2 … 64 | — | — | The dot grid's pitch in logical pixels. |
 | `halftoneAngle` | `number` | `45` | — | `deg` | — | The dot grid's angle. |
 | `halftoneColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The ink of the dots (linear). |
-| `halftoneSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie). |
+| `halftoneSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots. |
 | `hatching` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only. |
 | `hatchingScale` | `number` | `6` | 2 … 64 | — | — | The spacing of hatch lines in logical pixels. |
 | `hatchingLevels` | `number` | `4` | 1 … 6 | — | — | How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6). |
 | `hatchingAngle` | `number` | `45` | — | `deg` | — | The direction of the first stroke set. |
 | `hatchingColor` | `Color` | `{ r: 0.04, g: 0.035, b: 0.03 }` | — | — | — | The stroke colour (linear): graphite, sepia or ink. |
-| `hatchingSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie). |
+| `hatchingSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same strokes in each instance's own space, so a moving or turning object carries its strokes. |
+| `hatchingDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses. |
 | `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off. |
 | `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara). |
 | `paintEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
@@ -1186,7 +1187,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `paintCanvas` | `Texture` | `0` | — | — | — | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
 | `paintCanvasStrength` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the canvas texture modulates the frame: 0 none, 1 its full grain. |
 | `paintCanvasScale` | `number` | `1` | 0.125 … 8 | — | — | Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky). |
-| `paintCanvasSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls. |
+| `paintCanvasSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls; object, in each instance's own space, so a moving object carries its grain. |
 | `paintCanvasWorldScale` | `number` | `128` | 1 … 4096 | — | — | Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres. |
 | `ink` | `boolean` | `false` | — | — | — | Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases. |
 | `inkThreshold` | `number` | `0.1` | 0 … 1 | — | tunable | The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines. |
@@ -1255,7 +1256,7 @@ resource Stylise {
   field halftoneColor Color "The ink of the dots (linear)." {
     default 0.02 0.02 0.03
   }
-  field halftoneSpace StyliseSpace "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that move with them and wrap round forms (halftoneSize is then about the pitch in pixels where they lie)."
+  field halftoneSpace StyliseSpace "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots."
   field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only." {
     min 0
     max 1
@@ -1279,7 +1280,13 @@ resource Stylise {
   field hatchingColor Color "The stroke colour (linear): graphite, sepia or ink." {
     default 0.04 0.035 0.03
   }
-  field hatchingSpace StyliseSpace "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie)."
+  field hatchingSpace StyliseSpace "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same strokes in each instance's own space, so a moving or turning object carries its strokes."
+  field hatchingDepth f32 "Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
   field paintRadius f32 "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off." {
     min 0
     max 8
@@ -1314,7 +1321,7 @@ resource Stylise {
     min 0.125
     max 8
   }
-  field paintCanvasSpace StyliseSpace "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls."
+  field paintCanvasSpace StyliseSpace "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls; object, in each instance's own space, so a moving object carries its grain."
   field paintCanvasWorldScale f32 "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres." {
     default 128
     min 1
@@ -1394,7 +1401,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2369</sub>
+<sub>`api.ogt` line 2370</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -1459,7 +1466,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2556</sub>
+<sub>`api.ogt` line 2563</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1498,7 +1505,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2606</sub>
+<sub>`api.ogt` line 2613</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1549,7 +1556,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2625</sub>
+<sub>`api.ogt` line 2632</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1580,7 +1587,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2655</sub>
+<sub>`api.ogt` line 2662</sub>
 
 <a id="record-Decal"></a>
 
@@ -1635,7 +1642,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2669</sub>
+<sub>`api.ogt` line 2676</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1666,7 +1673,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2701</sub>
+<sub>`api.ogt` line 2708</sub>
 
 <a id="record-Trail"></a>
 
@@ -1742,7 +1749,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2712</sub>
+<sub>`api.ogt` line 2719</sub>
 
 <a id="record-Beam"></a>
 
@@ -1808,7 +1815,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2760</sub>
+<sub>`api.ogt` line 2767</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1935,7 +1942,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2965</sub>
+<sub>`api.ogt` line 2972</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1983,7 +1990,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3047</sub>
+<sub>`api.ogt` line 3054</sub>
 
 ## Types
 
@@ -2696,12 +2703,14 @@ A string: one of the variants below. The zero value is `"screen"`.
 |---|---|
 | `"screen"` | Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it. |
 | `"surface"` | On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses. |
+| `"object"` | On the surfaces as surface, but in each mesh instance's own space (three planes of the instance blended by its normal, in metres along its axes): a moving, turning or skinned object carries its strokes, dots and grain instead of sliding through them, and keeps them however it is scaled. Terrain, scattered copies and the vertices a material shader moves keep the world pattern, the sky the screen pattern. The frame runs the prepass and an object pass that draws the opaque instances again. |
 
 ```ogt
 enum StyliseSpace {
   doc "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone)."
   variant screen "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it."
   variant surface "On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses."
+  variant object "On the surfaces as surface, but in each mesh instance's own space (three planes of the instance blended by its normal, in metres along its axes): a moving, turning or skinned object carries its strokes, dots and grain instead of sliding through them, and keeps them however it is scaled. Terrain, scattered copies and the vertices a material shader moves keep the world pattern, the sky the screen pattern. The frame runs the prepass and an object pass that draws the opaque instances again."
 }
 ```
 
@@ -2736,7 +2745,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2595</sub>
+<sub>`api.ogt` line 2602</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2776,7 +2785,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2800</sub>
+<sub>`api.ogt` line 2807</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2807,7 +2816,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2821</sub>
+<sub>`api.ogt` line 2828</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2869,7 +2878,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2840</sub>
+<sub>`api.ogt` line 2847</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2898,7 +2907,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2874</sub>
+<sub>`api.ogt` line 2881</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2921,7 +2930,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2885</sub>
+<sub>`api.ogt` line 2892</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2951,7 +2960,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
 | `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on. |
-| `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0. |
+| `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -3012,7 +3021,7 @@ struct SpriteDesc {
     min 0
     max 1
   }
-  field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0." {
+  field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0." {
     unit m
   }
   field flipX bool "Mirror the region left to right."
@@ -3028,7 +3037,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2892</sub>
+<sub>`api.ogt` line 2899</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3116,7 +3125,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3074</sub>
+<sub>`api.ogt` line 3081</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3154,7 +3163,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3146</sub>
+<sub>`api.ogt` line 3153</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3186,7 +3195,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3166</sub>
+<sub>`api.ogt` line 3173</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3222,7 +3231,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3181</sub>
+<sub>`api.ogt` line 3188</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3240,7 +3249,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
-| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
+| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
 
 ```ogt
 struct RenderCapabilities {
@@ -3253,11 +3262,11 @@ struct RenderCapabilities {
   field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
-  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d and surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
 }
 ```
 
-<sub>`api.ogt` line 3223</sub>
+<sub>`api.ogt` line 3230</sub>
 
 <a id="type-Shader"></a>
 
@@ -3271,7 +3280,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3251</sub>
+<sub>`api.ogt` line 3258</sub>
 
 ## Column kinds
 
@@ -3446,7 +3455,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2362</sub>
+<sub>`api.ogt` line 2363</sub>
 
 ## Constants
 
@@ -3459,10 +3468,10 @@ column StyliseSpace {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3220</sub>
+<sub>`api.ogt` line 3227</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3221</sub>
+<sub>`api.ogt` line 3228</sub>

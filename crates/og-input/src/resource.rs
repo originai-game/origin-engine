@@ -404,6 +404,12 @@ impl Input {
     ///   also releases it when the tick ends.
     /// - key `up`: a released edge and `KeyUp` if it was held; otherwise
     ///   nothing.
+    /// - a key `down`/`press` whose `modifiers` name a modifier no key of
+    ///   that modifier holds (Shift, Control, Alt, the platform key: Command
+    ///   on macOS) presses its left key first, for this tick: held, a
+    ///   pressed edge and `KeyDown`, released when the tick ends. A key `up`
+    ///   leaves the modifiers as they are (the event's modifiers were held
+    ///   while it happened).
     /// - pointer: the pointer moves there (`PointerMove` for a `move`, or
     ///   for any action that changes the position, before the button event);
     ///   `down`/`click` hold the button with a pressed edge and
@@ -418,9 +424,40 @@ impl Input {
     pub fn apply(&mut self, event: &InjectedInput) -> Option<Vec<InputEvent>> {
         let mut out = Vec::new();
         match event {
-            InjectedInput::Key { key, action, .. } => {
+            InjectedInput::Key {
+                key,
+                action,
+                modifiers,
+            } => {
                 let index = key_index(key)?;
                 let key = code_str(index);
+                if *action != KeyAction::Up {
+                    for (on, left, right) in [
+                        (modifiers.shift, "ShiftLeft", "ShiftRight"),
+                        (modifiers.control, "ControlLeft", "ControlRight"),
+                        (modifiers.alt, "AltLeft", "AltRight"),
+                        (modifiers.platform, "MetaLeft", "MetaRight"),
+                    ] {
+                        let (Some(l), Some(r)) = (key_index(left), key_index(right)) else {
+                            continue;
+                        };
+                        if on
+                            && l != index
+                            && r != index
+                            && !self.contains(KeySet::Down, l)
+                            && !self.contains(KeySet::Down, r)
+                        {
+                            self.put(KeySet::Pressed, l, true);
+                            self.put(KeySet::Down, l, true);
+                            self.put(KeySet::ReleaseNext, l, true);
+                            out.push(InputEvent::KeyDown(KeyDown {
+                                key: code_str(l),
+                                repeat: false,
+                                at: 0.0,
+                            }));
+                        }
+                    }
+                }
                 let held = self.contains(KeySet::Down, index);
                 match action {
                     KeyAction::Down | KeyAction::Press => {

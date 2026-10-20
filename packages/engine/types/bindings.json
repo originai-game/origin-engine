@@ -5487,6 +5487,12 @@
           "default": "screen"
         },
         {
+          "name": "hatchingDepth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "paintRadius",
           "column": "f32",
           "default": 0,

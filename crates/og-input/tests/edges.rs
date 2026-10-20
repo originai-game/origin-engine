@@ -261,3 +261,60 @@ fn injected_input_is_world_state_and_replays_exactly() {
     run(&mut c, &mut lc, &vec![vec![]; steps.len()]);
     assert_ne!(c.world_hash(), a.world_hash());
 }
+
+/// A key event's modifiers are held while it happens: one no key holds is
+/// pressed with it for that tick (Command as `MetaLeft`, apart from
+/// Control), one already held stays as it is, and an `up` releases none.
+#[test]
+fn a_key_event_holds_the_modifiers_it_names() {
+    let mut i = Input::default();
+    let cmd = Modifiers {
+        platform: true,
+        ..Modifiers::default()
+    };
+    let events = i
+        .apply(&InjectedInput::Key {
+            key: "ArrowLeft".into(),
+            action: KeyAction::Press,
+            modifiers: cmd,
+        })
+        .unwrap();
+    assert!(i.pressed("MetaLeft") && i.down("MetaLeft"));
+    assert!(!i.down("ControlLeft"), "Command is not Control");
+    assert!(i.pressed("ArrowLeft"));
+    let codes: Vec<String> = events
+        .iter()
+        .filter_map(|e| match e {
+            og_input::InputEvent::KeyDown(k) => Some(k.key.as_str().to_owned()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(codes, ["MetaLeft", "ArrowLeft"], "the modifier first");
+    i.end_tick();
+    assert!(!i.down("MetaLeft") && !i.down("ArrowLeft"), "both released");
+    // A held Control stays held through an event naming it, and after an up.
+    i.apply(&key("ControlRight", KeyAction::Down)).unwrap();
+    i.end_tick();
+    let ctrl = Modifiers {
+        control: true,
+        ..Modifiers::default()
+    };
+    i.apply(&InjectedInput::Key {
+        key: "KeyA".into(),
+        action: KeyAction::Press,
+        modifiers: ctrl,
+    })
+    .unwrap();
+    assert!(
+        !i.down("ControlLeft"),
+        "Control was held already (the right key)"
+    );
+    i.apply(&InjectedInput::Key {
+        key: "KeyA".into(),
+        action: KeyAction::Up,
+        modifiers: ctrl,
+    })
+    .unwrap();
+    i.end_tick();
+    assert!(i.down("ControlRight"), "an up leaves the modifiers held");
+}

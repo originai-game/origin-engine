@@ -1338,7 +1338,9 @@
           "PostEffects.outline",
           "StandardMaterialDesc.toon",
           "Stylise.ink",
-          "Stylise.hatching"
+          "Stylise.hatching",
+          "Stylise.hatchingSpace",
+          "Stylise.hatchingDepth"
         ],
         "missing": []
       },

@@ -87,6 +87,8 @@ pub const SCENES: &[&str] = &[
     "sprites-array-fx",
     "sprites-shadow-terrain",
     "stylise-surface",
+    "stylise-object",
+    "stylise-halftone-surface",
     "materials-array",
 ];
 
@@ -308,8 +310,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "sprites-shadow" => g.scene = sprites_shadow_scene(),
         // Drop shadows off the plane y = 0: figures on a hilly terrain
         // (each shadow on the plane of the slope under its feet), one on a
-        // raised deck (its shadow at the deck's height), and one beside a
-        // wall whose cascaded shadow its drop shadow fades into.
+        // raised deck (its shadow at the deck's height), one beside a wall
+        // whose cascaded shadow its drop shadow fades into, and one whose
+        // shadow bends into a hollow narrower than itself (ShadowBend).
         "sprites-shadow-terrain" => g.scene = sprites_shadow_terrain_scene(),
         // Texture arrays through every sprite path: glowing array sprites
         // (the glow pass), two 2D particle emitters drawing from arrays
@@ -465,6 +468,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-material" => g.scene = crate::stylise_scenes::material_scene(),
         "stylise-ink-depth" => g.scene = crate::stylise_scenes::ink_depth_scene(),
         "stylise-surface" => g.scene = crate::stylise_scenes::surface_scene(),
+        "stylise-object" => g.scene = crate::stylise_scenes::object_scene(),
+        "stylise-halftone-surface" => g.scene = crate::stylise_scenes::halftone_surface_scene()?,
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
@@ -1105,9 +1110,14 @@ pub fn sprites_shadow_scene() -> RenderScene {
     scene
 }
 
-/// The `sprites-shadow-terrain` hills: heights in metres at world x, z.
+/// The `sprites-shadow-terrain` hills: heights in metres at world x, z,
+/// with a hollow 0.4 m deep and about 1.4 m across under the middle of
+/// the figure at (-0.9, 0.9)'s shadow (round four: the shadow bends into
+/// it).
 fn shadow_hills(x: f32, z: f32) -> f32 {
+    let pit = Vec2::new(x + 1.25, z - 1.45).length_squared();
     0.55 * (0.45 * x + 0.3).sin() * (0.38 * z).cos() + 0.25 * (0.9 * z + 1.1).sin() + 0.6
+        - 0.4 * (-pit / (0.6 * 0.6)).exp()
 }
 
 /// The `sprites-shadow-terrain` scene (see [`build`]).
@@ -1175,7 +1185,8 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         .collect();
     // Each figure stands on the ground under it; its shadow falls on the
     // plane fitted to the terrain under it (ShadowGround::fit, as
-    // og-runtime fits it), or on the deck.
+    // og-runtime fits it), bent where the plane misses the ground (the
+    // narrow hollow), or on the deck.
     let sun = Vec3::new(0.35, 0.75, -0.6);
     let stand = |scene: &mut RenderScene, x: f32, z: f32, figure: usize, deck: bool| {
         let height = if deck {
@@ -1204,10 +1215,11 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         });
     };
     // On the hills: down a slope facing away from the sun, up one facing
-    // it, and in a hollow.
+    // it, in a hollow, and before the narrow hollow its shadow dips into.
     stand(&mut scene, 0.6, 2.2, 0, false);
     stand(&mut scene, 0.4, -1.2, 1, false);
     stand(&mut scene, -3.6, 2.4, 2, false);
+    stand(&mut scene, -0.9, 0.9, 1, false);
     // On the deck.
     stand(&mut scene, 3.5, -0.4, 2, true);
     // Beside the wall: its drop shadow runs into the wall's shadow.

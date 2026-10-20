@@ -133,5 +133,16 @@ with a `[link=join]` the `players` playtest taps.
 
 `tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>`
 subsets the Noto fonts to exactly the tables' characters (rerun it after
-changing a string), leaving the greeting out of zh-CN's and ja's. `tests/locales.og.ts` compares each of the three
-screens in each locale with `crates/og-ui/references/<tier>/kit-locale-*`.
+changing a string), leaving the greeting out of zh-CN's and ja's and
+`menu.mixed` out of every locale's. `tests/locales.og.ts` compares each of
+the three screens in each locale with
+`crates/og-ui/references/<tier>/kit-locale-*`.
+
+`mixed:on` adds `menu.mixed` under those three screens: one label of CJK,
+Latin and Arabic (`原点探险 Origin Quest مغامرة صغيرة` in zh-CN), its
+characters all in the tables' other strings, so each run comes from a face
+that already cooks it: og-ui lays it out a run per face, a grapheme
+cluster at a time. `tests/locales-mixed.og.ts` shows it on the three
+screens in all five locales and asserts no warning, so `missing_glyphs`
+stays 0 on every frame (the engine warns on the first frame that draws a
+character its fonts lack); its frames are not references.

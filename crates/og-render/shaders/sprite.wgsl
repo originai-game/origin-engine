@@ -29,7 +29,7 @@ struct SpriteIn {
   @location(3) color: vec4<f32>,
   @location(4) flash: vec4<f32>,              // rgb: flash colour, a: amount
   @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot; a drop shadow's yz: its ground's rise per metre along x and z
-  @location(6) ground: vec4<f32>,             // a drop shadow: x 1, yz: x and z moved per metre of height, w: the ground's height under the anchor
+  @location(6) ground: vec4<f32>,             // a drop shadow: x 1, yz: x and z moved per metre of height, w: the ground's height under the anchor; x 2: a bent shadow's cell (bent_corner)
 };
 
 struct SpriteOut {
@@ -61,6 +61,27 @@ fn sloped_shadow(p: vec3<f32>, g: vec4<f32>, a: vec3<f32>, rise: vec2<f32>) -> v
   return vec3<f32>(p.x + g.y * t, p.y - t, p.z + g.z * t);
 }
 
+// A cell of a bent drop shadow (sprites.rs bent_shadow, x 2): the cell's
+// corner `k` as a corner of the whole quad (the cell's column and row in
+// the flash's first two bytes, 2 x 4 cells) and the ground's height under
+// it (the cell's corners: w bottom left, fx.x bottom right, fx.y top
+// right, fx.z top left). Neighbouring cells compute a shared corner alike,
+// so the shadow has no seams.
+struct BentCorner {
+  c: vec2<f32>,
+  height: f32,
+};
+
+fn bent_corner(k: vec2<f32>, flash: vec4<f32>, g: vec4<f32>, fx: vec3<f32>) -> BentCorner {
+  var b: BentCorner;
+  let cell = round(flash.xy * 255.0);
+  b.c = (cell + k) * vec2<f32>(0.5, 0.25);
+  let bottom = select(g.w, fx.x, k.x > 0.5);
+  let top = select(fx.z, fx.y, k.x > 0.5);
+  b.height = select(bottom, top, k.y > 0.5);
+  return b;
+}
+
 // How much of a drop shadow shows at p: none where the sun's cascades
 // already shadow the ground (a shadow inside a shadow is no darker).
 fn drop_shadow_visible(p: vec3<f32>) -> f32 {
@@ -74,6 +95,9 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
+  if (s.ground.x > 1.5) {
+    return bent_vertex(corners[vi], s);
+  }
   let c = corners[vi];
   let local = (c - s.size_anchor.zw) * s.size_anchor.xy;
   let cs = cos(s.position_rotation.w);
@@ -94,6 +118,29 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   o.corner = c;
   o.world = world;
   o.shadow = select(0.0, 1.0, s.ground.x > 0.5);
+  return o;
+}
+
+// A cell of a bent drop shadow's corner `k`: the whole quad's corner it is
+// (bent_corner) carried down the sun to the ground's height under it.
+fn bent_vertex(k: vec2<f32>, s: SpriteIn) -> SpriteOut {
+  let b = bent_corner(k, s.flash, s.ground, s.fx);
+  let c = b.c;
+  let local = (c - s.size_anchor.zw) * s.size_anchor.xy;
+  let cs = cos(s.position_rotation.w);
+  let sn = sin(s.position_rotation.w);
+  let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
+  let standing = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  let world = ground_shadow(standing, vec4<f32>(1.0, s.ground.yz, b.height));
+  var o: SpriteOut;
+  o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, c.x), mix(s.uv_rect.w, s.uv_rect.y, c.y));
+  o.color = s.color;
+  o.flash = vec4<f32>(0.0);
+  o.fx = vec3<f32>(0.0);
+  o.corner = c;
+  o.world = world;
+  o.shadow = 1.0;
   return o;
 }
 

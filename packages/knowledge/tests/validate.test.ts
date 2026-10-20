@@ -238,7 +238,7 @@ const TAUGHT: Record<string, string[]> = {
     "og.Sprite.dropShadow", "SpriteDesc.dropShadow", "stepFps", "og.load.textureArray", "SpriteDesc.arrayLayer", "og.Sprite.arrayLayer", "FlipbookInfo.array", "array true",
     "StreamBudget", "StreamStatus", "og.stream.release", "og.physics.raycast", "og.physics.shapeCast", "og.physics.overlap", "lanes", ".vox", "compress true",
   ],
-  "og-taste": ["extends", "GameDesc.look", "--premise", "--look", "og.render.look", "looks/catalogue.json"],
+  "og-taste": ["extends", "GameDesc.look", "--premise", "--look", "og.render.look", "looks/catalogue.json", "hatchingSpace object", "hatchingDepth"],
   "og-ui": ["og.ui.textArea", "og.ui.textField", "compose:", "commit:", "ellipsis", "maxLines", "fallbackFonts", "og.ui.a11y", "og.A11yAction", "og.ui.zoomView", "og.Pointers", "og.ui.hasIcon", "kerning"],
   "og-i18n": ["runtime true", "fallbackFonts", "shaped", "Kerning"],
   "og-build": ["cooked/stream/", "environment maps", "texture arrays", "palettes", "looks and LUTs", ".vox", "compress true", "stream true", "isolation", "OG_LANES", "dump_lanes", "compose:"],

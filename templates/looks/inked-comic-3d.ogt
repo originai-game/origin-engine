@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# Cel shading, heavy outlines, halftone dots in the shadows and ink on every edge.
+# Cel shading, heavy outlines, ink marks hatched on the surfaces (strokes that follow the form, darken the shadows and gather along the contours) and ink on every edge.
 name "Inked comic-book 3D"
 MaterialStyle {
   toon true
@@ -10,9 +10,13 @@ MaterialStyle {
   outlineColor "#0a0810"
 }
 Stylise {
-  halftone 0.35
-  halftoneSize 5
-  halftoneAngle 30
+  hatching 0.45
+  hatchingScale 5
+  hatchingLevels 3
+  hatchingAngle 30
+  hatchingColor "#0a0810"
+  hatchingSpace surface
+  hatchingDepth 0.7
   ink true
   inkThreshold 0.15
   inkWidth 1.5

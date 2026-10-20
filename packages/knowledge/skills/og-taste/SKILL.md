@@ -315,9 +315,16 @@ per metre by `paintCanvasWorldScale`), `hatchingSpace surface` and
 `halftoneSpace surface` stick to the surfaces and wrap round forms, so
 nothing slides over the world as the camera moves; `screen` (the
 default) suits 2D, fixed cameras and a deliberate printed-sheet feel.
-Pixel sprites standing in a 3D set take `Sprite.dropShadow`; on a deck or
-a step give them `dropShadowHeight`, and over an og.Terrain their
-shadows follow the slope by themselves.
+When things move (characters, vehicles, a turning prop), take
+`hatchingSpace object` (and `halftoneSpace object`, `paintCanvasSpace
+object`): the marks are laid in each object's own space, so a walking
+figure carries its strokes instead of wading through them (terrain keeps
+the world's). `hatchingDepth` (0 to 1) gathers the strokes along
+silhouettes and creases as `inkDepth` inks them: the contour shading of
+an inked page. Pixel sprites standing in a 3D set take
+`Sprite.dropShadow`; on a deck or a step give them `dropShadowHeight`,
+and over an og.Terrain their shadows follow the slope, and bend into a
+hollow or over a ridge narrower than themselves, by themselves.
 
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
 is applied after the first scene spawns and before `start` runs (so

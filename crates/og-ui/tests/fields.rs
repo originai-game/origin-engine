@@ -14,6 +14,15 @@
 //!   after an undo, a new edit keeps the redo, a text the game set is undone
 //!   into, the history grows without bound or is not saved →
 //!   `undo_and_redo_step_through_the_history`
+//! - words by character classes again (a CJK run one word, an apostrophe
+//!   ending a word, a Thai run one word), a double click on a Han character
+//!   taking its neighbours, IME commits of Han text undone all at once →
+//!   `words_are_uax_29_words`
+//! - Command taken for Control (or the other way round) under mac keys:
+//!   Cmd+←/→ moving by words or characters, Option+← by characters, Ctrl+A
+//!   selecting all, Cmd+Backspace one character, Ctrl+Z undoing; or Command
+//!   moving by words on other platforms →
+//!   `mac_keys_tell_command_from_control`
 //! - a drag below a text area jumps to the end (or does not scroll), keeps
 //!   scrolling past the end, or scrolls while the pointer is inside →
 //!   `a_drag_past_a_text_area_scrolls_it_line_by_line`
@@ -122,6 +131,19 @@ impl Rig {
             keys: keys.to_vec(),
             shift,
             ctrl,
+            alt,
+            pointer_inside: true,
+            ..InputFrame::default()
+        });
+    }
+
+    /// Keys with Command (`meta`) apart from Control.
+    fn chord(&mut self, keys: &[UiKey], shift: bool, ctrl: bool, meta: bool, alt: bool) {
+        self.step(InputFrame {
+            keys: keys.to_vec(),
+            shift,
+            ctrl,
+            meta,
             alt,
             pointer_inside: true,
             ..InputFrame::default()
@@ -424,4 +446,131 @@ fn the_text_fields_scene_is_what_its_frame_shows() {
     let (again, area2) = text_fields_uis(&font);
     assert_eq!(again.frame().items, ui.frame().items);
     assert_eq!(area2.frame().items, area.frame().items);
+}
+
+#[test]
+fn mac_keys_tell_command_from_control() {
+    let mut rig = Rig::new("hello brave, new world", "");
+    rig.vp.mac_keys = true;
+    rig.focus_field();
+    // Command+← and →: the line's ends.
+    rig.chord(&[UiKey::Left], false, false, true, false);
+    assert_eq!(rig.caret_marked(), "|hello brave, new world");
+    rig.chord(&[UiKey::Right], false, false, true, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new world|");
+    // Option+←: by words; Control+← one character (no word move on a Mac).
+    rig.chord(&[UiKey::Left], false, false, false, true);
+    assert_eq!(rig.caret_marked(), "hello brave, new |world");
+    rig.chord(&[UiKey::Left], false, true, false, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new| world");
+    // Shift+Command+←: selects to the line's start.
+    rig.chord(&[UiKey::Left], true, false, true, false);
+    assert_eq!(rig.selection(), "hello brave, new");
+    // Control+A and E: the line's ends (emacs), not select all.
+    rig.chord(&[UiKey::KeyE], false, true, false, false);
+    assert_eq!(rig.selection(), "");
+    assert_eq!(rig.caret_marked(), "hello brave, new world|");
+    rig.chord(&[UiKey::KeyA], false, true, false, false);
+    assert_eq!(rig.selection(), "", "Control+A is no select all on a Mac");
+    assert_eq!(rig.caret_marked(), "|hello brave, new world");
+    // Command+A selects all; Command+→ then Command+Backspace deletes to
+    // the line's start; Control+Z undoes nothing, Command+Z the delete.
+    rig.chord(&[UiKey::KeyA], false, false, true, false);
+    assert_eq!(rig.selection(), "hello brave, new world");
+    rig.chord(&[UiKey::Right], false, false, true, false);
+    rig.chord(&[UiKey::Left, UiKey::Left], false, false, false, true);
+    rig.chord(&[UiKey::Backspace], false, false, true, false);
+    assert_eq!(rig.value, "new world");
+    rig.chord(&[UiKey::KeyZ], false, true, false, false);
+    assert_eq!(rig.value, "new world", "Control+Z is no undo on a Mac");
+    rig.chord(&[UiKey::KeyZ], false, false, true, false);
+    assert_eq!(rig.value, "hello brave, new world");
+    // Command+↑ and ↓ in an area: the text's ends; Command+← its line's start.
+    let (x, y, w, _) = rig.rect("Notes");
+    rig.click(Vec2::new(x + w / 2.0, y + 6.0));
+    rig.idle(40);
+    rig.typed("one\ntwo\nthree");
+    rig.chord(&[UiKey::Up], false, false, true, false);
+    rig.chord(&[UiKey::Down], true, false, true, false);
+    assert_eq!(rig.selection(), "one\ntwo\nthree");
+    rig.chord(&[UiKey::Left], false, false, true, false);
+    rig.chord(&[UiKey::Right], true, false, false, true);
+    assert_eq!(
+        rig.selection(),
+        "three",
+        "the last line's start, then a word"
+    );
+
+    // Other platforms: Command moves one character and still selects all;
+    // Control moves by words.
+    let mut rig = Rig::new("hello brave, new world", "");
+    rig.focus_field();
+    rig.chord(&[UiKey::Left], false, false, true, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new worl|d");
+    rig.chord(&[UiKey::Left], false, true, false, false);
+    assert_eq!(rig.caret_marked(), "hello brave, new |world");
+    rig.chord(&[UiKey::KeyA], false, false, true, false);
+    assert_eq!(rig.selection(), "hello brave, new world");
+    rig.chord(&[UiKey::KeyE], false, true, false, false);
+    assert_eq!(
+        rig.selection(),
+        "hello brave, new world",
+        "Ctrl+E is nothing"
+    );
+}
+
+#[test]
+fn words_are_uax_29_words() {
+    let mut rig = Rig::new("Score 原点42 can't", "");
+    rig.focus_field();
+    // From the end: "can't" is one word, "42" another, then each Han
+    // character on its own.
+    let alt_left = |rig: &mut Rig| rig.keys(&[UiKey::Left], false, false, true);
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score 原点42 |can't");
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score 原点|42 can't");
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score 原|点42 can't");
+    alt_left(&mut rig);
+    assert_eq!(rig.caret_marked(), "Score |原点42 can't");
+    rig.keys(&[UiKey::Right], false, true, false);
+    assert_eq!(rig.caret_marked(), "Score 原|点42 can't");
+    // Ctrl+Backspace deletes one Han character.
+    rig.keys(&[UiKey::Right], false, true, false);
+    rig.keys(&[UiKey::Backspace], false, true, false);
+    assert_eq!(rig.value, "Score 原42 can't");
+    // A double click on a Han character selects it alone.
+    rig.value = "Score 原点42".into();
+    rig.focus_field();
+    let (_, y, _, h) = rig.rect("Name");
+    let at = Vec2::new((rig.field_x(7) + rig.field_x(8)) / 2.0, y + h / 2.0);
+    rig.click(at);
+    rig.click(at);
+    assert_eq!(rig.selection(), "点");
+    rig.idle(40);
+    // Thai has no spaces between words and UAX #29 no dictionary: a word
+    // move takes one cluster (a consonant with its tone mark).
+    rig.value = "ไทยง่าย".into();
+    rig.focus_field();
+    // (The test face has no Thai: End, not the press, puts the caret at the end.)
+    rig.keys(&[UiKey::End], false, false, false);
+    rig.keys(&[UiKey::Left, UiKey::Left, UiKey::Left], false, true, false);
+    assert_eq!(rig.caret_marked(), "ไทย|ง่าย");
+
+    // Undo: each commit of Han text is a word of its own; Thai typed a
+    // character at a time groups to the space, as Latin does.
+    let mut rig = Rig::new("", "");
+    rig.focus_field();
+    let undo = |rig: &mut Rig| rig.keys(&[UiKey::KeyZ], false, true, false);
+    rig.typed("原点");
+    rig.typed("引擎");
+    rig.type_slowly("ไทย");
+    assert_eq!(rig.value, "原点引擎ไทย");
+    undo(&mut rig);
+    assert_eq!(rig.value, "原点引擎", "the Thai typed on is one step");
+    undo(&mut rig);
+    assert_eq!(rig.value, "原点", "a commit after Han text is a step");
+    undo(&mut rig);
+    assert_eq!(rig.value, "");
 }
