@@ -1436,13 +1436,16 @@ pub(crate) fn material(
     );
     set!(flatShading, flag("flatShading"));
     set!(envMapIntensity, num("envMapIntensity"));
-    let ns = &desc["normalScale"];
-    if ns.is_object() {
-        m.normalScale = glam::Vec2::new(
-            ns["x"].as_f64().unwrap_or(1.0) as f32,
-            ns["y"].as_f64().unwrap_or(1.0) as f32,
-        );
-    }
+    let vec2 = |k: &str, fallback: glam::Vec2| {
+        let v = &desc[k];
+        v.is_object().then(|| {
+            glam::Vec2::new(
+                v["x"].as_f64().map_or(fallback.x, |x| x as f32),
+                v["y"].as_f64().map_or(fallback.y, |y| y as f32),
+            )
+        })
+    };
+    set!(normalScale, vec2("normalScale", glam::Vec2::ONE));
     set!(aoMapIntensity, num("aoMapIntensity"));
     set!(unlit, flag("unlit"));
     set!(toon, flag("toon"));
@@ -1461,6 +1464,36 @@ pub(crate) fn material(
     set!(outlineWidth, num("outlineWidth"));
     set!(clearcoat, num("clearcoat"));
     set!(clearcoatRoughness, num("clearcoatRoughness"));
+    set!(clearcoatMap, tex("clearcoatMap")?);
+    set!(clearcoatRoughnessMap, tex("clearcoatRoughnessMap")?);
+    set!(clearcoatNormalMap, tex("clearcoatNormalMap")?);
+    set!(
+        clearcoatNormalScale,
+        vec2("clearcoatNormalScale", glam::Vec2::ONE)
+    );
+    set!(sheen, num("sheen"));
+    set!(sheenColor, rgb("sheenColor"));
+    set!(sheenRoughness, num("sheenRoughness"));
+    set!(sheenColorMap, tex("sheenColorMap")?);
+    set!(sheenRoughnessMap, tex("sheenRoughnessMap")?);
+    set!(transmission, num("transmission"));
+    set!(transmissionMap, tex("transmissionMap")?);
+    set!(thickness, num("thickness"));
+    set!(thicknessMap, tex("thicknessMap")?);
+    set!(attenuationDistance, num("attenuationDistance"));
+    set!(attenuationColor, rgb("attenuationColor"));
+    set!(ior, num("ior"));
+    set!(iridescence, num("iridescence"));
+    set!(iridescenceIOR, num("iridescenceIOR"));
+    set!(
+        iridescenceThicknessRange,
+        vec2("iridescenceThicknessRange", glam::Vec2::new(100.0, 400.0))
+    );
+    set!(iridescenceMap, tex("iridescenceMap")?);
+    set!(iridescenceThicknessMap, tex("iridescenceThicknessMap")?);
+    set!(anisotropy, num("anisotropy"));
+    set!(anisotropyRotation, num("anisotropyRotation"));
+    set!(anisotropyMap, tex("anisotropyMap")?);
     Ok(m)
 }
 

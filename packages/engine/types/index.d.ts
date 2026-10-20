@@ -2509,7 +2509,9 @@ export interface RenderOptions {
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
- * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).
+ * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+ * The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.
+ * A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.
  * normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -2749,6 +2751,164 @@ export interface StandardMaterialDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly clearcoatRoughness?: number;
+  /**
+   * The coat's strength from the texture's red channel, times clearcoat (MeshPhysicalMaterial.clearcoatMap).
+   *
+   * @default null
+   */
+  readonly clearcoatMap?: Texture | null;
+  /**
+   * The coat's roughness from the texture's green channel, times clearcoatRoughness.
+   *
+   * @default null
+   */
+  readonly clearcoatRoughnessMap?: Texture | null;
+  /**
+   * A tangent-space normal map of the coat alone; the base keeps normalMap (MeshPhysicalMaterial.clearcoatNormalMap).
+   *
+   * @default null
+   */
+  readonly clearcoatNormalMap?: Texture | null;
+  /**
+   * How strongly clearcoatNormalMap bends the coat's normal, per tangent axis.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly clearcoatNormalScale?: Vector2;
+  /**
+   * A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly sheen?: number;
+  /**
+   * The sheen's colour (linear), times sheenColorMap; black is none.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  readonly sheenColor?: Color;
+  /**
+   * How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly sheenRoughness?: number;
+  /**
+   * The sheen's colour from the texture's RGB (sRGB).
+   *
+   * @default null
+   */
+  readonly sheenColorMap?: Texture | null;
+  /**
+   * The sheen's roughness from the texture's alpha channel.
+   *
+   * @default null
+   */
+  readonly sheenRoughnessMap?: Texture | null;
+  /**
+   * How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly transmission?: number;
+  /**
+   * Transmission from the texture's red channel.
+   *
+   * @default null
+   */
+  readonly transmissionMap?: Texture | null;
+  /**
+   * The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly thickness?: number;
+  /**
+   * Thickness from the texture's green channel.
+   *
+   * @default null
+   */
+  readonly thicknessMap?: Texture | null;
+  /**
+   * The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly attenuationDistance?: number;
+  /**
+   * The colour white light becomes after attenuationDistance in the volume (linear).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly attenuationColor?: Color;
+  /**
+   * The index of refraction (glTF KHR_materials_ior): the reflectance of a dielectric, ((ior - 1) / (ior + 1))^2 (4 % at 1.5), and how far transmission refracts.
+   *
+   * @default 1.5
+   * @range 1..2.333
+   */
+  readonly ior?: number;
+  /**
+   * A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly iridescence?: number;
+  /**
+   * The film's index of refraction.
+   *
+   * @default 1.3
+   * @range 1..2.333
+   */
+  readonly iridescenceIOR?: number;
+  /**
+   * The film's thickness in nanometres: x where iridescenceThicknessMap is black, y where it is white and everywhere without the map (three.js's [100, 400]).
+   *
+   * @default { x: 100, y: 400 }
+   */
+  readonly iridescenceThicknessRange?: Vector2;
+  /**
+   * Iridescence from the texture's red channel.
+   *
+   * @default null
+   */
+  readonly iridescenceMap?: Texture | null;
+  /**
+   * The film's thickness between iridescenceThicknessRange's ends from the texture's green channel.
+   *
+   * @default null
+   */
+  readonly iridescenceThicknessMap?: Texture | null;
+  /**
+   * Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none).
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly anisotropy?: number;
+  /**
+   * The stretch's direction in radians from the tangent (+u) towards the bitangent.
+   *
+   * @default 0
+   */
+  readonly anisotropyRotation?: number;
+  /**
+   * The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy.
+   *
+   * @default null
+   */
+  readonly anisotropyMap?: Texture | null;
 }
 
 /**

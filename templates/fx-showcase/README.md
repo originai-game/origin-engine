@@ -17,7 +17,8 @@ retargeting, a 2D ragdoll, cloth that folds on itself and fluids that
 layer and blend. The
 render round adds four more the same way (`src/render.ts`): lights, moon,
 materials and skinned, the 3D fluid round one (`src/sph.ts`):
-fluids3d, and phase 4's image-based lighting round one (`src/ibl.ts`):
+fluids3d, P4 the physical materials station (`src/physical.ts`):
+physical, and the image-based lighting station (`src/ibl.ts`):
 environment.
 
 ```sh
@@ -66,6 +67,7 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `moon` | `og.DayNight` at 21:00 with `moonSize` 2.2 and `moonPhase` 0.36: a waxing gibbous moon over the rooftops of a square, moonlit, with stars around it |
 | `materials` | every `StandardMaterialDesc` feature from TypeScript: metalness and roughness rows, emissive, `textures/bumps.png` as a normal map (glTF's frame), clearcoat glossy and rough, `textures/grille.png` cut by `alphaTest`, transparent glass, a double-sided panel, unlit, a squashed sphere (normals under a non-uniform scale) |
 | `skinned` | the walker with `shaders/ripple.ogt` set on its loaded materials by `og.render.setMaterialShader`: gold bands rippling up its skinned body as it walks |
+| `physical` | every `MeshPhysicalMaterial` field of `StandardMaterialDesc` (og-tests' `materials-physical` scene as a game): seven spheres on a plinth of coloured bars (`textures/bars.png`): clearcoat masked to bands by `clearcoatMap` with `clearcoatRoughnessMap` and the bumps as `clearcoatNormalMap`, pink `sheen` on velvet, `sheenColorMap` and `sheenRoughnessMap` from `textures/sheen.png`, `iridescence` on black with `iridescenceThicknessMap` and on metal, `anisotropy` brushed and swirled by `anisotropyMap` (`textures/swirl.png`); in front, `transmission` glass refracting the plinth and the ground: clear, frosted (`roughness`), amber (`attenuationColor`, `attenuationDistance`), a cube striped by `transmissionMap` and a high-`ior` ball |
 | `fluids3d` | two `og.Fluid3D` of one `group` in a tiled basin (their `bounds`): a blue pool of 1600 particles, and a heavy orange fluid (`density` 3, `mixing` 0) poured into its left end by an emitter (`emitRate`, up to `maxCount` 500) that sinks under it; drawn as one screen-space surface, the tiles seen through it tinted and bent, lit by the sun and an orange lamp, the low front wall cutting it (about 2 ms of CPU a tick at two substeps) |
 | `environment` | `og.load.environment(world, "env/studio.ogt")` (the cook prefiltered `env/studio.hdr`, a synthetic 256 × 128 studio, into a 128² GGX cube and irradiance harmonics) set as `og.Environment.map`, turned 40°, drawn behind with `background`: five spheres on a plinth (mirror chrome, brushed chrome, gold, red lacquer, chalk) lit by it alone but for a weak sun along the key light; `RenderSettings.toneMapping` `agx`, auto exposure adapting at 1 EV/s up and 2.5 down |
 

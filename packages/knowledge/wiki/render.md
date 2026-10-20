@@ -122,7 +122,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2404</sub>
+<sub>`api.ogt` line 2469</sub>
 
 <a id="fn-sprite"></a>
 
@@ -152,7 +152,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2520</sub>
+<sub>`api.ogt` line 2585</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -182,7 +182,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 2684</sub>
+<sub>`api.ogt` line 2749</sub>
 
 <a id="fn-measureText"></a>
 
@@ -212,7 +212,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 2691</sub>
+<sub>`api.ogt` line 2756</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -242,7 +242,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2751</sub>
+<sub>`api.ogt` line 2816</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -272,7 +272,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2758</sub>
+<sub>`api.ogt` line 2823</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -302,7 +302,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2765</sub>
+<sub>`api.ogt` line 2830</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -332,7 +332,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2786</sub>
+<sub>`api.ogt` line 2851</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -364,7 +364,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2793</sub>
+<sub>`api.ogt` line 2858</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -396,7 +396,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2803</sub>
+<sub>`api.ogt` line 2868</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -428,7 +428,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 2811</sub>
+<sub>`api.ogt` line 2876</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -462,7 +462,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 2819</sub>
+<sub>`api.ogt` line 2884</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -490,7 +490,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2828</sub>
+<sub>`api.ogt` line 2893</sub>
 
 <a id="fn-text"></a>
 
@@ -520,7 +520,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2834</sub>
+<sub>`api.ogt` line 2899</sub>
 
 ## Components, resources and events
 
@@ -566,7 +566,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1746</sub>
+<sub>`api.ogt` line 1811</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -608,7 +608,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1766</sub>
+<sub>`api.ogt` line 1831</sub>
 
 <a id="record-PointLight"></a>
 
@@ -649,7 +649,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1787</sub>
+<sub>`api.ogt` line 1852</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -701,7 +701,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1807</sub>
+<sub>`api.ogt` line 1872</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -771,7 +771,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 1852</sub>
+<sub>`api.ogt` line 1917</sub>
 
 <a id="record-Environment"></a>
 
@@ -811,7 +811,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 1922</sub>
+<sub>`api.ogt` line 1987</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -1048,7 +1048,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2002</sub>
+<sub>`api.ogt` line 2067</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1087,7 +1087,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2177</sub>
+<sub>`api.ogt` line 2242</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1138,7 +1138,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2196</sub>
+<sub>`api.ogt` line 2261</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1169,7 +1169,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2226</sub>
+<sub>`api.ogt` line 2291</sub>
 
 <a id="record-Decal"></a>
 
@@ -1224,7 +1224,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2240</sub>
+<sub>`api.ogt` line 2305</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1255,7 +1255,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2272</sub>
+<sub>`api.ogt` line 2337</sub>
 
 <a id="record-Trail"></a>
 
@@ -1331,7 +1331,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2283</sub>
+<sub>`api.ogt` line 2348</sub>
 
 <a id="record-Beam"></a>
 
@@ -1397,7 +1397,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2331</sub>
+<sub>`api.ogt` line 2396</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1510,7 +1510,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2527</sub>
+<sub>`api.ogt` line 2592</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1558,7 +1558,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2599</sub>
+<sub>`api.ogt` line 2664</sub>
 
 ## Types
 
@@ -1723,7 +1723,11 @@ A physically based metallic-roughness material with three.js MeshStandardMateria
 
 It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
 
-The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).
+The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+
+The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.
+
+A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.
 
 normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
 
@@ -1767,12 +1771,38 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `outlineWidth` | `number` | `0` | 0 … 31 | — | — | This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). |
 | `clearcoat` | `number` | `0` | 0 … 1 | `ratio` | — | A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none. |
 | `clearcoatRoughness` | `number` | `0` | 0 … 1 | `ratio` | — | How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness. |
+| `clearcoatMap` | `Texture \| null` | `null` | — | — | — | The coat's strength from the texture's red channel, times clearcoat (MeshPhysicalMaterial.clearcoatMap). |
+| `clearcoatRoughnessMap` | `Texture \| null` | `null` | — | — | — | The coat's roughness from the texture's green channel, times clearcoatRoughness. |
+| `clearcoatNormalMap` | `Texture \| null` | `null` | — | — | — | A tangent-space normal map of the coat alone; the base keeps normalMap (MeshPhysicalMaterial.clearcoatNormalMap). |
+| `clearcoatNormalScale` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How strongly clearcoatNormalMap bends the coat's normal, per tangent axis. |
+| `sheen` | `number` | `0` | 0 … 1 | `ratio` | — | A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none. |
+| `sheenColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The sheen's colour (linear), times sheenColorMap; black is none. |
+| `sheenRoughness` | `number` | `1` | 0 … 1 | `ratio` | — | How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface. |
+| `sheenColorMap` | `Texture \| null` | `null` | — | — | — | The sheen's colour from the texture's RGB (sRGB). |
+| `sheenRoughnessMap` | `Texture \| null` | `null` | — | — | — | The sheen's roughness from the texture's alpha channel. |
+| `transmission` | `number` | `0` | 0 … 1 | `ratio` | — | How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections. |
+| `transmissionMap` | `Texture \| null` | `null` | — | — | — | Transmission from the texture's red channel. |
+| `thickness` | `number` | `0` | ≥ 0 | — | — | The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall. |
+| `thicknessMap` | `Texture \| null` | `null` | — | — | — | Thickness from the texture's green channel. |
+| `attenuationDistance` | `number` | `0` | ≥ 0 | — | — | The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity. |
+| `attenuationColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The colour white light becomes after attenuationDistance in the volume (linear). |
+| `ior` | `number` | `1.5` | 1 … 2.333 | — | — | The index of refraction (glTF KHR_materials_ior): the reflectance of a dielectric, ((ior - 1) / (ior + 1))^2 (4 % at 1.5), and how far transmission refracts. |
+| `iridescence` | `number` | `0` | 0 … 1 | `ratio` | — | A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none. |
+| `iridescenceIOR` | `number` | `1.3` | 1 … 2.333 | — | — | The film's index of refraction. |
+| `iridescenceThicknessRange` | `Vector2` | `{ x: 100, y: 400 }` | — | — | — | The film's thickness in nanometres: x where iridescenceThicknessMap is black, y where it is white and everywhere without the map (three.js's [100, 400]). |
+| `iridescenceMap` | `Texture \| null` | `null` | — | — | — | Iridescence from the texture's red channel. |
+| `iridescenceThicknessMap` | `Texture \| null` | `null` | — | — | — | The film's thickness between iridescenceThicknessRange's ends from the texture's green channel. |
+| `anisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none). |
+| `anisotropyRotation` | `number` | `0` | — | — | — | The stretch's direction in radians from the tangent (+u) towards the bitangent. |
+| `anisotropyMap` | `Texture \| null` | `null` | — | — | — | The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy. |
 
 ```ogt
 struct StandardMaterialDesc {
   doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
   doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps)."
+  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+  doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them."
+  doc "A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it."
   doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
   desc true
   field color Color "The base colour." {
@@ -1873,6 +1903,69 @@ struct StandardMaterialDesc {
     max 1
     unit ratio
   }
+  field clearcoatMap Option.Texture "The coat's strength from the texture's red channel, times clearcoat (MeshPhysicalMaterial.clearcoatMap)."
+  field clearcoatRoughnessMap Option.Texture "The coat's roughness from the texture's green channel, times clearcoatRoughness."
+  field clearcoatNormalMap Option.Texture "A tangent-space normal map of the coat alone; the base keeps normalMap (MeshPhysicalMaterial.clearcoatNormalMap)."
+  field clearcoatNormalScale Vector2 "How strongly clearcoatNormalMap bends the coat's normal, per tangent axis." {
+    default 1 1
+  }
+  field sheen f32 "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field sheenColor Color "The sheen's colour (linear), times sheenColorMap; black is none."
+  field sheenRoughness f32 "How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+  }
+  field sheenColorMap Option.Texture "The sheen's colour from the texture's RGB (sRGB)."
+  field sheenRoughnessMap Option.Texture "The sheen's roughness from the texture's alpha channel."
+  field transmission f32 "How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field transmissionMap Option.Texture "Transmission from the texture's red channel."
+  field thickness f32 "The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
+    min 0
+  }
+  field thicknessMap Option.Texture "Thickness from the texture's green channel."
+  field attenuationDistance f32 "The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity." {
+    min 0
+  }
+  field attenuationColor Color "The colour white light becomes after attenuationDistance in the volume (linear)." {
+    default 1 1 1
+  }
+  field ior f32 "The index of refraction (glTF KHR_materials_ior): the reflectance of a dielectric, ((ior - 1) / (ior + 1))^2 (4 % at 1.5), and how far transmission refracts." {
+    default 1.5
+    min 1
+    max 2.333
+  }
+  field iridescence f32 "A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field iridescenceIOR f32 "The film's index of refraction." {
+    default 1.3
+    min 1
+    max 2.333
+  }
+  field iridescenceThicknessRange Vector2 "The film's thickness in nanometres: x where iridescenceThicknessMap is black, y where it is white and everywhere without the map (three.js's [100, 400])." {
+    default 100 400
+  }
+  field iridescenceMap Option.Texture "Iridescence from the texture's red channel."
+  field iridescenceThicknessMap Option.Texture "The film's thickness between iridescenceThicknessRange's ends from the texture's green channel."
+  field anisotropy f32 "Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none)." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field anisotropyRotation f32 "The stretch's direction in radians from the tangent (+u) towards the bitangent."
+  field anisotropyMap Option.Texture "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy."
 }
 ```
 
@@ -1901,7 +1994,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1838</sub>
+<sub>`api.ogt` line 1903</sub>
 
 <a id="type-Lut"></a>
 
@@ -1915,7 +2008,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 1897</sub>
+<sub>`api.ogt` line 1962</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -1929,7 +2022,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`)."
 ```
 
-<sub>`api.ogt` line 1898</sub>
+<sub>`api.ogt` line 1963</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -1943,7 +2036,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 1899</sub>
+<sub>`api.ogt` line 1964</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -1968,7 +2061,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1949</sub>
+<sub>`api.ogt` line 2014</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -1991,7 +2084,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1963</sub>
+<sub>`api.ogt` line 2028</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2014,7 +2107,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 1976</sub>
+<sub>`api.ogt` line 2041</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2037,7 +2130,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 1989</sub>
+<sub>`api.ogt` line 2054</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2077,7 +2170,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2371</sub>
+<sub>`api.ogt` line 2436</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2108,7 +2201,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2392</sub>
+<sub>`api.ogt` line 2457</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2170,7 +2263,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2411</sub>
+<sub>`api.ogt` line 2476</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2199,7 +2292,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2445</sub>
+<sub>`api.ogt` line 2510</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2222,7 +2315,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2456</sub>
+<sub>`api.ogt` line 2521</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2316,7 +2409,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2463</sub>
+<sub>`api.ogt` line 2528</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -2404,7 +2497,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2626</sub>
+<sub>`api.ogt` line 2691</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -2442,7 +2535,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2698</sub>
+<sub>`api.ogt` line 2763</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -2474,7 +2567,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2718</sub>
+<sub>`api.ogt` line 2783</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -2510,7 +2603,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2733</sub>
+<sub>`api.ogt` line 2798</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -2541,7 +2634,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 2775</sub>
+<sub>`api.ogt` line 2840</sub>
 
 <a id="type-Shader"></a>
 
@@ -2555,7 +2648,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 2801</sub>
+<sub>`api.ogt` line 2866</sub>
 
 ## Column kinds
 
@@ -2606,7 +2699,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1845</sub>
+<sub>`api.ogt` line 1910</sub>
 
 ```ogt
 column Texture {
@@ -2617,7 +2710,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 1901</sub>
+<sub>`api.ogt` line 1966</sub>
 
 ```ogt
 column Lut {
@@ -2628,7 +2721,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 1908</sub>
+<sub>`api.ogt` line 1973</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -2639,7 +2732,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 1915</sub>
+<sub>`api.ogt` line 1980</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -2650,7 +2743,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 1942</sub>
+<sub>`api.ogt` line 2007</sub>
 
 ```ogt
 column AoMethod {
@@ -2661,7 +2754,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1956</sub>
+<sub>`api.ogt` line 2021</sub>
 
 ```ogt
 column DofQuality {
@@ -2672,7 +2765,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1969</sub>
+<sub>`api.ogt` line 2034</sub>
 
 ```ogt
 column SpriteBlend {
@@ -2683,7 +2776,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 1982</sub>
+<sub>`api.ogt` line 2047</sub>
 
 ```ogt
 column StripBlend {
@@ -2694,7 +2787,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 1995</sub>
+<sub>`api.ogt` line 2060</sub>
 
 ## Constants
 
@@ -2707,10 +2800,10 @@ column StripBlend {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 2772</sub>
+<sub>`api.ogt` line 2837</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 2773</sub>
+<sub>`api.ogt` line 2838</sub>

@@ -1,0 +1,9 @@
+PASS fmt (2s)
+PASS clippy (1s)
+SKIPPED wasm-build (0s): no input changed since it passed on tree d97a8e89b07d
+CANCELLED test (114s): stopped when 'bun-test' failed; partial log target/evidence/gate/test.log
+SKIPPED wasm-opt (0s): no input changed since it passed on tree d97a8e89b07d
+SKIPPED size-gate (0s): no input changed since it passed on tree d97a8e89b07d
+SKIPPED drift (0s): no input changed since it passed on tree 43383a5825b4
+FAIL bun-test (exit 1, 113s)
+PASS determinism (99s)

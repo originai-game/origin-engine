@@ -1,6 +1,7 @@
 //! Materials: [`StandardMaterial`], the reflected three.js
-//! `MeshStandardMaterial` (and, with `unlit`, `MeshBasicMaterial`), and the
-//! GPU form both it and the glTF-shaped [`Material`] become.
+//! `MeshStandardMaterial` (with `unlit`, `MeshBasicMaterial`; with the
+//! `MeshPhysicalMaterial` fields, the physical lobes of `physical.rs`), and
+//! the GPU form both it and the glTF-shaped [`Material`] become.
 
 use crate::scene::{AlphaMode, Material, TextureHandle};
 use glam::{Vec2, Vec3};
@@ -34,13 +35,18 @@ impl Side {
 /// (`og.StandardMaterial`) is what the inspector, Tune and the probe edit,
 /// and its fields match `render.StandardMaterialDesc` in the IDL.
 ///
+/// The `MeshPhysicalMaterial` fields (clearcoat maps, sheen, transmission,
+/// iridescence, anisotropy, `ior`) draw through the physical lit pipelines
+/// ([`StandardMaterial::is_physical`]); a material without them draws
+/// exactly as a `MeshStandardMaterial`.
+///
 /// Texture fields are slots: `0` is none, otherwise
 /// [`TextureHandle::slot`] (the texture's index plus one). Boolean fields
 /// are `0` or `1`. Colours are linear. The default is three.js's: white,
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 3)]
+#[reflect(name = "og.StandardMaterial", version = 4)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -153,6 +159,82 @@ pub struct StandardMaterial {
     /// How rough the coat is.
     #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
     pub clearcoatRoughness: f32,
+    /// The coat's strength from the texture's red channel (times `clearcoat`).
+    pub clearcoatMap: u32,
+    /// The coat's roughness from the texture's green channel (times
+    /// `clearcoatRoughness`).
+    pub clearcoatRoughnessMap: u32,
+    /// A tangent-space normal map of the coat alone (the base keeps `normalMap`).
+    pub clearcoatNormalMap: u32,
+    /// How strongly `clearcoatNormalMap` bends the coat's normal, per tangent axis.
+    #[reflect(default = [1.0, 1.0], tunable)]
+    pub clearcoatNormalScale: Vec2,
+    /// A velvet-like retroreflective layer (three.js `sheen`, glTF
+    /// `KHR_materials_sheen`): its strength times `sheenColor`. 0: none.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub sheen: f32,
+    /// The sheen's colour (linear RGB), multiplied with `sheenColorMap`.
+    #[reflect(min = 0.0, max = 1.0, default = [0.0, 0.0, 0.0], tunable)]
+    pub sheenColor: Vec3,
+    /// How rough the sheen is: low is a thin rim, high spreads it over the surface.
+    #[reflect(min = 0.0, max = 1.0, default = 1.0, tunable)]
+    pub sheenRoughness: f32,
+    /// The sheen colour texture (sRGB, RGB channels).
+    pub sheenColorMap: u32,
+    /// The sheen's roughness from the texture's alpha channel.
+    pub sheenRoughnessMap: u32,
+    /// How much light passes through the surface (three.js `transmission`,
+    /// glTF `KHR_materials_transmission`): glass, water, thin plastic. The
+    /// opaque scene behind it is refracted, blurred by `roughness`. 0: none.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub transmission: f32,
+    /// Transmission from the texture's red channel.
+    pub transmissionMap: u32,
+    /// The volume's thickness under the surface in object-space units
+    /// (glTF `KHR_materials_volume`): how far refraction bends the view
+    /// and how much `attenuationColor` absorbs. 0: a thin wall.
+    #[reflect(min = 0.0, default = 0.0, tunable)]
+    pub thickness: f32,
+    /// Thickness from the texture's green channel.
+    pub thicknessMap: u32,
+    /// The distance light travels in the volume before it is tinted to
+    /// `attenuationColor` (world units). 0: no absorption (three.js's Infinity).
+    #[reflect(min = 0.0, default = 0.0, tunable)]
+    pub attenuationDistance: f32,
+    /// The colour white light becomes after `attenuationDistance` in the volume (linear RGB).
+    #[reflect(min = 0.0, max = 1.0, default = [1.0, 1.0, 1.0], tunable)]
+    pub attenuationColor: Vec3,
+    /// The index of refraction (glTF `KHR_materials_ior`): the dielectric
+    /// reflectance ((ior - 1) / (ior + 1))², 4 % at the default 1.5, and
+    /// how far transmission refracts.
+    #[reflect(min = 1.0, max = 2.333, default = 1.5, tunable)]
+    pub ior: f32,
+    /// A thin-film interference layer (three.js `iridescence`, glTF
+    /// `KHR_materials_iridescence`): soap bubbles, oil, beetle shells. 0: none.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub iridescence: f32,
+    /// The film's index of refraction.
+    #[reflect(min = 1.0, max = 2.333, default = 1.3, tunable)]
+    pub iridescenceIOR: f32,
+    /// The film's thickness in nanometres: `x` where `iridescenceThicknessMap`
+    /// is black, `y` where it is white (and everywhere without the map).
+    #[reflect(min = 0.0, default = [100.0, 400.0], tunable)]
+    pub iridescenceThicknessRange: Vec2,
+    /// Iridescence from the texture's red channel.
+    pub iridescenceMap: u32,
+    /// The film's thickness between the range's ends from the texture's green channel.
+    pub iridescenceThicknessMap: u32,
+    /// Stretches the specular highlight along a direction of the surface
+    /// (three.js `anisotropy`, glTF `KHR_materials_anisotropy`): brushed
+    /// metal, hair, satin. 0: none, 1: fully stretched.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub anisotropy: f32,
+    /// The stretch's direction: radians from the tangent (+u) towards the bitangent.
+    #[reflect(default = 0.0, tunable)]
+    pub anisotropyRotation: f32,
+    /// The direction (red and green, -1..1 in the tangent frame, rotated by
+    /// `anisotropyRotation`) and strength (blue, times `anisotropy`).
+    pub anisotropyMap: u32,
 }
 
 impl Default for StandardMaterial {
@@ -194,6 +276,30 @@ impl Default for StandardMaterial {
             outlineWidth: 0.0,
             clearcoat: 0.0,
             clearcoatRoughness: 0.0,
+            clearcoatMap: 0,
+            clearcoatRoughnessMap: 0,
+            clearcoatNormalMap: 0,
+            clearcoatNormalScale: Vec2::ONE,
+            sheen: 0.0,
+            sheenColor: Vec3::ZERO,
+            sheenRoughness: 1.0,
+            sheenColorMap: 0,
+            sheenRoughnessMap: 0,
+            transmission: 0.0,
+            transmissionMap: 0,
+            thickness: 0.0,
+            thicknessMap: 0,
+            attenuationDistance: 0.0,
+            attenuationColor: Vec3::ONE,
+            ior: 1.5,
+            iridescence: 0.0,
+            iridescenceIOR: 1.3,
+            iridescenceThicknessRange: Vec2::new(100.0, 400.0),
+            iridescenceMap: 0,
+            iridescenceThicknessMap: 0,
+            anisotropy: 0.0,
+            anisotropyRotation: 0.0,
+            anisotropyMap: 0,
         }
     }
 }
@@ -220,6 +326,47 @@ impl StandardMaterial {
     /// draw it with the material's shader too).
     pub fn dissolves(&self) -> bool {
         self.dissolve > 0.0
+    }
+
+    /// Whether it draws through the physical lit pipelines: any
+    /// `MeshPhysicalMaterial` lobe or map beyond the scalar clear coat
+    /// (clearcoat maps, sheen, transmission, iridescence, anisotropy, an
+    /// `ior` other than 1.5). `unlit` and `toon` replace the lighting
+    /// model, so neither is ever physical.
+    pub fn is_physical(&self) -> bool {
+        self.unlit == 0
+            && self.toon == 0
+            && (self.physical_textures().iter().any(Option::is_some)
+                || self.sheen > 0.0
+                || self.transmission > 0.0
+                || self.iridescence > 0.0
+                || self.anisotropy > 0.0
+                || self.ior != 1.5)
+    }
+
+    /// Whether it refracts the scene behind it (drawn after the opaque
+    /// scene is copied, back to front with the blended materials).
+    pub fn is_transmissive(&self) -> bool {
+        self.is_physical() && self.transmission > 0.0
+    }
+
+    /// The physical texture slots: clearcoat, clearcoat roughness,
+    /// clearcoat normal, sheen colour, sheen roughness, transmission,
+    /// thickness, iridescence, iridescence thickness, anisotropy.
+    pub(crate) fn physical_textures(&self) -> [Option<TextureHandle>; 10] {
+        [
+            self.clearcoatMap,
+            self.clearcoatRoughnessMap,
+            self.clearcoatNormalMap,
+            self.sheenColorMap,
+            self.sheenRoughnessMap,
+            self.transmissionMap,
+            self.thicknessMap,
+            self.iridescenceMap,
+            self.iridescenceThicknessMap,
+            self.anisotropyMap,
+        ]
+        .map(TextureHandle::from_slot)
     }
 
     /// The texture slots in binding order (map, metalness, roughness,
@@ -279,6 +426,175 @@ impl From<&Material> for StandardMaterial {
 impl From<Material> for StandardMaterial {
     fn from(m: Material) -> StandardMaterial {
         StandardMaterial::from(&m)
+    }
+}
+
+/// glTF's physical material extensions on one material, in glTF's terms
+/// (`KHR_materials_clearcoat`, `_sheen`, `_transmission`, `_volume`,
+/// `_ior`, `_iridescence`, `_anisotropy`), with textures as `T`: a scene's
+/// [`TextureHandle`], or a model's texture index before it has a scene.
+/// `present` says which extensions the material has
+/// ([`PhysicalExtensions::CLEARCOAT`] and on); the others' fields are
+/// glTF's defaults. [`PhysicalExtensions::apply`] lays them over a
+/// [`StandardMaterial`] as three.js's `GLTFLoader` does. The glTF bridge
+/// and the cook read them (`gltf::physical_extensions`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PhysicalExtensions<T> {
+    pub present: u32,
+    pub clearcoat: f32,
+    pub clearcoat_texture: Option<T>,
+    pub clearcoat_roughness: f32,
+    pub clearcoat_roughness_texture: Option<T>,
+    pub clearcoat_normal_texture: Option<T>,
+    pub clearcoat_normal_scale: f32,
+    pub sheen_color: [f32; 3],
+    pub sheen_color_texture: Option<T>,
+    pub sheen_roughness: f32,
+    pub sheen_roughness_texture: Option<T>,
+    pub transmission: f32,
+    pub transmission_texture: Option<T>,
+    pub thickness: f32,
+    pub thickness_texture: Option<T>,
+    /// glTF's +infinity (no absorption) is 0, as in [`StandardMaterial`].
+    pub attenuation_distance: f32,
+    pub attenuation_color: [f32; 3],
+    pub ior: f32,
+    pub iridescence: f32,
+    pub iridescence_texture: Option<T>,
+    pub iridescence_ior: f32,
+    /// Minimum and maximum film thickness (nm).
+    pub iridescence_thickness: [f32; 2],
+    pub iridescence_thickness_texture: Option<T>,
+    pub anisotropy: f32,
+    pub anisotropy_rotation: f32,
+    pub anisotropy_texture: Option<T>,
+}
+
+impl<T> Default for PhysicalExtensions<T> {
+    fn default() -> Self {
+        PhysicalExtensions {
+            present: 0,
+            clearcoat: 0.0,
+            clearcoat_texture: None,
+            clearcoat_roughness: 0.0,
+            clearcoat_roughness_texture: None,
+            clearcoat_normal_texture: None,
+            clearcoat_normal_scale: 1.0,
+            sheen_color: [0.0; 3],
+            sheen_color_texture: None,
+            sheen_roughness: 0.0,
+            sheen_roughness_texture: None,
+            transmission: 0.0,
+            transmission_texture: None,
+            thickness: 0.0,
+            thickness_texture: None,
+            attenuation_distance: 0.0,
+            attenuation_color: [1.0; 3],
+            ior: 1.5,
+            iridescence: 0.0,
+            iridescence_texture: None,
+            iridescence_ior: 1.3,
+            iridescence_thickness: [100.0, 400.0],
+            iridescence_thickness_texture: None,
+            anisotropy: 0.0,
+            anisotropy_rotation: 0.0,
+            anisotropy_texture: None,
+        }
+    }
+}
+
+impl<T> PhysicalExtensions<T> {
+    /// [`PhysicalExtensions::present`] bits, one per extension.
+    pub const CLEARCOAT: u32 = 1;
+    pub const SHEEN: u32 = 2;
+    pub const TRANSMISSION: u32 = 4;
+    pub const VOLUME: u32 = 8;
+    pub const IOR: u32 = 16;
+    pub const IRIDESCENCE: u32 = 32;
+    pub const ANISOTROPY: u32 = 64;
+}
+
+impl<T: Copy> PhysicalExtensions<T> {
+    /// The same with every texture mapped by `f` (`None`: dropped).
+    pub fn map<U>(&self, f: impl Fn(T) -> Option<U>) -> PhysicalExtensions<U> {
+        let t = |x: Option<T>| x.and_then(&f);
+        PhysicalExtensions {
+            present: self.present,
+            clearcoat: self.clearcoat,
+            clearcoat_texture: t(self.clearcoat_texture),
+            clearcoat_roughness: self.clearcoat_roughness,
+            clearcoat_roughness_texture: t(self.clearcoat_roughness_texture),
+            clearcoat_normal_texture: t(self.clearcoat_normal_texture),
+            clearcoat_normal_scale: self.clearcoat_normal_scale,
+            sheen_color: self.sheen_color,
+            sheen_color_texture: t(self.sheen_color_texture),
+            sheen_roughness: self.sheen_roughness,
+            sheen_roughness_texture: t(self.sheen_roughness_texture),
+            transmission: self.transmission,
+            transmission_texture: t(self.transmission_texture),
+            thickness: self.thickness,
+            thickness_texture: t(self.thickness_texture),
+            attenuation_distance: self.attenuation_distance,
+            attenuation_color: self.attenuation_color,
+            ior: self.ior,
+            iridescence: self.iridescence,
+            iridescence_texture: t(self.iridescence_texture),
+            iridescence_ior: self.iridescence_ior,
+            iridescence_thickness: self.iridescence_thickness,
+            iridescence_thickness_texture: t(self.iridescence_thickness_texture),
+            anisotropy: self.anisotropy,
+            anisotropy_rotation: self.anisotropy_rotation,
+            anisotropy_texture: t(self.anisotropy_texture),
+        }
+    }
+}
+
+impl PhysicalExtensions<TextureHandle> {
+    /// Sets `m`'s fields from the extensions the material has (three.js's
+    /// `GLTFLoader`: a material with `KHR_materials_sheen` gets `sheen` 1).
+    pub fn apply(&self, m: &mut StandardMaterial) {
+        let slot = |t: Option<TextureHandle>| t.map_or(0, TextureHandle::slot);
+        let has = |bit: u32| self.present & bit != 0;
+        if has(Self::CLEARCOAT) {
+            m.clearcoat = self.clearcoat;
+            m.clearcoatMap = slot(self.clearcoat_texture);
+            m.clearcoatRoughness = self.clearcoat_roughness;
+            m.clearcoatRoughnessMap = slot(self.clearcoat_roughness_texture);
+            m.clearcoatNormalMap = slot(self.clearcoat_normal_texture);
+            m.clearcoatNormalScale = Vec2::splat(self.clearcoat_normal_scale);
+        }
+        if has(Self::SHEEN) {
+            m.sheen = 1.0;
+            m.sheenColor = Vec3::from(self.sheen_color);
+            m.sheenColorMap = slot(self.sheen_color_texture);
+            m.sheenRoughness = self.sheen_roughness;
+            m.sheenRoughnessMap = slot(self.sheen_roughness_texture);
+        }
+        if has(Self::TRANSMISSION) {
+            m.transmission = self.transmission;
+            m.transmissionMap = slot(self.transmission_texture);
+        }
+        if has(Self::VOLUME) {
+            m.thickness = self.thickness;
+            m.thicknessMap = slot(self.thickness_texture);
+            m.attenuationDistance = self.attenuation_distance;
+            m.attenuationColor = Vec3::from(self.attenuation_color);
+        }
+        if has(Self::IOR) {
+            m.ior = self.ior;
+        }
+        if has(Self::IRIDESCENCE) {
+            m.iridescence = self.iridescence;
+            m.iridescenceMap = slot(self.iridescence_texture);
+            m.iridescenceIOR = self.iridescence_ior;
+            m.iridescenceThicknessRange = Vec2::from(self.iridescence_thickness);
+            m.iridescenceThicknessMap = slot(self.iridescence_thickness_texture);
+        }
+        if has(Self::ANISOTROPY) {
+            m.anisotropy = self.anisotropy;
+            m.anisotropyRotation = self.anisotropy_rotation;
+            m.anisotropyMap = slot(self.anisotropy_texture);
+        }
     }
 }
 

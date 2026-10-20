@@ -979,6 +979,9 @@ pub(crate) struct GraphConfig {
     /// The main pass draws water or a 3D fluid: it copies the scene drawn
     /// so far.
     pub water: bool,
+    /// The main pass copies the opaque scene for transmissive materials
+    /// (into the renderer's own mip-chained target, not a graph target).
+    pub transmission: bool,
     /// Metaball field targets the frame's fluids need (1 to
     /// `metaballs::FIELDS` when it draws any).
     pub fluid_fields: u32,
@@ -1059,7 +1062,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 h,
                 HDR_FORMAT,
                 1,
-                if cfg.water {
+                if cfg.water || cfg.transmission {
                     attach_bind | wgpu::TextureUsages::COPY_SRC
                 } else {
                     attach_bind

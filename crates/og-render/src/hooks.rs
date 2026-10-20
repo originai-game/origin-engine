@@ -229,3 +229,9 @@ pub(crate) fn default_hooks() -> String {
 pub fn lit_module_source(shader: &MaterialShader, full: bool) -> String {
     crate::lit_source(&shader.hooks_wgsl(), full)
 }
+
+/// [`lit_module_source`] for the physical lit shader (`physical.rs`), which
+/// a physical material with a material shader draws with.
+pub fn physical_module_source(shader: &MaterialShader, full: bool) -> String {
+    crate::physical_source(&shader.hooks_wgsl(), full)
+}
