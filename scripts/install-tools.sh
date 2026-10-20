@@ -6,6 +6,8 @@
 #   wasm-opt          binaryen, pinned by BINARYEN_VERSION
 #   brotli            the size gate's compressor
 #   bun               the TypeScript packages' test runner, pinned by BUN_VERSION
+#   ShellCheck        the gate scripts' linter, pinned by SHELLCHECK_VERSION (an
+#                     older one, Ubuntu's 0.9, reports what 0.11 does not)
 #   sccache           the compiler cache .cargo/config.toml names, pinned by
 #                     SCCACHE_VERSION (first: the cargo installs below go through it)
 #
@@ -21,6 +23,7 @@ set -eu -o pipefail
 BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 BUN_VERSION="${BUN_VERSION:-1.4.2}"
 SCCACHE_VERSION="${SCCACHE_VERSION:-0.14.0}"
+SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
 BIN="${OG_TOOLS_BIN:-$HOME/.local/bin}"
 mkdir -p "$BIN"
 export PATH="$BIN:$PATH"
@@ -126,6 +129,21 @@ else
   BUN_INSTALL="$tmp/bun" bash "$tmp/bun-install.sh" "bun-v$BUN_VERSION" >/dev/null
   cp "$tmp/bun/bin/bun" "$BIN/bun"
   bun --version
+fi
+
+# ShellCheck: the release binary on Linux, Homebrew's on macOS
+if command -v shellcheck >/dev/null && [ "$(shellcheck --version | awk '/^version:/ {print $2}')" = "$SHELLCHECK_VERSION" ]; then
+  og_say "shellcheck $SHELLCHECK_VERSION: present"
+elif [ "$os" = Darwin ]; then
+  if command -v shellcheck >/dev/null; then og_say "shellcheck: present ($(shellcheck --version | awk '/^version:/ {print $2}'), Homebrew's)"
+  else brew install shellcheck; fi
+else
+  og_say "shellcheck $SHELLCHECK_VERSION: installing"
+  sc="shellcheck-v$SHELLCHECK_VERSION.linux.$arch.tar.xz"
+  fetch "https://github.com/koalaman/shellcheck/releases/download/v$SHELLCHECK_VERSION/$sc" "$tmp/$sc"
+  tar -xJf "$tmp/$sc" -C "$tmp"
+  cp "$tmp/shellcheck-v$SHELLCHECK_VERSION/shellcheck" "$BIN/"
+  shellcheck --version | awk '/^version:/ {print "shellcheck " $2}'
 fi
 
 # cargo-nextest: the gate's parallel test runner (optional; check.sh falls

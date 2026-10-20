@@ -735,7 +735,7 @@ running=0
 done_n=0
 while :; do
   for s in $selected; do
-    [ "$(gate_get state "$s")" = running ] && [ -f "$GATE_LOGS/$s.rc" ] || continue
+    if [ "$(gate_get state "$s")" != running ] || [ ! -f "$GATE_LOGS/$s.rc" ]; then continue; fi
     wait "$(gate_get pid "$s")"; rc=$?
     running=$((running - 1))
     done_n=$((done_n + 1))
