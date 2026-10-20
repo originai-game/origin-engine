@@ -10,8 +10,16 @@
 //! bundle against the 300 ms budget (design §7), split into rebuild (save to
 //! bundle written) and swap (bundle written to first new frame).
 //! `--exit-after N` stops after N reloads (for scripted measurements).
+//!
+//! The game runs in a process group of its own. SIGINT, SIGTERM and SIGHUP
+//! to og (Ctrl-C, a supervisor's stop, a closed terminal) are passed on to
+//! that whole group (crate::relay), so the bun process and anything it
+//! started stop with og; whatever is left after 3 s is killed, and og then
+//! ends by the signal it got. A game that stops on its own ends og with
+//! exit 1, and `--exit-after` stops the group the same way.
 
 use crate::project::{self, Project};
+use crate::relay::{self, Target};
 use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -51,6 +59,17 @@ fn changed(
         .collect();
     out.extend(before.keys().filter(|p| !now.contains_key(*p)).cloned());
     out
+}
+
+/// What is left of the game's process group once its leader ended.
+fn stop_group(group: Target) {
+    #[cfg(unix)]
+    if let Target::Group(pid) = group {
+        // SAFETY: kill has no memory effects; the group is the game's own.
+        unsafe { libc::kill(-(pid as i32), libc::SIGKILL) };
+    }
+    #[cfg(not(unix))]
+    let _ = group;
 }
 
 pub fn run(args: &[&str]) -> ExitCode {
@@ -111,7 +130,11 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let mut child = match project::bun(&package, "src/node/run.ts")
+    let mut cmd = project::bun(&package, "src/node/run.ts");
+    // Its own process group: a signal to og reaches everything the game started.
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let mut child = match cmd
         .arg("--entry")
         .arg(&bundle)
         .arg("--root")
@@ -132,6 +155,8 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let group = Target::Group(child.id());
+    relay::start(group);
     let (tx, rx) = mpsc::channel::<String>();
     let stdout = child.stdout.take().expect("piped");
     std::thread::spawn(move || {
@@ -161,7 +186,15 @@ pub fn run(args: &[&str]) -> ExitCode {
         );
     }
     loop {
+        if let Some(sig) = relay::received() {
+            eprintln!("og dev: signal {sig}, stopping the game");
+            relay::finish(group, sig, Duration::from_secs(3), || {
+                matches!(child.try_wait(), Ok(Some(_)))
+            });
+        }
         if let Ok(Some(status)) = child.try_wait() {
+            relay::stop();
+            stop_group(group);
             eprintln!("og dev: the game stopped ({status})");
             return ExitCode::FAILURE;
         }
@@ -203,8 +236,10 @@ pub fn run(args: &[&str]) -> ExitCode {
                         );
                     }
                     if exit_after.is_some_and(|n| reloads >= n) {
+                        relay::stop();
                         let _ = child.kill();
                         let _ = child.wait();
+                        stop_group(group);
                         return if worst <= BUDGET_MS {
                             ExitCode::SUCCESS
                         } else {

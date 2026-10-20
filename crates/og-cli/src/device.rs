@@ -13,11 +13,12 @@
 //! safaridriver) are checked before the build. The report, og polish's shape, is
 //! `report.md` and `device.json` in `--out` (default
 //! `<project>/og-out/device`). A missing prerequisite exits 1 with its fix.
-//! SIGINT and SIGTERM to og are passed on to the bun process, which undoes
-//! its adb forwards, Chrome profile, WebDriver session and server and exits
-//! 130 or 143; og waits for it and exits with its code.
+//! SIGINT, SIGTERM and SIGHUP to og are passed on to the bun process, which
+//! undoes its adb forwards, Chrome profile, WebDriver session and server and
+//! exits 130, 143 or 129; og waits for it and exits with its code.
 
 use crate::project::{self, Project};
+use crate::relay;
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus};
 
@@ -114,64 +115,13 @@ pub fn run(project: &str, out: Option<&str>, port: Option<&str>, a: &DeviceArgs)
     }
 }
 
-/// Runs a bun child to its end with SIGINT and SIGTERM passed on to it, so
-/// og neither dies before the child has cleaned up nor leaves it running.
+/// Runs a bun child to its end with SIGINT, SIGTERM and SIGHUP passed on to
+/// it (crate::relay), so og neither dies before the child has cleaned up nor
+/// leaves it running.
 fn status(cmd: &mut Command) -> std::io::Result<ExitStatus> {
     let mut child = cmd.spawn()?;
-    relay::start(child.id());
+    relay::start(relay::Target::Process(child.id()));
     let s = child.wait();
     relay::stop();
     s
-}
-
-#[cfg(unix)]
-mod relay {
-    use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
-
-    /// The running child's pid (0: none).
-    static CHILD: AtomicI32 = AtomicI32::new(0);
-    /// The handlers SIGINT and SIGTERM had before `start`, restored by `stop`.
-    static PREVIOUS: [AtomicUsize; 2] = [AtomicUsize::new(0), AtomicUsize::new(0)];
-    const SIGNALS: [libc::c_int; 2] = [libc::SIGINT, libc::SIGTERM];
-
-    extern "C" fn pass_on(sig: libc::c_int) {
-        let pid = CHILD.load(Ordering::SeqCst);
-        // SAFETY: kill, signal and raise are async-signal-safe.
-        unsafe {
-            if pid > 0 {
-                libc::kill(pid, sig);
-            } else {
-                libc::signal(sig, libc::SIG_DFL);
-                libc::raise(sig);
-            }
-        }
-    }
-
-    pub fn start(pid: u32) {
-        CHILD.store(pid as i32, Ordering::SeqCst);
-        for (sig, prev) in SIGNALS.iter().zip(&PREVIOUS) {
-            // SAFETY: installs a handler that only calls async-signal-safe functions.
-            let old = unsafe {
-                libc::signal(
-                    *sig,
-                    pass_on as extern "C" fn(libc::c_int) as libc::sighandler_t,
-                )
-            };
-            prev.store(old, Ordering::SeqCst);
-        }
-    }
-
-    pub fn stop() {
-        for (sig, prev) in SIGNALS.iter().zip(&PREVIOUS) {
-            // SAFETY: puts back the handler `start` replaced.
-            unsafe { libc::signal(*sig, prev.load(Ordering::SeqCst)) };
-        }
-        CHILD.store(0, Ordering::SeqCst);
-    }
-}
-
-#[cfg(not(unix))]
-mod relay {
-    pub fn start(_pid: u32) {}
-    pub fn stop() {}
 }

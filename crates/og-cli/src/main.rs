@@ -16,6 +16,7 @@ mod polish;
 mod probe;
 mod project;
 mod publish;
+mod relay;
 mod run;
 mod sfx;
 mod skin;
