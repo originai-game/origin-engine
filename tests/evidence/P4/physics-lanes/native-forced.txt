@@ -1,0 +1,85 @@
+# 88aadf41 with BODY_GRAIN = 1 (every step on the pool; a local build, not committed)
+## round 1, OG_LANES=4, load averages: 6.70 14.76 13.39
+lanes on, 4 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.065 | 2be8de152ac7b522 | 1525 |
+| a pen | 16 | 0.044 | 6b174a884413198d | 840 |
+| a pen | 64 | 0.146 | eab3912f89e904a0 | 840 |
+| a pen | 128 | 0.243 | 480a1565699adffb | 840 |
+| a pen | 256 | 0.444 | a24ec14d9364821c | 840 |
+| a pen | 512 | 0.821 | 0cc7778b55d593bf | 1525 |
+| a pen | 768 | 1.181 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.533 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.345 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.181 | d0b5c28399fbdc50 | 1594 |
+## round 1, OG_LANES=8, load averages: 6.50 14.45 13.30
+lanes on, 8 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.318 | 2be8de152ac7b522 | 1525 |
+| a pen | 16 | 0.076 | 6b174a884413198d | 840 |
+| a pen | 64 | 0.205 | eab3912f89e904a0 | 840 |
+| a pen | 128 | 0.340 | 480a1565699adffb | 840 |
+| a pen | 256 | 0.591 | a24ec14d9364821c | 840 |
+| a pen | 512 | 1.150 | 0cc7778b55d593bf | 1525 |
+| a pen | 768 | 1.672 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.122 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 3.332 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.180 | d0b5c28399fbdc50 | 1594 |
+## round 2, OG_LANES=4, load averages: 7.66 13.72 13.09
+lanes on, 4 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.026 | 2be8de152ac7b522 | 1525 |
+| a pen | 16 | 0.045 | 6b174a884413198d | 840 |
+| a pen | 64 | 0.143 | eab3912f89e904a0 | 840 |
+| a pen | 128 | 0.249 | 480a1565699adffb | 840 |
+| a pen | 256 | 0.435 | a24ec14d9364821c | 840 |
+| a pen | 512 | 0.886 | 0cc7778b55d593bf | 1525 |
+| a pen | 768 | 1.227 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.753 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.544 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.386 | d0b5c28399fbdc50 | 1594 |
+## round 2, OG_LANES=8, load averages: 8.17 13.62 13.06
+lanes on, 8 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.326 | 2be8de152ac7b522 | 1525 |
+| a pen | 16 | 0.079 | 6b174a884413198d | 840 |
+| a pen | 64 | 0.208 | eab3912f89e904a0 | 840 |
+| a pen | 128 | 0.350 | 480a1565699adffb | 840 |
+| a pen | 256 | 0.600 | a24ec14d9364821c | 840 |
+| a pen | 512 | 1.205 | 0cc7778b55d593bf | 1525 |
+| a pen | 768 | 1.782 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.118 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.752 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.588 | d0b5c28399fbdc50 | 1594 |
+## round 3, OG_LANES=4, load averages: 8.01 12.93 12.83
+lanes on, 4 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.004 | 2be8de152ac7b522 | 1525 |
+| a pen | 16 | 0.046 | 6b174a884413198d | 840 |
+| a pen | 64 | 0.134 | eab3912f89e904a0 | 840 |
+| a pen | 128 | 0.232 | 480a1565699adffb | 840 |
+| a pen | 256 | 0.418 | a24ec14d9364821c | 840 |
+| a pen | 512 | 0.756 | 0cc7778b55d593bf | 1525 |
+| a pen | 768 | 1.120 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.425 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.239 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.096 | d0b5c28399fbdc50 | 1594 |
+## round 3, OG_LANES=8, load averages: 7.92 12.75 12.77
+lanes on, 8 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.250 | 2be8de152ac7b522 | 1525 |
+| a pen | 16 | 0.077 | 6b174a884413198d | 840 |
+| a pen | 64 | 0.200 | eab3912f89e904a0 | 840 |
+| a pen | 128 | 0.329 | 480a1565699adffb | 840 |
+| a pen | 256 | 0.572 | a24ec14d9364821c | 840 |
+| a pen | 512 | 1.177 | 0cc7778b55d593bf | 1525 |
+| a pen | 768 | 1.847 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.166 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 3.196 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.826 | d0b5c28399fbdc50 | 1594 |

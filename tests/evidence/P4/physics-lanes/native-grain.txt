@@ -1,0 +1,127 @@
+# 88aadf41, BODY_GRAIN 200 (as committed)
+## round 1, OG_LANES=off, load averages: 7.51 15.74 13.67
+lanes off (off by OG_LANES)
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.444 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.093 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.201 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.406 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.880 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.396 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.899 | d58922edef589f4e | 0 |
+| a pen | 1500 | 3.159 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 4.664 | d0b5c28399fbdc50 | 0 |
+## round 1, OG_LANES=4, load averages: 7.27 15.42 13.58
+lanes on, 4 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.458 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.092 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.200 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.400 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.884 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.387 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.523 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.360 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.197 | d0b5c28399fbdc50 | 1594 |
+## round 1, OG_LANES=8, load averages: 7.07 15.11 13.49
+lanes on, 8 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.461 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.021 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.093 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.200 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.404 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.886 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.395 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.958 | d58922edef589f4e | 0 |
+| a pen | 1500 | 3.201 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 4.181 | d0b5c28399fbdc50 | 1594 |
+## round 2, OG_LANES=off, load averages: 8.35 14.59 13.36
+lanes off (off by OG_LANES)
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.450 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.092 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.200 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.408 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.895 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.396 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.916 | d58922edef589f4e | 0 |
+| a pen | 1500 | 3.232 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 4.701 | d0b5c28399fbdc50 | 0 |
+## round 2, OG_LANES=4, load averages: 7.95 14.20 13.24
+lanes on, 4 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.450 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.023 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.094 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.199 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.405 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.890 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.396 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.572 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.336 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.194 | d0b5c28399fbdc50 | 1594 |
+## round 2, OG_LANES=8, load averages: 7.80 14.06 13.20
+lanes on, 8 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.462 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.093 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.198 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.404 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.877 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.374 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.913 | d58922edef589f4e | 0 |
+| a pen | 1500 | 3.197 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 3.982 | d0b5c28399fbdc50 | 1594 |
+## round 3, OG_LANES=off, load averages: 8.41 13.50 13.03
+lanes off (off by OG_LANES)
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.453 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.092 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.199 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.404 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.881 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.381 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.914 | d58922edef589f4e | 0 |
+| a pen | 1500 | 3.225 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 4.633 | d0b5c28399fbdc50 | 0 |
+## round 3, OG_LANES=4, load averages: 8.77 13.42 13.00
+lanes on, 4 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.438 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.090 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.192 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.387 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.886 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.347 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.402 | d58922edef589f4e | 1562 |
+| a pen | 1500 | 2.328 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.091 | d0b5c28399fbdc50 | 1594 |
+## round 3, OG_LANES=8, load averages: 7.80 13.06 12.88
+lanes on, 8 threads
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.447 | 2be8de152ac7b522 | 0 |
+| a pen | 16 | 0.022 | 6b174a884413198d | 0 |
+| a pen | 64 | 0.092 | eab3912f89e904a0 | 0 |
+| a pen | 128 | 0.199 | 480a1565699adffb | 0 |
+| a pen | 256 | 0.401 | a24ec14d9364821c | 0 |
+| a pen | 512 | 0.894 | 0cc7778b55d593bf | 0 |
+| a pen | 768 | 1.401 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.999 | d58922edef589f4e | 0 |
+| a pen | 1500 | 3.218 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 3.560 | d0b5c28399fbdc50 | 1594 |
