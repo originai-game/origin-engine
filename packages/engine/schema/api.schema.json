@@ -12996,6 +12996,11 @@
           "default": 0,
           "x-og-unit": "m"
         },
+        "toneMapped": {
+          "type": "boolean",
+          "description": "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped.",
+          "default": true
+        },
         "flipX": {
           "type": "boolean",
           "description": "Mirror the region left to right.",
@@ -13256,6 +13261,11 @@
           "description": "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight).",
           "default": 0,
           "x-og-unit": "m"
+        },
+        "toneMapped": {
+          "type": "boolean",
+          "description": "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only.",
+          "default": true
         },
         "visible": {
           "type": "boolean",

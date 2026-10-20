@@ -166,7 +166,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2968</sub>
+<sub>`api.ogt` line 2971</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -196,7 +196,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3142</sub>
+<sub>`api.ogt` line 3148</sub>
 
 <a id="fn-measureText"></a>
 
@@ -226,7 +226,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3149</sub>
+<sub>`api.ogt` line 3155</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -256,7 +256,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3209</sub>
+<sub>`api.ogt` line 3215</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -286,7 +286,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3216</sub>
+<sub>`api.ogt` line 3222</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -316,7 +316,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3223</sub>
+<sub>`api.ogt` line 3229</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -346,7 +346,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3246</sub>
+<sub>`api.ogt` line 3252</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -378,7 +378,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3253</sub>
+<sub>`api.ogt` line 3259</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -410,7 +410,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3263</sub>
+<sub>`api.ogt` line 3269</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -442,7 +442,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3271</sub>
+<sub>`api.ogt` line 3277</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -476,7 +476,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3279</sub>
+<sub>`api.ogt` line 3285</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -506,7 +506,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3288</sub>
+<sub>`api.ogt` line 3294</sub>
 
 <a id="fn-look"></a>
 
@@ -534,7 +534,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3295</sub>
+<sub>`api.ogt` line 3301</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -562,7 +562,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3301</sub>
+<sub>`api.ogt` line 3307</sub>
 
 <a id="fn-text"></a>
 
@@ -592,7 +592,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3307</sub>
+<sub>`api.ogt` line 3313</sub>
 
 ## Components, resources and events
 
@@ -1856,6 +1856,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
 | `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set. |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight). |
+| `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
@@ -1936,13 +1937,16 @@ component Sprite {
   field dropShadowHeight f32 "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight)." {
     unit m
   }
+  field toneMapped bool "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only." {
+    default true
+  }
   field visible bool "Whether it is drawn." {
     default true
   }
 }
 ```
 
-<sub>`api.ogt` line 2975</sub>
+<sub>`api.ogt` line 2978</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1990,7 +1994,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3057</sub>
+<sub>`api.ogt` line 3063</sub>
 
 ## Types
 
@@ -2965,6 +2969,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
 | `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on. |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0. |
+| `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -3027,6 +3032,9 @@ struct SpriteDesc {
   }
   field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0." {
     unit m
+  }
+  field toneMapped bool "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped." {
+    default true
   }
   field flipX bool "Mirror the region left to right."
   field flipY bool "Mirror the region top to bottom."
@@ -3129,7 +3137,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3084</sub>
+<sub>`api.ogt` line 3090</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3167,7 +3175,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3156</sub>
+<sub>`api.ogt` line 3162</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3199,7 +3207,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3176</sub>
+<sub>`api.ogt` line 3182</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3235,7 +3243,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3191</sub>
+<sub>`api.ogt` line 3197</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3270,7 +3278,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3233</sub>
+<sub>`api.ogt` line 3239</sub>
 
 <a id="type-Shader"></a>
 
@@ -3284,7 +3292,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3261</sub>
+<sub>`api.ogt` line 3267</sub>
 
 ## Column kinds
 
@@ -3472,10 +3480,10 @@ column StyliseSpace {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3230</sub>
+<sub>`api.ogt` line 3236</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3231</sub>
+<sub>`api.ogt` line 3237</sub>

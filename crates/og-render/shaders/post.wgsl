@@ -15,7 +15,7 @@ struct Post {
   vignette: vec4<f32>,  // rgb: vignette colour, w: chromatic aberration at the corners (uv units, 0 off)
   grain: vec4<f32>,     // x: intensity (0 off), y: size in pixels, z: seed (0..1)
   flash: vec4<f32>,     // rgb: flash colour, w: amount (0 off)
-  extra: vec4<f32>,     // x: 1 with god rays
+  extra: vec4<f32>,     // x: 1 with god rays, y: 1 when the lit image's alpha is the tone-mapped fraction (untonemapped sprites)
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var linear_sampler: sampler;
@@ -78,6 +78,17 @@ fn agx(x: vec3<f32>) -> vec3<f32> {
 }
 
 fn tonemapped(uv: vec2<f32>) -> vec3<f32> {
+  let curved = curve(uv);
+  if (post.extra.y < 0.5) { return curved; }
+  // Untonemapped sprites (sprite.wgsl `fs_untonemapped`) left the alpha at
+  // the fraction of the pixel to tone map: the rest is their colour as
+  // given, without exposure, bloom or the curve.
+  let lit = textureSampleLevel(source, linear_sampler, uv, 0.0);
+  return mix(clamp(lit.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), curved, clamp(lit.a, 0.0, 1.0));
+}
+
+// The lit image exposed, with bloom and god rays, through the tone curve.
+fn curve(uv: vec2<f32>) -> vec3<f32> {
   var lit: vec3<f32>;
   if (post.vignette.w > 0.0) {
     // Chromatic aberration: red and blue pulled apart, growing towards the corners.
@@ -159,22 +170,31 @@ fn fs_srgb_encode(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
 
+// One tap of the 13-tap downsample: with untonemapped sprites (extra.y)
+// the lit image's colour weighted by its alpha, the tone-mapped fraction,
+// so those sprites neither bloom nor dim the bloom round them.
+fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
+  let s = textureSampleLevel(source, linear_sampler, uv, 0.0);
+  if (post.extra.y > 0.5) { return s.rgb * clamp(s.a, 0.0, 1.0); }
+  return s.rgb;
+}
+
 // The 13-tap downsample (Jimenez, "Next generation post processing in Call of Duty").
 fn downsample13(uv: vec2<f32>) -> vec3<f32> {
   let t = 1.0 / vec2<f32>(textureDimensions(source));
-  let s = textureSampleLevel(source, linear_sampler, uv, 0.0).rgb;
-  let a = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(-2.0, -2.0), 0.0).rgb;
-  let b = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(0.0, -2.0), 0.0).rgb;
-  let c = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(2.0, -2.0), 0.0).rgb;
-  let d = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(-2.0, 0.0), 0.0).rgb;
-  let f = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(2.0, 0.0), 0.0).rgb;
-  let g = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(-2.0, 2.0), 0.0).rgb;
-  let h = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(0.0, 2.0), 0.0).rgb;
-  let i = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(2.0, 2.0), 0.0).rgb;
-  let j = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(-1.0, -1.0), 0.0).rgb;
-  let k = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(1.0, -1.0), 0.0).rgb;
-  let l = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(-1.0, 1.0), 0.0).rgb;
-  let m = textureSampleLevel(source, linear_sampler, uv + t * vec2<f32>(1.0, 1.0), 0.0).rgb;
+  let s = bloom_tap(uv);
+  let a = bloom_tap(uv + t * vec2<f32>(-2.0, -2.0));
+  let b = bloom_tap(uv + t * vec2<f32>(0.0, -2.0));
+  let c = bloom_tap(uv + t * vec2<f32>(2.0, -2.0));
+  let d = bloom_tap(uv + t * vec2<f32>(-2.0, 0.0));
+  let f = bloom_tap(uv + t * vec2<f32>(2.0, 0.0));
+  let g = bloom_tap(uv + t * vec2<f32>(-2.0, 2.0));
+  let h = bloom_tap(uv + t * vec2<f32>(0.0, 2.0));
+  let i = bloom_tap(uv + t * vec2<f32>(2.0, 2.0));
+  let j = bloom_tap(uv + t * vec2<f32>(-1.0, -1.0));
+  let k = bloom_tap(uv + t * vec2<f32>(1.0, -1.0));
+  let l = bloom_tap(uv + t * vec2<f32>(-1.0, 1.0));
+  let m = bloom_tap(uv + t * vec2<f32>(1.0, 1.0));
   return s * 0.125 + (a + c + g + i) * 0.03125 + (b + d + f + h) * 0.0625 + (j + k + l + m) * 0.125;
 }
 
@@ -183,6 +203,8 @@ fn fs_bloom_prefilter(in: VsOut) -> @location(0) vec4<f32> {
   var out = vec3<f32>(0.0);
   if (post.mode.z > 0.5) {
     let c = downsample13(in.uv) * exposure();
+    // (With untonemapped sprites the taps are weighted by the lit image's
+    // alpha, `bloom_tap`, so they never bloom.)
     // Soft threshold (a quadratic knee around the threshold).
     let brightness = max(c.r, max(c.g, c.b));
     let knee = max(post.bloom.y, 1e-4);

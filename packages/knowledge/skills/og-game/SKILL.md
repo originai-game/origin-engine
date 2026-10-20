@@ -248,6 +248,13 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   ```ts
   world.insert(hero, og.Sprite, { texture: tex, width: 1, height: 1.5, anchor: { x: 0.5, y: 0 }, dropShadow: 0.5, shadow: 0.3 });
   ```
+- **World UI that must not change with the light** (speech bubbles, name
+  tags, markers) takes `og.Sprite.toneMapped: false` (or
+  `SpriteDesc.toneMapped`), three.js's `Material.toneMapped`: still placed
+  and depth tested in the world, but shown in its colours as given,
+  outside auto exposure, bloom, fog and the tone curve, so a cream bubble
+  stays cream at dusk instead of blowing out to white. Alpha-blended
+  sprites only.
 - **Sprite sheets** are `.ogt` files of `type flipbook` next to the PNG
   (grid or named frames, or an Aseprite / TexturePacker JSON `atlas`; clips
   with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`).

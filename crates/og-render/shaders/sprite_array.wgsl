@@ -125,6 +125,18 @@ fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
   return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
 }
 
+// An untonemapped array sprite (sprite.wgsl `fs_untonemapped`).
+@fragment
+fn fs_untonemapped(in: SpriteOut) -> @location(0) vec4<f32> {
+  var c = array_color(in);
+  if (c.a <= 0.0) { discard; }
+  if (in.fx.y > 0.5) {
+    let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
+    c = vec4<f32>(c.rgb * light, c.a);
+  }
+  return c;
+}
+
 // Into the glow buffer: the sprite's light, whatever covers it.
 @fragment
 fn fs_glow(in: SpriteOut) -> @location(0) vec4<f32> {

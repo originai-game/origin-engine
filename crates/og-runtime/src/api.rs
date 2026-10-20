@@ -1928,6 +1928,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                 array: array.map(|(h, layer, _)| (h, layer)),
                 drop_shadow: num(&d, "dropShadow", 0.0).clamp(0.0, 1.0),
                 drop_shadow_height: num(&d, "dropShadowHeight", 0.0),
+                tone_mapped: d["toneMapped"].as_bool().unwrap_or(true),
             });
         }
         Ok(())

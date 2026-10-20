@@ -637,7 +637,8 @@ pub enum SpriteBlend {
 }
 
 /// Effects on one sprite of [`crate::RenderScene::sprites`] (by index):
-/// a hit flash, a glow and the blend. Sprites without an entry draw as before.
+/// a hit flash, a glow, the blend and whether it is tone mapped. Sprites
+/// without an entry draw as before.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SpriteFx {
     /// The index of the sprite in [`crate::RenderScene::sprites`].
@@ -649,6 +650,16 @@ pub struct SpriteFx {
     /// ([`Glow`]); 0 none.
     pub glow: f32,
     pub blend: SpriteBlend,
+    /// three.js `Material.toneMapped`: true (the default) draws the sprite
+    /// into the lit scene, so exposure, bloom and the tone curve carry it
+    /// like any surface. False keeps its colours as given: it is drawn in
+    /// place, depth tested and blended as before, but the tonemap shows its
+    /// pixels unexposed and uncurved (clamped to 0..1) and bloom neither
+    /// gathers from them nor spills onto them; grading, vignette, grain and
+    /// the screen flash after the curve still apply (README "Untonemapped
+    /// sprites"). An alpha-blended sprite only: an additive one adds light
+    /// to the scene and is always tone mapped. No fog either.
+    pub tone_mapped: bool,
 }
 
 impl Default for SpriteFx {
@@ -658,6 +669,7 @@ impl Default for SpriteFx {
             flash: [1.0, 1.0, 1.0, 0.0],
             glow: 0.0,
             blend: SpriteBlend::Alpha,
+            tone_mapped: true,
         }
     }
 }

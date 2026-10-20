@@ -74,6 +74,9 @@ pub(crate) struct QueuedSprite {
     /// `SpriteDesc.dropShadowHeight`: the level ground under it (a higher
     /// terrain wins, `terrain::ground_drop_shadows`).
     pub drop_shadow_height: f32,
+    /// `SpriteDesc.toneMapped`: false keeps it out of exposure, bloom and
+    /// the tone curve ([`og_render::SpriteFx::tone_mapped`]).
+    pub tone_mapped: bool,
 }
 
 /// One `og.load.lut`: its renderer LUT while resident.
@@ -787,7 +790,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
                 ground: og_render::ShadowGround::level(q.drop_shadow_height),
             });
         }
-        if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive {
+        if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive || !q.tone_mapped {
             scene.sprite_fx.push(og_render::SpriteFx {
                 sprite: index,
                 flash: q.flash,
@@ -797,6 +800,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
                 } else {
                     og_render::SpriteBlend::Alpha
                 },
+                tone_mapped: q.tone_mapped,
             });
         }
     }

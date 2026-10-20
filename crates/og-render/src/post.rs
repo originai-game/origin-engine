@@ -882,7 +882,10 @@ impl PostPasses {
     }
 
     /// Writes the post uniform. `glow`: the glow buffer feeds the bloom
-    /// chain; `god_rays`: their texture is added; `tick` seeds the grain.
+    /// chain; `god_rays`: their texture is added; `untonemapped`: the lit
+    /// image's alpha is the fraction of each pixel to tone map (sprites
+    /// drawn untonemapped lowered it); `tick` seeds the grain.
+    #[allow(clippy::too_many_arguments)]
     pub fn write_uniform(
         &self,
         queue: &wgpu::Queue,
@@ -890,6 +893,7 @@ impl PostPasses {
         post: &PostEffects,
         glow: bool,
         god_rays: bool,
+        untonemapped: bool,
         tick: u64,
     ) {
         let adapted = exposure.adaptation().is_some();
@@ -954,7 +958,7 @@ impl PostPasses {
             vignette: v.color.extend(ca).to_array(),
             grain,
             flash,
-            extra: [god_rays as u32 as f32, 0.0, 0.0, 0.0],
+            extra: [god_rays as u32 as f32, untonemapped as u32 as f32, 0.0, 0.0],
         };
         queue.write_buffer(&self.post_buffer, 0, bytemuck::bytes_of(&uniform));
     }

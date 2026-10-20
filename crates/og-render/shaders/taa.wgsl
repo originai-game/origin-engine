@@ -5,7 +5,11 @@
 // luminance weights so bright pixels do not flicker. The history is read
 // with one bilinear tap (fs) or a 9-tap Catmull-Rom (fs_catmull_rom,
 // `TaaHistory::CatmullRom`), which keeps it sharp under motion; fs_sharpen
-// is the optional sharpening after it. Prepended by fullscreen.wgsl.
+// is the optional sharpening after it. The alpha (the tone-mapped
+// fraction of a pixel where untonemapped sprites lowered it, post.wgsl
+// `tonemapped`) is blended with the colour's weights, the history's
+// clamped to the neighbourhood's range as the colour is, so it follows a
+// moving sprite without a trail. Prepended by fullscreen.wgsl.
 struct Taa {
   // current frame (jittered) clip -> world
   inv_view_proj: mat4x4<f32>,
@@ -75,18 +79,24 @@ fn fs_catmull_rom(in: VsOut) -> @location(0) vec4<f32> {
 fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
   let size = vec2<i32>(taa.params.yz);
   let px = vec2<i32>(in.pos.xy);
-  let cur = textureLoad(current, px, 0).rgb;
-  if (taa.params.x >= 1.0) { return vec4<f32>(cur, 1.0); }
+  let cur4 = textureLoad(current, px, 0);
+  let cur = cur4.rgb;
+  if (taa.params.x >= 1.0) { return cur4; }
 
-  // Neighbourhood colour box (YCoCg).
+  // Neighbourhood colour box (YCoCg), and the alpha's range.
   var lo = vec3<f32>(1e9);
   var hi = vec3<f32>(-1e9);
+  var a_lo = 1e9;
+  var a_hi = -1e9;
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
       let at = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-      let c = to_ycocg(textureLoad(current, at, 0).rgb);
+      let s = textureLoad(current, at, 0);
+      let c = to_ycocg(s.rgb);
       lo = min(lo, c);
       hi = max(hi, c);
+      a_lo = min(a_lo, s.a);
+      a_hi = max(a_hi, s.a);
     }
   }
 
@@ -100,7 +110,7 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
   let motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
   let prev_uv = in.uv - motion;
   if (any(prev_uv < vec2<f32>(0.0)) || any(prev_uv > vec2<f32>(1.0))) {
-    return vec4<f32>(cur, 1.0);
+    return cur4;
   }
   var hist: vec3<f32>;
   if (catmull_rom) {
@@ -109,11 +119,12 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
     hist = textureSampleLevel(history, linear_sampler, prev_uv, 0.0).rgb;
   }
   hist = from_ycocg(clamp(to_ycocg(hist), lo, hi));
+  let hist_a = clamp(textureSampleLevel(history, linear_sampler, prev_uv, 0.0).a, a_lo, a_hi);
 
   let a = taa.params.x;
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));
-  return vec4<f32>((cur * wc + hist * wh) / (wc + wh), 1.0);
+  return vec4<f32>((cur * wc + hist * wh) / (wc + wh), (cur4.a * wc + hist_a * wh) / (wc + wh));
 }
 
 // The sharpening after TAA (`RenderDesc::taa_sharpen`, `current` bound to
@@ -124,7 +135,8 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
 fn fs_sharpen(in: VsOut) -> @location(0) vec4<f32> {
   let size = vec2<i32>(taa.params.yz);
   let px = vec2<i32>(in.pos.xy);
-  let c = textureLoad(current, px, 0).rgb;
+  let c4 = textureLoad(current, px, 0);
+  let c = c4.rgb;
   let n = textureLoad(current, clamp(px + vec2<i32>(0, -1), vec2<i32>(0), size - 1), 0).rgb;
   let s = textureLoad(current, clamp(px + vec2<i32>(0, 1), vec2<i32>(0), size - 1), 0).rgb;
   let e = textureLoad(current, clamp(px + vec2<i32>(1, 0), vec2<i32>(0), size - 1), 0).rgb;
@@ -132,5 +144,5 @@ fn fs_sharpen(in: VsOut) -> @location(0) vec4<f32> {
   let lo = min(c, min(min(n, s), min(e, w)));
   let hi = max(c, max(max(n, s), max(e, w)));
   let sharp = c + (c - (n + s + e + w) * 0.25) * taa.params.w;
-  return vec4<f32>(clamp(sharp, lo, hi), 1.0);
+  return vec4<f32>(clamp(sharp, lo, hi), c4.a);
 }

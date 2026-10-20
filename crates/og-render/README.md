@@ -770,6 +770,40 @@ outline only when asked, the fill kept; a trail hidden under a layer-0
 sprite without a layer and shown over it on layer 1), each broken once
 (`tests/evidence/E4/break-and-restore.md`).
 
+### Untonemapped sprites
+
+`SpriteFx::tone_mapped` false (the IDL's `SpriteDesc.toneMapped` and
+`Sprite.toneMapped`, three.js `Material.toneMapped`): an alpha-blended
+world sprite that keeps its colours as given while the scene around it
+rides exposure, bloom and the tone curve: a cream speech bubble that
+auto exposure at dusk had blown to white and haloed (lantern-vale
+FINDINGS #17). *Chosen: drawn in place, flagged in the HDR alpha*, not
+in a pass after the tonemap. The sprite stays in the main pass, so it is
+depth tested against the scene's depth buffer on every tier (a pass
+after the tonemap would need that depth at the output's sample count,
+which WebGL2's 4x MSAA cannot give a single-sampled target) and sorted
+with the other sprites. Before the frame's first such run a cover
+(`sprite.wgsl` `vs_cover`/`fs_cover`, a pipeline with no groups) sets the
+HDR target's alpha to 1 and keeps its colour; the sprite's pipeline
+(`UNTONEMAPPED_BLEND`, `fs_untonemapped`: no fog) blends its colour as
+alpha blending does and takes the alpha towards 0 by its coverage, a
+tone-mapped sprite or glyph over it takes it back towards 1. The alpha is
+then the tone-mapped fraction of each pixel: the MSAA resolve averages
+it, TAA blends it with the colour's weights (its history clamped to the
+neighbourhood's range, so a moving bubble leaves no trail), outlines,
+depth bands, depth of field and motion blur pass it on, the bloom
+prefilter weights its taps by it (`bloom_tap`: such a sprite neither
+blooms nor dims the bloom round it) and the tonemap mixes the clamped,
+unexposed colour with the curve by it (post.wgsl `tonemapped`; the
+post uniform's `extra.y` says the frame has one, so every other frame's
+pixels are unchanged). Grading, vignette, grain, the screen flash and
+the stylise chain after the tonemap still apply. An additive sprite adds
+light to the scene and is always tone mapped. og-tests
+`sprites-untonemapped` (TAA, `metal`): a tone-mapped bubble blown
+towards white with a halo beside untonemapped ones in their cream and
+red, one half behind a crate, one from a texture array, a tone-mapped
+marker over a corner of one.
+
 ## E1 effects
 
 Everything a game declares on `RenderScene` as data (`src/effects.rs`,
@@ -1599,8 +1633,8 @@ of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
 `full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
 (`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
 halftone, as its check asks (ink marks painted onto surfaces).
-Round five adds `stylise-outline-voxels` and `stylise-toon-physical`
-(`metal`).
+Round five adds `stylise-outline-voxels`, `stylise-toon-physical` and
+`sprites-untonemapped` (`metal`).
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the

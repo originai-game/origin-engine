@@ -4916,6 +4916,12 @@ export interface SpriteDesc {
    */
   readonly dropShadowHeight?: number;
   /**
+   * As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped.
+   *
+   * @default true
+   */
+  readonly toneMapped?: boolean;
+  /**
    * Mirror the region left to right.
    *
    * @default false
@@ -5103,6 +5109,12 @@ export interface Sprite {
    * @unit m (metres)
    */
   dropShadowHeight: number;
+  /**
+   * As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only.
+   *
+   * @default true
+   */
+  toneMapped: boolean;
   /**
    * Whether it is drawn.
    *
@@ -17131,7 +17143,7 @@ export declare namespace og {
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
    */
-  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Sprite>;
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Sprite>;
   /**
    * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */

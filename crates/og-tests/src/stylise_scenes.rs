@@ -721,3 +721,150 @@ pub fn toon_physical_scene() -> RenderScene {
     };
     scene
 }
+
+/// A 16² pixel speech bubble: a cream body with a dark rim, a tail at
+/// the bottom left, a red "!" (sRGB, no mips; drawn nearest).
+fn bubble_texture() -> og_render::TextureData {
+    let mut t = crate::scenes::texture(16, ColorSpace::Srgb, |u, v| {
+        let (x, y) = ((u * 16.0) as i32, (v * 16.0) as i32);
+        let cream = [242, 228, 196, 255];
+        let rim = [52, 38, 58, 255];
+        let red = [200, 40, 40, 255];
+        match (x, y) {
+            (7..=8, 3..=7) | (7..=8, 9..=10) => red,
+            (2..=13, 2..=11) => cream,
+            (1 | 14, 2..=11) | (2..=13, 1 | 12) => rim,
+            (3..=4, 13) | (3, 14) => rim,
+            _ => [0, 0, 0, 0],
+        }
+    });
+    t.mips = og_render::Mips::None;
+    t
+}
+
+/// `sprites-untonemapped`: cream pixel speech bubbles over a bright dusk
+/// set (exposure 1.8, AgX, bloom from 1.0, TAA): the left bubble (from a
+/// texture array, a layer below) tone mapped as before, blown towards
+/// white and blooming; the next one
+/// `SpriteFx::tone_mapped` false, its cream and red as authored and no
+/// glow round it, a tone-mapped blue marker drawn over its corner (a
+/// higher layer) still curved; a third untonemapped bubble half behind
+/// the crate (still depth tested); a fourth drawn from a texture array,
+/// untonemapped (lantern-vale FINDINGS #17).
+pub fn untonemapped_sprites_scene() -> RenderScene {
+    use og_render::{
+        Bloom, SpriteArray, SpriteFx, TextureArrayData, TextureFilter, TextureSource, Tonemap,
+    };
+    let mut scene = RenderScene::new();
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.5, 0.55, 0.42),
+        roughness: 1.0,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    let wood = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.6, 0.4, 0.22),
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+    scene.add_instance(
+        cube,
+        wood,
+        Mat4::from_translation(Vec3::new(1.9, 0.5, 0.6)) * Mat4::from_rotation_y(0.3),
+    );
+    let bubble = scene.add_texture(bubble_texture());
+    scene.set_texture_filter(bubble, TextureFilter::Nearest);
+    let bubbles = scene
+        .add_texture_array(TextureArrayData {
+            layers: vec![TextureSource::Rgba(bubble_texture())],
+        })
+        .expect("one layer");
+    scene.set_texture_array_filter(bubbles, TextureFilter::Nearest);
+    let at = |x: f32, y: f32, z: f32| og_render::Sprite {
+        texture: Some(bubble),
+        position: Vec3::new(x, y, z),
+        size: glam::Vec2::splat(1.2),
+        ..Default::default()
+    };
+    let add = |scene: &mut RenderScene, sprite: og_render::Sprite, tone_mapped: bool| {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        if !tone_mapped {
+            scene.sprite_fx.push(SpriteFx {
+                sprite: i,
+                tone_mapped,
+                ..Default::default()
+            });
+        }
+        i
+    };
+    // The tone-mapped bubble from the array, a layer below the rest: its
+    // array group is bound when the cover draws before the first
+    // untonemapped run.
+    let left = add(
+        &mut scene,
+        og_render::Sprite {
+            texture: None,
+            layer: -1,
+            ..at(-2.2, 1.6, 0.0)
+        },
+        true,
+    );
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: left,
+        array: bubbles,
+        layer: 0,
+    });
+    add(&mut scene, at(-0.6, 1.6, 0.0), false);
+    // Behind the crate: its lower right is hidden.
+    add(&mut scene, at(2.3, 0.9, -0.4), false);
+    let a = add(
+        &mut scene,
+        og_render::Sprite {
+            texture: None,
+            ..at(0.9, 2.3, -0.6)
+        },
+        false,
+    );
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: a,
+        array: bubbles,
+        layer: 0,
+    });
+    // A tone-mapped marker over the untonemapped bubble's corner.
+    add(
+        &mut scene,
+        og_render::Sprite {
+            position: Vec3::new(-0.1, 2.1, 0.05),
+            size: glam::Vec2::splat(0.35),
+            color: [0.2, 0.45, 1.6, 1.0],
+            layer: 1,
+            ..Default::default()
+        },
+        true,
+    );
+    let sun = Vec3::new(-0.7, 0.35, 0.6);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        color: Vec3::new(1.0, 0.7, 0.45),
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.post.tonemap = Tonemap::Agx;
+    scene.post.bloom = Some(Bloom {
+        threshold: 1.0,
+        knee: 0.5,
+        intensity: 0.8,
+    });
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.2, 6.0),
+        target: Vec3::new(0.0, 1.0, 0.0),
+        exposure: Exposure::linear(1.8),
+        ..Default::default()
+    };
+    scene
+}
