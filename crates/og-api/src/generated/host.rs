@@ -11158,7 +11158,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "m",
                 label: "",
-                doc: "Where the tip should be.",
+                doc: "Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world).",
                 variants: &[],
             },
             FieldDecl {
@@ -11186,7 +11186,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model.",
+                doc: "What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model.",
                 variants: &["world", "model"],
             },
             FieldDecl {

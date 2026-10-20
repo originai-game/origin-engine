@@ -288,7 +288,9 @@ impl Blendshapes {
 pub const IK_TWO_BONE: u32 = 0;
 /// `IkChain.solver`: FABRIK over `bones` bones.
 pub const IK_FABRIK: u32 = 1;
-/// `IkChain.space`: `target` and `pole` are world positions (relative to the skeleton entity's Transform).
+/// `IkChain.space`: `target` and `pole` are in the frame the skeleton
+/// entity's Transform is written in (its local transform is undone): true
+/// world for a root entity, its parent's frame for a child.
 pub const IK_WORLD: u32 = 0;
 /// `IkChain.space`: `target` and `pole` are in the skeleton's model space.
 pub const IK_MODEL: u32 = 1;
@@ -311,13 +313,13 @@ pub struct IkChain {
     /// twoBone (analytic, with a pole) or fabrik (iterative, any length).
     #[reflect(variants = ["twoBone", "fabrik"])]
     pub solver: u32,
-    /// Where the tip should be.
+    /// Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world).
     #[reflect(unit = "m")]
     pub target: Vec3,
     /// A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend.
     #[reflect(unit = "m")]
     pub pole: Vec3,
-    /// What `target` and `pole` are relative to: world (the skeleton entity's Transform applies) or model.
+    /// What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model.
     #[reflect(variants = ["world", "model"])]
     pub space: u32,
     /// How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved).

@@ -7652,7 +7652,7 @@ export declare function IkSolver(value?: IkSolver, options?: FieldOptions): Fiel
 
 /**
  * What an IK chain's target and pole are relative to.
- * - `"world"`: World positions: the skeleton entity's og.Transform applies.
+ * - `"world"`: Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child (a body under a character capsule takes targets relative to the capsule; transform world points by the parent's inverse yourself).
  * - `"model"`: The skeleton's model space.
  */
 export type IkSpace = "world" | "model";
@@ -7937,7 +7937,7 @@ export interface IkChain {
   /** twoBone (analytic, with a pole) or fabrik (iterative, any length). */
   solver: IkSolver;
   /**
-   * Where the tip should be.
+   * Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world).
    *
    * @unit m (metres)
    */
@@ -7949,7 +7949,7 @@ export interface IkChain {
    */
   pole: Vector3;
   /**
-   * What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model.
+   * What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model.
    */
   space: IkSpace;
   /**
