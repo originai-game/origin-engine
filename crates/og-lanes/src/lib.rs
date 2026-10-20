@@ -431,7 +431,7 @@ where
         f(t)
     };
     if parallel(site, items.len(), Least::Grains(grain, 2)) {
-        imp::map(items, grain.max(1), f)
+        par_map(items, grain, f)
     } else {
         items.iter().map(f).collect()
     }
@@ -448,7 +448,14 @@ where
         f(t)
     };
     if parallel(site, items.len(), Least::Grains(grain, 2)) {
-        imp::for_each_mut(items, grain.max(1), f)
+        let base = Shared(items.as_mut_ptr());
+        imp::ranges(items.len(), grain, &|a, b| {
+            for i in a..b {
+                // SAFETY: `ranges` hands out disjoint ranges of 0..len, so
+                // each item is borrowed mutably once; T: Send.
+                f(unsafe { &mut *base.at(i) })
+            }
+        })
     } else {
         items.iter_mut().for_each(f)
     }
@@ -465,10 +472,59 @@ where
         f(i, t)
     };
     if parallel(site, items.len(), Least::Grains(grain, 2)) {
-        imp::for_each_indexed(items, grain.max(1), f)
+        let base = Shared(items.as_mut_ptr());
+        imp::ranges(items.len(), grain, &|a, b| {
+            for i in a..b {
+                // SAFETY: as in for_each_mut.
+                f(i, unsafe { &mut *base.at(i) })
+            }
+        })
     } else {
         items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
     }
+}
+
+/// A pointer into a slice whose items the ranges of [`imp::ranges`] reach
+/// from several threads, each item from one: what `par_map` writes and
+/// `for_each_mut` lends.
+struct Shared<T>(*mut T);
+// SAFETY: each thread reaches only the items of its own ranges (disjoint),
+// and the items are Send.
+unsafe impl<T: Send> Sync for Shared<T> {}
+
+impl<T> Shared<T> {
+    /// The item at `i` (a method, so a closure captures the whole Sync
+    /// wrapper and not its raw pointer field).
+    fn at(&self, i: usize) -> *mut T {
+        self.0.wrapping_add(i)
+    }
+}
+
+/// [`map`]'s parallel path: `f` for every item on the pool through
+/// [`imp::ranges`], each result written in its item's slot. The pool's
+/// loop is compiled once, not once per item and result type: the lanes
+/// wasm carried about 300 kB of rayon instantiations of these helpers,
+/// one per caller (tests/evidence/P4/wasm-size/README.md).
+fn par_map<T, R, F>(items: &[T], grain: usize, f: F) -> Vec<R>
+where
+    T: Sync,
+    R: Send,
+    F: Fn(&T) -> R + Sync + Send,
+{
+    let n = items.len();
+    let mut out: Vec<R> = Vec::with_capacity(n);
+    let slots = Shared(out.as_mut_ptr());
+    imp::ranges(n, grain, &|a, b| {
+        for (i, t) in items[a..b].iter().enumerate() {
+            // SAFETY: slot a + i < n is within the capacity and written once
+            // (the ranges are disjoint); R: Send.
+            unsafe { slots.at(a + i).write(f(t)) }
+        }
+    });
+    // SAFETY: the ranges cover 0..n, so every slot was written. A panic in
+    // `f` leaves `out` empty (its written results leak, none is dropped twice).
+    unsafe { out.set_len(n) };
+    out
 }
 
 /// Sorts `items` by their own order, as `items.sort_unstable()` does. Items
@@ -502,7 +558,7 @@ where
         .map(|a| a..(a + grain.max(n.div_ceil(2 * threads))).min(n))
         .collect();
     let shared: &[T] = items;
-    let dealt: Vec<Vec<Vec<T>>> = imp::map(&ranges, 1, |r| {
+    let dealt: Vec<Vec<Vec<T>>> = par_map(&ranges, 1, |r| {
         fault(site);
         let mut out = vec![Vec::new(); buckets];
         for t in &shared[r.clone()] {
@@ -511,7 +567,7 @@ where
         out
     });
     let ids: Vec<usize> = (0..buckets).collect();
-    let sorted: Vec<Vec<T>> = imp::map(&ids, 1, |&b| {
+    let sorted: Vec<Vec<T>> = par_map(&ids, 1, |&b| {
         fault(site);
         let mut bucket = Vec::with_capacity(dealt.iter().map(|d| d[b].len()).sum());
         for d in &dealt {
@@ -686,35 +742,17 @@ mod relay {
 mod par {
     use rayon::prelude::*;
 
-    pub fn map<T: Sync, R: Send, F: Fn(&T) -> R + Sync + Send>(
-        items: &[T],
-        grain: usize,
-        f: F,
-    ) -> Vec<R> {
-        items
-            .par_iter()
-            .with_min_len(grain)
-            .map(|t| super::lane(|| f(t)))
-            .collect()
-    }
-
-    pub fn for_each_mut<T: Send, F: Fn(&mut T) + Sync + Send>(items: &mut [T], grain: usize, f: F) {
-        items
-            .par_iter_mut()
-            .with_min_len(grain)
-            .for_each(|t| super::lane(|| f(t)))
-    }
-
-    pub fn for_each_indexed<T: Send, F: Fn(usize, &mut T) + Sync + Send>(
-        items: &mut [T],
-        grain: usize,
-        f: F,
-    ) {
-        items
-            .par_iter_mut()
-            .enumerate()
-            .with_min_len(grain)
-            .for_each(|(i, t)| super::lane(|| f(i, t)))
+    /// `body(start, end)` for the consecutive ranges of `grain` items (the
+    /// last one shorter) that cover `0..len`, side by side on the current
+    /// pool, each inside a lane: rayon splits the ranges as it split the
+    /// items with `with_min_len(grain)`. The one parallel loop of every
+    /// helper, so it is not generic.
+    pub fn ranges(len: usize, grain: usize, body: &(dyn Fn(usize, usize) + Sync)) {
+        let grain = grain.max(1);
+        (0..len.div_ceil(grain)).into_par_iter().for_each(|c| {
+            let start = c * grain;
+            super::lane(|| body(start, (start + grain).min(len)))
+        })
     }
 }
 
@@ -772,24 +810,8 @@ mod imp {
         }
     }
 
-    pub fn map<T: Sync, R: Send, F: Fn(&T) -> R + Sync + Send>(
-        items: &[T],
-        grain: usize,
-        f: F,
-    ) -> Vec<R> {
-        pooled(|| super::par::map(items, grain, f))
-    }
-
-    pub fn for_each_mut<T: Send, F: Fn(&mut T) + Sync + Send>(items: &mut [T], grain: usize, f: F) {
-        pooled(|| super::par::for_each_mut(items, grain, f))
-    }
-
-    pub fn for_each_indexed<T: Send, F: Fn(usize, &mut T) + Sync + Send>(
-        items: &mut [T],
-        grain: usize,
-        f: F,
-    ) {
-        pooled(|| super::par::for_each_indexed(items, grain, f))
+    pub fn ranges(len: usize, grain: usize, body: &(dyn Fn(usize, usize) + Sync)) {
+        pooled(|| super::par::ranges(len, grain, body))
     }
 }
 
@@ -848,24 +870,8 @@ mod imp {
         unsafe { super::guard::run(|job| relay.send(job), f) }
     }
 
-    pub fn map<T: Sync, R: Send, F: Fn(&T) -> R + Sync + Send>(
-        items: &[T],
-        grain: usize,
-        f: F,
-    ) -> Vec<R> {
-        guarded(|| super::par::map(items, grain, f))
-    }
-
-    pub fn for_each_mut<T: Send, F: Fn(&mut T) + Sync + Send>(items: &mut [T], grain: usize, f: F) {
-        guarded(|| super::par::for_each_mut(items, grain, f))
-    }
-
-    pub fn for_each_indexed<T: Send, F: Fn(usize, &mut T) + Sync + Send>(
-        items: &mut [T],
-        grain: usize,
-        f: F,
-    ) {
-        guarded(|| super::par::for_each_indexed(items, grain, f))
+    pub fn ranges(len: usize, grain: usize, body: &(dyn Fn(usize, usize) + Sync)) {
+        guarded(|| super::par::ranges(len, grain, body))
     }
 
     pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
@@ -886,16 +892,9 @@ mod imp {
         )
     }
 
-    pub fn map<T, R, F: Fn(&T) -> R>(items: &[T], _grain: usize, f: F) -> Vec<R> {
-        items.iter().map(f).collect()
-    }
-
-    pub fn for_each_mut<T, F: Fn(&mut T)>(items: &mut [T], _grain: usize, f: F) {
-        items.iter_mut().for_each(f)
-    }
-
-    pub fn for_each_indexed<T, F: Fn(usize, &mut T)>(items: &mut [T], _grain: usize, f: F) {
-        items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
+    /// Serial: the single-threaded wasm never splits (its pool has one thread).
+    pub fn ranges(len: usize, _grain: usize, body: &dyn Fn(usize, usize)) {
+        body(0, len)
     }
 
     pub fn install<R>(f: impl FnOnce() -> R) -> R {
