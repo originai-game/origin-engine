@@ -124,7 +124,7 @@ every screen that matters.
 | feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four | og-feel §3, §4, §7, og-audio §1 |
 | feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
-| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe) | 8.3 ms (half the frame) | og-game §14 |
+| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out | 8.3 ms (half the frame) | og-game §14 |
 
 The report also lists clipped samples in the mix (og-audio §4). Contrast and
 text size read text only: icons and images (their "text" is a picture's

@@ -71,12 +71,16 @@ impl Capture for RuntimeCapture {
         rs.terrain.settle = true;
         extract(world, &mut rs);
         let rs = &mut *rs;
-        let image = rs.backend.as_mut()?.capture(&rs.scene, width, height)?;
-        Some(Frame {
+        let t0 = now_ms();
+        let image = rs.backend.as_mut()?.capture(&rs.scene, width, height);
+        let frame = image.map(|image| Frame {
             width: image.width,
             height: image.height,
             png: png(&image),
-        })
+        });
+        // The probe's work, not the game's: the tick's step time leaves it out.
+        rs.capture_ms += now_ms() - t0;
+        frame
     }
 }
 
@@ -446,17 +450,31 @@ pub(crate) fn base64(bytes: &[u8]) -> String {
 
 /// A PNG of an RGBA8 image: rows filtered with `Up`, deflated (zlib level 6).
 pub fn png(image: &og_render::RgbaImage) -> Vec<u8> {
-    fn crc(data: &[u8]) -> u32 {
-        let mut c = 0xffff_ffffu32;
-        for &b in data {
-            c ^= u32::from(b);
-            for _ in 0..8 {
+    // CRC-32 a byte at a time from a table made at compile time: the
+    // bitwise loop took a fifth of a screenshot's tick unoptimised (dev).
+    const CRC: [u32; 256] = {
+        let mut t = [0u32; 256];
+        let mut n = 0;
+        while n < 256 {
+            let mut c = n as u32;
+            let mut k = 0;
+            while k < 8 {
                 c = if c & 1 != 0 {
                     0xedb8_8320 ^ (c >> 1)
                 } else {
                     c >> 1
                 };
+                k += 1;
             }
+            t[n] = c;
+            n += 1;
+        }
+        t
+    };
+    fn crc(data: &[u8]) -> u32 {
+        let mut c = 0xffff_ffffu32;
+        for &b in data {
+            c = CRC[((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
         }
         !c
     }

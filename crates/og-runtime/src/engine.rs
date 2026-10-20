@@ -1192,10 +1192,18 @@ fn tick_boundary(eng: &Engine) {
     }
 }
 
+/// The wall time since `t0` the ticks took, less the probe's screenshots
+/// taken on the way (a 1280x720 PNG is a fifth of a second in a dev build:
+/// a step time that counted it read as a stall on every screenshot tick).
+fn step_ms(eng: &Engine, t0: f64) -> f64 {
+    (rprobe::now_ms() - t0 - eng.render.borrow().capture_ms).max(0.0)
+}
+
 /// Up to `steps` ticks through the probe (due command steps run on the
 /// way). `Err` names the tick and the failing system.
 fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
     tick_boundary(eng);
+    eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
     let mut left = steps;
     let tick = loop {
@@ -1210,7 +1218,7 @@ fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
         }
     };
     if steps > 0 {
-        eng.state.borrow_mut().step_ms = (rprobe::now_ms() - t0) / steps as f64;
+        eng.state.borrow_mut().step_ms = step_ms(eng, t0) / steps as f64;
     }
     Ok(tick)
 }
@@ -1254,6 +1262,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         }
     };
     tick_boundary(&eng);
+    eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
     super::modules::end_of_ticks();
@@ -1264,7 +1273,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     if ticks > 0 {
-        eng.state.borrow_mut().step_ms = (rprobe::now_ms() - t0) / f64::from(ticks);
+        eng.state.borrow_mut().step_ms = step_ms(&eng, t0) / f64::from(ticks);
     }
     let rendered = match render(&eng) {
         Ok(r) => r,
