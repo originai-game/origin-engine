@@ -4871,7 +4871,7 @@ export interface SpriteDesc {
    */
   readonly dropShadow?: number;
   /**
-   * The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow. 0 with no terrain is the ground plane y = 0.
+   * The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0.
    *
    * @default 0
    * @unit m (metres)
