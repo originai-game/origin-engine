@@ -730,19 +730,8 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 continue;
             }
         };
-        let mut bytes =
+        let bytes =
             std::fs::read(path).map_err(|e| CookError(format!("{}: {e}", path.display())))?;
-        // A MagicaVoxel file is a model: meshed into a glTF binary here, so
-        // the rest of the cook sees a .glb.
-        if kind == Kind::Model && ext(rel) == "vox" {
-            match vox::to_glb(&bytes) {
-                Ok(glb) => bytes = glb,
-                Err(e) => {
-                    early_errors.push((rel.clone(), "model", e));
-                    continue;
-                }
-            }
-        }
         sources.push(Source {
             rel: rel.clone(),
             path: path.clone(),
@@ -787,6 +776,20 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     for s in sources.iter_mut() {
         s.settings = settings.remove(&s.rel);
+        // A MagicaVoxel file is a model: meshed into a glTF binary here (its
+        // import settings' `model { voxScale voxOrigin }` applied), so the
+        // rest of the cook sees a .glb.
+        if s.kind == Kind::Model && ext(&s.rel) == "vox" {
+            match vox::VoxSettings::parse(settings_block(s, "model"))
+                .and_then(|v| vox::to_glb(&s.bytes, &v))
+            {
+                Ok(glb) => s.bytes = glb,
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        }
         if s.kind == Kind::Model {
             let dir = s.path.parent().unwrap_or(Path::new("."));
             match model::load(&s.bytes, dir) {
