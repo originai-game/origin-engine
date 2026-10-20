@@ -36,7 +36,8 @@ pub struct Viewport {
     pub high_contrast: bool,
     /// The page prefers less transparency (`prefers-reduced-transparency:
     /// reduce`): the theme's `reduced_transparency` is on whatever the game
-    /// configured (glass parts draw as opaque surfaces).
+    /// configured (glass parts draw as opaque surfaces, scrims and
+    /// translucent fills flat: `Theme::to_reduced_transparency`).
     pub reduced_transparency: bool,
     /// Text controls take macOS's editing keys: Command for the shortcuts
     /// (A, C, X, Z) and with ←/→ for the line's ends (↑/↓ the text's),
@@ -740,17 +741,19 @@ impl Default for Ui {
 
 const STATE_VERSION: u32 = 8;
 
-/// `theme` with a viewport's preferences: the page's reduced motion and
-/// reduced transparency turn their flags on, its contrast preference takes
-/// the high-contrast variant (a game's own settings can only add to what
-/// the page asks).
+/// `theme` with a viewport's preferences: the page's reduced motion turns
+/// its flag on, its contrast preference takes the high-contrast variant,
+/// and reduced transparency (the page's or the game's) the flat variant
+/// (a game's own settings can only add to what the page asks).
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
     if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
         t = t.to_high_contrast();
     }
     t.reduced_motion |= viewport.reduced_motion;
-    t.reduced_transparency |= viewport.reduced_transparency;
+    if t.reduced_transparency || viewport.reduced_transparency {
+        t = t.to_reduced_transparency();
+    }
     t
 }
 

@@ -408,8 +408,9 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
 }
 
 /// The page's preferences arrive with the viewport: reduced motion and
-/// reduced transparency turn the theme's flags on, more contrast takes the
-/// high-contrast variant,
+/// reduced transparency turn the theme's flags on (reduced transparency
+/// also flattens the scrim and the translucent fills, as the game's own
+/// flag does), more contrast takes the high-contrast variant,
 /// over whatever the game configured, and leave again when the page
 /// drops them.
 #[test]
@@ -438,6 +439,40 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
                 "high contrast inks muted text as fg"
             );
         }
+        // Reduced transparency flattens the scrim and the translucent fills.
+        let p = t.palette;
+        let flat = [
+            p.scrim,
+            p.fill,
+            p.fill_strong,
+            p.accent_soft,
+            p.material_thick,
+        ];
+        assert_eq!(
+            flat.iter().all(|c| c.alpha == 1.0),
+            reduced,
+            "flat under reduced transparency only: {flat:?}"
+        );
+        if reduced && !high {
+            let c = configured.palette;
+            assert_eq!(
+                p.fill,
+                c.fill.over(c.surface),
+                "a fill as it looks on a surface"
+            );
+            assert_eq!(p.scrim, c.scrim.over(c.bg));
+            assert_eq!(p.fg, c.fg, "opaque inks unchanged");
+        }
     }
     assert_eq!(*ui.theme(), configured, "the configured theme is back");
+    // A game's own reduced transparency flattens the same way.
+    ui.set_theme(Theme {
+        reduced_transparency: true,
+        ..configured
+    });
+    ui.begin(InputFrame::default(), at(false, false));
+    form(&mut ui, &mut f);
+    ui.end();
+    assert_eq!(ui.theme().palette.scrim.alpha, 1.0);
+    assert_eq!(*ui.theme(), configured.to_reduced_transparency());
 }

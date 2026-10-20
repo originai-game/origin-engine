@@ -12259,7 +12259,7 @@ export interface Viewport {
    */
   readonly highContrast?: boolean;
   /**
-   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false.
+   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false.
    */
   readonly reducedTransparency?: boolean;
   /**
@@ -12343,7 +12343,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * Glass parts (a skin's glass line) are opaque surfaces: no blur of the frame under them, their frame whole. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency).
+   * Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
    *
    * @default false
    */
@@ -12523,6 +12523,18 @@ export interface UiTheme {
   readonly durationsMs: Readonly<Record<string, number>>;
   /** The configured skin's name; empty for the platform tokens. */
   readonly skin: string;
+  /**
+   * The variant in effect: high when the game asked for it or the page prefers more contrast.
+   */
+  readonly contrast: Contrast;
+  /**
+   * Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement.
+   */
+  readonly reducedMotion: boolean;
+  /**
+   * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
+   */
+  readonly reducedTransparency: boolean;
 }
 
 /** Builds a container's children: ui calls made inside it nest under the container. */

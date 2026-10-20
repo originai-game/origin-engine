@@ -1169,6 +1169,9 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
         "skin": skin,
+        "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
+        "reducedMotion": theme.reduced_motion,
+        "reducedTransparency": theme.reduced_transparency,
     })
     .to_string()
 }

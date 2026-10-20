@@ -243,7 +243,10 @@ pub struct Theme {
     /// `prefers-reduced-motion`: transitions keep opacity and drop movement and scale; skeleton sheens stop.
     pub reduced_motion: bool,
     /// `prefers-reduced-transparency`: glass parts are opaque surfaces (no
-    /// blur of the frame under them, their frame at full opacity).
+    /// blur of the frame under them, their frame at full opacity), and the
+    /// palette's scrim and translucent fills are flat
+    /// ([`Theme::to_reduced_transparency`]). A game reads it to flatten
+    /// its own (IDL `UiTheme.reducedTransparency`).
     pub reduced_transparency: bool,
     /// The game's look beyond the tokens (`crate::skin`); the default dresses nothing.
     pub skin: crate::skin::Skin,
@@ -318,6 +321,38 @@ impl Theme {
         t.palette.scrim = p.scrim.fade(1.5);
         t.contrast = Contrast::High;
         t.outline = true;
+        t
+    }
+
+    /// This theme with nothing to see through (`prefers-reduced-
+    /// transparency`): the translucent fills (`fill`, `fill-strong`,
+    /// `accent-soft`, the `material-*` grounds and `material-control`)
+    /// become the opaque colour they make over `surface`, the `scrim` the
+    /// opaque colour it makes over `bg` (a dialog's backdrop hides the game
+    /// rather than dimming it), and `reduced_transparency` is on (glass is
+    /// an opaque surface). Highlights drawn over a surface (sheens, edges,
+    /// glows) stay as they are. Only token values are used.
+    pub fn to_reduced_transparency(self) -> Theme {
+        let mut t = self;
+        let p = &mut t.palette;
+        let ground = p.surface;
+        for c in [
+            &mut p.fill,
+            &mut p.fill_strong,
+            &mut p.accent_soft,
+            &mut p.material_regular,
+            &mut p.material_thin,
+            &mut p.material_thick,
+            &mut p.material_control,
+        ] {
+            if c.alpha < 1.0 {
+                *c = c.over(ground);
+            }
+        }
+        if p.scrim.alpha < 1.0 {
+            p.scrim = p.scrim.over(p.bg);
+        }
+        t.reduced_transparency = true;
         t
     }
 
