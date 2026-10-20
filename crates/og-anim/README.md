@@ -345,6 +345,7 @@ version 1
 texture "hero.png"        # relative to the sheet when that file exists, else an asset id
 size 64 32                # the texture in pixels (the cook fills it in)
 filter nearest            # nearest (default, pixel art) | linear
+array false               # true: the frames become the layers of a texture array (one size each)
 pivot 0.5 0               # the frame point at the entity's position, from the bottom left
 margin 1                  # grid only
 spacing 0
@@ -365,6 +366,14 @@ turned to the bottom left) and tags into clips (`reverse` reversed,
 `pingpong` as `pingPong`, the frames' own durations), lets a clip the
 sheet declares win over a tag of the same name, and stores the canonical
 text (`FlipbookSheet::to_text`, which parses back equal).
+
+`array true` asks the cook to cut every frame out of the texture into
+the layers of a texture array (`<sheet id>#array`, a `type texture-array`
+output with its layers `<sheet id>#array#layer<n>`, sampled nearest under
+`filter nearest`); every frame must then have one size. The sheet keeps
+its frames, pivots and clips; the runtime draws frame `n` as layer `n`
+(the whole layer), so every sprite of the sheet is one draw whichever
+frame each shows.
 
 ### `og.Flipbook` (component)
 
@@ -388,8 +397,9 @@ entered since the clip started) and the whole cycles taken off `time`, so a
 restored world sends the same events on the same ticks.
 
 Drawing is the runtime's: an entity with `og.Flipbook` and `og.Sprite` is
-drawn with the sheet's texture, the current frame's region and pivot; the
-sprite keeps its size, colour, flips and layer.
+drawn with the sheet's texture, the current frame's region and pivot (an
+`array true` sheet: its array's layer of that frame, whole, and the
+pivot); the sprite keeps its size, colour, flips and layer.
 
 Tests: `tests/flipbook.rs` (the sheet's grid and named frames, mistakes by
 line, the canonical round trip; a loop at 10 fps changing frame every six

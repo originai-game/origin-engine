@@ -18,9 +18,11 @@
 //! draw reads as instance data; on the no-compute tier (WebGL2), or with
 //! [`ParticleSimulation::Cpu`], [`CpuParticles`] runs the same steps in Rust
 //! and uploads the state. Sprite-mode emitters ([`ParticleRender::Sprite`])
-//! always simulate on the CPU and draw through the sprite batch.
+//! always simulate on the CPU and draw through the sprite batch; one with a
+//! texture array ([`ParticleEmitter::array`]) draws each particle from a
+//! layer of it, the layers being the sheet's frames.
 
-use crate::scene::{MeshData, MeshHandle, TextureHandle};
+use crate::scene::{MeshData, MeshHandle, TextureArrayHandle, TextureHandle};
 use glam::{Mat4, Vec3, Vec4};
 
 /// The most keys a [`Curve`] or [`ColorCurve`] can have.
@@ -328,6 +330,18 @@ pub struct ParticleEmitter {
     pub noise: ParticleNoise,
     /// `None`: a soft round dot.
     pub texture: Option<TextureHandle>,
+    /// Sprite mode: draw each particle from a layer of this texture array
+    /// instead of `texture` (one draw per array, whichever layers the
+    /// particles show). The layers are the sheet's frames: `sheet.mode`
+    /// picks a particle's layer by its age (`OverLife`, `Fps`) or at
+    /// random per particle (`Random`), and `sheet.frames` (0: every layer)
+    /// limits them; `columns` and `rows` are not read. A billboard emitter
+    /// with an array is refused ([`crate::RenderError::InvalidData`]).
+    pub array: Option<TextureArrayHandle>,
+    /// Sprite mode: fade each particle's quad to a round soft edge (the
+    /// soft dot's falloff, which an untextured particle always has) over
+    /// its texture or array layer.
+    pub round: bool,
     pub sheet: SpriteSheet,
     pub blend: ParticleBlend,
     pub space: SimulationSpace,
@@ -366,6 +380,8 @@ impl Default for ParticleEmitter {
             drag: 0.0,
             noise: ParticleNoise::default(),
             texture: None,
+            array: None,
+            round: false,
             sheet: SpriteSheet::default(),
             blend: ParticleBlend::Additive,
             space: SimulationSpace::World,
@@ -406,6 +422,9 @@ impl ParticleEmitter {
         }
         if !(self.rate.is_finite() && self.rate >= 0.0) {
             return Err(format!("rate {}", self.rate));
+        }
+        if self.array.is_some() && !matches!(self.render, ParticleRender::Sprite { .. }) {
+            return Err("a texture array is drawn by a sprite-mode emitter (render sprite)".into());
         }
         Ok(())
     }
@@ -1039,8 +1058,14 @@ impl CpuParticles {
     }
 }
 
-/// What a particle looks like at its age: (size, colour, rotation, sheet frame).
-pub(crate) fn appearance(e: &ParticleEmitter, p: &ParticleState) -> (f32, [f32; 4], f32, u32) {
+/// What a particle looks like at its age: (size, colour, rotation, frame
+/// of `frames`: the sheet's, or an array emitter's layers).
+pub(crate) fn appearance(
+    e: &ParticleEmitter,
+    p: &ParticleState,
+    frames: u32,
+) -> (f32, [f32; 4], f32, u32) {
+    let frames = frames.max(1);
     let t = (p.pos_age[3] / p.vel_life[3].max(1e-6)).clamp(0.0, 1.0);
     let size = p.misc[0] * e.size_over_life.eval(t);
     let c = e.color_over_life.eval(t);
@@ -1051,7 +1076,6 @@ pub(crate) fn appearance(e: &ParticleEmitter, p: &ParticleState) -> (f32, [f32; 
         c[3] * e.color[3],
     ];
     let rotation = p.misc[1] + p.misc[2] * p.pos_age[3];
-    let frames = sheet_frames(&e.sheet);
     let frame = match e.sheet.mode {
         SheetMode::Off => 0,
         SheetMode::OverLife { cycles } => (t * cycles * frames as f32) as u32 % frames,
@@ -1059,6 +1083,16 @@ pub(crate) fn appearance(e: &ParticleEmitter, p: &ParticleState) -> (f32, [f32; 
         SheetMode::Random => ((p.misc[3] * frames as f32) as u32).min(frames - 1),
     };
     (size, color, rotation, frame)
+}
+
+/// The frames an array emitter's particles go through: `sheet.frames` of
+/// the array's `layers` (0: every layer).
+pub(crate) fn array_frames(sheet: &SpriteSheet, layers: u32) -> u32 {
+    match sheet.frames {
+        0 => layers,
+        n => n.min(layers),
+    }
+    .max(1)
 }
 
 pub(crate) fn sheet_frames(sheet: &SpriteSheet) -> u32 {

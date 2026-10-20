@@ -2246,7 +2246,7 @@ module render {
       min 0
       tunable true
     }
-    field lut Lut "Colour grading by a lookup table from og.load.lut; 0 is none."
+    field lut Lut "Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident)."
     field lutIntensity f32 "0 leaves the image as tone mapped, 1 applies the table fully." {
       default 1
       min 0
@@ -2854,7 +2854,7 @@ module render {
     doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
     desc true
     field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
-    field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World sprites only (not `screen`). null uses `texture`."
+    field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`."
     field arrayLayer u32 "With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer."
     field position Vector3 "Where the anchor point is." {
       unit m
@@ -2921,9 +2921,11 @@ module render {
   }
 
   component Sprite {
-    doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame."
+    doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
     doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
     field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
+    field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
+    field arrayLayer u32 "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer."
     field width f32 "Its width in world units (times Transform.scale.x)." {
       default 1
       min 0
@@ -3269,6 +3271,13 @@ module load {
   handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
   handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 
+  column TextureArray {
+    doc "A TextureArray handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value TextureArray
+  }
+
   column Asset {
     doc "An Asset handle field."
     array Uint32Array
@@ -3412,7 +3421,7 @@ module load {
   }
 
   fn lut {
-    doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path."
+    doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `luts/warm.cube`."
     returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
@@ -3426,10 +3435,10 @@ module load {
   }
 
   fn emitter {
-    doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path."
+    doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `fx/sparks.ogt`."
-    returns Result.ParticleEmitter "Refused for a path not in the bundle or a texture it cannot load."
+    returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture or texture array it cannot load."
   }
 
   fn shader {
@@ -3449,7 +3458,7 @@ module load {
 
   fn textureArray {
     doc "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array."
-    doc "SpriteDesc.array draws sprites from its layers (one draw per array, whatever layer each shows; materials and terrain layers do not sample arrays yet); TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go and sprites of it are refused until the group is resident again, when it comes back under the same handle."
+    doc "SpriteDesc.array (world and screen sprites), og.Sprite.array and 2D particle emitters (an emitter's `array` line) draw from its layers, one draw per array whatever layer each shows, with glow and the additive blend; an `array true` flipbook sheet cooks its frames into one (materials and terrain layers do not sample arrays yet). TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go, og.render.sprite of it is refused and og.Sprite and particles of it draw nothing until the group is resident again, when it comes back under the same handle."
     param world World "The world whose renderer owns the array."
     param path String "The array's asset id, such as `tiles/ground.ogt`."
     returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
@@ -3527,7 +3536,7 @@ module load {
   }
 
   fn flipbook {
-    doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles."
+    doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. Loading the same path again answers the same handles."
     param world World "The world whose animation and renderer own it."
     param path String "The sheet's asset id, such as `sprites/hero.ogt`."
     returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
@@ -5762,7 +5771,7 @@ module anim {
   }
 
   component Flipbook {
-    doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
+    doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
     doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block)."
     field sheet FlipbookSheet "The sheet (og.load.flipbook's `sheet`); 0 is none."
     field clip u32 "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name)." {
@@ -5815,7 +5824,8 @@ module anim {
   struct FlipbookInfo {
     doc "What og.load.flipbook registered."
     field sheet FlipbookSheet "What Flipbook.sheet takes."
-    field texture Texture "The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`)."
+    field texture Texture "The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`); 0 for an `array true` sheet."
+    field array TextureArray "An `array true` sheet's texture array (its frames as layers, loaded with it); 0 otherwise."
     field clips List.FlipbookClipInfo "Its clips, in sheet order."
     field frames u32 "Frames in the sheet."
     field frameWidth u32 "The first frame's width in pixels."
@@ -10695,10 +10705,10 @@ module terrain {
 
 module stream {
   skill og-game
-  doc "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, sounds, environment maps, palettes and looks that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads."
+  doc "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads."
   doc "At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not."
-  doc "Texture arrays, environment maps, palettes and looks have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, a sprite of the array and applying the look are refused) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite draws from, the look last applied) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it."
-  doc "Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading), the recent changes and the terrain streamer's tiles."
+  doc "Texture arrays, environment maps, palettes, looks and colour LUTs have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, PostEffects.lut grades nothing, og.render.sprite of the array and applying the look are refused, an og.Sprite or a particle emitter of the array draws nothing) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite, a screen sprite or a particle emitter draws from, the look last applied, the LUT PostEffects grades with) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it. What is kept still takes its memory: its bytes count in the budget's `used` (and `kept`, and its group's StreamStatus.kept) until it is let go, so a group that would not fit beside it waits."
+  doc "Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading with each asset's bytes), the recent changes and the terrain streamer's tiles."
 
   enum StreamState {
     doc "Where a streaming group is."
@@ -10740,6 +10750,9 @@ module stream {
     field reason String "Why it is queued or failed; empty otherwise."
     field since f64 "The tick of its last change."
     field loads u32 "How many times it became resident."
+    field kept f64 "The bytes of its assets kept for the frame after it unloaded (counted in StreamBudget.used until let go); 0 otherwise." {
+      unit bytes
+    }
   }
 
   struct StreamBudget {
@@ -10747,7 +10760,10 @@ module stream {
     field budget f64 "The bytes resident and loading groups may take." {
       unit bytes
     }
-    field used f64 "The bytes they take now." {
+    field used f64 "The bytes they take now, with what unloaded groups keep for the frame." {
+      unit bytes
+    }
+    field kept f64 "Of `used`, the bytes of assets kept for the frame after their group unloaded (an array a sprite still draws, the map the frame is lit by, ...)." {
       unit bytes
     }
     field peak f64 "The most they ever took (never above the budget at the time)." {

@@ -50,7 +50,8 @@ impl Kind {
             // The animation module's asset handles: u64 like every handle.
             "SkeletonAsset" | "ClipAsset" | "GraphAsset" => Kind::Asset,
             // The effect assets and textures in records (Decal atlas, LUT, emitter).
-            "Texture" | "Lut" | "ParticleEmitter" | "EnvironmentMap" | "Palette" => Kind::Asset,
+            "Texture" | "Lut" | "ParticleEmitter" | "EnvironmentMap" | "Palette"
+            | "TextureArray" => Kind::Asset,
             // The E4 handles: flipbook sheets, tilemaps, tweens.
             "FlipbookSheet" | "TilemapAsset" | "Tween" => Kind::Asset,
             // The E6 handles: navigation (grids, navmeshes, flow fields) and behaviours.

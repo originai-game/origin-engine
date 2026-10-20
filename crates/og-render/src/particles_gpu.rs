@@ -4,9 +4,10 @@
 use crate::particles::{
     CpuParticles, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend, ParticleEmitter,
     ParticleRender, ParticleState, ParticleSystem, SheetMode, SimulationSpace, TickStep,
-    appearance, hash_seed, mesh_points, plan_ticks, sheet_frames,
+    appearance, array_frames, hash_seed, mesh_points, plan_ticks, sheet_frames,
 };
 use crate::scene::{RenderScene, Sprite};
+use crate::sprites::ExtraSprite;
 use crate::{HDR_FORMAT, RenderError};
 use glam::{Mat4, Vec2, Vec3};
 use std::collections::HashMap;
@@ -219,8 +220,8 @@ pub(crate) struct FrameSystem {
 #[derive(Default)]
 pub(crate) struct ParticleFrame {
     pub systems: Vec<FrameSystem>,
-    /// Sprite-mode particles, as sprites and their (blend, glow).
-    pub sprites: Vec<(Sprite, crate::SpriteBlend, f32)>,
+    /// Sprite-mode particles, as the 2D batch draws them.
+    pub sprites: Vec<ExtraSprite>,
     pub any_gpu: bool,
     pub needs_depth: bool,
     pub capacity: u32,
@@ -477,9 +478,24 @@ impl ParticleRenderer {
                 out.collision_skipped += 1;
             }
             if let ParticleRender::Sprite { layer } = e.render {
+                // An array emitter's layers are its frames.
+                let array = match e.array {
+                    Some(a) => {
+                        let layers = scene.texture_array(a).map(|d| d.layers.len() as u32);
+                        let layers = layers.ok_or_else(|| {
+                            RenderError::InvalidHandle(format!(
+                                "emitter {}: texture array {}",
+                                sys.emitter.index(),
+                                a.index()
+                            ))
+                        })?;
+                        Some((a, array_frames(&e.sheet, layers)))
+                    }
+                    None => None,
+                };
                 out.ticks += state.cpu.advance(e, sys, tick_rate, points, &[]);
                 out.cpu_alive += state.cpu.alive() as u32;
-                push_sprites(e, sys, &state.cpu.slots, layer, &mut out.sprites);
+                push_sprites(e, sys, &state.cpu.slots, layer, array, &mut out.sprites);
                 continue;
             }
             let depth = (sys.transform.w_axis.truncate() - eye).dot(forward);
@@ -816,13 +832,15 @@ impl ParticleRenderer {
     }
 }
 
-/// Sprite-mode particles as sprites (alive slots, in slot order).
+/// Sprite-mode particles as sprites (alive slots, in slot order); with
+/// `array` (the array and its frames), each from the layer its frame names.
 fn push_sprites(
     e: &ParticleEmitter,
     sys: &ParticleSystem,
     slots: &[ParticleState],
     layer: i32,
-    out: &mut Vec<(Sprite, crate::SpriteBlend, f32)>,
+    array: Option<(crate::TextureArrayHandle, u32)>,
+    out: &mut Vec<ExtraSprite>,
 ) {
     let columns = e.sheet.columns.max(1);
     let rows = e.sheet.rows.max(1);
@@ -831,34 +849,42 @@ fn push_sprites(
         ParticleBlend::Alpha => crate::SpriteBlend::Alpha,
     };
     let z = sys.transform.w_axis.z;
+    let frames = array.map_or_else(|| sheet_frames(&e.sheet), |(_, n)| n);
+    let soft = e.round || (e.texture.is_none() && array.is_none());
     for p in slots.iter().filter(|p| p.alive()) {
-        let (size, color, rotation, frame) = appearance(e, p);
+        let (size, color, rotation, frame) = appearance(e, p, frames);
         let mut pos = Vec3::from_slice(&p.pos_age[..3]);
         if e.space == SimulationSpace::Local {
             pos = sys.transform.transform_point3(pos);
         }
         let (col, row) = (frame % columns, frame / columns);
         let (du, dv) = (1.0 / columns as f32, 1.0 / rows as f32);
-        out.push((
-            Sprite {
-                texture: e.texture,
+        let uv_rect = match array {
+            Some(_) => [0.0, 0.0, 1.0, 1.0],
+            None => [
+                col as f32 * du,
+                row as f32 * dv,
+                (col + 1) as f32 * du,
+                (row + 1) as f32 * dv,
+            ],
+        };
+        out.push(ExtraSprite {
+            sprite: Sprite {
+                texture: if array.is_some() { None } else { e.texture },
                 position: Vec3::new(pos.x, pos.y, z),
                 size: Vec2::splat(size),
                 anchor: Vec2::splat(0.5),
                 rotation,
                 color,
-                uv_rect: [
-                    col as f32 * du,
-                    row as f32 * dv,
-                    (col + 1) as f32 * du,
-                    (row + 1) as f32 * dv,
-                ],
+                uv_rect,
                 layer,
                 clip: None,
             },
             blend,
-            e.glow,
-        ));
+            glow: e.glow,
+            soft,
+            array: array.map(|(a, _)| (a, frame)),
+        });
     }
 }
 

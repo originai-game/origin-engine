@@ -2,8 +2,10 @@
 //! particle emitter (`.ogt` of `type particles`) cook to blobs the runtime
 //! loads into og-render's ColorLut and ParticleEmitter (every emitter line
 //! reaching its field), and the refusals name the line or the missing file.
+//! An emitter's `array` line names a texture array and picks its layers;
+//! a `.cube` can be held by a streaming group.
 
-use og_cook::fx::parse_emitter;
+use og_cook::fx::{parse_emitter, parse_emitter_with};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use og_render::{
@@ -187,4 +189,78 @@ fn bad_effect_assets_are_refused_with_the_reason() {
         "{errors}"
     );
     assert!(errors.contains("LUT_3D_SIZE 2 needs 8 entries"), "{errors}");
+}
+
+/// `array "<id>" [<layers>] [mode]` names a texture array (resolved like a
+/// texture, checked by the cook) and sets the sheet's frames and mode;
+/// `round` the soft dot's edge; a missing array is refused naming it.
+#[test]
+fn an_emitter_draws_from_a_texture_array() {
+    let png = png();
+    let text = "type particles\nversion 1\n---\nrender sprite 2\narray \"tex/frames.ogt\" 3 life 2\nround true\n";
+    let root = project(
+        "array",
+        &[
+            ("fx/frames.ogt", text.as_bytes()),
+            ("tex/a.png", &png),
+            ("tex/b.png", &png),
+            (
+                "tex/frames.ogt",
+                b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\n",
+            ),
+            (
+                "fx/none.ogt",
+                b"type particles\nversion 1\n---\nrender sprite 2\narray \"tex/none.ogt\" random\n",
+            ),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors().join("\n");
+    assert!(
+        errors.contains("fx/none.ogt")
+            && errors.contains("tex/none.ogt")
+            && !errors.contains("fx/frames.ogt"),
+        "{errors}"
+    );
+    let mut asked = Vec::new();
+    let em = parse_emitter_with(text, &mut |_| Ok(None), &mut |a| {
+        asked.push(a.to_string());
+        Ok(None)
+    })
+    .unwrap();
+    assert_eq!(asked, ["tex/frames.ogt"]);
+    assert_eq!(
+        (em.sheet.columns, em.sheet.rows, em.sheet.frames),
+        (1, 1, 3)
+    );
+    assert_eq!(em.sheet.mode, SheetMode::OverLife { cycles: 2.0 });
+    assert!(em.round);
+    let em = parse_emitter(&text.replace(" 3 life 2", " random"), &mut |_| Ok(None)).unwrap();
+    assert_eq!((em.sheet.frames, em.sheet.mode), (0, SheetMode::Random));
+    let bad = parse_emitter(&text.replace(" 3 life 2", " 0"), &mut |_| Ok(None));
+    assert!(bad.is_err_and(|e| e.contains("line 5")));
+}
+
+/// A streaming group can hold a colour LUT: its output names the group,
+/// the group's memory counts its 32³ RGBA8.
+#[test]
+fn a_streaming_group_holds_a_lut() {
+    let scene = "type scene\nversion 1\n---\nname \"Grade\"\nstream \"grade\" {\n  asset \"luts/swap.cube\"\n}\n";
+    let root = project(
+        "stream",
+        &[
+            ("luts/swap.cube", CUBE.as_bytes()),
+            ("scenes/grade.ogt", scene.as_bytes()),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle.output("luts/swap.cube").unwrap().group.as_deref(),
+        Some("grade")
+    );
+    let group = &bundle.streams()[0];
+    assert_eq!(group.name, "grade");
+    assert_eq!(group.memory, 32 * 32 * 32 * 4);
 }

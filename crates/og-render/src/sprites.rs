@@ -153,7 +153,8 @@ impl FontLayout {
 pub(crate) struct SpriteFrame {
     pub instances: Vec<SpriteInstance>,
     pub runs: Vec<SpriteRun>,
-    /// Glowing sprites again, after `instances` in the buffer, by texture.
+    /// Glowing sprites again, after `instances` in the buffer, by texture
+    /// or array (`RunSource::Sprite` or `RunSource::Array`, additive).
     pub glow_runs: Vec<SpriteRun>,
     pub sprites: u32,
     pub glyphs: u32,
@@ -188,6 +189,53 @@ fn sprite_instance(
         ground: NO_GROUND,
         layer: 0,
     }
+}
+
+/// A 2D particle as the batch draws it: its sprite, blend and glow, the
+/// soft dot's round edge (an untextured particle's, or an emitter's
+/// `round`), and the texture array layer it shows instead of its texture.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ExtraSprite {
+    pub sprite: Sprite,
+    pub blend: SpriteBlend,
+    pub glow: f32,
+    pub soft: bool,
+    pub array: Option<(TextureArrayHandle, u32)>,
+}
+
+/// Sprites drawn from texture arrays, by sprite index (the last entry for
+/// an index wins), checked against `count` sprites and the arrays' layers
+/// (`array_layers`: `None` for an array not uploaded or removed).
+pub(crate) fn array_entries(
+    entries: &[crate::SpriteArray],
+    count: usize,
+    what: &str,
+    array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
+) -> Result<HashMap<u32, (TextureArrayHandle, u32)>, RenderError> {
+    let mut arrays = HashMap::new();
+    for a in entries {
+        if a.sprite as usize >= count {
+            return Err(RenderError::InvalidHandle(format!(
+                "{what} arrays: sprite {} of {count}",
+                a.sprite
+            )));
+        }
+        let layers = array_layers(a.array).ok_or_else(|| {
+            RenderError::InvalidHandle(format!(
+                "{what} {}: texture array {}",
+                a.sprite,
+                a.array.index()
+            ))
+        })?;
+        if a.layer >= layers {
+            return Err(RenderError::InvalidData(format!(
+                "{what} {}: layer {} of a texture array of {layers}",
+                a.sprite, a.layer
+            )));
+        }
+        arrays.insert(a.sprite, (a.array, a.layer));
+    }
+    Ok(arrays)
 }
 
 /// The drop-shadow projection of a scene's sun (`SpriteInstance::ground`):
@@ -294,21 +342,21 @@ fn tile_instances(
     (quads, chunks)
 }
 
-/// Sorts the scene's sprites, the frame's 2D particles (`extra`: sprite,
-/// blend, glow) and texts into runs, with the tile layers and the layered
-/// strips placed before the sprites of their layer. `font(i)` is the layout
-/// of the scene's font `i`; `array_layers(a)` the layers of an uploaded
-/// texture array (`None`: not uploaded or removed); `lit` says which layers
-/// 2D lighting applies to; `view` culls tile chunks (orthographic cameras).
-/// A sprite drawn from an array ([`RenderScene::sprite_arrays`]) joins its
-/// array's run and never the glow pass.
+/// Sorts the scene's sprites, the frame's 2D particles (`extra`) and texts
+/// into runs, with the tile layers and the layered strips placed before
+/// the sprites of their layer. `font(i)` is the layout of the scene's font
+/// `i`; `array_layers(a)` the layers of an uploaded texture array (`None`:
+/// not uploaded or removed); `lit` says which layers 2D lighting applies
+/// to; `view` culls tile chunks (orthographic cameras). A sprite or
+/// particle drawn from an array ([`RenderScene::sprite_arrays`]) joins its
+/// array's run, and the glow pass by array when it glows.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     scene: &RenderScene,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
-    extra: &[(Sprite, SpriteBlend, f32)],
+    extra: &[ExtraSprite],
     lit: impl Fn(i32) -> bool,
     view: Option<ViewRect>,
     strips: &[LayeredStrip],
@@ -337,30 +385,12 @@ pub(crate) fn build<'a>(
         order.insert(o.sprite, if o.key.is_finite() { o.key } else { 0.0 });
     }
     // Sprites drawn from texture arrays, by index (the last entry wins).
-    let mut arrays: HashMap<u32, (TextureArrayHandle, u32)> = HashMap::new();
-    for a in &scene.sprite_arrays {
-        if a.sprite as usize >= scene.sprites.len() {
-            return Err(RenderError::InvalidHandle(format!(
-                "sprite_arrays: sprite {} of {}",
-                a.sprite,
-                scene.sprites.len()
-            )));
-        }
-        let layers = array_layers(a.array).ok_or_else(|| {
-            RenderError::InvalidHandle(format!(
-                "sprite {}: texture array {}",
-                a.sprite,
-                a.array.index()
-            ))
-        })?;
-        if a.layer >= layers {
-            return Err(RenderError::InvalidData(format!(
-                "sprite {}: layer {} of a texture array of {layers}",
-                a.sprite, a.layer
-            )));
-        }
-        arrays.insert(a.sprite, (a.array, a.layer));
-    }
+    let arrays = array_entries(
+        &scene.sprite_arrays,
+        scene.sprites.len(),
+        "sprite",
+        &array_layers,
+    )?;
     // Drop shadows by sprite index (the last entry wins), under a sun.
     let mut shadows: HashMap<u32, f32> = HashMap::new();
     for s in &scene.sprite_shadows {
@@ -380,7 +410,7 @@ pub(crate) fn build<'a>(
     // (layer, key, source, instance), in submission order.
     let mut keyed: Vec<(i32, f32, RunSource, SpriteInstance)> =
         Vec::with_capacity(scene.sprites.len() + extra.len());
-    let mut glowing: Vec<(Option<TextureHandle>, SpriteInstance)> = Vec::new();
+    let mut glowing: Vec<(RunSource, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
         if let Some(t) = s.texture
             && t.index() >= texture_count
@@ -421,21 +451,46 @@ pub(crate) fn build<'a>(
         }
         if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
             inst.layer = layer;
+            if glow > 0.0 {
+                glowing.push((RunSource::Array(SpriteBlend::Additive, array), inst));
+            }
             keyed.push((s.layer, key, RunSource::Array(blend, array), inst));
             continue;
         }
         if glow > 0.0 {
-            glowing.push((s.texture, inst));
+            glowing.push((RunSource::Sprite(SpriteBlend::Additive, s.texture), inst));
         }
         keyed.push((s.layer, key, RunSource::Sprite(blend, s.texture), inst));
     }
-    for (s, blend, glow) in extra {
-        let soft = s.texture.is_none();
-        let inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], *glow, lit(s.layer), soft);
-        if *glow > 0.0 {
-            glowing.push((s.texture, inst));
+    for e in extra {
+        let s = &e.sprite;
+        let mut inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], e.glow, lit(s.layer), e.soft);
+        let array = match e.array {
+            Some((array, layer)) => {
+                let layers = array_layers(array).ok_or_else(|| {
+                    RenderError::InvalidHandle(format!(
+                        "a 2D particle's texture array {}",
+                        array.index()
+                    ))
+                })?;
+                if layer >= layers {
+                    return Err(RenderError::InvalidData(format!(
+                        "a 2D particle: layer {layer} of a texture array of {layers}"
+                    )));
+                }
+                inst.layer = layer;
+                Some(array)
+            }
+            None => None,
+        };
+        let run = |b: SpriteBlend| match array {
+            Some(a) => RunSource::Array(b, a),
+            None => RunSource::Sprite(b, s.texture),
+        };
+        if e.glow > 0.0 {
+            glowing.push((run(SpriteBlend::Additive), inst));
         }
-        keyed.push((s.layer, 0.0, RunSource::Sprite(*blend, s.texture), inst));
+        keyed.push((s.layer, 0.0, run(e.blend), inst));
     }
     let sprites = keyed.len() as u32 - shadow_count;
     let after_sprites = keyed.len() as u32;
@@ -569,17 +624,16 @@ pub(crate) fn build<'a>(
         push(&mut runs, source, index, 1);
     }
     place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
-    // The glow pass: by texture (additive, so order does not matter).
-    glowing.sort_by_key(|(t, _)| *t);
+    // The glow pass: by texture or array (additive, so order does not
+    // matter; a stable sort keeps the plain textures' order as before).
+    glowing.sort_by_key(|(source, _)| *source);
     let mut glow_runs: Vec<SpriteRun> = Vec::new();
-    for (t, inst) in glowing {
+    for (source, inst) in glowing {
         let index = instances.len() as u32;
         match glow_runs.last_mut() {
-            Some(run) if run.source == RunSource::Sprite(SpriteBlend::Additive, t) => {
-                run.count += 1
-            }
+            Some(run) if run.source == source => run.count += 1,
             _ => glow_runs.push(SpriteRun {
-                source: RunSource::Sprite(SpriteBlend::Additive, t),
+                source,
                 first: index,
                 count: 1,
             }),

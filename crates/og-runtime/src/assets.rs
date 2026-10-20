@@ -665,6 +665,22 @@ pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, Stri
     if let Some(v) = eng.assets.borrow().texture_arrays.get(&id) {
         return Ok(v.clone());
     }
+    load_new_texture_array(eng, &id)
+}
+
+/// [`load_texture_array`]'s load index (what a TextureArray handle and
+/// RenderState::texture_arrays index): for the engine's own loads of an
+/// array (a flipbook's, an emitter's).
+pub(crate) fn load_texture_array_index(eng: &Engine, path: &str) -> Result<usize, String> {
+    let v = load_texture_array(eng, path)?;
+    v["array"]
+        .as_f64()
+        .and_then(index_of)
+        .ok_or_else(|| format!("{path}: no texture array handle"))
+}
+
+fn load_new_texture_array(eng: &Engine, id: &str) -> Result<Value, String> {
+    let id = id.to_string();
     let (added, info) = add_texture_array(eng, &id)?;
     let index = {
         let mut rs = eng.render.borrow_mut();

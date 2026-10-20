@@ -489,6 +489,9 @@ enum Work<'a> {
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
+    /// An `array true` sheet's texture array blob, and its layer `n`.
+    FlipbookArray(&'a Source, Box<og_anim::FlipbookSheet>),
+    FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     Shader(&'a Source),
     Behaviour(&'a Source),
     NavMesh(&'a Source),
@@ -1064,6 +1067,33 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let deps = flipbook::dependency_hashes(s);
                 let st = stamp(&[b"flipbook", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
+                // `array true`: the frames as the layers of a texture array.
+                if let Ok(sheet) = flipbook::sheet(s)
+                    && sheet.array
+                {
+                    let base = [
+                        b"flipbook array 1".as_slice(),
+                        tex_desc.as_bytes(),
+                        &hash,
+                        deps.as_bytes(),
+                    ];
+                    let sheet = Box::new(sheet);
+                    for n in 0..sheet.frames.len() {
+                        let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                        outs.push((
+                            texture_array::layer_id(&flipbook::array_id(&s.rel), n),
+                            format::Texture::NAME,
+                            st,
+                            Work::FlipbookLayer(s, sheet.clone(), n),
+                        ));
+                    }
+                    outs.push((
+                        flipbook::array_id(&s.rel),
+                        format::TextureArray::NAME,
+                        stamp(&base),
+                        Work::FlipbookArray(s, sheet),
+                    ));
+                }
             }
             Kind::Behaviour => {
                 let st = stamp(&[b"behaviour", &hash]);
@@ -1515,17 +1545,28 @@ fn run(
         Work::Emitter(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("an emitter is text (UTF-8)".into()))?;
-            let mut missing = Vec::new();
-            let em = crate::fx::parse_emitter(text, &mut |id| {
+            let missing = std::cell::RefCell::new(Vec::new());
+            let check = |id: &str| {
                 if !known.contains(crate::runtime::asset_id(id)) {
-                    missing.push(id.to_string());
+                    missing.borrow_mut().push(id.to_string());
                 }
-                Ok(None)
-            })
+            };
+            let em = crate::fx::parse_emitter_with(
+                text,
+                &mut |id| {
+                    check(id);
+                    Ok(None)
+                },
+                &mut |id| {
+                    check(id);
+                    Ok(None)
+                },
+            )
             .map_err(CookError)?;
+            let missing = missing.into_inner();
             if !missing.is_empty() {
                 return Err(CookError(format!(
-                    "the emitter names texture(s) not under assets/: {}",
+                    "the emitter names texture(s) or texture array(s) not under assets/: {}",
                     missing.join(", ")
                 )));
             }
@@ -1625,6 +1666,10 @@ fn run(
             tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
+        Work::FlipbookArray(s, sheet) => flipbook::cook_array(s, sheet, &options.texture, p.stamp),
+        Work::FlipbookLayer(s, sheet, n) => {
+            flipbook::cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+        }
         Work::Icons(s) => icons::cook(s, p.stamp),
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
@@ -1739,10 +1784,11 @@ fn plan_groups(
                         | Kind::Environment
                         | Kind::Palette
                         | Kind::Look
+                        | Kind::Lut
                 );
                 if !fits || skinned {
                     refused = Some(format!(
-                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, sounds, environment maps, palettes and looks",
+                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, sounds, environment maps, palettes, looks and colour LUTs",
                         g.name,
                         if skinned {
                             "a skinned or morphed model".to_string()
