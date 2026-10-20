@@ -13,7 +13,8 @@
 //!   OG_LANES=8   cargo run --release -p og-physics --example lanes_costs
 //!
 //! Arguments, when given, are the pen sizes (default 16 64 128 256 512
-//! 1000 2000).
+//! 1000 2000); `--forced` puts every step on the pool
+//! (`og_physics::set_grains(Some(og_physics::Grains::always()))`), to find where the pool pays.
 
 #[path = "../tests/support/mod.rs"]
 mod support;
@@ -41,8 +42,14 @@ fn time(mut w: World) -> (f64, u64) {
 }
 
 fn main() {
-    let sizes: Vec<usize> = std::env::args()
-        .skip(1)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let forced = args.iter().any(|a| a == "--forced");
+    if forced {
+        og_physics::set_grains(Some(og_physics::Grains::always()));
+    }
+    let sizes: Vec<usize> = args
+        .iter()
+        .filter(|a| *a != "--forced")
         .map(|a| a.parse().expect("a pen size"))
         .collect();
     let sizes = if sizes.is_empty() {
@@ -56,7 +63,15 @@ fn main() {
     } else {
         format!("off ({})", lanes.why)
     };
-    println!("lanes {mode}");
+    let from = og_physics::pool_bodies(lanes.threads);
+    let from = if forced {
+        "every step on the pool".to_string()
+    } else if from == usize::MAX {
+        "never on the pool".to_string()
+    } else {
+        format!("on the pool from {from} bodies")
+    };
+    println!("lanes {mode}; {from}");
     println!("| scene | bodies | ms per tick | world hash | physics calls |");
     println!("|---|---|---|---|---|");
     let calls = || og_lanes::report().sites[og_lanes::Site::Physics as usize].calls;

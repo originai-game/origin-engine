@@ -50,6 +50,7 @@ compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (bot
 mod fluid;
 mod fluid3d;
 mod gather;
+mod lanes;
 mod schema;
 mod schema_ext;
 mod verlet;
@@ -60,6 +61,7 @@ mod dim2;
 #[cfg(feature = "physics3d")]
 mod dim3;
 
+pub use lanes::{Grains, grains, pool_bodies, set_grains};
 pub use schema::*;
 pub use schema_ext::*;
 
@@ -73,15 +75,6 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 /// The name of the scheduled system.
 pub const SYSTEM_NAME: &str = "og.physics";
-
-/// The bodies per lane thread from which the step goes to the lanes pool
-/// (og-lanes' `install`): rapier's `parallel` build splits the step across
-/// every pool thread, so a world steps there from 200 bodies a thread (800
-/// on four lanes, 1,600 on eight) and below that on the calling thread,
-/// never waking the pool. Measured with `examples/lanes_costs.rs`
-/// (tests/evidence/P4/physics-lanes/): below it the lanes cost more than
-/// they save.
-pub const BODY_GRAIN: usize = 200;
 
 /// Geometry for convex and triangle-mesh colliders, registered under the
 /// mesh handle the colliders name ([`Collider::mesh`]).
@@ -513,8 +506,13 @@ impl PhysicsSystem {
                 ),
             ));
         };
-        let built = QueryInner::build(settings.profile, &scene, &mut shared);
-        let inner = Arc::new(built?);
+        drop(shared);
+        let inner = Arc::new(QueryInner::build_outside(
+            settings.profile,
+            &scene,
+            &self.shared,
+        )?);
+        let mut shared = lock(&self.shared);
         shared.recorded_query = Some(inner.clone());
         Ok(PhysicsQuery {
             inner,
@@ -686,8 +684,11 @@ impl PhysicsSystem {
     pub fn query(&self, world: &World) -> Result<PhysicsQuery> {
         let settings = *world.resource::<Physics>()?;
         let scene = gather::gather(&|i| world.query(&QUERIES[i].desc(false)), &self.ids)?;
-        let mut shared = lock(&self.shared);
-        let inner = Arc::new(QueryInner::build(settings.profile, &scene, &mut shared)?);
+        let inner = Arc::new(QueryInner::build_outside(
+            settings.profile,
+            &scene,
+            &self.shared,
+        )?);
         Ok(PhysicsQuery {
             inner,
             shared: self.shared.clone(),
@@ -885,6 +886,23 @@ impl QueryInner {
             other => return Err(check_profile(other).unwrap_err()),
         })
     }
+
+    /// [`Self::build`] outside the step, through [`outside`].
+    fn build_outside(profile: u32, scene: &Scene, shared: &Mutex<Shared>) -> Result<QueryInner> {
+        outside(|| Self::build(profile, scene, &mut lock(shared)))
+    }
+}
+
+/// Runs `f`, physics work outside the step (building a query view, a
+/// raycast, a shape cast, an overlap), where og-lanes runs work outside its
+/// helpers ([`og_lanes::serial`]): on the calling thread inside its
+/// one-thread pool, so parry's own `rayon::join` (its tree traversals, a
+/// shape against a large triangle mesh) runs inline there and never reaches
+/// rayon's global pool or waits on another thread; on the web a panic in it
+/// traps the engine thread with the structured crash instead of hanging it.
+/// A fault injected at the physics site fires here.
+fn outside<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+    og_lanes::serial(og_lanes::Site::Physics, f)
 }
 
 /// `v` normalised; refused when zero (or zero in the profile's plane).
@@ -919,35 +937,39 @@ impl PhysicsQuery {
     /// The nearest collider along a ray.
     pub fn raycast(&self, desc: &RaycastDesc) -> Result<Option<RaycastHit>> {
         let max = max_distance(desc.max_distance);
-        match &*self.inner {
+        outside(|| match &*self.inner {
             #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
             #[cfg(feature = "physics2d")]
             QueryInner::D2(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
-        }
+        })
     }
 
     /// The first collider a shape meets when swept along a direction.
     pub fn shape_cast(&self, desc: &ShapeCastDesc) -> Result<Option<ShapeCastHit>> {
         let max = max_distance(desc.max_distance);
-        let mut shared = lock(&self.shared);
-        match &*self.inner {
-            #[cfg(feature = "physics3d")]
-            QueryInner::D3(q) => q.shape_cast(desc, max, &mut shared),
-            #[cfg(feature = "physics2d")]
-            QueryInner::D2(q) => q.shape_cast(desc, max, &mut shared),
-        }
+        outside(|| {
+            let mut shared = lock(&self.shared);
+            match &*self.inner {
+                #[cfg(feature = "physics3d")]
+                QueryInner::D3(q) => q.shape_cast(desc, max, &mut shared),
+                #[cfg(feature = "physics2d")]
+                QueryInner::D2(q) => q.shape_cast(desc, max, &mut shared),
+            }
+        })
     }
 
     /// Every collider overlapping a shape, sorted by entity id.
     pub fn overlap(&self, desc: &OverlapDesc) -> Result<Vec<Entity>> {
-        let mut shared = lock(&self.shared);
-        match &*self.inner {
-            #[cfg(feature = "physics3d")]
-            QueryInner::D3(q) => q.overlap(desc, &mut shared),
-            #[cfg(feature = "physics2d")]
-            QueryInner::D2(q) => q.overlap(desc, &mut shared),
-        }
+        outside(|| {
+            let mut shared = lock(&self.shared);
+            match &*self.inner {
+                #[cfg(feature = "physics3d")]
+                QueryInner::D3(q) => q.overlap(desc, &mut shared),
+                #[cfg(feature = "physics2d")]
+                QueryInner::D2(q) => q.overlap(desc, &mut shared),
+            }
+        })
     }
 }
 
