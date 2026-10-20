@@ -64,6 +64,10 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             &format!("shadow ({p})"),
             crate::shadow_source(&hooks, palette),
         );
+        add(
+            &format!("stylise object ({p})"),
+            crate::stylise_object::object_source(palette, tables),
+        );
     }
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(

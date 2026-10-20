@@ -87,6 +87,7 @@ pub const SCENES: &[&str] = &[
     "sprites-array-fx",
     "sprites-shadow-terrain",
     "stylise-surface",
+    "stylise-object",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -458,6 +459,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-material" => g.scene = crate::stylise_scenes::material_scene(),
         "stylise-ink-depth" => g.scene = crate::stylise_scenes::ink_depth_scene(),
         "stylise-surface" => g.scene = crate::stylise_scenes::surface_scene(),
+        "stylise-object" => g.scene = crate::stylise_scenes::object_scene(),
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),

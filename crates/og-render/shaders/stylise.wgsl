@@ -37,7 +37,7 @@ struct Stylise {
   inv_proj: mat4x4<f32>,      // view space from clip space
   view_rotation: mat4x4<f32>, // world from view space, no translation
   eye: vec4<f32>,             // xyz: the camera from the surface origin (a 1024 m grid point)
-  surface: vec4<f32>,         // x: 1 canvas on surfaces, y: its texels per metre, z: 1 hatching on surfaces, w: 1 halftone on surfaces
+  surface: vec4<f32>,         // where the canvas (x), hatching (z) and halftone (w) lie: 0 screen, 1 world, 2 object space; y: canvas texels per metre
   canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
@@ -49,6 +49,7 @@ struct Stylise {
 @group(0) @binding(6) var blue_noise: texture_2d<f32>;  // 64 x 64 thresholds (blue_noise.rs), R8
 @group(0) @binding(7) var pre_depth: texture_2d<f32>;   // the prepass view depth (R32Float); far without a prepass
 @group(0) @binding(8) var pre_normal: texture_2d<f32>;  // the prepass's oct-encoded world normal (xy)
+@group(0) @binding(9) var pre_object: texture_2d<u32>;  // the object pass (stylise_object.wgsl): position bits, packed normal; 0 without
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let lo = c * 12.92;
@@ -118,6 +119,8 @@ struct Surf {
   n: vec3<f32>,
   pixel: f32,
   ok: bool,
+  // p and n are in the instance's own space (object_at).
+  obj: bool,
 };
 
 fn surface_at(p: vec2<f32>) -> Surf {
@@ -128,6 +131,23 @@ fn surface_at(p: vec2<f32>) -> Surf {
   s.p = surface_pos(p, d);
   s.pixel = max(length(surface_pos(p + vec2<f32>(1.0, 0.0), d) - s.p), 1e-5);
   s.n = normal_at(px);
+  s.obj = false;
+  return s;
+}
+
+// The surface in object space: the point and normal the object pass wrote
+// for the instance covering the pixel (metres along its axes, so the
+// world footprint `pixel` holds), or `world` where none does (terrain,
+// scattered copies, a material shader's moved vertices).
+fn object_at(p: vec2<f32>, world: Surf) -> Surf {
+  let size = vec2<i32>(textureDimensions(pre_object));
+  let o = textureLoad(pre_object, clamp(vec2<i32>(p), vec2<i32>(0), size - 1), 0);
+  if ((o.w & 1u) == 0u || !world.ok) { return world; }
+  var s = world;
+  s.p = bitcast<vec3<f32>>(o.xyz);
+  let e = vec2<f32>(f32((o.w >> 1u) & 0x7fffu), f32((o.w >> 16u) & 0x7fffu)) / 32767.0;
+  s.n = oct_decode(e * 2.0 - 1.0);
+  s.obj = true;
   return s;
 }
 
@@ -255,7 +275,10 @@ fn paint(in: VsOut) -> vec3<f32> {
 // keeps the screen canvas.
 fn canvas_surface(p: vec2<f32>) -> f32 {
   let size = vec2<f32>(textureDimensions(canvas));
-  let s = surface_at(p);
+  var s = surface_at(p);
+  if (st.surface.x > 1.5) {
+    s = object_at(p, s);
+  }
   if (!s.ok) {
     let lod = log2(max(st.canvas.y, 1.0));
     return textureSampleLevel(canvas, repeat_sampler, p * st.canvas.y / size, lod).r;
@@ -263,7 +286,8 @@ fn canvas_surface(p: vec2<f32>) -> f32 {
   let k = st.surface.y;
   let lod = log2(max(k * s.pixel, 1.0));
   let w = tri_weights(s.n);
-  let o = st.canvas_origin;
+  // An instance's space starts at its own origin: no world offset.
+  let o = select(st.canvas_origin, vec4<f32>(0.0), s.obj);
   let q = s.p * k;
   let gx = textureSampleLevel(canvas, repeat_sampler, q.zy / size + o.zy, lod).r;
   let gy = textureSampleLevel(canvas, repeat_sampler, q.xz / size + o.xw, lod).r;
@@ -447,8 +471,14 @@ fn lines(in: VsOut) -> vec3<f32> {
   let t = tone(c);
   var surf: Surf;
   surf.ok = false;
+  surf.obj = false;
   if (st.surface.z > 0.5 || st.surface.w > 0.5) {
     surf = surface_at(p);
+  }
+  // Object space for the hatching or the halftone (each keeps its own).
+  var osurf = surf;
+  if (st.surface.z > 1.5 || st.surface.w > 1.5) {
+    osurf = object_at(p, surf);
   }
   if (st.hatching.x > 0.0) {
     // Darker tones add stroke sets, each turned a little further, over a
@@ -459,7 +489,9 @@ fn lines(in: VsOut) -> vec3<f32> {
       th = max(t - st.ink_depth.w * depth_band(px), 0.0);
     }
     var ink = 0.0;
-    if (st.surface.z > 0.5 && surf.ok) {
+    if (st.surface.z > 1.5 && osurf.ok) {
+      ink = hatch_surface(osurf, th);
+    } else if (st.surface.z > 0.5 && surf.ok) {
       ink = hatch_surface(surf, th);
     } else {
       ink = hatch_screen(p, th);
@@ -470,7 +502,9 @@ fn lines(in: VsOut) -> vec3<f32> {
   if (st.halftone.x > 0.0) {
     // Dots on a rotated grid, larger where the image is darker.
     var dot_cover = 0.0;
-    if (st.surface.w > 0.5 && surf.ok) {
+    if (st.surface.w > 1.5 && osurf.ok) {
+      dot_cover = dots_surface(osurf, t);
+    } else if (st.surface.w > 0.5 && surf.ok) {
       dot_cover = dots_surface(surf, t);
     } else {
       dot_cover = dots_screen(p, t);

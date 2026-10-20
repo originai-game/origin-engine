@@ -28,8 +28,13 @@
 //!   box to the far sphere), a paper canvas on the surfaces (the grain
 //!   foreshortened on the floor, the sky keeping the screen grain) and
 //!   depth ink with its thresholds set.
+//! - `stylise-object`: the same drawing in object space, with a box
+//!   tilted on two axes and a long beam scaled 4 x 0.4 x 0.5 laid across
+//!   the floor: each instance's strokes and grain run along its own faces
+//!   (square on the beam despite its scale), where world space blends the
+//!   world's planes across a turned face.
 
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DepthBands, DirectionalLight, DitherPattern, Exposure,
     Halftone, Hatching, Ink, MaterialStyle, Paint, Palette, PixelScale, Quantize, RenderScene,
@@ -352,5 +357,45 @@ pub fn surface_scene() -> RenderScene {
         depth_threshold: 0.03,
         normal_threshold: 0.3,
     });
+    scene
+}
+
+/// `stylise-object`: [`surface_scene`] in object space with a tilted box
+/// and a scaled beam.
+pub fn object_scene() -> RenderScene {
+    let mut scene = surface_scene();
+    let clay = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.8, 0.78, 0.74),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    scene.add_instance(
+        cube,
+        clay,
+        Mat4::from_scale_rotation_translation(
+            Vec3::splat(1.1),
+            Quat::from_rotation_y(-0.5) * Quat::from_rotation_x(0.45) * Quat::from_rotation_z(0.3),
+            Vec3::new(-0.6, 0.85, 2.6),
+        ),
+    );
+    scene.add_instance(
+        cube,
+        clay,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(4.0, 0.4, 0.5),
+            Quat::from_rotation_y(0.35),
+            Vec3::new(-3.6, 0.2, 1.4),
+        ),
+    );
+    for space in [
+        scene.stylise.hatching.as_mut().map(|h| &mut h.space),
+        scene.stylise.paint.as_mut().map(|p| &mut p.canvas_space),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        *space = StyliseSpace::Object;
+    }
     scene
 }

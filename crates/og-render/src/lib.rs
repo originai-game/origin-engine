@@ -63,6 +63,7 @@ mod skin;
 mod sprite_array;
 mod sprites;
 mod stylise;
+mod stylise_object;
 mod terrain;
 mod terrain_tiles;
 mod texture;
@@ -1196,6 +1197,9 @@ pub struct Renderer {
     lean_pipelines: HashMap<LeanKey, wgpu::RenderPipeline>,
     /// Their prepass pipelines by (side, derivatives).
     lean_prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    /// Stylise's object pass, made the first frame a pattern is laid in
+    /// object space (`stylise_object.rs`).
+    stylise_object: Option<stylise_object::ObjectPass>,
     sky_pipeline: wgpu::RenderPipeline,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
@@ -2441,6 +2445,7 @@ impl Renderer {
             prepass_pipelines: HashMap::new(),
             lean_pipelines: HashMap::new(),
             lean_prepass_pipelines: HashMap::new(),
+            stylise_object: None,
             sky_pipeline,
             sky_look_pipeline,
             water,
@@ -4243,6 +4248,29 @@ impl Renderer {
             }
         }
         self.ensure_pipelines(&batches, &skinned_batches, prepass);
+        // A pattern in object space: the object pass after the prepass.
+        let object_space = prepass && scene.stylise.in_object_space();
+        if object_space {
+            let object = self.stylise_object.get_or_insert_with(|| {
+                stylise_object::ObjectPass::new(
+                    &self.device,
+                    self.palette.mode(),
+                    self.light_tables,
+                )
+            });
+            let opaque = batches.iter().filter(|b| !b.transparent);
+            for (side, skinned) in opaque
+                .map(|b| (b.side, false))
+                .chain(skinned_visible.iter().map(|b| (b.side, true)))
+            {
+                object.ensure(
+                    &self.device,
+                    (&self.pbr_layout, &self.pbr_skinned_layout),
+                    side,
+                    skinned,
+                );
+            }
+        }
         self.particles
             .ensure_pipelines(&self.device, &particle_frame, self.samples);
         let fonts = &self.cache.fonts;
@@ -5437,11 +5465,13 @@ impl Renderer {
                 view_rotation: glam::Mat4::from_mat3(glam::Mat3::from_mat4(cam.view.inverse()))
                     .to_cols_array_2d(),
                 eye: surface_eye.extend(0.0).to_array(),
+                // 0 screen, 1 world, 2 object space (StyliseSpace::code).
                 surface: [
-                    pt.is_some_and(|p| p.canvas_on_surfaces()) as u32 as f32,
+                    pt.filter(|p| p.canvas_on_surfaces())
+                        .map_or(0.0, |p| p.canvas_space.code()),
                     canvas_world_scale,
-                    hc.is_some_and(|h| h.space == StyliseSpace::Surface) as u32 as f32,
-                    ht.is_some_and(|h| h.space == StyliseSpace::Surface) as u32 as f32,
+                    hc.map_or(0.0, |h| h.space.code()),
+                    ht.map_or(0.0, |h| h.space.code()),
                 ],
                 canvas_origin,
             };
@@ -5509,6 +5539,7 @@ impl Renderer {
                     transmission,
                     fluid_fields: fluids as u32,
                     reflection: reflection.as_ref().map(|r| r.4),
+                    object_space,
                 },
                 &self.post,
                 &self.persistent,
@@ -6113,7 +6144,12 @@ impl Renderer {
                             view: self.graph.view("pre-depth"),
                             depth_ops: Some(wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(1.0),
-                                store: wgpu::StoreOp::Discard,
+                                // Stylise's object pass tests against it.
+                                store: if object_space {
+                                    wgpu::StoreOp::Store
+                                } else {
+                                    wgpu::StoreOp::Discard
+                                },
                             }),
                             stencil_ops: None,
                         }),
@@ -6191,6 +6227,62 @@ impl Renderer {
                     );
                     stats.prepass_draws += n;
                     stats.draw_calls += stats.prepass_draws;
+                    drop(p);
+                    if let Some(object) = self.stylise_object.as_ref().filter(|_| object_space) {
+                        // Stylise's object pass (stylise_object.rs): the
+                        // prepass's instances again, against its depth.
+                        let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("stylise object"),
+                            color_attachments: &[attachment(self.graph.view("object-space"), 0.0)],
+                            depth_stencil_attachment: Some(
+                                wgpu::RenderPassDepthStencilAttachment {
+                                    view: self.graph.view("pre-depth"),
+                                    depth_ops: Some(wgpu::Operations {
+                                        load: wgpu::LoadOp::Load,
+                                        store: wgpu::StoreOp::Discard,
+                                    }),
+                                    stencil_ops: None,
+                                },
+                            ),
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
+                            multiview_mask: None,
+                        });
+                        p.set_bind_group(0, frame_bind_group, &[]);
+                        p.set_bind_group(2, fx_group, &[]);
+                        let mut side = None;
+                        for &(b, first, count) in &main_list.ranges {
+                            let batch = &batches[b as usize];
+                            if side != Some(batch.side) {
+                                p.set_pipeline(object.pipeline(batch.side, false));
+                                side = Some(batch.side);
+                            }
+                            p.set_bind_group(
+                                1,
+                                &self.cache.materials[batch.material].bind_group,
+                                &[],
+                            );
+                            let mesh = &self.cache.meshes[batch.mesh];
+                            let start = first as u64 * INSTANCE_STRIDE;
+                            let end = start + count as u64 * INSTANCE_STRIDE;
+                            p.set_vertex_buffer(0, mesh.vertices.slice(..));
+                            p.set_vertex_buffer(1, instances.slice(start..end));
+                            p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                            match (main_list.indirect, culled_gpu) {
+                                (Some(g), Some(gc)) => {
+                                    p.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b))
+                                }
+                                _ => p.draw_indexed(0..mesh.index_count, 0, 0..count),
+                            }
+                            stats.draw_calls += 1;
+                        }
+                        let skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
+                            .iter()
+                            .map(|b| object.pipeline(b.side, true))
+                            .collect();
+                        stats.draw_calls +=
+                            draw_skinned(&mut p, &skinned_visible, false, 1, 3, &skinned, None);
+                    }
                 }
                 FramePass::Particles => {
                     self.particles.simulate(

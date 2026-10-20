@@ -451,8 +451,9 @@ fn stylise(
                 dither_scale: u(&s, "ditherScale", 1).max(1),
             });
         }
-        let space = |v: &Value| match variant(v, &["screen", "surface"]) {
+        let space = |v: &Value| match variant(v, &["screen", "surface", "object"]) {
             1 => og_render::StyliseSpace::Surface,
+            2 => og_render::StyliseSpace::Object,
             _ => og_render::StyliseSpace::Screen,
         };
         let halftone = f(&s, "halftone", 0.0);
