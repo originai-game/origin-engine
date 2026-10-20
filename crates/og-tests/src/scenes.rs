@@ -87,6 +87,7 @@ pub const SCENES: &[&str] = &[
     "sprites-array-fx",
     "sprites-shadow-terrain",
     "stylise-surface",
+    "materials-array",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -446,6 +447,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // iridescence, anisotropy) and transmission in front of textured
         // geometry.
         "materials-physical" => g.scene = crate::physical_scenes::physical_scene(),
+        // Materials sampling texture arrays: eight cubes of one tile
+        // material (colour and normal arrays), each on its own layer or the
+        // material's, one batch; a cube of layer 1 as plain 2D textures;
+        // two blended panes of one array material; a sphere with only a
+        // normal array.
+        "materials-array" => g.scene = crate::physical_scenes::array_scene(),
         // The stylisation primitives (stylise_scenes.rs), each over a scene
         // the references know.
         "stylise-pixel" => g.scene = crate::stylise_scenes::pixel_scene()?,

@@ -358,6 +358,19 @@ handle!(
     /// ([`RenderScene::add_texture_array`]).
     TextureArrayHandle
 );
+
+impl TextureArrayHandle {
+    /// The handle as a [`crate::StandardMaterial`] texture-array slot
+    /// (`mapArray`, `normalMapArray`): its bits plus one (0 is none).
+    pub fn slot(self) -> u32 {
+        self.0 + 1
+    }
+
+    /// The handle a texture-array slot names (`None` for slot 0).
+    pub fn from_slot(slot: u32) -> Option<TextureArrayHandle> {
+        slot.checked_sub(1).map(TextureArrayHandle)
+    }
+}
 handle!(
     /// A colour LUT added to a [`RenderScene`] ([`RenderScene::add_lut`]).
     LutHandle
@@ -390,6 +403,12 @@ pub struct Instance {
     pub material: MaterialHandle,
     /// Local to world. Normals use the upper 3x3 directly, so keep scale uniform.
     pub transform: Mat4,
+    /// The texture-array layer this instance's material samples
+    /// ([`crate::StandardMaterial::mapArray`] and `normalMapArray`), in
+    /// place of the material's `mapLayer` and `normalMapLayer`: variants of
+    /// one material (tiles, skins) stay one batch, one draw. `None`: the
+    /// material's layers. A material without array maps ignores it.
+    pub material_layer: Option<u32>,
 }
 
 /// How a [`Camera`] projects the world onto the target.
@@ -1660,8 +1679,9 @@ impl RenderScene {
     /// Removes a texture array: the renderer frees it before the next frame
     /// and a later add reuses the slot under a new generation. A sprite
     /// still drawn from it ([`RenderScene::sprite_arrays`]) is refused at
-    /// the next frame ([`crate::RenderError::InvalidHandle`]). False for a
-    /// handle that is not live.
+    /// the next frame ([`crate::RenderError::InvalidHandle`]); a material
+    /// sampling it forgets it (its array maps read as none), as a removed
+    /// texture's. False for a handle that is not live.
     pub fn remove_texture_array(&mut self, handle: crate::TextureArrayHandle) -> bool {
         let i = handle.index();
         if !self.texture_array_slots.live(i, handle.generation()) {
@@ -1673,6 +1693,17 @@ impl RenderScene {
             *f = TextureFilter::Linear;
         }
         self.texture_array_slots.remove(i, true);
+        // Materials sampling it draw without it from now on.
+        let slot = handle.slot();
+        for (m, revision) in self
+            .materials
+            .iter_mut()
+            .zip(self.material_revisions.iter_mut())
+        {
+            if m.forget_texture_array(slot) {
+                *revision += 1;
+            }
+        }
         true
     }
 
@@ -2081,6 +2112,7 @@ impl RenderScene {
             mesh,
             material,
             transform,
+            material_layer: None,
         });
     }
 

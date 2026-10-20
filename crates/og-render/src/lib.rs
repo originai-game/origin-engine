@@ -828,6 +828,9 @@ struct GpuMaterial {
     bind_group: wgpu::BindGroup,
     /// A physical material's group for its lit pass (`physical.rs`).
     physical: Option<wgpu::BindGroup>,
+    /// An array-map material's group for its lit and prepass passes
+    /// ([`material::ArrayMaps`]); its shadows bind the standard group.
+    array: Option<wgpu::BindGroup>,
     side: Side,
     /// Drawn in the sorted pass, back to front: blended or transmissive.
     transparent: bool,
@@ -997,6 +1000,9 @@ struct Batch {
     /// decals): its lean pipelines keep the discard (`DISCARD` in
     /// pbr_fs.wgsl), so the derivatives are the full pipeline's.
     derivatives: bool,
+    /// Drawn with the array-map pipelines ([`GpuMaterial::array`]): its
+    /// instances carry their layer in the transform.
+    array: bool,
 }
 
 /// The effect bind groups and what they were made from.
@@ -1025,7 +1031,7 @@ type PbrKey = (Side, bool, bool, bool);
 type ShadowKey = (Side, bool, bool);
 /// What a lit pass's draws switch pipelines on: (side, blended, effects,
 /// material shader, physical, lean, derivatives).
-type LitDrawKey = (Side, bool, bool, Option<usize>, bool, bool, bool);
+type LitDrawKey = (Side, bool, bool, Option<usize>, bool, bool, bool, bool);
 /// The lean lit pipelines: (side, effects, derivatives); `effects` as in
 /// [`PbrKey`] (a plain material has none of its own: the frame's decals
 /// or AO), `derivatives` as [`Batch::derivatives`].
@@ -1231,6 +1237,9 @@ pub struct Renderer {
     /// The physical lit pipelines, made when a scene first draws a physical
     /// material (`physical.rs`).
     physical: Option<physical::PhysicalPipelines>,
+    /// The array-map variant of the lit, prepass and shadow pipelines, made
+    /// when a scene first draws a material with array maps (`material.rs`).
+    array_maps: Option<material::ArrayMaps>,
     /// The copy of the opaque scene transmission refracts, with its mip
     /// chain, at the renderer's size (made when a frame first needs it).
     transmission: Option<wgpu::Texture>,
@@ -2471,6 +2480,7 @@ impl Renderer {
             fx_groups: None,
             mips,
             physical: None,
+            array_maps: None,
             transmission: None,
             environment: None,
             default_white,
@@ -2961,7 +2971,20 @@ impl Renderer {
             let styled = material::styled(material, &scene.stylise.material);
             let material = &styled;
             let hooked = scene.material_shader(MaterialHandle::from_index(i));
-            let (bind_group, factors) =
+            if material.draws_array_maps() && hooked.is_none() && self.array_maps.is_none() {
+                self.array_maps = Some(material::ArrayMaps::new(
+                    &self.device,
+                    &self.queue,
+                    [&self.frame_layout, &self.fx_layout, &self.palette_layout],
+                    lit_source_with(
+                        &hooks::default_hooks(),
+                        self.palette.mode(),
+                        self.light_tables,
+                    ),
+                    shadow_source(&hooks::default_hooks(), self.palette.mode()),
+                ));
+            }
+            let (bind_group, array, factors) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1))?;
             let physical = if material.is_physical() {
                 if let Some((sh, _)) = hooked
@@ -2984,6 +3007,7 @@ impl Renderer {
                 revision,
                 bind_group,
                 physical,
+                array,
                 side: material.side(),
                 transparent: material.is_transparent() || transmissive,
                 blend: material.is_transparent(),
@@ -2995,11 +3019,14 @@ impl Renderer {
                     || material.dissolves(),
                 outline: material.outlineWidth > 0.0,
                 shader: hooked.map(|h| h.0.index()),
+                // An array-map instance's transform carries its layer: the
+                // occluder depth pass reads transforms as they are.
                 occluder: !material.is_transparent()
                     && !transmissive
                     && !material.dissolves()
                     && material.alphaTest <= 0.0
-                    && hooked.is_none(),
+                    && hooked.is_none()
+                    && !material.draws_array_maps(),
                 lean: false,
                 flat: material.flatShading != 0,
             };
@@ -3284,13 +3311,16 @@ impl Renderer {
         }
     }
 
-    /// A material's standard group and its uniform buffer.
+    /// A material's standard group, its array-map group when it draws with
+    /// array maps (made by the caller's [`material::ArrayMaps`]), and its
+    /// uniform buffer.
+    #[allow(clippy::type_complexity)]
     fn material_bind_group(
         &self,
         index: usize,
         m: &StandardMaterial,
         custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
-    ) -> Result<(wgpu::BindGroup, wgpu::Buffer), RenderError> {
+    ) -> Result<(wgpu::BindGroup, Option<wgpu::BindGroup>, wgpu::Buffer), RenderError> {
         let [
             map,
             metalness,
@@ -3331,6 +3361,52 @@ impl Renderer {
         if let Some(c) = custom {
             uniform.custom = c;
         }
+        // The array maps' views (a material shader keeps the standard path).
+        let arrays = match self.array_maps.as_ref() {
+            Some(a) if custom.is_none() && m.draws_array_maps() => {
+                let [map_array, normal_array] = m.array_maps().map(|h| {
+                    h.map(|h| {
+                        self.cache
+                            .texture_arrays
+                            .get(h.index())
+                            .and_then(Option::as_ref)
+                            .filter(|g| g.generation == h.generation())
+                            .ok_or_else(|| {
+                                RenderError::InvalidHandle(format!(
+                                    "material {index} uses texture array {} (slot {})",
+                                    h.index(),
+                                    h.slot()
+                                ))
+                            })
+                    })
+                    .transpose()
+                });
+                let (map_array, normal_array) = (map_array?, normal_array?);
+                let view = |g: Option<&texture_array::GpuTextureArray>,
+                            fallback: &wgpu::TextureView| {
+                    g.map_or_else(
+                        || fallback.clone(),
+                        |g| {
+                            g.texture.create_view(&wgpu::TextureViewDescriptor {
+                                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                                ..Default::default()
+                            })
+                        },
+                    )
+                };
+                material::array_uniform(
+                    &mut uniform,
+                    m,
+                    normal_array.is_some_and(|g| g.info.format.two_channel()),
+                );
+                Some((
+                    a,
+                    view(map_array, &a.white),
+                    view(normal_array, &a.flat_normal),
+                ))
+            }
+            _ => None,
+        };
         let factors = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -3351,7 +3427,13 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&dissolve),
         ];
         let group = bind_group(&self.device, "material", &self.material_layout, &entries);
-        Ok((group, factors))
+        let array = arrays.map(|(a, base, normal)| {
+            let mut entries = entries.clone();
+            entries[1] = wgpu::BindingResource::TextureView(&base);
+            entries[4] = wgpu::BindingResource::TextureView(&normal);
+            bind_group(&self.device, "material (array maps)", &a.layout, &entries)
+        });
+        Ok((group, array, factors))
     }
 
     /// A physical material's group for its lit pass (`physical.rs`): its
@@ -3624,6 +3706,7 @@ impl Renderer {
                         shader: m.shader,
                         lean: m.lean,
                         derivatives: m.flat,
+                        array: m.array.is_some(),
                     })
                 }
             }
@@ -3640,7 +3723,13 @@ impl Renderer {
                 }
                 None => (m.w_axis.truncate(), 0.0),
             });
-            transforms.push(m.to_cols_array_2d());
+            let mut t = m.to_cols_array_2d();
+            if batches.last().is_some_and(|b| b.array) {
+                // The layer rides in m0.w, 0 in an affine transform
+                // (pbr_array.wgsl reads and zeroes it).
+                t[0][3] = material::instance_layer_bits(inst.material_layer);
+            }
+            transforms.push(t);
             submission.push(i as u32);
         }
         Ok((batches, transforms, spheres, submission))
@@ -3796,6 +3885,9 @@ impl Renderer {
             return &self.lean_pipelines[&(b.side, b.effects, b.derivatives)];
         }
         let key = (b.side, b.blend, skinned, b.effects);
+        if b.array && !physical {
+            return &self.array_maps.as_ref().expect("an array batch").lit[&key];
+        }
         match (physical, b.shader) {
             (true, None) => &self.physical.as_ref().expect("a physical batch").pipelines[&key],
             (true, Some(sh)) => &self.cache.physical_hook_pipelines[&(sh, key)],
@@ -3813,6 +3905,40 @@ impl Renderer {
             .map(|b| (b, false))
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
+            if b.array {
+                // The array-map variant: the standard builders over its
+                // module and layouts (`material::ArrayMaps`).
+                let a = self.array_maps.as_mut().expect("made with the material");
+                let layouts = (&a.layouts.0, &a.layouts.1);
+                let key = (b.side, b.blend, is_skinned, b.effects);
+                if !a.lit.contains_key(&key) {
+                    let p = pbr_pipeline(&self.device, layouts, &a.module, key, self.samples);
+                    a.lit.insert(key, p);
+                }
+                let key = (b.side, is_skinned);
+                if prepass && !b.transparent && !a.prepass.contains_key(&key) {
+                    let p = prepass_pipeline(
+                        &self.device,
+                        layouts,
+                        &a.module,
+                        b.side,
+                        is_skinned,
+                        None,
+                    );
+                    a.prepass.insert(key, p);
+                }
+                let key = (b.side, b.dissolve);
+                if !is_skinned && !a.shadow.contains_key(&key) {
+                    let p = shadow_pipeline(
+                        &self.device,
+                        &self.shadow_layouts,
+                        &a.shadow_module,
+                        (b.side, false, b.dissolve),
+                        false,
+                    );
+                    a.shadow.insert(key, p);
+                }
+            }
             if b.physical {
                 // The physical lit pipeline (the standard ones below draw the
                 // material's reflection).
@@ -4036,6 +4162,7 @@ impl Renderer {
                         shader: m.shader,
                         lean: false,
                         derivatives: m.flat,
+                        array: m.array.is_some(),
                     });
                 }
             }
@@ -5812,7 +5939,13 @@ impl Renderer {
                     let hooked = b
                         .shader
                         .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
+                    let array = self
+                        .array_maps
+                        .as_ref()
+                        .filter(|_| b.array)
+                        .and_then(|a| a.prepass.get(&(b.side, true)));
                     hooked
+                        .or(array)
                         .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
                         .unwrap_or(lit_skinned[0])
                 })
@@ -5835,7 +5968,7 @@ impl Renderer {
              lit: bool,
              current: &mut Option<LitDrawKey>,
              physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>| {
-                let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
+                let mut shadow_key: Option<(ShadowKey, Option<usize>, bool)> = None;
                 let mut physical_bound = false;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
@@ -5849,6 +5982,7 @@ impl Renderer {
                             physical,
                             batch.lean,
                             batch.derivatives,
+                            batch.array,
                         );
                         if *current != Some(key) {
                             pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
@@ -5863,18 +5997,27 @@ impl Renderer {
                         let m = &self.cache.materials[batch.material];
                         pass.set_bind_group(
                             1,
-                            match &m.physical {
-                                Some(g) if physical => g,
+                            match (&m.physical, &m.array) {
+                                (Some(g), _) if physical => g,
+                                (_, Some(g)) => g,
                                 _ => &m.bind_group,
                             },
                             &[],
                         );
                     } else {
-                        let key = ((batch.side, false, batch.dissolve), batch.shader);
+                        let key = (
+                            (batch.side, false, batch.dissolve),
+                            batch.shader,
+                            batch.array,
+                        );
                         if shadow_key != Some(key) {
                             pass.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)]
+                                }
+                                None if batch.array => {
+                                    &self.array_maps.as_ref().expect("an array batch").shadow
+                                        [&(batch.side, batch.dissolve)]
                                 }
                                 None => &self.shadow_pipelines[&key.0],
                             });
@@ -5944,10 +6087,14 @@ impl Renderer {
                     physical_bound = physical;
                 }
                 let m = &self.cache.materials[batch.material];
+                // The shadow layouts put the palette at 2: shadows draw an
+                // array-map material with its standard group.
+                let shadow = palette_at == 2;
                 pass.set_bind_group(
                     material_group,
-                    match &m.physical {
-                        Some(g) if physical => g,
+                    match (&m.physical, &m.array) {
+                        (Some(g), _) if physical => g,
+                        (_, Some(g)) if !shadow => g,
                         _ => &m.bind_group,
                     },
                     &[],
@@ -6131,7 +6278,13 @@ impl Renderer {
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
                         let batch = &batches[b as usize];
-                        let key = (batch.side, batch.shader, batch.lean, batch.derivatives);
+                        let key = (
+                            batch.side,
+                            batch.shader,
+                            batch.lean,
+                            batch.derivatives,
+                            batch.array,
+                        );
                         if current != Some(key) {
                             p.set_pipeline(match batch.shader {
                                 Some(sh) => {
@@ -6140,11 +6293,16 @@ impl Renderer {
                                 None if batch.lean => {
                                     &self.lean_prepass_pipelines[&(batch.side, batch.derivatives)]
                                 }
+                                None if batch.array => {
+                                    &self.array_maps.as_ref().expect("an array batch").prepass
+                                        [&(batch.side, false)]
+                                }
                                 None => &self.prepass_pipelines[&(batch.side, false)],
                             });
                             current = Some(key);
                         }
-                        p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
+                        let m = &self.cache.materials[batch.material];
+                        p.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
                         let mesh = &self.cache.meshes[batch.mesh];
                         let start = first as u64 * INSTANCE_STRIDE;
                         let end = start + count as u64 * INSTANCE_STRIDE;
@@ -6280,7 +6438,7 @@ impl Renderer {
                         &mut pass,
                         list,
                         true,
-                        &mut Some((Side::Front, false, false, None, false, false, false)),
+                        &mut Some((Side::Front, false, false, None, false, false, false, false)),
                         None,
                     );
                     stats.draw_calls += list.ranges.len() as u32;
@@ -6405,7 +6563,7 @@ impl Renderer {
                         &mut pass,
                         &main_list,
                         true,
-                        &mut Some((Side::Front, false, false, None, false, false, false)),
+                        &mut Some((Side::Front, false, false, None, false, false, false, false)),
                         physical_fx,
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;

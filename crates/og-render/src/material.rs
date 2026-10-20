@@ -46,7 +46,7 @@ impl Side {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 4)]
+#[reflect(name = "og.StandardMaterial", version = 5)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -235,6 +235,24 @@ pub struct StandardMaterial {
     /// The direction (red and green, -1..1 in the tangent frame, rotated by
     /// `anisotropyRotation`) and strength (blue, times `anisotropy`).
     pub anisotropyMap: u32,
+    /// The base colour from layer `mapLayer` of a texture array (sRGB)
+    /// instead of `map`: a texture-array slot,
+    /// [`crate::TextureArrayHandle::slot`] (0: none). Variants of one
+    /// material (tiles, skins) are one material whose instances pick their
+    /// layer ([`crate::Instance::material_layer`]): one batch, one draw.
+    /// A material with array maps samples its base colour and normal from
+    /// arrays only (`map` and `normalMap` are not read); the physical lobes
+    /// and material shaders do not take them.
+    pub mapArray: u32,
+    /// The layer of `mapArray` sampled (past the last: the last).
+    #[reflect(min = 0.0, default = 0.0)]
+    pub mapLayer: u32,
+    /// A tangent-space normal map from layer `normalMapLayer` of a texture
+    /// array (linear) instead of `normalMap`; a texture-array slot.
+    pub normalMapArray: u32,
+    /// The layer of `normalMapArray` sampled.
+    #[reflect(min = 0.0, default = 0.0)]
+    pub normalMapLayer: u32,
 }
 
 impl Default for StandardMaterial {
@@ -300,6 +318,10 @@ impl Default for StandardMaterial {
             anisotropy: 0.0,
             anisotropyRotation: 0.0,
             anisotropyMap: 0,
+            mapArray: 0,
+            mapLayer: 0,
+            normalMapArray: 0,
+            normalMapLayer: 0,
         }
     }
 }
@@ -393,6 +415,32 @@ impl StandardMaterial {
             &mut self.iridescenceThicknessMap,
             &mut self.anisotropyMap,
         ] {
+            if *s == slot {
+                *s = 0;
+                forgot = true;
+            }
+        }
+        forgot
+    }
+
+    /// Whether its lit, prepass and shadow passes draw through the
+    /// array-map pipelines ([`ArrayMaps`]): it names a texture array for
+    /// its base colour or normal and is not physical (a material shader
+    /// also keeps the standard path: the renderer checks that).
+    pub fn draws_array_maps(&self) -> bool {
+        (self.mapArray != 0 || self.normalMapArray != 0) && !self.is_physical()
+    }
+
+    /// The base colour's and the normal map's texture arrays.
+    pub(crate) fn array_maps(&self) -> [Option<crate::TextureArrayHandle>; 2] {
+        [self.mapArray, self.normalMapArray].map(crate::TextureArrayHandle::from_slot)
+    }
+
+    /// Clears the array slots that name `slot` (a removed texture array's,
+    /// [`crate::TextureArrayHandle::slot`]); true when one did.
+    pub(crate) fn forget_texture_array(&mut self, slot: u32) -> bool {
+        let mut forgot = false;
+        for s in [&mut self.mapArray, &mut self.normalMapArray] {
             if *s == slot {
                 *s = 0;
                 forgot = true;
@@ -764,5 +812,365 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             0.0,
         ],
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
+    }
+}
+
+// ── array maps ───────────────────────────────────────────────────────────
+
+/// The array-map pipelines' WGSL: `pbr_array.wgsl` and `shadow_array.wgsl`.
+const PBR_ARRAY_WGSL: &str = include_str!("../shaders/pbr_array.wgsl");
+const SHADOW_ARRAY_WGSL: &str = include_str!("../shaders/shadow_array.wgsl");
+
+/// `text` with `from` replaced by `to`, which must occur: a variant built
+/// from the standard module's text fails loudly (the shader tests build
+/// every module) when that text moves, never silently.
+fn replace_once(text: &str, from: &str, to: &str, what: &str) -> String {
+    assert!(
+        text.contains(from),
+        "the array-map variant cannot find {what} in the standard module"
+    );
+    text.replacen(from, to, 1)
+}
+
+/// Every `textureSample(<texture>, material_sampler, <coords>)` in `text`
+/// with `layer` as its array index.
+fn sample_layer(text: &str, texture: &str, layer: &str) -> String {
+    let call = format!("textureSample({texture}, material_sampler, ");
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    let mut found = 0;
+    while let Some(at) = rest.find(&call) {
+        let args = at + call.len();
+        let close = args + rest[args..].find(')').expect("a closing parenthesis");
+        out.push_str(&rest[..close]);
+        out.push_str(", ");
+        out.push_str(layer);
+        rest = &rest[close..];
+        found += 1;
+    }
+    out.push_str(rest);
+    assert!(found > 0, "the standard module samples {texture} nowhere");
+    out
+}
+
+/// The standard lit module's source (`lit_source`, the built-in hooks) as
+/// its array-map variant: the base colour (binding 1) and the normal map
+/// (binding 4) become 2D arrays sampled at the fragment's layers, the
+/// vertex outputs carry the instance's layer, flat, and the entry points
+/// `vs`, `fs`, `vs_prepass` and `fs_prepass` are `pbr_array.wgsl`'s (the
+/// skinned ones are unchanged: a skinned instance takes its material's
+/// layers). Nothing else changes, so the pixels are the standard path's
+/// where the layer holds the same image.
+pub(crate) fn array_lit_source(standard: &str) -> String {
+    let mut s = standard.to_string();
+    for (binding, name) in [(1, "base_color_tex"), (4, "normal_tex")] {
+        s = replace_once(
+            &s,
+            &format!("@group(1) @binding({binding}) var {name}: texture_2d<f32>;"),
+            &format!("@group(1) @binding({binding}) var {name}: texture_2d_array<f32>;"),
+            name,
+        );
+    }
+    s = sample_layer(&s, "base_color_tex", "map_layer");
+    s = sample_layer(&s, "normal_tex", "normal_layer");
+    for out in ["VertexOut", "PrepassOut"] {
+        s = replace_once(
+            &s,
+            &format!("struct {out} {{\n  @builtin(position) clip: vec4<f32>,\n"),
+            &format!(
+                "struct {out} {{\n  @builtin(position) clip: vec4<f32>,\n  // The instance's texture-array layer plus one (0: the material's).\n  @location(7) @interpolate(flat) layer: u32,\n"
+            ),
+            out,
+        );
+    }
+    for (stage, signature) in [
+        ("@vertex", "vs(v: VertexIn, i: InstanceIn) -> VertexOut {"),
+        ("@fragment", "fs(in: VertexOut) -> @location(0) vec4<f32> {"),
+        (
+            "@vertex",
+            "vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {",
+        ),
+        (
+            "@fragment",
+            "fs_prepass(in: PrepassOut) -> PrepassTargets {",
+        ),
+    ] {
+        let (name, rest) = signature.split_once('(').expect("a signature");
+        s = replace_once(
+            &s,
+            &format!("{stage}\nfn {signature}"),
+            &format!("{stage}\nfn {name}_standard({rest}"),
+            name,
+        );
+    }
+    s.push_str(PBR_ARRAY_WGSL);
+    s
+}
+
+/// The shadow module's source (`shadow_source`, the built-in hooks) as its
+/// array-map variant: `vs` and `vs_lean` zero the layer an array-map
+/// instance carries in its transform (`shadow_array.wgsl`).
+pub(crate) fn array_shadow_source(standard: &str) -> String {
+    let mut s = standard.to_string();
+    for signature in [
+        "vs(v: VertexIn, i: InstanceIn) -> VsOut {",
+        "vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {",
+    ] {
+        let (name, rest) = signature.split_once('(').expect("a signature");
+        s = replace_once(
+            &s,
+            &format!("@vertex\nfn {signature}"),
+            &format!("@vertex\nfn {name}_standard({rest}"),
+            name,
+        );
+    }
+    s.push_str(SHADOW_ARRAY_WGSL);
+    s
+}
+
+/// The uniform `u` of an array-map material `m`: its normal map is the
+/// array's (`two_channel`: a BC5/EAC array), and `coat.zw` hold `mapLayer`
+/// and `normalMapLayer` (`array_layers` in pbr_array.wgsl).
+pub(crate) fn array_uniform(u: &mut MaterialUniform, m: &StandardMaterial, two_channel: bool) {
+    let has_normal = m.normalMapArray != 0;
+    let scale = if has_normal { m.normalScale } else { Vec2::ONE };
+    u.mr[2] = scale.x;
+    u.mr[3] = scale.y;
+    u.flags[0] = match (has_normal, two_channel) {
+        (false, _) => 0.0,
+        (true, false) => 1.0,
+        (true, true) => 2.0,
+    };
+    // Exact as f32 up to 2^24 layers.
+    u.coat[2] = m.mapLayer.min(1 << 24) as f32;
+    u.coat[3] = m.normalMapLayer.min(1 << 24) as f32;
+}
+
+/// What an instance of an array-map material carries in its transform's
+/// `m0.w`: its layer plus one (`None`: 0, the material's layers).
+pub(crate) fn instance_layer_bits(layer: Option<u32>) -> f32 {
+    layer.map_or(0.0, |l| l.min(1 << 24) as f32 + 1.0)
+}
+
+/// The array-map variant of the standard lit, prepass and shadow
+/// pipelines, made when a scene first draws a material with array maps
+/// ([`StandardMaterial::draws_array_maps`]): one material group layout
+/// whose base colour and normal map are 2D arrays, the variant modules,
+/// and the pipelines by the standard keys, made at first use. One lit and
+/// one prepass pipeline for a typical scene, one shadow pipeline per
+/// (side, dissolve).
+pub(crate) struct ArrayMaps {
+    /// Group 1: the standard material group with bindings 1 (base colour)
+    /// and 4 (normal map) as `D2Array`.
+    pub layout: wgpu::BindGroupLayout,
+    /// Static and skinned, as the standard lit and prepass layouts.
+    pub layouts: (wgpu::PipelineLayout, wgpu::PipelineLayout),
+    pub module: wgpu::ShaderModule,
+    pub shadow_module: wgpu::ShaderModule,
+    /// By (side, blended, skinned, effects).
+    pub lit: std::collections::HashMap<crate::PbrKey, wgpu::RenderPipeline>,
+    /// By (side, skinned).
+    pub prepass: std::collections::HashMap<(Side, bool), wgpu::RenderPipeline>,
+    /// Unskinned casters by (side, dissolve) (skinned instances carry no
+    /// layer: the standard shadow pipelines draw them).
+    pub shadow: std::collections::HashMap<(Side, bool), wgpu::RenderPipeline>,
+    /// One-layer stand-ins for a missing array: white, and the flat normal.
+    pub white: wgpu::TextureView,
+    pub flat_normal: wgpu::TextureView,
+}
+
+impl ArrayMaps {
+    pub fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        groups: [&wgpu::BindGroupLayout; 3],
+        lit_source: String,
+        shadow_source: String,
+    ) -> ArrayMaps {
+        let [frame_layout, fx_layout, palette_layout] = groups;
+        let array =
+            |binding| crate::texture_entry(binding, true, wgpu::TextureViewDimension::D2Array);
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("material (array maps)"),
+            entries: &[
+                crate::uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+                array(1),
+                crate::tex2d(2),
+                crate::tex2d(3),
+                array(4),
+                crate::tex2d(5),
+                crate::tex2d(6),
+                crate::sampler_entry(7, wgpu::SamplerBindingType::Filtering),
+                crate::tex2d(8),
+                crate::tex2d(9),
+            ],
+        });
+        let pipeline_layout = |label, groups: &[&wgpu::BindGroupLayout]| {
+            let groups: Vec<_> = groups.iter().map(|l| Some(*l)).collect();
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(label),
+                bind_group_layouts: &groups,
+                immediate_size: 0,
+            })
+        };
+        let layouts = (
+            pipeline_layout("pbr (array maps)", &[frame_layout, &layout, fx_layout]),
+            pipeline_layout(
+                "pbr skinned (array maps)",
+                &[frame_layout, &layout, fx_layout, palette_layout],
+            ),
+        );
+        let solid = |label, rgba: [u8; 4]| {
+            let layers = crate::gl_safe_array_layers(1);
+            let texels: Vec<u8> = (0..layers).flat_map(|_| rgba).collect();
+            wgpu::util::DeviceExt::create_texture_with_data(
+                device,
+                queue,
+                &wgpu::TextureDescriptor {
+                    label: Some(label),
+                    size: wgpu::Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: layers,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    view_formats: &[],
+                },
+                wgpu::util::TextureDataOrder::LayerMajor,
+                &texels,
+            )
+            .create_view(&wgpu::TextureViewDescriptor {
+                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                ..Default::default()
+            })
+        };
+        ArrayMaps {
+            layout,
+            layouts,
+            module: crate::shader(device, "pbr (array maps)", array_lit_source(&lit_source)),
+            shadow_module: crate::shader(
+                device,
+                "shadow (array maps)",
+                array_shadow_source(&shadow_source),
+            ),
+            lit: Default::default(),
+            prepass: Default::default(),
+            shadow: Default::default(),
+            white: solid("array maps: white", [255; 4]),
+            flat_normal: solid("array maps: flat normal", [128, 128, 255, 255]),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The array-map module is the standard one with its base colour and
+    /// normal map as arrays, every sample of them at the fragment's layer,
+    /// the layer handed on flat, and the four entry points replaced.
+    #[test]
+    fn the_array_variant_samples_every_map_at_its_layer() {
+        let standard = crate::lit_source(&crate::hooks::default_hooks(), true);
+        let array = array_lit_source(&standard);
+        for decl in [
+            "var base_color_tex: texture_2d_array<f32>;",
+            "var normal_tex: texture_2d_array<f32>;",
+            "@location(7) @interpolate(flat) layer: u32,",
+            "fn vs_standard(",
+            "fn fs_prepass_standard(",
+        ] {
+            assert!(array.contains(decl), "{decl}");
+        }
+        assert_eq!(array.matches("@interpolate(flat) layer: u32").count(), 2);
+        for (texture, layer) in [
+            ("base_color_tex", "map_layer"),
+            ("normal_tex", "normal_layer"),
+        ] {
+            let samples = standard
+                .matches(&format!("textureSample({texture}, "))
+                .count();
+            assert!(samples > 0);
+            let layered = array
+                .split(&format!("textureSample({texture}, material_sampler, "))
+                .skip(1)
+                .filter(|rest| rest.split(')').next().unwrap().ends_with(layer))
+                .count();
+            assert_eq!(layered, samples, "{texture}");
+        }
+        // The shadow variant renames its two plain vertex stages only.
+        let shadow = array_shadow_source(&crate::shadow_source(
+            &crate::hooks::default_hooks(),
+            crate::skin::PaletteMode::Storage,
+        ));
+        assert!(shadow.contains("fn vs_standard(") && shadow.contains("fn vs_lean_standard("));
+        assert_eq!(shadow.matches("\nfn vs(").count(), 1);
+    }
+
+    #[test]
+    fn array_maps_set_the_layers_and_the_normal_kind() {
+        let m = StandardMaterial {
+            mapArray: 3,
+            mapLayer: 5,
+            normalMapArray: 4,
+            normalMapLayer: 2,
+            normalScale: Vec2::new(0.5, 2.0),
+            ..Default::default()
+        };
+        assert!(m.draws_array_maps());
+        let mut u = uniform(&m, false);
+        // Without a 2D normal map the standard uniform has none.
+        assert_eq!((u.flags[0], u.mr[2]), (0.0, 1.0));
+        array_uniform(&mut u, &m, true);
+        assert_eq!(u.flags[0], 2.0);
+        assert_eq!(
+            [u.mr[2], u.mr[3], u.coat[2], u.coat[3]],
+            [0.5, 2.0, 5.0, 2.0]
+        );
+        // A material without arrays keeps coat.zw at 0: its uniform is unchanged.
+        assert_eq!(
+            uniform(&StandardMaterial::default(), false).coat[2..],
+            [0.0, 0.0]
+        );
+        // Physical materials keep their own path.
+        let physical = StandardMaterial { sheen: 1.0, ..m };
+        assert!(!physical.draws_array_maps());
+        assert_eq!(instance_layer_bits(None), 0.0);
+        assert_eq!(instance_layer_bits(Some(6)), 7.0);
+    }
+
+    /// Removing a texture array forgets it in every material that samples
+    /// it (and bumps their revisions), as removing a texture does.
+    #[test]
+    fn a_removed_array_is_forgotten_by_its_materials() {
+        let mut scene = crate::RenderScene::new();
+        let layer = crate::TextureSource::Rgba(crate::TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![255; 4],
+            color_space: crate::ColorSpace::Srgb,
+            mips: crate::Mips::None,
+        });
+        let array = scene
+            .add_texture_array(crate::TextureArrayData {
+                layers: vec![layer.clone(), layer],
+            })
+            .unwrap();
+        assert_eq!(
+            crate::TextureArrayHandle::from_slot(array.slot()),
+            Some(array)
+        );
+        let h = scene.add_standard_material(StandardMaterial {
+            mapArray: array.slot(),
+            normalMapArray: array.slot(),
+            ..Default::default()
+        });
+        assert!(scene.remove_texture_array(array));
+        let m = scene.standard_material(h).unwrap();
+        assert_eq!((m.mapArray, m.normalMapArray), (0, 0));
     }
 }

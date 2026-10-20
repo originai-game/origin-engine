@@ -64,6 +64,14 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             &format!("shadow ({p})"),
             crate::shadow_source(&hooks, palette),
         );
+        add(
+            &format!("pbr array maps ({p})"),
+            crate::material::array_lit_source(&crate::lit_source_with(&hooks, palette, tables)),
+        );
+        add(
+            &format!("shadow array maps ({p})"),
+            crate::material::array_shadow_source(&crate::shadow_source(&hooks, palette)),
+        );
     }
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(
