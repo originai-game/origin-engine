@@ -113,20 +113,26 @@ async function importGame(file: string): Promise<GameToken> {
   return mod.default!;
 }
 
-/** project.ogt's `profile` ("2d" or "3d"), which chooses the physics profile. */
-function projectProfile(dir: string | undefined): "2d" | "3d" | undefined {
+/** project.ogt's text, which the engine reads tick, seed, scenes and scene from (CreateOptions.project). */
+function projectText(dir: string | undefined): string | undefined {
   if (!dir || !existsSync(join(dir, "project.ogt"))) return undefined;
-  const m = /^\s*profile\s+"(2d|3d)"/m.exec(readFileSync(join(dir, "project.ogt"), "utf8"));
+  return readFileSync(join(dir, "project.ogt"), "utf8");
+}
+
+/** project.ogt's `profile` ("2d" or "3d"), which chooses the physics profile. */
+function projectProfile(text: string | undefined): "2d" | "3d" | undefined {
+  const m = text === undefined ? null : /^\s*profile\s+"(2d|3d)"/m.exec(text);
   return m ? (m[1] as "2d" | "3d") : undefined;
 }
 
 const game = await importGame(entry);
-const profile = projectProfile(root);
+const project = projectText(root);
+const profile = projectProfile(project);
 const probing = commands !== undefined || port !== undefined || watchFile !== undefined;
 // With a renderer, GameDesc.start runs once it is attached (as the web Worker
 // does), so og.render.capabilities reports the play surface's size there.
 const deferStart = probing && render;
-const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
+const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
 // og.platform: the local store, in memory unless --platform-store names a file;
@@ -207,7 +213,7 @@ if (commands !== undefined) {
   untilTick = report!.untilTick;
 }
 
-const rate = engine.game.tick;
+const rate = engine.rate;
 const tickMs = 1000 / rate;
 const t0 = performance.now();
 let frameFailed: string | null = null;

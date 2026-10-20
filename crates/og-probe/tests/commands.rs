@@ -592,6 +592,72 @@ fn set_and_get_reach_resources_entities_components_and_fields() {
 }
 
 #[test]
+fn get_answers_og_time_whole_and_unnamed_gets_on_one_tick_keep_their_files() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(
+            &h.world,
+            "0:get:og.Time;0:get:og.Time.scaledDt;0:get:og.Time.rate;0:get:Stats.draws:named.json;0:get:og.TimeScale",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    assert!(log.iter().all(|l| !l.warning), "{log:?}");
+    let outputs: Vec<(String, Value)> = h
+        .probe
+        .take_outputs()
+        .into_iter()
+        .filter_map(|o| match &o.payload {
+            Payload::Json(v) => Some((o.file_name(), v["value"].clone())),
+            _ => None,
+        })
+        .collect();
+    let names: Vec<&str> = outputs.iter().map(|(n, _)| n.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "get-000000.json",
+            "get-000000-2.json",
+            "get-000000-3.json",
+            "named.json",
+            "get-000000-4.json"
+        ]
+    );
+    // og.Time as game code reads it: the clock, its rate and the time scale.
+    let time = &outputs[0].1;
+    for key in [
+        "tick",
+        "dt",
+        "elapsed",
+        "rate",
+        "scale",
+        "hitStop",
+        "scaledDt",
+        "scaledElapsed",
+    ] {
+        assert!(time.get(key).is_some(), "og.Time has no {key}: {time}");
+    }
+    assert_eq!(time["scale"], json!(1.0));
+    assert_eq!(outputs[1].1, time["dt"]);
+    assert_eq!(outputs[2].1, json!(60));
+    // og.TimeScale, where the world keeps scale and hit stop, answers too.
+    assert_eq!(outputs[4].1["scale"], json!(1.0));
+
+    // A write outside a field's range is refused, naming the range and the fix.
+    h.probe
+        .schedule(&h.world, "0:set:player.Health.hp=2000")
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    assert!(
+        log.iter().any(|l| l.warning
+            && l.text.contains("above the maximum 1000")
+            && l.text.contains("FieldOptions")),
+        "{log:?}"
+    );
+}
+
+#[test]
 fn output_paths_stay_inside_the_output_directory() {
     let mut h = build(1, true);
     h.probe

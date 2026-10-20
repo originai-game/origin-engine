@@ -290,6 +290,8 @@ export interface ApiNames {
   members: Map<string, Set<string>>;
   /** `<Type>.<field>` and `og.<Token>.<field>`: the fields of every struct, desc, component, resource and event. */
   fields: Map<string, Set<string>>;
+  /** Every field name of any of them. */
+  anyField: Set<string>;
 }
 
 /** `og.` names a skill may write that are not API: each with why. */
@@ -298,6 +300,14 @@ export const NOT_API: Record<string, string> = {
   "og.AudioPlayback": "an engine-owned component dump_entity shows while a voice plays; game code never names it",
   "og.AudioStream": "an engine-owned component dump_entity shows on a streamed voice; game code never names it",
   "og.physics.queries": "the engine system dump_world lists that records the colliders a system's queries see",
+  "og.TimeScale": "the engine-owned resource that keeps og.Time's scale and hit stop; dumps list it and the probe's get and set reach it, game code reads og.Time",
+};
+
+/** `` `key: value` `` spans a skill may write whose key is no field of the generated API: each with why. */
+export const NOT_FIELDS: Record<string, string> = {
+  runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
+  then: "PlaytestDesc.then (packages/engine/src/playtest.ts)",
+  store: "PlaytestRun.store (packages/engine/src/playtest.ts)",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {
@@ -307,7 +317,7 @@ export function readApiNames(engine: string): ApiNames | undefined {
     "x-og-modules"?: { name: string; place: string; functions?: { name: string }[]; values?: { name: string }[] }[];
     $defs?: Record<string, { "x-og-kind"?: string; properties?: Record<string, unknown> }>;
   };
-  const names: ApiNames = { root: new Set(), members: new Map(), fields: new Map() };
+  const names: ApiNames = { root: new Set(), members: new Map(), fields: new Map(), anyField: new Set() };
   for (const m of schema["x-og-modules"] ?? []) {
     const fns = [...(m.functions ?? []), ...(m.values ?? [])].map((f) => f.name);
     if (m.place === "root") for (const f of fns) names.root.add(f);
@@ -320,6 +330,7 @@ export function readApiNames(engine: string): ApiNames | undefined {
     const kind = def["x-og-kind"] ?? "";
     if (["component", "resource", "event"].includes(kind)) names.root.add(name);
     if (def.properties) names.fields.set(name, new Set(Object.keys(def.properties)));
+    for (const k of Object.keys(def.properties ?? {})) names.anyField.add(k);
   }
   return names;
 }
@@ -356,6 +367,20 @@ function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[
     for (const x of text.matchAll(/(?<![\w./@-])([A-Z][A-Za-z0-9]*)\.([a-z]\w*)\b/g)) {
       const have = api.fields.get(x[1]!);
       if (have && !have.has(x[2]!)) bad.add(x[0]);
+    }
+    // A component, resource or event's value written beside its token
+    // (`world.insert(e, og.AudioSource, { sound, loop: true })`): each key one of its fields.
+    for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Z]\w*)\s*,\s*\{([^{}]*)\}/g)) {
+      const have = api.fields.get(x[1]!);
+      if (!have) continue;
+      for (const part of x[2]!.split(",")) {
+        const key = /^\s*([A-Za-z_]\w*)\s*(?::|$)/.exec(part)?.[1];
+        if (key && !have.has(key)) bad.add(`og.${x[1]}.${key}`);
+      }
+    }
+    // A field set in prose, `` `looping: true` ``: its key is some type's field.
+    for (const x of text.matchAll(/`([a-z]\w*): [^`]+`/g)) {
+      if (!api.anyField.has(x[1]!) && !(x[1]! in NOT_FIELDS)) bad.add(x[1]!);
     }
     for (const b of bad) problems.push(`${at}: names \`${b}\`, which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts`);
   }

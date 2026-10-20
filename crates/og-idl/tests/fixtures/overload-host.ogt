@@ -1,0 +1,45 @@
+type api
+version 1
+---
+# expect: 40: duplicate fn `pick` in module `a` (only `host false` fns overload
+package "@origingame/fixture"
+doc "A fixture: the smallest valid API plus one mistake below."
+
+module reflect {
+  skill og-core
+  doc "Reflection."
+  place top
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+  }
+  column f32 {
+    doc "A float."
+    array Float32Array
+    stride 1
+    value f32
+  }
+}
+
+module a {
+  skill og-core
+  doc "Module a: a `host false` fn may be overloaded by another right after it, never by a host fn."
+  fn pick {
+    doc "Pick by name."
+    host false
+    param name String "A name."
+    returns i32
+  }
+  fn pick {
+    doc "Pick by index."
+    host false
+    param index u32 "An index."
+    returns i32
+  }
+  fn pick {
+    doc "Pick from the host."
+    param name String "A name."
+    returns i32
+  }
+}

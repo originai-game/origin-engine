@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# GameDesc in src/main.ts sets none of tick, seed, scenes and scene: these
+# apply (tests/og-run.test.ts).
+name "Project defaults"
+id "project-defaults"
+engine "0.0.1"
+entry "src/main.ts"
+profile "2d"
+tick 30
+seed 5

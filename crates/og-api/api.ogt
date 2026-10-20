@@ -90,7 +90,7 @@ module reflect {
   place top
 
   struct FieldOptions {
-    doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes."
+    doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named."
     desc true
     field min Option.f32 "The smallest meaningful value."
     field max Option.f32 "The largest meaningful value."
@@ -447,15 +447,15 @@ module game {
   struct GameDesc {
     doc "A game: its tick, scenes, systems and commands."
     desc true
-    field tick u32 "The fixed tick rate." {
+    field tick u32 "The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both." {
       default 60
       min 1
       max 240
       unit hz
     }
-    field seed u32 "The project seed every Rng stream derives from. A replay overrides it."
-    field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`."
-    field scene String "The scene loaded first." {
+    field seed u32 "The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it."
+    field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`; left unset, project.ogt's `scenes` block."
+    field scene String "The scene loaded first; left unset, project.ogt's `scene` (else main)." {
       default "main"
     }
     field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
@@ -469,14 +469,14 @@ module game {
       unit ticks
     }
     field facts Option.FactsFn "The game's own facts for the probe's state()."
-    field start Option.StartFn "Called once before the first tick, after the first scene spawned."
+    field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
     field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
     field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none."
   }
 
   interface Game {
     doc "A declared game, the bundle's default export."
-    prop tick u32 "The fixed tick rate in hertz."
+    prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
     prop systems List.System "The systems in declaration order."
   }
 
@@ -555,7 +555,7 @@ module time {
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
 
   resource Time {
-    doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers."
+    doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script."
     field tick u32 "Fixed steps taken since load." {
       readonly true
       unit ticks
@@ -3364,7 +3364,7 @@ module load {
     field scenes u32 "How many scenes it has."
     field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
     field materials List.Material "Its materials, in glTF order, then the default material."
-    field animations List.String "Its animation clip names (the cook counts clips and does not cook them yet, so this is empty)."
+    field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
   }
 
   struct BundleInfo {
@@ -3437,6 +3437,7 @@ module load {
 
   fn gltf {
     doc "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once."
+    doc "A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame)."
     param world World "The world that owns the asset."
     param path String "The asset id, such as `models/ship.glb`."
     param desc GltfDesc "Scene and shadow options."
@@ -5226,7 +5227,7 @@ module atmosphere {
   }
 
   resource DayNight {
-    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
+    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`."
     field enabled bool "Run the cycle."
     field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
       default 9
@@ -5917,6 +5918,14 @@ module anim {
     param info FlipbookInfo "What og.load.flipbook answered."
     param name String "The clip's name."
     returns i32
+  }
+
+  fn clip {
+    doc "A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, \"models/slime.glb\").value, \"chase\")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name). A skinned glTF's clips are its animations' names; an animated `.vox`'s are `frames` or its `voxClip` names. 0 (plays nothing) when the model has no such clip."
+    host false
+    param info Animation "What og.load.animation answered."
+    param name String "The clip's name."
+    returns ClipAsset
   }
 }
 
@@ -9979,8 +9988,8 @@ module commands {
     variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
     variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
     variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
-    variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema."
-    variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON."
+    variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped."
+    variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...)."
     variant seed "`seed:<n>`: reseed the Rng resource."
     variant pause "`pause`: hold the clock; advance still steps."
     variant resume "`resume`: release the clock."

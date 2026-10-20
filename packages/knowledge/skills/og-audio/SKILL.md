@@ -70,7 +70,8 @@ at 1.0 is a mix bug, not loudness.
 
 ## 5. Music
 
-- Loop a track with `looping: true` on the music bus.
+- Loop a track with `AudioSource.loop` (`loop: true`, with `loopStart` and
+  `loopEnd` for an intro that plays once) and `bus: "music"`.
 - Stems: start every layer at the same `startAt` (world seconds) and bring
   layers in and out with `volume` and `fade` (0.5–2 s), never by starting
   them late: they stay sample-aligned.

@@ -316,12 +316,12 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     (
         "set",
         "set:<entity>.<component>.<field>=<value> | set:<Resource>.<field>=<value>",
-        "Write one field of a component or a resource through the schema; vectors as `x,y,z`; range-checked, never clamped.",
+        "Write one field of a component or a resource through the schema; a number, `true`/`false` for a bool, vectors as `x,y,z`; refused outside the field's min/max, never clamped.",
     ),
     (
         "get",
         "get:<Resource>[.<field>] | get:<entity>[.<component>[.<field>]][:path]",
-        "Read a resource, an entity, a component or one field: logged and written as JSON (`get-<tick>.json`).",
+        "Read a resource, an entity, a component or one field as game code sees it (og.Time whole, a light og.DayNight drives as drawn): logged and written as JSON (`get-<tick>.json`, then `get-<tick>-2.json`, ... on one tick).",
     ),
     ("seed", "seed:<n>", "Reseed the world's Rng resource."),
     ("pause", "pause", "Hold the clock; advance still steps."),

@@ -165,6 +165,8 @@ fn defaultBundle {
 
 Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
 
+A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame).
+
 ```ts
 og.load.gltf(world: World, path: string, desc?: GltfDesc): Result<Asset>
 ```
@@ -182,6 +184,7 @@ Binding symbol `og_load_gltf` · publish builds: kept
 ```ogt
 fn gltf {
   doc "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once."
+  doc "A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame)."
   param world World "The world that owns the asset."
   param path String "The asset id, such as `models/ship.glb`."
   param desc GltfDesc "Scene and shadow options."
@@ -219,7 +222,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3446</sub>
+<sub>`api.ogt` line 3447</sub>
 
 <a id="fn-font"></a>
 
@@ -249,7 +252,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3453</sub>
+<sub>`api.ogt` line 3454</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -279,7 +282,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3460</sub>
+<sub>`api.ogt` line 3461</sub>
 
 <a id="fn-sound"></a>
 
@@ -312,7 +315,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3467</sub>
+<sub>`api.ogt` line 3468</sub>
 
 <a id="fn-lut"></a>
 
@@ -342,7 +345,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3475</sub>
+<sub>`api.ogt` line 3476</sub>
 
 <a id="fn-environment"></a>
 
@@ -372,7 +375,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3482</sub>
+<sub>`api.ogt` line 3483</sub>
 
 <a id="fn-emitter"></a>
 
@@ -402,7 +405,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3489</sub>
+<sub>`api.ogt` line 3490</sub>
 
 <a id="fn-shader"></a>
 
@@ -432,7 +435,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3496</sub>
+<sub>`api.ogt` line 3497</sub>
 
 <a id="fn-texture"></a>
 
@@ -465,7 +468,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3503</sub>
+<sub>`api.ogt` line 3504</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -498,7 +501,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 3511</sub>
+<sub>`api.ogt` line 3512</sub>
 
 <a id="fn-skin"></a>
 
@@ -528,7 +531,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3519</sub>
+<sub>`api.ogt` line 3520</sub>
 
 <a id="fn-look"></a>
 
@@ -558,7 +561,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3526</sub>
+<sub>`api.ogt` line 3527</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -588,7 +591,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3533</sub>
+<sub>`api.ogt` line 3534</sub>
 
 <a id="fn-palette"></a>
 
@@ -618,7 +621,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 3540</sub>
+<sub>`api.ogt` line 3541</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -648,7 +651,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3547</sub>
+<sub>`api.ogt` line 3548</sub>
 
 <a id="fn-status"></a>
 
@@ -678,7 +681,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3554</sub>
+<sub>`api.ogt` line 3555</sub>
 
 <a id="fn-error"></a>
 
@@ -708,7 +711,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3561</sub>
+<sub>`api.ogt` line 3562</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -738,7 +741,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3568</sub>
+<sub>`api.ogt` line 3569</sub>
 
 <a id="fn-animation"></a>
 
@@ -771,7 +774,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3575</sub>
+<sub>`api.ogt` line 3576</sub>
 
 <a id="fn-rig"></a>
 
@@ -801,7 +804,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3583</sub>
+<sub>`api.ogt` line 3584</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -831,7 +834,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3590</sub>
+<sub>`api.ogt` line 3591</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -861,7 +864,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3597</sub>
+<sub>`api.ogt` line 3598</sub>
 
 ## Components, resources and events
 
@@ -907,7 +910,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3604</sub>
+<sub>`api.ogt` line 3605</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -932,7 +935,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3610</sub>
+<sub>`api.ogt` line 3611</sub>
 
 ## Types
 
@@ -1068,7 +1071,7 @@ What a loaded glTF holds.
 | `scenes` | `number` | `0` | — | — | — | How many scenes it has. |
 | `geometries` | `readonly Geometry[]` | `[]` | — | — | — | Its geometries, in glTF mesh-primitive order. |
 | `materials` | `readonly Material[]` | `[]` | — | — | — | Its materials, in glTF order, then the default material. |
-| `animations` | `readonly string[]` | `[]` | — | — | — | Its animation clip names (the cook counts clips and does not cook them yet, so this is empty). |
+| `animations` | `readonly string[]` | `[]` | — | — | — | Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name. |
 
 ```ogt
 struct GltfInfo {
@@ -1076,7 +1079,7 @@ struct GltfInfo {
   field scenes u32 "How many scenes it has."
   field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
   field materials List.Material "Its materials, in glTF order, then the default material."
-  field animations List.String "Its animation clip names (the cook counts clips and does not cook them yet, so this is empty)."
+  field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
 }
 ```
 

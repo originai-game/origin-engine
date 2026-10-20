@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Pixel art: lossless, nearest.
-texture {
-  kind pixel
-}

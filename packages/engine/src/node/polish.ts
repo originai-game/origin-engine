@@ -98,9 +98,13 @@ interface RunRecord {
 
 const INPUT = /^(key_down|touch_start|touch|gamepad|type|scroll)$/;
 
-function projectProfile(dir: string): "2d" | "3d" | undefined {
-  if (!existsSync(join(dir, "project.ogt"))) return undefined;
-  const m = /^\s*profile\s+"(2d|3d)"/m.exec(readFileSync(join(dir, "project.ogt"), "utf8"));
+/** project.ogt's text, which the engine reads tick, seed, scenes and scene from (CreateOptions.project). */
+function projectText(dir: string): string | undefined {
+  return existsSync(join(dir, "project.ogt")) ? readFileSync(join(dir, "project.ogt"), "utf8") : undefined;
+}
+
+function projectProfile(text: string | undefined): "2d" | "3d" | undefined {
+  const m = text === undefined ? null : /^\s*profile\s+"(2d|3d)"/m.exec(text);
   return m ? (m[1] as "2d" | "3d") : undefined;
 }
 
@@ -144,9 +148,10 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   const extras = native();
   const game = ((await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken }).default;
   if (!game) fail(`${entry} has no default export`);
-  const profile = projectProfile(root);
+  const project = projectText(root);
+  const profile = projectProfile(project);
   // GameDesc.start runs once the renderer is attached (as og run and the web Worker do).
-  const created = createEngine(game!, { root, deferStart: true, ...(profile ? { profile } : {}), ...(desc!.seed === undefined ? {} : { seed: desc!.seed }) });
+  const created = createEngine(game!, { root, deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(desc!.seed === undefined ? {} : { seed: desc!.seed }) });
   if (!created.ok) fail(`${entry}: ${created.reason}`);
   const engine: Engine = created.value;
   engine.attachPlatform(nativePlatform());
@@ -188,7 +193,7 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   drain();
   // A dump_pulse at the start of every tick through the script's last step
   // (the state the previous tick left), each its own output.
-  const rate = engine.game.tick;
+  const rate = engine.rate;
   const last = Math.max(0, ...steps.map((st) => Number(st.split(":")[0]) || 0));
   // Steps ascend in time: the pulses go in order, before a step of the same tick.
   const timed = script.map((st, i) => ({ at: Number(st.split(":")[0]) || 0, order: 1, i, st }));

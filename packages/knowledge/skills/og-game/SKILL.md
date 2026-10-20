@@ -40,7 +40,11 @@ in this table owns it and the other points there.
 | `dist/` | `og build` output |
 
 The engine version in `project.ogt` is a pin. Upgrading it is an explicit
-change with its own run, never a side effect.
+change with its own run, never a side effect. Its `tick`, `seed`, `scenes`
+and `scene` are the defaults of the `GameDesc` fields of those names: what
+`og.game({...})` leaves unset takes the manifest's value (else 60, 0, none
+and `main`). Write each in one place; set in both to different values, the
+engine refuses to start and names both.
 
 ## 3. Components, resources, systems, the game
 
@@ -134,11 +138,32 @@ registered schema and refuses a model path that does not exist.
   whole CJK charset: the full set is several times the size of the font.
 - MagicaVoxel `.vox` files are models: the cook meshes every model of the
   file (greedy quads, flat-shaded, the palette as vertex colours) and its
-  scene graph into a glTF, z-up turned y-up, one voxel one metre, the pivot
-  at the model's centre, with one white rough material your
-  `og.MaterialStyle` or own material replaces. Load and place it as any
-  glTF: `og.load.gltf(world, "models/hut.vox")`, or a scene's
-  `model "models/hut.vox"`. The `voxel-worlds` look (§15) suits them.
+  scene graph into a glTF, z-up turned y-up, each model about its centre
+  (MagicaVoxel's pivot, with or without a scene graph), with one white
+  rough material your `og.MaterialStyle` or own material replaces. Load
+  and place it as any glTF: `og.load.gltf(world, "models/hut.vox")`, or a
+  scene's `model "models/hut.vox"`. The `voxel-worlds` look (§15) suits
+  them. Its import settings (`models/hut.vox.ogt`) set the size and the
+  origin; without them a voxel is one metre and the origin is the editor's
+  (a character 16 voxels tall would be 16 m, its feet 8 m below its
+  position):
+
+  ```text
+  type import
+  version 1
+  ---
+  model {
+    voxScale 0.1      # metres per voxel (default 1)
+    voxOrigin bottom  # center (default: the editor's origin) | bottom (the lowest voxel on y = 0)
+  }
+  ```
+
+  A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap
+  the frames' models: play them as skinned clips (§9). `voxFps 8` sets the
+  rate (default 10), `voxClip walk 0 3` names frames 0 to 3 (repeatable;
+  without it one clip `frames` holds every frame). Each frame is centred on
+  its own pivot, as in the editor: give the frames one height (or pad them)
+  for a character whose feet stay on the ground.
 - Reusable production assets come through the platform's asset catalog into
   `assets/`; record each file's licence next to it.
 
@@ -310,8 +335,9 @@ og.Rng and keeps its fog of war on a layer, and
 
 Skinned glTF models animate through `og.anim` (`reference/anim.md`):
 `og.load.animation(world, "models/walker.glb")` answers the rig's skeleton
-and clips; on the instantiated model's entity, `og.Skeleton { asset }` poses
-it and `og.AnimationPlayer { clip, speed, loop, fade }` plays a clip
+and clips (`og.load.gltfInfo(world, model).animations` lists the clip
+names too); on the instantiated model's entity, `og.Skeleton { asset }`
+poses it and `og.AnimationPlayer { clip, speed, loop, fade }` plays a clip
 (changing `clip` cross-fades over `fade`; `stepFps` holds each pose for
 1/stepFps seconds: 12 is stop motion on twos, 8 on threes, for clay and
 puppet looks, while events and root motion stay smooth).
@@ -321,6 +347,17 @@ such as speed pick the motion), `og.IkChain` turns a chain of bones to a
 target after the clips, `og.Blendshapes` weighs morph targets, and
 `og.AnimationEvent` reports a clip's named frames. Root motion is a
 `Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
+`og.anim.clip` finds a clip by name, a model's as a flipbook's (§8):
+
+```ts
+const anim = must(og.load.animation(world, "models/slime.vox"));
+const chase = og.anim.clip(anim, "chase"); // a ClipAsset; 0 when the model has none
+world.insert(slime, og.Skeleton, { asset: anim.skeleton });
+world.insert(slime, og.AnimationPlayer, { clip: chase, loop: true, stepFps: 12 });
+```
+
+A `.vox` with frames (§5) is played the same way: its clips (`frames`, or
+the `voxClip` names) swap the frames' models on the frame boundaries.
 
 **Retargeting** — one clip on characters of other proportions and bone
 names. Keep shared clips in an animation library (a glTF with a skeleton
@@ -545,9 +582,13 @@ dissolve, wind-swayed grass and a ripple on the walking walker.
 
 ## 13. Physics
 
-`og.RigidBody`, `og.Collider` and `og.Velocity` on an entity make it a body
-in the profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and
-sensors arrive as events, and `og.physics` answers queries:
+`og.RigidBody` and `og.Collider` on an entity make it a body in the
+profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and sensors
+arrive as events, and `og.physics` answers queries. `og.Velocity` is
+optional: the step adds it to a dynamic body that has none, and a kinematic
+body moves by it when it has one. `world.set(e, og.Velocity, ...)` refuses on
+an entity without one (a body in `start`, before its first step):
+`world.insert` it there, which adds and sets it.
 
 ```ts
 const hit = og.physics.raycast(world, { origin: eye, direction: { x: 0, y: 0, z: -1 }, maxDistance: 30, filter: { mask: 0b10, exclude: player } });
