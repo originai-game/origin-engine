@@ -442,8 +442,20 @@ module, so they cannot drift) in one run and takes one shot per preset
 of the catalogue at its screenshot's tick (37 shots, the last at tick
 1164), each compared with `references/<tier>/looks-<slug>.png`, else
 `metal`'s. The plain and look-taken-off frames are the playtest's own
-check and are not taken. No browser tier has looks references of its
-own yet: every frame is judged against `metal`.
+check and are not taken. WebGPU has no looks references of its own
+(every frame within RMSE 0.0098 of `metal`, 2026-10-21). WebGL2 keeps
+two by design, `paper-craft` and `voxel-worlds` (RMSE 0.0187 and 0.0113
+against `metal` at cf5f2b9): both turn on `PostEffects.ao` with the
+default method, which is GTAO on the full tier and SSAO on WebGL2
+(og-render's README, "Ambient occlusion by tier"); `sculpted-clay` uses
+it too but stays within tolerance (0.0062) and is judged against
+`metal`. The other 34 are judged against `metal` on WebGL2 since
+cf5f2b9: before it, TAA's history loop drifted sideways on the GL
+backend with a still camera (every edge about a pixel off, which the
+looks' posterize, ink and outlines turned into whole moved lines: 30
+frames at RMSE 0.010 to 0.046, present since the station joined the
+tiers), and the resolve now decides a still camera on the CPU and reads
+each pixel's own history texel with no GPU reprojection.
 
 `web-reference` also runs Ember Vale (`templates/archetypes/third-person`)
 on both tiers: reference.ts with `--project
