@@ -6,9 +6,10 @@
 //   paint     painterly smoothing (a Kuwahara filter, its sectors turned
 //             along the image's edges by `anisotropy`), pigment pooling at
 //             the edges, colour bleeding, a canvas laid over the frame or,
-//             in surface space, on the surfaces;
-//   lines     cross-hatching from the tone, halftone dots on a rotated
-//             grid (both over the frame or, in surface space, on the
+//             in surface or object space, on the surfaces;
+//   lines     cross-hatching from the tone (and, with `hatchingDepth`, the
+//             prepass's contours), halftone dots on a rotated grid (both
+//             over the frame or, in surface or object space, on the
 //             surfaces), ink lines on luminance edges and, with
 //             `inkDepth`, on the depth-normal prepass's silhouettes and
 //             creases;
