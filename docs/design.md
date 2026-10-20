@@ -356,6 +356,13 @@ Measured in the spike (§10) and gated in CI afterwards.
 | hot reload | ≤ 300 ms from bundle write to first new frame |
 | headless executor image (`engine`) | ≤ 600 MB |
 
+The wasm budget is per download: a page downloads one engine module, the
+publish variant of its game's physics profile (3D or 2D) or, on a
+cross-origin isolated page, the lanes variant, so each module is held to
+it and the figure that counts is the largest one a player downloads, never
+the sum of the modules a build ships (docs/web-export.md §Variants,
+docs/ci.md §Updating a budget).
+
 ## 8. Platform matrix
 
 | | WebGPU (Chrome, Edge, Safari 26+, recent Firefox) | WebGL2 fallback | native Linux (executor) | native macOS (developer) |

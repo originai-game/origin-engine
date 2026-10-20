@@ -443,9 +443,9 @@ Token `og.IkChain`, registered under the schema name `og.IkChain`; its value typ
 | `tip` | `number` | `0` | ≥ 0 | — | — | The end joint (an index into the skin's joints): the foot or the hand. |
 | `bones` | `number` | `2` | 1 … 32 | — | — | How many bones above the tip turn (two-bone always uses 2). |
 | `solver` | `IkSolver` | `"twoBone"` | — | — | — | twoBone (analytic, with a pole) or fabrik (iterative, any length). |
-| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the tip should be. |
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world). |
 | `pole` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend. |
-| `space` | `IkSpace` | `"world"` | — | — | — | What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model. |
+| `space` | `IkSpace` | `"world"` | — | — | — | What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model. |
 | `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved). |
 | `iterations` | `number` | `10` | 1 … 64 | — | — | FABRIK iterations at most. |
 | `tolerance` | `number` | `0.001` | ≥ 0 | `m` | — | The tip distance (model units) at which the target counts as reached. |
@@ -465,13 +465,13 @@ component IkChain {
     max 32
   }
   field solver IkSolver "twoBone (analytic, with a pole) or fabrik (iterative, any length)."
-  field target Vector3 "Where the tip should be." {
+  field target Vector3 "Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world)." {
     unit m
   }
   field pole Vector3 "A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend." {
     unit m
   }
-  field space IkSpace "What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model."
+  field space IkSpace "What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model."
   field weight f32 "How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved)." {
     default 1
     min 0
@@ -739,13 +739,13 @@ A string: one of the variants below. The zero value is `"world"`.
 
 | Variant | Doc |
 |---|---|
-| `"world"` | World positions: the skeleton entity's og.Transform applies. |
+| `"world"` | Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child (a body under a character capsule takes targets relative to the capsule; transform world points by the parent's inverse yourself). |
 | `"model"` | The skeleton's model space. |
 
 ```ogt
 enum IkSpace {
   doc "What an IK chain's target and pole are relative to."
-  variant world "World positions: the skeleton entity's og.Transform applies."
+  variant world "Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child (a body under a character capsule takes targets relative to the capsule; transform world points by the parent's inverse yourself)."
   variant model "The skeleton's model space."
 }
 ```

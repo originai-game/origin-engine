@@ -590,3 +590,104 @@ fn skin_pack_packs_nine_patches_and_rewrites_the_skin_file() {
         text(&out)
     );
 }
+
+/// `og dev` stopped from outside (SIGTERM from a supervisor, SIGHUP from a
+/// closed terminal, SIGINT) stops its game process and whatever that
+/// started (here a stand-in for a browser), then ends by the same signal;
+/// it used to die alone and leave its bun child running.
+#[cfg(unix)]
+#[test]
+fn dev_stopped_by_a_signal_stops_its_game_and_what_it_started() {
+    let alive = |pid: i32| unsafe { libc::kill(pid, 0) == 0 };
+    for (sig, name) in [
+        (libc::SIGTERM, "SIGTERM"),
+        (libc::SIGHUP, "SIGHUP"),
+        (libc::SIGINT, "SIGINT"),
+    ] {
+        let dir = scratch_root();
+        std::fs::remove_dir_all(dir.join("crates")).unwrap();
+        let engine = dir.join("engine");
+        std::fs::create_dir_all(engine.join("src/node")).unwrap();
+        std::fs::write(
+            engine.join("src/node/build.ts"),
+            "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], 'export default 0;');\n",
+        )
+        .unwrap();
+        // The game: records its pid and a child's (a stand-in for a browser
+        // it opened), ignores nothing, and runs until stopped.
+        let pids = dir.join("pids.txt");
+        std::fs::write(
+            engine.join("src/node/run.ts"),
+            format!(
+                "const child = Bun.spawn(['sleep', '600']);\nawait Bun.write({:?}, `${{process.pid}} ${{child.pid}}`);\nsetInterval(() => {{}}, 1000);\n",
+                pids.to_str().unwrap()
+            ),
+        )
+        .unwrap();
+        let project = dir.join("game");
+        std::fs::create_dir_all(project.join("src")).unwrap();
+        std::fs::write(project.join("src/main.ts"), "export default 0;\n").unwrap();
+        std::fs::write(
+            project.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+        )
+        .unwrap();
+        // A file, not a pipe: a child left running would hold a pipe open.
+        let log = dir.join("og-dev.log");
+        let mut og_dev = og()
+            .args(["dev", "--port", "47998"])
+            .arg(&project)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::fs::File::create(&log).unwrap())
+            .spawn()
+            .unwrap();
+        let t0 = std::time::Instant::now();
+        let (game, browser) = loop {
+            if let Ok(t) = std::fs::read_to_string(&pids)
+                && let [a, b] = t.split_whitespace().collect::<Vec<_>>()[..]
+            {
+                break (a.parse::<i32>().unwrap(), b.parse::<i32>().unwrap());
+            }
+            assert!(
+                t0.elapsed() < std::time::Duration::from_secs(30),
+                "{name}: the stand-in game never started"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        };
+        assert!(alive(game) && alive(browser), "{name}");
+        unsafe { libc::kill(og_dev.id() as i32, sig) };
+        let t1 = std::time::Instant::now();
+        let status = loop {
+            if let Some(s) = og_dev.try_wait().unwrap() {
+                break s;
+            }
+            if t1.elapsed() > std::time::Duration::from_secs(10) {
+                let _ = og_dev.kill();
+                panic!("{name}: og dev did not end within 10 s");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        };
+        let err = std::fs::read_to_string(&log).unwrap_or_default();
+        use std::os::unix::process::ExitStatusExt;
+        assert_eq!(status.signal(), Some(sig), "{name}: {status:?} {err}");
+        // Both are gone (a zombie of the game is reaped by its new parent).
+        let t2 = std::time::Instant::now();
+        while (alive(game) || alive(browser)) && t2.elapsed() < std::time::Duration::from_secs(5) {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let left = (alive(game), alive(browser));
+        if left.1 {
+            unsafe { libc::kill(browser, libc::SIGKILL) };
+        }
+        if left.0 {
+            unsafe { libc::kill(game, libc::SIGKILL) };
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(
+            left,
+            (false, false),
+            "{name}: game and browser still running: {err}"
+        );
+    }
+}

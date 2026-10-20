@@ -35,9 +35,9 @@
 // findings with a fix each, then the measures) and prints one line (or one
 // JSON line with --json). A missing prerequisite exits 1 with one line
 // naming the fix; a page that fails (error card, no first frame, the gate
-// not passing) exits 1 with what it saw. SIGINT and SIGTERM undo what the
+// not passing) exits 1 with what it saw. SIGINT, SIGTERM and SIGHUP undo what the
 // run set up (adb reverse/forward, the Chrome profile, the WebDriver
-// session, the server) and exit 130 or 143.
+// session, the server) and exit 130, 143 or 129.
 
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -90,7 +90,7 @@ const decode = (b: Uint8Array) => new TextDecoder().decode(b);
 /** How long one call to a browser (a DevTools command, a WebDriver request) may take unless it says otherwise. */
 const CALL_MS = 30_000;
 
-/** What the run set up, newest last: undone newest first by cleanUp (main's end, SIGINT, SIGTERM). */
+/** What the run set up, newest last: undone newest first by cleanUp (main's end, SIGINT, SIGTERM, SIGHUP). */
 const undo: Array<() => Promise<void>> = [];
 let cleaning: Promise<void> | null = null;
 
@@ -952,14 +952,15 @@ async function main(): Promise<void> {
 }
 
 if (import.meta.main) {
-  // The signal's exit code (130 SIGINT, 143 SIGTERM) once one came: the run's
+  // The signal's exit code (130 SIGINT, 143 SIGTERM, 129 SIGHUP) once one came: the run's
   // own failure, which the cleanup provokes, is not reported over it.
   let signalled = 0;
   const leave = (code: number) => void cleanUp().then(() => process.exit(signalled || code));
-  const signals = process as unknown as { on(event: "SIGINT" | "SIGTERM", listener: () => void): void };
+  const signals = process as unknown as { on(event: "SIGINT" | "SIGTERM" | "SIGHUP", listener: () => void): void };
   for (const [sig, code] of [
     ["SIGINT", 130],
     ["SIGTERM", 143],
+    ["SIGHUP", 129],
   ] as const)
     signals.on(sig, () => {
       // A second one (og passes on the terminal's Ctrl-C, which reached this

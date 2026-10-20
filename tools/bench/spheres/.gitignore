@@ -1,0 +1,5 @@
+# og cook and og build output.
+cooked/
+dist/
+og-out/
+.og/

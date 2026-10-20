@@ -53,8 +53,8 @@ export interface ShellOptions {
   readonly expect?: { readonly wasm?: number; readonly cooked?: number };
   /** Lines of the engine's log and the Worker's console. */
   readonly onLog?: (lines: readonly string[]) => void;
-  /** The engine failed after it was ready (a trap, a failing system). */
-  readonly onCrash?: (message: string) => void;
+  /** The engine failed after it was ready (a trap, a Rust panic, a failing system, a hang): the line to show and what it was. */
+  readonly onCrash?: (message: string, error: HostError) => void;
   /** The first frame was rendered. */
   readonly onFirstFrame?: () => void;
   /** Without autoplay, take one tick before the first frame (the first screen behind a play gate). */
@@ -75,6 +75,33 @@ export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio:
 const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
 
 export { LANES_MAX_THREADS, laneChoice } from "./lanes.ts";
+
+/**
+ * Why the engine stopped, as the Worker or the shell's frame deadline
+ * reported it (docs/web-export.md §Errors): `panic`, a Rust panic on the
+ * engine's thread or inside a lane (`lane` names the lanes site; the wasm
+ * recorded it before it trapped); `error`, a failing system, a trap without
+ * a panic or an uncaught error; `hang`, a playing engine Worker that sent
+ * no frame for FRAME_DEADLINE_MS.
+ */
+export interface HostError {
+  readonly kind: "panic" | "error" | "hang";
+  readonly message: string;
+  /** The tick the world was running, when known. */
+  readonly tick: number | null;
+  /** The lanes site a panic happened in (`anim`, `extract`, `cull`, `physics`); null on the engine's thread. */
+  readonly lane: string | null;
+  /** A panic's `file:line:column`. */
+  readonly location: string | null;
+}
+
+/**
+ * How long a playing, visible page may go without a frame from the engine
+ * Worker before the shell gives up on it (a Worker stuck in a loop, or in
+ * `Atomics.wait` for a lane that never ends): it terminates the Worker and
+ * reports a `hang`. A panicking lane is caught sooner, at the lane boundary.
+ */
+export const FRAME_DEADLINE_MS = 15_000;
 
 /** What the Worker reported when the engine was ready. */
 export interface Ready {
@@ -124,6 +151,14 @@ export class Shell {
   #stopped: Error | null = null;
   /** The hidden textarea that takes the page's text for the UI's focused field (text-input.ts). */
   #text: TextEntry | undefined;
+  /** What stopped the engine, once something did. */
+  #error: HostError | null = null;
+  /** When the Worker last said it plays (`beat`), and the tick it reached. */
+  #beat = 0;
+  #beatTick: number | null = null;
+  /** When the deadline was last looked at: a late look means the page itself was blocked. */
+  #watched = 0;
+  #watchdog: ReturnType<typeof setInterval> | undefined;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
@@ -139,9 +174,14 @@ export class Shell {
         return;
       }
       if (m.type === "crash") {
-        // Nothing waits for an answer a stopped engine will not give.
-        this.#stop(`the engine stopped: ${m.message ?? "the engine stopped"}`);
-        this.#onCrash?.(m.message ?? "the engine stopped");
+        const message = m.message ?? "the engine stopped";
+        const error = (m as unknown as { error?: HostError }).error ?? { kind: "error", message, tick: this.#beatTick, lane: null, location: null };
+        this.#crashed(message, error);
+        return;
+      }
+      if (m.type === "beat") {
+        this.#beat = performance.now();
+        this.#beatTick = (m as { tick?: number | null }).tick ?? this.#beatTick;
         return;
       }
       if (m.type === "frame") {
@@ -201,10 +241,10 @@ export class Shell {
         worker.removeEventListener("error", onError);
         worker.removeEventListener("messageerror", onMessageError);
       };
-      const failed = (message: string) => {
+      const failed = (message: string, error?: HostError) => {
         settle();
         worker.terminate();
-        reject(new Error(message));
+        reject(Object.assign(new Error(message), { error: error ?? { kind: "error", message, tick: null, lane: null, location: null } }));
       };
       const arm = () => {
         clearTimeout(deadline);
@@ -230,7 +270,7 @@ export class Shell {
             files: m.files ?? 0,
             textures: m.textures ?? 0,
           });
-        } else if (m.type === "error") failed(m.message ?? "the engine did not start");
+        } else if (m.type === "error") failed(m.message ?? "the engine did not start", (m as { error?: HostError }).error);
       };
       worker.addEventListener("message", on);
       worker.addEventListener("error", onError);
@@ -273,6 +313,8 @@ export class Shell {
     shell.#onCrash = options.onCrash;
     shell.#onFirstFrame = options.onFirstFrame;
     shell.#playing = options.autoplay ?? true;
+    shell.#beat = shell.#watched = performance.now();
+    shell.#watchdog = setInterval(() => shell.#watch(), 1000);
     if (options.platform) shell.setPlatform(options.platform);
     else shell.setPlatform(shell.#platform);
     shell.#wire(canvas, ring);
@@ -337,9 +379,46 @@ export class Shell {
     this.worker.postMessage({ type: "platform-host", host: host.host, capabilities: host.capabilities });
   }
 
+  /** What stopped the engine (a panic, an error, a hang), or null while it runs. */
+  get error(): HostError | null {
+    return this.#error;
+  }
+
+  /** The engine failed: nothing waits for an answer it will not give, and the page hears why once. */
+  #crashed(message: string, error: HostError): void {
+    if (this.#error) return;
+    this.#error = error;
+    this.#stop(`the engine stopped: ${message}`);
+    clearInterval(this.#watchdog);
+    this.#onCrash?.(message, error);
+  }
+
+  /**
+   * The frame deadline: a playing page whose Worker sent no `beat` for
+   * FRAME_DEADLINE_MS is stuck; the Worker is terminated and the page told.
+   * A hidden page (no display frames) and a paused clock do not count.
+   */
+  #watch(): void {
+    const now = performance.now();
+    const late = now - this.#watched > 3000;
+    this.#watched = now;
+    const hidden = globalThis.document?.visibilityState === "hidden";
+    // A page that was blocked or throttled itself has not been hearing the Worker: start over.
+    if (!this.#playing || hidden || this.#stopped || late) {
+      this.#beat = now;
+      return;
+    }
+    if (now - this.#beat < FRAME_DEADLINE_MS) return;
+    const tick = this.#beatTick;
+    const message = `the engine Worker sent no frame for ${FRAME_DEADLINE_MS / 1000} s${tick === null ? "" : ` (last at tick ${tick})`}: it is stuck, so it was stopped`;
+    this.#crashed(message, { kind: "hang", message, tick, lane: null, location: null });
+    this.worker.terminate();
+  }
+
   /** Start or stop ticking with the display. */
   play(on: boolean): void {
     this.#playing = on;
+    this.#beat = performance.now();
     this.worker.postMessage({ type: "play", on });
   }
 
@@ -471,6 +550,7 @@ export class Shell {
 
   /** Remove the page listeners and stop the Worker. */
   dispose(): void {
+    clearInterval(this.#watchdog);
     this.#stop("the shell was disposed");
     for (const off of this.#listeners.splice(0)) off();
     this.worker.terminate();

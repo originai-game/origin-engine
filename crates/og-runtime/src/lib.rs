@@ -41,7 +41,7 @@ mod fx;
 mod glyphs;
 mod i18n;
 mod lanes;
-pub use lanes::report as lanes_report;
+pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod nav;
 mod physics_ext;

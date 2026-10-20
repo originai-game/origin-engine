@@ -16,7 +16,7 @@ og-cook = { path = "../og-cook", default-features = false, features = ["runtime"
 miniz_oxide = "0.8"
 glam = { workspace = true }
 serde_json = { version = "1", features = ["float_roundtrip"] }
-og-physics = { path = "../og-physics" }
+og-physics = { path = "../og-physics", default-features = false }
 og-audio = { path = "../og-audio" }
 og-ui = { path = "../og-ui", default-features = false }
 og-input = { path = "../og-input" }
@@ -29,9 +29,14 @@ og-ai = { path = "../og-ai" }
 og-i18n = { path = "../og-i18n" }
 
 [features]
-default = ["shaping"]
+default = ["shaping", "physics2d", "physics3d"]
 # A published game: the probe keeps only its player-facing members.
 publish = ["og-probe/publish"]
 # og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
 # scripts). A build for games without them can leave it out.
 shaping = ["og-ui/shaping"]
+# The physics profiles built in (og-physics): both by default; a shipping
+# web variant keeps the one its game's profile uses (docs/web-export.md
+# §Variants), and the other profile's calls answer that it is not built.
+physics2d = ["og-physics/physics2d"]
+physics3d = ["og-physics/physics3d"]

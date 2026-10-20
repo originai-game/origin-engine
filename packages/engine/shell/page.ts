@@ -18,7 +18,9 @@
 // - the error card (§6): the reason, the last 200 log lines and the world
 //   dump (state in a publish build), with Reload and Copy report;
 // - the probe: `globalThis.__runtime_probe__` (protocol 5, every member a
-//   Promise) and the platform's `og-probe` postMessage wire; the played
+//   Promise, plus `lanes` and `error`: what stopped the engine, a panic with
+//   its tick and lane, an error or a hang) and the platform's `og-probe`
+//   postMessage wire; the played
 //   frames' timings on `globalThis.__og_timings__` (`og run --device`);
 // - PWA: the service worker (publish builds) and the add-to-home-screen hint
 //   only when the install criteria hold;
@@ -466,6 +468,8 @@ export async function play(): Promise<PlayHandle> {
   // ── the probe: in-page and over the og-probe wire ────────────────────
   // `lanes`: the mode the engine got at boot (on with its Workers, or why it runs single-threaded).
   const probe: Record<string, unknown> = { version: 5, substrate: "origin-engine", lanes: Object.freeze({ ...lanes }) };
+  // `error`: what stopped the engine (a panic with its tick and lane, an error, a hang), null while it runs.
+  Object.defineProperty(probe, "error", { get: () => shell.error, enumerable: true });
   for (const m of MEMBERS) probe[m] = (...args: unknown[]) => shell.probe(m, probeParams(m, args));
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).

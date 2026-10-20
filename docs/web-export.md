@@ -21,7 +21,7 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 | `play.js` | The shell (`packages/engine/shell/page.ts`, bundled). |
 | `game.js` | The engine Worker: the runtime and the game. |
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
-| `origin-engine.js`, `origin-engine_bg.wasm` | The web host. `--publish` takes `dist/web-publish` (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`). |
+| `origin-engine.js`, `origin-engine_bg.wasm` | The web host. A dev build takes `dist/web` (every member, both physics profiles). `--publish` takes the publish variant of the project's `profile` (§Variants): `dist/web-publish` for `3d`, `dist/web-publish-2d` for `2d`, each with only its profile's physics (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`); og-build.json's `variant` names it. |
 | `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the web host (§Lanes), the same engine built with wasm atomics and shared memory, and wasm-bindgen-rayon's Worker script. |
 | `basis/` | Binomial's Basis transcoder and its licence. |
 | `cooked/` | The project's cooked bundle (`og cook`, run by `og build`), split by streaming group: the first group (everything no scene's `stream` block holds, the `#proxy` stand-ins included) and one pack per streaming group, `cooked/stream/<name>.ogb`. A grouped output's own file is left out, because the engine reads it from its pack. |
@@ -46,6 +46,7 @@ dates, no absolute paths, files in sorted order
   "entry": "index.html",
   "worker": "game.js",
   "wasm": "origin-engine_bg.wasm",
+  "variant": "2d",
   "probe": { "protocol": 5, "wire": 1, "build": "publish",
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
   "crossOriginIsolation": "preferred",
@@ -65,6 +66,9 @@ dates, no absolute paths, files in sorted order
 - `engine.version` is the engine that built it; `engine.pinned` is
   project.ogt's `engine`. `probe.members` is read from the copied wasm's own
   `hello`, so a publish build proves its trim.
+- `variant` is the engine module `wasm` is (§Variants): `3d` or `2d`, the
+  publish variant of `game.profile` with only that profile's physics, or
+  `full` for a dev build (every member, both profiles).
 - `crossOriginIsolation`: `required` (the game needs SharedArrayBuffer; a
   page served without isolation still starts, single-threaded, with a
   warning in the log),
@@ -163,10 +167,11 @@ cannot be instantiated at all, and most hosts a game is shared on are not
 isolated. So the default `origin-engine_bg.wasm` stays single-threaded
 (the module every page can load), and a `--publish` build whose
 `isolation` is not `off` also ships `origin-engine-lanes_bg.wasm`. A page
-downloads one of them, so the 4 MiB brotli budget holds per file: the size
-gate measures each (`scripts/size-gate.sh`; on 2026-10-19 the publish wasm
-is 3,153,927 B and the lanes wasm 3,156,913 B brotli, 75 % of the budget;
-the lanes round grew the single-threaded wasm by about 4 KB). The
+downloads one of them, so the 4 MiB brotli budget holds per download: the
+size gate measures each (`scripts/size-gate.sh`; on 2026-10-19 the publish
+wasm was 3,153,927 B and the lanes wasm 3,156,913 B brotli, 75 % of the
+budget; the lanes round grew the single-threaded wasm by about 4 KB). The
+single-threaded module is now one per physics profile (§Variants). The
 lanes build needs nightly-only flags on the stable toolchain
 (`scripts/wasm-lanes.sh`: `RUSTC_BOOTSTRAP=1`, `-Z build-std` with
 `rust-src`, its flags appended to the caller's `RUSTFLAGS`, an inherited
@@ -197,12 +202,20 @@ lanes glue or wasm that does not load, a pool Worker the page may not
 create (a CSP without `worker-src blob:`: the constructor throws or the
 Worker fires `error`) and a pool Worker that never reports ready (a module
 import that fails inside it, which reaches no parent event: only the
-deadline catches it, after 10 s). It cannot cover what goes wrong after
-the pool started: a panic inside a lane on the lanes wasm leaves the
-engine Worker in `Atomics.wait` for a lane that never ends, so the page
-hangs instead of showing the crash screen, and the shell has no deadline
-on a frame that would notice (owed: docs/phase-1.md, lanes round). The API is the
-same either way. The mode is reported: the ready message's `lanes`
+deadline catches it, after 10 s). After the pool started, a
+panic inside a lane aborts the pool Worker it runs on, so the lane never
+ends; rayon's own wait would leave the engine Worker in `Atomics.wait`
+forever. So in the lanes wasm the engine thread does not wait on rayon: it
+hands each parallel call to the pool (`rayon::spawn`) and waits on a latch
+of og-lanes' own, which the call's end or a recorded panic rings (checked
+every 250 ms besides). The panic hook records the lane's panic (message,
+location, tick, site) and rings it; the engine thread then panics with
+that line, traps, and the Worker reports the crash with the lane's report
+(§Errors), within a frame or two of the panic rather than never
+(`packages/engine/tests/web/lane-panic.ts`: on the page within 5 s, with
+`lane: "extract"`; og-lanes' unit tests for the latch). Anything else
+that stops a playing Worker's frames is caught by the shell's frame
+deadline (§Errors, `hang`). The API is the same either way. The mode is reported: the ready message's `lanes`
 (`{ on, threads, why }`, `why` saying why it is off), a log line
 (`lanes: on, 7 Workers` or `lanes: off (…)`), the page's
 `__runtime_probe__.lanes`, and the Worker's `call("lanes")`
@@ -229,6 +242,71 @@ release with `origingame.runtime.json`); `og run --device`, which serves a
 build to a browser or a phone, sends the build's `_headers` and forces
 COOP `same-origin`, COEP `require-corp` and CORP `cross-origin` on every
 response, so its page is isolated wherever it is a secure context.
+
+## Variants
+
+One engine module per download (owed row 44). A publish build ships the
+variant of the game's physics profile (project.ogt `profile`), so a page
+never downloads the physics of the other profile:
+
+| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-20, with main's physical materials) |
+|---|---|---|---|---|
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 2,853,865 B (68 %) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,shaping` | rapier2d | 2,688,261 B (64 %) |
+| lanes | `dist/web-publish/origin-engine-lanes*` | `--features publish` (both profiles), wasm atomics (§Lanes) | both | 3,230,782 B (77 %, the largest download) |
+| dev | `dist/web/origin-engine*` | default features (both profiles) | both | not shipped |
+
+`og build --publish` copies the variant of `profile` as
+`origin-engine.js` and `origin-engine_bg.wasm` (the shell and the service
+worker see one module either way) and records it in og-build.json
+(`variant`: `3d`, `2d`, or `full` for a dev build); a `2d` project whose
+package has no `dist/web-publish-2d` fails the build with the fix rather
+than shipping the 3D module. The lanes variant is one module with both
+profiles, as before: the page takes it instead of the single-threaded
+module when it is cross-origin isolated. Everything else is the same in
+both variants (the renderer, animation, UI, audio, navigation): only
+og-physics' `physics2d` and `physics3d` features differ, the one cargo
+switch that already existed. A world of the other profile is refused when
+it is created ("og.Physics.profile 2: this engine was built without the
+physics2d feature"), which `og build` never ships.
+
+The size budget (design §7, `scripts/budgets.txt`) is per download: each
+variant is held to it, and the size that counts is the largest one a
+player downloads, not the sum of every wasm the gate builds
+(`scripts/size-gate.sh` prints each with its download and the largest;
+docs/ci.md §Updating a budget). The gate builds all three
+(`scripts/wasm-crates.txt` `variant` lines, docs/ci.md §Switches).
+
+## Errors
+
+A failure reaches the page as a structured host error, the same object
+everywhere: the Worker's `crash` (or `error` before ready) message carries
+it as `error`, `Shell` passes it to `onCrash(message, error)` and keeps it
+as `shell.error`, the page puts it on `__runtime_probe__.error` (null while
+the engine runs) and on the error card:
+
+```ts
+{ kind: "panic" | "error" | "hang", message, tick, lane, location }
+```
+
+- `panic`: a Rust panic. The web host's panic hook records the first one
+  (og-lanes `record_panic`: its message, `file:line:column`, the tick the
+  world was running, and the lanes site when it happened inside a lane,
+  else `lane: null`) before the wasm traps, and the Worker reads it back
+  (`og_web_panic`) when the trap reaches it. The card's line is `panic at
+  tick 412 in a lane (extract): <message> (<location>)`.
+- `error`: a failing system (its message names the tick and the system),
+  a trap without a recorded panic, an uncaught error in the Worker; `tick`
+  is the last tick a frame reached.
+- `hang`: the frame deadline. A playing Worker sends the shell a `beat`
+  about once a second; a visible, playing page that hears none for
+  `FRAME_DEADLINE_MS` (15 s) terminates the Worker and reports a hang. A
+  hidden page, a paused clock and a page that was itself blocked do not
+  count.
+
+After any of them every pending and later probe call or `call` is refused
+at once ("the engine stopped: …"), so nothing on the page waits for an
+answer that will not come.
 
 ## project.ogt `publish`
 
@@ -300,7 +378,9 @@ earlier build; a build that fails after replacing it removes what it wrote.
 - **Error card** (design §6): a failed start (the Worker's `error`, a
   Worker that fails to load or says nothing for two minutes during the
   boot, an engine that stops before its first frame) or a crash after it
-  (a trap, a failing system, an uncaught Worker error) shows the reason, the last 200
+  (a Rust panic on the engine's thread or in a lane, a trap, a failing
+  system, an uncaught Worker error, a Worker that sends no frame for 15 s:
+  §Errors) shows the reason, the last 200
   lines of the engine's log, the Worker's console and the page's errors,
   and the world dump (a dev build) or the state (a publish build), with
   Reload and Copy report; the brand symbol switches to `drift`.
