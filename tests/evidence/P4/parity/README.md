@@ -63,6 +63,7 @@ dev profile at 3.8 ms).
 | 07902610 | No wgpu indirect-call validation (GPU culling's draws are in range by construction). |
 | cbcc062c | objc2 without debug assertions in the dev profile (Cargo.toml). |
 | 5a96a149 | The kept instances' per-frame pass made cheaper at opt-level 0 (one pass for handles and keys, no array maps). |
+| 6f8eee08 | Merge of main (d243e461): main's array maps carried an instance's texture-array layer in the 4x4's m0.w, which the columns encoding drops, so the GPU instance became the columns and the layer, **52 bytes** (location 8, read by `pbr_array.wgsl` alone; 13 floats a slot in `cull.wgsl`). The timings below were taken at 48 bytes, before the merge. |
 
 ### Same pixels
 
@@ -90,6 +91,16 @@ old buffer-borne w did not order (`hooks.rs` `moved_clip`). The GL and
 SPIR-V tiers compile the same arithmetic (GLSL ES 3.0 writes the fma as
 `a * b + c`); not run here (no lavapipe or WebGL2 on this machine), their
 references are compared under the gate's tolerance.
+
+After the merge, against main at d243e461 (`capture-main-d243e461.txt`,
+`capture-merged.txt`, 73 frames): 71 byte-identical with identical stats
+lines; `stylise-object` now equals its committed reference byte for byte
+(main's own frame is 135 pixels off it by 1/255, since main zeroed m0.w in
+the object pass), and `materials-array` moves 13 pixels by 1/255 (rmse
+0.00001, inside every tolerance) from the reference main recorded for it:
+main's array stages built the matrix with a literal 0 in m0.w and the
+other w from the buffer, an arithmetic the 52-byte instance no longer
+has.
 
 With `OG_GFX_COMPACT=1` (every mesh compact) all 68 scenes draw
 (`capture-compact.txt`); against main's frames the largest difference is
