@@ -3,6 +3,13 @@
 //! (frames with durations, `meta.frameTags` as clips) or a TexturePacker
 //! JSON (hash or array; pivots) — into the canonical sheet text
 //! (`og_anim::FlipbookSheet::to_text`) with the texture's size filled in.
+//!
+//! A sheet with `array true` also cooks into a texture array: its frames,
+//! cut out of the texture, are the layers of `<id>#array` (an
+//! `og.TextureArray` whose layers are the textures `<id>#array#layer<n>`,
+//! pixel art under `filter nearest`, colour otherwise), so the runtime
+//! draws frame `n` as layer `n`. Every frame must then have one size, and
+//! a sheet has at most [`super::texture_array::MAX_LAYERS`] of them.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
@@ -324,4 +331,103 @@ pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
     )
     .raw("text", text.into_bytes(), 4);
     Ok((w.finish(), vec![note]))
+}
+
+/// The texture array output of an `array true` sheet.
+pub(super) fn array_id(rel: &str) -> String {
+    format!("{rel}#array")
+}
+
+/// The texture kind an `array true` sheet's layers cook as.
+fn array_kind(sheet: &og_anim::FlipbookSheet) -> u32 {
+    match sheet.filter {
+        og_anim::SheetFilter::Nearest => format::kind::PIXEL,
+        og_anim::SheetFilter::Linear => format::kind::COLOR,
+    }
+}
+
+/// Checks that an `array true` sheet's frames can be an array's layers:
+/// at least one, at most the array limit, all of one size, inside the
+/// texture.
+pub(super) fn check_array(sheet: &og_anim::FlipbookSheet) -> Result<(), String> {
+    let max = super::texture_array::MAX_LAYERS;
+    let Some(first) = sheet.frames.first() else {
+        return Err("an `array true` sheet needs frames".into());
+    };
+    if sheet.frames.len() > max {
+        return Err(format!(
+            "an `array true` sheet has at most {max} frames (the array's layers), not {}",
+            sheet.frames.len()
+        ));
+    }
+    for f in &sheet.frames {
+        let [x, y, w, h] = f.rect;
+        if [w, h] != [first.rect[2], first.rect[3]] {
+            return Err(format!(
+                "frame `{}` is {w}x{h} and frame `{}` {}x{}: an `array true` sheet's frames are one size",
+                f.name, first.name, first.rect[2], first.rect[3]
+            ));
+        }
+        if w == 0 || h == 0 || x + w > sheet.size[0] || y + h > sheet.size[1] {
+            return Err(format!(
+                "frame `{}` ({x} {y} {w} {h}) is not inside the {}x{} texture",
+                f.name, sheet.size[0], sheet.size[1]
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The texture array blob of an `array true` sheet.
+pub(super) fn cook_array(
+    s: &Source,
+    sheet: &og_anim::FlipbookSheet,
+    opts: &super::TextureOptions,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    check_array(sheet).map_err(CookError)?;
+    let [_, _, w, h] = sheet.frames[0].rect;
+    let blob = super::texture_array::array_blob(
+        &array_id(&s.rel),
+        (w, h),
+        sheet.frames.len(),
+        array_kind(sheet),
+        opts,
+        stamp,
+    );
+    Ok((
+        blob,
+        vec![format!(
+            "texture array: {} frames of {w}x{h} cut from {}",
+            sheet.frames.len(),
+            sheet.texture
+        )],
+    ))
+}
+
+/// Layer `n` of an `array true` sheet: frame `n` cut out of the texture.
+pub(super) fn cook_layer(
+    s: &Source,
+    sheet: &og_anim::FlipbookSheet,
+    n: usize,
+    opts: &super::TextureOptions,
+    stamp: u64,
+) -> Result<Vec<u8>, CookError> {
+    check_array(sheet).map_err(CookError)?;
+    let bytes = std::fs::read(assets_root(s).join(&sheet.texture))
+        .map_err(|_| CookError(format!("texture `{}` is not in assets/", sheet.texture)))?;
+    let img = super::texture::decode(&bytes)
+        .map_err(|e| CookError(format!("texture `{}`: {e}", sheet.texture)))?;
+    let [x, y, w, h] = sheet.frames[n].rect;
+    let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+    for row in y..y + h {
+        let start = ((row * img.width + x) * 4) as usize;
+        rgba.extend_from_slice(&img.rgba[start..start + (w * 4) as usize]);
+    }
+    let frame = super::texture::Image {
+        width: w,
+        height: h,
+        rgba,
+    };
+    super::texture::cook(&frame, array_kind(sheet), opts, stamp)
 }

@@ -97,7 +97,17 @@ fn the_sheet_reads_grid_and_named_frames_and_round_trips() {
     assert_eq!(s.uv(1), [17.0 / 66.0, 1.0 / 34.0, 33.0 / 66.0, 17.0 / 34.0]);
     let again = FlipbookSheet::parse(&s.to_text()).unwrap();
     assert_eq!(again, s);
+    assert!(!s.array && !s.to_text().contains("array"));
+    // `array true` survives the canonical text; anything else is refused.
+    let arr =
+        FlipbookSheet::parse(&SHEET.replace("pivot 0.5 0", "array true\npivot 0.5 0")).unwrap();
+    assert!(arr.array);
+    assert_eq!(FlipbookSheet::parse(&arr.to_text()).unwrap(), arr);
     for (bad, says) in [
+        (
+            SHEET.replace("pivot 0.5 0", "array maybe\npivot 0.5 0"),
+            "array is true or false",
+        ),
         (
             SHEET.replace("frames 0 1 2 3", "frames 0 1 99"),
             "no frame `99`",

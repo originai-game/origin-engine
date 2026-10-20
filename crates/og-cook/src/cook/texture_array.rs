@@ -141,14 +141,35 @@ pub fn cook(
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let images = layers(root, decl)?;
     let (w, h) = (images[0].width, images[0].height);
-    let levels = if decl.kind == format::kind::PIXEL || !opts.mipmaps {
+    let blob = array_blob(id, (w, h), decl.layers.len(), decl.kind, opts, stamp);
+    Ok((
+        blob,
+        vec![format!(
+            "texture array: {} layers of {w}x{h} ({})",
+            decl.layers.len(),
+            decl.layers.join(", ")
+        )],
+    ))
+}
+
+/// An `og.TextureArray` blob: `count` layers of `size` (ids
+/// [`layer_id`]`(id, n)`) of texture kind `kind`.
+pub fn array_blob(
+    id: &str,
+    (w, h): (u32, u32),
+    count: usize,
+    kind: u32,
+    opts: &super::TextureOptions,
+    stamp: u64,
+) -> Vec<u8> {
+    let levels = if kind == format::kind::PIXEL || !opts.mipmaps {
         1
     } else {
         32 - w.max(h).leading_zeros()
     };
     let mut names = String::new();
-    let mut rows = Vec::with_capacity(decl.layers.len());
-    for n in 0..decl.layers.len() {
+    let mut rows = Vec::with_capacity(count);
+    for n in 0..count {
         let lid = layer_id(id, n);
         rows.push(ArrayLayerRow {
             name_offset: names.len() as u32,
@@ -159,9 +180,9 @@ pub fn cook(
     let meta = TextureArrayMeta {
         width: w,
         height: h,
-        layers: decl.layers.len() as u32,
+        layers: count as u32,
         levels,
-        kind: decl.kind,
+        kind,
     };
     let mut wr = BlobWriter::new(
         format::TextureArray::type_hash(),
@@ -171,14 +192,7 @@ pub fn cook(
     wr.table("meta", &[meta], row_hash::<TextureArrayMeta>())
         .table("layers", &rows, row_hash::<ArrayLayerRow>())
         .raw("strings", names.into_bytes(), 1);
-    Ok((
-        wr.finish(),
-        vec![format!(
-            "texture array: {} layers of {w}x{h} ({})",
-            decl.layers.len(),
-            decl.layers.join(", ")
-        )],
-    ))
+    wr.finish()
 }
 
 /// Layer `n`'s texture blob, encoded as a texture of the array's kind.
