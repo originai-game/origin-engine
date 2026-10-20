@@ -226,6 +226,56 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 8, wasm-size: where the lanes module's bytes are, two trims, a report tool (bf8dcd1)
+
+The lanes module was 3,498,640 B brotli (83.4 % of `wasm_core_brotli_bytes`)
+at 161bad3b. Measured per crate (each crate's part brotli-compressed on its
+own, `scripts/wasm-size-report.ts`): og-runtime 362 kB, rapier3d 327 kB,
+the data section 324 kB, rapier2d 246 kB, og-physics 232 kB, og-render
+232 kB, parry3d 203 kB, the exports with og-runtime's bodies inlined
+199 kB, naga 192 kB; the two physics profiles together about 935 kB; the
+largest functions `Renderer::render` (138 kB), `PhysicsState::decode`
+(54 kB), og-runtime's `extract` and `assemble`. Raw size points at the
+wrong things: 230 kB raw of rayon generic copies were 9 kB of brotli, and
+the `wasm-gate` profile is about 6.6 % larger than what ships.
+
+- 6d3f45a4, og-lanes: `map`, `for_each_mut` and `for_each_indexed` go
+  through one non-generic parallel loop instead of a rayon copy per item
+  and result type (about 200 copies): 3,498,258 to 3,489,535 B (8.7 kB);
+  results the same item for item, og-physics' split-against-serial lanes
+  tests pass.
+- c51e8d05, og-render: a `build.rs` copies `shaders/` with its `//`
+  comments removed and a `wgsl!` macro includes that copy; every token
+  and line stays where it was, the `.wgsl` files are untouched, a test
+  checks the copies line for line against the sources (one anchor in the
+  terrain code found a comment and now finds `fn band(`): 3,489,535 to
+  3,466,050 B (23.5 kB). The functional lane's GPU reference tests pass
+  on the merge: no frame moved.
+- bf8dcd16: `scripts/wasm-size-report.sh <module>` builds and optimises
+  a module as it ships and prints the size gate's number;
+  `scripts/wasm-size-report.ts` gives each crate's raw and own-brotli
+  bytes and the largest functions; `tests/evidence/P4/wasm-size/` holds
+  the README and notes; docs/ci.md "When the size gate fails" points at
+  the script.
+
+After the merge with 161bad3b (shipping `wasm` profile, brotli -q 11):
+lanes 3,464,929 B (82.6 %, from 83.4 %), 3D publish 3,048,477 B
+(72.7 %), 2D publish 2,882,459 B (68.7 %). Under 80 % needs about
+143 kB more, and the one thing that gives it without removing a feature
+is a lanes module per physics profile (row 71). Tried and not paying:
+og-host-web at opt-level z (5.9 kB larger), `RECORDS` as a static (the
+copies exist only in `wasm-gate`), the probe's command code behind
+`publish` (og.ai sends its commands through the probe's inbox),
+cook-only code (none in the module), `format!`/Debug sites (about 40,
+nothing worth taking). Rejected: og-runtime at z (frame time),
+`panic_immediate_abort` (a lane's panic must wake the engine thread),
+`optimize_for_size` for std (could reorder unstable sorts and move a
+hash), dropping field docs from publish (reflection serves them),
+`-Zlocation-detail=none` for lanes only (81.0 %, and every crash on a
+lanes page loses its file, line and column).
+
+Functional lane on the merge: 5 of 5 in 177 s.
+
 ## Wave 8, taa-webgl2: the GL backend read TAA's depth as 0 (f3229ef)
 
 Row 68's cause, found natively on ANGLE's Metal renderer (the GL layer
@@ -3068,6 +3118,7 @@ resource only the owner can give.
 | 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | closed at 1a9037a (taa-webgl2, merged f3229ef): wgpu's GL backend read TAA's depth as 0 (a depth texture read with `textureLoad` and no sampler bound stays on linear filtering, which GLSL ES calls incomplete), so every pixel reprojected from the near plane: wrong motion for a moving camera, and near-plane rounding up to 0.025 px at the 2,800 m looks station for a still one, above the own-texel test. The depth is sampled with a nearest sampler now; `taa-sharp` applies on every tier and is WebGL2's moving-camera frame against `metal` (RMSE 0.00028); two og-tests tests pin the still-camera fixed point natively |
 | 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | open |
 | 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
+| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open |
 
 ## 0. Rules that shape the plan
 
