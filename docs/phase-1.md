@@ -82,7 +82,21 @@ Branch `web-host-tools` from main at b62dd65. Evidence:
   cull serial, the crossover is still about 16,000 instances (GPU/CPU
   0.98 street, 1.06 aerial at 16,384), so `GPU_CULLING_MIN_INSTANCES`
   stays (`culling-threshold.md`; the culling round's "Not done").
-- **three.js comparison**: `threejs-comparison.md` (see its commit).
+- **three.js comparison** (df9c42a, `threejs-comparison.md`,
+  `tools/bench/threejs-compare.ts`, headless Chrome for Testing 150, load
+  41 to 120): the §7 reference scene runs at 495 fps on WebGPU and 328 on
+  WebGL2 against three.js WebGL2's 255 (InstancedMesh) and 219 (one Mesh
+  each), so §7's 1.5× holds on WebGPU (1.94×, 2.26×) and not on the WebGL2
+  fallback against InstancedMesh (1.29×). A field of 20,000 spheres each
+  moved every frame runs at 6 fps on both tiers against three.js's 76 and
+  378: owed row 50.
+- **Gate**: `scripts/check.sh` (path-aware full lane) at 4e121cd PASSED, 9
+  of 9: fmt 6 s, clippy 67 s, drift 97 s, wasm-build 877 s, test 649 s
+  (nextest 566 passed, 9 skipped), wasm-opt 588 s, size-gate 103 s (3D
+  publish 2,835,047 B, 2D 2,672,159 B, lanes 3,212,339 B: 76 % of the
+  per-download budget), bun-test 160 s (114 engine and 19 knowledge
+  tests), determinism 1,591 s; load 35 to 120 with a lavapipe container
+  and other gates on the machine. `--all` is the coordinator's.
 
 ## Phase 3, lanes round (2026-10-19)
 
@@ -1402,7 +1416,8 @@ After the phase 2 showcase round: three new rows open (47–49), row 12 now
 covers the archetypes' typecheck too.
 
 After the web host and tools round (P4 below): rows 44 (the engine's
-part), 48 and 49 done.
+part), 48 and 49 done; row 50 new (the per-instance render cost the
+three.js comparison found).
 
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
@@ -1462,6 +1477,7 @@ resource only the owner can give.
 | 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, which keeps its own reference by design: compute-only particle collision, MSAA against TAA) | P2 showcase | S | engine, phase 2 | open |
 | 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | done, 718fb43 (polish contrast 100, lowest 4.65:1; UI sounds 3 of 3 on the phone; `crates/og-ui/tests/pack_contrast.rs`) |
 | 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | done, 868d1b2 |
+| 50 | The engine's render cost per instance of one mesh: 20,000 moving spheres take 174 ms a frame on WebGPU and WebGL2 (extraction plus og-render; the tick 0.3 ms), doubling near 4,096 instances and about 8.7 us an instance beyond (`tests/evidence/P4/web-host-tools/threejs-comparison.md`; the spike drew the same field in 4.6 ms) | P4 web host | M | engine, phase 4 | open |
 
 ## 0. Rules that shape the plan
 
