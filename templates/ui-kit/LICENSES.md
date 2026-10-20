@@ -3,6 +3,7 @@
 | File | Licence | Origin |
 |---|---|---|
 | `assets/textures/icons.png` | CC0 1.0 | self-made by the Origin Engine authors: 32 white glyphs in an 8×4 grid, drawn by `tools/make-assets.py` (deterministic) |
+| `assets/icons/iconoir/*.svg` | MIT (`assets/icons/iconoir/LICENSE`, Copyright (c) 2021 Luca Burgio) | 64 icons of iconoir 7.12.1 (the platform's icon set, `iconoir` on npm), copied unchanged; `assets/icons/iconoir.ogt` (CC0) names them for the cook, which renders them into a distance-field atlas |
 | `assets/textures/backdrop.png` | CC0 1.0 | self-made: a dusk landscape behind the HUD screens, same script |
 | `assets/fonts/NotoSansSC-Regular-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | a byte-identical copy of `templates/game/assets/fonts/` (the platform's project-template font) |
 | `assets/fonts/NotoSansJP-subset.otf`, `assets/fonts/NotoSansKR-subset.otf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans CJK Regular (notofonts/noto-cjk; the TTC's Japanese and Korean faces) subset to the string tables' characters and ASCII by `tools/make-locale-fonts.py` |

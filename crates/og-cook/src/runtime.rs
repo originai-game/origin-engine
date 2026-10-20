@@ -649,6 +649,16 @@ impl Bundle {
             kerning,
             pages,
             ttf: blob.raw("ttf").ok().map(<[u8]>::to_vec),
+            names: blob
+                .raw("names")
+                .ok()
+                .map(|b| {
+                    String::from_utf8_lossy(b)
+                        .split('\n')
+                        .map(str::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default(),
         })
     }
 
@@ -1469,6 +1479,9 @@ pub struct CookedFont {
     /// its words) or with `runtime true` (characters outside the charset
     /// are rendered from it when a text needs them).
     pub ttf: Option<Vec<u8>>,
+    /// An icon set's names (an `.ogt` of `type icons`, cook::icons): icon
+    /// `i` is the glyph at U+E000 + i. Empty for a text font.
+    pub names: Vec<String>,
 }
 
 impl CookedFont {

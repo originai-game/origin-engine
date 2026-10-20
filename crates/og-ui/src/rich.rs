@@ -444,11 +444,7 @@ impl Ui {
                 _ => desc.font,
             };
             let icon = match &s.icon {
-                Some(name) => match self
-                    .icons
-                    .index_of(name)
-                    .filter(|_| self.icons.texture.is_some())
-                {
+                Some(name) => match self.icons.index_of(name).filter(|_| self.icons.is_drawn()) {
                     Some(k) => Some(k),
                     None => {
                         self.warnings
@@ -637,8 +633,25 @@ impl Ui {
             let hot = link_key.is_some_and(|lk| self.state.hot == lk);
             let color = if hot { p.accent_hover } else { s.color };
             if let Some(cell) = s.icon {
-                if let Some(tex) = self.icons.texture {
-                    let side = s.step.size * n.scale;
+                let side = s.step.size * n.scale;
+                if let Some((font, ch)) = self.icons.glyph(cell) {
+                    // An icon set's glyph: its em square where a cell would be.
+                    let (x, top) = (r.x + side * 0.05, baseline - side * 0.85);
+                    cmds.push(DrawCmd::Text {
+                        x,
+                        baseline: top + side,
+                        size: side,
+                        text: ch.to_string(),
+                        color: color.fade(alpha).linear(),
+                        font,
+                        bounds: Rect::new(x, top, side, side),
+                        clip,
+                        tracking: 0.0,
+                        weight: 0.0,
+                        glow: None,
+                        placements: Vec::new(),
+                    });
+                } else if let Some(tex) = self.icons.texture {
                     cmds.push(DrawCmd::Image {
                         rect: Rect::new(r.x + side * 0.05, baseline - side * 0.85, side, side)
                             .snapped(dpr),

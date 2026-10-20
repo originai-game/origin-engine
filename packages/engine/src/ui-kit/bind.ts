@@ -84,6 +84,7 @@ export const widgets = {
   meter: (id: string, value: number, max: number, desc?: Api.MeterDesc): void => abi().og_ui_meter(id, value, max, json(desc)),
   cooldown: (id: string, remaining: number, desc?: Api.CooldownDesc): Api.Response => parse(abi().og_ui_cooldown(id, remaining, json(desc))),
   minimap: (id: string, desc?: Api.MinimapDesc): void => abi().og_ui_minimap(id, json(desc)),
+  zoomView: (id: string, desc?: Api.ZoomViewDesc): Api.ZoomResult => parse(abi().og_ui_zoom_view(id, json(desc))),
   dialogue: (id: string, desc?: Api.DialogueDesc): Api.DialogueResult => parse(abi().og_ui_dialogue(id, json(desc))),
   joystick: (id: string, desc?: Api.JoystickDesc): Api.JoystickResult => parse(abi().og_ui_joystick(id, json(desc))),
   dpad: (id: string, desc?: Api.DpadDesc): Api.DpadResult => parse(abi().og_ui_dpad(id, json(desc))),

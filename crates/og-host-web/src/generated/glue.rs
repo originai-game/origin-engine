@@ -1029,6 +1029,11 @@ pub fn og_ui_image(id: String, desc: Option<String>) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_zoom_view(&Host, id, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
     <Host as UiApi>::og_ui_progress(&Host, id, value, desc)
 }

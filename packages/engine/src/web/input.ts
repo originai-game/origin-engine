@@ -9,7 +9,8 @@
 // 0 committed or 1 composing, word 2 1 when it continues the slot before it
 // (text past 48 bytes is split between characters over several slots,
 // joined again by drainRing), word 3 the UTF-8 length, the text in words
-// 4-15. A key or pointer slot carries the event's time in words
+// 4-15. An a11y slot (kind 5) is laid out as a text slot with word 1 the
+// action (A11Y_ACTIONS) and the control's path as its text. A key or pointer slot carries the event's time in words
 // 6-7 (an f64: performance.timeOrigin + the event's timeStamp, ms; 0 when
 // unknown), which the Worker turns into the event's `at` within the tick.
 // Without cross-origin isolation the shell posts the same events as
@@ -54,7 +55,19 @@ export type InjectedInput =
       /** Typed text (a key's character, a paste, an IME commit), or with `composing` an input method's composition so far (empty ends it). */
       text: string;
       composing?: boolean;
+    }
+  | {
+      kind: "a11y";
+      /** What a screen reader asked of the UI control at `path` (a11y.ts): focus it, activate it, or step an adjustable one. */
+      action: A11yActionName;
+      /** The control's path, as og.ui.a11y() names it. */
+      path: string;
     };
+
+export type A11yActionName = (typeof A11Y_ACTIONS)[number];
+
+/** og-input's A11yAct, by index. */
+export const A11Y_ACTIONS = ["focus", "activate", "increment", "decrement"] as const;
 
 export type GamepadButtonName = (typeof GAMEPAD_BUTTONS)[number];
 
@@ -68,7 +81,7 @@ const SLOT = 16;
 const HEADER = 2; // write index, read index (monotonic)
 export const RING_SLOTS = 256;
 
-const KINDS = ["key", "pointer", "wheel", "gamepad", "text"] as const;
+const KINDS = ["key", "pointer", "wheel", "gamepad", "text", "a11y"] as const;
 /** Bytes of text one slot holds (words 4-15). */
 const TEXT_BYTES = 48;
 
@@ -101,14 +114,15 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   const write = Atomics.load(ints, 0);
   const read = Atomics.load(ints, 1);
   if (write - read >= RING_SLOTS) return false;
-  if (event.kind === "text") {
-    const pieces = textPieces(event.text);
+  if (event.kind === "text" || event.kind === "a11y") {
+    // An a11y slot is a text slot whose text is the control's path.
+    const pieces = textPieces(event.kind === "text" ? event.text : event.path);
     if (write - read + pieces.length > RING_SLOTS) return false;
     pieces.forEach((bytes, k) => {
       const at = HEADER + ((write + k) % RING_SLOTS) * SLOT;
       new Int32Array(buffer, at * 4, SLOT).fill(0);
-      ints[at] = KINDS.indexOf("text");
-      ints[at + 1] = event.composing ? 1 : 0;
+      ints[at] = KINDS.indexOf(event.kind);
+      ints[at + 1] = event.kind === "text" ? (event.composing ? 1 : 0) : A11Y_ACTIONS.indexOf(event.action);
       ints[at + 2] = k > 0 ? 1 : 0;
       ints[at + 3] = bytes.length;
       new Uint8Array(buffer, (at + 4) * 4, TEXT_BYTES).set(bytes);
@@ -160,6 +174,14 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
       const last = out[out.length - 1];
       if (ints[at + 2] === 1 && last?.kind === "text" && (last.composing ?? false) === composing) last.text += text;
       else out.push(composing ? { kind, text, composing } : { kind, text });
+      continue;
+    }
+    if (kind === "a11y") {
+      const path = new TextDecoder().decode(new Uint8Array(buffer, (at + 4) * 4, ints[at + 3]!).slice());
+      const action = A11Y_ACTIONS[ints[at + 1]!] ?? "focus";
+      const last = out[out.length - 1];
+      if (ints[at + 2] === 1 && last?.kind === "a11y" && last.action === action) last.path += path;
+      else out.push({ kind, action, path });
       continue;
     }
     if (kind === "gamepad") {

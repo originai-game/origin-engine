@@ -135,6 +135,42 @@ impl Ui {
             .collect()
     }
 
+    /// An assistive technology's requests (og-input's `og.A11yAction`,
+    /// [`InputFrame::a11y`]): each names a control by its path in the last
+    /// frame's accessibility tree. Focus moves there (with the ring, as
+    /// keyboard navigation shows it), Activate presses it as Enter would,
+    /// Increment and Decrement step an adjustable one. A path naming no
+    /// focusable control of the topmost scope is ignored, as a press
+    /// outside an open dialog is; a gameplay screen's
+    /// `set_navigation(false)` does not stop them.
+    pub(crate) fn apply_a11y(&mut self, acts: &[(og_input::A11yAct, String)]) {
+        use og_input::A11yAct;
+        for (act, path) in acts {
+            let key = crate::id::key_of_path(path);
+            let Some(hit) = self.focusables().into_iter().find(|h| h.key == key) else {
+                continue;
+            };
+            if self.state.focus != key {
+                self.sound(crate::skin::UiSound::Hover);
+            }
+            self.state.focus = key;
+            self.state.focus_visible = true;
+            match act {
+                A11yAct::Focus => {}
+                A11yAct::Activate if hit.has(HIT_NAV) => {
+                    self.nav.activate = key;
+                    self.sound(crate::skin::UiSound::Press);
+                }
+                // A text control's activation is its focus: it edits.
+                A11yAct::Activate => {}
+                A11yAct::Increment if hit.has(HIT_ADJUST) => self.nav.adjust += 1,
+                A11yAct::Decrement if hit.has(HIT_ADJUST) => self.nav.adjust -= 1,
+                A11yAct::Increment | A11yAct::Decrement => {}
+            }
+            self.scroll_into_view(key);
+        }
+    }
+
     pub(crate) fn apply_nav(&mut self, intents: &[Nav]) {
         if intents.is_empty() {
             return;

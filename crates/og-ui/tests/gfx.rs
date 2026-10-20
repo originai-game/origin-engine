@@ -444,9 +444,8 @@ fn stripes_frame(glass: &[og_render::Glass]) -> (Vec<u8>, usize, usize, og_rende
 /// A glass panel shows the frame under it blurred, inside its rounded
 /// rectangle only, and leaves every other pixel exactly as it was: the
 /// fine stripes under it smooth to their average while the stripes beside
-/// it keep their contrast, its corners stay sharp stripes, a tint covers
-/// the blur by its alpha, and the frame matches
-/// `references/<tier>/glass.png`.
+/// it keep their contrast, its corners stay sharp stripes, and a tint
+/// covers the blur by its alpha.
 ///
 /// Ways it could fail: the frame moves through the glass source and back
 /// changed (the copy is not exact), the blur never reaches the panel
@@ -510,14 +509,94 @@ fn a_glass_panel_blurs_the_frame_under_it_and_nothing_else() {
         c[0] > 245 && c[1] < 10 && c[2] < 10,
         "a full tint is the tint ({c:?})"
     );
+}
+
+/// `scene` rendered and read back.
+fn rendered(scene: &RenderScene, desc: &RenderDesc) -> (Vec<u8>, og_render::FrameStats) {
+    let mut renderer = Renderer::new_blocking(desc).expect("a headless adapter");
+    let stats = renderer
+        .render(scene, &RenderTarget::Offscreen)
+        .expect("render");
+    (renderer.read_offscreen().expect("read back").pixels, stats)
+}
+
+/// Glass over overlay content: the panel blurs the overlay layers drawn
+/// below it as it blurs the scene (the amber bar of
+/// `glass_overlay_content`, on the layer under the panel, spreads into the
+/// stripes inside the panel and stays sharp outside it), what is drawn
+/// above it (the cyan square) stays sharp, and the frame matches
+/// `references/<tier>/glass.png`.
+///
+/// Ways it could fail: the overlay under the glass is drawn after the
+/// pyramid was built (the bar sharp inside the panel, the old behaviour),
+/// the overlay drawn into the glass source never reaches the output (the
+/// bar missing outside the panel), the pyramid is rebuilt from a source
+/// that already holds the content above the glass (the square smeared).
+#[test]
+fn a_glass_panel_blurs_the_overlay_layers_below_it() {
+    let (scene, desc) = glass_reference_scene();
+    let (glass, stats) = rendered(&scene, &desc);
+    let (mut plain_scene, _) = glass_reference_scene();
+    if let Some(o) = plain_scene.overlay.as_mut() {
+        o.glass.clear();
+    }
+    let (plain, _) = rendered(&plain_scene, &desc);
+    let w = desc.width as usize;
+    let px = |p: &[u8], x: usize, y: usize| -> [i32; 3] {
+        let i = (y * w + x) * 4;
+        [p[i] as i32, p[i + 1] as i32, p[i + 2] as i32]
+    };
+    // Outside the panel the bar is drawn as it is, sharp.
+    assert_eq!(
+        px(&glass, 60, 100),
+        px(&plain, 60, 100),
+        "the bar outside the panel"
+    );
+    let amber = px(&plain, 60, 100);
+    assert!(
+        amber[0] > 240 && amber[2] < 20,
+        "the bar is amber ({amber:?})"
+    );
+    assert_eq!(
+        px(&glass, 60, 86),
+        px(&plain, 60, 86),
+        "and the stripes above it"
+    );
+    // Inside the panel the bar is blurred: its amber reaches 8 px above
+    // its edge, where the plain frame has grey stripes.
+    for x in [150, 154, 158] {
+        let (g, p) = (px(&glass, x, 84), px(&plain, x, 84));
+        assert_eq!(p[0], p[2], "the plain frame there is a grey stripe ({p:?})");
+        assert!(
+            g[0] - g[2] > 24,
+            "the bar under the glass spreads ({x}, 84): {g:?}"
+        );
+    }
+    // On the bar's middle row the stripes no longer show through.
+    let row: Vec<i32> = (150..170).map(|x| px(&glass, x, 100)[2]).collect();
+    let (lo, hi) = (*row.iter().min().unwrap(), *row.iter().max().unwrap());
+    assert!(
+        hi - lo < 24,
+        "the bar's row under the glass is smooth ({lo}..{hi})"
+    );
+    // The square above the glass is as sharp as without it.
+    for (x, y) in [(190, 60), (198, 68), (205, 75)] {
+        assert_eq!(
+            px(&glass, x, y),
+            px(&plain, x, y),
+            "the square above the glass ({x}, {y})"
+        );
+    }
+    assert_ne!(px(&glass, 188, 68), px(&glass, 191, 68), "with a hard edge");
+    assert!(stats.draw_calls > 0);
     // The reference frame.
+    let (h, w) = (desc.height, desc.width);
     let tier = Renderer::new_blocking(&RenderDesc::default())
         .expect("a headless adapter")
         .info()
         .backend_tier();
     let out = out_dir().join(format!("glass-{tier}.png"));
-    image::save_buffer(&out, &glass, w as u32, h as u32, image::ColorType::Rgba8)
-        .expect("write frame");
+    image::save_buffer(&out, &glass, w, h, image::ColorType::Rgba8).expect("write frame");
     let own = reference_dir(&tier).join("glass.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
         std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");

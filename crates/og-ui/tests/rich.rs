@@ -38,6 +38,7 @@ fn rich_ui() -> Ui {
         columns: 2,
         rows: 1,
         names: vec!["coin".into(), "star".into()],
+        font: None,
     });
     ui
 }

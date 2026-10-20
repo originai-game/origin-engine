@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2925</sub>
+<sub>`api.ogt` line 2946</sub>
 
 ## Contents
 
@@ -42,7 +42,7 @@ module load {
 | [`og.load.defaultBundle`](#fn-defaultBundle) | function | The game's own bundle, opened before the first tick from `cooked/`. |
 | [`og.load.gltf`](#fn-gltf) | function | Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once. |
 | [`og.load.scene`](#fn-scene) | function | Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning. |
-| [`og.load.font`](#fn-font) | function | Load a cooked MSDF font for og.render.text. |
+| [`og.load.font`](#fn-font) | function | Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. |
 | [`og.load.fontInfo`](#fn-fontInfo) | function | A loaded font's metrics. |
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. |
@@ -92,7 +92,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3008</sub>
+<sub>`api.ogt` line 3030</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -122,7 +122,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3015</sub>
+<sub>`api.ogt` line 3037</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -150,7 +150,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3022</sub>
+<sub>`api.ogt` line 3044</sub>
 
 <a id="fn-gltf"></a>
 
@@ -182,7 +182,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3028</sub>
+<sub>`api.ogt` line 3050</sub>
 
 <a id="fn-scene"></a>
 
@@ -212,13 +212,13 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3036</sub>
+<sub>`api.ogt` line 3058</sub>
 
 <a id="fn-font"></a>
 
 ### `og.load.font`
 
-Load a cooked MSDF font for og.render.text.
+Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font.
 
 ```ts
 og.load.font(world: World, path: string): Result<Font>
@@ -235,14 +235,14 @@ Binding symbol `og_load_font` · publish builds: kept
 
 ```ogt
 fn font {
-  doc "Load a cooked MSDF font for og.render.text."
+  doc "Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font."
   param world World "The world that owns the font."
   param path String "The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`."
   returns Result.Font
 }
 ```
 
-<sub>`api.ogt` line 3043</sub>
+<sub>`api.ogt` line 3065</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -272,7 +272,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3050</sub>
+<sub>`api.ogt` line 3072</sub>
 
 <a id="fn-sound"></a>
 
@@ -302,7 +302,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3057</sub>
+<sub>`api.ogt` line 3079</sub>
 
 <a id="fn-lut"></a>
 
@@ -332,7 +332,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3064</sub>
+<sub>`api.ogt` line 3086</sub>
 
 <a id="fn-environment"></a>
 
@@ -362,7 +362,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3071</sub>
+<sub>`api.ogt` line 3093</sub>
 
 <a id="fn-emitter"></a>
 
@@ -392,7 +392,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3078</sub>
+<sub>`api.ogt` line 3100</sub>
 
 <a id="fn-shader"></a>
 
@@ -422,7 +422,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3085</sub>
+<sub>`api.ogt` line 3107</sub>
 
 <a id="fn-texture"></a>
 
@@ -452,7 +452,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3092</sub>
+<sub>`api.ogt` line 3114</sub>
 
 <a id="fn-skin"></a>
 
@@ -482,7 +482,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3099</sub>
+<sub>`api.ogt` line 3121</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -512,7 +512,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3106</sub>
+<sub>`api.ogt` line 3128</sub>
 
 <a id="fn-status"></a>
 
@@ -542,7 +542,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3113</sub>
+<sub>`api.ogt` line 3135</sub>
 
 <a id="fn-error"></a>
 
@@ -572,7 +572,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3120</sub>
+<sub>`api.ogt` line 3142</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -602,7 +602,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3127</sub>
+<sub>`api.ogt` line 3149</sub>
 
 <a id="fn-animation"></a>
 
@@ -632,7 +632,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3134</sub>
+<sub>`api.ogt` line 3156</sub>
 
 <a id="fn-rig"></a>
 
@@ -662,7 +662,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3141</sub>
+<sub>`api.ogt` line 3163</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -692,7 +692,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3148</sub>
+<sub>`api.ogt` line 3170</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -722,7 +722,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3155</sub>
+<sub>`api.ogt` line 3177</sub>
 
 ## Components, resources and events
 
@@ -745,7 +745,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3003</sub>
+<sub>`api.ogt` line 3025</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -768,7 +768,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3162</sub>
+<sub>`api.ogt` line 3184</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -793,7 +793,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3168</sub>
+<sub>`api.ogt` line 3190</sub>
 
 ## Types
 
@@ -809,7 +809,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 2931</sub>
+<sub>`api.ogt` line 2952</sub>
 
 <a id="type-Font"></a>
 
@@ -823,7 +823,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 2932</sub>
+<sub>`api.ogt` line 2953</sub>
 
 <a id="type-Sound"></a>
 
@@ -837,7 +837,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 2933</sub>
+<sub>`api.ogt` line 2954</sub>
 
 <a id="type-Skin"></a>
 
@@ -851,7 +851,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 2934</sub>
+<sub>`api.ogt` line 2955</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -876,7 +876,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2950</sub>
+<sub>`api.ogt` line 2971</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -902,7 +902,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2957</sub>
+<sub>`api.ogt` line 2978</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -927,7 +927,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2965</sub>
+<sub>`api.ogt` line 2986</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -950,7 +950,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2973</sub>
+<sub>`api.ogt` line 2994</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -967,6 +967,7 @@ A loaded font's metrics, in em units unless stated.
 | `ascender` | `number` | `0` | — | — | — | Ascender above the baseline. |
 | `descender` | `number` | `0` | — | — | — | Descender below the baseline (negative). |
 | `lineHeight` | `number` | `0` | — | — | — | Ascender minus descender plus the line gap. |
+| `icons` | `number` | `0` | — | — | — | The icons of an icon set (an `.ogt` of `type icons`, SVGs cooked like a font for UiDesc.icons.font); 0 for a text font. |
 
 ```ogt
 struct FontInfo {
@@ -978,10 +979,11 @@ struct FontInfo {
   field ascender f32 "Ascender above the baseline."
   field descender f32 "Descender below the baseline (negative)."
   field lineHeight f32 "Ascender minus descender plus the line gap."
+  field icons u32 "The icons of an icon set (an `.ogt` of `type icons`, SVGs cooked like a font for UiDesc.icons.font); 0 for a text font."
 }
 ```
 
-<sub>`api.ogt` line 2980</sub>
+<sub>`api.ogt` line 3001</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1010,7 +1012,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2991</sub>
+<sub>`api.ogt` line 3013</sub>
 
 ## Column kinds
 
@@ -1030,7 +1032,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2936</sub>
+<sub>`api.ogt` line 2957</sub>
 
 ```ogt
 column Sound {
@@ -1041,4 +1043,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2943</sub>
+<sub>`api.ogt` line 2964</sub>

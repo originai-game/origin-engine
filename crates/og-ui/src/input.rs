@@ -283,6 +283,10 @@ pub struct InputFrame {
     /// (joystick, d-pad, action buttons) also answer pointers 1 to 4, so a
     /// stick and a button can be held together.
     pub pointers: og_input::Pointers,
+    /// An assistive technology's requests this tick (og-input's
+    /// `og.A11yAction`, from the shell's mirror of the accessibility tree):
+    /// the action and the control's path.
+    pub a11y: Vec<(og_input::A11yAct, String)>,
 }
 
 impl InputFrame {
@@ -308,6 +312,7 @@ impl InputFrame {
             gamepad: source.gamepad(),
             extra_pads: [GamepadFrame::default(); 3],
             pointers: og_input::Pointers::default(),
+            a11y: Vec::new(),
         }
     }
 
@@ -352,6 +357,17 @@ impl InputFrame {
                 self.text.push_str(t);
                 // A commit ends the composition.
                 self.composition = Some(String::new());
+            }
+        }
+        self
+    }
+
+    /// Adds this tick's `og.A11yAction` events (a screen reader focusing,
+    /// activating or adjusting a mirrored control).
+    pub fn with_a11y(mut self, events: &[og_input::A11yAction]) -> InputFrame {
+        for e in events {
+            if let Some(act) = e.act() {
+                self.a11y.push((act, e.path.as_str().to_owned()));
             }
         }
         self

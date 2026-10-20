@@ -28,6 +28,12 @@ pub struct Viewport {
     pub safe_area: Insets,
     /// A touch screen or other coarse pointer (raises controls to touch size).
     pub coarse_pointer: bool,
+    /// The page prefers reduced motion (`prefers-reduced-motion: reduce`):
+    /// the theme's `reduced_motion` is on whatever the game configured.
+    pub reduced_motion: bool,
+    /// The page prefers more contrast (`prefers-contrast: more`): the
+    /// theme is its high-contrast variant whatever the game configured.
+    pub high_contrast: bool,
 }
 
 impl Default for Viewport {
@@ -38,6 +44,8 @@ impl Default for Viewport {
             dpr: 1.0,
             safe_area: Insets::default(),
             coarse_pointer: false,
+            reduced_motion: false,
+            high_contrast: false,
         }
     }
 }
@@ -272,6 +280,9 @@ pub(crate) struct State {
     pub scroll_info: BTreeMap<u64, crate::scroll::ScrollInfo>,
     /// A released drag's momentum: the container and its velocity per tick.
     pub fling: Option<(u64, Vec2)>,
+    /// Two touches held at once (og.Pointers): the scroll container or
+    /// zoom view they move, and their centre and spread last tick.
+    pub pinch: Option<crate::scroll::Pinch>,
     /// The drag's velocity so far, CSS px per tick.
     pub drag_v: Vec2,
     /// A scrollbar the press grabbed.
@@ -323,15 +334,24 @@ pub(crate) struct NavFrame {
     pub pad_activate: [u64; 3],
 }
 
-/// The icon atlas `Ui::icon` draws from: a grid of equal cells.
+/// The icon atlas `Ui::icon` draws from: a grid of equal cells of a
+/// texture, or an icon set cooked like a font (`font`: an `.ogt` of
+/// `type icons`, og-cook's `cook::icons`), whose icons are distance-field
+/// glyphs drawn crisp at any size and tinted by their ink.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct IconAtlas {
     pub texture: Option<TextureHandle>,
     pub columns: u32,
     pub rows: u32,
-    /// Optional names, one per cell in reading order, for `icon_named`.
+    /// Optional names, one per cell in reading order, for `icon_named`;
+    /// an icon set's names, glyph U+E000 + i being icon i.
     pub names: Vec<String>,
+    /// An icon set: its MTSDF font (`texture` is then unused).
+    pub font: Option<crate::text::UiFont>,
 }
+
+/// The code point of an icon set's first icon (og-cook's `ICON_PUA`).
+pub const ICON_PUA: u32 = 0xE000;
 
 impl IconAtlas {
     /// The UV rectangle of cell `index`.
@@ -344,6 +364,17 @@ impl IconAtlas {
 
     pub fn index_of(&self, name: &str) -> Option<u32> {
         self.names.iter().position(|n| n == name).map(|i| i as u32)
+    }
+
+    /// Whether it draws anything (a texture, or an icon set's font).
+    pub fn is_drawn(&self) -> bool {
+        self.texture.is_some() || self.font.as_ref().is_some_and(|f| f.handle.is_some())
+    }
+
+    /// An icon set's glyph for icon `index`: its font and character.
+    pub fn glyph(&self, index: u32) -> Option<(og_render::FontHandle, char)> {
+        let f = self.font.as_ref()?.handle?;
+        Some((f, char::from_u32(ICON_PUA + index)?))
     }
 }
 
@@ -530,6 +561,9 @@ pub struct ImageDesc {
     pub tint: Option<Srgba>,
     pub width: Size,
     pub height: Size,
+    /// Width over height (0: none): with the height left to fit, the image
+    /// is as tall as its width over this (`Element::aspect`).
+    pub aspect: f32,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -575,6 +609,9 @@ pub struct TextAreaDesc {
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
 #[derive(Clone, Debug)]
 pub struct Ui {
+    /// The theme as configured ([`Ui::set_theme`]); `theme` is it with the
+    /// viewport's preferences applied.
+    pub(crate) configured: Theme,
     pub(crate) theme: Theme,
     pub(crate) fonts: Fonts,
     pub(crate) ticks_per_second: u32,
@@ -612,6 +649,9 @@ pub struct Ui {
     pub(crate) cover: Option<crate::juice::Cover>,
     /// The configured skin's name (empty: the tokens).
     pub(crate) skin_name: String,
+    /// Two touches move a scroller or zoom view this tick: the primary
+    /// pointer presses nothing.
+    pub(crate) gesture: bool,
     /// The writing direction: right to left mirrors the layout and turns
     /// text alignment round (og.i18n's locale, or og.ui.configure).
     pub(crate) direction: og_i18n::Direction,
@@ -623,7 +663,19 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 6;
+const STATE_VERSION: u32 = 7;
+
+/// `theme` with a viewport's preferences: the page's reduced motion turns
+/// the flag on, its contrast preference takes the high-contrast variant
+/// (a game's own settings can only add to what the page asks).
+fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
+    let mut t = theme;
+    if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
+        t = t.to_high_contrast();
+    }
+    t.reduced_motion |= viewport.reduced_motion;
+    t
+}
 
 /// A skin's `textGlow` size is how far the old four offset copies reached;
 /// the distance-field glow fades to nothing over this many times it.
@@ -632,6 +684,7 @@ const TEXT_GLOW_REACH: f32 = 2.0;
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
         Ui {
+            configured: desc.theme,
             theme: desc.theme,
             fonts: desc.fonts,
             ticks_per_second: if desc.ticks_per_second == 0 {
@@ -663,6 +716,7 @@ impl Ui {
             text_target: None,
             cover: None,
             skin_name: String::new(),
+            gesture: false,
             direction: og_i18n::Direction::Ltr,
         }
     }
@@ -828,12 +882,15 @@ impl Ui {
         child_key(parent, id)
     }
 
+    /// The theme in effect: the configured one ([`Ui::set_theme`]) with the
+    /// viewport's reduced-motion and contrast preferences applied.
     pub fn theme(&self) -> &Theme {
         &self.theme
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
-        self.theme = theme;
+        self.configured = theme;
+        self.theme = effective_theme(theme, &self.viewport);
     }
 
     /// The configured skin's name, for the theme the host reports (empty: the tokens).
@@ -886,8 +943,15 @@ impl Ui {
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
     pub fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
-        // Scrolling first: a press on a scrollbar grabs it before anything under it.
+        // Scrolling first: a press on a scrollbar grabs it before anything
+        // under it, two touches scroll or zoom what is under them.
         let grabbed = self.scroll_input(&input);
+        let mut input = input;
+        if self.gesture {
+            input.pressed = false;
+            input.released = false;
+            input.down = false;
+        }
         if self.building {
             self.warnings.push(
                 "begin without end: the previous frame was dropped; call ui.end() once per tick"
@@ -895,6 +959,7 @@ impl Ui {
             );
         }
         self.viewport = viewport;
+        self.theme = effective_theme(self.configured, &viewport);
         self.nodes.clear();
         self.kinds.clear();
         self.stack.clear();
@@ -958,10 +1023,10 @@ impl Ui {
         }
         let intents = self.intents(&input);
         self.apply_nav(&intents);
+        self.apply_a11y(&input.a11y);
         self.apply_pads(&input);
         self.state.pointer = p;
         // Once a world has a typed-text stream, key presses type nothing.
-        let mut input = input;
         if input.typed_stream {
             self.state.typed_stream = true;
         } else if self.state.typed_stream {
@@ -1391,7 +1456,8 @@ impl Ui {
         r
     }
 
-    /// A texture region, or a solid rectangle without a texture.
+    /// A texture region, or a solid rectangle without a texture; with
+    /// `aspect`, a fitting side follows the other.
     pub fn image(&mut self, id: impl Into<Id>, desc: ImageDesc) {
         let i = self.leaf(
             "image",
@@ -1399,6 +1465,7 @@ impl Ui {
             Element {
                 width: desc.width,
                 height: desc.height,
+                aspect: desc.aspect.max(0.0),
                 ..Element::default()
             },
         );
@@ -2838,7 +2905,11 @@ impl Ui {
                     } else {
                         rect
                     };
-                    cmds.push(quad(r, n.el.radius, bg));
+                    if self.has_edge(n, bg) {
+                        self.edge_light(r, n.el.radius, bg, alpha, clip, cmds);
+                    } else {
+                        cmds.push(quad(r, n.el.radius, bg));
+                    }
                 }
             }
         }
@@ -3125,6 +3196,65 @@ impl Ui {
             Content::None => {}
         }
         self.shape_commands(n, cmds);
+    }
+
+    /// Whether a node's plain background takes the card edge
+    /// (`Theme::edge`): an opaque surface (a dialog or screen panel, a
+    /// card, a tooltip) in the token look (no skin atlas).
+    fn has_edge(&self, n: &Node, bg: Srgba) -> bool {
+        use crate::skin::SkinPart;
+        let t = &self.theme;
+        !t.edge.is_empty()
+            && t.skin.atlas.is_none()
+            && bg.alpha >= 0.999
+            && matches!(
+                n.el.skin,
+                Some(SkinPart::Panel | SkinPart::Card | SkinPart::Tooltip)
+            )
+    }
+
+    /// A surface with the card edge: the fill with every layer over it,
+    /// then, inside each layer's hole (the surface moved by its offset, or
+    /// shrunk by its spread), the fill with only the layers that reach
+    /// there: in dark a 0.5 px highlight along the top and a 0.5 px
+    /// hairline all round (`shadow-edge`).
+    fn edge_light(
+        &self,
+        rect: Rect,
+        radius: f32,
+        bg: Srgba,
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let layers = self.theme.edge;
+        let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
+            rect,
+            radius: radius.max(0.0),
+            color: color.fade(alpha).linear(),
+            clip,
+        };
+        let over = |kinds: &mut dyn Iterator<Item = &crate::theme::InsetShadow>| {
+            kinds.fold(bg, |c, l| l.color.over(c))
+        };
+        cmds.push(quad(rect, radius, over(&mut layers.iter())));
+        // The offset layers' holes: the spread layers still reach there.
+        for l in layers.iter().filter(|l| l.dx != 0.0 || l.dy != 0.0) {
+            let hole = Rect::new(
+                rect.x + l.dx.max(0.0),
+                rect.y + l.dy.max(0.0),
+                rect.width - l.dx.abs(),
+                rect.height - l.dy.abs(),
+            );
+            let c = over(&mut layers.iter().filter(|k| k.spread > 0.0));
+            cmds.push(quad(hole, radius, c));
+        }
+        // The spread layers' holes: the fill.
+        if let Some(s) = layers.iter().map(|l| l.spread).reduce(f32::max)
+            && s > 0.0
+        {
+            cmds.push(quad(rect.outset(-s), radius - s, bg));
+        }
     }
 
     /// A text control's marks on one line: under the text, the selection
@@ -3544,6 +3674,34 @@ impl Ui {
                         placements,
                     });
                 }
+                Shape::Glyph {
+                    frame,
+                    font,
+                    ch,
+                    color,
+                } => {
+                    let r = frame.resolve(&n.rect);
+                    let size = r.width.min(r.height);
+                    if size <= 0.0 {
+                        continue;
+                    }
+                    // The em square: ascender 1, descender 0 (cook::icons).
+                    let (x, top) = (r.x + (r.width - size) / 2.0, r.y + (r.height - size) / 2.0);
+                    cmds.push(DrawCmd::Text {
+                        x,
+                        baseline: top + size,
+                        size,
+                        text: ch.to_string(),
+                        color: color.fade(alpha).linear(),
+                        font: *font,
+                        bounds: Rect::new(x, top, size, size),
+                        clip,
+                        tracking: 0.0,
+                        weight: 0.0,
+                        glow: None,
+                        placements: Vec::new(),
+                    });
+                }
             }
         }
     }
@@ -3661,6 +3819,12 @@ impl Ui {
         b.extend_from_slice(s.composition.as_bytes());
         f32_(&mut b, s.edit_scroll);
         b.push(u8::from(s.typed_stream));
+        let pinch = s.pinch.unwrap_or_default();
+        b.push(u8::from(s.pinch.is_some()));
+        u64_(&mut b, pinch.key);
+        f32_(&mut b, pinch.center.x);
+        f32_(&mut b, pinch.center.y);
+        f32_(&mut b, pinch.spread);
         b
     }
 
@@ -3956,6 +4120,13 @@ impl Reader<'_> {
         s.composition = self.string()?;
         s.edit_scroll = self.f32()?;
         s.typed_stream = self.u8()? != 0;
+        let on = self.u8()? != 0;
+        let pinch = crate::scroll::Pinch {
+            key: self.u64()?,
+            center: Vec2::new(self.f32()?, self.f32()?),
+            spread: self.f32()?,
+        };
+        s.pinch = on.then_some(pinch);
         Some(s)
     }
 }

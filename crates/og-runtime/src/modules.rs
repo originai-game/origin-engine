@@ -126,17 +126,20 @@ pub(crate) fn mount_front(
                 .read::<og_probe::Input>()
                 .read::<og_input::Gamepad>()
                 .read::<og_input::Pointers>()
-                .read::<og_input::TextInput>(),
+                .read::<og_input::TextInput>()
+                .read::<og_input::A11yAction>(),
             move |ctx| {
                 let pad = ctx.resource::<og_input::Gamepad>().ok().map(|g| *g);
                 let pointers = ctx.resource::<og_input::Pointers>().ok().map(|p| *p);
                 let typed = ctx.events::<og_input::TextInput>().unwrap_or_default();
+                let asked = ctx.events::<og_input::A11yAction>().unwrap_or_default();
                 let input = ctx
                     .resource::<og_probe::Input>()
                     .map(|i| InputFrame::read(&*i))
                     .unwrap_or_default()
                     .with(pad.as_ref(), pointers.as_ref())
-                    .with_text(&typed);
+                    .with_text(&typed)
+                    .with_a11y(&asked);
                 let viewport = viewport_of(engine_id);
                 shared.lock().begin(input, viewport);
                 BUILDING.with(|b| b.set(Some(engine_id)));
@@ -284,7 +287,8 @@ pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
 }
 
 /// The host's play surface: CSS pixels, device pixels per CSS pixel, the
-/// safe area and the pointer kind. The web host calls it when the canvas
+/// safe area, the pointer kind and the page's motion and contrast
+/// preferences. The web host calls it when the canvas
 /// is sized; native hosts take the render target's size.
 pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     let eng = engine(engine_id)?;
@@ -295,6 +299,8 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         dpr: num("dpr", 1.0),
         safe_area: insets(&viewport["safeArea"]),
         coarse_pointer: viewport["coarsePointer"].as_bool().unwrap_or(false),
+        reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
+        high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
@@ -305,6 +311,8 @@ fn viewport_json(v: &Viewport) -> Value {
         "width": v.width, "height": v.height, "dpr": v.dpr,
         "safeArea": { "left": v.safe_area.left, "top": v.safe_area.top, "right": v.safe_area.right, "bottom": v.safe_area.bottom },
         "coarsePointer": v.coarse_pointer,
+        "reducedMotion": v.reduced_motion,
+        "highContrast": v.high_contrast,
         "breakpoint": v.breakpoint().name(),
     })
 }
@@ -729,6 +737,7 @@ fn element(theme: &Theme, d: &Value) -> Element {
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
         skin: skin_part(&d["frame"]),
+        aspect: f(d, "aspect", 0.0).max(0.0),
     }
 }
 
@@ -897,18 +906,48 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 }
                 None => None,
             };
-            IconAtlas {
-                texture,
-                columns: icons["columns"].as_u64().unwrap_or(1).max(1) as u32,
-                rows: icons["rows"].as_u64().unwrap_or(1).max(1) as u32,
-                names: icons["names"]
-                    .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .map(|n| n.as_str().unwrap_or_default().to_string())
-                            .collect()
-                    })
-                    .unwrap_or_default(),
+            // An icon set (an `.ogt` of `type icons`, loaded as a font):
+            // distance-field glyphs, named by the set.
+            let set = match icons["font"].as_f64() {
+                Some(h) => {
+                    let i = super::assets::index_of(h)
+                        .ok_or_else(|| format!("icons.font: {h} is not a font"))?;
+                    let names = eng
+                        .assets
+                        .borrow()
+                        .fonts
+                        .get(i)
+                        .map(|f| f.icons.clone())
+                        .ok_or_else(|| format!("icons.font: font {h} is not alive"))?;
+                    if names.is_empty() {
+                        return Err(format!(
+                            "icons.font: font {h} is not an icon set (cook SVGs with an .ogt of `type icons`)"
+                        ));
+                    }
+                    Some((ui_font(&eng, h)?, names))
+                }
+                None => None,
+            };
+            match set {
+                Some((font, names)) => IconAtlas {
+                    font: Some(font),
+                    names,
+                    ..IconAtlas::default()
+                },
+                None => IconAtlas {
+                    texture,
+                    columns: icons["columns"].as_u64().unwrap_or(1).max(1) as u32,
+                    rows: icons["rows"].as_u64().unwrap_or(1).max(1) as u32,
+                    names: icons["names"]
+                        .as_array()
+                        .map(|a| {
+                            a.iter()
+                                .map(|n| n.as_str().unwrap_or_default().to_string())
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    font: None,
+                },
             }
         } else if let Some((file, _, _, Some(texture), _)) = &skin {
             let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
@@ -917,6 +956,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 columns,
                 rows,
                 names,
+                font: None,
             }
         } else {
             IconAtlas::default()
@@ -1269,9 +1309,33 @@ pub fn og_ui_image(id: String, desc: Option<String>) {
             tint: paint(&t, &d["tint"]),
             width: size_or(&d["width"], Size::fit()),
             height: size_or(&d["height"], Size::fit()),
+            aspect: f(&d, "aspect", 0.0).max(0.0),
         };
         ui.image(id.as_str(), i)
     });
+}
+
+pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let texture = texture_of(&d["texture"]);
+    let r = with_ui("og.ui.zoomView", |ui| {
+        let t = *ui.theme();
+        ui.zoom_view(
+            id.as_str(),
+            &og_ui::ZoomViewDesc {
+                texture,
+                uv: uv_of(&d["uv"]),
+                tint: paint(&t, &d["tint"]),
+                width: size_or(&d["width"], Size::fit()),
+                height: size_or(&d["height"], Size::fit()),
+                aspect: f(&d, "aspect", 0.0).max(0.0),
+                min_zoom: f(&d, "minZoom", 0.0),
+                max_zoom: f(&d, "maxZoom", 0.0),
+            },
+        )
+    });
+    let (zoom, x, y) = r.map_or((1.0, 0.5, 0.5), |r| (r.zoom, r.center.x, r.center.y));
+    json!({ "zoom": zoom, "centerX": x, "centerY": y }).to_string()
 }
 
 pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
@@ -2098,24 +2162,25 @@ pub fn og_ui_focus(pad: u32) -> String {
     with_ui("og.ui.focus", |ui| ui.focus_path(pad).to_string()).unwrap_or_default()
 }
 
-pub fn og_ui_a11y() -> String {
-    with_ui("og.ui.a11y", |ui| {
-        let t = ui.a11y();
-        let nodes: Vec<serde_json::Value> = t
-            .nodes
-            .iter()
-            .map(|n| {
-                serde_json::json!({
-                    "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
-                    "value": n.value, "states": n.states,
-                    "x": n.x, "y": n.y, "width": n.width, "height": n.height,
-                })
+/// An accessibility tree as og.ui.a11y answers it (IDL `ui.A11yTree`).
+pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
+    let nodes: Vec<Value> = t
+        .nodes
+        .iter()
+        .map(|n| {
+            json!({
+                "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
+                "value": n.value, "states": n.states,
+                "x": n.x, "y": n.y, "width": n.width, "height": n.height,
             })
-            .collect();
-        serde_json::json!({"nodes": nodes, "focusOrder": t.focus_order, "focused": t.focused})
-            .to_string()
-    })
-    .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
+        })
+        .collect();
+    json!({"nodes": nodes, "focusOrder": t.focus_order, "focused": t.focused})
+}
+
+pub fn og_ui_a11y() -> String {
+    with_ui("og.ui.a11y", |ui| a11y_json(ui.a11y()).to_string())
+        .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
 }
 
 pub fn og_ui_memory(id: String, initial: f64) -> f64 {
@@ -2144,6 +2209,8 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     dpr: num("dpr", 1.0),
                     safe_area: insets(&v["safeArea"]),
                     coarse_pointer: v["coarsePointer"].as_bool().unwrap_or(false),
+                    reduced_motion: v["reducedMotion"].as_bool().unwrap_or(false),
+                    high_contrast: v["highContrast"].as_bool().unwrap_or(false),
                 },
             );
         } else {

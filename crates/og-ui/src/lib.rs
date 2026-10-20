@@ -73,7 +73,7 @@ pub use widgets::{
     DpadResponse, GridDesc, IconDesc, JoystickDesc, JoystickResponse, ListDesc, ListRange,
     MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, ModalResponse, Presence, RadioDesc,
     SelectDesc, SkeletonDesc, SpotlightDesc, StepperDesc, TabsDesc, ToastDesc, Tone,
-    TransitionDesc,
+    TransitionDesc, ZoomResponse, ZoomViewDesc,
 };
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.

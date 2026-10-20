@@ -484,7 +484,9 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
 }
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
-/// coarsePointer? }` in CSS pixels. Answers wire JSON.
+/// coarsePointer?, reducedMotion?, highContrast? }` in CSS pixels (the last
+/// two the page's `prefers-reduced-motion` and `prefers-contrast`).
+/// Answers wire JSON.
 #[wasm_bindgen]
 pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {
     let parsed: Result<serde_json::Value, _> = serde_json::from_str(&viewport);

@@ -433,6 +433,62 @@ pub fn generate(source: &str) -> Result<String, String> {
             );
         }
     }
+    // The card edge (`shadow.edge`; in dark the edge light): its inset
+    // layers, each `inset <dx> <dy> <blur> [<spread>] <colour>`.
+    let _ = writeln!(
+        out,
+        "\n/// One inset layer of a `shadow-*` token, drawn inside a surface's edge:\n\
+         /// the surface less itself moved by (`dx`, `dy`) and shrunk by `spread`,\n\
+         /// in `color` (CSS px; the tokens' edge layers have no blur).\n\
+         #[derive(Clone, Copy, Debug, PartialEq)]\n\
+         pub struct InsetShadow {{\n    pub dx: f32,\n    pub dy: f32,\n    pub spread: f32,\n    pub color: Srgba,\n}}"
+    );
+    for (scheme, path) in [("LIGHT", "shadow.edge"), ("DARK", "dark.shadow.edge")] {
+        let (parent, key) = path.rsplit_once('.').expect("a dotted path");
+        let text = object(&root, parent)?
+            .get(key)
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("tokens.json has no string `{path}`"))?;
+        let mut layers = Vec::new();
+        for layer in text.split("),").map(|l| l.trim()) {
+            let layer = if layer.ends_with(')') {
+                layer.to_owned()
+            } else {
+                format!("{layer})")
+            };
+            let rest = layer
+                .strip_prefix("inset ")
+                .ok_or_else(|| format!("`{path}`: `{layer}` is not an inset layer"))?;
+            let at = rest
+                .find("rgb(")
+                .ok_or_else(|| format!("`{path}`: `{layer}` has no rgb() colour"))?;
+            let lengths: Vec<f64> = rest[..at]
+                .split_whitespace()
+                .map(|v| {
+                    v.trim_end_matches("px")
+                        .parse::<f64>()
+                        .map_err(|e| format!("`{path}`: `{v}`: {e}"))
+                })
+                .collect::<Result<_, _>>()?;
+            if !(3..=4).contains(&lengths.len()) || lengths[2] != 0.0 {
+                return Err(format!(
+                    "`{path}`: `{layer}`: offsets, no blur and a spread expected"
+                ));
+            }
+            layers.push(format!(
+                "    InsetShadow {{ dx: {}, dy: {}, spread: {}, color: {} }},",
+                lit(lengths[0]),
+                lit(lengths[1]),
+                lit(lengths.get(3).copied().unwrap_or(0.0)),
+                srgba(color(&rest[at..])?)
+            ));
+        }
+        let _ = writeln!(
+            out,
+            "\n/// `{path}`: the card edge's inset layers.\npub const SHADOW_EDGE_{scheme}: &[InsetShadow] = &[\n{}\n];",
+            layers.join("\n")
+        );
+    }
     let vars = object(&root, "vars")?;
     let press = vars
         .get("press-scale")

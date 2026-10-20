@@ -475,5 +475,27 @@ pub const EASE_EXIT: [f32; 4] = [0.4, 0.0, 1.0, 1.0];
 /// `motion.easing.out`: cubic Bézier control points (x1, y1, x2, y2).
 pub const EASE_OUT: [f32; 4] = [0.23, 1.0, 0.32, 1.0];
 
+/// One inset layer of a `shadow-*` token, drawn inside a surface's edge:
+/// the surface less itself moved by (`dx`, `dy`) and shrunk by `spread`,
+/// in `color` (CSS px; the tokens' edge layers have no blur).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InsetShadow {
+    pub dx: f32,
+    pub dy: f32,
+    pub spread: f32,
+    pub color: Srgba,
+}
+
+/// `shadow.edge`: the card edge's inset layers.
+pub const SHADOW_EDGE_LIGHT: &[InsetShadow] = &[
+    InsetShadow { dx: 0.0, dy: 0.0, spread: 0.5, color: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 0.06 } },
+];
+
+/// `dark.shadow.edge`: the card edge's inset layers.
+pub const SHADOW_EDGE_DARK: &[InsetShadow] = &[
+    InsetShadow { dx: 0.0, dy: 0.5, spread: 0.0, color: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.1 } },
+    InsetShadow { dx: 0.0, dy: 0.0, spread: 0.5, color: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.07 } },
+];
+
 /// `vars.press-scale`: how far a pressed control shrinks.
 pub const PRESS_SCALE: f32 = 0.96;
