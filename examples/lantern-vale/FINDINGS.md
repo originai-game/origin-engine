@@ -4,7 +4,7 @@ Every problem met writing this game from the knowledge package (skills and wiki)
 
 | | Blocker | Annoyance | Nit | Total |
 |---|---|---|---|---|
-| Count | 1 | 16 | 15 | 32 |
+| Count | 1 | 15 | 16 | 32 |
 
 Top five: #9, #16, #15, #11, #27 (with #4).
 
@@ -33,7 +33,7 @@ Top five: #9, #16, #15, #11, #27 (with #4).
 23. **A text field's accessible name is its placeholder, not its label** — nit.
 24. **`og.ui.resultsScreen`'s "Best …" and "New best" are English only** — annoyance. No `ResultsDesc` field or table key for them (see locales test `results-zh.json`).
 25. **og polish counts toasts under a dialog's scrim as low contrast** (1.15:1, 1.31:1), though og-build §5 excludes scrim-dimmed text — nit. Thin CJK strokes also measure lower: "设置" 3.12:1 where the same colours pass in Latin.
-26. **Frame time is measured on an unoptimised engine** — annoyance. AGENTS.md and docs/ci.md say dev's heavy deps are optimised per package, but `Cargo.toml` has no `[profile.dev.package.<dep>] opt-level`. Numbers on metal, 1280×720:
+26. **Frame time is measured on the dev profile** — nit (the first reading of this was wrong: `Cargo.toml` does set `[profile.dev.package.<crate>] opt-level` for rapier, parry, glam, nalgebra, wgpu, naga, meshopt, basis-universal and every og-* crate; what dev lacks against release is LTO and one codegen unit). Numbers on metal, 1280×720:
 
     | Measure | Before the merge (loaded machine) | After |
     |---|---|---|
