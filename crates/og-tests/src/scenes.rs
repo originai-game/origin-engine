@@ -235,6 +235,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         }
         // The same geometry under TAA with the camera sliding sideways:
         // Catmull-Rom history and a 0.5 sharpening pass, after 16 frames.
+        // `Antialias::Taa` is TAA on every tier: the browser tiers judge a
+        // moving camera's reprojection on WebGL2 against metal here (row
+        // 68: the GL backend read TAA's depth as 0 until it was sampled).
         "taa-sharp" => {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Taa;
@@ -242,7 +245,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.desc.taa_sharpen = 0.5;
             g.frames = 16;
             g.update = Some(crate::shadow_scenes::pan_thin_geometry);
-            g.applies = Applies::FullTier;
         }
         // The sun's soft shadows (PCSS) with cascade blending: contact
         // shadows sharp, penumbrae widening with the caster's height.
