@@ -90,6 +90,10 @@ pub const SCENES: &[&str] = &[
     "stylise-object",
     "stylise-halftone-surface",
     "materials-array",
+    "stylise-outline-voxels",
+    "stylise-toon-physical",
+    "sprites-untonemapped",
+    "stylise-bands-tint",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -470,6 +474,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-surface" => g.scene = crate::stylise_scenes::surface_scene(),
         "stylise-object" => g.scene = crate::stylise_scenes::object_scene(),
         "stylise-halftone-surface" => g.scene = crate::stylise_scenes::halftone_surface_scene()?,
+        "stylise-outline-voxels" => g.scene = crate::stylise_scenes::outline_voxels_scene(),
+        "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
+        "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
+        // Untonemapped sprites under TAA (its history carries the alpha).
+        "sprites-untonemapped" => {
+            g.scene = crate::stylise_scenes::untonemapped_sprites_scene();
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 16;
+            g.applies = Applies::FullTier;
+        }
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),

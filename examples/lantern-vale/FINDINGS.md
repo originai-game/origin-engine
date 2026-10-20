@@ -54,3 +54,40 @@ Top five: #9, #16, #15, #11, #27 (with #4).
 ## What worked well
 
 og cook: 47 assets cold in 8.2 s, incremental about 90 ms, no warnings. The access errors name the fix. Streaming `.vox`/texture groups, `applyLook` at a tick, chunked music, `og.physics.overlap` on a layer, the controller shoving bodies, a skinned glTF on twos and the flipbook array each worked the first time they were asked correctly. Two processes of a full session end on one hash. Every polish finding named its fixing section.
+
+## After wave 7
+
+Each finding's state on main at 767ecf84 (the streams' sections in `docs/phase-1.md`; owed rows are that file's).
+
+1. Fixed: api-runtime, c364d491 (og-audio names `AudioSource.loop`; the knowledge check reads `key: value` spans). No workaround here.
+2. Fixed: cook-vox, 6e5a369b (`og.anim.clip(info)` finds a model's clip, og-game §9 shows it). The game's `og.load.animation(...).clips.find` still works and stays.
+3. Fixed: cook-vox, 6e5a369b (`GltfInfo.animations` lists the model's clips). No workaround here.
+4. Fixed: cook-vox, 6e5a369b (`voxScale`, `voxOrigin`, `voxFps`, `voxClip` in the `og.load.gltf` doc, og-game §5 and og-build §7). No workaround here.
+5. Fixed: cook-vox, 42e622cb (MagicaVoxel frames cook to skinned mesh-swap clips). The slime stays a glTF from `tools/make-assets.ts`: it bends between two weighted joints and is glassy, which a `.vox`'s whole-frame swaps and one rough material do not give. Open: `nTRN` key frames and the cost of a folded frame (row 63).
+6. Fixed: ui-text, 9d00fb21 (skin ids relative to the skin file). The game's copy keeps its absolute ids, which still work. Open by decision: the CJK fallback stays outside the pack (row 66).
+7. Fixed: reflect-string, 294888a2. `Prefs.name` is a `str(48)`; the twelve `u32` code points and `nameOf` are gone.
+8. Fixed: api-runtime, 457e659a (project.ogt's `tick`, `seed`, `scenes` and `scene` are read; set in both places to different values they refuse the engine). The game's `GameDesc` and project.ogt agree (tick 60, seed 7).
+9. Fixed: api-runtime, 0e3419b0 (`og.load.textureArray` and `EngineProbe.listen` on the runtime; `api-surface.test.ts` walks every IDL call). The `textureArray` call is restored and the flipbook-array sheet removed (3eeafa8a). Open: runtime members the IDL does not declare are unchecked (row 64).
+10. Fixed: api-runtime, 5dfc5a7b (a throw in `start` fails the run; `og run`, `og test` and `og dev` exit non-zero). Open: no browser test of the shell's crash screen (row 64).
+11. Fixed: ui-text, 34d86c21 (`og.ui.configure` keeps the fields it is not given and warns when no font is left). `configureUi` no longer re-reads the look's skin: it passes only the sounds and reduced motion.
+12. Fixed: api-runtime, 38472c71 (`set:` takes `true`/`false`).
+13. Fixed: api-runtime, 38472c71 (more unnamed `get:` steps on one tick write `get-<tick>-2.json`, ...).
+14. Fixed: api-runtime, 38472c71 (`FieldOptions` says which writes are refused outside min..max and which are stored as given; `set:` names the range).
+15. Fixed: render-style, 7e3ae322 (a material's outline draws silhouettes and contact lines, never the edges between its own faces). The look's `outlineWidth 0` removed at 767ecf84: the anime cel preset's outlines draw.
+16. Fixed: render-style, 51e765e9 (`StandardMaterialDesc.styled`; a look's toon passes by a material with a physical lobe). The look's `toon false` and `styleModels`' per-model toon removed at 767ecf84; `styleModels` keeps the lanterns' clear coat. The dawn look now names `toon false` itself, by choice.
+17. Fixed: render-style, 46c4d3ea (`Sprite.toneMapped`). The bubbles' 0.6 dimming removed at 767ecf84: they are `toneMapped: false`.
+18. Fixed: render-style, 8ce76910 (og-taste §8: a warm dusk with shadows is 16.5–17.25 h; DayNight was right). No change here: the run spans 15:30–19:30.
+19. Fixed: render-style, b9c3ed87 (flatten 0 is a real tint, the bands step through hue, og-taste §12 says bands are not for top-down). The game keeps bands for the results' high view; its results frame re-recorded at 767ecf84.
+20. Fixed: api-runtime, 38472c71 (`get:og.Time` answers every field, rate and the time scale; og.Time's doc names `og.TimeScale`).
+21. Fixed: ui-text, 8a288955 (`type:` keeps its text to the `;`; bare keys typing only until the first `og.TextInput` is documented). The settings playtest still types `Mei` and commits `小灯` through an input method.
+22. Fixed: ui-text, 8a288955 (og-ui §7 holds the one mixed-script rule, §3 points to it). No workaround here.
+23. Fixed: ui-text, dbcdf1ad (a field is named by its label, described by its placeholder). No workaround here.
+24. Fixed: ui-text, 7d982be7 (`ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`). The game passes `results.best` and `results.newBest` from both tables; the locales playtest checks them.
+25. Fixed: ui-text, 213ed08f (og polish leaves out text mid-transition; og-build §5 says why thin CJK strokes measure lower).
+26. No defect (6c804499 corrected it to a nit): the dev profile optimises the heavy crates per package and the gate measures on it by rule; no row.
+27. Fixed: cook-vox, 42e622cb (a graph-less `.vox` is centred like a graph's). The scene graph is removed from `voxBytes` and the files regenerated (c962b1e6, byte-identical blobs).
+28. Fixed: api-runtime, c364d491 (og-game §13 says `og.Velocity` is optional and where `world.set` refuses).
+29. Fixed: ui-text, ddde1e74 (every pack's placeholder at 4.70:1 or better, the focus ring cut under controls, the packs' test covers fields). The game's own darkened copy (2f924b3e) is unchanged.
+30. Fixed: api-runtime, 38472c71 (`get` answers the light og.DayNight drives as it is drawn).
+31. Fixed: api-runtime, 38472c71 (og-feel reads values with `get:`).
+32. Fixed: ui-text, 8b87652b (it was the screenshot's PNG deflate in the dev profile, counted as step time: the capture is left out of the step and miniz_oxide is optimised in dev; frame max 948.7 to 20.0 ms in the locales playtest).

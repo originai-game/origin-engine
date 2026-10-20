@@ -770,6 +770,40 @@ outline only when asked, the fill kept; a trail hidden under a layer-0
 sprite without a layer and shown over it on layer 1), each broken once
 (`tests/evidence/E4/break-and-restore.md`).
 
+### Untonemapped sprites
+
+`SpriteFx::tone_mapped` false (the IDL's `SpriteDesc.toneMapped` and
+`Sprite.toneMapped`, three.js `Material.toneMapped`): an alpha-blended
+world sprite that keeps its colours as given while the scene around it
+rides exposure, bloom and the tone curve: a cream speech bubble that
+auto exposure at dusk had blown to white and haloed (lantern-vale
+FINDINGS #17). *Chosen: drawn in place, flagged in the HDR alpha*, not
+in a pass after the tonemap. The sprite stays in the main pass, so it is
+depth tested against the scene's depth buffer on every tier (a pass
+after the tonemap would need that depth at the output's sample count,
+which WebGL2's 4x MSAA cannot give a single-sampled target) and sorted
+with the other sprites. Before the frame's first such run a cover
+(`sprite.wgsl` `vs_cover`/`fs_cover`, a pipeline with no groups) sets the
+HDR target's alpha to 1 and keeps its colour; the sprite's pipeline
+(`UNTONEMAPPED_BLEND`, `fs_untonemapped`: no fog) blends its colour as
+alpha blending does and takes the alpha towards 0 by its coverage, a
+tone-mapped sprite or glyph over it takes it back towards 1. The alpha is
+then the tone-mapped fraction of each pixel: the MSAA resolve averages
+it, TAA blends it with the colour's weights (its history clamped to the
+neighbourhood's range, so a moving bubble leaves no trail), outlines,
+depth bands, depth of field and motion blur pass it on, the bloom
+prefilter weights its taps by it (`bloom_tap`: such a sprite neither
+blooms nor dims the bloom round it) and the tonemap mixes the clamped,
+unexposed colour with the curve by it (post.wgsl `tonemapped`; the
+post uniform's `extra.y` says the frame has one, so every other frame's
+pixels are unchanged). Grading, vignette, grain, the screen flash and
+the stylise chain after the tonemap still apply. An additive sprite adds
+light to the scene and is always tone mapped. og-tests
+`sprites-untonemapped` (TAA, `metal`): a tone-mapped bubble blown
+towards white with a halo beside untonemapped ones in their cream and
+red, one half behind a crate, one from a texture array, a tone-mapped
+marker over a corner of one.
+
 ## E1 effects
 
 Everything a game declares on `RenderScene` as data (`src/effects.rs`,
@@ -778,7 +812,7 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 
 - **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied to
   the ambient term), outlines (depth and normal edges, per-scene or
-  per-instance colour), depth of field (`DofQuality::Low` / `High`), motion
+  per-material colour and width; below), depth of field (`DofQuality::Low` / `High`), motion
   blur from per-object and camera motion vectors (`fx.rs` carries the
   previous view-projection), god rays, colour grading by `ColorLut`,
   vignette, chromatic aberration, film grain seeded by the tick, screen
@@ -1505,9 +1539,20 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   byte for byte, at its line width.
 - **Depth bands** (`DepthBands`): an HDR pass after the main pass
   (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
-  `near` to `far` into `count` flat layers between two colours; `flatten`
-  1 replaces the shading, 0 tints it. The outline pass reads the banded
-  image.
+  `near` to `far` into `count` equal layers, the first in the near colour,
+  the last (from one band before `far`, and beyond it) in the far colour,
+  those between stepping evenly in OkLCh (`band_color`: lightness and
+  chroma straight, hue the short way round, a grey end taking the other's
+  hue), so a plum-to-gold ramp passes through rose and amber instead of
+  the grey-brown a straight line in RGB crosses. `flatten` 1 replaces the
+  shading with the band's colour; 0 tints it: the lit colour times the
+  band's colour at unit luminance, a coloured filter through which the
+  shading, the value and the surfaces' own hues show (it used to be the
+  band's colour times the lit luminance, which replaced every hue:
+  lantern-vale FINDINGS #19); between, a mix. The outline pass reads the
+  banded image. The bands follow view depth, so they read in side and
+  three-quarter views; a camera looking down sees its play area at one
+  depth, in one band.
 - **Retro 3D** (`Retro3d`, pbr.wgsl `retro_clip` and `stylised_uv`): the
   clip position snapped to a screen grid of `vertex_snap` logical pixels,
   depth quantised to `depth_bits`, and affine texturing by interpolating
@@ -1521,7 +1566,52 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   towards a colour (pbr_fs.wgsl and physical.wgsl, an additive term on the
   diffuse), and `outline_distance` scales each material outline's width by
   that distance over the view depth in the prepass (never for an
-  orthographic camera).
+  orthographic camera). Two exceptions (lantern-vale FINDINGS #16, where a
+  look's toon silently switched the lanterns' lacquer and the slimes'
+  jelly off): a material with `styled` 0 (the IDL's
+  `StandardMaterialDesc.styled false`) is drawn exactly as declared,
+  `styled` returning it whole and its uniform's mode bit 8 turning the
+  frame's shadow tint and outline distance off for it; and the style's
+  toon passes by a material with a physical lobe
+  (`StandardMaterial::has_physical_lobes`: a clear coat, sheen,
+  transmission, iridescence, anisotropy, an `ior` other than 1.5, or one
+  of their maps), since toon shading has none of them: it keeps its
+  physical shading and takes the rest of the style (rim, outline, flat
+  facets, shadow tint). *Chosen*: a material that names a physical lobe
+  has chosen its lighting model, and a scene-wide default must not undo
+  that without a word; a game that wants it toon anyway sets its own
+  `toon`, knowingly dropping the lobe. og-tests `stylise-toon-physical`:
+  under a toon style, a plain red sphere in bands, a lacquered one with
+  its coat's sharp highlight, a jelly refracting the stripes behind it,
+  and an unstyled one in plain PBR without rim or outline.
+- **Hull outlines** (`StandardMaterial::outlineWidth`, the style's
+  `outline_width`; fxpost.wgsl `fs_outline`): a material's own outline is
+  what toon shading's inverted hull draws, the object's silhouette (a
+  farther neighbour at the line's width), where one part of it passes in
+  front of another, and its creases against *other* objects (a box on
+  the floor, a character against a wall), never the edges between its
+  own faces. The prepass writes each fragment's object id (pbr.wgsl
+  `object_id`: 1 to 255, a hash of the instance's transform, the skinned
+  instance's and not its joints'; 0 for terrain and scattered copies)
+  into the outline target beside the colour and width (Rgba8Unorm read
+  as bytes: the colour in 5:6:5 over r and g, the width in eighths of a
+  pixel, the id; `outline_bytes`), and the outline pass lines a crease
+  only where the ids differ. *Chosen over smoothed outline normals*: an
+  outline here is a screen-space pass over the prepass, not an extruded
+  shell, and its crease test inked every edge of an unwelded mesh (a
+  `.vox` model's greedy quads, a flat-shaded rock): a voxel canopy became
+  a net of lines and a small voxel slime all ink (lantern-vale FINDINGS
+  #15). Smoothed normals would need a vertex stream and a prepass channel
+  the prepass has no room for (WebGL2's sixteen attributes are spent on
+  the skinned prepass) and still ink small hard-edged meshes whose
+  smoothed normals turn within the line's width; the id keeps every face
+  of one object clean whatever its topology, skinned included, at no
+  extra target. Neighbouring objects share an id one time in 255 (their
+  contact line then goes). The scene's outline (`PostEffects.outline`)
+  still lines every crease. og-tests `stylise-outline-voxels`: a voxel
+  tree, a voxel mound and a stepped block (unwelded, flat-shaded) and a
+  smooth sphere under a 2.5 px toon outline, each a clean silhouette
+  with its contact line on the ground.
 
 - **Built-in canvases and palettes**: a look names the engine's own
   `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` (tileable
@@ -1554,6 +1644,8 @@ of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
 `full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
 (`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
 halftone, as its check asks (ink marks painted onto surfaces).
+Round five adds `stylise-outline-voxels`, `stylise-toon-physical`,
+`sprites-untonemapped` and `stylise-bands-tint` (`metal`).
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the

@@ -1862,6 +1862,9 @@ struct SpriteOut {
     /// terrain wins, `terrain::ground_drop_shadows`).
     drop_shadow: f32,
     drop_shadow_height: f32,
+    /// `Sprite.toneMapped`: false keeps it out of exposure, bloom and the
+    /// tone curve ([`og_render::SpriteFx::tone_mapped`]).
+    tone_mapped: bool,
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
@@ -1891,7 +1894,7 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
             ground: og_render::ShadowGround::level(s.drop_shadow_height),
         });
     }
-    if s.flash[3] > 0.0 || s.glow > 0.0 || s.additive {
+    if s.flash[3] > 0.0 || s.glow > 0.0 || s.additive || !s.tone_mapped {
         scene.sprite_fx.push(og_render::SpriteFx {
             sprite: index,
             flash: s.flash,
@@ -1901,6 +1904,7 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
             } else {
                 og_render::SpriteBlend::Alpha
             },
+            tone_mapped: s.tone_mapped,
         });
     }
 }
@@ -2058,6 +2062,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let flash = [fc.x, fc.y, fc.z, f(&v, "flash", 0.0).clamp(0.0, 1.0)];
         let glow = f(&v, "glow", 0.0).max(0.0);
         let additive = v["blend"].as_str() == Some("additive");
+        let tone_mapped = on(&v, "toneMapped", true);
         let base = og_render::Sprite {
             texture: image.texture(),
             position: pos,
@@ -2099,6 +2104,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     array: None,
                     drop_shadow: 0.0,
                     drop_shadow_height: 0.0,
+                    tone_mapped: true,
                 },
             );
         }
@@ -2144,6 +2150,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         array: gimage.array(),
                         drop_shadow: 0.0,
                         drop_shadow_height: 0.0,
+                        tone_mapped,
                     },
                 );
             }
@@ -2179,6 +2186,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     array: image.array(),
                     drop_shadow,
                     drop_shadow_height,
+                    tone_mapped,
                 },
             );
         }

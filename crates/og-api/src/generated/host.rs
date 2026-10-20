@@ -4384,7 +4384,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway).",
+                doc: "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead).",
                 variants: &[],
             },
             FieldDecl {
@@ -5469,7 +5469,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off.",
+                doc: "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band.",
                 variants: &[],
             },
             FieldDecl {
@@ -5497,7 +5497,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "m",
                 label: "",
-                doc: "Where the last band ends; beyond it everything is the far colour.",
+                doc: "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.",
                 variants: &[],
             },
             FieldDecl {
@@ -5539,7 +5539,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "ratio",
                 label: "",
-                doc: "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene.",
+                doc: "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two.",
                 variants: &[],
             },
             FieldDecl {
@@ -5602,7 +5602,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights.",
+                doc: "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway.",
                 variants: &[],
             },
             FieldDecl {
@@ -5714,7 +5714,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The outline width in pixels at outlineDistance for materials without their own; 0 is none.",
+                doc: "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean.",
                 variants: &[],
             },
             FieldDecl {
@@ -6877,6 +6877,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 label: "",
                 doc: "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "toneMapped",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only.",
                 variants: &[],
             },
             FieldDecl {

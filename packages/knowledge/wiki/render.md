@@ -64,7 +64,7 @@ module render {
 | [`StyliseSpace`](#type-StyliseSpace) | enum | Where Stylise lays a pattern (the paint canvas, the hatching, the halftone). |
 | [`StyliseSpace()`](#column-StyliseSpace) | column kind | A StyliseSpace field: the variant's index. |
 | [`og.Stylise`](#record-Stylise) | resource | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation. |
-| [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
+| [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
 | [`LookInfo`](#type-LookInfo) | struct | A loaded look: where it came from and what applying it sets. |
 | [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
 | [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
@@ -136,7 +136,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2848</sub>
+<sub>`api.ogt` line 2851</sub>
 
 <a id="fn-sprite"></a>
 
@@ -166,7 +166,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2973</sub>
+<sub>`api.ogt` line 2979</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -196,7 +196,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3147</sub>
+<sub>`api.ogt` line 3156</sub>
 
 <a id="fn-measureText"></a>
 
@@ -226,7 +226,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3154</sub>
+<sub>`api.ogt` line 3163</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -256,7 +256,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3214</sub>
+<sub>`api.ogt` line 3223</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -286,7 +286,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3221</sub>
+<sub>`api.ogt` line 3230</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -316,7 +316,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3228</sub>
+<sub>`api.ogt` line 3237</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -346,7 +346,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3251</sub>
+<sub>`api.ogt` line 3260</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -378,7 +378,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3258</sub>
+<sub>`api.ogt` line 3267</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -410,7 +410,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3268</sub>
+<sub>`api.ogt` line 3277</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -442,7 +442,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3276</sub>
+<sub>`api.ogt` line 3285</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -476,7 +476,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3284</sub>
+<sub>`api.ogt` line 3293</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -506,7 +506,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3293</sub>
+<sub>`api.ogt` line 3302</sub>
 
 <a id="fn-look"></a>
 
@@ -534,7 +534,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3300</sub>
+<sub>`api.ogt` line 3309</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -562,7 +562,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3306</sub>
+<sub>`api.ogt` line 3315</sub>
 
 <a id="fn-text"></a>
 
@@ -592,7 +592,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3312</sub>
+<sub>`api.ogt` line 3321</sub>
 
 ## Components, resources and events
 
@@ -644,7 +644,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1882</sub>
+<sub>`api.ogt` line 1885</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -699,7 +699,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1907</sub>
+<sub>`api.ogt` line 1910</sub>
 
 <a id="record-PointLight"></a>
 
@@ -740,7 +740,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1939</sub>
+<sub>`api.ogt` line 1942</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -792,7 +792,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1959</sub>
+<sub>`api.ogt` line 1962</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -869,7 +869,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 2004</sub>
+<sub>`api.ogt` line 2007</sub>
 
 <a id="record-Environment"></a>
 
@@ -909,7 +909,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2080</sub>
+<sub>`api.ogt` line 2083</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -927,7 +927,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `aoRadius` | `number` | `0.6` | ≥ 0 | `m` | tunable | The world-space radius searched for occluders. |
 | `aoIntensity` | `number` | `1` | ≥ 0 | — | tunable | 0 none, 1 full; above 1 exaggerates. |
 | `aoMethod` | `AoMethod` | `"auto"` | — | — | — | The algorithm. |
-| `outline` | `boolean` | `false` | — | — | — | Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway). |
+| `outline` | `boolean` | `false` | — | — | — | Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead). |
 | `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line colour, linear. |
 | `outlineWidth` | `number` | `2` | 0 … 31 | — | tunable | Line width in pixels, drawn inside the silhouette. |
 | `outlineDepthThreshold` | `number` | `0.04` | ≥ 0 | — | — | The relative depth step that counts as a silhouette (0.04 is 4 %). |
@@ -986,7 +986,7 @@ resource PostEffects {
     tunable true
   }
   field aoMethod AoMethod "The algorithm."
-  field outline bool "Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway)."
+  field outline bool "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead)."
   field outlineColor Color "The line colour, linear." {
     default 0.02 0.02 0.03
   }
@@ -1146,7 +1146,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2160</sub>
+<sub>`api.ogt` line 2163</sub>
 
 <a id="record-Stylise"></a>
 
@@ -1196,12 +1196,12 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `inkDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses. |
 | `inkDepthThreshold` | `number` | `0.04` | ≥ 0 | — | — | With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps. |
 | `inkNormalThreshold` | `number` | `0.4` | 0 … 2 | — | — | With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds. |
-| `depthBands` | `number` | `0` | 0 … 8 | — | — | Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off. |
+| `depthBands` | `number` | `0` | 0 … 8 | — | — | Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band. |
 | `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts. |
-| `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; beyond it everything is the far colour. |
+| `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too. |
 | `depthBandsNearColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The nearest band's colour (linear, before exposure). |
 | `depthBandsFarColor` | `Color` | `{ r: 0.55, g: 0.6, b: 0.7 }` | — | — | — | The farthest band's colour (linear, before exposure). |
-| `depthBandsFlatten` | `number` | `1` | 0 … 1 | `ratio` | tunable | How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene. |
+| `depthBandsFlatten` | `number` | `1` | 0 … 1 | `ratio` | tunable | How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two. |
 | `vertexSnap` | `number` | `0` | 0 … 16 | — | — | Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off. |
 | `affineTexturing` | `number` | `0` | 0 … 1 | `ratio` | — | How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off. |
 | `depthBits` | `number` | `0` | 0 … 24 | — | — | Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision. |
@@ -1358,7 +1358,7 @@ resource Stylise {
     min 0
     max 2
   }
-  field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
+  field depthBands u32 "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band." {
     min 0
     max 8
   }
@@ -1367,7 +1367,7 @@ resource Stylise {
     min 0
     unit m
   }
-  field depthBandsFar f32 "Where the last band ends; beyond it everything is the far colour." {
+  field depthBandsFar f32 "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too." {
     default 60
     min 0
     unit m
@@ -1378,7 +1378,7 @@ resource Stylise {
   field depthBandsFarColor Color "The farthest band's colour (linear, before exposure)." {
     default 0.55 0.6 0.7
   }
-  field depthBandsFlatten f32 "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene." {
+  field depthBandsFlatten f32 "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two." {
     default 1
     min 0
     max 1
@@ -1401,19 +1401,19 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2378</sub>
+<sub>`api.ogt` line 2381</sub>
 
 <a id="record-MaterialStyle"></a>
 
 ### `og.MaterialStyle` (resource)
 
-Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
+Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
 
 Token `og.MaterialStyle`, registered under the schema name `og.MaterialStyle`; its value type is `MaterialStyle`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `toon` | `boolean` | `false` | — | — | — | Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. |
+| `toon` | `boolean` | `false` | — | — | — | Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway. |
 | `gradientMap` | `Texture` | `0` | — | — | — | The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands. |
 | `shadowTint` | `Color` | `{ r: 0.18, g: 0.16, b: 0.32 }` | — | — | — | The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration. |
 | `shadowTintAmount` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far shadowed light moves towards shadowTint; 0 is off. |
@@ -1421,14 +1421,14 @@ Token `og.MaterialStyle`, registered under the schema name `og.MaterialStyle`; i
 | `rimIntensity` | `number` | `0` | ≥ 0 | — | tunable | The rim light's strength; 0 is none. |
 | `rimPower` | `number` | `3` | ≥ 0.1 | — | — | How tight the rim is (higher: thinner). |
 | `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The outline colour for materials without their own (linear). |
-| `outlineWidth` | `number` | `0` | 0 … 31 | — | tunable | The outline width in pixels at outlineDistance for materials without their own; 0 is none. |
+| `outlineWidth` | `number` | `0` | 0 … 31 | — | tunable | The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean. |
 | `outlineDistance` | `number` | `0` | ≥ 0 | `m` | — | The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide. |
 | `flatShading` | `boolean` | `false` | — | — | — | Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks. |
 
 ```ogt
 resource MaterialStyle {
-  doc "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
-  field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights."
+  doc "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
+  field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway."
   field gradientMap Texture "The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands."
   field shadowTint Color "The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration." {
     default 0.18 0.16 0.32
@@ -1453,7 +1453,7 @@ resource MaterialStyle {
   field outlineColor Color "The outline colour for materials without their own (linear)." {
     default 0.02 0.02 0.03
   }
-  field outlineWidth f32 "The outline width in pixels at outlineDistance for materials without their own; 0 is none." {
+  field outlineWidth f32 "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean." {
     min 0
     max 31
     tunable true
@@ -1466,7 +1466,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2571</sub>
+<sub>`api.ogt` line 2574</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1505,7 +1505,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2621</sub>
+<sub>`api.ogt` line 2624</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1556,7 +1556,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2640</sub>
+<sub>`api.ogt` line 2643</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1587,7 +1587,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2670</sub>
+<sub>`api.ogt` line 2673</sub>
 
 <a id="record-Decal"></a>
 
@@ -1642,7 +1642,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2684</sub>
+<sub>`api.ogt` line 2687</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1673,7 +1673,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2716</sub>
+<sub>`api.ogt` line 2719</sub>
 
 <a id="record-Trail"></a>
 
@@ -1749,7 +1749,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2727</sub>
+<sub>`api.ogt` line 2730</sub>
 
 <a id="record-Beam"></a>
 
@@ -1815,7 +1815,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2775</sub>
+<sub>`api.ogt` line 2778</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1856,6 +1856,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
 | `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set. |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight). |
+| `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
@@ -1936,13 +1937,16 @@ component Sprite {
   field dropShadowHeight f32 "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight)." {
     unit m
   }
+  field toneMapped bool "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only." {
+    default true
+  }
   field visible bool "Whether it is drawn." {
     default true
   }
 }
 ```
 
-<sub>`api.ogt` line 2980</sub>
+<sub>`api.ogt` line 2986</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1990,7 +1994,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3062</sub>
+<sub>`api.ogt` line 3071</sub>
 
 ## Types
 
@@ -2215,7 +2219,7 @@ A physically based metallic-roughness material with three.js MeshStandardMateria
 
 It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
 
-The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.
 
 The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.
 
@@ -2260,7 +2264,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `dissolveEdgeWidth` | `number` | `0.0625` | 0 … 1 | — | — | The width of the glowing band in noise units. |
 | `dissolveScale` | `number` | `4` | ≥ 0 | — | — | The frequency of the built-in noise (cells per object-space unit). |
 | `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | This material's outline colour (linear). |
-| `outlineWidth` | `number` | `0` | 0 … 31 | — | — | This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). |
+| `outlineWidth` | `number` | `0` | 0 … 31 | — | — | This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's. |
+| `styled` | `boolean` | `true` | — | — | — | Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon. |
 | `clearcoat` | `number` | `0` | 0 … 1 | `ratio` | — | A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none. |
 | `clearcoatRoughness` | `number` | `0` | 0 … 1 | `ratio` | — | How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness. |
 | `clearcoatMap` | `Texture \| null` | `null` | — | — | — | The coat's strength from the texture's red channel, times clearcoat (MeshPhysicalMaterial.clearcoatMap). |
@@ -2296,7 +2301,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct StandardMaterialDesc {
   doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
   doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false."
   doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them."
   doc "A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it."
   doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
@@ -2385,9 +2390,12 @@ struct StandardMaterialDesc {
     min 0
   }
   field outlineColor Color "This material's outline colour (linear)."
-  field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything)." {
+  field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's." {
     min 0
     max 31
+  }
+  field styled bool "Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon." {
+    default true
   }
   field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
     min 0
@@ -2494,7 +2502,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1990</sub>
+<sub>`api.ogt` line 1993</sub>
 
 <a id="type-Lut"></a>
 
@@ -2508,7 +2516,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2055</sub>
+<sub>`api.ogt` line 2058</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -2522,7 +2530,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 2056</sub>
+<sub>`api.ogt` line 2059</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -2536,7 +2544,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2057</sub>
+<sub>`api.ogt` line 2060</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -2561,7 +2569,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2107</sub>
+<sub>`api.ogt` line 2110</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -2584,7 +2592,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2121</sub>
+<sub>`api.ogt` line 2124</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2607,7 +2615,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2134</sub>
+<sub>`api.ogt` line 2137</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2630,7 +2638,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2147</sub>
+<sub>`api.ogt` line 2150</sub>
 
 <a id="type-Palette"></a>
 
@@ -2644,7 +2652,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 2337</sub>
+<sub>`api.ogt` line 2340</sub>
 
 <a id="type-Look"></a>
 
@@ -2658,7 +2666,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 2338</sub>
+<sub>`api.ogt` line 2341</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -2689,7 +2697,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2347</sub>
+<sub>`api.ogt` line 2350</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -2714,7 +2722,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2364</sub>
+<sub>`api.ogt` line 2367</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -2745,7 +2753,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2610</sub>
+<sub>`api.ogt` line 2613</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2785,7 +2793,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2815</sub>
+<sub>`api.ogt` line 2818</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2816,7 +2824,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2836</sub>
+<sub>`api.ogt` line 2839</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2878,7 +2886,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2855</sub>
+<sub>`api.ogt` line 2858</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2907,7 +2915,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2889</sub>
+<sub>`api.ogt` line 2892</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2930,7 +2938,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2900</sub>
+<sub>`api.ogt` line 2903</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2961,6 +2969,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
 | `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on. |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0. |
+| `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -3024,6 +3033,9 @@ struct SpriteDesc {
   field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0." {
     unit m
   }
+  field toneMapped bool "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped." {
+    default true
+  }
   field flipX bool "Mirror the region left to right."
   field flipY bool "Mirror the region top to bottom."
   field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -3037,7 +3049,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2907</sub>
+<sub>`api.ogt` line 2910</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3125,7 +3137,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3089</sub>
+<sub>`api.ogt` line 3098</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3163,7 +3175,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3161</sub>
+<sub>`api.ogt` line 3170</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3195,7 +3207,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3181</sub>
+<sub>`api.ogt` line 3190</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3231,7 +3243,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3196</sub>
+<sub>`api.ogt` line 3205</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3266,7 +3278,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3238</sub>
+<sub>`api.ogt` line 3247</sub>
 
 <a id="type-Shader"></a>
 
@@ -3280,7 +3292,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3266</sub>
+<sub>`api.ogt` line 3275</sub>
 
 ## Column kinds
 
@@ -3334,7 +3346,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1997</sub>
+<sub>`api.ogt` line 2000</sub>
 
 ```ogt
 column Texture {
@@ -3345,7 +3357,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2059</sub>
+<sub>`api.ogt` line 2062</sub>
 
 ```ogt
 column Lut {
@@ -3356,7 +3368,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2066</sub>
+<sub>`api.ogt` line 2069</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -3367,7 +3379,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2073</sub>
+<sub>`api.ogt` line 2076</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -3378,7 +3390,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2100</sub>
+<sub>`api.ogt` line 2103</sub>
 
 ```ogt
 column AoMethod {
@@ -3389,7 +3401,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2114</sub>
+<sub>`api.ogt` line 2117</sub>
 
 ```ogt
 column DofQuality {
@@ -3400,7 +3412,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2127</sub>
+<sub>`api.ogt` line 2130</sub>
 
 ```ogt
 column SpriteBlend {
@@ -3411,7 +3423,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2140</sub>
+<sub>`api.ogt` line 2143</sub>
 
 ```ogt
 column StripBlend {
@@ -3422,7 +3434,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2153</sub>
+<sub>`api.ogt` line 2156</sub>
 
 ```ogt
 column Palette {
@@ -3433,7 +3445,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 2340</sub>
+<sub>`api.ogt` line 2343</sub>
 
 ```ogt
 column DitherPattern {
@@ -3444,7 +3456,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2357</sub>
+<sub>`api.ogt` line 2360</sub>
 
 ```ogt
 column StyliseSpace {
@@ -3455,7 +3467,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2371</sub>
+<sub>`api.ogt` line 2374</sub>
 
 ## Constants
 
@@ -3468,10 +3480,10 @@ column StyliseSpace {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3235</sub>
+<sub>`api.ogt` line 3244</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3236</sub>
+<sub>`api.ogt` line 3245</sub>

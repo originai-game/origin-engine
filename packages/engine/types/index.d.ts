@@ -2642,7 +2642,7 @@ export interface RenderOptions {
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
- * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+ * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.
  * The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.
  * A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.
  * normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
@@ -2862,12 +2862,18 @@ export interface StandardMaterialDesc {
    */
   readonly outlineColor?: Color;
   /**
-   * This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything).
+   * This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's.
    *
    * @default 0
    * @range 0..31
    */
   readonly outlineWidth?: number;
+  /**
+   * Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon.
+   *
+   * @default true
+   */
+  readonly styled?: boolean;
   /**
    * A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none.
    *
@@ -3541,7 +3547,7 @@ export interface PostEffects {
   /** The algorithm. */
   aoMethod: AoMethod;
   /**
-   * Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway).
+   * Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead).
    */
   outline: boolean;
   /**
@@ -4098,7 +4104,7 @@ export interface Stylise {
    */
   inkNormalThreshold: number;
   /**
-   * Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off.
+   * Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band.
    *
    * @range 0..8
    */
@@ -4112,7 +4118,7 @@ export interface Stylise {
    */
   depthBandsNear: number;
   /**
-   * Where the last band ends; beyond it everything is the far colour.
+   * Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.
    *
    * @default 60
    * @range 0..
@@ -4132,7 +4138,7 @@ export interface Stylise {
    */
   depthBandsFarColor: Color;
   /**
-   * How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene.
+   * How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two.
    *
    * @default 1
    * @range 0..1
@@ -4162,13 +4168,13 @@ export interface Stylise {
 }
 
 /**
- * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
+ * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
  *
  * The `MaterialStyle` resource (token `og.MaterialStyle`).
  */
 export interface MaterialStyle {
   /**
-   * Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights.
+   * Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway.
    */
   toon: boolean;
   /**
@@ -4216,7 +4222,7 @@ export interface MaterialStyle {
    */
   outlineColor: Color;
   /**
-   * The outline width in pixels at outlineDistance for materials without their own; 0 is none.
+   * The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean.
    *
    * @range 0..31
    * @tunable
@@ -4930,6 +4936,12 @@ export interface SpriteDesc {
    */
   readonly dropShadowHeight?: number;
   /**
+   * As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped.
+   *
+   * @default true
+   */
+  readonly toneMapped?: boolean;
+  /**
    * Mirror the region left to right.
    *
    * @default false
@@ -5117,6 +5129,12 @@ export interface Sprite {
    * @unit m (metres)
    */
   dropShadowHeight: number;
+  /**
+   * As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only.
+   *
+   * @default true
+   */
+  toneMapped: boolean;
   /**
    * Whether it is drawn.
    *
@@ -17135,7 +17153,7 @@ export declare namespace og {
    */
   const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly hatchingDepth: FieldSpec<"f32">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32"> }, Stylise>;
   /**
-   * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
+   * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
    */
   const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool"> }, MaterialStyle>;
   /**
@@ -17170,7 +17188,7 @@ export declare namespace og {
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
    */
-  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Sprite>;
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Sprite>;
   /**
    * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */

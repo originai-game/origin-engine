@@ -40,7 +40,7 @@ after a string table changes.
 | Area | How | Where |
 |---|---|---|
 | Looks | `GameDesc.look` applies `looks/lantern-vale.ogt` (extends `anime-cel-3d`: AgX, the cool shadow side, ink, bloom, fog, the environment map, the skin) before `start`; `og.load.look` and `og.render.applyLook` swap in `looks/dawn.ogt` (extends `luminous-layered-painting`: five depth bands) for the results and back | `src/ui.ts` `looks` |
-| `og.Stylise`, `og.MaterialStyle` | through the looks: ink on silhouettes, depth bands at dawn, a tinted shadow side and rim light; toon given to the voxel models one by one (the look's toon would switch the physical materials off) | `assets/looks/`, `src/world.ts` `styleModels` |
+| `og.Stylise`, `og.MaterialStyle` | through the looks: the anime cel preset's toon and outlines (a material's outline draws the voxel models' silhouettes and contact lines; the lanterns' lacquer and the slimes' jelly keep their physical shading under the toon), ink on silhouettes, a tinted shadow side and rim light; depth bands at dawn, whose look takes the toon off | `assets/looks/`, `src/world.ts` `styleModels` |
 | Physical materials | the lanterns' red lacquer (`clearcoat` on the voxel model's material), the slimes' jelly (`KHR_materials_transmission`, volume and ior in their glTF) | `src/world.ts`, `tools/make-assets.ts` `slime` |
 | `og.Environment` | a 64 x 32 synthetic dusk `.hdr`, prefiltered by the cook (`env/dusk.ogt`), named by both looks' `Environment` block; AgX with auto exposure adapting 1 EV/s up, 3 down | `assets/env/`, `assets/looks/` |
 | `.vox` models | hero, lantern, tree, boulder, pine and arch written voxel by voxel, cooked with `model { voxScale voxOrigin }` | `tools/make-assets.ts` |

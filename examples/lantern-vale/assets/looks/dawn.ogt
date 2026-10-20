@@ -35,3 +35,8 @@ PostEffects {
   vignette true
   vignetteIntensity 0.35
 }
+# The painted dawn is not toon: the dusk look's cel shading comes off with
+# the rest of its material style.
+MaterialStyle {
+  toon false
+}

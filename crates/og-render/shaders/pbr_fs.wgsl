@@ -115,7 +115,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
   // The material style's shadow tint: shadowed sunlight moves towards a
   // colour instead of black (the cool or warm shadow of illustration).
-  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
+  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
     color += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
   }
 

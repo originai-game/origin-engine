@@ -16,13 +16,17 @@
 //! - `stylise-paint`: painterly smoothing, edge darkening and bleed over the
 //!   physical materials scene.
 //! - `stylise-bands`: four flat depth bands over the toon scene (layered
-//!   silhouettes).
+//!   silhouettes); `stylise-bands-tint`: five as a tint down a street.
 //! - `stylise-retro`: vertex snapping, affine textures and 12-bit depth
 //!   over the physical materials scene.
-//! - `stylise-material`: the material style alone: every lit material toon
-//!   with a warm shadow tint, a rim, outlines that thin with distance, and
-//!   flat facets, over the physical materials scene (no per-material
-//!   stylised fields).
+//! - `stylise-material`: the material style alone: a warm shadow tint, a
+//!   rim, outlines that thin with distance, and flat facets, over the
+//!   physical materials scene (no per-material stylised fields), and toon
+//!   on every lit material without a physical lobe (the physical ones keep
+//!   their coats, sheen, film, anisotropy and glass).
+//! - `stylise-outline-voxels`: hull outlines on unwelded voxel meshes.
+//! - `stylise-toon-physical`: a toon style over a plain, a lacquered, a
+//!   jelly and an unstyled sphere.
 //! - `stylise-ink-depth`: ink with depth edges over flat, unlit shapes of
 //!   one colour on a floor of the same colour, where luminance finds no
 //!   edge: every line is a silhouette or a crease from the prepass.
@@ -420,5 +424,515 @@ pub fn object_scene() -> RenderScene {
     {
         *space = StyliseSpace::Object;
     }
+    scene
+}
+
+/// Voxels meshed as a MagicaVoxel import is (`.vox` through the cook):
+/// one quad per exposed voxel face, its four vertices its own, so every
+/// face carries its own normal (unwelded, flat-shaded), coloured per
+/// voxel. `solid(x, y, z)` says which cells of `size` are filled; `voxel`
+/// is the cell's edge in metres, the cluster centred on x and z and
+/// standing on y 0.
+fn voxel_mesh(
+    size: [i32; 3],
+    voxel: f32,
+    solid: impl Fn(i32, i32, i32) -> bool,
+    color: impl Fn(i32, i32, i32) -> [f32; 4],
+) -> og_render::MeshData {
+    let filled = |x: i32, y: i32, z: i32| {
+        (0..size[0]).contains(&x)
+            && (0..size[1]).contains(&y)
+            && (0..size[2]).contains(&z)
+            && solid(x, y, z)
+    };
+    let origin = Vec3::new(size[0] as f32 * 0.5, 0.0, size[2] as f32 * 0.5);
+    // (normal, u, v) per face: corners at the cell's centre + (n ± u ± v) / 2.
+    let faces = [
+        (Vec3::X, Vec3::NEG_Z, Vec3::Y),
+        (Vec3::NEG_X, Vec3::Z, Vec3::Y),
+        (Vec3::Y, Vec3::X, Vec3::NEG_Z),
+        (Vec3::NEG_Y, Vec3::X, Vec3::Z),
+        (Vec3::Z, Vec3::X, Vec3::Y),
+        (Vec3::NEG_Z, Vec3::NEG_X, Vec3::Y),
+    ];
+    let mut mesh = og_render::MeshData::default();
+    for x in 0..size[0] {
+        for y in 0..size[1] {
+            for z in 0..size[2] {
+                if !filled(x, y, z) {
+                    continue;
+                }
+                let centre = Vec3::new(x as f32, y as f32, z as f32) + Vec3::splat(0.5) - origin;
+                for (n, u, v) in faces {
+                    let (nx, ny, nz) = (n.x as i32, n.y as i32, n.z as i32);
+                    if filled(x + nx, y + ny, z + nz) {
+                        continue;
+                    }
+                    let base = mesh.vertices.len() as u32;
+                    for (cu, cv) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+                        let p = (centre + (n + u * cu + v * cv) * 0.5) * voxel;
+                        mesh.vertices.push(og_render::Vertex {
+                            position: p.to_array(),
+                            normal: n.to_array(),
+                            uv: [(cu + 1.0) * 0.5, (1.0 - cv) * 0.5],
+                            color: color(x, y, z),
+                            tangent: [0.0; 4],
+                        });
+                    }
+                    mesh.indices.extend_from_slice(&[
+                        base,
+                        base + 1,
+                        base + 2,
+                        base,
+                        base + 2,
+                        base + 3,
+                    ]);
+                }
+            }
+        }
+    }
+    mesh
+}
+
+/// A small hash of a cell (0..1), for the voxel scenes' ragged shapes and
+/// shades.
+fn cell_hash(x: i32, y: i32, z: i32) -> f32 {
+    let mut h = (x as u32).wrapping_mul(0x8da6_b343)
+        ^ (y as u32).wrapping_mul(0xd816_3841)
+        ^ (z as u32).wrapping_mul(0xcb1a_b31f);
+    h ^= h >> 13;
+    h = h.wrapping_mul(0x5bd1_e995);
+    h ^= h >> 15;
+    (h & 0xffff) as f32 / 65535.0
+}
+
+/// `stylise-outline-voxels`: the material style's outline (2.5 px, toon)
+/// over unwelded, flat-shaded voxel models, three-quarters from above as a
+/// top-down game sees them: a tree (a ragged canopy of 0.2 m voxels on a
+/// trunk), a slime-like mound and a stepped block of cubes, beside a
+/// smooth (welded) sphere. Each is outlined at its silhouette and where one
+/// part passes in front of another; the edges between its faces, every
+/// voxel step of the canopy, stay clean (lantern-vale FINDINGS #15).
+pub fn outline_voxels_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let lit = scene.add_standard_material(StandardMaterial {
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.32, 0.46, 0.28),
+        roughness: 1.0,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    // The tree: a trunk two voxels wide, a canopy of 9 x 7 x 9 rounded and
+    // ragged by the hash.
+    let tree = scene.add_mesh(voxel_mesh(
+        [9, 14, 9],
+        0.2,
+        |x, y, z| {
+            let (dx, dz) = (x as f32 - 4.0, z as f32 - 4.0);
+            if y < 6 {
+                return (3..5).contains(&x) && (3..5).contains(&z);
+            }
+            let dy = y as f32 - 9.5;
+            let r = (dx * dx + dz * dz + dy * dy * 1.4).sqrt();
+            r < 4.3 - cell_hash(x, y, z) * 1.3
+        },
+        |x, y, z| {
+            if y < 6 {
+                [0.36, 0.2, 0.1, 1.0]
+            } else {
+                let s = 0.75 + 0.25 * cell_hash(z, x, y);
+                [0.2 * s, 0.5 * s, 0.18 * s, 1.0]
+            }
+        },
+    ));
+    scene.add_instance(
+        tree,
+        lit,
+        Mat4::from_translation(Vec3::new(-1.6, 0.0, -0.4)) * Mat4::from_rotation_y(0.4),
+    );
+    // A slime-like mound of 0.15 m voxels.
+    let slime = scene.add_mesh(voxel_mesh(
+        [7, 5, 7],
+        0.15,
+        |x, y, z| {
+            let (dx, dy, dz) = (x as f32 - 3.0, y as f32 + 0.5, z as f32 - 3.0);
+            dx * dx + dz * dz + dy * dy * 1.6 < 13.0
+        },
+        |_, y, _| [0.35 + 0.05 * y as f32, 0.75, 0.42, 1.0],
+    ));
+    scene.add_instance(
+        slime,
+        lit,
+        Mat4::from_translation(Vec3::new(0.2, 0.0, 1.2)) * Mat4::from_rotation_y(-0.3),
+    );
+    // A stepped block of 0.4 m cubes: a staircase three high.
+    let steps = scene.add_mesh(voxel_mesh(
+        [3, 3, 2],
+        0.4,
+        |x, y, _| y <= 2 - x,
+        |x, y, z| {
+            let s = 0.8 + 0.2 * cell_hash(x, y, z);
+            [0.75 * s, 0.68 * s, 0.6 * s, 1.0]
+        },
+    ));
+    scene.add_instance(
+        steps,
+        lit,
+        Mat4::from_translation(Vec3::new(1.9, 0.0, -0.6)) * Mat4::from_rotation_y(-0.5),
+    );
+    // A smooth sphere for comparison.
+    let sphere = scene.add_mesh(shapes::sphere(48, 32));
+    let clay = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.8, 0.5, 0.35),
+        roughness: 0.7,
+        ..Default::default()
+    });
+    scene.add_instance(
+        sphere,
+        clay,
+        Mat4::from_translation(Vec3::new(1.4, 0.45, 1.5)) * Mat4::from_scale(Vec3::splat(0.9)),
+    );
+    scene.stylise.material = MaterialStyle {
+        toon: true,
+        outline_color: [0.04, 0.03, 0.06],
+        outline_width: 2.5,
+        rim_power: 3.0,
+        ..Default::default()
+    };
+    let sun = Vec3::new(-0.6, 0.7, 0.4);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 4.2, 5.6),
+        target: Vec3::new(0.0, 0.8, 0.0),
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    scene
+}
+
+/// `stylise-toon-physical`: a look's toon (with a shadow tint, a rim and a
+/// 2 px outline) over four spheres of one red: a plain one, which turns
+/// toon; a lacquered one (`clearcoat` 1), which keeps its physical shading
+/// and its coat's sharp highlight; a green jelly (`transmission`, a
+/// thickness, ior 1.4) in front of a striped panel, which keeps refracting
+/// it; and one with `styled` 0, drawn exactly as declared (smooth PBR, no
+/// rim, outline or tinted shadow of its own). The first three take the
+/// rim, the opaque two the outline (a transmissive material is not in the
+/// depth prepass) (lantern-vale FINDINGS #16).
+pub fn toon_physical_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let floor_material = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.55, 0.55, 0.6),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, floor_material, Mat4::IDENTITY);
+    // A striped panel behind the jelly, so its refraction shows.
+    let stripes = scene.add_texture(crate::physical_scenes::stripes(128, 8.0, false));
+    let panel_material = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.9, 0.85, 0.7),
+        map: stripes.slot(),
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let panel = scene.add_mesh(shapes::cuboid(Vec3::new(6.4, 1.6, 0.1)));
+    scene.add_instance(
+        panel,
+        panel_material,
+        Mat4::from_translation(Vec3::new(0.0, 0.8, -1.2)),
+    );
+    let sphere = scene.add_mesh(shapes::sphere(64, 48));
+    let red = Vec3::new(0.7, 0.08, 0.06);
+    let spheres = [
+        StandardMaterial {
+            color: red,
+            roughness: 0.55,
+            ..Default::default()
+        },
+        StandardMaterial {
+            color: red,
+            roughness: 0.55,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.06,
+            ..Default::default()
+        },
+        StandardMaterial {
+            color: Vec3::new(0.55, 0.95, 0.5),
+            roughness: 0.15,
+            transmission: 0.9,
+            thickness: 0.8,
+            attenuationColor: Vec3::new(0.3, 0.85, 0.3),
+            attenuationDistance: 1.2,
+            ior: 1.4,
+            ..Default::default()
+        },
+        StandardMaterial {
+            color: red,
+            roughness: 0.55,
+            styled: 0,
+            ..Default::default()
+        },
+    ];
+    for (i, m) in spheres.into_iter().enumerate() {
+        let material = scene.add_standard_material(m);
+        scene.add_instance(
+            sphere,
+            material,
+            Mat4::from_translation(Vec3::new(-2.4 + 1.6 * i as f32, 0.6, 0.0))
+                * Mat4::from_scale(Vec3::splat(1.2)),
+        );
+    }
+    scene.stylise.material = MaterialStyle {
+        toon: true,
+        shadow_tint: [0.18, 0.16, 0.42],
+        shadow_tint_amount: 0.7,
+        rim_color: [1.0, 0.85, 0.7],
+        rim_intensity: 0.4,
+        rim_power: 3.0,
+        outline_color: [0.04, 0.03, 0.06],
+        outline_width: 2.0,
+        ..Default::default()
+    };
+    let sun = Vec3::new(-0.5, 0.75, 0.45);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.9;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.0, 5.4),
+        target: Vec3::new(0.0, 0.6, 0.0),
+        exposure: Exposure::linear(0.7),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A 16² pixel speech bubble: a cream body with a dark rim, a tail at
+/// the bottom left, a red "!" (sRGB, no mips; drawn nearest).
+fn bubble_texture() -> og_render::TextureData {
+    let mut t = crate::scenes::texture(16, ColorSpace::Srgb, |u, v| {
+        let (x, y) = ((u * 16.0) as i32, (v * 16.0) as i32);
+        let cream = [242, 228, 196, 255];
+        let rim = [52, 38, 58, 255];
+        let red = [200, 40, 40, 255];
+        match (x, y) {
+            (7..=8, 3..=7) | (7..=8, 9..=10) => red,
+            (2..=13, 2..=11) => cream,
+            (1 | 14, 2..=11) | (2..=13, 1 | 12) => rim,
+            (3..=4, 13) | (3, 14) => rim,
+            _ => [0, 0, 0, 0],
+        }
+    });
+    t.mips = og_render::Mips::None;
+    t
+}
+
+/// `sprites-untonemapped`: cream pixel speech bubbles over a bright dusk
+/// set (exposure 1.8, AgX, bloom from 1.0, TAA): the left bubble (from a
+/// texture array, a layer below) tone mapped as before, blown towards
+/// white and blooming; the next one
+/// `SpriteFx::tone_mapped` false, its cream and red as authored and no
+/// glow round it, a tone-mapped blue marker drawn over its corner (a
+/// higher layer) still curved; a third untonemapped bubble half behind
+/// the crate (still depth tested); a fourth drawn from a texture array,
+/// untonemapped (lantern-vale FINDINGS #17).
+pub fn untonemapped_sprites_scene() -> RenderScene {
+    use og_render::{
+        Bloom, SpriteArray, SpriteFx, TextureArrayData, TextureFilter, TextureSource, Tonemap,
+    };
+    let mut scene = RenderScene::new();
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.5, 0.55, 0.42),
+        roughness: 1.0,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    let wood = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.6, 0.4, 0.22),
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+    scene.add_instance(
+        cube,
+        wood,
+        Mat4::from_translation(Vec3::new(1.9, 0.5, 0.6)) * Mat4::from_rotation_y(0.3),
+    );
+    let bubble = scene.add_texture(bubble_texture());
+    scene.set_texture_filter(bubble, TextureFilter::Nearest);
+    let bubbles = scene
+        .add_texture_array(TextureArrayData {
+            layers: vec![TextureSource::Rgba(bubble_texture())],
+        })
+        .expect("one layer");
+    scene.set_texture_array_filter(bubbles, TextureFilter::Nearest);
+    let at = |x: f32, y: f32, z: f32| og_render::Sprite {
+        texture: Some(bubble),
+        position: Vec3::new(x, y, z),
+        size: glam::Vec2::splat(1.2),
+        ..Default::default()
+    };
+    let add = |scene: &mut RenderScene, sprite: og_render::Sprite, tone_mapped: bool| {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        if !tone_mapped {
+            scene.sprite_fx.push(SpriteFx {
+                sprite: i,
+                tone_mapped,
+                ..Default::default()
+            });
+        }
+        i
+    };
+    // The tone-mapped bubble from the array, a layer below the rest: its
+    // array group is bound when the cover draws before the first
+    // untonemapped run.
+    let left = add(
+        &mut scene,
+        og_render::Sprite {
+            texture: None,
+            layer: -1,
+            ..at(-2.2, 1.6, 0.0)
+        },
+        true,
+    );
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: left,
+        array: bubbles,
+        layer: 0,
+    });
+    add(&mut scene, at(-0.6, 1.6, 0.0), false);
+    // Behind the crate: its lower right is hidden.
+    add(&mut scene, at(2.3, 0.9, -0.4), false);
+    let a = add(
+        &mut scene,
+        og_render::Sprite {
+            texture: None,
+            ..at(0.9, 2.3, -0.6)
+        },
+        false,
+    );
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: a,
+        array: bubbles,
+        layer: 0,
+    });
+    // A tone-mapped marker over the untonemapped bubble's corner.
+    add(
+        &mut scene,
+        og_render::Sprite {
+            position: Vec3::new(-0.1, 2.1, 0.05),
+            size: glam::Vec2::splat(0.35),
+            color: [0.2, 0.45, 1.6, 1.0],
+            layer: 1,
+            ..Default::default()
+        },
+        true,
+    );
+    let sun = Vec3::new(-0.7, 0.35, 0.6);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        color: Vec3::new(1.0, 0.7, 0.45),
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.post.tonemap = Tonemap::Agx;
+    scene.post.bloom = Some(Bloom {
+        threshold: 1.0,
+        knee: 0.5,
+        intensity: 0.8,
+    });
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.2, 6.0),
+        target: Vec3::new(0.0, 1.0, 0.0),
+        exposure: Exposure::linear(1.8),
+        ..Default::default()
+    };
+    scene
+}
+
+/// `stylise-bands-tint`: five depth bands as a tint (`flatten` 0) from
+/// plum to gold over a lit three-quarter view down a street of coloured
+/// blocks receding to 40 m: each layer keeps its shading, its shadows and
+/// the blocks' own hues under its filter, and the layers step from plum
+/// through rose and amber to gold, never grey (lantern-vale FINDINGS #19).
+pub fn bands_tint_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.6, 0.6, 0.58),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(120.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let hues = [
+        Vec3::new(0.75, 0.2, 0.15),
+        Vec3::new(0.2, 0.55, 0.25),
+        Vec3::new(0.2, 0.35, 0.8),
+        Vec3::new(0.85, 0.75, 0.3),
+    ];
+    let materials: Vec<_> = hues
+        .iter()
+        .map(|&color| {
+            scene.add_standard_material(StandardMaterial {
+                color,
+                roughness: 0.7,
+                ..Default::default()
+            })
+        })
+        .collect();
+    // Two rows of blocks along -z, every 4 m, alternating heights.
+    for k in 0..10 {
+        for (side, x) in [(0, -3.0f32), (1, 3.0)] {
+            let h = 1.5 + ((k + side) % 3) as f32;
+            scene.add_instance(
+                cube,
+                materials[(k + side * 2) % materials.len()],
+                Mat4::from_translation(Vec3::new(x, h * 0.5, 2.0 - 4.0 * k as f32))
+                    * Mat4::from_scale(Vec3::new(2.0, h, 2.0)),
+            );
+        }
+    }
+    scene.stylise.depth_bands = Some(DepthBands {
+        count: 5,
+        near: 3.0,
+        far: 40.0,
+        near_color: [0.042, 0.012, 0.07],
+        far_color: [1.0, 0.62, 0.24],
+        flatten: 0.0,
+    });
+    let sun = Vec3::new(-0.6, 0.6, 0.5);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 8.0),
+        target: Vec3::new(0.0, 1.2, -10.0),
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
     scene
 }

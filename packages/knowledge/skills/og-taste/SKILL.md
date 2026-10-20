@@ -180,8 +180,16 @@ cheaply than any model; use them on purpose, one look per area.
   fog (`heightDensity` 0.03–0.1 below the ground's height) fills valleys and
   swamps. Match the fog's `color` to the sky's horizon or the scene floats.
 - **One sky per area**: a clear noon (`og.Sky` zenith deep blue, horizon
-  pale), an overcast grey (low contrast, `sunSize` 0), a warm dusk
-  (`og.DayNight` at 17–18 h). A day-night cycle wants `speed` slow enough
+  pale), an overcast grey (low contrast, `sunSize` 0), a warm dusk with
+  long shadows (`og.DayNight` at 16.5–17.25 h: at the default `tilt` the
+  sun is 20° to 10° up, its light turning warm from about 17 h). Later the
+  sun's light on level ground sinks into the sky's and its shadows fade
+  (17.5 h: under 7° up), and at 18 h it sets whatever the `tilt` (which
+  only lowers the noon sun); 17.5–18.2 h is a glowing horizon without
+  sun shadows. Relief shadows the play area sooner: a valley's western
+  ridge puts the floor in shade by about 17 h, so check the hours on a
+  frame of the real ground (turn `azimuth` to set the sun across the
+  valley). A day-night cycle wants `speed` slow enough
   that a player notices it over minutes (0.02–0.05 game hours per second),
   never per encounter.
 - **Weather is a beat, not wallpaper**: rain or snow for a level's mood or a
@@ -338,12 +346,37 @@ an inked page. Pixel sprites standing in a 3D set take
 and over an og.Terrain their shadows follow the slope, and bend into a
 hollow or over a ridge narrower than themselves, by themselves.
 
+Depth bands (`Stylise.depthBands`, the layered-silhouette, black-figure
+and luminous-layered presets) cut the frame by distance from the camera,
+so they need a camera that looks *across* the world: a side-scroller, a
+stage, a three-quarter view down a valley or a street, a high view over
+a landscape, where near, middle and far ground lie at clearly different
+depths. Set `depthBandsNear` where the nearest layer you want starts and
+`depthBandsFar` where the farthest layer ends (the far colour begins one
+band before it), measured along the view on a real frame. They do not
+work top-down or in a steep overhead camera: the whole play area sits at
+about one depth and falls in one band, so it goes one flat colour and
+the characters vanish into it; use a tinted shadow side, fog or a
+palette there instead, or the bands only for a high establishing shot
+(a title, the results). `depthBandsFlatten` 1 gives flat cut-paper
+layers; 0 keeps the lit scene and only tints each layer (its shading and
+hues show through), so characters stay readable; 0.3–0.6 is a painted
+middle ground.
+
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
 is applied after the first scene spawns and before `start` runs (so
 `start` may still change any field, and reads the look's skin from
 `og.render.look(world)?.skin`); switch looks at a tick with
 `og.load.look` and `og.render.applyLook` (a flashback, a photo mode, an
-area's mood). A look replaces each resource it names whole and leaves the
+area's mood). A look's `MaterialStyle` reaches every lit material that
+leaves the field at its default; a material that must stay as made (a
+photographic hero prop in a toon set, a product shot, a gem) takes
+`styled: false` in `og.render.standardMaterial` and is drawn exactly as
+declared. Physical materials are safe under a toon look: lacquer
+(`clearcoat`), glass and jelly (`transmission`), velvet (`sheen`) keep
+their shading and take only the rim, the outline and the shadow tint, so
+a toon look never switches them off; set `toon: true` on one yourself to
+flatten it too. A look replaces each resource it names whole and leaves the
 others alone, so an area look that names only `Fog` and `Sky` keeps the
 game's grade. A copy of a preset under the preset's own name
 (`assets/looks/<slug>.ogt` with `extends "<slug>"`) overrides it for every

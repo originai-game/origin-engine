@@ -90,6 +90,7 @@ struct LeanPrepassOut {
   @location(1) normal: vec3<f32>,
   @location(2) cur_clip: vec4<f32>,
   @location(3) prev_clip: vec4<f32>,
+  @location(4) @interpolate(flat) object: u32,
 };
 
 @vertex
@@ -105,6 +106,7 @@ fn prepass_lean(position: vec3<f32>, normal: vec3<f32>, i: InstanceIn, prev: Pre
   o.normal = p.normal;
   o.cur_clip = fx.view_proj_unjittered * vec4<f32>(p.world, 1.0);
   o.prev_clip = mul_point(fx.prev_view_proj, instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3) * vec4<f32>(position, 1.0));
+  o.object = object_id(i.m0, i.m1, i.m2, i.m3);
   return o;
 }
 
@@ -124,5 +126,6 @@ fn fs_prepass_lean(in: LeanPrepassOut) -> PrepassTargets {
   full.local_pos = vec3<f32>(0.0);
   full.cur_clip = in.cur_clip;
   full.prev_clip = in.prev_clip;
+  full.object = in.object;
   return prepass_targets(full);
 }

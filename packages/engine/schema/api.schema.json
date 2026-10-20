@@ -10309,7 +10309,7 @@
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.\nThe MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.\nA transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.\nThe MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.\nA transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
       "type": "object",
       "properties": {
         "color": {
@@ -10582,10 +10582,15 @@
         },
         "outlineWidth": {
           "type": "number",
-          "description": "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything).",
+          "description": "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's.",
           "default": 0,
           "minimum": 0,
           "maximum": 31
+        },
+        "styled": {
+          "type": "boolean",
+          "description": "Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon.",
+          "default": true
         },
         "clearcoat": {
           "type": "number",
@@ -11336,7 +11341,7 @@
         },
         "outline": {
           "type": "boolean",
-          "description": "Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway).",
+          "description": "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead).",
           "default": false
         },
         "outlineColor": {
@@ -11952,7 +11957,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off.",
+          "description": "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band.",
           "default": 0,
           "minimum": 0,
           "maximum": 8
@@ -11966,7 +11971,7 @@
         },
         "depthBandsFar": {
           "type": "number",
-          "description": "Where the last band ends; beyond it everything is the far colour.",
+          "description": "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.",
           "default": 60,
           "minimum": 0,
           "x-og-unit": "m"
@@ -11991,7 +11996,7 @@
         },
         "depthBandsFlatten": {
           "type": "number",
-          "description": "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene.",
+          "description": "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two.",
           "default": 1,
           "minimum": 0,
           "maximum": 1,
@@ -12028,12 +12033,12 @@
     "MaterialStyle": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.",
+      "description": "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.",
       "type": "object",
       "properties": {
         "toon": {
           "type": "boolean",
-          "description": "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights.",
+          "description": "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway.",
           "default": false
         },
         "gradientMap": {
@@ -12092,7 +12097,7 @@
         },
         "outlineWidth": {
           "type": "number",
-          "description": "The outline width in pixels at outlineDistance for materials without their own; 0 is none.",
+          "description": "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean.",
           "default": 0,
           "minimum": 0,
           "maximum": 31,
@@ -13013,6 +13018,11 @@
           "default": 0,
           "x-og-unit": "m"
         },
+        "toneMapped": {
+          "type": "boolean",
+          "description": "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped.",
+          "default": true
+        },
         "flipX": {
           "type": "boolean",
           "description": "Mirror the region left to right.",
@@ -13273,6 +13283,11 @@
           "description": "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight).",
           "default": 0,
           "x-og-unit": "m"
+        },
+        "toneMapped": {
+          "type": "boolean",
+          "description": "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only.",
+          "default": true
         },
         "visible": {
           "type": "boolean",

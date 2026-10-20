@@ -69,7 +69,7 @@ export const Game = defineResource("Game", {
   rockMoved: f32(0, { unit: "m", doc: "The farthest any rock of the pile has moved from where it was set." }),
   a11yUnnamed: u32(0, { doc: "Focusable nodes of og.ui.a11y() without a name, last frame." }),
   a11yNodes: u32(0, { doc: "Nodes of og.ui.a11y(), last frame." }),
-  styled: bool(false, { doc: "The models' materials are styled (src/world.ts styleModels): toon voxels, the lanterns' clear coat." }),
+  styled: bool(false, { doc: "The lanterns' clear coat is on their model's material (src/world.ts styleModels)." }),
 });
 
 /** The knobs. Tune reads the tunable fields; `set:Tuning.<field>=<value>` writes them. */

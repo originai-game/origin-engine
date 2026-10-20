@@ -205,6 +205,8 @@ pub(crate) fn build<'a>(
                 source,
                 first: index as u32,
                 count: 1,
+                // The overlay is drawn after the tonemap.
+                tone_mapped: true,
             }),
         }
         instances.push(inst);

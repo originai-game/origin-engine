@@ -1281,6 +1281,11 @@ pub struct Renderer {
     ibl: ibl::IblGenerator,
     sprite_pipeline: wgpu::RenderPipeline,
     sprite_additive_pipeline: wgpu::RenderPipeline,
+    /// Alpha-blended sprites kept out of the tone curve, and the cover
+    /// that sets the HDR alpha to 1 before the first of them
+    /// ([`UNTONEMAPPED_BLEND`]).
+    sprite_untonemapped_pipeline: wgpu::RenderPipeline,
+    sprite_cover_pipeline: wgpu::RenderPipeline,
     sprite_glow_pipeline: wgpu::RenderPipeline,
     msdf_pipeline: wgpu::RenderPipeline,
     ribbon_pipelines: [wgpu::RenderPipeline; 2],
@@ -1485,6 +1490,25 @@ pub(crate) struct HdrPipeline<'a> {
     pub blend: Option<wgpu::BlendState>,
     pub samples: u32,
 }
+
+/// An untonemapped sprite's blend (`SpriteFx::tone_mapped` false): its
+/// colour over the scene as alpha blending does, and the HDR target's
+/// alpha (1 under the sprites, `fs_cover`) taken towards 0 by its
+/// coverage, so the tonemap knows how much of each pixel to leave
+/// uncurved (post.wgsl `tonemapped`). A tone-mapped sprite or glyph drawn
+/// over it takes the alpha back towards 1 (`ALPHA_BLENDING`).
+pub(crate) const UNTONEMAPPED_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Zero,
+        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
 
 pub(crate) fn hdr_pipeline(device: &wgpu::Device, p: HdrPipeline) -> wgpu::RenderPipeline {
     hdr_pipeline_with(device, &[], p)
@@ -2338,6 +2362,40 @@ impl Renderer {
         );
         let sprite_additive_pipeline =
             hdr_pipeline(&device, sprite_state("sprite additive", "fs", additive));
+        let sprite_untonemapped_pipeline = hdr_pipeline(
+            &device,
+            sprite_state("sprite untonemapped", "fs_untonemapped", UNTONEMAPPED_BLEND),
+        );
+        // The colour kept, the alpha replaced by 1, over every pixel. No
+        // groups: whichever sprite or array group is bound stays valid.
+        let cover_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("sprite cover"),
+            bind_group_layouts: &[],
+            immediate_size: 0,
+        });
+        let sprite_cover_pipeline = hdr_pipeline(
+            &device,
+            HdrPipeline {
+                label: "sprite cover",
+                layout: &cover_pl,
+                module: &sprite_shader,
+                vs: "vs_cover",
+                fs: "fs_cover",
+                buffers: &[],
+                cull: None,
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::Always,
+                blend: Some(wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::Zero,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendComponent::REPLACE,
+                }),
+                samples,
+            },
+        );
         let msdf_pipeline = hdr_pipeline(
             &device,
             sprite_state("msdf text", "fs_msdf", wgpu::BlendState::ALPHA_BLENDING),
@@ -2557,6 +2615,8 @@ impl Renderer {
             ibl,
             sprite_pipeline,
             sprite_additive_pipeline,
+            sprite_untonemapped_pipeline,
+            sprite_cover_pipeline,
             sprite_glow_pipeline,
             msdf_pipeline,
             ribbon_pipelines,
@@ -5362,6 +5422,7 @@ impl Renderer {
             post_fx,
             glow,
             god_rays.is_some(),
+            sprite_frame.untonemapped,
             scene.tick,
         );
         if camera.exposure.adaptation().is_some() {
@@ -7000,8 +7061,17 @@ impl Renderer {
                     }
                     // Sprites and text, blended over the scene in sorted order.
                     pass.set_bind_group(2, sprite_fx_group, &[]);
-                    let mut current: Option<(bool, SpriteBlend)> = None;
+                    let mut current: Option<(bool, SpriteBlend, bool)> = None;
+                    let mut covered = false;
                     for run in &sprite_frame.runs {
+                        if !run.tone_mapped && !covered {
+                            // The HDR alpha to 1 before the first untonemapped run.
+                            pass.set_pipeline(&self.sprite_cover_pipeline);
+                            pass.draw(0..3, 0..1);
+                            stats.draw_calls += 1;
+                            covered = true;
+                            current = None;
+                        }
                         if let RunSource::Metaballs(i) = run.source
                             && let Some(group) = self
                                 .metaballs
@@ -7045,7 +7115,7 @@ impl Renderer {
                         }
                         if let RunSource::Array(blend, a) = run.source {
                             let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
-                            pass.set_pipeline(arrays.pipeline(blend));
+                            pass.set_pipeline(arrays.pipeline(blend, run.tone_mapped));
                             let (group, _) = self.cache.sprite_array_groups[a.index()]
                                 .as_ref()
                                 .expect("made before the pass");
@@ -7084,13 +7154,16 @@ impl Renderer {
                                 &self.cache.fonts[f.index()].bind_group,
                             ),
                         };
-                        if current != Some((msdf, blend)) {
-                            pass.set_pipeline(match (msdf, blend) {
-                                (true, _) => &self.msdf_pipeline,
-                                (false, SpriteBlend::Alpha) => &self.sprite_pipeline,
-                                (false, SpriteBlend::Additive) => &self.sprite_additive_pipeline,
+                        if current != Some((msdf, blend, run.tone_mapped)) {
+                            pass.set_pipeline(match (msdf, blend, run.tone_mapped) {
+                                (true, _, _) => &self.msdf_pipeline,
+                                (false, SpriteBlend::Alpha, false) => {
+                                    &self.sprite_untonemapped_pipeline
+                                }
+                                (false, SpriteBlend::Alpha, true) => &self.sprite_pipeline,
+                                (false, SpriteBlend::Additive, _) => &self.sprite_additive_pipeline,
                             });
-                            current = Some((msdf, blend));
+                            current = Some((msdf, blend, run.tone_mapped));
                         }
                         pass.set_bind_group(1, group, &[]);
                         let start = run.first as u64 * SPRITE_STRIDE;

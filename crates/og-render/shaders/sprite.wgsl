@@ -171,6 +171,35 @@ fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
   return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
 }
 
+// An untonemapped sprite (`SpriteFx::tone_mapped` false): its colour as
+// given, unfogged. Its pipeline blends the HDR target's alpha towards 0
+// under it (the target holds 1 there, `fs_cover`), and the tonemap shows
+// such pixels unexposed and uncurved (post.wgsl `tonemapped`).
+@fragment
+fn fs_untonemapped(in: SpriteOut) -> @location(0) vec4<f32> {
+  var c = sprite_color(in);
+  if (c.a <= 0.0) { discard; }
+  if (in.fx.y > 0.5) {
+    let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
+    c = vec4<f32>(c.rgb * light, c.a);
+  }
+  return c;
+}
+
+// Before a frame's first untonemapped sprite: the HDR target's alpha set
+// to 1 everywhere (its colour kept by the blend), so the alpha under the
+// sprites is the fraction of each pixel the tonemap curves.
+@vertex
+fn vs_cover(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
+  let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
+  return vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+}
+
+@fragment
+fn fs_cover() -> @location(0) vec4<f32> {
+  return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+}
+
 // Into the glow buffer: the sprite's light, whatever covers it.
 @fragment
 fn fs_glow(in: SpriteOut) -> @location(0) vec4<f32> {

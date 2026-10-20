@@ -134,12 +134,9 @@ function buildFarSide(world: World, g: { terrain: number }): void {
 }
 
 /**
- * The models' materials, once their glTFs have loaded (true when all are
- * done): the voxel models are cel-shaded one by one (toon), the lanterns
- * lacquered (clearcoat) and the slimes left glassy (their glTF's
- * transmission). The look cannot do the toon: MaterialStyle.toon reaches
- * every lit material that leaves toon at its default, and a toon material
- * ignores clearcoat and transmission (FINDINGS.md).
+ * The lanterns' lacquer: a clear coat on the cooked voxel model's material
+ * (the look's toon leaves a material with a physical lobe its physical
+ * shading). Answers false while the model is not resident yet.
  */
 export function styleModels(world: World): boolean {
   let done = true;
@@ -151,7 +148,6 @@ export function styleModels(world: World): boolean {
     }
     for (const m of info.value.materials) must(og.render.updateMaterial(world, m, desc));
   };
-  for (const path of ["models/hero.vox", "models/tree.vox", "models/rock.vox", "models/pine.vox", "models/ruins.vox"]) each(path, { toon: true });
   each("models/lantern.vox", { roughness: 0.55, clearcoat: 1, clearcoatRoughness: 0.06 });
   return done;
 }

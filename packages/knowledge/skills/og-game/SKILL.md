@@ -273,6 +273,13 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   ```ts
   world.insert(hero, og.Sprite, { texture: tex, width: 1, height: 1.5, anchor: { x: 0.5, y: 0 }, dropShadow: 0.5, shadow: 0.3 });
   ```
+- **World UI that must not change with the light** (speech bubbles, name
+  tags, markers) takes `og.Sprite.toneMapped: false` (or
+  `SpriteDesc.toneMapped`), three.js's `Material.toneMapped`: still placed
+  and depth tested in the world, but shown in its colours as given,
+  outside auto exposure, bloom, fog and the tone curve, so a cream bubble
+  stays cream at dusk instead of blowing out to white. Alpha-blended
+  sprites only.
 - **Sprite sheets** are `.ogt` files of `type flipbook` next to the PNG
   (grid or named frames, or an Aseprite / TexturePacker JSON `atlas`; clips
   with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`).
@@ -745,7 +752,16 @@ og.render.look(world)?.name;                                              // the
   its default: `toon` (with a `gradientMap`), `shadowTint` and
   `shadowTintAmount`, `rimIntensity`, `outlineWidth` (with
   `outlineDistance` to thin lines with depth) and `flatShading`. Unlit and
-  shader materials, sprites and the UI are untouched.
+  shader materials, sprites and the UI are untouched, and so is a material
+  made with `styled: false` (exactly as declared under any look). The
+  style's `toon` passes by a material with a physical lobe (`clearcoat`,
+  `sheen`, `transmission`, `iridescence`, `anisotropy`, an `ior` other
+  than 1.5), which keeps its physical shading and takes the rest; give it
+  `toon: true` itself to make it toon anyway. An outline is a hull
+  outline: each object's silhouette and its creases against other objects
+  (the ground under it), never the edges between its own faces, so `.vox`
+  models and flat-shaded meshes keep clean faces; for lines on every
+  crease, `Stylise.inkDepth`.
 - Built-in assets a look may name without owning a copy:
   `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` for
   `Stylise.paintCanvas`, and `"@palettes/lcd2"`, `"@palettes/handheld4"`,

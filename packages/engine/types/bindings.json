@@ -1353,6 +1353,11 @@
           "default": 0
         },
         {
+          "name": "toneMapped",
+          "column": "bool",
+          "default": true
+        },
+        {
           "name": "visible",
           "column": "bool",
           "default": true

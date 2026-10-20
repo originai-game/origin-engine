@@ -31,6 +31,8 @@ pub(crate) struct SpriteArrayPipelines {
     pub layout: wgpu::BindGroupLayout,
     alpha: wgpu::RenderPipeline,
     additive: wgpu::RenderPipeline,
+    /// Alpha-blended and untonemapped ([`crate::UNTONEMAPPED_BLEND`]).
+    untonemapped: wgpu::RenderPipeline,
     pub glow: wgpu::RenderPipeline,
     /// The overlay's: in the output's format, and in its sRGB view's.
     overlay: Option<(wgpu::RenderPipeline, Option<wgpu::RenderPipeline>)>,
@@ -76,7 +78,7 @@ impl SpriteArrayPipelines {
             source: wgpu::ShaderSource::Wgsl(source().into()),
         });
         let buffers = [Some(SPRITE_ARRAY_LAYOUT)];
-        let pipeline = |label, blend| {
+        let pipeline = |label, fs, blend| {
             crate::hdr_pipeline(
                 device,
                 crate::HdrPipeline {
@@ -84,7 +86,7 @@ impl SpriteArrayPipelines {
                     layout: &pl,
                     module: &module,
                     vs: "vs",
-                    fs: "fs",
+                    fs,
                     buffers: &buffers,
                     cull: None,
                     depth_write: false,
@@ -141,18 +143,26 @@ impl SpriteArrayPipelines {
             cache: crate::pipeline_cache::of(device).as_ref(),
         });
         SpriteArrayPipelines {
-            alpha: pipeline("sprite array", wgpu::BlendState::ALPHA_BLENDING),
-            additive: pipeline("sprite array additive", additive),
+            alpha: pipeline("sprite array", "fs", wgpu::BlendState::ALPHA_BLENDING),
+            additive: pipeline("sprite array additive", "fs", additive),
+            untonemapped: pipeline(
+                "sprite array untonemapped",
+                "fs_untonemapped",
+                crate::UNTONEMAPPED_BLEND,
+            ),
             glow,
             overlay: None,
             layout,
         }
     }
 
-    pub fn pipeline(&self, blend: SpriteBlend) -> &wgpu::RenderPipeline {
-        match blend {
-            SpriteBlend::Alpha => &self.alpha,
-            SpriteBlend::Additive => &self.additive,
+    /// The pipeline of a run of `blend`; `tone_mapped` false: the
+    /// untonemapped one (alpha-blended runs only, `sprites::build`).
+    pub fn pipeline(&self, blend: SpriteBlend, tone_mapped: bool) -> &wgpu::RenderPipeline {
+        match (blend, tone_mapped) {
+            (SpriteBlend::Alpha, false) => &self.untonemapped,
+            (SpriteBlend::Alpha, true) => &self.alpha,
+            (SpriteBlend::Additive, _) => &self.additive,
         }
     }
 

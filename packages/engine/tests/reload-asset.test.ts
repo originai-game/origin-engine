@@ -93,7 +93,11 @@ test.skipIf(SLOW)("og dev shows a glTF edit after the reload", async () => {
     const first = JSON.parse(lines.find((l) => l.includes('"event":"reload"'))!) as { ok: boolean };
     expect(first.ok).toBeTrue();
     expect(red(before)).toBe(0);
-    expect(red(after)).toBeGreaterThan(2000);
+    // A hull-sized count, not an exact one: only the hull's pixels that
+    // read as plain red count (its lit and shaded sides do not), and their
+    // number moves with the template's frame (1,898 since project.ogt's
+    // seed applies, 2,1xx before).
+    expect(red(after)).toBeGreaterThan(1000);
     // Back to grey: the second reload, after which og dev stops.
     swap(glb, RED, GREY);
     await until(() => reloads() >= 2);

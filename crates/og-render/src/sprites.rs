@@ -90,6 +90,10 @@ pub(crate) struct SpriteRun {
     pub source: RunSource,
     pub first: u32,
     pub count: u32,
+    /// False: alpha-blended sprites kept out of exposure, bloom and the
+    /// tone curve ([`crate::SpriteFx::tone_mapped`]), drawn with the
+    /// untonemapped pipelines.
+    pub tone_mapped: bool,
 }
 
 /// The glyph table of one font, by codepoint, and its kerning pairs.
@@ -159,6 +163,8 @@ impl FontLayout {
 pub(crate) struct SpriteFrame {
     pub instances: Vec<SpriteInstance>,
     pub runs: Vec<SpriteRun>,
+    /// Whether some run is untonemapped ([`SpriteRun::tone_mapped`]).
+    pub untonemapped: bool,
     /// Glowing sprites again, after `instances` in the buffer, by texture
     /// or array (`RunSource::Sprite` or `RunSource::Array`, additive).
     pub glow_runs: Vec<SpriteRun>,
@@ -441,8 +447,8 @@ pub(crate) fn build<'a>(
     let mut shadow_count = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
         scene.text_outlines.iter().map(|o| (o.text, o)).collect();
-    // (layer, key, source, instance), in submission order.
-    let mut keyed: Vec<(i32, f32, RunSource, SpriteInstance)> =
+    // (layer, key, source, untonemapped, instance), in submission order.
+    let mut keyed: Vec<(i32, f32, RunSource, bool, SpriteInstance)> =
         Vec::with_capacity(scene.sprites.len() + extra.len());
     let mut glowing: Vec<(RunSource, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
@@ -459,9 +465,15 @@ pub(crate) fn build<'a>(
         } else {
             fx.get(&(i as u32))
         };
-        let (flash, glow, blend) = match found {
-            Some(f) => (f.flash, f.glow.max(0.0), f.blend),
-            None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha),
+        let (flash, glow, blend, tone_mapped) = match found {
+            Some(f) => (
+                f.flash,
+                f.glow.max(0.0),
+                f.blend,
+                // Additive light is always the scene's.
+                f.tone_mapped || f.blend == SpriteBlend::Additive,
+            ),
+            None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha, true),
         };
         let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
         let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
@@ -491,12 +503,12 @@ pub(crate) fn build<'a>(
                 // Bent over the ground: one instance per cell of the quad.
                 Some(bend) => {
                     for cell in bent_shadow(shadow, &bend, g[3]) {
-                        keyed.push((s.layer, f32::MIN, source, cell));
+                        keyed.push((s.layer, f32::MIN, source, false, cell));
                         shadow_count += 1;
                     }
                 }
                 None => {
-                    keyed.push((s.layer, f32::MIN, source, shadow));
+                    keyed.push((s.layer, f32::MIN, source, false, shadow));
                     shadow_count += 1;
                 }
             }
@@ -506,13 +518,25 @@ pub(crate) fn build<'a>(
             if glow > 0.0 {
                 glowing.push((RunSource::Array(SpriteBlend::Additive, array), inst));
             }
-            keyed.push((s.layer, key, RunSource::Array(blend, array), inst));
+            keyed.push((
+                s.layer,
+                key,
+                RunSource::Array(blend, array),
+                !tone_mapped,
+                inst,
+            ));
             continue;
         }
         if glow > 0.0 {
             glowing.push((RunSource::Sprite(SpriteBlend::Additive, s.texture), inst));
         }
-        keyed.push((s.layer, key, RunSource::Sprite(blend, s.texture), inst));
+        keyed.push((
+            s.layer,
+            key,
+            RunSource::Sprite(blend, s.texture),
+            !tone_mapped,
+            inst,
+        ));
     }
     for e in extra {
         let s = &e.sprite;
@@ -542,7 +566,7 @@ pub(crate) fn build<'a>(
         if e.glow > 0.0 {
             glowing.push((run(SpriteBlend::Additive), inst));
         }
-        keyed.push((s.layer, 0.0, run(e.blend), inst));
+        keyed.push((s.layer, 0.0, run(e.blend), false, inst));
     }
     let sprites = keyed.len() as u32 - shadow_count;
     let after_sprites = keyed.len() as u32;
@@ -578,6 +602,7 @@ pub(crate) fn build<'a>(
                     text.layer,
                     0.0,
                     RunSource::Font(text.font),
+                    false,
                     SpriteInstance {
                         position_rotation: [
                             origin.x + rotate(corner).x,
@@ -603,8 +628,13 @@ pub(crate) fn build<'a>(
         });
     }
     let glyphs = keyed.len() as u32 - after_sprites;
-    // Stable: within a (layer, key, source) run, submission order is kept.
-    keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.cmp(&b.2)));
+    // Stable: within a (layer, key, source, tone) run, submission order is kept.
+    keyed.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then(a.1.total_cmp(&b.1))
+            .then(a.2.cmp(&b.2))
+            .then(a.3.cmp(&b.3))
+    });
     // Tile layers and layered strips, each before the sprites of its layer
     // (tiles first), in submission order within a layer.
     let mut under: Vec<(i32, u8, usize)> = Vec::new();
@@ -623,13 +653,18 @@ pub(crate) fn build<'a>(
     under.sort_by_key(|u| (u.0, u.1));
     let mut runs: Vec<SpriteRun> = Vec::new();
     let mut instances: Vec<SpriteInstance> = Vec::with_capacity(keyed.len());
-    let push = |runs: &mut Vec<SpriteRun>, source: RunSource, first: u32, count: u32| {
+    let push = |runs: &mut Vec<SpriteRun>,
+                source: RunSource,
+                tone_mapped: bool,
+                first: u32,
+                count: u32| {
         if count == 0 {
             return;
         }
         match runs.last_mut() {
             Some(run)
                 if run.source == source
+                    && run.tone_mapped == tone_mapped
                     && !matches!(source, RunSource::Strip(..) | RunSource::Metaballs(_))
                     && run.first + run.count == first =>
             {
@@ -639,6 +674,7 @@ pub(crate) fn build<'a>(
                 source,
                 first,
                 count,
+                tone_mapped,
             }),
         }
     };
@@ -659,21 +695,22 @@ pub(crate) fn build<'a>(
                 push(
                     runs,
                     RunSource::Sprite(SpriteBlend::Alpha, Some(layer.texture)),
+                    true,
                     first,
                     q,
                 );
             } else {
                 let s = &strips[i];
-                push(runs, s.source, s.first, s.count);
+                push(runs, s.source, true, s.first, s.count);
             }
             *next_under += 1;
         }
     };
-    for (layer, _, source, inst) in keyed {
+    for (layer, _, source, untonemapped, inst) in keyed {
         place_under(layer, &mut instances, &mut runs, &mut next_under);
         let index = instances.len() as u32;
         instances.push(inst);
-        push(&mut runs, source, index, 1);
+        push(&mut runs, source, !untonemapped, index, 1);
     }
     place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
     // The glow pass: by texture or array (additive, so order does not
@@ -688,13 +725,16 @@ pub(crate) fn build<'a>(
                 source,
                 first: index,
                 count: 1,
+                tone_mapped: true,
             }),
         }
         instances.push(inst);
     }
+    let untonemapped = runs.iter().any(|r| !r.tone_mapped);
     Ok(SpriteFrame {
         instances,
         runs,
+        untonemapped,
         glow_runs,
         sprites,
         glyphs,
