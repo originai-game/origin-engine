@@ -10,13 +10,13 @@
 // extraction site: the crowd's og.Mesh rows are read from their columns
 // (owed row 50, tests/evidence/P4/perf/), so nothing in the scene is decoded
 // row by row in two grains' worth; nor the physics site: the crowd's 48
-// crates are far below og-physics's body grain (250 bodies for every lane
-// thread, 1,000 on four), so the small world steps on the engine thread and
+// crates are far below og-physics's body grain (200 bodies for every lane
+// thread, 800 on four), so the small world steps on the engine thread and
 // never wakes the pool;
 // both runs cull on the CPU (OG_GFX_CULLING=cpu), since GPU culling never
 // reaches the CPU cull. A headless pile of 1,000 boxes (./support/lanes-pile.ts)
 // is the world that qualifies: on four lanes every step goes to the pool,
-// with the same world hash as lanes off, and 960 boxes do not.
+// with the same world hash as lanes off, and 760 boxes do not.
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -96,17 +96,17 @@ function pile(lanes: string, bodies: number): Pile {
 }
 
 test("the physics step goes to the lanes from a body grain for every lane thread, with the same world", () => {
-  // og-physics's BODY_GRAIN (250) for each of four lanes.
+  // Above og-physics's BODY_GRAIN (200) for each of four lanes, and below.
   const off = pile("off", 1000);
   const on = pile("4", 1000);
-  const below = pile("4", 960);
+  const below = pile("4", 760);
   expect([on.lanes.threads, on.lanes.pool]).toEqual([4, "native"]);
   // The steps (241 ticks) went to the pool with their 1,000 bodies (the
   // contact readout splits besides once the pile has 1,024 pairs).
   expect(on.lanes.sites.physics.calls).toBeGreaterThan(200);
   expect(on.lanes.sites.physics.items).toBeGreaterThan(200 * 1000);
   expect(off.lanes.sites.physics.calls).toBe(0);
-  // 960 boxes are under four grains: on the engine thread, the pool never woken.
+  // 760 boxes are under four grains: on the engine thread, the pool never woken.
   expect(below.lanes.on).toBe(true);
   expect(below.lanes.sites.physics.calls).toBe(0);
   expect(on.hash).toBe(off.hash);

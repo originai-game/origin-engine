@@ -76,12 +76,12 @@ pub const SYSTEM_NAME: &str = "og.physics";
 
 /// The bodies per lane thread from which the step goes to the lanes pool
 /// (og-lanes' `install`): rapier's `parallel` build splits the step across
-/// every pool thread, so a world steps there from 250 bodies a thread (1,000
-/// on four lanes, 2,000 on eight) and below that on the calling thread,
+/// every pool thread, so a world steps there from 200 bodies a thread (800
+/// on four lanes, 1,600 on eight) and below that on the calling thread,
 /// never waking the pool. Measured with `examples/lanes_costs.rs`
 /// (tests/evidence/P4/physics-lanes/): below it the lanes cost more than
 /// they save.
-pub const BODY_GRAIN: usize = 250;
+pub const BODY_GRAIN: usize = 200;
 
 /// Geometry for convex and triangle-mesh colliders, registered under the
 /// mesh handle the colliders name ([`Collider::mesh`]).

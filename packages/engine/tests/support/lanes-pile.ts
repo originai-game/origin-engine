@@ -3,7 +3,7 @@
 // topple into each other, stepped 240 ticks. The lanes are whatever
 // OG_LANES gave the process. Prints JSON for lanes.test.ts: the world hash
 // and the dump_lanes report (the physics site goes to the pool from
-// og-physics's BODY_GRAIN, 250 bodies, for every lane thread).
+// og-physics's BODY_GRAIN, 200 bodies, for every lane thread).
 //
 //   OG_LANES=off|<n> bun tests/support/lanes-pile.ts --bodies N
 
