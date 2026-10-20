@@ -655,6 +655,14 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     let mut ignored = Vec::new();
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     for (rel, path) in &files {
+        if rel.starts_with('@') {
+            early_errors.push((
+                rel.clone(),
+                "asset",
+                "paths starting with '@' are the engine's built-in assets (a look names them as \"@canvas/<name>\" or \"@palettes/<name>\"); rename the file or its folder".into(),
+            ));
+            continue;
+        }
         let kind = match ext(rel).as_str() {
             "glb" | "gltf" | "vox" => Kind::Model,
             "png" | "jpg" | "jpeg" | "ktx2" => Kind::Texture,
@@ -737,6 +745,35 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             path: path.clone(),
             kind,
             bytes,
+            settings: None,
+            hash: 0,
+            gltf: None,
+            error: None,
+            encoded: std::sync::OnceLock::new(),
+        });
+    }
+    // The engine's built-in assets the looks name join the bundle under
+    // their reserved ids (`@canvas/paper.png`), once each.
+    let mut builtins: Vec<&'static str> = Vec::new();
+    for s in sources.iter().filter(|s| s.kind == Kind::Look) {
+        for id in look::builtin_references(s, &assets_dir) {
+            if !builtins.contains(&id) {
+                builtins.push(id);
+            }
+        }
+    }
+    builtins.sort();
+    for id in builtins {
+        let (_, bytes) = look::builtin(id).expect("a built-in");
+        sources.push(Source {
+            rel: id.to_string(),
+            path: assets_dir.join(id),
+            kind: if ext(id) == "png" {
+                Kind::Texture
+            } else {
+                Kind::Palette
+            },
+            bytes: bytes.to_vec(),
             settings: None,
             hash: 0,
             gltf: None,

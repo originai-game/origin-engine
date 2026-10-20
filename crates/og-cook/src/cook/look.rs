@@ -13,6 +13,13 @@
 //!   writable, a number is in its range, a variant is one of the enum's, a
 //!   colour is three linear numbers or an sRGB `#rrggbb` (written linear), a
 //!   handle field names an asset of its kind that the bundle has.
+//! - A handle field may name one of the engine's built-in assets
+//!   ([`BUILTINS`], `templates/looks/assets/`) as `"@canvas/<name>"` or
+//!   `"@palettes/<name>"` (the extension may be left out): the look stores
+//!   its bundle id (`@canvas/paper.png`), and the cook adds the built-in to
+//!   the game's bundle under that id ([`builtin_references`]), so the
+//!   runtime loads it as any other asset. Paths under `assets/` starting
+//!   with `@` are the engine's, and refused as a game's own.
 //! - The stamp covers every look in the chain, so editing a base re-cooks
 //!   the looks built on it.
 
@@ -177,6 +184,81 @@ pub const PRESETS: &[(&str, &str)] = &[
         include_str!("../../../../templates/looks/watercolor-wash.ogt"),
     ),
 ];
+
+/// The engine's built-in look assets, by bundle id: the canvas textures a
+/// look names in `Stylise.paintCanvas` and the palettes it names in
+/// `Stylise.palette`, made by `templates/looks/assets/generate.ts` (CC0)
+/// and compiled into the cook. A look writes `"@canvas/paper"` or
+/// `"@canvas/paper.png"`; a game that names one has it cooked into its
+/// bundle under the id, where `og.load.texture`/`og.load.palette` find it
+/// too.
+pub const BUILTINS: &[(&str, &[u8])] = &[
+    (
+        "@canvas/linen.png",
+        include_bytes!("../../../../templates/looks/assets/canvas/linen.png"),
+    ),
+    (
+        "@canvas/paper.png",
+        include_bytes!("../../../../templates/looks/assets/canvas/paper.png"),
+    ),
+    (
+        "@canvas/watercolor.png",
+        include_bytes!("../../../../templates/looks/assets/canvas/watercolor.png"),
+    ),
+    (
+        "@palettes/1bit.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/1bit.hex"),
+    ),
+    (
+        "@palettes/bright32.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/bright32.hex"),
+    ),
+    (
+        "@palettes/dusk16.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/dusk16.hex"),
+    ),
+    (
+        "@palettes/handheld4.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/handheld4.hex"),
+    ),
+    (
+        "@palettes/lcd2.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/lcd2.hex"),
+    ),
+];
+
+/// The built-in asset `name` names (`"@canvas/paper"` or its full id
+/// `"@canvas/paper.png"`): its bundle id and bytes.
+pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
+    BUILTINS
+        .iter()
+        .find(|(id, _)| *id == name || id.rsplit_once('.').is_some_and(|(stem, _)| stem == name))
+        .copied()
+}
+
+/// The built-in assets the look `s` names through its chain of bases, by
+/// bundle id (the cook adds each to the bundle once). A look that does not
+/// resolve names none here; its own cook reports why.
+pub(super) fn builtin_references(s: &Source, root: &Path) -> Vec<&'static str> {
+    let text = String::from_utf8_lossy(&s.bytes);
+    let mut seen = vec![s.rel.clone()];
+    let mut bases = Vec::new();
+    let Ok(look) = flatten(&s.rel, &text, root, PRESETS, &mut seen, &mut bases) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for b in &look.blocks {
+        for (_, v, _) in &b.fields {
+            if let [Value::String(p)] = v.as_slice()
+                && let Some((id, _)) = builtin(p)
+                && !out.contains(&id)
+            {
+                out.push(id);
+            }
+        }
+    }
+    out
+}
 
 /// A look in an `extends` chain: its id (an asset id, or a preset's slug)
 /// and its text.
@@ -368,6 +450,24 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
             }
             if let Some(exts) = handle_extensions(decl.column) {
                 let path = match values.as_slice() {
+                    [Value::String(s)] if s.starts_with('@') => match builtin(s) {
+                        Some((id, _)) => id.to_string(),
+                        None => {
+                            let kinds: Vec<&str> = BUILTINS
+                                .iter()
+                                .map(|(id, _)| *id)
+                                .filter(|id| {
+                                    id.rsplit_once('.').is_some_and(|(_, e)| exts.contains(&e))
+                                })
+                                .map(|id| id.rsplit_once('.').map_or(id, |(stem, _)| stem))
+                                .collect();
+                            return Err(format!(
+                                "{at}: \"{s}\" is not one of the engine's built-in {}s ({})",
+                                decl.column,
+                                kinds.join(", ")
+                            ));
+                        }
+                    },
                     [Value::String(s)] => crate::runtime::asset_id(s).to_string(),
                     _ => {
                         return Err(format!(
@@ -475,7 +575,8 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
                 }
             }
             for r in refs {
-                out.push(format!("{r}={}", known(crate::runtime::asset_id(&r))));
+                let id = builtin(&r).map_or(crate::runtime::asset_id(&r), |(id, _)| id);
+                out.push(format!("{r}={}", known(id)));
             }
         }
         Err(e) => out.push(format!("error {e}")),
@@ -752,6 +853,99 @@ mod tests {
         assert_eq!(built_in, on_disk, "PRESETS lists templates/looks/*.ogt");
         for (slug, text) in PRESETS {
             LookFile::parse(text).unwrap_or_else(|e| panic!("{slug}: {e}"));
+        }
+    }
+    #[test]
+    fn names_the_built_in_assets_by_their_reserved_ids() {
+        let one = |body: &str, known: &[&str]| {
+            let root = project(&[("looks/b.ogt", &format!("{HEAD}{body}"))]);
+            cook(&root, "looks/b.ogt", known)
+        };
+        let l = one(
+            "Stylise {\n  paintCanvas \"@canvas/paper\"\n  palette \"@palettes/handheld4.hex\"\n}\n",
+            &["@canvas/paper.png", "@palettes/handheld4.hex"],
+        )
+        .unwrap();
+        let st = l.blocks.iter().find(|b| b.resource == "Stylise").unwrap();
+        assert_eq!(
+            st.get("paintCanvas").unwrap()[0].as_str(),
+            Some("@canvas/paper.png")
+        );
+        assert_eq!(
+            st.get("palette").unwrap()[0].as_str(),
+            Some("@palettes/handheld4.hex")
+        );
+        let e = one("Stylise {\n  paintCanvas \"@canvas/burlap\"\n}\n", &[]).unwrap_err();
+        assert!(
+            e.contains(
+                "\"@canvas/burlap\" is not one of the engine's built-in Textures (@canvas/linen, @canvas/paper, @canvas/watercolor)"
+            ),
+            "{e}"
+        );
+        let e = one("Stylise {\n  paintCanvas \"@palettes/1bit\"\n}\n", &[]).unwrap_err();
+        assert!(e.contains("is not a Texture"), "{e}");
+        // Named but not in the bundle: the cook adds the built-ins a look
+        // names before it checks the look, so this is a cook without them.
+        let e = one("Stylise {\n  palette \"@palettes/lcd2\"\n}\n", &[]).unwrap_err();
+        assert!(e.contains("not under assets/: @palettes/lcd2.hex"), "{e}");
+    }
+
+    #[test]
+    fn the_built_ins_are_the_template_assets() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/looks/assets");
+        let mut on_disk = Vec::new();
+        for kind in ["canvas", "palettes"] {
+            for e in std::fs::read_dir(dir.join(kind)).unwrap() {
+                let name = e.unwrap().file_name().to_string_lossy().to_string();
+                on_disk.push(format!("@{kind}/{name}"));
+            }
+        }
+        on_disk.sort();
+        let ids: Vec<String> = BUILTINS.iter().map(|(id, _)| id.to_string()).collect();
+        assert_eq!(
+            ids, on_disk,
+            "BUILTINS lists templates/looks/assets, sorted"
+        );
+        for (id, bytes) in BUILTINS {
+            if id.ends_with(".png") {
+                assert!(bytes.len() <= 64 * 1024, "{id}: {} B", bytes.len());
+                let img = image::load_from_memory(bytes).unwrap();
+                assert_eq!((img.width(), img.height()), (256, 256), "{id}");
+            } else {
+                let colours = crate::look::parse_palette(id, std::str::from_utf8(bytes).unwrap())
+                    .unwrap_or_else(|e| panic!("{id}: {e}"));
+                let digits: String = id.chars().filter(char::is_ascii_digit).collect();
+                let want: usize = if *id == "@palettes/1bit.hex" {
+                    2
+                } else {
+                    digits.parse().unwrap()
+                };
+                assert_eq!(colours.len(), want, "{id}");
+            }
+        }
+        assert_eq!(
+            builtin("@canvas/paper").map(|b| b.0),
+            Some("@canvas/paper.png")
+        );
+        assert_eq!(
+            builtin("@canvas/paper.png").map(|b| b.0),
+            Some("@canvas/paper.png")
+        );
+        assert_eq!(builtin("@canvas/pap"), None);
+        assert_eq!(builtin("canvas/paper"), None);
+    }
+
+    #[test]
+    fn every_preset_checks_against_the_records_with_the_built_ins() {
+        let builtin_ids: Vec<&str> = BUILTINS.iter().map(|(id, _)| *id).collect();
+        for (slug, _) in PRESETS {
+            let root = project(&[("looks/x.ogt", &format!("{HEAD}extends \"{slug}\"\n"))]);
+            let s = source(&root, "looks/x.ogt");
+            let known = |id: &str| builtin_ids.contains(&id);
+            resolve(&s, &root, &known, PRESETS).unwrap_or_else(|e| panic!("{slug}: {e}"));
+            for id in builtin_references(&s, &root) {
+                assert!(builtin_ids.contains(&id), "{slug}: {id}");
+            }
         }
     }
 }

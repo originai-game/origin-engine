@@ -1,0 +1,34 @@
+; Thirty-two bright, slightly warm colours for 16-bit-era pixel art: a grey ramp, skin, earth, foliage, water, fire and accents.
+; The engine's built-in palette @palettes/bright32 (templates/looks/assets/generate.ts), CC0.
+16141f
+2c2a3a
+4a4858
+6e6c7a
+9896a0
+c4c2c8
+efedf0
+5c3424
+8e5230
+c47c48
+e8b07c
+f8dcb4
+1e3a2c
+2f6038
+4c9a3c
+8cd048
+d4f070
+1c2a5c
+2a4c98
+3c80d0
+6cbcf0
+b4e8fc
+6c1c2c
+b42c30
+e8582c
+f89c34
+fcd84c
+3c1c58
+7c34a0
+d04ca8
+f490c4
+48d0b0

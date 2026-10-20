@@ -1,12 +1,13 @@
 type look
 version 1
 ---
-# A low grid, two tones per channel through a Bayer 8 dither (set a two-colour palette for true 1-bit).
+# A low grid, two tones per channel through a Bayer 8 dither, every pixel black or white (the engine's @palettes/1bit): true 1-bit.
 name "Monochrome dithered 3D"
 antialias off
 Stylise {
   pixelHeight 240
   posterize 2
+  palette "@palettes/1bit"
   dither bayer8
 }
 RenderSettings {
