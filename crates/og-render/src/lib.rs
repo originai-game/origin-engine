@@ -46,6 +46,7 @@ mod mips;
 mod overlay;
 pub mod particles;
 mod particles_gpu;
+mod physical;
 mod post;
 mod ribbons;
 mod scatter;
@@ -74,8 +75,9 @@ pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 pub use headless::render_to_rgba;
 pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
+    physical_module_source,
 };
-pub use material::{Side, StandardMaterial};
+pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
@@ -130,7 +132,13 @@ pub const DEFAULT_OUTPUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 pub const MSAA_SAMPLES: u32 = 4;
 
 const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
+/// The lit shader's vertex stages, lights and decals; the standard
+/// fragment shader and the prepass's follow it (`pbr_fs.wgsl`,
+/// `pbr_prepass.wgsl`), the physical one replaces both (`physical.wgsl`).
 const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
+const PBR_FS_WGSL: &str = include_str!("../shaders/pbr_fs.wgsl");
+const PBR_PREPASS_WGSL: &str = include_str!("../shaders/pbr_prepass.wgsl");
+const PHYSICAL_WGSL: &str = include_str!("../shaders/physical.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
 
@@ -142,11 +150,43 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
     )
+}
+
+/// The physical lit shader's source (`physical.rs`): [`lit_source_with`]
+/// with the physical material group and fragment shader.
+fn physical_source_with(
+    hooks: &str,
+    palette: skin::PaletteMode,
+    tables: clusters::LightTables,
+) -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
+        tables.wgsl(),
+        particles_gpu::NOISE_WGSL,
+        palette.wgsl(3)
+    )
+}
+
+/// [`physical_source_with`] for a tier, as [`lit_source`].
+pub(crate) fn physical_source(hooks: &str, full: bool) -> String {
+    if full {
+        physical_source_with(
+            hooks,
+            skin::PaletteMode::Storage,
+            clusters::LightTables::Storage,
+        )
+    } else {
+        physical_source_with(
+            hooks,
+            skin::PaletteMode::Texture,
+            clusters::LightTables::Uniform,
+        )
+    }
 }
 
 /// [`lit_source_with`] for a tier (`full`: storage buffers for the palette
@@ -172,14 +212,20 @@ const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
 /// built-in identities) and the joint palette read as `palette`.
 fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
     format!(
-        "{}{MATERIAL_WGSL}{}{hooks}{SHADOW_WGSL}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_WGSL}",
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
 }
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
+/// The material uniform; the standard group's textures and the dissolve
+/// follow it (`material_maps.wgsl`, `material_dissolve.wgsl`), the
+/// physical group's replace the first (`material_physical.wgsl`).
 const MATERIAL_WGSL: &str = include_str!("../shaders/material.wgsl");
+const MATERIAL_MAPS_WGSL: &str = include_str!("../shaders/material_maps.wgsl");
+const MATERIAL_DISSOLVE_WGSL: &str = include_str!("../shaders/material_dissolve.wgsl");
+const MATERIAL_PHYSICAL_WGSL: &str = include_str!("../shaders/material_physical.wgsl");
 const RIBBON_WGSL: &str = include_str!("../shaders/ribbon.wgsl");
 
 /// Uniform slots of the shadow passes (dynamic offsets): 3 cascades, then 12 local faces.
@@ -612,9 +658,17 @@ struct GpuMesh {
 
 struct GpuMaterial {
     revision: u64,
+    /// The standard group: every pass but a physical material's lit one.
     bind_group: wgpu::BindGroup,
+    /// A physical material's group for its lit pass (`physical.rs`).
+    physical: Option<wgpu::BindGroup>,
     side: Side,
+    /// Drawn in the sorted pass, back to front: blended or transmissive.
     transparent: bool,
+    /// Blended (no depth write).
+    blend: bool,
+    /// Refracts the copy of the opaque scene.
+    transmissive: bool,
     /// Discards pixels (shadows draw it with the material).
     dissolve: bool,
     /// Has its own outline (turns the outline pass on).
@@ -664,6 +718,12 @@ struct SceneCache {
     /// Their shadow and prepass pipelines by (shader, side, skinned).
     hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    /// The physical lit shader with a material shader, made when a physical
+    /// material first uses it, and its pipelines by (shader, key).
+    physical_shaders: HashMap<usize, wgpu::ShaderModule>,
+    physical_hook_pipelines: HashMap<(usize, PbrKey), wgpu::RenderPipeline>,
+    /// Physical materials' packed maps, shared by materials with the same maps.
+    packs: HashMap<physical::PackKey, wgpu::TextureView>,
     textures: Vec<GpuTexture>,
     /// The scene's revision of each texture when it was uploaded.
     texture_revisions: Vec<u64>,
@@ -693,7 +753,14 @@ struct Batch {
     first: u32,
     count: u32,
     side: Side,
+    /// In the sorted pass (blended or transmissive).
     transparent: bool,
+    /// Blended: the pipeline blends and writes no depth.
+    blend: bool,
+    /// Drawn with the physical lit pipelines.
+    physical: bool,
+    /// Refracts the scene copy.
+    transmissive: bool,
     dissolve: bool,
     /// Needs the effect shader (its material's or the frame's effects).
     effects: bool,
@@ -720,7 +787,8 @@ struct SkinnedFrame {
 
 /// The lit pipelines: (side, blended, skinned, effects). Without effects the
 /// shader's `EFFECTS` override is false: the toon, rim, flash, dissolve,
-/// decal and AO code is compiled out (the features-off cost).
+/// decal and AO code is compiled out (the features-off cost). The physical
+/// pipelines are keyed the same (`physical.rs`).
 type PbrKey = (Side, bool, bool, bool);
 /// The shadow pipelines: (side, skinned, dissolving).
 type ShadowKey = (Side, bool, bool);
@@ -912,6 +980,12 @@ pub struct Renderer {
     prev_view_proj: Option<Mat4>,
     fx_groups: Option<FxGroups>,
     mips: mips::MipGenerator,
+    /// The physical lit pipelines, made when a scene first draws a physical
+    /// material (`physical.rs`).
+    physical: Option<physical::PhysicalPipelines>,
+    /// The copy of the opaque scene transmission refracts, with its mip
+    /// chain, at the renderer's size (made when a frame first needs it).
+    transmission: Option<wgpu::Texture>,
     /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
     /// (the sky cube) for the sky they were generated from.
     environment: Option<(
@@ -1158,8 +1232,21 @@ fn pbr_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
+    key: PbrKey,
+    samples: u32,
+) -> wgpu::RenderPipeline {
+    lit_pipeline(device, layouts, module, key, samples, false)
+}
+
+/// [`pbr_pipeline`] for the standard or the physical lit shader (whose
+/// vertex stages also hand on the model's scale).
+fn lit_pipeline(
+    device: &wgpu::Device,
+    layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
+    module: &wgpu::ShaderModule,
     (side, transparent, skinned, effects): PbrKey,
     samples: u32,
+    physical: bool,
 ) -> wgpu::RenderPipeline {
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let skin = [
@@ -1172,10 +1259,20 @@ fn pbr_pipeline(
         device,
         &constants,
         HdrPipeline {
-            label: if transparent { "pbr blended" } else { "pbr" },
+            label: match (physical, transparent) {
+                (false, false) => "pbr",
+                (false, true) => "pbr blended",
+                (true, false) => "physical",
+                (true, true) => "physical blended",
+            },
             layout: if skinned { layouts.1 } else { layouts.0 },
             module,
-            vs: if skinned { "vs_skinned" } else { "vs" },
+            vs: match (physical, skinned) {
+                (false, false) => "vs",
+                (false, true) => "vs_skinned",
+                (true, false) => "vs_physical",
+                (true, true) => "vs_physical_skinned",
+            },
             fs: "fs",
             buffers: if skinned { &skin } else { &plain },
             cull: cull_mode(side),
@@ -1905,14 +2002,14 @@ impl Renderer {
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
                 lit_wgsl: format!(
-                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{LIGHTING_WGSL}{}{}",
+                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
                     light_tables.wgsl(),
                     particles_gpu::NOISE_WGSL,
                     include_str!("../shaders/scatter_common.wgsl"),
                     include_str!("../shaders/scatter.wgsl")
                 ),
                 shadow_wgsl: format!(
-                    "{}{MATERIAL_WGSL}{}{}",
+                    "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{}",
                     particles_gpu::NOISE_WGSL,
                     include_str!("../shaders/scatter_common.wgsl"),
                     include_str!("../shaders/scatter_shadow.wgsl")
@@ -2030,6 +2127,8 @@ impl Renderer {
             prev_view_proj: None,
             fx_groups: None,
             mips,
+            physical: None,
+            transmission: None,
             environment: None,
             default_white,
             default_normal,
@@ -2270,9 +2369,17 @@ impl Renderer {
             self.fx_groups = None;
             self.terrain.forget_groups();
         }
+        // A pack holding a replaced texture is made again with its materials.
+        let replaced_slot = |slot: &u32| {
+            TextureHandle::from_slot(*slot).is_some_and(|h| replaced.contains(&h.index()))
+        };
+        self.cache
+            .packs
+            .retain(|key, _| !key.iter().any(replaced_slot));
         let samples_replaced = |m: &StandardMaterial| {
             m.textures()
                 .iter()
+                .chain(m.physical_textures().iter())
                 .flatten()
                 .any(|h| replaced.contains(&h.index()))
         };
@@ -2287,11 +2394,33 @@ impl Renderer {
                 continue;
             }
             let hooked = scene.material_shader(MaterialHandle::from_index(i));
+            let (bind_group, factors) =
+                self.material_bind_group(i, material, hooked.map(|h| h.1))?;
+            let physical = if material.is_physical() {
+                if let Some((sh, _)) = hooked
+                    && !self.cache.physical_shaders.contains_key(&sh.index())
+                {
+                    let hooks = scene.shaders()[sh.index()].hooks_wgsl();
+                    let module = shader(
+                        &self.device,
+                        "physical (material shader)",
+                        physical_source_with(&hooks, self.palette.mode(), self.light_tables),
+                    );
+                    self.cache.physical_shaders.insert(sh.index(), module);
+                }
+                Some(self.physical_bind_group(i, material, &factors)?)
+            } else {
+                None
+            };
+            let transmissive = physical.is_some() && material.is_transmissive();
             let gpu = GpuMaterial {
                 revision,
-                bind_group: self.material_bind_group(i, material, hooked.map(|h| h.1))?,
+                bind_group,
+                physical,
                 side: material.side(),
-                transparent: material.is_transparent(),
+                transparent: material.is_transparent() || transmissive,
+                blend: material.is_transparent(),
+                transmissive,
                 dissolve: material.dissolves(),
                 effects: material.toon != 0
                     || material.rimIntensity > 0.0
@@ -2300,6 +2429,7 @@ impl Renderer {
                 outline: material.outlineWidth > 0.0,
                 shader: hooked.map(|h| h.0.index()),
                 occluder: !material.is_transparent()
+                    && !transmissive
                     && !material.dissolves()
                     && material.alphaTest <= 0.0
                     && hooked.is_none(),
@@ -2572,12 +2702,13 @@ impl Renderer {
         }
     }
 
+    /// A material's standard group and its uniform buffer.
     fn material_bind_group(
         &self,
         index: usize,
         m: &StandardMaterial,
         custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
-    ) -> Result<wgpu::BindGroup, RenderError> {
+    ) -> Result<(wgpu::BindGroup, wgpu::Buffer), RenderError> {
         let [
             map,
             metalness,
@@ -2637,11 +2768,114 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&gradient),
             wgpu::BindingResource::TextureView(&dissolve),
         ];
+        let group = bind_group(&self.device, "material", &self.material_layout, &entries);
+        Ok((group, factors))
+    }
+
+    /// A physical material's group for its lit pass (`physical.rs`): its
+    /// standard uniform `factors`, the base colour, normal, emissive and
+    /// gradient textures, its pack (made here unless a material with the
+    /// same maps made it) and its physical uniform.
+    fn physical_bind_group(
+        &mut self,
+        index: usize,
+        m: &StandardMaterial,
+        factors: &wgpu::Buffer,
+    ) -> Result<wgpu::BindGroup, RenderError> {
+        if self.physical.is_none() {
+            self.physical = Some(physical::PhysicalPipelines::new(
+                &self.device,
+                &self.frame_layout,
+                &self.palette_layout,
+                physical_source_with(
+                    &hooks::default_hooks(),
+                    self.palette.mode(),
+                    self.light_tables,
+                ),
+            ));
+        }
+        let textures = &self.cache.textures;
+        let gpu = |h: TextureHandle| {
+            textures.get(h.index()).ok_or_else(|| {
+                RenderError::InvalidHandle(format!(
+                    "material {index} uses texture {} (slot {})",
+                    h.index(),
+                    h.slot()
+                ))
+            })
+        };
+        let (key, layers_of, layers) = physical::pack_plan(m, |h| {
+            textures
+                .get(h.index())
+                .is_some_and(|g| g.format.two_channel())
+        });
+        let physical = self.physical.as_ref().expect("made above");
+        let pack = match self.cache.packs.get(&key) {
+            Some(view) => view.clone(),
+            None if layers.is_empty() => physical.empty_pack.clone(),
+            None => {
+                let mut size = (1, 1);
+                let mut sources = Vec::with_capacity(layers.len());
+                for layer in &layers {
+                    let mut views: [wgpu::TextureView; 4] =
+                        std::array::from_fn(|_| self.default_white.clone());
+                    for (k, &h) in layer.sources.iter().enumerate() {
+                        let view = &gpu(h)?.view;
+                        let t = view.texture();
+                        size = (size.0.max(t.width()), size.1.max(t.height()));
+                        views[k] = view.clone();
+                    }
+                    sources.push((layer.uniform, views));
+                }
+                let mut encoder =
+                    self.device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("material pack"),
+                        });
+                let view = physical.pack(
+                    &self.device,
+                    &mut encoder,
+                    &sources,
+                    size,
+                    &self.material_sampler,
+                );
+                self.queue.submit(Some(encoder.finish()));
+                self.cache.packs.insert(key, view.clone());
+                view
+            }
+        };
+        let view =
+            |t: u32, fallback: &wgpu::TextureView| -> Result<wgpu::TextureView, RenderError> {
+                match TextureHandle::from_slot(t) {
+                    None => Ok(fallback.clone()),
+                    Some(h) => Ok(gpu(h)?.view.clone()),
+                }
+            };
+        let base = view(m.map, &self.default_white)?;
+        let normal = view(m.normalMap, &self.default_normal)?;
+        let emissive = view(m.emissiveMap, &self.default_white)?;
+        let gradient = view(m.gradientMap, &self.default_white)?;
+        let uniform = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("physical material"),
+                contents: bytemuck::bytes_of(&physical::uniform(m, layers_of)),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
         Ok(bind_group(
             &self.device,
-            "material",
-            &self.material_layout,
-            &entries,
+            "physical material",
+            &physical.material_layout,
+            &[
+                factors.as_entire_binding(),
+                wgpu::BindingResource::TextureView(&base),
+                wgpu::BindingResource::TextureView(&normal),
+                wgpu::BindingResource::TextureView(&emissive),
+                wgpu::BindingResource::Sampler(&self.material_sampler),
+                wgpu::BindingResource::TextureView(&gradient),
+                wgpu::BindingResource::TextureView(&pack),
+                uniform.as_entire_binding(),
+            ],
         ))
     }
 
@@ -2737,6 +2971,9 @@ impl Renderer {
                         count: 1,
                         side: m.side,
                         transparent: m.transparent,
+                        blend: m.blend,
+                        physical: m.physical.is_some(),
+                        transmissive: m.transmissive,
                         dissolve: m.dissolve,
                         effects: m.effects,
                         shader: m.shader,
@@ -2905,6 +3142,20 @@ impl Renderer {
         slot.as_ref().expect("made above")
     }
 
+    /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
+    /// its material shader's or the built-in one, physical or standard.
+    fn lit_pipeline_of(&self, b: &Batch, skinned: bool, physical: bool) -> &wgpu::RenderPipeline {
+        let key = (b.side, b.blend, skinned, b.effects);
+        match (physical, b.shader) {
+            (true, None) => &self.physical.as_ref().expect("a physical batch").pipelines[&key],
+            (true, Some(sh)) => &self.cache.physical_hook_pipelines[&(sh, key)],
+            (false, Some(sh)) => {
+                &self.cache.hook_pipelines[&(sh, b.side, b.blend, b.effects, skinned)]
+            }
+            (false, None) => &self.pbr_pipelines[&key],
+        }
+    }
+
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
     fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
         let all = batches
@@ -2912,14 +3163,46 @@ impl Renderer {
             .map(|b| (b, false))
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
+            if b.physical {
+                // The physical lit pipeline (the standard ones below draw the
+                // material's reflection).
+                let key = (b.side, b.blend, is_skinned, b.effects);
+                let physical = self.physical.as_mut().expect("made with the material");
+                let layouts = (&physical.layouts.0, &physical.layouts.1);
+                match b.shader {
+                    None if !physical.pipelines.contains_key(&key) => {
+                        let p = lit_pipeline(
+                            &self.device,
+                            layouts,
+                            &physical.module,
+                            key,
+                            self.samples,
+                            true,
+                        );
+                        physical.pipelines.insert(key, p);
+                    }
+                    Some(sh) if !self.cache.physical_hook_pipelines.contains_key(&(sh, key)) => {
+                        let p = lit_pipeline(
+                            &self.device,
+                            layouts,
+                            &self.cache.physical_shaders[&sh],
+                            key,
+                            self.samples,
+                            true,
+                        );
+                        self.cache.physical_hook_pipelines.insert((sh, key), p);
+                    }
+                    _ => {}
+                }
+            }
             if let Some(sh) = b.shader {
-                let key = (sh, b.side, b.transparent, b.effects, is_skinned);
+                let key = (sh, b.side, b.blend, b.effects, is_skinned);
                 if !self.cache.hook_pipelines.contains_key(&key) {
                     let p = pbr_pipeline(
                         &self.device,
                         (&self.pbr_layout, &self.pbr_skinned_layout),
                         &self.cache.shaders[sh],
-                        (b.side, b.transparent, is_skinned, b.effects),
+                        (b.side, b.blend, is_skinned, b.effects),
                         self.samples,
                     );
                     self.cache.hook_pipelines.insert(key, p);
@@ -2950,7 +3233,7 @@ impl Renderer {
                     self.cache.hook_prepass_pipelines.insert(key, p);
                 }
             }
-            let key = (b.side, b.transparent, is_skinned, b.effects);
+            let key = (b.side, b.blend, is_skinned, b.effects);
             if !self.pbr_pipelines.contains_key(&key) {
                 let p = pbr_pipeline(
                     &self.device,
@@ -3065,6 +3348,9 @@ impl Renderer {
                         count: 1,
                         side: m.side,
                         transparent: m.transparent,
+                        blend: m.blend,
+                        physical: m.physical.is_some(),
+                        transmissive: m.transmissive,
                         dissolve: m.dissolve,
                         effects: m.effects,
                         shader: m.shader,
@@ -4118,6 +4404,43 @@ impl Renderer {
             Some(i) => &self.cache.luts[i],
             None => &self.post.identity_lut,
         };
+        // Transmissive draws refract a copy of the opaque scene with its
+        // mip chain: the main pass splits for it, as for water.
+        let transmission = blended_list
+            .ranges
+            .iter()
+            .any(|r| batches[r.0 as usize].transmissive)
+            || skinned_visible.iter().any(|b| b.transmissive);
+        if transmission {
+            let stale = self
+                .transmission
+                .as_ref()
+                .is_none_or(|t| (t.width(), t.height()) != (self.width, self.height));
+            if stale {
+                self.transmission = Some(self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("transmission"),
+                    size: wgpu::Extent3d {
+                        width: self.width,
+                        height: self.height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: mips::mip_count(self.width, self.height),
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: HDR_FORMAT,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING
+                        | wgpu::TextureUsages::COPY_DST,
+                    view_formats: &[],
+                }));
+            }
+            self.mips.prepare(&self.device, HDR_FORMAT);
+        }
+        let transmission_view = self
+            .transmission
+            .as_ref()
+            .filter(|_| transmission)
+            .map(|t| t.create_view(&Default::default()));
         self.graph
             .prepare(
                 &self.device,
@@ -4133,6 +4456,7 @@ impl Renderer {
                     ),
                     gtao,
                     water: !scene.water.is_empty() || fluids_3d,
+                    transmission,
                     fluid_fields: fluids as u32,
                     reflection: reflection.as_ref().map(|r| r.4),
                 },
@@ -4316,6 +4640,38 @@ impl Renderer {
             .expect("environment generated above");
         let groups = self.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
+        // The physical pipelines' effect group: the same plus the scene copy
+        // (a placeholder in a frame without transmission).
+        let physical_fx_group = self.physical.as_ref().and_then(|p| {
+            batches
+                .iter()
+                .chain(&skinned_visible)
+                .any(|b| b.physical)
+                .then(|| {
+                    let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                        &self.cache.textures[t.index()].view
+                    });
+                    let ao_view = if ao.is_some() {
+                        self.graph.view("ao")
+                    } else {
+                        &self.post.white
+                    };
+                    bind_group(
+                        &self.device,
+                        "physical fx",
+                        &p.fx_layout,
+                        &[
+                            self.fx_buffer.as_entire_binding(),
+                            wgpu::BindingResource::TextureView(ao_view),
+                            wgpu::BindingResource::TextureView(atlas_view),
+                            wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                            wgpu::BindingResource::TextureView(
+                                transmission_view.as_ref().unwrap_or(&self.post.white),
+                            ),
+                        ],
+                    )
+                })
+        });
         let scene_depth = self
             .graph
             .try_view("lindepth")
@@ -4380,14 +4736,15 @@ impl Renderer {
                 label: Some("frame"),
             });
         let palette_group = self.palette.bind_group.as_ref();
+        // The main pass draws physical materials with their pipelines, the
+        // planar reflection with the standard ones.
         let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
             .iter()
-            .map(|b| match b.shader {
-                Some(sh) => {
-                    &self.cache.hook_pipelines[&(sh, b.side, b.transparent, b.effects, true)]
-                }
-                None => &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)],
-            })
+            .map(|b| self.lit_pipeline_of(b, true, b.physical))
+            .collect();
+        let lit_skinned_standard: Vec<&wgpu::RenderPipeline> = skinned_visible
+            .iter()
+            .map(|b| self.lit_pipeline_of(b, true, false))
             .collect();
         let shadow_skinned: Vec<&wgpu::RenderPipeline> = skinned_batches
             .iter()
@@ -4412,35 +4769,50 @@ impl Renderer {
             Vec::new()
         };
         let culled_gpu = self.gpu_cull.as_ref().filter(|_| gpu_cull);
+        // The effect groups of the standard and the physical pipelines, in
+        // the passes that draw physical materials with theirs.
+        let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
         // Draws a list's ranges. Lit passes switch the pipeline when the
-        // batch's (side, blending) changes and bind each batch's material;
-        // shadow passes switch on the side and dissolve (with the material).
+        // batch's (side, blending, effects, shader, physical) changes and
+        // bind each batch's material (and, between standard and physical,
+        // the effect group: `physical_fx`); shadow passes switch on the
+        // side and dissolve (with the material).
         let draw_list =
             |pass: &mut wgpu::RenderPass,
              list: &DrawList,
              lit: bool,
-             current: &mut Option<(Side, bool, bool, Option<usize>)>| {
+             current: &mut Option<(Side, bool, bool, Option<usize>, bool)>,
+             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>| {
                 let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
+                let mut physical_bound = false;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
                     if lit {
-                        let key = (batch.side, batch.transparent, batch.effects, batch.shader);
+                        let physical = batch.physical && physical_fx.is_some();
+                        let key = (
+                            batch.side,
+                            batch.blend,
+                            batch.effects,
+                            batch.shader,
+                            physical,
+                        );
                         if *current != Some(key) {
-                            pass.set_pipeline(match batch.shader {
-                                Some(sh) => {
-                                    &self.cache.hook_pipelines
-                                        [&(sh, batch.side, batch.transparent, batch.effects, false)]
-                                }
-                                None => {
-                                    &self.pbr_pipelines
-                                        [&(batch.side, batch.transparent, false, batch.effects)]
-                                }
-                            });
+                            pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
                             *current = Some(key);
                         }
+                        if let Some((fx, pfx)) = physical_fx
+                            && physical != physical_bound
+                        {
+                            pass.set_bind_group(2, if physical { pfx } else { fx }, &[]);
+                            physical_bound = physical;
+                        }
+                        let m = &self.cache.materials[batch.material];
                         pass.set_bind_group(
                             1,
-                            &self.cache.materials[batch.material].bind_group,
+                            match &m.physical {
+                                Some(g) if physical => g,
+                                _ => &m.bind_group,
+                            },
                             &[],
                         );
                     } else {
@@ -4482,28 +4854,48 @@ impl Renderer {
                         _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
                     }
                 }
+                if let Some((fx, _)) = physical_fx
+                    && physical_bound
+                {
+                    pass.set_bind_group(2, fx, &[]);
+                }
             };
         // The skinned batches (`transparent`: which of them) with the
         // pipelines `pipeline` picks; materials at group `material_group`.
+        // `physical_fx` as in draw_list: the main pass's physical batches
+        // bind their physical groups (their pipelines are in `pipelines`).
         let draw_skinned = |pass: &mut wgpu::RenderPass,
                             list: &[Batch],
                             transparent: bool,
                             material_group: u32,
                             palette_at: u32,
-                            pipelines: &[&wgpu::RenderPipeline]|
+                            pipelines: &[&wgpu::RenderPipeline],
+                            physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>|
          -> u32 {
             let Some(palette) = palette_group else {
                 return 0;
             };
             let mut draws = 0;
+            let mut physical_bound = false;
             for (batch, pipeline) in list.iter().zip(pipelines) {
                 if batch.transparent != transparent {
                     continue;
                 }
+                let physical = batch.physical && physical_fx.is_some();
                 pass.set_pipeline(pipeline);
+                if let Some((fx, pfx)) = physical_fx
+                    && physical != physical_bound
+                {
+                    pass.set_bind_group(2, if physical { pfx } else { fx }, &[]);
+                    physical_bound = physical;
+                }
+                let m = &self.cache.materials[batch.material];
                 pass.set_bind_group(
                     material_group,
-                    &self.cache.materials[batch.material].bind_group,
+                    match &m.physical {
+                        Some(g) if physical => g,
+                        _ => &m.bind_group,
+                    },
                     &[],
                 );
                 pass.set_bind_group(palette_at, palette, &[]);
@@ -4522,6 +4914,11 @@ impl Renderer {
                 pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..batch.count);
                 draws += 1;
+            }
+            if let Some((fx, _)) = physical_fx
+                && physical_bound
+            {
+                pass.set_bind_group(2, fx, &[]);
             }
             draws
         };
@@ -4564,17 +4961,20 @@ impl Renderer {
                 &self.shadow_bind_group,
                 &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
             );
-            draw_list(
-                &mut pass,
-                list,
-                false,
-                &mut Some((Side::Front, false, false, None)),
-            );
+            draw_list(&mut pass, list, false, &mut None, None);
             stats.draw_calls += list.ranges.len() as u32;
             stats.shadow_casters += list.instances;
             stats.shadow_passes += 1;
             // Skinned casters, unculled.
-            let n = draw_skinned(&mut pass, &skinned_batches, false, 1, 2, &shadow_skinned);
+            let n = draw_skinned(
+                &mut pass,
+                &skinned_batches,
+                false,
+                1,
+                2,
+                &shadow_skinned,
+                None,
+            );
             stats.draw_calls += n;
             stats.shadow_casters += skinned_batches
                 .iter()
@@ -4702,8 +5102,15 @@ impl Renderer {
                         }
                         stats.prepass_draws += 1;
                     }
-                    stats.prepass_draws +=
-                        draw_skinned(&mut p, &skinned_visible, false, 1, 3, &prepass_skinned);
+                    stats.prepass_draws += draw_skinned(
+                        &mut p,
+                        &skinned_visible,
+                        false,
+                        1,
+                        3,
+                        &prepass_skinned,
+                        None,
+                    );
                     if let Some(indices) = terrain_indices {
                         p.set_pipeline(&self.terrain.prepass);
                         let (n, _) =
@@ -4815,11 +5222,20 @@ impl Renderer {
                         &mut pass,
                         list,
                         true,
-                        &mut Some((Side::Front, false, false, None)),
+                        &mut Some((Side::Front, false, false, None, false)),
+                        None,
                     );
                     stats.draw_calls += list.ranges.len() as u32;
                     stats.reflection_draws += list.ranges.len() as u32;
-                    let n = draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
+                    let n = draw_skinned(
+                        &mut pass,
+                        &skinned_visible,
+                        false,
+                        1,
+                        3,
+                        &lit_skinned_standard,
+                        None,
+                    );
                     stats.draw_calls += n;
                     stats.reflection_draws += n;
                     if let (Some(indices), Some(r)) = (terrain_indices, &reflection) {
@@ -4863,7 +5279,11 @@ impl Renderer {
                     // With water or a 3D fluid the pass is split after the
                     // sky: the scene so far is copied for them to refract
                     // and reflect, then the pass goes on over it.
-                    let split = !water_draws.is_empty() || fluid_frame.is_some();
+                    // So is it for transmissive materials, which refract the
+                    // copy's mip chain (`physical.rs`).
+                    let split = !water_draws.is_empty()
+                        || fluid_frame.is_some()
+                        || transmission_view.is_some();
                     let begin = |encoder: &mut wgpu::CommandEncoder, first: bool| {
                         let (view, resolve_target, store) = if msaa {
                             (
@@ -4927,11 +5347,19 @@ impl Renderer {
                         &mut pass,
                         &main_list,
                         true,
-                        &mut Some((Side::Front, false, false, None)),
+                        &mut Some((Side::Front, false, false, None, false)),
+                        physical_fx,
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;
-                    stats.draw_calls +=
-                        draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
+                    stats.draw_calls += draw_skinned(
+                        &mut pass,
+                        &skinned_visible,
+                        false,
+                        1,
+                        3,
+                        &lit_skinned,
+                        physical_fx,
+                    );
                     if let Some(indices) = terrain_indices {
                         pass.set_pipeline(&self.terrain.lit);
                         let (n, tris) = terrain::draw_levels(
@@ -4979,11 +5407,21 @@ impl Renderer {
                             height: self.height,
                             depth_or_array_layers: 1,
                         };
-                        encoder.copy_texture_to_texture(
-                            hdr.texture().as_image_copy(),
-                            self.graph.view("scene-copy").texture().as_image_copy(),
-                            size,
-                        );
+                        if let Some(copy) = self.graph.try_view("scene-copy") {
+                            encoder.copy_texture_to_texture(
+                                hdr.texture().as_image_copy(),
+                                copy.texture().as_image_copy(),
+                                size,
+                            );
+                        }
+                        if let Some(view) = &transmission_view {
+                            encoder.copy_texture_to_texture(
+                                hdr.texture().as_image_copy(),
+                                view.texture().as_image_copy(),
+                                size,
+                            );
+                            self.mips.record(&self.device, &mut encoder, view.texture());
+                        }
                         pass = begin(&mut encoder, false);
                         pass.set_bind_group(0, frame_bind_group, &[]);
                         stats.draw_calls += self.water.draw(&mut pass, &water_draws);
@@ -4993,10 +5431,17 @@ impl Renderer {
                     }
                     // Transparent meshes, back to front over the opaque scene.
                     pass.set_bind_group(2, fx_group, &[]);
-                    draw_list(&mut pass, &blended_list, true, &mut None);
+                    draw_list(&mut pass, &blended_list, true, &mut None, physical_fx);
                     stats.draw_calls += blended_list.ranges.len() as u32;
-                    stats.draw_calls +=
-                        draw_skinned(&mut pass, &skinned_visible, true, 1, 3, &lit_skinned);
+                    stats.draw_calls += draw_skinned(
+                        &mut pass,
+                        &skinned_visible,
+                        true,
+                        1,
+                        3,
+                        &lit_skinned,
+                        physical_fx,
+                    );
                     // Particles, far systems first.
                     if let Some(group) = &particle_group {
                         let groups = &self.cache.sprite_groups;

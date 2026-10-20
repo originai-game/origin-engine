@@ -21,6 +21,7 @@ the world → scene extraction belongs to the layer above.
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
 | `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
+| `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev }`: the frame's log-average luminance brought to 0.18, from the current frame only, so the same frame always gets the same exposure. |
@@ -287,7 +288,9 @@ fx-showcase on WebGL2:
 - A pipeline has 16 texture slots across all its bind groups, not per
   stage: the lit skinned pipeline uses all 16 (frame 5, material 8, fx 2,
   skin 1), so the sky cube is the sky pass's own group and on the texture
-  path the morph deltas and the joint palette share one texture.
+  path the morph deltas and the joint palette share one texture. The
+  physical pipelines pack their maps into one array texture and use 14
+  ([Physical materials](#physical-materials-p4)).
 - The texture target is chosen at creation, and a square 2D texture with a
   multiple of six layers becomes a cube map (array): the local shadow map
   (twelve layers) gets a spare thirteenth to stay a 2D array.
@@ -320,6 +323,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). | all |
 | `atmosphere-moon` | The night colonnade with a waxing gibbous moon in view. | all |
 | `materials` | Every M6 material feature: metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. | all |
+| `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its three maps, sheen plain and mapped, iridescence on black and on metal, anisotropy plain and swirled by its map, then clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball in front of a plinth of coloured bars. | all |
 | `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. | all |
 | `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. | all |
 | `water-planar`, `water-shadows`, `water-underwater` | Phase 2: the lake's planar reflection, shadows on the water, the view from under it with caustics. | all |
@@ -547,8 +551,114 @@ Owed row 31 (`og-tests/tests/materials.rs`, the `materials` reference):
   `MeshPhysicalMaterial` names): Filament's clear coat, a GGX lobe with 4 %
   reflectance and Kelemen's visibility on the surface's normal before the
   normal map, over the base it dims by its Fresnel, for the lights and the
-  image-based light. No clearcoat maps: WebGL2's skinned lit pipeline has no
-  texture slot left.
+  image-based light. Its maps came in P4 ([Physical
+  materials](#physical-materials-p4)).
+
+## Physical materials (P4)
+
+`StandardMaterial` carries three.js `MeshPhysicalMaterial`'s fields under
+its names, with glTF `KHR_materials_*` meanings (`src/physical.rs`,
+`shaders/physical.wgsl`; `og-tests/tests/physical.rs` and the
+`materials-physical` reference):
+
+- **Clearcoat maps**: `clearcoatMap` (red, times `clearcoat`),
+  `clearcoatRoughnessMap` (green), `clearcoatNormalMap` with
+  `clearcoatNormalScale` (the coat's own normal in the vertex tangent
+  frame; the base keeps `normalMap`).
+- **Sheen** (`sheen`, `sheenColor`, `sheenRoughness`, `sheenColorMap` in
+  RGB, `sheenRoughnessMap` in alpha): the Charlie distribution with
+  Neubelt's visibility for the lights and Estevez and Kulla's fit of its
+  albedo for the image-based light, over a base it takes
+  1 - 0.157 max(sheen colour) from (as three.js).
+- **Transmission** (`transmission`, `transmissionMap` red, `thickness`,
+  `thicknessMap` green, `attenuationDistance` (0: none, three.js's
+  Infinity), `attenuationColor`, `ior`): when a frame draws a transmissive
+  material, the main pass splits after the sky as it does for water, the
+  resolved HDR target is copied to the renderer's `transmission` texture
+  (full mip chain, box-filtered by the mip pass) and transmissive
+  materials are drawn with the blended ones, back to front, writing depth.
+  Each refracts the view at its surface by `ior`, follows the ray
+  `thickness` (object space, scaled with the model) through the volume,
+  projects its exit and reads the copy there bicubically at a level of
+  log2(width) × roughness × clamp(2 ior - 2, 0, 1), tints it by the base
+  colour and by `attenuationColor` to the power of the distance over
+  `attenuationDistance`, and puts it in place of the diffuse light, as
+  three.js does. So a transmissive object shows the opaque scene, the sky
+  and terrain behind it, not water, transparent or other transmissive
+  objects; it casts a shadow like an opaque one (as in three.js) and is
+  left out of the depth prepass, the planar reflection and GPU occlusion
+  like a blended one. `ior` also sets a dielectric's F0, ((ior - 1) / (ior + 1))².
+- **Iridescence** (`iridescence`, `iridescenceIOR`,
+  `iridescenceThicknessRange`, `iridescenceMap` red,
+  `iridescenceThicknessMap` green between the range's ends): Belcour and
+  Barla's thin film evaluated per pixel at the view angle, mixed into the
+  specular Fresnel of the lights and the image-based light.
+- **Anisotropy** (`anisotropy`, `anisotropyRotation` from +u,
+  `anisotropyMap` with the direction in red and green and the strength in
+  blue): anisotropic GGX (Burley's distribution, the height-correlated
+  Smith visibility) along the vertex tangent frame, and the image-based
+  light read along a bent normal (as three.js). Meshes without tangents
+  get generated ones at upload.
+
+**Which materials take this path.** `StandardMaterial::is_physical`: any
+of these maps, sheen, transmission, iridescence or anisotropy above 0, or
+an `ior` other than 1.5, on a material that is neither `unlit` nor `toon`
+(both replace the lighting model). Every other material, the scalar
+clearcoat included, draws with the standard pipelines and module text it
+always did: every earlier og-tests frame is byte for byte the frame of
+the renderer before this change (`tests/evidence/P4/materials/`). A physical material with every lobe off draws the standard
+frame (RMSE 0, `tests/physical.rs`).
+
+**WebGL2's sixteen texture units: packing, and a pipeline of its own.**
+A physical material may sample 18 maps; the skinned lit pipeline already
+spends all 16 units WebGL2 gives a pipeline. A physical material keeps
+its standard bind group (every pass but its lit one: shadows, the depth
+prepass, the planar reflection and scatter draw it as before) and gets a
+second one for the physical pipelines, whose layout differs:
+
+| Group | Textures |
+|---|---|
+| 0 frame | cascades, local shadows, irradiance, prefiltered, BRDF LUT (5) |
+| 1 physical material | base colour, normal, emissive, gradient, the pack (5), plus the material and physical uniforms |
+| 2 physical effects | SSAO, decal atlas, the transmission copy (3) |
+| 3 skin | the joint palette texture (1, WebGL2) |
+
+The pack is an RGBA8 2D array texture made once per set of maps (shared by
+materials with the same maps; made again when one of them is replaced)
+by a render pass per layer and mip level (`shaders/pack.wgsl`: each output
+channel is one channel of one of four sources or a fallback, the implicit
+derivatives pick each source's mip). Only the layers a material has maps
+for are made, at the largest source's size; the uniform names each
+group's layer (-1: white):
+
+| Layer | r | g | b | a |
+|---|---|---|---|---|
+| standard | metalness (b) | roughness (g) | ao (r) | dissolve (r) |
+| coat | clearcoat (r) | clearcoat roughness (g) | transmission (r) | thickness (g) |
+| sheen | sheen colour (rgb, stored sRGB-encoded) | | | sheen roughness (a) |
+| film | the coat's normal (xyz; z rebuilt from a two-channel BC5/EAC map) | | | iridescence (r) |
+| anisotropy | anisotropy (rgb) | | | film thickness (g) |
+
+The alternative, pipeline permutations keyed by which map groups a
+material uses, would have needed more than one permutation for a material
+with every map, and a texture atlas would have bled between maps under
+mipmapping. The pack costs one RGBA8 texel per layer used and a few passes
+when a material is first drawn. `tests/webgl2.rs` translates the physical
+shader and the pack shader to GLSL ES 3.0 and counts the physical module's
+textures (14, the static and skinned pipelines alike).
+
+**Tiers.** Every lobe and map draws on both tiers. The transmission copy's
+mip chain is made with render passes (the mip pass), so WebGL2 has it
+too: no difference by design. The physical shader asks no texture for its
+level count (WebGL2 cannot); it derives it from the copy's size.
+
+**From glTF.** The cook and the glTF bridge read the seven extensions with
+one parser (`gltf::physical_extensions`, the textures as their kinds: the
+sheen colour as sRGB colour, the coat's normal as a normal map, the rest
+linear) into `PhysicalExtensions`; a cooked model stores them in its
+material rows (`og.ModelMaterial` version 2) and adds a material with any
+as a standard material (`CookedModel::standard_material`), one without in
+its glTF shape as before.
 
 ## Compressed textures at runtime
 
@@ -741,6 +851,10 @@ once (`tests/evidence/P2/sph/break-and-restore.md`). fx-showcase's
 
 ## What phase 2 owes
 
+Delivered in P4: clearcoat maps, sheen, transmission (with volume and
+`ior`), iridescence and anisotropy on both tiers ([Physical
+materials](#physical-materials-p4)).
+
 Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
 declared targets and passes, data-flow order, aliased transients; the
 existing passes run on it with every reference unchanged);
@@ -762,7 +876,6 @@ with their mips, chosen per tier and reported in
   The browser runner (`make web-reference`) covers `templates/fx-showcase`
   on `webgpu` and `webgl2`, which draws every E1 effect, skinning and the
   overlay.
-- **Materials**: clearcoat, sheen, transmission and iridescence maps.
 - Shadows: cascade blending at split boundaries, PCSS/soft shadows, point
   shadows by tier (dual-paraboloid on WebGL2 if cube faces cost too much),
   more than two shadowed local lights.
@@ -773,6 +886,6 @@ with their mips, chosen per tier and reported in
   RTL shaping (rustybuzz), CJK fallback atlases.
 - Instance upload is the whole buffer every frame; dirty tracking is still
   to do (GPU culling on the full tier landed in phase 3). Resources cannot
-  be removed. No anisotropy.
+  be removed.
   Shaders are WGSL compiled by naga at pipeline creation; cooking per
   backend at build time is still to do.

@@ -15,6 +15,10 @@
   convention (green up the image), imported as `kind normal`
   (bumps.png.ogt); the phase 2 materials station.
 - textures/grille.png: opaque bars and holes of alpha 0 (alphaTest).
+- textures/stripes.png, bands.png, ramp.png, swirl.png (linear masks:
+  `kind linear`), sheen.png (sRGB colour, roughness in alpha), bars.png:
+  the physical materials station's maps (clearcoat, transmission,
+  iridescence thickness, anisotropy direction, sheen) and its backdrop.
 - luts/teal-orange.cube: a 17^3 grading table, shadows to teal, highlights
   to orange.
 
@@ -155,6 +159,46 @@ for y in range(128):
         if x % 32 < 10 or y % 32 < 10:
             px[x, y] = (230, 200, 120, 255)
 save(grille, "grille.png")
+
+
+def field(size, f, mode="RGBA"):
+    img = Image.new(mode, (size, size))
+    px = img.load()
+    for y in range(size):
+        for x in range(size):
+            px[x, y] = f((x + 0.5) / size, (y + 0.5) / size)
+    return img
+
+
+def b8(v):
+    return int(round(min(1.0, max(0.0, v)) * 255))
+
+
+# The physical materials station (src/physical.ts).
+on = lambda t, n: 255 if (t * n) % 1.0 < 0.5 else 0
+save(field(256, lambda u, v: (on(u, 6),) * 3 + (255,)), "stripes.png")
+save(field(256, lambda u, v: (on(v, 5),) * 3 + (255,)), "bands.png")
+save(field(64, lambda u, v: (b8(v),) * 4), "ramp.png")
+
+
+def swirl(u, v):
+    dx, dy = u - 0.5, 0.5 - v
+    l = math.hypot(dx, dy) or 1.0
+    return (b8(-dy / l * 0.5 + 0.5), b8(dx / l * 0.5 + 0.5), 255, 255)
+
+
+save(field(256, swirl), "swirl.png")
+
+
+def sheen(u, v):
+    diamond = abs((u * 6) % 1.0 - 0.5) + abs((v * 3) % 1.0 - 0.5) < 0.5
+    c = (1.0, 0.55, 0.75) if diamond else (0.95, 0.85, 0.45)
+    return (b8(c[0]), b8(c[1]), b8(c[2]), b8(0.3 + 0.7 * v))
+
+
+save(field(256, sheen), "sheen.png")
+bar_colors = [(217, 31, 26), (242, 204, 38), (26, 140, 217), (242, 242, 235), (38, 153, 64), (26, 26, 31)]
+save(field(512, lambda u, v: bar_colors[(int(u * 12) + int(v * 2) * 3) % 6] + (255,)), "bars.png")
 
 # Teal-orange: shadows lean teal, highlights orange, saturation kept.
 n = 17

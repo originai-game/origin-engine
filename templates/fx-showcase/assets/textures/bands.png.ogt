@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# A linear mask for the physical materials station (src/physical.ts): UASTC, linear.
+texture {
+  kind linear
+}

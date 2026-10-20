@@ -1,0 +1,25 @@
+  cloth.png: 0.000 % outliers, RMSE 0.00000
+  controller.png: 0.214 % outliers, RMSE 0.00878
+  fluid.png: 0.000 % outliers, RMSE 0.00215
+  fluids.png: 0.000 % outliers, RMSE 0.00000
+  fluids3d.png: 0.000 % outliers, RMSE 0.00000
+  post.png: 0.000 % outliers, RMSE 0.00006
+  lens.png: 0.000 % outliers, RMSE 0.00031
+  fx.png: 0.013 % outliers, RMSE 0.00311
+  2d.png: 0.000 % outliers, RMSE 0.00170
+  stylised.png: 0.000 % outliers, RMSE 0.00001
+  joints.png: 0.000 % outliers, RMSE 0.00075
+  lights.png: 0.000 % outliers, RMSE 0.00065
+  materials.png: 0.036 % outliers, RMSE 0.00465
+  moon.png: 0.000 % outliers, RMSE 0.00000
+  physical.png: 5.796 % outliers, RMSE 0.07521
+  - physical.png matches physical.png: 5.796 % outliers (≤ 0.5 %), RMSE 0.07521 (≤ 0.01)
+  ragdoll2d.png: 0.000 % outliers, RMSE 0.00000
+  retarget.png: 0.000 % outliers, RMSE 0.00000
+  rope.png: 0.128 % outliers, RMSE 0.00906
+  shaders.png: 0.000 % outliers, RMSE 0.00000
+  skinned.png: 0.054 % outliers, RMSE 0.00459
+  sky.png: 0.000 % outliers, RMSE 0.00000
+  terrain.png: 0.015 % outliers, RMSE 0.00381
+  water.png: 0.000 % outliers, RMSE 0.00026
+  weather.png: 0.000 % outliers, RMSE 0.00000

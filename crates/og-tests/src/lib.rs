@@ -13,5 +13,6 @@ pub mod fx_scenes;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod gfx;
 pub mod p2_scenes;
+pub mod physical_scenes;
 pub mod scenes;
 pub mod terrain_scenes;
