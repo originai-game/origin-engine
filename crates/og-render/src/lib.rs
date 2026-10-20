@@ -32,6 +32,7 @@ mod capture;
 mod clusters;
 mod cull_gpu;
 mod effects;
+mod environment;
 mod fluid3d;
 mod frame;
 mod fx;
@@ -68,6 +69,12 @@ pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use effects::*;
+#[cfg(feature = "bake")]
+pub use environment::bake;
+pub use environment::{
+    ENVIRONMENT_MAP_LEVELS, ENVIRONMENT_MAP_MAX_SIZE, ENVIRONMENT_MAP_MIN_SIZE, EnvironmentMap,
+    EnvironmentMapData, face_direction, rgb9e5, rgb9e5_decode, sh9,
+};
 pub use fluid3d::Fluid3d;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
@@ -684,6 +691,22 @@ struct SceneCache {
     /// Whether `morph_data` changed since it was uploaded.
     morphs_dirty: bool,
     luts: Vec<wgpu::TextureView>,
+    /// Environment maps as cube textures (kept for their views).
+    environment_maps: Vec<(wgpu::Texture, wgpu::TextureView)>,
+}
+
+/// What the image-based light was last generated from: the sky, or an
+/// environment map of a scene (its id and index), turned and with its
+/// background scaled (as bits, so a key compares exactly).
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum EnvironmentKey {
+    Sky(ProceduralSky),
+    Map {
+        scene: u64,
+        map: usize,
+        rotation: u32,
+        background: u32,
+    },
 }
 
 /// One (mesh, material) run of the sorted instances.
@@ -915,7 +938,7 @@ pub struct Renderer {
     /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
     /// (the sky cube) for the sky they were generated from.
     environment: Option<(
-        ProceduralSky,
+        EnvironmentKey,
         wgpu::BindGroup,
         wgpu::BindGroup,
         wgpu::BindGroup,
@@ -2215,6 +2238,19 @@ impl Renderer {
             };
             self.cache.skins.push(skin);
         }
+        for (index, map) in scene.environment_maps()[self.cache.environment_maps.len()..]
+            .iter()
+            .enumerate()
+        {
+            map.validate().map_err(|e| {
+                RenderError::InvalidData(format!(
+                    "environment map {}: {e}",
+                    self.cache.environment_maps.len() + index
+                ))
+            })?;
+            let gpu = environment::upload(&self.device, &self.queue, map);
+            self.cache.environment_maps.push(gpu);
+        }
         for (index, lut) in scene.luts()[self.cache.luts.len()..].iter().enumerate() {
             lut.validate().map_err(|e| {
                 RenderError::InvalidData(format!("lut {}: {e}", self.cache.luts.len() + index))
@@ -2645,18 +2681,42 @@ impl Renderer {
         ))
     }
 
-    /// (Re)generates the image-based lighting when the sky changed.
-    fn ensure_environment(&mut self, sky: &ProceduralSky) {
-        if self.environment.as_ref().is_some_and(|(s, ..)| s == sky) {
+    /// (Re)generates the image-based lighting when the sky, or the
+    /// environment map that replaces it, changed.
+    fn ensure_environment(&mut self, scene: &RenderScene) {
+        let sky = &scene.environment.sky;
+        let map = scene
+            .environment_map
+            .filter(|m| m.map.index() < self.cache.environment_maps.len());
+        let key = match map {
+            Some(m) => EnvironmentKey::Map {
+                scene: scene.id(),
+                map: m.map.index(),
+                rotation: m.rotation.to_bits(),
+                background: m.background_intensity.to_bits(),
+            },
+            None => EnvironmentKey::Sky(*sky),
+        };
+        if self.environment.as_ref().is_some_and(|(k, ..)| *k == key) {
             return;
         }
-        self.ibl.generate(
-            &self.device,
-            &self.queue,
-            sky.sun_direction,
-            sky.sun_color,
-            sky.look.as_ref(),
-        );
+        match map {
+            Some(m) => self.ibl.generate_map(
+                &self.device,
+                &self.queue,
+                &self.cache.environment_maps[m.map.index()].1,
+                &scene.environment_maps()[m.map.index()].irradiance,
+                m.rotation,
+                m.background_intensity.max(0.0),
+            ),
+            None => self.ibl.generate(
+                &self.device,
+                &self.queue,
+                sky.sun_direction,
+                sky.sun_color,
+                sky.look.as_ref(),
+            ),
+        }
         let ibl = self.ibl.views();
         let entries = [
             self.frame_buffer.as_entire_binding(),
@@ -2687,7 +2747,7 @@ impl Renderer {
             &self.sky_layout,
             &[wgpu::BindingResource::TextureView(&ibl.sky)],
         );
-        self.environment = Some((*sky, group, sky_group, reflection_group));
+        self.environment = Some((key, group, sky_group, reflection_group));
     }
 
     /// Sorts the instances into (mesh, material) batches; returns the batches,
@@ -3155,7 +3215,7 @@ impl Renderer {
         target: &RenderTarget,
     ) -> Result<FrameStats, RenderError> {
         self.sync(scene)?;
-        self.ensure_environment(&scene.environment.sky);
+        self.ensure_environment(scene);
         let (mut batches, mut transforms, spheres, submission) = self.build_batches(scene)?;
         let mut origins = submission.clone();
         let mut skinned = self.build_skinned(scene)?;

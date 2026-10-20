@@ -282,6 +282,11 @@ handle!(
     /// Terrain data added to a [`RenderScene`] ([`RenderScene::add_terrain`]).
     TerrainHandle
 );
+handle!(
+    /// A prefiltered environment map added to a [`RenderScene`]
+    /// ([`RenderScene::add_environment_map`]).
+    EnvironmentMapHandle
+);
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
@@ -903,6 +908,7 @@ pub struct RenderScene {
     morphs: Vec<Option<MorphTargets>>,
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
+    environment_maps: Vec<crate::EnvironmentMapData>,
     trail_styles: Vec<TrailStyle>,
     terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
@@ -914,6 +920,10 @@ pub struct RenderScene {
     /// Point and spot lights; the first [`MAX_LIGHTS`] are drawn.
     pub lights: Vec<Light>,
     pub environment: Environment,
+    /// A cooked environment map lighting the scene instead of
+    /// [`Environment::sky`] (three.js `scene.environment`), drawn as the
+    /// background by [`Background::Sky`]; `None`: the sky lights it.
+    pub environment_map: Option<crate::EnvironmentMap>,
     pub post: PostEffects,
     /// 2D quads drawn after the 3D scene, blended, sorted by layer.
     pub sprites: Vec<Sprite>,
@@ -1009,6 +1019,7 @@ impl RenderScene {
             light: DirectionalLight::default(),
             lights: Vec::new(),
             environment: Environment::default(),
+            environment_map: None,
             post: PostEffects::default(),
             sprites: Vec::new(),
             texts: Vec::new(),
@@ -1017,6 +1028,7 @@ impl RenderScene {
             morphs: Vec::new(),
             emitters: Vec::new(),
             luts: Vec::new(),
+            environment_maps: Vec::new(),
             trail_styles: Vec::new(),
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
@@ -1269,6 +1281,18 @@ impl RenderScene {
     pub fn add_lut(&mut self, lut: ColorLut) -> LutHandle {
         self.luts.push(lut);
         LutHandle(self.luts.len() as u32 - 1)
+    }
+
+    /// Adds a prefiltered environment map (an asset; og-cook's `type
+    /// environment`); [`RenderScene::environment_map`] picks the one a
+    /// frame is lit by.
+    pub fn add_environment_map(&mut self, map: crate::EnvironmentMapData) -> EnvironmentMapHandle {
+        self.environment_maps.push(map);
+        EnvironmentMapHandle(self.environment_maps.len() as u32 - 1)
+    }
+
+    pub(crate) fn environment_maps(&self) -> &[crate::EnvironmentMapData] {
+        &self.environment_maps
     }
 
     /// Adds a trail style (an asset).

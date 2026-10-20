@@ -11,6 +11,9 @@ default = []
 # glTF 2.0 (.glb/.gltf) import into RenderScene meshes, materials and textures.
 # A bridge until the cook (M4) produces .ogb meshes; the runtime wasm leaves it off.
 gltf = ["dep:gltf"]
+# Prefiltering equirectangular HDR images into environment maps on the CPU
+# (environment::bake): the cook's, never the runtime wasm's.
+bake = []
 
 [dependencies]
 # Reflection: StandardMaterial's schema is og-core's.

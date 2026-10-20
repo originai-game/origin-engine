@@ -727,6 +727,56 @@ fn post_agx_matches_its_reference() {
     assert!(a < b * 0.9, "agx {a:.1} against aces {b:.1}");
 }
 
+/// A cooked environment map lights the spheres and fills the background:
+/// the mirror chrome shows the studio's key light as a sharp highlight that
+/// spreads and dims with roughness, and turning the map moves it.
+#[test]
+fn environment_map_matches_its_reference() {
+    check("environment-map");
+    let render = |turn: Option<f32>| {
+        let mut g = built("environment-map");
+        match turn {
+            Some(t) => g.scene.environment_map.as_mut().expect("a map").rotation = t,
+            None => g.scene.environment_map = None,
+        }
+        gfx::render_built(&mut g).expect("render").image
+    };
+    let lit = render(Some(0.6));
+    // The sharpest step of luma down a sphere's middle column (top row,
+    // chrome): the mirror shows the studio's horizon as an edge, the
+    // roughest blurs it into a gradient.
+    let sharpest = |img: &RgbaImage, cx: u32| {
+        let at = |y: u32| {
+            let i = ((y * img.width + cx) * 4) as usize;
+            luma(&[img.pixels[i], img.pixels[i + 1], img.pixels[i + 2], 255])
+        };
+        (180..320)
+            .map(|y| (at(y + 1) - at(y)).abs())
+            .fold(0.0f32, f32::max)
+    };
+    let (mirror, rough) = (sharpest(&lit, 208), sharpest(&lit, 1072));
+    println!("chrome sharpest step: mirror {mirror:.1}, rough {rough:.1}");
+    assert!(
+        mirror > 3.0 * rough,
+        "mirror {mirror:.1} against rough {rough:.1}"
+    );
+    let diff = |a: &RgbaImage, b: &RgbaImage| {
+        a.pixels
+            .iter()
+            .zip(&b.pixels)
+            .map(|(x, y)| x.abs_diff(*y) as f32)
+            .sum::<f32>()
+            / a.pixels.len() as f32
+    };
+    // Turned half way round, the bright rim strip leaves the view.
+    let turned = render(Some(0.6 + std::f32::consts::PI));
+    let unlit = render(None);
+    let (t, u) = (diff(&lit, &turned), diff(&lit, &unlit));
+    println!("mean channel change: turned {t:.1}, the sky instead {u:.1}");
+    assert!(t > 4.0, "turning the map moves it: {t:.1}");
+    assert!(u > 4.0, "the map replaces the sky: {u:.1}");
+}
+
 #[test]
 fn ao_gtao_matches_its_reference() {
     assert!(check("ao-gtao").stats.prepass_draws > 0);

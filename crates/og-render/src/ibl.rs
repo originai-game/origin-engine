@@ -7,6 +7,11 @@
 //! sun) rewrites one uniform buffer and re-records the passes into the same
 //! textures, and the BRDF LUT, which does not depend on the sky, is drawn
 //! once. Every regeneration draws the same passes as the first.
+//!
+//! A cooked environment map ([`IblGenerator::generate_map`]) takes the sky's
+//! place: its levels are copied, turned and scaled, into the same sky and
+//! prefiltered cubes (the sky's lower mips downsampled as for the sky), and
+//! its irradiance harmonics evaluated into the irradiance cube.
 
 use crate::HDR_FORMAT;
 use crate::atmosphere::SkyLook;
@@ -31,7 +36,9 @@ struct Params {
     sun_color: [f32; 4],
     /// The look (`SkyLook::gpu`); zenith.w 0 is the built-in sky.
     look: [[f32; 4]; 5],
-    pad: [f32; 32],
+    /// An environment map's turn, scale and irradiance
+    /// (`environment::env_params`); unused by the sky's passes.
+    env: [[f32; 4]; 8],
 }
 
 /// The views the frame binds.
@@ -110,6 +117,9 @@ struct Pass {
 /// The IBL generator: made once, regenerates for every new sky.
 pub struct IblGenerator {
     pipelines: Vec<wgpu::RenderPipeline>,
+    layout: wgpu::BindGroupLayout,
+    /// The sky mips' level count (the downsample passes follow the sky's).
+    sky_mips: u32,
     params: wgpu::Buffer,
     passes: Vec<Pass>,
     lut_pass: Pass,
@@ -211,6 +221,8 @@ impl IblGenerator {
             make_pipeline("fs_irradiance"),
             make_pipeline("fs_prefilter"),
             make_pipeline("fs_brdf_lut"),
+            make_pipeline("fs_env_copy"),
+            make_pipeline("fs_env_irradiance"),
         ];
 
         let sky_mips = SKY_SIZE.ilog2() + 1;
@@ -338,6 +350,8 @@ impl IblGenerator {
         };
         IblGenerator {
             pipelines,
+            layout,
+            sky_mips,
             params,
             passes,
             lut_pass,
@@ -371,7 +385,7 @@ impl IblGenerator {
             sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
             sun_color: [sun_color.x, sun_color.y, sun_color.z, 0.0],
             look,
-            pad: [0.0; 32],
+            env: [[0.0; 4]; 8],
         };
         let lut = !self.lut_drawn;
         let all: Vec<&Pass> = self
@@ -413,6 +427,119 @@ impl IblGenerator {
             });
             pass.set_pipeline(&self.pipelines[p.pipeline]);
             pass.set_bind_group(0, &p.group, &[(i as u64 * SLOT) as u32]);
+            pass.draw(0..3, 0..1);
+        }
+        queue.submit(Some(encoder.finish()));
+        self.lut_drawn = true;
+    }
+
+    /// Fills the textures from a cooked environment map instead of the sky:
+    /// `map` (a cube view of its [`crate::ENVIRONMENT_MAP_LEVELS`] levels)
+    /// turned by `rotation` radians about +y, level 0 into the sky cube
+    /// scaled by `background` (its mips downsampled as for the sky), level
+    /// `m` into prefiltered mip `m`, and `irradiance` (the map's harmonics)
+    /// into the irradiance cube.
+    pub fn generate_map(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        map: &wgpu::TextureView,
+        irradiance: &[[f32; 3]; 9],
+        rotation: f32,
+        background: f32,
+    ) {
+        const DOWN: usize = 1;
+        const ENV_COPY: usize = 5;
+        const ENV_IRRADIANCE: usize = 6;
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("environment map"),
+            layout: &self.layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.params,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(std::mem::size_of::<Params>() as u64),
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(map),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.views.sampler),
+                },
+            ],
+        });
+        // The sky's passes in order: sky faces, sky mips, irradiance, prefilter.
+        let down = 6 * (self.sky_mips as usize - 1);
+        let (irr, pre) = (6 + down, 12 + down);
+        // (pass whose target is drawn, pipeline, group, source level, scale)
+        let mut draws: Vec<(usize, usize, &wgpu::BindGroup, f32, f32)> = Vec::new();
+        for face in 0..6 {
+            draws.push((face, ENV_COPY, &group, 0.0, background));
+        }
+        for i in 6..irr {
+            draws.push((i, DOWN, &self.passes[i].group, 0.0, 1.0));
+        }
+        for face in 0..6 {
+            draws.push((irr + face, ENV_IRRADIANCE, &group, 0.0, 1.0));
+        }
+        for mip in 0..PREFILTER_MIPS as usize {
+            for face in 0..6 {
+                draws.push((pre + mip * 6 + face, ENV_COPY, &group, mip as f32, 1.0));
+            }
+        }
+        let lut = !self.lut_drawn;
+        let count = draws.len() + lut as usize;
+        let mut bytes = vec![0u8; SLOT as usize * count];
+        for (i, &(pass, pipeline, _, level, scale)) in draws.iter().enumerate() {
+            let p = &self.passes[pass];
+            let params = Params {
+                face: p.face,
+                // The downsample passes read the level above.
+                roughness: if pipeline == DOWN { p.roughness } else { level },
+                sample_count: 0,
+                source_size: 0.0,
+                sun_dir: [0.0; 4],
+                sun_color: [0.0; 4],
+                look: [[0.0; 4]; 5],
+                env: crate::environment::env_params(rotation, scale, irradiance),
+            };
+            let at = i * SLOT as usize;
+            bytes[at..at + std::mem::size_of::<Params>()]
+                .copy_from_slice(bytemuck::bytes_of(&params));
+        }
+        queue.write_buffer(&self.params, 0, &bytes);
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ibl from a map"),
+        });
+        let lut_draw = lut.then_some(&self.lut_pass);
+        let all = draws
+            .iter()
+            .map(|&(pass, pipeline, group, ..)| (&self.passes[pass].target, pipeline, group))
+            .chain(lut_draw.map(|p| (&p.target, p.pipeline, &p.group)));
+        for (i, (target, pipeline, group)) in all.enumerate() {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ibl map pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: target,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&self.pipelines[pipeline]);
+            pass.set_bind_group(0, group, &[(i as u64 * SLOT) as u32]);
             pass.draw(0..3, 0..1);
         }
         queue.submit(Some(encoder.finish()));
