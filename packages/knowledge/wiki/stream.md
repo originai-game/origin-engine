@@ -2,11 +2,13 @@
 
 # The `stream` module
 
-Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, sounds, environment maps, palettes and looks that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
 
 At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
 
-Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.
+Texture arrays, environment maps, palettes and looks have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, a sprite of the array and applying the look are refused) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite draws from, the look last applied) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it.
+
+Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading), the recent changes and the terrain streamer's tiles.
 
 - **TypeScript**: functions are the namespace `og.stream`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,7 +20,7 @@ module stream {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10673</sub>
+<sub>`api.ogt` line 10675</sub>
 
 ## Contents
 
@@ -69,7 +71,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 10735</sub>
+<sub>`api.ogt` line 10738</sub>
 
 <a id="fn-request"></a>
 
@@ -99,7 +101,7 @@ fn request {
 }
 ```
 
-<sub>`api.ogt` line 10742</sub>
+<sub>`api.ogt` line 10745</sub>
 
 <a id="fn-release"></a>
 
@@ -129,7 +131,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 10749</sub>
+<sub>`api.ogt` line 10752</sub>
 
 <a id="fn-budget"></a>
 
@@ -157,7 +159,7 @@ fn budget {
 }
 ```
 
-<sub>`api.ogt` line 10756</sub>
+<sub>`api.ogt` line 10759</sub>
 
 <a id="fn-setBudget"></a>
 
@@ -187,7 +189,7 @@ fn setBudget {
 }
 ```
 
-<sub>`api.ogt` line 10762</sub>
+<sub>`api.ogt` line 10765</sub>
 
 ## Components, resources and events
 
@@ -212,7 +214,7 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 10694</sub>
+<sub>`api.ogt` line 10697</sub>
 
 ## Types
 
@@ -243,7 +245,7 @@ enum StreamState {
 }
 ```
 
-<sub>`api.ogt` line 10679</sub>
+<sub>`api.ogt` line 10682</sub>
 
 <a id="type-StreamStatus"></a>
 
@@ -290,7 +292,7 @@ struct StreamStatus {
 }
 ```
 
-<sub>`api.ogt` line 10700</sub>
+<sub>`api.ogt` line 10703</sub>
 
 <a id="type-StreamBudget"></a>
 
@@ -321,7 +323,7 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 10721</sub>
+<sub>`api.ogt` line 10724</sub>
 
 ## Constants
 
@@ -337,28 +339,28 @@ struct StreamBudget {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 10688</sub>
+<sub>`api.ogt` line 10691</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 10689</sub>
+<sub>`api.ogt` line 10692</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 10690</sub>
+<sub>`api.ogt` line 10693</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 10691</sub>
+<sub>`api.ogt` line 10694</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 10692</sub>
+<sub>`api.ogt` line 10695</sub>

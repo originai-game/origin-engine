@@ -81,6 +81,7 @@ pub const SCENES: &[&str] = &[
     "stylise-bands",
     "stylise-retro",
     "stylise-material",
+    "sprites-array",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -290,6 +291,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = sprite_field(20_000)?;
             g.update = Some(move_sprites);
         }
+        // Sprites drawn from texture arrays: an eight-frame pixel-art
+        // flipbook (nearest) in every frame, flipped and turned, and a
+        // three-layer smooth array (linear, mipmapped) added, around one
+        // plain textured sprite; one draw per array and blend.
+        "sprites-array" => g.scene = sprite_array_scene(),
         // MSDF text at several sizes, rotated, Latin and CJK.
         "text-msdf" => g.scene = text_scene()?,
         // E4: a 256x256 tilemap with four layers (one animated, one at half
@@ -890,6 +896,152 @@ fn sprite_field(n: usize) -> Result<RenderScene, String> {
     scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.post.tonemap = Tonemap::None;
     Ok(scene)
+}
+
+/// One layer of the `sprites-array` flipbook: a 16 x 16 pixel-art wheel
+/// whose spoke points at `frame` eighths of a turn, in that frame's hue.
+pub fn flipbook_frame(frame: u32) -> TextureData {
+    let hues = [
+        [255, 80, 70],
+        [255, 170, 50],
+        [240, 230, 70],
+        [110, 220, 90],
+        [60, 210, 200],
+        [70, 130, 255],
+        [160, 90, 255],
+        [250, 100, 200],
+    ];
+    let c = hues[frame as usize % 8];
+    let angle = frame as f32 * std::f32::consts::TAU / 8.0;
+    let mut t = texture(16, ColorSpace::Srgb, |u, v| {
+        let (x, y) = (u - 0.5, 0.5 - v);
+        let r = (x * x + y * y).sqrt();
+        let along = x * angle.cos() + y * angle.sin();
+        let across = -x * angle.sin() + y * angle.cos();
+        if (0.36..0.47).contains(&r) {
+            [c[0], c[1], c[2], 255]
+        } else if along > 0.0 && r < 0.4 && across.abs() < 0.07 {
+            [255, 255, 255, 255]
+        } else if r < 0.1 {
+            [40, 40, 50, 255]
+        } else {
+            [0, 0, 0, 0]
+        }
+    });
+    t.mips = Mips::None;
+    t
+}
+
+/// The `sprites-array` scene (see [`build`]).
+pub fn sprite_array_scene() -> RenderScene {
+    use og_render::{
+        SpriteArray, SpriteBlend, SpriteFx, TextureArrayData, TextureFilter, TextureSource,
+    };
+    let mut scene = RenderScene::new();
+    let flipbook = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..8)
+                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
+                .collect(),
+        })
+        .expect("eight frames of one size");
+    scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
+    let glows = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..3)
+                .map(|k| {
+                    TextureSource::Rgba(texture(64, ColorSpace::Srgb, |u, v| {
+                        let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
+                        let a = ((1.0 - d) * 2.0).clamp(0.0, 1.0);
+                        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k];
+                        [rgb[0], rgb[1], rgb[2], (a * 255.0) as u8]
+                    }))
+                })
+                .collect(),
+        })
+        .expect("three layers of one size");
+    let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
+        let on = ((u * 4.0) as u32 + (v * 4.0) as u32).is_multiple_of(2);
+        if on {
+            [230, 230, 230, 255]
+        } else {
+            [60, 60, 70, 255]
+        }
+    }));
+    let push = |scene: &mut RenderScene,
+                sprite: Sprite,
+                array: Option<(og_render::TextureArrayHandle, u32)>| {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        if let Some((array, layer)) = array {
+            scene.sprite_arrays.push(SpriteArray {
+                sprite: i,
+                array,
+                layer,
+            });
+        }
+        i
+    };
+    // Two rows of the flipbook, every frame in order; the second row
+    // flipped left to right and turned a little.
+    for row in 0..2 {
+        for k in 0..8u32 {
+            let x = -7.0 + k as f32 * 2.0;
+            let y = 2.5 - row as f32 * 2.5;
+            let uv_rect = if row == 0 {
+                [0.0, 0.0, 1.0, 1.0]
+            } else {
+                [1.0, 0.0, 0.0, 1.0]
+            };
+            push(
+                &mut scene,
+                Sprite {
+                    position: Vec3::new(x, y, 0.0),
+                    size: Vec2::splat(1.8),
+                    rotation: row as f32 * 0.3,
+                    uv_rect,
+                    layer: 1,
+                    ..Default::default()
+                },
+                Some((flipbook, k)),
+            );
+        }
+    }
+    // The plain texture under them, in its own run on layer 0.
+    push(
+        &mut scene,
+        Sprite {
+            texture: Some(plain),
+            position: Vec3::new(0.0, -5.0, 0.0),
+            size: Vec2::new(16.0, 2.0),
+            layer: 0,
+            ..Default::default()
+        },
+        None,
+    );
+    // The smooth array added over the plain strip, its three layers in turn.
+    for k in 0..6u32 {
+        let i = push(
+            &mut scene,
+            Sprite {
+                position: Vec3::new(-6.25 + k as f32 * 2.5, -5.0, 0.0),
+                size: Vec2::splat(2.6),
+                color: [1.0, 1.0, 1.0, 0.9],
+                layer: 2,
+                ..Default::default()
+            },
+            Some((glows, k % 3)),
+        );
+        scene.sprite_fx.push(SpriteFx {
+            sprite: i,
+            blend: SpriteBlend::Additive,
+            ..Default::default()
+        });
+    }
+    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.post.tonemap = Tonemap::None;
+    scene
 }
 
 /// Moves every sprite along the spiral (`frame` 0 is the reference frame).

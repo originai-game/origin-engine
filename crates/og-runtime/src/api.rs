@@ -1779,6 +1779,35 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                     .ok_or_else(|| format!("texture {t} is not alive"))?,
             ),
         };
+        // A layer of a texture array in place of the texture (world sprites).
+        let array = match d["array"].as_f64() {
+            None => None,
+            Some(a) => {
+                let loaded = index_of(a)
+                    .and_then(|i| rs.texture_arrays.get(i))
+                    .ok_or_else(|| format!("texture array {a} is not loaded in this world"))?;
+                let handle = loaded.handle.ok_or_else(|| {
+                    format!(
+                        "{}: its streaming group is not resident (the array loads with it)",
+                        loaded.id
+                    )
+                })?;
+                let layer = d["arrayLayer"].as_f64().unwrap_or(0.0);
+                if !(layer >= 0.0 && layer.fract() == 0.0 && layer < f64::from(loaded.layers)) {
+                    return Err(format!(
+                        "arrayLayer {layer}: {} has layers 0 to {}",
+                        loaded.id,
+                        loaded.layers - 1
+                    ));
+                }
+                if d["screen"].as_bool().unwrap_or(false) {
+                    return Err(
+                        "a sprite of a texture array is drawn in the world (screen false)".into(),
+                    );
+                }
+                Some((handle, layer as u32, loaded.size))
+            }
+        };
         let uv = d["uv"]
             .as_array()
             .filter(|a| a.len() == 4)
@@ -1843,10 +1872,11 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
         } else {
             0.0
         };
-        let pieces = match (
-            d["slice"].as_array(),
-            texture.and_then(|t| rs.scene.texture_size(t)),
-        ) {
+        let size = match array {
+            Some((.., size)) => Some(size),
+            None => texture.and_then(|t| rs.scene.texture_size(t)),
+        };
+        let pieces = match (d["slice"].as_array(), size) {
             (Some(a), Some(size)) if a.len() == 4 => {
                 let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
                 og_render::nine_slice(
@@ -1868,6 +1898,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                 screen,
                 clip: clip_of(&d["clip"]),
                 order,
+                array: array.map(|(h, layer, _)| (h, layer)),
             });
         }
         Ok(())

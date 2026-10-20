@@ -11,15 +11,7 @@
 use crate::scene::{ColorSpace, Mips, TextureSource};
 use crate::texture::{TextureDesc, TextureFormat};
 
-/// A texture array in a [`crate::RenderScene`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TextureArrayHandle(pub(crate) u32);
-
-impl TextureArrayHandle {
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+pub use crate::scene::TextureArrayHandle;
 
 /// The layers of a texture array, as a host hands them over.
 #[derive(Clone, Debug, PartialEq)]
@@ -173,6 +165,9 @@ pub(crate) struct GpuTextureArray {
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub texture: wgpu::Texture,
     pub info: TextureArrayInfo,
+    /// The generation of the scene slot it was uploaded for.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub generation: u8,
 }
 
 /// Uploads a checked texture array as one `D2Array` texture.
@@ -208,7 +203,11 @@ pub(crate) fn upload(
         wgpu::util::TextureDataOrder::LayerMajor,
         &data.texels(&info),
     );
-    Ok(GpuTextureArray { texture, info })
+    Ok(GpuTextureArray {
+        texture,
+        info,
+        generation: 0,
+    })
 }
 
 #[cfg(test)]

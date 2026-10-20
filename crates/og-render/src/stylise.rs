@@ -34,17 +34,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "flatShading",
 ];
 
-/// A colour palette added to a [`crate::RenderScene`] for
-/// [`Stylise::palette`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct PaletteHandle(pub(crate) u32);
-
-impl PaletteHandle {
-    /// The position of the palette in its scene, in insertion order.
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+pub use crate::scene::PaletteHandle;
 
 /// Up to 256 sRGB colours, in the order the palette file lists them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -220,11 +210,70 @@ impl Stylise {
             || self.retro.is_some()
             || self.material.is_active()
     }
+
+    /// Which primitives are on, one bit each (not their settings): what
+    /// passes the frame runs (depth bands, paint, lines, quantise), whether
+    /// it is drawn on a pixel grid, and whether retro 3D or the material
+    /// style change the lit pass. The renderer resets the TAA history when
+    /// this changes between two frames, as on a camera cut, so the first
+    /// frame of a new look holds no ghost of the old one; a change of a
+    /// setting alone (a posterize level, a palette) keeps it.
+    pub fn chain_bits(&self) -> u16 {
+        [
+            self.pixel.is_some(),
+            self.quantize.is_some(),
+            self.halftone.is_some(),
+            self.hatching.is_some(),
+            self.paint.is_some(),
+            self.ink.is_some(),
+            self.depth_bands.is_some(),
+            self.retro.is_some(),
+            self.material.is_active(),
+        ]
+        .iter()
+        .enumerate()
+        .fold(0, |bits, (i, on)| bits | (u16::from(*on) << i))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_chain_bits_follow_primitives_not_their_settings() {
+        let off = Stylise::default();
+        assert_eq!(off.chain_bits(), 0);
+        let q = Quantize {
+            posterize: 6,
+            palette: None,
+            dither: DitherPattern::Bayer4,
+            dither_strength: 1.0,
+            dither_scale: 1,
+        };
+        let six = Stylise {
+            quantize: Some(q),
+            ..off
+        };
+        let eight = Stylise {
+            quantize: Some(Quantize { posterize: 8, ..q }),
+            ..off
+        };
+        assert_ne!(six.chain_bits(), off.chain_bits(), "a pass added");
+        assert_eq!(six.chain_bits(), eight.chain_bits(), "a setting only");
+        let grid = Stylise {
+            pixel: Some(PixelScale {
+                height: 180,
+                upscale: 0,
+                snap: false,
+            }),
+            ..six
+        };
+        assert_ne!(grid.chain_bits(), six.chain_bits(), "the pixel grid on");
+        let mut toon = six;
+        toon.material.toon = true;
+        assert_ne!(toon.chain_bits(), six.chain_bits(), "the material style");
+    }
 
     #[test]
     fn everything_is_off_by_default() {

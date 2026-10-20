@@ -130,6 +130,8 @@ pub(crate) struct RenderState {
     pub fx: super::fx::FxState,
     /// Textures by Texture handle index (`og.load.texture`).
     pub textures: Vec<og_render::TextureHandle>,
+    /// Texture arrays by TextureArray handle index (`og.load.textureArray`).
+    pub texture_arrays: Vec<super::assets::LoadedArray>,
     /// Layouts of the engine records extraction reads.
     pub camera: Option<Layout>,
     pub settings: Option<Layout>,
@@ -176,6 +178,7 @@ impl RenderState {
             texts_tick: 0,
             fx: super::fx::FxState::default(),
             textures: Vec::new(),
+            texture_arrays: Vec::new(),
             camera: None,
             settings: None,
             draw: DrawLayouts::default(),
@@ -548,6 +551,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.skinned_instances.clear();
     scene.sprite_order.clear();
     scene.sprite_fx.clear();
+    scene.sprite_arrays.clear();
     scene.text_outlines.clear();
     scene.tile_layers.clear();
     scene.trail_layers.clear();

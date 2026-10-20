@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3242</sub>
+<sub>`api.ogt` line 3244</sub>
 
 ## Contents
 
@@ -56,7 +56,7 @@ module load {
 | [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
 | [`og.load.look`](#fn-look) | function | Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path. |
 | [`og.load.lookInfo`](#fn-lookInfo) | function | What a loaded look holds and sets. |
-| [`og.load.palette`](#fn-palette) | function | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. |
+| [`og.load.palette`](#fn-palette) | function | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
 | [`og.load.status`](#fn-status) | function | Where a load is. |
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
@@ -98,7 +98,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3339</sub>
+<sub>`api.ogt` line 3341</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -128,7 +128,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3346</sub>
+<sub>`api.ogt` line 3348</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -156,7 +156,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3353</sub>
+<sub>`api.ogt` line 3355</sub>
 
 <a id="fn-gltf"></a>
 
@@ -188,7 +188,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3359</sub>
+<sub>`api.ogt` line 3361</sub>
 
 <a id="fn-scene"></a>
 
@@ -218,7 +218,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3367</sub>
+<sub>`api.ogt` line 3369</sub>
 
 <a id="fn-font"></a>
 
@@ -248,7 +248,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3374</sub>
+<sub>`api.ogt` line 3376</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -278,7 +278,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3381</sub>
+<sub>`api.ogt` line 3383</sub>
 
 <a id="fn-sound"></a>
 
@@ -311,7 +311,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3388</sub>
+<sub>`api.ogt` line 3390</sub>
 
 <a id="fn-lut"></a>
 
@@ -341,7 +341,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3396</sub>
+<sub>`api.ogt` line 3398</sub>
 
 <a id="fn-environment"></a>
 
@@ -371,7 +371,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3403</sub>
+<sub>`api.ogt` line 3405</sub>
 
 <a id="fn-emitter"></a>
 
@@ -401,7 +401,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3410</sub>
+<sub>`api.ogt` line 3412</sub>
 
 <a id="fn-shader"></a>
 
@@ -431,7 +431,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3417</sub>
+<sub>`api.ogt` line 3419</sub>
 
 <a id="fn-texture"></a>
 
@@ -464,7 +464,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3424</sub>
+<sub>`api.ogt` line 3426</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -472,7 +472,7 @@ fn texture {
 
 Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.
 
-TextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it.
+SpriteDesc.array draws sprites from its layers (one draw per array, whatever layer each shows; materials and terrain layers do not sample arrays yet); TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go and sprites of it are refused until the group is resident again, when it comes back under the same handle.
 
 ```ts
 og.load.textureArray(world: World, path: string): Result<TextureArrayInfo>
@@ -490,14 +490,14 @@ Binding symbol `og_load_texture_array` · publish builds: kept
 ```ogt
 fn textureArray {
   doc "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array."
-  doc "TextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it."
+  doc "SpriteDesc.array draws sprites from its layers (one draw per array, whatever layer each shows; materials and terrain layers do not sample arrays yet); TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go and sprites of it are refused until the group is resident again, when it comes back under the same handle."
   param world World "The world whose renderer owns the array."
   param path String "The array's asset id, such as `tiles/ground.ogt`."
   returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
 }
 ```
 
-<sub>`api.ogt` line 3432</sub>
+<sub>`api.ogt` line 3434</sub>
 
 <a id="fn-skin"></a>
 
@@ -527,7 +527,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3440</sub>
+<sub>`api.ogt` line 3442</sub>
 
 <a id="fn-look"></a>
 
@@ -557,7 +557,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3447</sub>
+<sub>`api.ogt` line 3449</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -587,13 +587,13 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3454</sub>
+<sub>`api.ogt` line 3456</sub>
 
 <a id="fn-palette"></a>
 
 ### `og.load.palette`
 
-A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path.
+A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle.
 
 ```ts
 og.load.palette(world: World, path: string): Result<Palette>
@@ -610,14 +610,14 @@ Binding symbol `og_load_palette` · publish builds: kept
 
 ```ogt
 fn palette {
-  doc "A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path."
+  doc "A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `palettes/dusk.hex`."
   returns Result.Palette "Refused for a path not in the bundle (the reason says to run og cook)."
 }
 ```
 
-<sub>`api.ogt` line 3461</sub>
+<sub>`api.ogt` line 3463</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -647,7 +647,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3468</sub>
+<sub>`api.ogt` line 3470</sub>
 
 <a id="fn-status"></a>
 
@@ -677,7 +677,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3475</sub>
+<sub>`api.ogt` line 3477</sub>
 
 <a id="fn-error"></a>
 
@@ -707,7 +707,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3482</sub>
+<sub>`api.ogt` line 3484</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -737,7 +737,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3489</sub>
+<sub>`api.ogt` line 3491</sub>
 
 <a id="fn-animation"></a>
 
@@ -770,7 +770,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3496</sub>
+<sub>`api.ogt` line 3498</sub>
 
 <a id="fn-rig"></a>
 
@@ -800,7 +800,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3504</sub>
+<sub>`api.ogt` line 3506</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -830,7 +830,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3511</sub>
+<sub>`api.ogt` line 3513</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -860,7 +860,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3518</sub>
+<sub>`api.ogt` line 3520</sub>
 
 ## Components, resources and events
 
@@ -883,7 +883,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3334</sub>
+<sub>`api.ogt` line 3336</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -906,7 +906,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3525</sub>
+<sub>`api.ogt` line 3527</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -931,7 +931,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3531</sub>
+<sub>`api.ogt` line 3533</sub>
 
 ## Types
 
@@ -947,7 +947,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 3248</sub>
+<sub>`api.ogt` line 3250</sub>
 
 <a id="type-Font"></a>
 
@@ -961,7 +961,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 3249</sub>
+<sub>`api.ogt` line 3251</sub>
 
 <a id="type-Sound"></a>
 
@@ -975,7 +975,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 3250</sub>
+<sub>`api.ogt` line 3252</sub>
 
 <a id="type-Skin"></a>
 
@@ -989,7 +989,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 3251</sub>
+<sub>`api.ogt` line 3253</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1003,7 +1003,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 3252</sub>
+<sub>`api.ogt` line 3254</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1028,7 +1028,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 3268</sub>
+<sub>`api.ogt` line 3270</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1054,7 +1054,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 3275</sub>
+<sub>`api.ogt` line 3277</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1079,7 +1079,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3283</sub>
+<sub>`api.ogt` line 3285</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1102,7 +1102,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3291</sub>
+<sub>`api.ogt` line 3293</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1135,7 +1135,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3298</sub>
+<sub>`api.ogt` line 3300</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1166,7 +1166,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3310</sub>
+<sub>`api.ogt` line 3312</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1197,7 +1197,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 3323</sub>
+<sub>`api.ogt` line 3325</sub>
 
 ## Column kinds
 
@@ -1217,7 +1217,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 3254</sub>
+<sub>`api.ogt` line 3256</sub>
 
 ```ogt
 column Sound {
@@ -1228,4 +1228,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 3261</sub>
+<sub>`api.ogt` line 3263</sub>

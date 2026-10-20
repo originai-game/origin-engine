@@ -148,8 +148,8 @@ lists every loader and what each returns.
 
 **Streaming groups** (`reference/stream.md`) keep a big world's assets off
 the GPU until the player is near them. A scene names glTF models (no skins
-or morph targets), textures and sounds that load and unload together, and
-what loads them:
+or morph targets), textures, texture arrays, sounds, environment maps,
+palettes and looks that load and unload together, and what loads them:
 
 ```
 stream "harbour" {
@@ -173,7 +173,12 @@ Load and spawn grouped assets as usual: until the group is resident a model
 draws its proxy (its coarsest LOD, untextured), a texture is a grey 1x1 and
 a sound plays silence of its own length; then the real ones take over the
 same handles. Physics always collides with the proxy, so the simulation and
-the world hash never depend on what is resident. Groups are admitted by
+the world hash never depend on what is resident. Texture arrays,
+environment maps, palettes and looks have no stand-in: load them once the
+group is resident; when it unloads their handles wait (the sky lights the
+scene, a sprite of the array is refused) and come back with the group. One
+the frame still uses when its group unloads is kept, with a warning, until
+the frame stops using it. Groups are admitted by
 priority within `og.stream.setBudget` (256 MiB by default); a lower-priority
 group is evicted to make room for a higher one. `og.stream.status`,
 `og.stream.budget`, `og.StreamEvent` (state `STREAM_RESIDENT` and the rest)

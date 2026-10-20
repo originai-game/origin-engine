@@ -1181,7 +1181,7 @@ fn tick_boundary(eng: &Engine) {
     eng.assets.borrow_mut().poll();
     super::stream::update(eng);
     super::stream::sound_chunks(eng);
-    super::environment::resolve(eng);
+    super::stream::resolve(eng);
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }

@@ -93,6 +93,18 @@ pub(crate) struct Assets {
     pub texture_arrays: BTreeMap<String, Value>,
 }
 
+/// One `og.load.textureArray` (by load index, the handle's): its renderer
+/// array while resident.
+pub(crate) struct LoadedArray {
+    pub id: String,
+    /// `None` while its streaming group is not resident: released when the
+    /// group unloaded, added again once it is resident (`resolve_arrays`).
+    pub handle: Option<og_render::TextureArrayHandle>,
+    pub layers: u32,
+    /// Each layer's width and height in texels.
+    pub size: (u32, u32),
+}
+
 pub(crate) fn handle(index: usize) -> u64 {
     index as u64 + (1u64 << 32)
 }
@@ -593,28 +605,28 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     Ok(i)
 }
 
-/// `og.load.textureArray`: a cooked `type texture-array`, its layers
-/// decoded through the host's texture hook (each an `og.Texture` the web
-/// Worker transcoded with the bundle) and uploaded as one 2D-array
-/// texture. Loading a path again answers the same array.
-pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
-    if let Some(v) = eng.assets.borrow().texture_arrays.get(&id) {
-        return Ok(v.clone());
-    }
+/// Reads and decodes a cooked texture array's layers through the host's
+/// texture hook, and adds them to the renderer as one array (sampled
+/// nearest when its kind is pixel art).
+fn add_texture_array(
+    eng: &Engine,
+    id: &str,
+) -> Result<(og_render::TextureArrayHandle, og_render::TextureArrayInfo), String> {
     let formats = texture_formats(eng);
-    let (array, layers) = {
+    let (array, layers, pixel) = {
         let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
+        let (bytes, bundle) = assets.blob(id)?;
         let array = bundle
-            .texture_array(&id, bytes.bytes())
+            .texture_array(id, bytes.bytes())
             .map_err(|e| e.to_string())?;
         let mut layers = Vec::with_capacity(array.layers.len());
+        let mut pixel = false;
         for l in &array.layers {
             let (bytes, bundle) = assets.blob(l)?;
             let tex = bundle
                 .texture(l, bytes.bytes())
                 .map_err(|e| e.to_string())?;
+            pixel = tex.is_pixel_art();
             match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
                 Some(Fetch::Ready(d)) => layers.push(d),
                 Some(Fetch::Pending) => {
@@ -624,18 +636,48 @@ pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, Stri
                 None => return Err("no host is installed to decode textures".into()),
             }
         }
-        (array, layers)
+        (array, layers, pixel)
     };
     let data = og_render::TextureArrayData { layers };
     let info = data.info().map_err(|e| format!("{id}: {e}"))?;
-    let added = eng
-        .render
-        .borrow_mut()
+    debug_assert_eq!(array.meta.layers, info.layers);
+    let mut rs = eng.render.borrow_mut();
+    let added = rs
         .scene
         .add_texture_array(data)
         .map_err(|e| format!("{id}: {e}"))?;
+    if pixel {
+        rs.scene
+            .set_texture_array_filter(added, og_render::TextureFilter::Nearest);
+    }
+    Ok((added, info))
+}
+
+/// `og.load.textureArray`: a cooked `type texture-array`, its layers
+/// decoded through the host's texture hook (each an `og.Texture` the web
+/// Worker transcoded with the bundle) and uploaded as one 2D-array
+/// texture. Loading a path again answers the same array. One in a
+/// streaming group's pack loads once its group is resident; when the
+/// group unloads the renderer lets the array go (`super::stream`) and the
+/// handle draws nothing until the group is resident again.
+pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(v) = eng.assets.borrow().texture_arrays.get(&id) {
+        return Ok(v.clone());
+    }
+    let (added, info) = add_texture_array(eng, &id)?;
+    let index = {
+        let mut rs = eng.render.borrow_mut();
+        rs.texture_arrays.push(LoadedArray {
+            id: id.clone(),
+            handle: Some(added),
+            layers: info.layers,
+            size: (info.width, info.height),
+        });
+        rs.texture_arrays.len() - 1
+    };
     let value = json!({
-        "array": handle(added.index()) as f64,
+        "array": handle(index) as f64,
         "width": info.width,
         "height": info.height,
         "layers": info.layers,
@@ -643,12 +685,30 @@ pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, Stri
         "format": info.format.name(),
         "bytes": info.bytes as f64,
     });
-    debug_assert_eq!(array.meta.layers, info.layers);
     eng.assets
         .borrow_mut()
         .texture_arrays
         .insert(id, value.clone());
     Ok(value)
+}
+
+/// At a tick boundary: adds again the texture arrays whose streaming group
+/// is resident again after an unload released them.
+pub(crate) fn resolve_texture_arrays(eng: &Engine) {
+    let pending: Vec<(usize, String)> = eng
+        .render
+        .borrow()
+        .texture_arrays
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| a.handle.is_none())
+        .map(|(i, a)| (i, a.id.clone()))
+        .collect();
+    for (i, id) in pending {
+        if let Ok((h, _)) = add_texture_array(eng, &id) {
+            eng.render.borrow_mut().texture_arrays[i].handle = Some(h);
+        }
+    }
 }
 
 pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {

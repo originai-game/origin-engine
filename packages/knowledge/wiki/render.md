@@ -99,7 +99,7 @@ module render {
 | [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest. |
 | [`og.render.setMaterialShader`](#fn-setMaterialShader) | function | Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes. |
 | [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
-| [`og.render.applyLook`](#fn-applyLook) | function | Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. |
+| [`og.render.applyLook`](#fn-applyLook) | function | Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look. |
 | [`og.render.look`](#fn-look) | function | The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
@@ -164,7 +164,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2903</sub>
+<sub>`api.ogt` line 2905</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -194,7 +194,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3067</sub>
+<sub>`api.ogt` line 3069</sub>
 
 <a id="fn-measureText"></a>
 
@@ -224,7 +224,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3074</sub>
+<sub>`api.ogt` line 3076</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -254,7 +254,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3134</sub>
+<sub>`api.ogt` line 3136</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -284,7 +284,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3141</sub>
+<sub>`api.ogt` line 3143</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -314,7 +314,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3148</sub>
+<sub>`api.ogt` line 3150</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -344,7 +344,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3171</sub>
+<sub>`api.ogt` line 3173</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -376,7 +376,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3178</sub>
+<sub>`api.ogt` line 3180</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -408,7 +408,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3188</sub>
+<sub>`api.ogt` line 3190</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -440,7 +440,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3196</sub>
+<sub>`api.ogt` line 3198</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -474,13 +474,13 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3204</sub>
+<sub>`api.ogt` line 3206</sub>
 
 <a id="fn-applyLook"></a>
 
 ### `og.render.applyLook`
 
-Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes.
+Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look.
 
 ```ts
 og.render.applyLook(world: World, look: Look): Result<void>
@@ -491,20 +491,20 @@ og.render.applyLook(world: World, look: Look): Result<void>
 | `world` | `World` | no | The world whose look changes. |
 | `look` | `Look` | no | The look, from og.load.look. |
 
-**Returns** `Result<void>`: Refused for a look not loaded in this world or a resource the system did not declare.
+**Returns** `Result<void>`: Refused for a look not loaded in this world, one in a streaming group that is not resident (the reason names it), or a resource the system did not declare.
 
 Binding symbol `og_render_apply_look` · publish builds: kept
 
 ```ogt
 fn applyLook {
-  doc "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes."
+  doc "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look."
   param world World "The world whose look changes."
   param look Look "The look, from og.load.look."
-  returns Result.Void "Refused for a look not loaded in this world or a resource the system did not declare."
+  returns Result.Void "Refused for a look not loaded in this world, one in a streaming group that is not resident (the reason names it), or a resource the system did not declare."
 }
 ```
 
-<sub>`api.ogt` line 3213</sub>
+<sub>`api.ogt` line 3215</sub>
 
 <a id="fn-look"></a>
 
@@ -532,7 +532,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3220</sub>
+<sub>`api.ogt` line 3222</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -560,7 +560,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3226</sub>
+<sub>`api.ogt` line 3228</sub>
 
 <a id="fn-text"></a>
 
@@ -590,7 +590,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3232</sub>
+<sub>`api.ogt` line 3234</sub>
 
 ## Components, resources and events
 
@@ -1883,7 +1883,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2910</sub>
+<sub>`api.ogt` line 2912</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1931,7 +1931,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2982</sub>
+<sub>`api.ogt` line 2984</sub>
 
 ## Types
 
@@ -2849,6 +2849,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `texture` | `Texture \| null` | `null` | — | — | — | The texture from og.load.texture; null draws a solid quad of the colour. |
+| `array` | `TextureArray \| null` | `null` | — | — | — | Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World sprites only (not `screen`). null uses `texture`. |
+| `arrayLayer` | `number` | `0` | — | — | — | With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer. |
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the anchor point is. |
 | `width` | `number` | `1` | ≥ 0 | `m` | — | Its width in world units. |
 | `height` | `number` | `1` | ≥ 0 | `m` | — | Its height in world units. |
@@ -2876,6 +2878,8 @@ struct SpriteDesc {
   doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
   desc true
   field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
+  field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World sprites only (not `screen`). null uses `texture`."
+  field arrayLayer u32 "With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer."
   field position Vector3 "Where the anchor point is." {
     unit m
   }
@@ -3018,7 +3022,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3009</sub>
+<sub>`api.ogt` line 3011</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3056,7 +3060,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3081</sub>
+<sub>`api.ogt` line 3083</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3088,7 +3092,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3101</sub>
+<sub>`api.ogt` line 3103</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3124,7 +3128,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3116</sub>
+<sub>`api.ogt` line 3118</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3159,7 +3163,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3158</sub>
+<sub>`api.ogt` line 3160</sub>
 
 <a id="type-Shader"></a>
 
@@ -3173,7 +3177,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3186</sub>
+<sub>`api.ogt` line 3188</sub>
 
 ## Column kinds
 
@@ -3349,10 +3353,10 @@ column DitherPattern {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3155</sub>
+<sub>`api.ogt` line 3157</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3156</sub>
+<sub>`api.ogt` line 3158</sub>

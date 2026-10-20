@@ -67,6 +67,8 @@ pub(crate) struct QueuedSprite {
     pub clip: Option<[f32; 4]>,
     /// The sort key within its layer (`sortY`: -y); 0 keeps submission order.
     pub order: f32,
+    /// Drawn from this layer of a texture array instead of its texture.
+    pub array: Option<(og_render::TextureArrayHandle, u32)>,
 }
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
@@ -378,7 +380,7 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
 fn stylise(
     s: Option<Value>,
     m: Option<Value>,
-    palettes: &[og_render::PaletteHandle],
+    palettes: &[(String, Option<og_render::PaletteHandle>)],
     textures: &[og_render::TextureHandle],
 ) -> og_render::Stylise {
     let rgb = |v: &Value, d: Vec3| {
@@ -397,7 +399,8 @@ fn stylise(
             });
         }
         let posterize = u(&s, "posterize", 0);
-        let palette = handle_index(&s["palette"]).and_then(|i| palettes.get(i).copied());
+        // A palette whose streaming group is not resident quantises to none.
+        let palette = handle_index(&s["palette"]).and_then(|i| palettes.get(i)?.1);
         let dither = match variant(
             &s["dither"],
             &["none", "bayer2", "bayer4", "bayer8", "blueNoise"],
@@ -689,6 +692,13 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
         }
         let index = scene.sprites.len() as u32;
         scene.sprites.push(q.sprite);
+        if let Some((array, layer)) = q.array {
+            scene.sprite_arrays.push(og_render::SpriteArray {
+                sprite: index,
+                array,
+                layer,
+            });
+        }
         if q.order != 0.0 {
             scene.sprite_order.push(og_render::SpriteOrder {
                 sprite: index,

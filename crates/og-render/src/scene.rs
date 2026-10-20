@@ -353,6 +353,28 @@ handle!(
     /// ([`RenderScene::add_environment_map`]).
     EnvironmentMapHandle
 );
+handle!(
+    /// A texture array added to a [`RenderScene`]
+    /// ([`RenderScene::add_texture_array`]).
+    TextureArrayHandle
+);
+handle!(
+    /// A colour palette added to a [`RenderScene`] for
+    /// [`crate::Stylise`]'s quantisation ([`RenderScene::add_palette`]).
+    PaletteHandle
+);
+
+/// A sprite drawn from a layer of a texture array instead of its texture
+/// ([`RenderScene::sprite_arrays`]): a sheet of same-sized frames batched
+/// into one draw whichever frame each sprite shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpriteArray {
+    /// The index in [`RenderScene::sprites`].
+    pub sprite: u32,
+    pub array: TextureArrayHandle,
+    /// The layer drawn, below the array's layer count.
+    pub layer: u32,
+}
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
@@ -1047,8 +1069,15 @@ pub struct RenderScene {
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
     palettes: Vec<crate::Palette>,
+    /// Per palette, environment map and texture array: how many times its
+    /// slot was refilled or emptied (the renderer uploads or frees it again).
+    palette_revisions: Vec<u64>,
     environment_maps: Vec<crate::EnvironmentMapData>,
+    environment_map_revisions: Vec<u64>,
     texture_arrays: Vec<crate::TextureArrayData>,
+    texture_array_revisions: Vec<u64>,
+    /// How each texture array is sampled by sprites (by array index).
+    texture_array_filters: Vec<TextureFilter>,
     trail_styles: Vec<TrailStyle>,
     terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
@@ -1137,6 +1166,11 @@ pub struct RenderScene {
     /// Trails drawn in the sprite order at a layer (2D) instead of with the
     /// 3D scene: `(Trail::id, layer)`.
     pub trail_layers: Vec<(u64, i32)>,
+    /// Sprites drawn from a layer of a texture array instead of their
+    /// texture, by sprite index (world sprites only; the last entry for an
+    /// index wins). Sprites of one array draw as one run whatever their
+    /// layers, so a sheet of frames in an array batches across frames.
+    pub sprite_arrays: Vec<SpriteArray>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// Live slots and generations of the removable kinds.
@@ -1144,6 +1178,9 @@ pub struct RenderScene {
     texture_slots: Slots,
     material_slots: Slots,
     font_slots: Slots,
+    environment_map_slots: Slots,
+    texture_array_slots: Slots,
+    palette_slots: Slots,
 }
 
 impl Default for RenderScene {
@@ -1183,8 +1220,12 @@ impl RenderScene {
             emitters: Vec::new(),
             luts: Vec::new(),
             palettes: Vec::new(),
+            palette_revisions: Vec::new(),
             environment_maps: Vec::new(),
+            environment_map_revisions: Vec::new(),
             texture_arrays: Vec::new(),
+            texture_array_revisions: Vec::new(),
+            texture_array_filters: Vec::new(),
             trail_styles: Vec::new(),
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
@@ -1217,11 +1258,15 @@ impl RenderScene {
             text_outlines: Vec::new(),
             tile_layers: Vec::new(),
             trail_layers: Vec::new(),
+            sprite_arrays: Vec::new(),
             texture_filters: Vec::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
             material_slots: Slots::default(),
             font_slots: Slots::default(),
+            environment_map_slots: Slots::default(),
+            texture_array_slots: Slots::default(),
+            palette_slots: Slots::default(),
         }
     }
 
@@ -1450,32 +1495,174 @@ impl RenderScene {
 
     /// Adds a prefiltered environment map (an asset; og-cook's `type
     /// environment`); [`RenderScene::environment_map`] picks the one a
-    /// frame is lit by.
+    /// frame is lit by. A slot freed by [`RenderScene::remove_environment_map`]
+    /// is reused under a new generation.
     pub fn add_environment_map(&mut self, map: crate::EnvironmentMapData) -> EnvironmentMapHandle {
-        self.environment_maps.push(map);
-        EnvironmentMapHandle(self.environment_maps.len() as u32 - 1)
+        let (i, generation, reused) = self
+            .environment_map_slots
+            .take(self.environment_maps.len(), true);
+        if reused {
+            self.environment_maps[i] = map;
+            self.environment_map_revisions[i] += 1;
+        } else {
+            self.environment_maps.push(map);
+            self.environment_map_revisions.push(0);
+        }
+        EnvironmentMapHandle::from_parts(i, generation)
+    }
+
+    /// Removes an environment map: the renderer frees its cube before the
+    /// next frame and a later add reuses the slot under a new generation.
+    /// A frame whose [`RenderScene::environment_map`] still names it is
+    /// refused ([`crate::RenderError::InvalidHandle`]): light the scene
+    /// with another map or the sky first. False for a handle that is not
+    /// live.
+    pub fn remove_environment_map(&mut self, handle: EnvironmentMapHandle) -> bool {
+        let i = handle.index();
+        if !self.environment_map_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.environment_maps[i] = crate::EnvironmentMapData {
+            size: 0,
+            texels: Vec::new(),
+            irradiance: [[0.0; 3]; 9],
+        };
+        self.environment_map_revisions[i] += 1;
+        self.environment_map_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names an environment map of this scene that was
+    /// not removed.
+    pub fn contains_environment_map(&self, handle: EnvironmentMapHandle) -> bool {
+        self.environment_map_slots
+            .live(handle.index(), handle.generation())
+    }
+
+    /// A live environment map's data.
+    pub fn environment_map_data(
+        &self,
+        handle: EnvironmentMapHandle,
+    ) -> Option<&crate::EnvironmentMapData> {
+        self.contains_environment_map(handle)
+            .then(|| &self.environment_maps[handle.index()])
     }
 
     pub(crate) fn environment_maps(&self) -> &[crate::EnvironmentMapData] {
         &self.environment_maps
     }
 
+    pub(crate) fn environment_map_revisions(&self) -> &[u64] {
+        &self.environment_map_revisions
+    }
+
+    /// Whether slot `index` holds a live environment map, and its generation.
+    pub(crate) fn environment_map_slot(&self, index: usize) -> (bool, u8) {
+        let g = self.environment_map_slots.generation(index);
+        (self.environment_map_slots.live(index, g), g)
+    }
+
     /// Adds a texture array (an asset; og-cook's `type texture-array`):
     /// layers of one size, encoding and mip count, uploaded as one
-    /// `D2Array` texture. Refused when the layers disagree.
+    /// `D2Array` texture. Refused when the layers disagree. A slot freed
+    /// by [`RenderScene::remove_texture_array`] is reused under a new
+    /// generation.
     pub fn add_texture_array(
         &mut self,
         data: crate::TextureArrayData,
     ) -> Result<crate::TextureArrayHandle, String> {
         data.info()?;
-        self.texture_arrays.push(data);
-        Ok(crate::TextureArrayHandle(
-            self.texture_arrays.len() as u32 - 1,
-        ))
+        let (i, generation, reused) = self
+            .texture_array_slots
+            .take(self.texture_arrays.len(), true);
+        if reused {
+            self.texture_arrays[i] = data;
+            self.texture_array_revisions[i] += 1;
+            if let Some(f) = self.texture_array_filters.get_mut(i) {
+                *f = TextureFilter::Linear;
+            }
+        } else {
+            self.texture_arrays.push(data);
+            self.texture_array_revisions.push(0);
+        }
+        Ok(crate::TextureArrayHandle::from_parts(i, generation))
     }
 
+    /// Removes a texture array: the renderer frees it before the next frame
+    /// and a later add reuses the slot under a new generation. A sprite
+    /// still drawn from it ([`RenderScene::sprite_arrays`]) is refused at
+    /// the next frame ([`crate::RenderError::InvalidHandle`]). False for a
+    /// handle that is not live.
+    pub fn remove_texture_array(&mut self, handle: crate::TextureArrayHandle) -> bool {
+        let i = handle.index();
+        if !self.texture_array_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.texture_arrays[i] = crate::TextureArrayData { layers: Vec::new() };
+        self.texture_array_revisions[i] += 1;
+        if let Some(f) = self.texture_array_filters.get_mut(i) {
+            *f = TextureFilter::Linear;
+        }
+        self.texture_array_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a texture array of this scene that was not
+    /// removed.
+    pub fn contains_texture_array(&self, handle: crate::TextureArrayHandle) -> bool {
+        self.texture_array_slots
+            .live(handle.index(), handle.generation())
+    }
+
+    /// A live texture array's layers.
+    pub fn texture_array(
+        &self,
+        handle: crate::TextureArrayHandle,
+    ) -> Option<&crate::TextureArrayData> {
+        self.contains_texture_array(handle)
+            .then(|| &self.texture_arrays[handle.index()])
+    }
+
+    /// Samples a texture array nearest (pixel art) or linear (the default)
+    /// wherever sprites draw it. False for a handle that is not live.
+    pub fn set_texture_array_filter(
+        &mut self,
+        handle: crate::TextureArrayHandle,
+        filter: TextureFilter,
+    ) -> bool {
+        let i = handle.index();
+        if !self.texture_array_slots.live(i, handle.generation()) {
+            return false;
+        }
+        if self.texture_array_filters.len() <= i {
+            self.texture_array_filters
+                .resize(i + 1, TextureFilter::Linear);
+        }
+        self.texture_array_filters[i] = filter;
+        true
+    }
+
+    /// How sprites sample a texture array.
+    pub fn texture_array_filter(&self, handle: crate::TextureArrayHandle) -> TextureFilter {
+        self.texture_array_filters
+            .get(handle.index())
+            .copied()
+            .unwrap_or_default()
+    }
+
+    /// Every slot's layers, by handle index (a removed slot holds none).
     pub fn texture_arrays(&self) -> &[crate::TextureArrayData] {
         &self.texture_arrays
+    }
+
+    pub(crate) fn texture_array_revisions(&self) -> &[u64] {
+        &self.texture_array_revisions
+    }
+
+    /// Whether slot `index` holds a live texture array, and its generation.
+    pub(crate) fn texture_array_slot(&self, index: usize) -> (bool, u8) {
+        let g = self.texture_array_slots.generation(index);
+        (self.texture_array_slots.live(index, g), g)
     }
 
     /// Adds a trail style (an asset).
@@ -1497,13 +1684,58 @@ impl RenderScene {
     /// [`crate::MAX_PALETTE_COLORS`] colours are kept.
     pub fn add_palette(&mut self, mut palette: crate::Palette) -> crate::PaletteHandle {
         palette.colors.truncate(crate::MAX_PALETTE_COLORS);
-        self.palettes.push(palette);
-        crate::PaletteHandle(self.palettes.len() as u32 - 1)
+        let (i, generation, reused) = self.palette_slots.take(self.palettes.len(), true);
+        if reused {
+            self.palettes[i] = palette;
+            self.palette_revisions[i] += 1;
+        } else {
+            self.palettes.push(palette);
+            self.palette_revisions.push(0);
+        }
+        crate::PaletteHandle::from_parts(i, generation)
     }
 
-    /// The palettes added, by handle index.
+    /// Removes a palette: the renderer frees its texture before the next
+    /// frame and a later add reuses the slot under a new generation. A
+    /// frame whose [`RenderScene::stylise`] still quantises to it is
+    /// refused ([`crate::RenderError::InvalidHandle`]). False for a handle
+    /// that is not live.
+    pub fn remove_palette(&mut self, handle: crate::PaletteHandle) -> bool {
+        let i = handle.index();
+        if !self.palette_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.palettes[i] = crate::Palette::default();
+        self.palette_revisions[i] += 1;
+        self.palette_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a palette of this scene that was not removed.
+    pub fn contains_palette(&self, handle: crate::PaletteHandle) -> bool {
+        self.palette_slots.live(handle.index(), handle.generation())
+    }
+
+    /// A live palette.
+    pub fn palette(&self, handle: crate::PaletteHandle) -> Option<&crate::Palette> {
+        self.contains_palette(handle)
+            .then(|| &self.palettes[handle.index()])
+    }
+
+    /// Every slot's palette, by handle index (a removed slot holds no
+    /// colours).
     pub fn palettes(&self) -> &[crate::Palette] {
         &self.palettes
+    }
+
+    pub(crate) fn palette_revisions(&self) -> &[u64] {
+        &self.palette_revisions
+    }
+
+    /// Whether slot `index` holds a live palette.
+    pub(crate) fn palette_live(&self, index: usize) -> bool {
+        let g = self.palette_slots.generation(index);
+        self.palette_slots.live(index, g)
     }
 
     pub(crate) fn trail_styles(&self) -> &[TrailStyle] {
@@ -1848,8 +2080,10 @@ impl RenderScene {
         self.fonts.get(handle.index())
     }
 
-    /// Every per-frame reference to a removed mesh, material, texture or
-    /// font: instances, skinned instances, sprites, texts and the overlay's
+    /// Every per-frame reference to a removed mesh, material, texture,
+    /// font, environment map, texture array or palette: instances, skinned
+    /// instances, sprites (and the arrays they draw from), texts, the
+    /// overlay's, the environment map and the stylisation's palette
     /// (nothing to look at until something was removed).
     pub(crate) fn stale_handle(&self) -> Option<String> {
         let (m, t, mat, f) = (
@@ -1858,8 +2092,37 @@ impl RenderScene {
             &self.material_slots,
             &self.font_slots,
         );
-        if !(m.any_removed || t.any_removed || mat.any_removed || f.any_removed) {
+        if !(m.any_removed
+            || t.any_removed
+            || mat.any_removed
+            || f.any_removed
+            || self.environment_map_slots.any_removed
+            || self.texture_array_slots.any_removed
+            || self.palette_slots.any_removed)
+        {
             return None;
+        }
+        if let Some(e) = self.environment_map
+            && !self.contains_environment_map(e.map)
+        {
+            return Some(format!("the environment map {} was removed", e.map.index()));
+        }
+        if let Some(p) = self.stylise.quantize.and_then(|q| q.palette)
+            && !self.contains_palette(p)
+        {
+            return Some(format!(
+                "the stylisation's palette {} was removed",
+                p.index()
+            ));
+        }
+        for s in &self.sprite_arrays {
+            if !self.contains_texture_array(s.array) {
+                return Some(format!(
+                    "sprite {}: texture array {} was removed",
+                    s.sprite,
+                    s.array.index()
+                ));
+            }
         }
         let draws = self
             .instances

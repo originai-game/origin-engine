@@ -10,6 +10,15 @@ streams' gates. Merged with main at 7696db4 (ui-text) before the gate.
 | `textures-ktx2.json`, `textures-array.json`, `textures-toktx.json` | KTX2 orientation and swizzle, texture arrays uploaded as one D2Array, the toktx fallback |
 | `wasm-size-after.json`, `check-summary.txt` | the size gate and the path-aware full lane at the branch head |
 
+Texture arrays had no consumer: `og.load.textureArray` uploaded one
+`D2Array` texture that nothing sampled. *Resolved in the resources round
+(01700f2, 0fc358a, ade313c): `SpriteDesc.array` and `arrayLayer` draw
+world sprites from a layer through a sprite pipeline variant sampling
+`texture_2d_array` on both tiers, one draw per array whatever the layers
+(og-tests `sprites-array`); og-runtime's flipbooks still pack frames as
+regions of one sheet texture. Arrays in a streaming group are removed from
+the renderer when it unloads (`remove_texture_array`).*
+
 ## Gate
 
 `scripts/check.sh` (path-aware full lane) on the merged tree:
