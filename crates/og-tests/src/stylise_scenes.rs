@@ -9,6 +9,10 @@
 //! - `stylise-print`: cross-hatching and ink lines over the physical
 //!   materials scene (a pencil drawing).
 //! - `stylise-halftone`: halftone dots over the toon scene.
+//! - `stylise-halftone-surface`: the same dots laid on the surfaces (dot
+//!   grids on the three world planes, larger where the tone is darker,
+//!   foreshortened on the floor and wrapping round the forms), with ink on
+//!   luminance and depth edges: a comic print given depth.
 //! - `stylise-paint`: painterly smoothing, edge darkening and bleed over the
 //!   physical materials scene.
 //! - `stylise-bands`: four flat depth bands over the toon scene (layered
@@ -130,6 +134,25 @@ pub fn halftone_scene() -> Result<RenderScene, String> {
         angle_degrees: 30.0,
         color: [0.05, 0.02, 0.08],
         space: StyliseSpace::Screen,
+    });
+    Ok(scene)
+}
+
+pub fn halftone_surface_scene() -> Result<RenderScene, String> {
+    let mut scene = crate::fx_scenes::stylised_scene()?;
+    scene.stylise.halftone = Some(Halftone {
+        strength: 1.0,
+        size: 9.0,
+        angle_degrees: 30.0,
+        color: [0.05, 0.02, 0.08],
+        space: StyliseSpace::Surface,
+    });
+    scene.stylise.ink = Some(Ink {
+        threshold: 0.4,
+        width: 1.0,
+        color: [0.02, 0.02, 0.03],
+        depth: 1.0,
+        ..Default::default()
     });
     Ok(scene)
 }
