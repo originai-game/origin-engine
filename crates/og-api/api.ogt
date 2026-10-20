@@ -2521,7 +2521,7 @@ module render {
       min 0
       max 2
     }
-    field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
+    field depthBands u32 "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band." {
       min 0
       max 8
     }
@@ -2530,7 +2530,7 @@ module render {
       min 0
       unit m
     }
-    field depthBandsFar f32 "Where the last band ends; beyond it everything is the far colour." {
+    field depthBandsFar f32 "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too." {
       default 60
       min 0
       unit m
@@ -2541,7 +2541,7 @@ module render {
     field depthBandsFarColor Color "The farthest band's colour (linear, before exposure)." {
       default 0.55 0.6 0.7
     }
-    field depthBandsFlatten f32 "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene." {
+    field depthBandsFlatten f32 "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two." {
       default 1
       min 0
       max 1

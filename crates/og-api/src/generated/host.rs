@@ -5469,7 +5469,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off.",
+                doc: "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band.",
                 variants: &[],
             },
             FieldDecl {
@@ -5497,7 +5497,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "m",
                 label: "",
-                doc: "Where the last band ends; beyond it everything is the far colour.",
+                doc: "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.",
                 variants: &[],
             },
             FieldDecl {
@@ -5539,7 +5539,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "ratio",
                 label: "",
-                doc: "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene.",
+                doc: "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two.",
                 variants: &[],
             },
             FieldDecl {

@@ -326,6 +326,23 @@ an inked page. Pixel sprites standing in a 3D set take
 and over an og.Terrain their shadows follow the slope, and bend into a
 hollow or over a ridge narrower than themselves, by themselves.
 
+Depth bands (`Stylise.depthBands`, the layered-silhouette, black-figure
+and luminous-layered presets) cut the frame by distance from the camera,
+so they need a camera that looks *across* the world: a side-scroller, a
+stage, a three-quarter view down a valley or a street, a high view over
+a landscape, where near, middle and far ground lie at clearly different
+depths. Set `depthBandsNear` where the nearest layer you want starts and
+`depthBandsFar` where the farthest layer ends (the far colour begins one
+band before it), measured along the view on a real frame. They do not
+work top-down or in a steep overhead camera: the whole play area sits at
+about one depth and falls in one band, so it goes one flat colour and
+the characters vanish into it; use a tinted shadow side, fog or a
+palette there instead, or the bands only for a high establishing shot
+(a title, the results). `depthBandsFlatten` 1 gives flat cut-paper
+layers; 0 keeps the lit scene and only tints each layer (its shading and
+hues show through), so characters stay readable; 0.3–0.6 is a painted
+middle ground.
+
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
 is applied after the first scene spawns and before `start` runs (so
 `start` may still change any field, and reads the look's skin from

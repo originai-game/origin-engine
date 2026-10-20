@@ -11935,7 +11935,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off.",
+          "description": "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band.",
           "default": 0,
           "minimum": 0,
           "maximum": 8
@@ -11949,7 +11949,7 @@
         },
         "depthBandsFar": {
           "type": "number",
-          "description": "Where the last band ends; beyond it everything is the far colour.",
+          "description": "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.",
           "default": 60,
           "minimum": 0,
           "x-og-unit": "m"
@@ -11974,7 +11974,7 @@
         },
         "depthBandsFlatten": {
           "type": "number",
-          "description": "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene.",
+          "description": "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two.",
           "default": 1,
           "minimum": 0,
           "maximum": 1,

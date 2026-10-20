@@ -240,7 +240,11 @@ impl Default for Ink {
     }
 }
 
-/// Flat colour bands by depth.
+/// Colour bands by depth (fxpost.wgsl `fs_depth_bands`): `count` equal
+/// layers from `near` to `far`, the first `near_color`, the last
+/// `far_color` (and everything beyond `far`), those between stepping
+/// evenly in OkLCh (`band_color`: lightness and chroma straight, hue the
+/// short way round), never through grey.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DepthBands {
     /// 2 to 8 bands.
@@ -249,7 +253,8 @@ pub struct DepthBands {
     pub far: f32,
     pub near_color: [f32; 3],
     pub far_color: [f32; 3],
-    /// 1 flat silhouettes, 0 a tint.
+    /// 1 flat silhouettes in the band's colour; 0 a tint: the lit colour
+    /// times the band's at unit luminance, the shading kept; between, a mix.
     pub flatten: f32,
 }
 

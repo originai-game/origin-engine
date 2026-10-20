@@ -16,7 +16,7 @@
 //! - `stylise-paint`: painterly smoothing, edge darkening and bleed over the
 //!   physical materials scene.
 //! - `stylise-bands`: four flat depth bands over the toon scene (layered
-//!   silhouettes).
+//!   silhouettes); `stylise-bands-tint`: five as a tint down a street.
 //! - `stylise-retro`: vertex snapping, affine textures and 12-bit depth
 //!   over the physical materials scene.
 //! - `stylise-material`: the material style alone: a warm shadow tint, a
@@ -864,6 +864,74 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         position: Vec3::new(0.0, 2.2, 6.0),
         target: Vec3::new(0.0, 1.0, 0.0),
         exposure: Exposure::linear(1.8),
+        ..Default::default()
+    };
+    scene
+}
+
+/// `stylise-bands-tint`: five depth bands as a tint (`flatten` 0) from
+/// plum to gold over a lit three-quarter view down a street of coloured
+/// blocks receding to 40 m: each layer keeps its shading, its shadows and
+/// the blocks' own hues under its filter, and the layers step from plum
+/// through rose and amber to gold, never grey (lantern-vale FINDINGS #19).
+pub fn bands_tint_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.6, 0.6, 0.58),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(120.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let hues = [
+        Vec3::new(0.75, 0.2, 0.15),
+        Vec3::new(0.2, 0.55, 0.25),
+        Vec3::new(0.2, 0.35, 0.8),
+        Vec3::new(0.85, 0.75, 0.3),
+    ];
+    let materials: Vec<_> = hues
+        .iter()
+        .map(|&color| {
+            scene.add_standard_material(StandardMaterial {
+                color,
+                roughness: 0.7,
+                ..Default::default()
+            })
+        })
+        .collect();
+    // Two rows of blocks along -z, every 4 m, alternating heights.
+    for k in 0..10 {
+        for (side, x) in [(0, -3.0f32), (1, 3.0)] {
+            let h = 1.5 + ((k + side) % 3) as f32;
+            scene.add_instance(
+                cube,
+                materials[(k + side * 2) % materials.len()],
+                Mat4::from_translation(Vec3::new(x, h * 0.5, 2.0 - 4.0 * k as f32))
+                    * Mat4::from_scale(Vec3::new(2.0, h, 2.0)),
+            );
+        }
+    }
+    scene.stylise.depth_bands = Some(DepthBands {
+        count: 5,
+        near: 3.0,
+        far: 40.0,
+        near_color: [0.042, 0.012, 0.07],
+        far_color: [1.0, 0.62, 0.24],
+        flatten: 0.0,
+    });
+    let sun = Vec3::new(-0.6, 0.6, 0.5);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 8.0),
+        target: Vec3::new(0.0, 1.2, -10.0),
+        exposure: Exposure::linear(0.8),
         ..Default::default()
     };
     scene

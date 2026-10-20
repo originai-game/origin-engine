@@ -93,6 +93,7 @@ pub const SCENES: &[&str] = &[
     "stylise-outline-voxels",
     "stylise-toon-physical",
     "sprites-untonemapped",
+    "stylise-bands-tint",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -475,6 +476,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-halftone-surface" => g.scene = crate::stylise_scenes::halftone_surface_scene()?,
         "stylise-outline-voxels" => g.scene = crate::stylise_scenes::outline_voxels_scene(),
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
+        "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
         // Untonemapped sprites under TAA (its history carries the alpha).
         "sprites-untonemapped" => {
             g.scene = crate::stylise_scenes::untonemapped_sprites_scene();

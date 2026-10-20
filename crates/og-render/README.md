@@ -1539,9 +1539,20 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   byte for byte, at its line width.
 - **Depth bands** (`DepthBands`): an HDR pass after the main pass
   (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
-  `near` to `far` into `count` flat layers between two colours; `flatten`
-  1 replaces the shading, 0 tints it. The outline pass reads the banded
-  image.
+  `near` to `far` into `count` equal layers, the first in the near colour,
+  the last (from one band before `far`, and beyond it) in the far colour,
+  those between stepping evenly in OkLCh (`band_color`: lightness and
+  chroma straight, hue the short way round, a grey end taking the other's
+  hue), so a plum-to-gold ramp passes through rose and amber instead of
+  the grey-brown a straight line in RGB crosses. `flatten` 1 replaces the
+  shading with the band's colour; 0 tints it: the lit colour times the
+  band's colour at unit luminance, a coloured filter through which the
+  shading, the value and the surfaces' own hues show (it used to be the
+  band's colour times the lit luminance, which replaced every hue:
+  lantern-vale FINDINGS #19); between, a mix. The outline pass reads the
+  banded image. The bands follow view depth, so they read in side and
+  three-quarter views; a camera looking down sees its play area at one
+  depth, in one band.
 - **Retro 3D** (`Retro3d`, pbr.wgsl `retro_clip` and `stylised_uv`): the
   clip position snapped to a screen grid of `vertex_snap` logical pixels,
   depth quantised to `depth_bits`, and affine texturing by interpolating
@@ -1633,8 +1644,8 @@ of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
 `full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
 (`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
 halftone, as its check asks (ink marks painted onto surfaces).
-Round five adds `stylise-outline-voxels`, `stylise-toon-physical` and
-`sprites-untonemapped` (`metal`).
+Round five adds `stylise-outline-voxels`, `stylise-toon-physical`,
+`sprites-untonemapped` and `stylise-bands-tint` (`metal`).
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the
