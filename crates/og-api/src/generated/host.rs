@@ -1076,6 +1076,8 @@ pub struct FieldDecl {
     pub doc: &'static str,
     /// An enum column's variants in index order; empty otherwise.
     pub variants: &'static [&'static str],
+    /// A text column's capacity in bytes (`str.48` in the IDL); 0 otherwise.
+    pub capacity: u32,
 }
 
 /// An engine-owned component, resource or event.
@@ -1110,6 +1112,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The position, as three.js Object3D.position.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "quaternion",
@@ -1124,6 +1127,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The rotation, as three.js Object3D.quaternion.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "scale",
@@ -1138,6 +1142,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The scale, as three.js Object3D.scale.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1159,6 +1164,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The parent.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1180,6 +1186,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The composed world matrix.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1201,6 +1208,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Fixed steps taken since load.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dt",
@@ -1215,6 +1223,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The length of one tick: 1 / rate.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "elapsed",
@@ -1229,6 +1238,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Simulation time since load: tick * dt.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rate",
@@ -1243,6 +1253,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The tick rate, from GameDesc.tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "scale",
@@ -1257,6 +1268,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Global slow motion, set with og.time.setScale: 1 is normal, 0.5 half speed, 0 stopped. Physics, animation, flipbooks and tweens advance by scaledDt; the tick itself, the UI, input and the probe keep their pace.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hitStop",
@@ -1271,6 +1283,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "scaledDt",
@@ -1285,6 +1298,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "scaledElapsed",
@@ -1299,6 +1313,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Scaled seconds since load: the sum of every finished tick's scaledDt.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1320,6 +1335,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The seed the stream started from.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "state",
@@ -1334,6 +1350,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The generator state; snapshot and restore carry it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1355,6 +1372,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The pointer position.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pointerInside",
@@ -1369,6 +1387,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether a pointer event has placed the pointer over the play surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wheel",
@@ -1383,6 +1402,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Scroll accumulated during this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttons",
@@ -1397,6 +1417,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held pointer buttons, as a mask.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttonsPressed",
@@ -1411,6 +1432,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons that went down this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttonsReleased",
@@ -1425,6 +1447,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons that went up this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttonsReleaseNext",
@@ -1439,6 +1462,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons a click releases at the end of the next tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "keys0",
@@ -1453,6 +1477,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held keys, word 0: codes 0 to 31 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "keys1",
@@ -1467,6 +1492,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held keys, word 1: codes 32 to 63 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "keys2",
@@ -1481,6 +1507,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held keys, word 2: codes 64 to 95 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "keys3",
@@ -1495,6 +1522,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held keys, word 3: codes 96 to 127 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed0",
@@ -1509,6 +1537,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed1",
@@ -1523,6 +1552,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed2",
@@ -1537,6 +1567,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed3",
@@ -1551,6 +1582,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released0",
@@ -1565,6 +1597,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released1",
@@ -1579,6 +1612,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released2",
@@ -1593,6 +1627,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released3",
@@ -1607,6 +1642,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "releaseNext0",
@@ -1621,6 +1657,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "releaseNext1",
@@ -1635,6 +1672,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys a press releases at the end of the next tick, word 1: codes 32 to 63 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "releaseNext2",
@@ -1649,6 +1687,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys a press releases at the end of the next tick, word 2: codes 64 to 95 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "releaseNext3",
@@ -1663,6 +1702,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keys a press releases at the end of the next tick, word 3: codes 96 to 127 of KEY_CODES.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1684,6 +1724,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pointers held down, as a mask.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressedMask",
@@ -1698,6 +1739,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pointers that went down this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "releasedMask",
@@ -1712,6 +1754,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pointers that went up this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "releaseNextMask",
@@ -1726,6 +1769,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pointers a click releases at the end of the next tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "position0",
@@ -1740,6 +1784,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 0 is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "position1",
@@ -1754,6 +1799,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 1 is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "position2",
@@ -1768,6 +1814,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 2 is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "position3",
@@ -1782,6 +1829,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 3 is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "position4",
@@ -1796,6 +1844,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 4 is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start0",
@@ -1810,6 +1859,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 0 went down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start1",
@@ -1824,6 +1874,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 1 went down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start2",
@@ -1838,6 +1889,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 2 went down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start3",
@@ -1852,6 +1904,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 3 went down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start4",
@@ -1866,6 +1919,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where pointer 4 went down.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -1887,6 +1941,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Connected pads: bit `pad`.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttons0",
@@ -1901,6 +1956,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held buttons of pad 0.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttons1",
@@ -1915,6 +1971,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held buttons of pad 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttons2",
@@ -1929,6 +1986,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held buttons of pad 2.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buttons3",
@@ -1943,6 +2001,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held buttons of pad 3.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed0",
@@ -1957,6 +2016,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 0 that went down this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed1",
@@ -1971,6 +2031,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 1 that went down this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed2",
@@ -1985,6 +2046,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 2 that went down this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pressed3",
@@ -1999,6 +2061,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 3 that went down this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released0",
@@ -2013,6 +2076,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 0 that went up this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released1",
@@ -2027,6 +2091,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 1 that went up this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released2",
@@ -2041,6 +2106,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 2 that went up this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "released3",
@@ -2055,6 +2121,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Buttons of pad 3 that went up this tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "leftStick0",
@@ -2069,6 +2136,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left stick of pad 0, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "leftStick1",
@@ -2083,6 +2151,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left stick of pad 1, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "leftStick2",
@@ -2097,6 +2166,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left stick of pad 2, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "leftStick3",
@@ -2111,6 +2181,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left stick of pad 3, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rightStick0",
@@ -2125,6 +2196,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The right stick of pad 0, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rightStick1",
@@ -2139,6 +2211,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The right stick of pad 1, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rightStick2",
@@ -2153,6 +2226,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The right stick of pad 2, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rightStick3",
@@ -2167,6 +2241,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The right stick of pad 3, -1 to 1, y down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "triggers0",
@@ -2181,6 +2256,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left (x) and right (y) triggers of pad 0, 0 to 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "triggers1",
@@ -2195,6 +2271,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left (x) and right (y) triggers of pad 1, 0 to 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "triggers2",
@@ -2209,6 +2286,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left (x) and right (y) triggers of pad 2, 0 to 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "triggers3",
@@ -2223,6 +2301,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The left (x) and right (y) triggers of pad 3, 0 to 1.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2244,6 +2323,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The physical key code.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "repeat",
@@ -2258,6 +2338,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether this is an auto-repeat.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "at",
@@ -2272,6 +2353,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2293,6 +2375,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The text (whole characters).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "composing",
@@ -2307,6 +2390,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "more",
@@ -2321,6 +2405,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Continues the composition of the event before it (a composition longer than one event).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2342,6 +2427,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The physical key code.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "at",
@@ -2356,6 +2442,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2377,6 +2464,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Horizontal position in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "y",
@@ -2391,6 +2479,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Vertical position in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "button",
@@ -2405,6 +2494,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The button.",
                 variants: &["none", "left", "middle", "right"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "id",
@@ -2419,6 +2509,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "at",
@@ -2433,6 +2524,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2454,6 +2546,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Horizontal position in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "y",
@@ -2468,6 +2561,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Vertical position in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "button",
@@ -2482,6 +2576,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The button.",
                 variants: &["none", "left", "middle", "right"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "id",
@@ -2496,6 +2591,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Which pointer: 0 the primary one, 1 to 4 further touches.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "at",
@@ -2510,6 +2606,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2531,6 +2628,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Horizontal position in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "y",
@@ -2545,6 +2643,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Vertical position in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "id",
@@ -2559,6 +2658,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Which pointer: 0 the primary one, 1 to 4 further touches.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2580,6 +2680,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Horizontal scroll in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "deltaY",
@@ -2594,6 +2695,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Vertical scroll in CSS pixels.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2615,6 +2717,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "What is asked.",
                 variants: &["focus", "activate", "increment", "decrement"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "path",
@@ -2629,6 +2732,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The control's path, as og.ui.a11y() names it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -2650,6 +2754,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the camera is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "quaternion",
@@ -2664,6 +2769,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its rotation; the camera looks down its local -Z.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fov",
@@ -2678,6 +2784,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The vertical field of view of the perspective projection.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "near",
@@ -2692,6 +2799,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The near clipping plane.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "far",
@@ -2706,6 +2814,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The far clipping plane.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoom",
@@ -2720,6 +2829,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The zoom factor, as three.js Camera.zoom.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "orthographic",
@@ -2734,6 +2844,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Use an orthographic projection (the 2D profile) instead of a perspective one.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "height",
@@ -2748,6 +2859,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The visible world height of the orthographic projection.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "background",
@@ -2762,6 +2874,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "exposure",
@@ -2776,6 +2889,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Exposure before tone mapping, as three.js toneMappingExposure.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "trauma",
@@ -2790,6 +2904,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Screen shake, 0 to 1, added by og.camera.shake and decayed by traumaDecay every tick (unscaled, so a hit stop still shakes). The offset and roll grow with trauma squared and follow smooth noise of the tick: visual only, a replay shakes the same.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "traumaDecay",
@@ -2804,6 +2919,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much trauma drains per second.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeOffset",
@@ -2818,6 +2934,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest offset at trauma 1, as a fraction of the view height.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeRoll",
@@ -2832,6 +2949,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest roll at trauma 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeFrequency",
@@ -2846,6 +2964,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast the shake moves.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "punch",
@@ -2860,6 +2979,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A zoom punch in progress (og.camera.punch): the view is narrowed by this fraction, decaying by punchDecay. Visual only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "punchDecay",
@@ -2874,6 +2994,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast a punch springs back (exponential, per second).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "kick",
@@ -2888,6 +3009,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A kick in progress (og.camera.kick): the view is offset by this, decaying by kickDecay. Visual only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "kickDecay",
@@ -2902,6 +3024,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast a kick returns (exponential, per second).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneActive",
@@ -2916,6 +3039,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneMin",
@@ -2930,6 +3054,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The zone the view keeps inside: its bottom-left corner.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneMax",
@@ -2944,6 +3069,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its top-right corner.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneFromActive",
@@ -2958,6 +3084,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneFromMin",
@@ -2972,6 +3099,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The zone being left: its bottom-left corner.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneFromMax",
@@ -2986,6 +3114,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its top-right corner.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneScroll",
@@ -3000,6 +3129,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far the transition has come, 0 to 1 (eased; 1 is settled).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoneScrollTime",
@@ -3014,6 +3144,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How long the transition takes: the entered zone's scrollTime.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3035,6 +3166,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The orbited point, relative to the entity's position.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "distance",
@@ -3049,6 +3181,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far the camera is from the orbited point, as three.js OrbitControls' distance.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "minDistance",
@@ -3063,6 +3196,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The closest the wheel zooms in, as three.js OrbitControls.minDistance.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxDistance",
@@ -3077,6 +3211,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The farthest the wheel zooms out, as three.js OrbitControls.maxDistance.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "azimuth",
@@ -3091,6 +3226,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The horizontal angle about +Y; 0 puts the camera on the +Z side of the point.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "polar",
@@ -3105,6 +3241,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The angle from +Y: near 0 looks straight down, half pi is level with the point.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "minPolarAngle",
@@ -3119,6 +3256,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The smallest polar angle a drag reaches, as three.js OrbitControls.minPolarAngle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxPolarAngle",
@@ -3133,6 +3271,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest polar angle a drag reaches, as three.js OrbitControls.maxPolarAngle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rotateSpeed",
@@ -3147,6 +3286,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Drag sensitivity, as three.js OrbitControls.rotateSpeed: at 1, dragging the play surface's height turns a full circle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zoomSpeed",
@@ -3161,6 +3301,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Wheel sensitivity, as three.js OrbitControls.zoomSpeed: at 1, 100 CSS pixels of wheel change the distance by a tenth.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "autoRotate",
@@ -3175,6 +3316,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Turn about the point on its own while not dragged, as three.js OrbitControls.autoRotate.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "autoRotateSpeed",
@@ -3189,6 +3331,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast autoRotate turns.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "enabled",
@@ -3203,6 +3346,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Read the pointer and the wheel; false keeps only autoRotate and the fields' own values.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dragging",
@@ -3217,6 +3361,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Controller state: a left-button drag that started on the play surface is in progress.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pointer",
@@ -3231,6 +3376,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Controller state: where the pointer was on the previous tick of a drag.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3252,6 +3398,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lookOffset",
@@ -3266,6 +3413,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The point the camera looks at, relative to the entity's position.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "followRotation",
@@ -3280,6 +3428,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Turn the offset with the entity's rotation, so the camera stays behind it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "smoothTime",
@@ -3294,6 +3443,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3315,6 +3465,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the camera centre sits relative to the entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "deadZone",
@@ -3329,6 +3480,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Half the width and height of the box around the camera centre inside which the entity moves without moving the camera.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "smoothTime",
@@ -3343,6 +3495,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Roughly how long the camera takes to catch up; 0 snaps it every tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "smoothTimeY",
@@ -3357,6 +3510,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The same for y alone (a platformer follows jumps more lazily than runs); below 0 uses smoothTime.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lookAhead",
@@ -3371,6 +3525,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Lead the entity by its velocity times this many seconds (0: no look-ahead).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lookAheadMax",
@@ -3385,6 +3540,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest lead along x and y.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lookAheadSmoothing",
@@ -3399,6 +3555,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Roughly how long the lead takes to turn when the entity does.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lead",
@@ -3413,6 +3570,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Controller state: the current lead.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "last",
@@ -3427,6 +3585,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Controller state: the entity's position on the previous tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "clamp",
@@ -3441,6 +3600,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Keep the camera centre between boundsMin and boundsMax.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "boundsMin",
@@ -3455,6 +3615,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The smallest x and y the camera centre takes with clamp.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "boundsMax",
@@ -3469,6 +3630,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest x and y the camera centre takes with clamp.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3490,6 +3652,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The bottom-left corner.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "max",
@@ -3504,6 +3667,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The top-right corner.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "priority",
@@ -3518,6 +3682,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Higher wins where zones overlap.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "scrollTime",
@@ -3532,6 +3697,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Seconds the view takes to scroll from the zone the entity left into this one (a room transition, eased in and out); 0 jumps at once. Visual only: the camera resource records the transition, so replays scroll the same.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3553,6 +3719,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How many of p0...p7 the rail uses (2 to 8).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p0",
@@ -3567,6 +3734,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 0.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p1",
@@ -3581,6 +3749,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p2",
@@ -3595,6 +3764,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 2.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p3",
@@ -3609,6 +3779,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 3.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p4",
@@ -3623,6 +3794,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 4.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p5",
@@ -3637,6 +3809,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 5.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p6",
@@ -3651,6 +3824,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 6.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p7",
@@ -3665,6 +3839,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rail point 7.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "smoothTime",
@@ -3679,6 +3854,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Roughly how long the camera takes to catch up along the rail; 0 snaps.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3700,6 +3876,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The geometry.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "material",
@@ -3714,6 +3891,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The material.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadow",
@@ -3728,6 +3906,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cast shadows, as three.js Object3D.castShadow.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "receiveShadow",
@@ -3742,6 +3921,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Receive shadows, as three.js Object3D.receiveShadow.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -3756,6 +3936,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether it is drawn.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flash",
@@ -3770,6 +3951,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flashColor",
@@ -3784,6 +3966,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The flash's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "materialLayer",
@@ -3798,6 +3981,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The texture-array layer this mesh's material reads (StandardMaterialDesc.mapArray and normalMapArray), in place of the material's mapLayer and normalMapLayer: one material, one draw, a layer per mesh (a tile set, a crowd's skins). -1 keeps the material's layers; a material without arrays ignores it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3819,6 +4003,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The light's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "intensity",
@@ -3833,6 +4018,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The radiance multiplier, as three.js DirectionalLight.intensity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadow",
@@ -3847,6 +4033,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cast shadows through three cascades, as three.js Light.castShadow.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadowDistance",
@@ -3861,6 +4048,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadowSoftness",
@@ -3875,6 +4063,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "cascadeBlend",
@@ -3889,6 +4078,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3910,6 +4100,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The light's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "intensity",
@@ -3924,6 +4115,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The radiance at one metre.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "distance",
@@ -3938,6 +4130,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the light reaches zero, as three.js PointLight.distance (never infinite here).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadow",
@@ -3952,6 +4145,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -3973,6 +4167,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The light's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "intensity",
@@ -3987,6 +4182,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The radiance at one metre on the axis.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "distance",
@@ -4001,6 +4197,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the light reaches zero.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "angle",
@@ -4015,6 +4212,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The half-angle of the outer cone, as three.js SpotLight.angle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "penumbra",
@@ -4029,6 +4227,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadow",
@@ -4043,6 +4242,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cast a shadow map.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -4064,6 +4264,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sky",
@@ -4078,6 +4279,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bloom",
@@ -4092,6 +4294,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Light above the threshold bleeds into its surroundings.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bloomThreshold",
@@ -4106,6 +4309,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Brightness after exposure where bloom starts; 1 is display white.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bloomKnee",
@@ -4120,6 +4324,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Softens the threshold over threshold plus or minus knee; 0 is a hard cut.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bloomIntensity",
@@ -4134,6 +4339,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the blurred light is added back.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "autoExposure",
@@ -4148,6 +4354,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "adaptSpeedUp",
@@ -4162,6 +4369,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "adaptSpeedDown",
@@ -4176,6 +4384,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "toneMapped",
@@ -4190,6 +4399,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "toneMapping",
@@ -4204,6 +4414,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none.",
                 variants: &["aces", "agx", "none"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "exposure",
@@ -4218,6 +4429,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "decalAtlas",
@@ -4232,6 +4444,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -4253,6 +4466,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The map from og.load.environment; 0 lights by the sky.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "intensity",
@@ -4267,6 +4481,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rotation",
@@ -4281,6 +4496,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "background",
@@ -4295,6 +4511,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "backgroundIntensity",
@@ -4309,6 +4526,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -4330,6 +4548,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "aoRadius",
@@ -4344,6 +4563,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The world-space radius searched for occluders.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "aoIntensity",
@@ -4358,6 +4578,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "0 none, 1 full; above 1 exaggerates.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "aoMethod",
@@ -4372,6 +4593,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The algorithm.",
                 variants: &["auto", "gtao", "ssao"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outline",
@@ -4386,6 +4608,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineColor",
@@ -4400,6 +4623,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The line colour, linear.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineWidth",
@@ -4414,6 +4638,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Line width in pixels, drawn inside the silhouette.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineDepthThreshold",
@@ -4428,6 +4653,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The relative depth step that counts as a silhouette (0.04 is 4 %).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineNormalThreshold",
@@ -4442,6 +4668,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The normal change that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthOfField",
@@ -4456,6 +4683,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Bokeh depth of field: pixels away from the focus distance blur into discs.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dofFocusDistance",
@@ -4470,6 +4698,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The distance from the camera that is sharp.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dofFocusRange",
@@ -4484,6 +4713,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The half-width of the sharp band around it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dofMaxBlur",
@@ -4498,6 +4728,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dofFalloff",
@@ -4512,6 +4743,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dofQuality",
@@ -4526,6 +4758,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Taps per pixel.",
                 variants: &["low", "high"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motionBlur",
@@ -4540,6 +4773,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Per-object and camera motion blur along the screen-space velocity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motionBlurShutter",
@@ -4554,6 +4788,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The shutter as a fraction of the frame (0.5 is a 180 degree shutter).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motionBlurSamples",
@@ -4568,6 +4803,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Taps along the velocity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motionBlurMaxPixels",
@@ -4582,6 +4818,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The longest blur in pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRays",
@@ -4596,6 +4833,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRaysIntensity",
@@ -4610,6 +4848,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How bright the shafts are.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRaysDecay",
@@ -4624,6 +4863,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast the rays fade along their length.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRaysDensity",
@@ -4638,6 +4878,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far towards the sun each ray samples (a fraction of the distance).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRaysTint",
@@ -4652,6 +4893,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A linear tint on the light the rays carry.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRaysSamples",
@@ -4666,6 +4908,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Taps per ray.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "godRaysThreshold",
@@ -4680,6 +4923,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Sky brightness (linear, before exposure) below which the sky carries no rays.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "glow",
@@ -4694,6 +4938,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "glowIntensity",
@@ -4708,6 +4953,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the blurred glow is added back.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lut",
@@ -4722,6 +4968,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lutIntensity",
@@ -4736,6 +4983,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "0 leaves the image as tone mapped, 1 applies the table fully.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "vignette",
@@ -4750,6 +4998,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Darkened (or tinted) edges of the frame.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "vignetteIntensity",
@@ -4764,6 +5013,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "0 none, 1 black corners.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "vignetteRadius",
@@ -4778,6 +5028,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where darkening starts, as a fraction of the half-diagonal.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "vignetteSmoothness",
@@ -4792,6 +5043,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The width of the fade.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "vignetteColor",
@@ -4806,6 +5058,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The linear colour the edges move towards.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "chromaticAberration",
@@ -4820,6 +5073,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "filmGrain",
@@ -4834,6 +5088,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "filmGrainSize",
@@ -4848,6 +5103,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The grain size in pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flash",
@@ -4862,6 +5118,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flashColor",
@@ -4876,6 +5133,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The flash's linear display colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeTrauma",
@@ -4890,6 +5148,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Camera shake held at a fixed level (decay it yourself): 0 none, 1 the most (the amplitude is trauma squared). Prefer og.camera.shake, which decays by itself; the frame shakes by the larger of the two. Smooth value noise by the tick, so a replay shakes the same. Visual only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeMaxOffset",
@@ -4904,6 +5163,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest offset at trauma 1, as a fraction of the view height.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeMaxRoll",
@@ -4918,6 +5178,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest roll at trauma 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeFrequency",
@@ -4932,6 +5193,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast the shake moves.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shakeSeed",
@@ -4946,6 +5208,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The shake's noise seed.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -4967,6 +5230,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pixelUpscale",
@@ -4981,6 +5245,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pixelSnap",
@@ -4995,6 +5260,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "posterize",
@@ -5009,6 +5275,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "palette",
@@ -5023,6 +5290,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dither",
@@ -5037,6 +5305,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion.",
                 variants: &["none", "bayer2", "bayer4", "bayer8", "blueNoise", "interleavedGradient"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ditherStrength",
@@ -5051,6 +5320,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ditherScale",
@@ -5065,6 +5335,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The size of one dither cell in logical pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "halftone",
@@ -5079,6 +5350,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Halftone print: tones become dots on a rotated grid, larger where the image is darker; 0 is off, 1 dots only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "halftoneSize",
@@ -5093,6 +5365,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The dot grid's pitch in logical pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "halftoneAngle",
@@ -5107,6 +5380,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The dot grid's angle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "halftoneColor",
@@ -5121,6 +5395,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The ink of the dots (linear).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "halftoneSpace",
@@ -5135,6 +5410,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots.",
                 variants: &["screen", "surface", "object"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatching",
@@ -5149,6 +5425,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatchingScale",
@@ -5163,6 +5440,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The spacing of hatch lines in logical pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatchingLevels",
@@ -5177,6 +5455,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatchingAngle",
@@ -5191,6 +5470,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The direction of the first stroke set.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatchingColor",
@@ -5205,6 +5485,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The stroke colour (linear): graphite, sepia or ink.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatchingSpace",
@@ -5219,6 +5500,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same strokes in each instance's own space, so a moving or turning object carries its strokes.",
                 variants: &["screen", "surface", "object"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hatchingDepth",
@@ -5233,6 +5515,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintRadius",
@@ -5247,6 +5530,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintAnisotropy",
@@ -5261,6 +5545,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintEdgeDarkening",
@@ -5275,6 +5560,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintBleed",
@@ -5289,6 +5575,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Colour bleeding across edges into its neighbours, wet in wet; 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintCanvas",
@@ -5303,6 +5590,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintCanvasStrength",
@@ -5317,6 +5605,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much the canvas texture modulates the frame: 0 none, 1 its full grain.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintCanvasScale",
@@ -5331,6 +5620,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintCanvasSpace",
@@ -5345,6 +5635,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls; object, in each instance's own space, so a moving object carries its grain.",
                 variants: &["screen", "surface", "object"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "paintCanvasWorldScale",
@@ -5359,6 +5650,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ink",
@@ -5373,6 +5665,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "inkThreshold",
@@ -5387,6 +5680,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "inkWidth",
@@ -5401,6 +5695,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The line width in logical pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "inkColor",
@@ -5415,6 +5710,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The line colour (linear).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "inkDepth",
@@ -5429,6 +5725,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "inkDepthThreshold",
@@ -5443,6 +5740,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "inkNormalThreshold",
@@ -5457,6 +5755,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBands",
@@ -5471,6 +5770,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey), for layered-silhouette and stage looks; 0 is off. For side and three-quarter views, where the depth runs across the frame: seen from above the play area lies at one depth and falls in one band.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBandsNear",
@@ -5485,6 +5785,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the first band starts.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBandsFar",
@@ -5499,6 +5800,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBandsNearColor",
@@ -5513,6 +5815,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The nearest band's colour (linear, before exposure).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBandsFarColor",
@@ -5527,6 +5830,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The farthest band's colour (linear, before exposure).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBandsFlatten",
@@ -5541,6 +5845,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "vertexSnap",
@@ -5555,6 +5860,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "affineTexturing",
@@ -5569,6 +5875,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthBits",
@@ -5583,6 +5890,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -5604,6 +5912,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gradientMap",
@@ -5618,6 +5927,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadowTint",
@@ -5632,6 +5942,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadowTintAmount",
@@ -5646,6 +5957,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far shadowed light moves towards shadowTint; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rimColor",
@@ -5660,6 +5972,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rim (fresnel) light for materials without their own (linear).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rimIntensity",
@@ -5674,6 +5987,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The rim light's strength; 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rimPower",
@@ -5688,6 +6002,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How tight the rim is (higher: thinner).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineColor",
@@ -5702,6 +6017,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The outline colour for materials without their own (linear).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineWidth",
@@ -5716,6 +6032,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outlineDistance",
@@ -5730,6 +6047,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flatShading",
@@ -5744,6 +6062,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -5765,6 +6084,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Light the layers.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ambient",
@@ -5779,6 +6099,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Light everywhere (0 is darkness outside the lights).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "minLayer",
@@ -5793,6 +6114,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The lowest lit sprite layer.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxLayer",
@@ -5807,6 +6129,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The highest lit sprite layer (above it: UI and HUD layers stay unlit).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "resolution",
@@ -5821,6 +6144,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The light map's resolution as a fraction of the target.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -5842,6 +6166,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The light's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "intensity",
@@ -5856,6 +6181,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The brightness at the centre.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -5870,6 +6196,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the light reaches zero, in world units.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "falloff",
@@ -5884,6 +6211,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The exponent of the fade.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sourceRadius",
@@ -5898,6 +6226,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The light's own size: larger gives softer shadows.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadows",
@@ -5912,6 +6241,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Occluders between the light and a pixel shade it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -5933,6 +6263,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its width in world units.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "height",
@@ -5947,6 +6278,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its height in world units.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -5968,6 +6300,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A linear colour multiplied with the atlas.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -5982,6 +6315,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The decal's opacity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "uvMin",
@@ -5996,6 +6330,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The atlas region's top-left corner, v down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "uvMax",
@@ -6010,6 +6345,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The atlas region's bottom-right corner, v down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "emissive",
@@ -6024,6 +6360,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Linear light added where the decal covers (glowing runes, lava).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "roughness",
@@ -6038,6 +6375,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The surface roughness under the decal; -1 keeps the surface's.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "angleFade",
@@ -6052,6 +6390,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -6066,6 +6405,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether it is drawn.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -6087,6 +6427,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The emitter asset; 0 draws nothing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "seed",
@@ -6101,6 +6442,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The random seed: systems with different seeds differ.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "startTick",
@@ -6115,6 +6457,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The tick emission started: write og.world tick when spawning a one-shot burst.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stopTick",
@@ -6129,6 +6472,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -6143,6 +6487,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether it is drawn (a hidden system loses its particles).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -6164,6 +6509,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How long a position stays in the trail.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "minDistance",
@@ -6178,6 +6524,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A new point is kept when the head has moved this far.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "widthStart",
@@ -6192,6 +6539,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The width at the head.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "widthEnd",
@@ -6206,6 +6554,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The width at the tail.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -6220,6 +6569,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The linear colour at the head; above 1 blooms.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -6234,6 +6584,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The alpha at the head.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "colorEnd",
@@ -6248,6 +6599,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The linear colour at the tail.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacityEnd",
@@ -6262,6 +6614,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The alpha at the tail.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "texture",
@@ -6276,6 +6629,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A texture along the strip; 0 is solid.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "uvTile",
@@ -6290,6 +6644,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The texture repeats every this many world units; 0 stretches it once over the length.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "blend",
@@ -6304,6 +6659,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Additive or alpha blended.",
                 variants: &["additive", "alpha"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layered",
@@ -6318,6 +6674,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -6332,6 +6689,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With layered: the sprite layer it is drawn in, before that layer's sprites.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -6353,6 +6711,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The far end, in world space.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "width",
@@ -6367,6 +6726,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The beam's width.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -6381,6 +6741,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The linear colour; above 1 blooms.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -6395,6 +6756,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The alpha.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "texture",
@@ -6409,6 +6771,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A texture along the beam; 0 is solid.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tile",
@@ -6423,6 +6786,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Texture repeats per world unit along the beam.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "scroll",
@@ -6437,6 +6801,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Texture scroll in repeats per second.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "segments",
@@ -6451,6 +6816,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Segments: 1 is straight, more let jitter bend it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jitter",
@@ -6465,6 +6831,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Sideways jitter in world units, new every tick (lightning).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "seed",
@@ -6479,6 +6846,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The jitter's seed.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "blend",
@@ -6493,6 +6861,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Additive or alpha blended.",
                 variants: &["additive", "alpha"],
+                capacity: 0,
             },
         ],
     },
@@ -6514,6 +6883,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The texture (og.load.texture); 0 draws a solid quad of the colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "array",
@@ -6528,6 +6898,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "arrayLayer",
@@ -6542,6 +6913,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "width",
@@ -6556,6 +6928,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its width in world units (times Transform.scale.x).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "height",
@@ -6570,6 +6943,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its height in world units (times Transform.scale.y).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "anchor",
@@ -6584,6 +6958,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -6598,6 +6973,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A linear colour multiplied with the texture.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -6612,6 +6988,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The alpha.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "uvMin",
@@ -6626,6 +7003,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The texture region's top-left corner, v down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "uvMax",
@@ -6640,6 +7018,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The texture region's bottom-right corner, v down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -6654,6 +7033,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw order among sprites, tiles and text; higher draws on top.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sortY",
@@ -6668,6 +7048,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flipX",
@@ -6682,6 +7063,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Mirror left to right (a character facing left).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flipY",
@@ -6696,6 +7078,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Mirror top to bottom.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flash",
@@ -6710,6 +7093,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flashColor",
@@ -6724,6 +7108,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The flash's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "glow",
@@ -6738,6 +7123,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Strength in the 2D glow buffer (PostEffects.glow); 0 none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "blend",
@@ -6752,6 +7138,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Alpha or additive.",
                 variants: &["alpha", "additive"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadow",
@@ -6766,6 +7153,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Block 2D light (Lighting2D) with the sprite's rectangle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sliceX",
@@ -6780,6 +7168,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Nine-slice: the left and right insets in texture pixels of the region (0 0 with sliceY 0 0 draws it whole). World panels, health bars, speech bubbles.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sliceY",
@@ -6794,6 +7183,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Nine-slice: the top and bottom insets in texture pixels.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sliceScale",
@@ -6808,6 +7198,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Nine-slice: world units per texture pixel of the insets.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadow",
@@ -6822,6 +7213,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadowSize",
@@ -6836,6 +7228,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadowOffset",
@@ -6850,6 +7243,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The blob's centre relative to the anchor.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dropShadow",
@@ -6864,6 +7258,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground already lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dropShadowHeight",
@@ -6878,6 +7273,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "toneMapped",
@@ -6892,6 +7288,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "As three.js Material.toneMapped: false keeps the sprite's colours as given, outside exposure, bloom, fog and the tone curve, still placed and depth tested in the world (SpriteDesc.toneMapped): speech bubbles and markers that must not blow out at dusk. Alpha blending only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -6906,6 +7303,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether it is drawn.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -6927,6 +7325,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How many ghosts.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "interval",
@@ -6941,6 +7340,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Ticks between ghosts.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -6955,6 +7355,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The newest ghost's alpha.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -6969,6 +7370,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A linear tint (above 1 with additive, a glow).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "additive",
@@ -6983,6 +7385,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Add the ghosts instead of blending them.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "active",
@@ -6997,6 +7400,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Record new ghosts; false lets the existing ones fade out.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7018,6 +7422,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The glTF asset.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7039,6 +7444,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The handle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "path",
@@ -7053,6 +7459,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The path it was loaded from.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7074,6 +7481,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The handle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "path",
@@ -7088,6 +7496,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The path it was loaded from.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reason",
@@ -7102,6 +7511,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Why, naming the fix.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7123,6 +7533,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "Kind",
                 doc: "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mass",
@@ -7137,6 +7548,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Mass; 0 derives it from the collider's density and volume.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "linearDamping",
@@ -7151,6 +7563,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast linear velocity decays (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "angularDamping",
@@ -7165,6 +7578,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast angular velocity decays (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravityScale",
@@ -7179,6 +7593,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies Physics.gravity for this body: 0 floats, 1 is normal.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lock",
@@ -7193,6 +7608,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ccd",
@@ -7207,6 +7623,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7228,6 +7645,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "Shape",
                 doc: "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "size",
@@ -7242,6 +7660,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Full extents of a box, as three.js BoxGeometry(width, height, depth).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -7256,6 +7675,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Radius of a sphere, circle, capsule or cylinder.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "height",
@@ -7270,6 +7690,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mesh",
@@ -7284,6 +7705,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "offset",
@@ -7298,6 +7720,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Position of the shape relative to the entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rotation",
@@ -7312,6 +7735,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Rotation of the shape relative to the entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "friction",
@@ -7326,6 +7750,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "restitution",
@@ -7340,6 +7765,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "density",
@@ -7354,6 +7780,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Density, used when RigidBody.mass is 0.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sensor",
@@ -7368,6 +7795,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "1 makes this a sensor: it reports SensorEntered and SensorExited and pushes nothing; 0 a solid.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layers",
@@ -7382,6 +7810,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The collision layers this collider is on, as bits.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mask",
@@ -7396,6 +7825,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7417,6 +7847,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The linear velocity (2D uses x and y).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "angular",
@@ -7431,6 +7862,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The angular velocity about each axis (2D uses z).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7452,6 +7884,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "Profile",
                 doc: "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravity",
@@ -7466,6 +7899,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The acceleration of every dynamic body, times its gravityScale; 2D uses x and y.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "substeps",
@@ -7480,6 +7914,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "solverIterations",
@@ -7494,6 +7929,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Solver iterations per step.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "restSpeed",
@@ -7508,6 +7944,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7529,6 +7966,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the lower id.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "b",
@@ -7543,6 +7981,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the higher id.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "point",
@@ -7557,6 +7996,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The deepest contact point in world space (z is 0 in 2D).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "normal",
@@ -7571,6 +8011,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The contact normal, from a towards b.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7592,6 +8033,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the lower id.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "b",
@@ -7606,6 +8048,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the higher id.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7627,6 +8070,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity whose collider is the sensor.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "other",
@@ -7641,6 +8085,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity that entered it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7662,6 +8107,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity whose collider is the sensor.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "other",
@@ -7676,6 +8122,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity that left it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7697,6 +8144,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the lower id.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "b",
@@ -7711,6 +8159,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the higher id.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sensor",
@@ -7725,6 +8174,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "0 for two solids; an overlap with a sensor otherwise: 1 a is the sensor, 2 b is, 3 both are.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -7746,6 +8196,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "Kind",
                 doc: "JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "body",
@@ -7760,6 +8211,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The first body; 0 is this entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "other",
@@ -7774,6 +8226,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The second body; 0 joins the first one to the world at `otherAnchor`.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "anchor",
@@ -7788,6 +8241,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the joint sits on the first body, in its frame.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "otherAnchor",
@@ -7802,6 +8256,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where it sits on the second body, in its frame (a world point without `other`).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "axis",
@@ -7816,6 +8271,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The hinge or slide axis in the first body's frame (a hinge in 2D turns about z).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "limits",
@@ -7830,6 +8286,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether `min`..`max` bound the hinge angle (rad) or the slide (m).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "min",
@@ -7844,6 +8301,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The lower limit: radians for a hinge, metres for a slider.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "max",
@@ -7858,6 +8316,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The upper limit.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motor",
@@ -7872,6 +8331,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motorTarget",
@@ -7886,6 +8346,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The motor's target speed (rad/s, m/s) or angle or position (rad, m).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motorStiffness",
@@ -7900,6 +8361,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A position motor's stiffness; a velocity motor's strength.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motorDamping",
@@ -7914,6 +8376,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A position motor's damping.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "motorMaxForce",
@@ -7928,6 +8391,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The most force (or torque) the motor applies; 0 is unbounded.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "restLength",
@@ -7942,6 +8406,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A spring's rest length.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stiffness",
@@ -7956,6 +8421,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A spring's stiffness (N/m).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "damping",
@@ -7970,6 +8436,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A spring's damping (N·s/m).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "length",
@@ -7984,6 +8451,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A rope's longest distance between the anchors.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "collide",
@@ -7998,6 +8466,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether the two bodies still collide with each other.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "value",
@@ -8012,6 +8481,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -8033,6 +8503,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jump",
@@ -8047,6 +8518,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumpSpeed",
@@ -8061,6 +8533,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The upward speed of a jump.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravityScale",
@@ -8075,6 +8548,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies og.Physics.gravity; 0 for top-down movement in any direction.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxSlope",
@@ -8089,6 +8563,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The steepest slope it walks up.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stepHeight",
@@ -8103,6 +8578,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The highest step it climbs without jumping (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "snapDistance",
@@ -8117,6 +8593,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far below it the ground still holds it (stairs down, slopes): 0 lets it leave every edge.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "skin",
@@ -8131,6 +8608,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The gap kept between it and every surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "coyoteTime",
@@ -8145,6 +8623,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "After leaving an edge, a jump still starts within this time.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxFallSpeed",
@@ -8159,6 +8638,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fastest fall.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pushBodies",
@@ -8173,6 +8653,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Push dynamic bodies it walks into.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "grounded",
@@ -8187,6 +8668,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: standing on walkable ground after the step.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sliding",
@@ -8201,6 +8683,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: sliding down a slope steeper than maxSlope.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "velocity",
@@ -8215,6 +8698,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the velocity it moved at this tick (the platform's carry included).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "groundNormal",
@@ -8229,6 +8713,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the ground's normal (zero in the air).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "coyote",
@@ -8243,6 +8728,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: seconds left in which a jump may still start (coyote time).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumpWasHeld",
@@ -8257,6 +8743,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: `jump` as the last step saw it (a jump starts on its rising edge).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ground",
@@ -8271,6 +8758,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the entity it stands on (0 in the air); a moving one carries it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -8292,6 +8780,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The run input, -1 (left) to 1 (right). Set it every tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jump",
@@ -8306,6 +8795,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "down",
@@ -8320,6 +8810,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Held to drop through a one-way platform.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxSpeed",
@@ -8334,6 +8825,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The top running speed.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "acceleration",
@@ -8348,6 +8840,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast it reaches maxSpeed on the ground.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "deceleration",
@@ -8362,6 +8855,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast it stops on the ground without input.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "airAcceleration",
@@ -8376,6 +8870,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Acceleration in the air.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "airDeceleration",
@@ -8390,6 +8885,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Deceleration in the air without input.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumpHeight",
@@ -8404,6 +8900,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How high a full jump goes.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "timeToApex",
@@ -8418,6 +8915,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How long a full jump takes to reach its height (sets gravity and the jump speed).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fallGravity",
@@ -8432,6 +8930,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gravity multiplier while falling (snappier landings above 1).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumpCut",
@@ -8446,6 +8945,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gravity multiplier while rising with jump released (variable jump height; 1 disables it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "apexGravity",
@@ -8460,6 +8960,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gravity multiplier near the apex while jump is held (hang time; 1 disables it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "apexThreshold",
@@ -8474,6 +8975,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The vertical speed below which the apex multiplier applies.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxFallSpeed",
@@ -8488,6 +8990,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fastest fall.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "coyoteTime",
@@ -8502,6 +9005,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "After running off an edge, a jump still starts within this time.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumpBuffer",
@@ -8516,6 +9020,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A jump pressed this long before landing starts on landing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "airJumps",
@@ -8530,6 +9035,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Extra jumps in the air (1: a double jump).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wallJumps",
@@ -8544,6 +9050,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Slide down walls it pushes against (and jump off them).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wallSlideSpeed",
@@ -8558,6 +9065,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fastest slide down a wall.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wallJump",
@@ -8572,6 +9080,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A wall jump's velocity: x away from the wall, y up.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wallJumpLock",
@@ -8586,6 +9095,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "After a wall jump, the run input is ignored for this long (so it leaves the wall).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "oneWayLayers",
@@ -8600,6 +9110,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The collision layers that are one-way platforms (solid from above), as bits.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "cornerCorrection",
@@ -8614,6 +9125,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far a rising jump is nudged sideways past a ceiling corner (0: never).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxSlope",
@@ -8628,6 +9140,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The steepest slope it runs up.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "snapDistance",
@@ -8642,6 +9155,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far below it the ground still holds it (slopes, small drops).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "skin",
@@ -8656,6 +9170,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The gap kept between it and every surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "grounded",
@@ -8670,6 +9185,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: standing on ground after the step.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "onWall",
@@ -8684,6 +9200,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: -1 sliding on a wall to its left, 1 to its right, 0 none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "facing",
@@ -8698,6 +9215,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: -1 facing left, 1 right (the last run direction).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "velocity",
@@ -8712,6 +9230,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the velocity after the step (the platform's carry excluded).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumping",
@@ -8726,6 +9245,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: rising from a jump (until the apex or a release cut).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "airJumpsLeft",
@@ -8740,6 +9260,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: air jumps left before landing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "coyote",
@@ -8754,6 +9275,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: seconds of coyote time left.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buffer",
@@ -8768,6 +9290,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: seconds a buffered jump press stays valid.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wallLock",
@@ -8782,6 +9305,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: seconds the run input stays locked after a wall jump.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dropTime",
@@ -8796,6 +9320,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: seconds one-way platforms stay passable after dropping through.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jumpWasHeld",
@@ -8810,6 +9335,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: `jump` as the last step saw it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ground",
@@ -8824,6 +9350,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the entity it stands on (0 in the air); a moving one carries it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -8845,6 +9372,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The character.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "kind",
@@ -8859,6 +9387,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -8873,6 +9402,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The vertical speed at the moment (a landing's impact speed is negative).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -8894,6 +9424,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The accelerator, -1 (reverse) to 1. Set it every tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "steer",
@@ -8908,6 +9439,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The steering, -1 (left) to 1 (right); 3D only.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "brake",
@@ -8922,6 +9454,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The brake, 0 to 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wheelBase",
@@ -8936,6 +9469,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The distance between the front and rear axles.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "track",
@@ -8950,6 +9484,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The distance between the left and right wheels (3D).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wheelRadius",
@@ -8964,6 +9499,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The wheels' radius.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mountHeight",
@@ -8978,6 +9514,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The height of the wheel mounts below the chassis centre.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "suspensionRest",
@@ -8992,6 +9529,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The suspension's length at rest.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "suspensionTravel",
@@ -9006,6 +9544,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far the suspension compresses or extends from rest.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "suspensionStiffness",
@@ -9020,6 +9559,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The suspension's stiffness.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "suspensionDamping",
@@ -9034,6 +9574,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The suspension's damping.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "grip",
@@ -9048,6 +9589,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The tyres' grip (3D: the friction slip; 2D: the wheels' friction).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "engineForce",
@@ -9062,6 +9604,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxSpeed",
@@ -9076,6 +9619,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The top speed: the engine's force fades out towards it (throttle against the motion brakes first).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "brakeForce",
@@ -9090,6 +9634,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The brakes' force at full brake.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxSteer",
@@ -9104,6 +9649,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The front wheels' largest steering angle (3D).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "drive",
@@ -9118,6 +9664,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wheelMass",
@@ -9132,6 +9679,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The wheels' mass (2D: the wheel bodies; 3D ignores it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -9146,6 +9694,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the forward speed (m/s; negative reversing).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "contacts",
@@ -9160,6 +9709,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: how many wheels touch the ground.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -9181,6 +9731,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The number of links (points minus one).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "length",
@@ -9195,6 +9746,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The rope's length at rest.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "offset",
@@ -9209,6 +9761,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The start's offset from the entity's position (world axes).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "end",
@@ -9223,6 +9776,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity the far end is tied to; 0 leaves it free.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "endOffset",
@@ -9237,6 +9791,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The far end's offset from `end`'s position.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "iterations",
@@ -9251,6 +9806,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Constraint passes per step: more is stiffer, at more cost.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "damping",
@@ -9265,6 +9821,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of its velocity each point keeps per tick (1: none lost).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravityScale",
@@ -9279,6 +9836,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies og.Physics.gravity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wind",
@@ -9293,6 +9851,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A steady acceleration (wind).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -9307,6 +9866,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The thickness it collides at (0: no collision).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "width",
@@ -9321,6 +9881,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The drawn width.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -9335,6 +9896,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The drawn linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -9349,6 +9911,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether the renderer draws it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -9370,6 +9933,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Points across.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rows",
@@ -9384,6 +9948,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Points down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "spacing",
@@ -9398,6 +9963,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The rest distance between neighbouring points.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pins",
@@ -9412,6 +9978,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Which points are pinned, a sum of PIN_* bits (1 top row, 2 top corners, 4 left column, 8 top rings).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "iterations",
@@ -9426,6 +9993,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Constraint passes per step.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "damping",
@@ -9440,6 +10008,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of its velocity each point keeps per tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravityScale",
@@ -9454,6 +10023,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies og.Physics.gravity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wind",
@@ -9468,6 +10038,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A steady acceleration (wind); the cloth flutters with it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gust",
@@ -9482,6 +10053,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much the wind varies over the cloth and the tick (0: steady).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -9496,6 +10068,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The thickness it collides at (0: no collision).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "thickness",
@@ -9510,6 +10083,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "substeps",
@@ -9524,6 +10098,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "friction",
@@ -9538,6 +10113,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "material",
@@ -9552,6 +10128,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -9566,6 +10143,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether the renderer draws it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -9587,6 +10165,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How many particles (spawned when the component appears or count changes).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "size",
@@ -9601,6 +10180,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The spawn box, centred on the entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bounds",
@@ -9615,6 +10195,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The container around the entity (0 0: none; colliders still hold it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -9629,6 +10210,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The interaction radius: particles closer than this push and drag each other.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "restDensity",
@@ -9643,6 +10225,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The density it settles at (neighbours within radius, weighted).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stiffness",
@@ -9657,6 +10240,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The pressure's strength (above about 0.15 it gets springy, then unstable).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "nearStiffness",
@@ -9671,6 +10255,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The near pressure's strength (keeps particles apart, gives surface tension).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "viscosity",
@@ -9685,6 +10270,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Linear viscosity (honey above 1).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "group",
@@ -9699,6 +10285,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "density",
@@ -9713,6 +10300,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mixing",
@@ -9727,6 +10315,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravityScale",
@@ -9741,6 +10330,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies og.Physics.gravity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "substeps",
@@ -9755,6 +10345,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Simulation steps per tick.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "seed",
@@ -9769,6 +10360,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The seed of the spawn jitter.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -9783,6 +10375,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The surface's linear colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -9797,6 +10390,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The surface's opacity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "blobScale",
@@ -9811,6 +10405,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The drawn size of each particle's blob (times radius).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "threshold",
@@ -9825,6 +10420,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The field value where the surface starts (higher: thinner, separate drops).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -9839,6 +10435,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sprite layer it is drawn on.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -9853,6 +10450,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether the renderer draws it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -9874,6 +10472,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "size",
@@ -9888,6 +10487,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The spawn box, centred on the entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bounds",
@@ -9902,6 +10502,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -9916,6 +10517,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "restDensity",
@@ -9930,6 +10532,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The density it settles at (neighbours within radius, weighted).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stiffness",
@@ -9944,6 +10547,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The pressure's strength (above about 0.05 it jitters, then springs apart).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "nearStiffness",
@@ -9958,6 +10562,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The near pressure's strength (keeps particles apart, gives surface tension).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "viscosity",
@@ -9972,6 +10577,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Linear viscosity (it also calms the surface; honey above 1).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "group",
@@ -9986,6 +10592,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone); 0 keeps the fluid to itself.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "density",
@@ -10000,6 +10607,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mixing",
@@ -10014,6 +10622,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "gravityScale",
@@ -10028,6 +10637,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies og.Physics.gravity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "substeps",
@@ -10042,6 +10652,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Simulation steps per tick (each costs a full pass over the particles).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "seed",
@@ -10056,6 +10667,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The seed of the spawn and emitter jitter.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxCount",
@@ -10070,6 +10682,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The most particles alive at once (the emitter stops there).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "emitRate",
@@ -10084,6 +10697,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Particles the emitter adds per second (0: no emitter).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "emitOffset",
@@ -10098,6 +10712,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the emitter is, from the entity (world axes).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "emitVelocity",
@@ -10112,6 +10727,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The velocity emitted particles start with.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "emitRadius",
@@ -10126,6 +10742,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The half-size of the cube new particles appear in around the emitter.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sinkOffset",
@@ -10140,6 +10757,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sink's centre, from the entity (world axes).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sinkSize",
@@ -10154,6 +10772,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sink box: particles that enter it are removed (0 0 0: no sink).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -10168,6 +10787,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fluid's linear colour (what light passing through it keeps).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -10182,6 +10802,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How opaque a metre of it is (0: clear as glass, 1: opaque).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reflectivity",
@@ -10196,6 +10817,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much it reflects (scales the Fresnel term).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "refraction",
@@ -10210,6 +10832,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far refraction bends what is seen through it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "drawScale",
@@ -10224,6 +10847,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The drawn size of each particle (times radius).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "smoothing",
@@ -10238,6 +10862,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much the surface is smoothed (0: beads, 1: one surface).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -10252,6 +10877,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether the renderer draws it.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -10273,6 +10899,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Grid points along each side.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "size",
@@ -10287,6 +10914,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The side of the square of water.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "waveSpeed",
@@ -10301,6 +10929,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast waves travel.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "damping",
@@ -10315,6 +10944,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of a wave survives a second (1: no loss).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "splash",
@@ -10329,6 +10959,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How strongly bodies push waves.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buoyancy",
@@ -10343,6 +10974,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The upward force on a submerged body per cubic metre of its box under water (0: bodies sink).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "drag",
@@ -10357,6 +10989,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much a submerged body's velocity is slowed.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -10378,6 +11011,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The pool's width.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depth",
@@ -10392,6 +11026,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The pool's depth below the surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "columns",
@@ -10406,6 +11041,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Springs along the surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tension",
@@ -10420,6 +11056,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How hard each spring pulls back to rest.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "damping",
@@ -10434,6 +11071,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast a spring's motion dies.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "spread",
@@ -10448,6 +11086,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of a spring's height its neighbours feel each pass (waves travel).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "splash",
@@ -10462,6 +11101,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How strongly crossing bodies splash.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "buoyancy",
@@ -10476,6 +11116,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The upward force on a submerged body per square metre of its box under water (0: bodies sink).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "drag",
@@ -10490,6 +11131,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much a submerged body's velocity is slowed.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -10511,6 +11153,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The water's entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "entity",
@@ -10525,6 +11168,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "What crossed it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "point",
@@ -10539,6 +11183,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where it crossed the surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -10553,6 +11198,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its vertical speed (negative going in).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -10574,6 +11220,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "blendTime",
@@ -10588,6 +11235,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How long the blend between animation and physics takes, both ways.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mass",
@@ -10602,6 +11250,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The whole body's mass, shared by the bones by length.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "thickness",
@@ -10616,6 +11265,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A bone capsule's radius as a fraction of its length.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jointLimit",
@@ -10630,6 +11280,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far each joint bends from the rest pose.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "damping",
@@ -10644,6 +11295,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of their motion the bones lose per second.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "impulse",
@@ -10658,6 +11310,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "An impulse given to every bone when weight first goes up (a hit).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "blend",
@@ -10672,6 +11325,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the blend in use (0 animation .. 1 physics).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -10693,6 +11347,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw the fog.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -10707,6 +11362,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The colour the fog tends to (linear, before exposure).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "density",
@@ -10721,6 +11377,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Distance fog per metre (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start",
@@ -10735,6 +11392,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where distance fog starts.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "end",
@@ -10749,6 +11407,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With end > start, a linear ramp to full fog at end as well.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "heightDensity",
@@ -10763,6 +11422,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Height fog at and below height (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "height",
@@ -10777,6 +11437,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The world height below which height fog is densest.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "falloff",
@@ -10791,6 +11452,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast height fog thins above height, per metre.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sunColor",
@@ -10805,6 +11467,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The fog's colour looking into the sun (forward scattering).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sunPower",
@@ -10819,6 +11482,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How tight the sun's glow in the fog is (higher: smaller).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxOpacity",
@@ -10833,6 +11497,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The most the fog hides.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sky",
@@ -10847,6 +11512,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the fog covers the sky (0: the sky stays clear).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -10868,6 +11534,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Draw and light by this sky.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "zenith",
@@ -10882,6 +11549,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Overhead.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "horizon",
@@ -10896,6 +11564,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "At the horizon.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ground",
@@ -10910,6 +11579,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Below the horizon.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sunDirection",
@@ -10924,6 +11594,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Towards the sun (match your DirectionalLight).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sunColor",
@@ -10938,6 +11609,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sun's colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sunSize",
@@ -10952,6 +11624,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sun disc's angular radius (0: no disc).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sunIntensity",
@@ -10966,6 +11639,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The disc's brightness.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "glow",
@@ -10980,6 +11654,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The glow around the sun.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "glowPower",
@@ -10994,6 +11669,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How tight the glow is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stars",
@@ -11008,6 +11684,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Stars where the sky is dark: 0 none, 1 a full night sky.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "brightness",
@@ -11022,6 +11699,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A multiplier on the whole sky.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonSize",
@@ -11036,6 +11714,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonPhase",
@@ -11050,6 +11729,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonIntensity",
@@ -11064,6 +11744,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The lit moon's brightness.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonColor",
@@ -11078,6 +11759,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The moon's colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonDirection",
@@ -11092,6 +11774,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Towards the moon; zero puts it opposite sunDirection.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11113,6 +11796,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Run the cycle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start",
@@ -11127,6 +11811,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -11141,6 +11826,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tilt",
@@ -11155,6 +11841,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far the sun's path leans from overhead.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "azimuth",
@@ -11169,6 +11856,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the sun rises, turned about +y from +x.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lightIntensity",
@@ -11183,6 +11871,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A multiplier on the sun and moon light.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tintFog",
@@ -11197,6 +11886,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Turn the og.Fog colour towards the horizon's.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "step",
@@ -11211,6 +11901,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Game minutes between regenerations of the image-based light.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonSize",
@@ -11225,6 +11916,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "moonPhase",
@@ -11239,6 +11931,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11260,6 +11953,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "Kind",
                 doc: "WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "intensity",
@@ -11274,6 +11968,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How heavy: scales the particle rate, the fog and the dimming.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wind",
@@ -11288,6 +11983,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the wind blows the particles.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -11302,6 +11998,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The size of the region around the camera the particles fill.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tint",
@@ -11316,6 +12013,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Multiplies the particles' colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "dim",
@@ -11330,6 +12028,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the preset's dimming of the sunlight applies.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -11344,6 +12043,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With an orthographic camera (2D), the sprite layer the particles draw in.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11365,6 +12065,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The extent along the entity's x and z.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "segments",
@@ -11379,6 +12080,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Grid cells per side (the height field's detail).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shallow",
@@ -11393,6 +12095,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Shallow water's colour (tints what is seen through it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "deep",
@@ -11407,6 +12110,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Deep water's colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "depthFade",
@@ -11421,6 +12125,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The depth over which water turns from shallow to deep.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -11435,6 +12140,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How opaque deep water gets.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "foam",
@@ -11449,6 +12155,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The foam's colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "foamWidth",
@@ -11463,6 +12170,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The water depth over which foam rings geometry (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "waveScale",
@@ -11477,6 +12185,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Detail waves per metre.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "waveSpeed",
@@ -11491,6 +12200,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast the detail waves travel.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "waveStrength",
@@ -11505,6 +12215,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How strongly they bend the surface (0: a mirror).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "refraction",
@@ -11519,6 +12230,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far refraction shifts what is seen through the water.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reflectivity",
@@ -11533,6 +12245,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much it reflects.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "planarReflection",
@@ -11547,6 +12260,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "shadows",
@@ -11561,6 +12275,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "underwaterColor",
@@ -11575,6 +12290,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "With the camera below the surface: the water's fog colour.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "underwaterDensity",
@@ -11589,6 +12305,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "caustics",
@@ -11603,6 +12320,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "causticsScale",
@@ -11617,6 +12335,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The caustics' cells per metre.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11638,6 +12357,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The body's colour at the surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "topOpacity",
@@ -11652,6 +12372,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its opacity there.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bottom",
@@ -11666,6 +12387,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The colour at the bottom.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bottomOpacity",
@@ -11680,6 +12402,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its opacity there.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lip",
@@ -11694,6 +12417,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The lip along the surface.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lipWidth",
@@ -11708,6 +12432,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How thick the lip is (0: none).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -11722,6 +12447,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sprite layer it is drawn in.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11743,6 +12469,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The skeleton asset (og.load.animation's `skeleton`); 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "skin",
@@ -11757,6 +12484,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Which of the asset's skins the joint palette is for (glTF skin index).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rootMotion",
@@ -11771,6 +12499,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full.",
                 variants: &["off", "planar", "full"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rootJoint",
@@ -11785,6 +12514,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "jointCount",
@@ -11799,6 +12529,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the number of joints in the palette (0 until the first tick).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11820,6 +12551,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clip asset; 0 plays nothing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "time",
@@ -11834,6 +12566,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The playback position; written every tick, set it to seek (no markers fire across a seek).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -11848,6 +12581,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Playback rate (1 = as authored, negative plays backwards).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "loop",
@@ -11862,6 +12596,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Wrap at the end of the clip; otherwise hold the last frame and set `finished`.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "weight",
@@ -11876,6 +12611,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the pose this player decides (0 = none, 1 = all).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fade",
@@ -11890,6 +12626,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cross-fade duration when `clip` changes.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stepFps",
@@ -11904,6 +12641,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Stepped playback: each pose is held for 1/stepFps seconds, the clip sampled at its time floored to that step (12 is stop motion \"on twos\", 8 on threes), the same on every tick rate; 0 samples every tick. `time`, markers and root motion stay continuous; a one-shot still ends on its last frame.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "finished",
@@ -11918,6 +12656,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: a non-looping clip reached its end.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -11939,6 +12678,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The graph asset; 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "weight",
@@ -11953,6 +12693,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the pose the graph decides over the rest pose.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -11967,6 +12708,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A playback-rate multiplier for every layer.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p0",
@@ -11981,6 +12723,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 0 (the graph's first `param`).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p1",
@@ -11995,6 +12738,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p2",
@@ -12009,6 +12753,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 2.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p3",
@@ -12023,6 +12768,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 3.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p4",
@@ -12037,6 +12783,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 4.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p5",
@@ -12051,6 +12798,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 5.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p6",
@@ -12065,6 +12813,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 6.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "p7",
@@ -12079,6 +12828,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Parameter 7.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "state",
@@ -12093,6 +12843,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the base layer's current state (its index in the graph file).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stateTime",
@@ -12107,6 +12858,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: seconds since the base layer entered `state`.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12128,6 +12880,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them).",
                 variants: &["component", "clips"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "mesh",
@@ -12142,6 +12895,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The glTF mesh index whose targets the weights drive (0 is the first mesh).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w0",
@@ -12156,6 +12910,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 0.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w1",
@@ -12170,6 +12925,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w2",
@@ -12184,6 +12940,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 2.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w3",
@@ -12198,6 +12955,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 3.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w4",
@@ -12212,6 +12970,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 4.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w5",
@@ -12226,6 +12985,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 5.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w6",
@@ -12240,6 +13000,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 6.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "w7",
@@ -12254,6 +13015,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of target 7.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12275,6 +13037,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the og.Skeleton this chain bends.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tip",
@@ -12289,6 +13052,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The end joint (an index into the skin's joints): the foot or the hand.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bones",
@@ -12303,6 +13067,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How many bones above the tip turn (two-bone always uses 2).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "solver",
@@ -12317,6 +13082,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "twoBone (analytic, with a pole) or fabrik (iterative, any length).",
                 variants: &["twoBone", "fabrik"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "target",
@@ -12331,6 +13097,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pole",
@@ -12345,6 +13112,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "space",
@@ -12359,6 +13127,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model.",
                 variants: &["world", "model"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "weight",
@@ -12373,6 +13142,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "iterations",
@@ -12387,6 +13157,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "FABRIK iterations at most.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tolerance",
@@ -12401,6 +13172,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The tip distance (model units) at which the target counts as reached.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reached",
@@ -12415,6 +13187,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the tip is within `tolerance` of the target after solving.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "error",
@@ -12429,6 +13202,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the tip's distance from the target after solving, in model units.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12450,6 +13224,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The skeleton entity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "clip",
@@ -12464,6 +13239,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clip asset the marker belongs to.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "name",
@@ -12478,6 +13254,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The marker's name (at most 63 bytes).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "time",
@@ -12492,6 +13269,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The marker's time in the clip.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "weight",
@@ -12506,6 +13284,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clip's blend weight when it fired.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12527,6 +13306,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sheet (og.load.flipbook's `sheet`); 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "clip",
@@ -12541,6 +13321,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -12555,6 +13336,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The playback rate: 1 as authored, 2 twice as fast, 0 holds the frame.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "playing",
@@ -12569,6 +13351,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether time advances.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "frame",
@@ -12583,6 +13366,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: the clip frame shown (an index into the clip's frames).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "time",
@@ -12597,6 +13381,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Seconds into the current cycle; written every tick, set it to seek (no events fire across a seek).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "finished",
@@ -12611,6 +13396,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: a `once` clip reached and holds its last frame.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "loops",
@@ -12625,6 +13411,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Written: cycles completed by a looping or ping-pong clip.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12646,6 +13433,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the og.Flipbook.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "clip",
@@ -12660,6 +13448,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clip index.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "frame",
@@ -12674,6 +13463,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The clip frame entered.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "name",
@@ -12688,6 +13478,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The event's name (at most 63 bytes).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12709,6 +13500,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The handle og.tween.to, sequence, parallel, squash or flash answered.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "entity",
@@ -12723,6 +13515,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity of its (first) tween.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "tag",
@@ -12737,6 +13530,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its tag.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12758,6 +13552,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The map (og.load.tilemap's `map`); 0 is none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -12772,6 +13567,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sprite layer of the map's layer 0; every layer draws at this plus its z (default: its index).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "color",
@@ -12786,6 +13582,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A linear tint.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "opacity",
@@ -12800,6 +13597,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The alpha, times each layer's.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "visible",
@@ -12814,6 +13612,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether it is drawn.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "collision",
@@ -12828,6 +13627,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Give the layers marked collision static colliders (rectangles merged from the solid tiles).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "colliderLayers",
@@ -12842,6 +13642,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The collision layers of those colliders, as bits (Collider.layers).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "friction",
@@ -12856,6 +13657,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The colliders' friction.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -12877,6 +13679,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sound, from og.load.sound; 0 plays nothing. A handle not yet loaded waits and starts on the first tick it is there.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bus",
@@ -12891,6 +13694,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The bus it plays on.",
                 variants: &["master", "music", "sfx", "ui"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "volume",
@@ -12905,6 +13709,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Linear gain.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pitch",
@@ -12919,6 +13724,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Playback rate: 2 is an octave up and half as long.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pan",
@@ -12933,6 +13739,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Stereo position of a non-spatial source, -1 left to 1 right.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "loop",
@@ -12947,6 +13754,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Loop between loopStart and loopEnd, seamlessly.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "loopStart",
@@ -12961,6 +13769,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where a loop restarts.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "loopEnd",
@@ -12975,6 +13784,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where a loop wraps; 0 is the sound's end.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "spatial",
@@ -12989,6 +13799,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Attenuate and pan by the entity's og.Transform relative to the listener.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "refDistance",
@@ -13003,6 +13814,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Full volume up to this distance, as Web Audio's PannerNode.refDistance.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxDistance",
@@ -13017,6 +13829,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "No quieter past this distance, as Web Audio's PannerNode.maxDistance.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "rolloffFactor",
@@ -13031,6 +13844,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast volume falls with distance, in Web Audio's inverse model: ref / (ref + rolloff * (clamp(d, ref, max) - ref)).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "playing",
@@ -13045,6 +13859,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Plays while true; the engine sets it false when a one-shot ends.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "priority",
@@ -13059,6 +13874,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "When more than Audio.maxVoices would play, the lowest priority is stopped first (then the quietest, then the oldest), with SoundEnded reason SOUND_CULLED.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lowpass",
@@ -13073,6 +13889,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A low-pass filter on this source, its cutoff; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "occlude",
@@ -13087,6 +13904,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A spatial source behind a collider (a physics ray to the listener) plays at Audio.occlusionGain through a low-pass at Audio.occlusionCutoff.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "distanceCutoff",
@@ -13101,6 +13919,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A spatial source's low-pass by distance: the cutoff at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "startAt",
@@ -13115,6 +13934,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "startOffset",
@@ -13129,6 +13949,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fade",
@@ -13143,6 +13964,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13164,6 +13986,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "A gain on every spatial source this listener hears.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13185,6 +14008,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gain of the master bus, applied to every sound.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "music",
@@ -13199,6 +14023,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gain of the music bus.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sfx",
@@ -13213,6 +14038,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gain of the sfx bus.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ui",
@@ -13227,6 +14053,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gain of the ui bus.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxVoices",
@@ -13241,6 +14068,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The most sources that play at once; past it the lowest AudioSource.priority is stopped (SoundEnded reason SOUND_CULLED).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "occlusionGain",
@@ -13255,6 +14083,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The gain of an occluded source (AudioSource.occlude).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "occlusionCutoff",
@@ -13269,6 +14098,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The low-pass cutoff of an occluded source.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reverbRoom",
@@ -13283,6 +14113,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The shared reverb's room size (the AudioBusFx.reverb sends feed it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reverbDamping",
@@ -13297,6 +14128,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The shared reverb's damping of high frequencies.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "outputLatency",
@@ -13311,6 +14143,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13332,6 +14165,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The bus these effects are on.",
                 variants: &["master", "music", "sfx", "ui"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lowpass",
@@ -13346,6 +14180,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Low-pass cutoff; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "highpass",
@@ -13360,6 +14195,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "High-pass cutoff; 0 is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reverb",
@@ -13374,6 +14210,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How much of the bus goes to the reverb.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "threshold",
@@ -13388,6 +14225,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The compressor's threshold; 0 dB is off.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ratio",
@@ -13402,6 +14240,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The compressor's ratio: dB in over the threshold per dB out.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "attack",
@@ -13416,6 +14255,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The compressor's attack.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "release",
@@ -13430,6 +14270,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The compressor's release.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "makeup",
@@ -13444,6 +14285,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Gain after the compressor.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "duck",
@@ -13458,6 +14300,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Turns this bus down while duckBus is loud: music under effects or dialogue.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "duckBus",
@@ -13472,6 +14315,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The bus that ducks this one.",
                 variants: &["master", "music", "sfx", "ui"],
+                capacity: 0,
             },
             FieldDecl {
                 name: "duckDepth",
@@ -13486,6 +14330,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far it is turned down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "duckThreshold",
@@ -13500,6 +14345,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How loud the key bus must be.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "duckAttack",
@@ -13514,6 +14360,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast it goes down.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "duckRelease",
@@ -13528,6 +14375,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast it comes back.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13549,6 +14397,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Beats per minute.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "beatsPerBar",
@@ -13563,6 +14412,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Beats per bar.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "start",
@@ -13577,6 +14427,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The world time of bar 1's first beat.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bar",
@@ -13591,6 +14442,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The bar the next tick starts in, from 1 (0 before start; written by og.music).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "beat",
@@ -13605,6 +14457,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The beat in that bar, from 1 (written by og.music).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "nextBeat",
@@ -13619,6 +14472,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The world time of the next beat from the next tick on (written by og.music).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "nextBar",
@@ -13633,6 +14487,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The world time of the next bar line from the next tick on (written by og.music).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13654,6 +14509,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity with the Music.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "bar",
@@ -13668,6 +14524,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The bar, from 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "beat",
@@ -13682,6 +14539,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The beat in the bar, from 1 (1 is the bar line).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "time",
@@ -13696,6 +14554,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its world time.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13717,6 +14576,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity whose AudioSource started.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sound",
@@ -13731,6 +14591,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sound.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "voice",
@@ -13745,6 +14606,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The voice id in the command stream.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13766,6 +14628,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The entity whose AudioSource ended.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sound",
@@ -13780,6 +14643,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The sound.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "voice",
@@ -13794,6 +14658,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The voice id in the command stream.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "reason",
@@ -13808,6 +14673,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -13829,6 +14695,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "target",
@@ -13843,6 +14710,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where it goes while seeking.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "seeking",
@@ -13857,6 +14725,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Moves towards the target while true.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "speed",
@@ -13871,6 +14740,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Top speed.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "acceleration",
@@ -13885,6 +14755,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast it changes velocity.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "radius",
@@ -13899,6 +14770,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its radius: grid paths keep this clear of walls; separation uses it.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "stopDistance",
@@ -13913,6 +14785,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "It has arrived within this distance of the target.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "slowRadius",
@@ -13927,6 +14800,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "It slows down inside this distance of the target.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "repathTicks",
@@ -13941,6 +14815,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Re-plans this often while seeking (0: only when the target moves).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "repathDistance",
@@ -13955,6 +14830,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Re-plans when the target moved farther than this from the last plan.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "smooth",
@@ -13969,6 +14845,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Pulls grid paths straight where nothing is in the way.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "faceMovement",
@@ -13983,6 +14860,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Turns the entity to face where it moves (3D: about +Y, its +Z forward; 2D: about +Z, its +X forward).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "turnSpeed",
@@ -13997,6 +14875,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast it turns when facing its movement.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "drive",
@@ -14011,6 +14890,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Moves the entity (its og.Velocity, or its og.Transform) while true; false keeps planning but leaves the motion to the game (a knock-back, a stun).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "status",
@@ -14025,6 +14905,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "NAV_IDLE, NAV_MOVING, NAV_ARRIVED, NAV_UNREACHABLE or NAV_PARTIAL (written by og.nav).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "velocity",
@@ -14039,6 +14920,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its velocity (written by og.nav).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "waypoint",
@@ -14053,6 +14935,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The path corner it heads for (written by og.nav).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "remaining",
@@ -14067,6 +14950,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The path length left (written by og.nav).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "plans",
@@ -14081,6 +14965,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Paths planned so far (written by og.nav).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14102,6 +14987,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of following the path to the target (seek, then arrive at the end).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "flee",
@@ -14116,6 +15002,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of fleeing fleeFrom.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fleeFrom",
@@ -14130,6 +15017,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "What it flees.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fleeRadius",
@@ -14144,6 +15032,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "It flees (and evades) only inside this distance (0: always).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wander",
@@ -14158,6 +15047,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of wandering.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wanderRadius",
@@ -14172,6 +15062,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The wander circle's radius.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wanderDistance",
@@ -14186,6 +15077,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far ahead the wander circle is.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wanderJitter",
@@ -14200,6 +15092,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How fast the wander point moves round the circle.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pursue",
@@ -14214,6 +15107,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "An entity to pursue (seek where it will be, from its NavAgent or og.Velocity); 0: none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "pursueWeight",
@@ -14228,6 +15122,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of pursuing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "evade",
@@ -14242,6 +15137,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "An entity to evade (flee where it will be); 0: none.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "evadeWeight",
@@ -14256,6 +15152,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of evading.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "separation",
@@ -14270,6 +15167,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of keeping apart from other agents.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "separationRadius",
@@ -14284,6 +15182,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Other agents closer than this push it away.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "avoidance",
@@ -14298,6 +15197,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Weight of avoiding colliders ahead.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "avoidDistance",
@@ -14312,6 +15212,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far ahead the avoidance rays reach.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "avoidMask",
@@ -14326,6 +15227,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Collision layers the avoidance rays hit (0: every layer).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "wanderAngle",
@@ -14340,6 +15242,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The wander angle (written by og.nav).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14361,6 +15264,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The behaviour it runs (og.ai.load); 0 runs nothing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "active",
@@ -14375,6 +15279,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Thinks while true.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "thinkEvery",
@@ -14389,6 +15294,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Thinks every this many ticks (1: every tick); agents are staggered by their order.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "status",
@@ -14403,6 +15309,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "state",
@@ -14417,6 +15324,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The state machine's state, an index into BehaviourInfo.states (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "node",
@@ -14431,6 +15339,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The node it ran last, an index into BehaviourInfo.nodes (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "changes",
@@ -14445,6 +15354,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Times the state or the running node changed (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14466,6 +15376,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far it sees.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fov",
@@ -14480,6 +15391,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The width of its view cone (360: all round).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "eyeHeight",
@@ -14494,6 +15406,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its eyes are this far above its position (+y).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "occlude",
@@ -14508,6 +15421,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Colliders hide what is behind them.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "occluders",
@@ -14522,6 +15436,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Collision layers that block sight (0: every layer).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "hearing",
@@ -14536,6 +15451,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far it hears a sound of loudness 1 (a source's volume).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "memory",
@@ -14550,6 +15466,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How long a lost target stays its target.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "team",
@@ -14564,6 +15481,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its team: it perceives og.Perceivable entities of other teams.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "forward",
@@ -14578,6 +15496,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "target",
@@ -14592,6 +15511,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "What it sees or remembers seeing (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sees",
@@ -14606,6 +15526,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "It sees the target now (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lastSeen",
@@ -14620,6 +15541,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where it last saw the target (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sinceSeen",
@@ -14634,6 +15556,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Seconds since it last saw a target (written by og.ai; 1e6 before the first time).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "heard",
@@ -14648,6 +15571,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "It heard something this tick (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "heardAt",
@@ -14662,6 +15586,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Where it last heard something (written by og.ai).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "sinceHeard",
@@ -14676,6 +15601,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Seconds since it last heard something (written by og.ai; 1e6 before the first time).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14697,6 +15623,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its team (agents of the same team ignore it).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "eyeHeight",
@@ -14711,6 +15638,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Agents look at a point this far above its position (+y).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14732,6 +15660,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The agent.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "state",
@@ -14746,6 +15675,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its state now.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "node",
@@ -14760,6 +15690,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The node it runs now.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "status",
@@ -14774,6 +15705,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "AI_RUNNING, AI_SUCCESS or AI_FAILURE.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14795,6 +15727,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The call's request number.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "ok",
@@ -14809,6 +15742,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Whether it succeeded; og.platform.result has the data or the error.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14830,6 +15764,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The terrain (og.terrain.load's TerrainInfo.data).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "castShadows",
@@ -14844,6 +15779,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Cast the directional and local lights' shadows (it always receives them).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lodSpacing",
@@ -14858,6 +15794,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "lodRing",
@@ -14872,6 +15809,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -14893,6 +15831,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The terrain (og.terrain.load's TerrainInfo.data).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "geometry",
@@ -14907,6 +15846,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The mesh, its origin at its root.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "material",
@@ -14921,6 +15861,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its material.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "layer",
@@ -14935,6 +15876,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The terrain layer that places it, 0 to 3.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "density",
@@ -14949,6 +15891,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Copies per square metre where the layer's weight is 1.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "distance",
@@ -14963,6 +15906,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far from the camera, along x and z, copies are placed.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "fade",
@@ -14977,6 +15921,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The outer part of `distance` over which copies thin out to nothing.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "minScale",
@@ -14991,6 +15936,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The smallest copy's uniform scale.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "maxScale",
@@ -15005,6 +15951,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The largest copy's uniform scale.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "align",
@@ -15019,6 +15966,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "How far copies lean with the ground: 0 upright, 1 along its normal.",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "seed",
@@ -15033,6 +15981,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Another seed places the copies elsewhere.",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },
@@ -15054,6 +16003,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "The group's name (at most 63 bytes).",
                 variants: &[],
+                capacity: 0,
             },
             FieldDecl {
                 name: "state",
@@ -15068,6 +16018,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 label: "",
                 doc: "Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order).",
                 variants: &[],
+                capacity: 0,
             },
         ],
     },

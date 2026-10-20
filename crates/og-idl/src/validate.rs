@@ -554,13 +554,24 @@ impl<'a> Validator<'a, '_> {
                 self.error(f.line, format!("duplicate field `{}` in `{owner}`", f.name));
             }
             self.doc(&f.doc, f.line, || format!("field `{owner}.{}`", f.name));
-            self.ty(&f.ty, &[], f.line);
-
             let reflected = matches!(
                 site,
                 FieldSite::Record(RecordKind::Component | RecordKind::Resource)
             );
-            if reflected && !self.ix.columns.contains_key(f.ty.to_string().as_str()) {
+            // A text column (`str.48`) is a component or resource field's
+            // type only: it is a stored layout, which nothing else has.
+            let text = self.ix.columns.get(f.ty.name()).is_some_and(|c| c.capacity);
+            if text && reflected {
+                self.text_column(&f.ty, f.line);
+            } else {
+                self.ty(&f.ty, &[], f.line);
+            }
+            let column = if text {
+                f.ty.name().to_string()
+            } else {
+                f.ty.to_string()
+            };
+            if reflected && !self.ix.columns.contains_key(column.as_str()) {
                 self.error(
                     f.line,
                     format!("field `{owner}.{}` has type `{}`, which is not a column kind: component and resource fields are columns", f.name, f.ty),
@@ -762,7 +773,32 @@ impl<'a> Validator<'a, '_> {
             }
             return;
         }
+        if self.ix.columns.get(name).is_some_and(|c| c.capacity) {
+            self.error(
+                line,
+                format!("`{ty}` is a text column: only a component or resource field takes it; elsewhere text is `String`"),
+            );
+            return;
+        }
         self.error(line, format!("unknown type `{name}`"));
+    }
+
+    /// A text column field's type: the column's name and its capacity in
+    /// bytes, 1 to og-core's `STR_MAX_CAPACITY` (`str.48`).
+    fn text_column(&mut self, ty: &TypeRef, line: usize) {
+        let name = ty.name();
+        let max = og_core::reflect::STR_MAX_CAPACITY;
+        match ty.args() {
+            [TypeRef::Int(n)] if (1..=max).contains(&(*n as usize)) => {}
+            [TypeRef::Int(n)] => self.error(
+                line,
+                format!("`{name}<{n}>`: a text field holds 1 to {max} bytes"),
+            ),
+            _ => self.error(
+                line,
+                format!("`{ty}` needs its capacity in bytes after a dot: `{name}.48` holds 48 bytes of UTF-8 (12 characters of any script)"),
+            ),
+        }
     }
 
     /// A literal default against its type.
@@ -775,6 +811,19 @@ impl<'a> Validator<'a, '_> {
                 "Option" | "Json" => Ok(()),
                 _ if matches!(self.ix.decl(name), Some(TypeDecl::Handle(_))) => Ok(()),
                 _ => Err(format!("`null` is not a `{ty}`")),
+            };
+        }
+        if let Some(capacity) = self.ix.capacity(ty) {
+            return match values {
+                [Value::String(t)] if t.len() <= capacity as usize => Ok(()),
+                [Value::String(t)] => Err(format!(
+                    "'{t}' is {} bytes of UTF-8 and `{ty}` holds {capacity}",
+                    t.len()
+                )),
+                _ => Err(format!(
+                    "a `{ty}` default is one quoted string, got {}",
+                    show(values)
+                )),
             };
         }
         match name {

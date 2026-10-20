@@ -1,7 +1,8 @@
 //! button_contrast.rs for the style packs: every button role's label, in
 //! every state, the three label inks (`fg`, `fgMuted`, `fgSubtle`) and a
 //! text field's placeholder (`fgSubtle` on the field's frame) and typed
-//! text, at rest and focused, as
+//! text, at rest and focused, and an accent badge (`accentInk` on
+//! `accentSoft`, the results screen's "New best"), as
 //! og-ui draws them with a pack's skin, read against what is really under
 //! them: the frame's draw commands composited in linear light, a skinned
 //! piece as the mean of its atlas texels (the pack's `atlas.png`) times its
@@ -29,7 +30,10 @@
 //! frame, FINDINGS #29; pixel 4.22, cartoon 4.13, before their fgSubtle
 //! moved), or the focus ring showing through a focused field's frame
 //! (scifi 3.52:1 and neon 3.00:1 on the ring's colour, before og-ui cut
-//! the ring under every control).
+//! the ring under every control); an accent badge under 4.5:1 in a panel
+//! (pixel 3.90, cartoon 3.78, fantasy and ember 4.12, scifi 4.37 before
+//! pixel's and scifi's accentSoft thinned and cartoon's and fantasy's
+//! accentInk darkened).
 
 mod support;
 
@@ -471,6 +475,58 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                             "{name}: a field's {what}, {state}, on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
                         ));
                     }
+                }
+            }
+        }
+        // A badge in every tone (its tinted fill, its tone's ink), on the
+        // screen and in a panel, every row printed. The bar holds for the
+        // accent badge in a panel: the results screen's "New best" (it read
+        // 4.12:1 here in the fantasy pack and 4.03:1 in Lantern Vale's
+        // polish frame before accentInk moved). The status tones (success,
+        // warn, danger, info) and the neutral badge on the screen are
+        // printed, not held: their inks are the tone dots' colours, which
+        // meters, toasts and dots share, a palette round of their own.
+        for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
+            for (tone_name, tone) in [
+                ("neutral", Tone::Neutral),
+                ("success", Tone::Success),
+                ("warn", Tone::Warn),
+                ("danger", Tone::Danger),
+                ("info", Tone::Info),
+                ("accent", Tone::Accent),
+                ("inverse", Tone::Inverse),
+            ] {
+                let mut scene = RenderScene::new();
+                let mut ui = ui_with_font(add_test_font(&mut scene));
+                ui.set_theme(theme);
+                let vp = Viewport::new(800.0, 600.0);
+                for _ in 0..40 {
+                    ui.begin(InputFrame::default(), vp);
+                    let badge = |ui: &mut Ui| ui.badge("B", "Badge", tone);
+                    match panel {
+                        Some(bg) => ui.panel(
+                            "G",
+                            PanelDesc {
+                                background: Some(bg),
+                                ..PanelDesc::default()
+                            },
+                            badge,
+                        ),
+                        None => badge(&mut ui),
+                    }
+                    ui.end();
+                }
+                let (ink, ground) = measured(&ui, "Badge", bg, tex, &atlas);
+                let r = ratio(ink, ground);
+                rows.push(format!(
+                    "{name:8} {tone_name:9} badge   on the {ground_name:6} {r:6.2}:1  {} on {}",
+                    hex(ink),
+                    hex(ground)
+                ));
+                if panel.is_some() && tone == Tone::Accent && r < LABEL_BAR {
+                    failing.push(format!(
+                        "{name}: a {tone_name} badge on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
+                    ));
                 }
             }
         }

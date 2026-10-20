@@ -8,3 +8,6 @@ description = "Origin Engine IDL: crates/og-api/api.ogt, its model, validator an
 
 [dependencies]
 og-core = { path = "../og-core" }
+
+[dev-dependencies]
+serde_json = { version = "1", features = ["float_roundtrip"] }

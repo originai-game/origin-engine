@@ -83,7 +83,14 @@ pub fn bindings(ix: &Index<'_>) -> String {
                             } else {
                                 "column"
                             };
-                            o.set(key, Json::str(f.ty.to_string()));
+                            match ix.capacity(&f.ty) {
+                                // A text column: its kind, and the capacity the factory takes (`str(48)`).
+                                Some(n) => {
+                                    o.set(key, Json::str(f.ty.name()));
+                                    o.set("capacity", Json::num(n));
+                                }
+                                None => o.set(key, Json::str(f.ty.to_string())),
+                            }
                             if let Some(d) = default_json(ix, &f.ty, f.default.as_deref()) {
                                 o.set("default", d);
                             }
@@ -434,6 +441,10 @@ fn type_schema(ix: &Index<'_>, ty: &TypeRef) -> Json {
     let name = ty.name();
     let args = ty.args();
     let t = |s: &str| Json::obj().with("type", Json::str(s));
+    if let Some(n) = ix.capacity(ty) {
+        // JSON Schema counts characters; the capacity is bytes of UTF-8.
+        return t("string").with("x-og-capacity", Json::num(n));
+    }
     match name {
         "Void" => t("null"),
         "bool" => t("boolean"),

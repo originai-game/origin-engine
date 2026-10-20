@@ -257,7 +257,18 @@ fn fields_table(out: &mut String, ix: &Index<'_>, fields: &[Field]) {
             code(&default),
             cell(&range(f)),
             f.unit.as_deref().map_or_else(|| "—".to_string(), code),
-            cell(&field_notes(f)),
+            cell(&match ix.capacity(&f.ty) {
+                Some(n) => {
+                    let notes = field_notes(f);
+                    let text = format!("`{}({n})`: at most {n} bytes of UTF-8", f.ty.name());
+                    if notes.is_empty() {
+                        text
+                    } else {
+                        format!("{text}, {notes}")
+                    }
+                }
+                None => field_notes(f),
+            }),
             cell(&f.doc.join(" ")),
         );
     }
