@@ -22,6 +22,7 @@
     "perSecond": "a rate per second: the fraction of a value that decays in one second",
     "kgPerM3": "kilograms per cubic metre (per square metre in the 2D profile)",
     "db": "decibels",
+    "evPerSecond": "exposure stops (EV) per second of simulation time",
     "bpm": "beats per minute"
   },
   "x-og-modules": [
@@ -1142,11 +1143,16 @@
         "DirectionalLight",
         "PointLight",
         "SpotLight",
+        "ToneMapping",
+        "ToneMapping",
         "RenderSettings",
         "Lut",
+        "EnvironmentMap",
         "ParticleEmitter",
         "Texture",
         "Lut",
+        "EnvironmentMap",
+        "Environment",
         "ParticleEmitter",
         "AoMethod",
         "AoMethod",
@@ -1719,6 +1725,27 @@
           ],
           "returns": "Result<Lut>",
           "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook).",
+          "publish": true
+        },
+        {
+          "name": "environment",
+          "doc": "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `env/studio.ogt`."
+            }
+          ],
+          "returns": "Result<EnvironmentMap>",
+          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.",
           "publish": true
         },
         {
@@ -10550,6 +10577,22 @@
       },
       "additionalProperties": false
     },
+    "ToneMapping": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen.",
+      "type": "string",
+      "enum": [
+        "aces",
+        "agx",
+        "none"
+      ],
+      "x-og-variants": {
+        "aces": "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default.",
+        "agx": "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES.",
+        "none": "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
+      }
+    },
     "RenderSettings": {
       "x-og-kind": "resource",
       "x-og-module": "render",
@@ -10558,14 +10601,14 @@
       "properties": {
         "environmentIntensity": {
           "type": "number",
-          "description": "The strength of the image-based ambient light from the procedural sky.",
+          "description": "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set.",
           "default": 0.55,
           "minimum": 0,
           "x-og-tunable": true
         },
         "sky": {
           "type": "boolean",
-          "description": "Draw the procedural sky behind the scene instead of Camera.background.",
+          "description": "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map).",
           "default": false
         },
         "bloom": {
@@ -10595,13 +10638,36 @@
         },
         "autoExposure": {
           "type": "boolean",
-          "description": "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation.",
+          "description": "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye.",
           "default": false
+        },
+        "adaptSpeedUp": {
+          "type": "number",
+          "description": "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "evPerSecond",
+          "x-og-tunable": true
+        },
+        "adaptSpeedDown": {
+          "type": "number",
+          "description": "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "evPerSecond",
+          "x-og-tunable": true
         },
         "toneMapped": {
           "type": "boolean",
-          "description": "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
+          "description": "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
           "default": true
+        },
+        "toneMapping": {
+          "$ref": "#/$defs/ToneMapping",
+          "description": "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none.",
+          "default": "aces"
         },
         "decalAtlas": {
           "$ref": "#/$defs/Texture",
@@ -10618,12 +10684,59 @@
       "type": "integer",
       "minimum": 0
     },
+    "EnvironmentMap": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`).",
+      "type": "integer",
+      "minimum": 0
+    },
     "ParticleEmitter": {
       "x-og-kind": "handle",
       "x-og-module": "render",
       "description": "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`).",
       "type": "integer",
       "minimum": 0
+    },
+    "Environment": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.",
+      "type": "object",
+      "properties": {
+        "map": {
+          "$ref": "#/$defs/EnvironmentMap",
+          "description": "The map from og.load.environment; 0 lights by the sky.",
+          "default": 0
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together.",
+          "default": 0,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "background": {
+          "type": "boolean",
+          "description": "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it.",
+          "default": false
+        },
+        "backgroundIntensity": {
+          "type": "number",
+          "description": "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
     },
     "AoMethod": {
       "x-og-kind": "enum",

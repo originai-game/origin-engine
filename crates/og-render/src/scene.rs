@@ -282,6 +282,11 @@ handle!(
     /// Terrain data added to a [`RenderScene`] ([`RenderScene::add_terrain`]).
     TerrainHandle
 );
+handle!(
+    /// A prefiltered environment map added to a [`RenderScene`]
+    /// ([`RenderScene::add_environment_map`]).
+    EnvironmentMapHandle
+);
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
@@ -320,13 +325,27 @@ pub enum Exposure {
     Manual { ev: f32 },
     /// Metered from the frame being drawn: the log-average luminance is
     /// brought to middle grey (0.18), then `compensation` is added and the
-    /// result is clamped to `min_ev..=max_ev`. It reads only the current
-    /// frame (no adaptation over time), so the same frame always gets the same
-    /// exposure.
+    /// result is clamped to `min_ev..=max_ev`.
+    ///
+    /// With both speeds 0 (the default) that is the exposure: it reads only
+    /// the current frame, so the same frame always gets the same exposure.
+    /// Otherwise the exposure adapts over time like an eye: it moves towards
+    /// the metered one by at most `adapt_speed_up` EV per second while
+    /// rising (the view got darker) and `adapt_speed_down` while falling
+    /// (it got brighter); a speed of 0 is instant in its direction. Time is
+    /// the scene's ticks ([`crate::RenderScene::tick`] over
+    /// [`crate::RenderScene::tick_rate`]) since the previous adapted frame,
+    /// never the wall clock, so the same ticks give the same frames; the
+    /// first adapted frame (or one whose tick went back) starts at the
+    /// metered exposure. The adapted exposure is renderer state that
+    /// [`crate::Renderer::save_state`] and [`crate::Renderer::restore_state`]
+    /// carry across a world snapshot.
     Auto {
         compensation: f32,
         min_ev: f32,
         max_ev: f32,
+        adapt_speed_up: f32,
+        adapt_speed_down: f32,
     },
 }
 
@@ -339,12 +358,28 @@ impl Exposure {
         }
     }
 
-    /// Auto exposure with no compensation over a wide range (-10..=10 EV).
+    /// Auto exposure with no compensation over a wide range (-10..=10 EV),
+    /// instant (no adaptation over time).
     pub fn auto() -> Exposure {
         Exposure::Auto {
             compensation: 0.0,
             min_ev: -10.0,
             max_ev: 10.0,
+            adapt_speed_up: 0.0,
+            adapt_speed_down: 0.0,
+        }
+    }
+
+    /// The adaptation speeds (EV per second up, down) when this exposure
+    /// adapts over time: auto with either speed above 0.
+    pub fn adaptation(self) -> Option<(f32, f32)> {
+        match self {
+            Exposure::Auto {
+                adapt_speed_up: up,
+                adapt_speed_down: down,
+                ..
+            } if up > 0.0 || down > 0.0 => Some((up.max(0.0), down.max(0.0))),
+            _ => None,
         }
     }
 }
@@ -562,6 +597,11 @@ pub enum Tonemap {
     /// None: the exposed linear colour is clamped to 0..1. With exposure 0 EV,
     /// sprite and text colours come out exactly as authored (the 2D choice).
     None,
+    /// AgX (Troy Sobotka's; the polynomial fit and Rec.2020 inset and outset
+    /// that Blender 4, Filament and three.js `AgXToneMapping` use, base look,
+    /// no "punchy"): highlights desaturate towards white instead of skewing
+    /// hue, and saturated lights keep their hue further up than under ACES.
+    Agx,
 }
 
 /// Bloom: light above a threshold bleeds into its surroundings.
@@ -868,6 +908,7 @@ pub struct RenderScene {
     morphs: Vec<Option<MorphTargets>>,
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
+    environment_maps: Vec<crate::EnvironmentMapData>,
     trail_styles: Vec<TrailStyle>,
     terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
@@ -879,6 +920,10 @@ pub struct RenderScene {
     /// Point and spot lights; the first [`MAX_LIGHTS`] are drawn.
     pub lights: Vec<Light>,
     pub environment: Environment,
+    /// A cooked environment map lighting the scene instead of
+    /// [`Environment::sky`] (three.js `scene.environment`), drawn as the
+    /// background by [`Background::Sky`]; `None`: the sky lights it.
+    pub environment_map: Option<crate::EnvironmentMap>,
     pub post: PostEffects,
     /// 2D quads drawn after the 3D scene, blended, sorted by layer.
     pub sprites: Vec<Sprite>,
@@ -974,6 +1019,7 @@ impl RenderScene {
             light: DirectionalLight::default(),
             lights: Vec::new(),
             environment: Environment::default(),
+            environment_map: None,
             post: PostEffects::default(),
             sprites: Vec::new(),
             texts: Vec::new(),
@@ -982,6 +1028,7 @@ impl RenderScene {
             morphs: Vec::new(),
             emitters: Vec::new(),
             luts: Vec::new(),
+            environment_maps: Vec::new(),
             trail_styles: Vec::new(),
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
@@ -1234,6 +1281,18 @@ impl RenderScene {
     pub fn add_lut(&mut self, lut: ColorLut) -> LutHandle {
         self.luts.push(lut);
         LutHandle(self.luts.len() as u32 - 1)
+    }
+
+    /// Adds a prefiltered environment map (an asset; og-cook's `type
+    /// environment`); [`RenderScene::environment_map`] picks the one a
+    /// frame is lit by.
+    pub fn add_environment_map(&mut self, map: crate::EnvironmentMapData) -> EnvironmentMapHandle {
+        self.environment_maps.push(map);
+        EnvironmentMapHandle(self.environment_maps.len() as u32 - 1)
+    }
+
+    pub(crate) fn environment_maps(&self) -> &[crate::EnvironmentMapData] {
+        &self.environment_maps
     }
 
     /// Adds a trail style (an asset).

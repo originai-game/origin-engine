@@ -108,11 +108,12 @@ Field units the docs and Tune use.
 | `perSecond` | a rate per second: the fraction of a value that decays in one second |
 | `kgPerM3` | kilograms per cubic metre (per square metre in the 2D profile) |
 | `db` | decibels |
+| `evPerSecond` | exposure stops (EV) per second of simulation time |
 | `bpm` | beats per minute |
 
 ## Every name
 
-845 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+851 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -232,6 +233,8 @@ Field units the docs and Tune use.
 | [`Entity()`](world.md#column-Entity) | column kind | world | — |
 | [`EntityDump`](probe.md#type-EntityDump) | struct | probe | — |
 | [`EntityOperation`](probe.md#type-EntityOperation) | struct | probe | — |
+| [`EnvironmentMap`](render.md#type-EnvironmentMap) | handle | render | — |
+| [`EnvironmentMap()`](render.md#column-EnvironmentMap) | column kind | render | — |
 | [`f32()`](reflect.md#column-f32) | column kind | reflect | — |
 | [`f64()`](reflect.md#column-f64) | column kind | reflect | — |
 | [`FactsFn`](game.md#type-FactsFn) | callback | game | — |
@@ -423,6 +426,7 @@ Field units the docs and Tune use.
 | [`og.DayNight`](atmosphere.md#record-DayNight) | resource | atmosphere | — |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
+| [`og.Environment`](render.md#record-Environment) | resource | render | — |
 | [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
 | [`og.FlipbookEvent`](anim.md#record-FlipbookEvent) | event | anim | — |
 | [`og.Fluid2D`](physics.md#record-Fluid2D) | component | physics | — |
@@ -449,6 +453,7 @@ Field units the docs and Tune use.
 | [`og.load.bundleInfo`](load.md#fn-bundleInfo) | function | load | `og_load_bundle_info` |
 | [`og.load.defaultBundle`](load.md#fn-defaultBundle) | function | load | `og_load_default_bundle` |
 | [`og.load.emitter`](load.md#fn-emitter) | function | load | `og_load_emitter` |
+| [`og.load.environment`](load.md#fn-environment) | function | load | `og_load_environment` |
 | [`og.load.error`](load.md#fn-error) | function | load | `og_load_error` |
 | [`og.load.flipbook`](load.md#fn-flipbook) | function | load | `og_load_flipbook` |
 | [`og.load.font`](load.md#fn-font) | function | load | `og_load_font` |
@@ -908,6 +913,8 @@ Field units the docs and Tune use.
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |
 | [`Tone`](ui.md#type-Tone) | enum | ui | — |
+| [`ToneMapping`](render.md#type-ToneMapping) | enum | render | — |
+| [`ToneMapping()`](render.md#column-ToneMapping) | column kind | render | — |
 | [`TransitionDesc`](ui.md#type-TransitionDesc) | desc struct | ui | — |
 | [`TransitionKind`](ui.md#type-TransitionKind) | enum | ui | — |
 | [`TutorialDesc`](ui.md#type-TutorialDesc) | desc struct | ui | — |

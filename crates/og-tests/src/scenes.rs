@@ -35,6 +35,8 @@ pub const SCENES: &[&str] = &[
     "trails-beams",
     "decals",
     "post-grade",
+    "post-agx",
+    "environment-map",
     "ao-gtao",
     "ao-ssao",
     "dof-low",
@@ -129,6 +131,7 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "fonts/noto-sans-sc-msdf.png" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.png"),
         "fonts/noto-sans-sc-msdf.json" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.json"),
         "fonts/noto-sans-sc-msdf.csv" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.csv"),
+        "env/studio.hdr" => include_bytes!("../assets/env/studio.hdr"),
         _ => {
             return Err(format!(
                 "{rel}: not compiled into the wasm harness (scenes::asset)"
@@ -281,6 +284,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = spike_gltf_scene()?;
             fx::grade(&mut g.scene);
         }
+        // The bloom scene's saturated emissive spheres through AgX instead
+        // of ACES: the brightest cores go to white instead of skewing hue.
+        "post-agx" => {
+            g.scene = emissive_spheres();
+            g.scene.post.bloom = Some(Bloom {
+                threshold: 1.0,
+                knee: 0.5,
+                intensity: 0.8,
+            });
+            g.scene.post.tonemap = Tonemap::Agx;
+        }
+        // Spheres from mirror to rough, chrome and white, lit only by a
+        // cooked HDR environment map (the synthetic studio), turned, as
+        // the background too.
+        "environment-map" => g.scene = crate::ibl_scenes::environment_scene()?,
         "ao-gtao" => g.scene = fx::ao_scene(og_render::AoMethod::Gtao),
         "ao-ssao" => g.scene = fx::ao_scene(og_render::AoMethod::Ssao),
         "dof-low" => g.scene = fx::dof_scene(og_render::DofQuality::Low)?,
@@ -1022,6 +1040,8 @@ fn showcase() -> Result<RenderScene, String> {
             compensation: 0.3,
             min_ev: -4.0,
             max_ev: 4.0,
+            adapt_speed_up: 0.0,
+            adapt_speed_down: 0.0,
         },
         ..Default::default()
     };

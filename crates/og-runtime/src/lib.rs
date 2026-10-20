@@ -35,6 +35,7 @@ mod atmosphere;
 mod codec;
 mod e6;
 mod engine;
+mod environment;
 mod extract;
 mod feel;
 mod fx;

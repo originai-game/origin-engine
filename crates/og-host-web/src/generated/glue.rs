@@ -569,6 +569,11 @@ pub fn og_load_lut(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_environment(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_environment(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_emitter(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_emitter(&Host, world, path)
 }

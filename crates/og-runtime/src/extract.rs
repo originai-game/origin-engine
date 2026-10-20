@@ -58,6 +58,15 @@ pub trait RenderBackend {
     fn deferred(&self) -> bool {
         false
     }
+    /// og-render's `Renderer::save_state` (the adapted exposure) as its
+    /// number, for a probe snapshot; 0 keeps nothing.
+    fn save_state(&mut self) -> u64 {
+        0
+    }
+    /// og-render's `Renderer::restore_state` of what `save_state` answered.
+    fn restore_state(&mut self, state: u64) {
+        let _ = state;
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.
@@ -130,6 +139,8 @@ pub(crate) struct RenderState {
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoState,
+    /// The environment maps loaded (`super::environment`).
+    pub env: super::environment::EnvState,
     /// The terrains loaded (`super::terrain`).
     pub terrain: super::terrain::TerrainState,
 }
@@ -158,6 +169,7 @@ impl RenderState {
             notes: Vec::new(),
             feel: Default::default(),
             atmo: Default::default(),
+            env: Default::default(),
             terrain: Default::default(),
         }
     }
@@ -184,7 +196,7 @@ fn on(v: &Value, key: &str, default: bool) -> bool {
 }
 
 /// The value of a resource the world holds, decoded with its layout.
-fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
+pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
     let layout = layout?;
     let id = world.id_by_name(&layout.schema).ok()?;
     let bytes = world.resource_bytes(id).ok()?;
@@ -321,6 +333,8 @@ pub(crate) struct DrawLayouts {
     pub fx: super::fx::FxLayouts,
     /// The atmosphere's and the physics extras' records (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoLayouts,
+    /// og.Environment (`super::environment`).
+    pub environment: Option<Layout>,
     /// og.Terrain and og.TerrainScatter (`super::terrain`).
     pub terrain: Option<Layout>,
     pub scatter: Option<Layout>,
@@ -403,7 +417,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             intensity: f(s, "bloomIntensity", 0.6),
         });
         scene.post.tonemap = if on(s, "toneMapped", true) {
-            og_render::Tonemap::Aces
+            match s["toneMapping"].as_u64().or_else(|| {
+                s["toneMapping"]
+                    .as_str()
+                    .and_then(|n| ["aces", "agx", "none"].iter().position(|v| *v == n))
+                    .map(|i| i as u64)
+            }) {
+                Some(1) => og_render::Tonemap::Agx,
+                Some(2) => og_render::Tonemap::None,
+                _ => og_render::Tonemap::Aces,
+            }
         } else {
             og_render::Tonemap::None
         };
@@ -412,6 +435,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 compensation: exposure.max(1e-6).log2(),
                 min_ev: -10.0,
                 max_ev: 10.0,
+                adapt_speed_up: f(s, "adaptSpeedUp", 0.0).max(0.0),
+                adapt_speed_down: f(s, "adaptSpeedDown", 0.0).max(0.0),
             }
         } else {
             og_render::Exposure::linear(exposure)
@@ -548,6 +573,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::components(world, rs, &mut h, tick);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
+    super::environment::extract(world, rs);
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, &mut h));
     let vp = super::fx::viewport(rs);

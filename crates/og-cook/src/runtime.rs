@@ -2484,6 +2484,69 @@ impl Bundle {
     pub fn load_terrain(&self, id: &str) -> Result<CookedTerrain, LoadError> {
         self.terrain(id, &self.read(id)?)
     }
+
+    /// Decodes an environment map blob (`type environment`): the texels
+    /// inflated, the map ready for `RenderScene::add_environment_map`.
+    pub fn environment(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<og_render::EnvironmentMapData, LoadError> {
+        let blob = self.blob::<format::EnvironmentMap>(id, bytes)?;
+        let meta = one::<format::EnvironmentMeta>(&blob)?;
+        if meta.levels != og_render::ENVIRONMENT_MAP_LEVELS {
+            return Err(invalid(
+                &blob,
+                format!(
+                    "{} levels; this engine's environment maps have {}",
+                    meta.levels,
+                    og_render::ENVIRONMENT_MAP_LEVELS
+                ),
+            ));
+        }
+        let want = og_render::EnvironmentMapData::texel_count(meta.size);
+        if meta.texel_count as usize != want {
+            return Err(invalid(
+                &blob,
+                format!(
+                    "a {}² map holds {want} texels, not {}",
+                    meta.size, meta.texel_count
+                ),
+            ));
+        }
+        let bytes =
+            miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(blob.raw("texels")?, want * 4)
+                .map_err(|e| invalid(&blob, format!("texels: {e:?}")))?;
+        if bytes.len() != want * 4 {
+            return Err(invalid(&blob, "texels: truncated"));
+        }
+        let texels = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| u32::from_le_bytes(*b))
+            .collect();
+        let sh = table::<format::EnvironmentShRow>(&blob, "irradiance")?;
+        if sh.len() != 9 {
+            return Err(invalid(
+                &blob,
+                format!("{} irradiance rows, not 9", sh.len()),
+            ));
+        }
+        let map = og_render::EnvironmentMapData {
+            size: meta.size,
+            texels,
+            irradiance: std::array::from_fn(|k| [sh[k].r, sh[k].g, sh[k].b]),
+        };
+        map.validate().map_err(|e| invalid(&blob, e))?;
+        Ok(map)
+    }
+
+    /// Reads and decodes an environment map (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_environment(&self, id: &str) -> Result<og_render::EnvironmentMapData, LoadError> {
+        self.environment(id, &self.read(id)?)
+    }
 }
 
 // ── phase 3: streaming groups ────────────────────────────────────────────

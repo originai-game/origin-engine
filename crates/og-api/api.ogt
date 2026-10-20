@@ -27,6 +27,7 @@ unit radps "radians per second"
 unit perSecond "a rate per second: the fraction of a value that decays in one second"
 unit kgPerM3 "kilograms per cubic metre (per square metre in the 2D profile)"
 unit db "decibels"
+unit evPerSecond "exposure stops (EV) per second of simulation time"
 unit bpm "beats per minute"
 
 # ── math ──────────────────────────────────────────────────────────────────
@@ -1899,14 +1900,28 @@ module render {
     field castShadow bool "Cast a shadow map."
   }
 
+  enum ToneMapping {
+    doc "The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen."
+    variant aces "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default."
+    variant agx "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES."
+    variant none "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
+  }
+
+  column ToneMapping {
+    doc "A ToneMapping field: the variant's index."
+    array Uint32Array
+    stride 1
+    value ToneMapping
+  }
+
   resource RenderSettings {
     doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
-    field environmentIntensity f32 "The strength of the image-based ambient light from the procedural sky." {
+    field environmentIntensity f32 "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set." {
       default 0.55
       min 0
       tunable true
     }
-    field sky bool "Draw the procedural sky behind the scene instead of Camera.background."
+    field sky bool "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map)."
     field bloom bool "Light above the threshold bleeds into its surroundings."
     field bloomThreshold f32 "Brightness after exposure where bloom starts; 1 is display white." {
       default 1
@@ -1922,16 +1937,30 @@ module render {
       min 0
       tunable true
     }
-    field autoExposure bool "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation."
-    field toneMapped bool "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
+    field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye."
+    field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
+      min 0
+      max 100
+      unit evPerSecond
+      tunable true
+    }
+    field adaptSpeedDown f32 "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair." {
+      min 0
+      max 100
+      unit evPerSecond
+      tunable true
+    }
+    field toneMapped bool "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
       default true
     }
+    field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none."
     field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
   }
 
   # ── effects (og-render's E1 effects, declared as data) ────────────────
 
   handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
+  handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`)."
   handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 
   column Texture {
@@ -1946,6 +1975,33 @@ module render {
     array Uint32Array
     stride 2
     value Lut
+  }
+
+  column EnvironmentMap {
+    doc "An EnvironmentMap handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value EnvironmentMap
+  }
+
+  resource Environment {
+    doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
+    field map EnvironmentMap "The map from og.load.environment; 0 lights by the sky."
+    field intensity f32 "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity." {
+      default 1
+      min 0
+      tunable true
+    }
+    field rotation f32 "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together." {
+      unit deg
+      tunable true
+    }
+    field background bool "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it."
+    field backgroundIntensity f32 "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed." {
+      default 1
+      min 0
+      tunable true
+    }
   }
 
   column ParticleEmitter {
@@ -2994,6 +3050,13 @@ module load {
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `luts/warm.cube`."
     returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
+  }
+
+  fn environment {
+    doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `env/studio.ogt`."
+    returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
   }
 
   fn emitter {

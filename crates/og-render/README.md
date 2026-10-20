@@ -16,18 +16,19 @@ the world → scene extraction belongs to the layer above.
 |---|---|
 | `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`. Default 1280×720, `Auto`, `Antialias::Off`. |
 | `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4` and `Taa` (any tier). `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Off` where the HDR format cannot be multisampled. |
-| `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
+| `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `sprites`, `texts`, `overlay`, `debug`, `terrains`, `water`, `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
-| `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev }`: the frame's log-average luminance brought to 0.18, from the current frame only, so the same frame always gets the same exposure. |
+| `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth). Three cascades. |
 | `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 in view with `cast_shadows` get shadows. |
-| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default) or `None` (clamp: authored 2D colours come out exact). |
+| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
+| `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, the cook's prefilter. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
@@ -52,7 +53,8 @@ object; see below). Passes whose feature is off are not recorded.
 1. **Sync.** New meshes, textures (with the **mip pass**: one fullscreen
    triangle per level, linear-space box filter), materials, fonts. When the
    sky changes, the **IBL passes** run (sky cube, irradiance, GGX prefilter,
-   BRDF LUT; render passes only, so WebGL2 runs them).
+   BRDF LUT; render passes only, so WebGL2 runs them); with an environment
+   map they copy the cooked map into the same cubes instead.
 2. **Batch and cull** (CPU). Instances stably sorted by (mesh, material);
    each sorted instance gets a world bounding sphere. Every pass gets a draw
    list per batch: the instances whose sphere touches the pass's volume. A
@@ -131,11 +133,14 @@ object; see below). Passes whose feature is off are not recorded.
    `reset_history`.
 7. **Metering** (auto exposure): log2 luminance into 64², then 8×8 averages
    to 8² and 1² (`textureLoad`, no float filtering), read by the bloom
-   prefilter and the tonemap through `textureLoad`.
+   prefilter and the tonemap through `textureLoad`. With adapt speeds the
+   **exposure-adapt** pass follows: the 1×1 `R32Float` adapted EV walks
+   towards the metered one, and the bloom prefilter and the tonemap read it
+   instead.
 8. **Bloom**: a 13-tap prefilter with exposure and a soft-knee threshold into
    a half-resolution chain (up to 6 levels), 13-tap downsamples, then tent
    upsamples added back level by level.
-9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES or clamp → the
+9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES, AgX or clamp → the
    output. An sRGB output is encoded by the hardware; a non-sRGB one
    (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A
    surface takes an sRGB format where one is offered (WebGL2, native
@@ -316,6 +321,8 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `msaa` | The same geometry with 4× MSAA. | no-compute |
 | `bloom` | Emissive spheres with bloom. | all |
 | `exposure` | A dim dusk scene metered to middle grey. | all |
+| `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |
+| `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. | all |
 | `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. | all |
 | `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. | all |
 | `sky-only` | The sky with the sun in view: 2 draws. | all |
@@ -849,6 +856,67 @@ above it, lit by the sun and an orange point light); each check was broken
 once (`tests/evidence/P2/sph/break-and-restore.md`). fx-showcase's
 `fluids3d` station has references on all four tiers.
 
+## Phase 4: environment maps, AgX, exposure adaptation
+
+**Environment maps** (`src/environment.rs`, design §2.6 "IBL from an
+environment map prefiltered at cook time"). og-cook's `type environment`
+prefilters an equirectangular `.hdr`/`.exr` at cook time with this crate's
+`bake` feature (it must match the renderer's face orientation, the
+roughness of each level and ibl.wgsl's GGX sampling, so it lives here; the
+runtime wasm never enables it): the image resampled 2×2 per texel into the
+level-0 cube (three.js's equirectangular mapping: the centre column is +x,
+three quarters +z), a box mip chain, levels 1–4 by GGX importance sampling
+(Hammersley, the source level picked from each sample's solid angle) at
+roughness m/4, and the irradiance projected onto order-2 harmonics by texel
+solid angle and convolved with the cosine lobe (band factors 1, 2/3, 1/4,
+stored as E/π). Texels are RGB9E5 (`Rgb9e5Ufloat`): 4 bytes a texel
+against RGBA16F's 8, sampled and filtered on every tier (WebGPU core, GL ES
+3.0 core so WebGL2, Metal, Vulkan's mandatory formats); the map is only
+sampled, never a render target. A 128² map is 524 KB before zlib.
+
+`RenderScene::add_environment_map` uploads it as a cube; a frame sets
+`environment_map: Some(EnvironmentMap { map, rotation, background_intensity })`.
+The IBL generator then copies it, turned about +y, into its own cubes
+instead of drawing the sky (`fs_env_copy`: level 0 into the 256² sky cube
+scaled by the background intensity, whose mips are downsampled as for the
+sky, level m into prefiltered mip m; `fs_env_irradiance`: the harmonics
+evaluated into the 32² irradiance cube): 90 passes, as many as the sky's, only when the map, its
+turn or background intensity changes. Every shader that reads the
+image-based light (pbr, terrain, water, the sky pass, the planar
+reflection) reads the map with no change, so `pbr.wgsl` is untouched;
+`Environment::intensity` still scales the light and `Background::Sky`
+draws the map. Without a map the sky's passes, parameters and WGSL math
+are as before: the sky-lit references (`gltf-reference`, `sky-only`,
+`showcase`, …) match at max channel difference 0.
+
+**AgX** (`Tonemap::Agx`, `post.wgsl`'s `agx`): linear sRGB to Rec.2020,
+the inset matrix, log2 encoding over −12.47..+4.03 EV, the sixth-order
+contrast polynomial, the outset, 2.2 back to linear and Rec.2020 to sRGB:
+the base look of Blender 4, Filament and three.js `AgXToneMapping`. ACES
+stays the default, so no reference moved.
+
+**Exposure adaptation** (`Exposure::Auto { adapt_speed_up,
+adapt_speed_down }`, EV per second; the IDL's
+`RenderSettings.adaptSpeedUp`/`adaptSpeedDown`): the exposure-adapt pass
+(`shaders/exposure.wgsl`) moves a 1×1 `R32Float` EV (two textures, frame
+`n` reading the other's and writing `n % 2`'s) towards the metered target
+by at most speed × dt, where dt is the scene's tick delta since the
+previous adapted frame over `tick_rate`: the tick owns time, nothing reads
+a clock, so the same ticks give the same frames however often they are
+drawn (a capture at the same tick moves nothing). A speed of 0 is instant
+in its direction; the first adapted frame, one after a frame without
+adaptation, or one whose tick went back starts at the metered EV. The
+adapted EV is world-time state: `Renderer::save_state` copies it (with its
+tick) into a 64-texel ring on the GPU, no readback, and `restore_state`
+copies it back into both textures; og-probe's snapshot, restore and sweep
+call them through `Capture::save_state`/`restore_state` (og-runtime's
+`RenderBackend`), so a sweep's values all start from the call's exposure
+and a restored world redraws its frames. `og-tests/tests/exposure.rs`: two
+renderers adapt identically over 330 ticks after a 4 EV drop, the frame
+1.5 s in lies between, it settles within 1 % of instant metering, a
+restore to tick 31 redraws tick 120 byte for byte, and zero speeds equal
+`Exposure::auto()` bit for bit.
+
 ## What phase 2 owes
 
 Delivered in P4: clearcoat maps, sheen, transmission (with volume and
@@ -881,7 +949,7 @@ with their mips, chosen per tier and reported in
   more than two shadowed local lights.
 - TAA: Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier
   as an MSAA alternative.
-- Post: AgX, temporal exposure adaptation (deterministic per tick), fog.
+- Post: fog.
 - 2D: per-texture filtering (nearest for pixel art), billboards, kerning and
   RTL shaping (rustybuzz), CJK fallback atlases.
 - Instance upload is the whole buffer every frame; dirty tracking is still

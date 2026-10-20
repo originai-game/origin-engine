@@ -1,0 +1,11 @@
+type environment
+version 1
+---
+# A synthetic studio (crates/og-tests/scripts/make-studio-hdr.py, 256 × 128):
+# warm floor, a sky from a pale horizon to a blue zenith, a warm key
+# softbox and a cool rim strip. Prefiltered by og cook.
+source "studio.hdr"
+size 128
+intensity 1
+rotation 0
+samples 256
