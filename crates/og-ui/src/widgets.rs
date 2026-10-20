@@ -1636,7 +1636,8 @@ impl Ui {
 
     /// A number stepper: `−`, the value, `+` (`<id>/Dec`, `<id>/Value`,
     /// `<id>/Inc`); the buttons step by `step` within the range, Left and
-    /// Right step it while a button is focused.
+    /// Right step it while a button is focused, and a screen reader's
+    /// increment and decrement on its spinbutton (`<id>`) step it too.
     pub fn stepper(&mut self, id: impl Into<Id>, value: &mut f32, desc: StepperDesc) -> Response {
         let t = self.theme;
         let step = if desc.step > 0.0 { desc.step } else { 1.0 };
@@ -1657,7 +1658,12 @@ impl Ui {
         self.nodes[spin].a11y.role = Some("spinbutton");
         self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
         let mut out = Response::default();
-        let mut delta = 0i32;
+        let spin_key = self.nodes[spin].key;
+        let mut delta = if self.nav.spin.0 == spin_key {
+            self.nav.spin.1
+        } else {
+            0
+        };
         let digits = desc.decimals as usize;
         for (name, sign) in [("Dec", -1), ("Inc", 1)] {
             if name == "Inc" {

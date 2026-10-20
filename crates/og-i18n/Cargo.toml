@@ -9,3 +9,6 @@ description = "Origin Engine localization: string tables (`type strings` .ogt), 
 # Pure Rust over og-core; builds for wasm32-unknown-unknown.
 [dependencies]
 og-core = { path = "../og-core" }
+# UAX #29: word boundaries (word moves, double-click selection) and grapheme
+# clusters (a base and its marks drawn by one font).
+unicode-segmentation = "1.13.3"

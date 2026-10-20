@@ -139,15 +139,34 @@ impl Ui {
     /// [`InputFrame::a11y`]): each names a control by its path in the last
     /// frame's accessibility tree. Focus moves there (with the ring, as
     /// keyboard navigation shows it), Activate presses it as Enter would,
-    /// Increment and Decrement step an adjustable one. A path naming no
-    /// focusable control of the topmost scope is ignored, as a press
-    /// outside an open dialog is; a gameplay screen's
+    /// Increment and Decrement step an adjustable one, and a stepper's
+    /// spinbutton as a whole (its − and + are the controls focus reaches).
+    /// A path naming no focusable control of the topmost scope is ignored,
+    /// as a press outside an open dialog is; a gameplay screen's
     /// `set_navigation(false)` does not stop them.
     pub(crate) fn apply_a11y(&mut self, acts: &[(og_input::A11yAct, String)]) {
         use og_input::A11yAct;
         for (act, path) in acts {
             let key = crate::id::key_of_path(path);
             let Some(hit) = self.focusables().into_iter().find(|h| h.key == key) else {
+                let step = match act {
+                    A11yAct::Increment => 1,
+                    A11yAct::Decrement => -1,
+                    _ => continue,
+                };
+                // A stepper's spinbutton: one of its buttons is in reach.
+                let spin = self
+                    .frame
+                    .a11y
+                    .nodes
+                    .iter()
+                    .any(|n| n.path == *path && n.role == "spinbutton");
+                let buttons = [format!("{path}/Inc"), format!("{path}/Dec")]
+                    .map(|p| crate::id::key_of_path(&p));
+                if spin && self.focusables().iter().any(|h| buttons.contains(&h.key)) {
+                    let (k, n) = self.nav.spin;
+                    self.nav.spin = (key, if k == key { n + step } else { step });
+                }
                 continue;
             };
             if self.state.focus != key {

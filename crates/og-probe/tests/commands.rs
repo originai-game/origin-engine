@@ -387,6 +387,32 @@ fn pointer_and_key_actions_go_through_the_input_layer() {
     }
     assert_eq!(seen, ["KeyH", "KeyI", "Digit1"]);
     assert!(!input(&h).down("Digit1"), "every press is released");
+    // A chord: the modifiers held with the key (Command apart from Control),
+    // released after it.
+    h.probe
+        .schedule(
+            &h.world,
+            "0:key_down:Meta+Shift+ArrowLeft;0.05:key_up:Meta+Shift+ArrowLeft",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let i = input(&h);
+    assert!(i.pressed("ArrowLeft") && i.down("MetaLeft") && i.down("ShiftLeft"));
+    assert!(!i.down("ControlLeft"), "Meta is Command, not Control");
+    for _ in 0..4 {
+        h.probe.step(&mut h.world).unwrap();
+    }
+    h.probe.pump(&mut h.world);
+    let i = input(&h);
+    assert!(!i.down("ArrowLeft") && !i.down("MetaLeft") && !i.down("ShiftLeft"));
+    h.probe.schedule(&h.world, "0:key_down:Hyper+KeyA").unwrap();
+    h.probe.pump(&mut h.world);
+    assert!(
+        h.probe
+            .take_log()
+            .iter()
+            .any(|l| l.text.contains("'hyper' is not a modifier"))
+    );
     h.probe.schedule(&h.world, "0:key_down:Bogus").unwrap();
     h.probe.pump(&mut h.world);
     assert!(

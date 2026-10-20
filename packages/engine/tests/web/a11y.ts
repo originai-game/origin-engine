@@ -11,8 +11,8 @@
 //   accessibility tree reads them as a screen reader would.
 // - A screen reader's adjust gesture on the Master slider (mirrored as a
 //   native range: its value moved and an `input` event, what VoiceOver's
-//   swipe dispatches) lowers the volume, and the range returns to its
-//   middle step.
+//   swipe dispatches) lowers the volume, and the range returns to the
+//   UI's value (its aria-valuenow), a step from either end.
 // - A screen-reader-style click (`element.click()`: a click event with no
 //   pointer, what VoiceOver's and NVDA's default action dispatches) on the
 //   mirrored Mute switch reaches the UI as input: the setting toggles
@@ -192,8 +192,8 @@ try {
     "the range's input event reached the UI as a decrement: the Master volume went down",
     { before: master?.attrs["aria-valuetext"], after: lowered?.attrs["aria-valuetext"] },
   );
-  const middle = await t.eval<string>(`${range}.value`);
-  check(middle === "1", "and the range is back at its middle step", middle);
+  const settled = await t.eval<{ value: string; now: string | null }>(`(() => { const el = ${range}; return { value: el.value, now: el.getAttribute("aria-valuenow") }; })()`);
+  check(settled.value === settled.now, "and the range is back at the UI's value (aria-valuenow)", settled);
 
   // A screen reader's click on the mirrored switch.
   const mutePath = mute?.path ?? "";

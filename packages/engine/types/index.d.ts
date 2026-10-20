@@ -1242,7 +1242,7 @@ export interface TextEntry {
 export type A11yActionKind = "focus" | "activate" | "increment" | "decrement";
 
 /**
- * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored).
+ * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).
  */
 export interface A11yRequest {
   /** What is asked. */
@@ -12268,9 +12268,13 @@ export interface Viewport {
    */
   readonly highContrast?: boolean;
   /**
-   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false.
+   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false.
    */
   readonly reducedTransparency?: boolean;
+  /**
+   * Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it on Apple platforms; native hosts leave it off, so a script edits the same on every OS (og.ui.previewViewport tries it). Omitted is false.
+   */
+  readonly macKeys?: boolean;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
 }
@@ -12348,7 +12352,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * Glass parts (a skin's glass line) are opaque surfaces: no blur of the frame under them, their frame whole. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency).
+   * Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
    *
    * @default false
    */
@@ -12528,6 +12532,18 @@ export interface UiTheme {
   readonly durationsMs: Readonly<Record<string, number>>;
   /** The configured skin's name; empty for the platform tokens. */
   readonly skin: string;
+  /**
+   * The variant in effect: high when the game asked for it or the page prefers more contrast.
+   */
+  readonly contrast: Contrast;
+  /**
+   * Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement.
+   */
+  readonly reducedMotion: boolean;
+  /**
+   * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
+   */
+  readonly reducedTransparency: boolean;
 }
 
 /** Builds a container's children: ui calls made inside it nest under the container. */
@@ -15499,8 +15515,8 @@ export interface AlertDesc {
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
  * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
  * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
- * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
- * - `"key_up"`: `key_up:<Key>`: release a key.
+ * - `"key_down"`: `key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl).
+ * - `"key_up"`: `key_up:[Mod+]<Key>`: release a key, then the modifiers named before it.
  * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone.
  * - `"compose"`: `compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it.
  * - `"commit"`: `commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends.
@@ -18548,7 +18564,7 @@ export declare namespace og {
      */
     function select(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult;
     /**
-     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too.
      *
      * @param id Its id.
      * @param value The value from game state.

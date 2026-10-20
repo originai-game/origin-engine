@@ -36,8 +36,18 @@ pub struct Viewport {
     pub high_contrast: bool,
     /// The page prefers less transparency (`prefers-reduced-transparency:
     /// reduce`): the theme's `reduced_transparency` is on whatever the game
-    /// configured (glass parts draw as opaque surfaces).
+    /// configured (glass parts draw as opaque surfaces, scrims and
+    /// translucent fills flat: `Theme::to_reduced_transparency`).
     pub reduced_transparency: bool,
+    /// Text controls take macOS's editing keys: Command for the shortcuts
+    /// (A, C, X, Z) and with ←/→ for the line's ends (↑/↓ the text's),
+    /// Option with ←/→, Backspace and Delete by words, Control+A and E the
+    /// line's ends (emacs). Otherwise Control takes the shortcuts and moves
+    /// by words (Alt too), Home and End go to the line's ends and Command
+    /// only copies, cuts, selects all and undoes. The web shell sets it on
+    /// Apple platforms (`navigator.platform`); native hosts leave it off, so
+    /// a script edits the same on every OS.
+    pub mac_keys: bool,
 }
 
 impl Default for Viewport {
@@ -51,6 +61,7 @@ impl Default for Viewport {
             reduced_motion: false,
             high_contrast: false,
             reduced_transparency: false,
+            mac_keys: false,
         }
     }
 }
@@ -394,6 +405,9 @@ pub(crate) struct NavFrame {
     pub pad0: bool,
     /// The control pads 1 to 3 pressed with A (0: none).
     pub pad_activate: [u64; 3],
+    /// A stepper a screen reader adjusted as a whole (its spinbutton's
+    /// key) and by how many steps.
+    pub spin: (u64, i32),
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells of a
@@ -727,17 +741,19 @@ impl Default for Ui {
 
 const STATE_VERSION: u32 = 8;
 
-/// `theme` with a viewport's preferences: the page's reduced motion and
-/// reduced transparency turn their flags on, its contrast preference takes
-/// the high-contrast variant (a game's own settings can only add to what
-/// the page asks).
+/// `theme` with a viewport's preferences: the page's reduced motion turns
+/// its flag on, its contrast preference takes the high-contrast variant,
+/// and reduced transparency (the page's or the game's) the flat variant
+/// (a game's own settings can only add to what the page asks).
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
     if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
         t = t.to_high_contrast();
     }
     t.reduced_motion |= viewport.reduced_motion;
-    t.reduced_transparency |= viewport.reduced_transparency;
+    if t.reduced_transparency || viewport.reduced_transparency {
+        t = t.to_reduced_transparency();
+    }
     t
 }
 
