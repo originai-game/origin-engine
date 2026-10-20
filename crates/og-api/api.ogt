@@ -1895,6 +1895,7 @@ module render {
   # ── effects (og-render's E1 effects, declared as data) ────────────────
 
   handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
+  handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`)."
   handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 
   column Texture {
@@ -1909,6 +1910,33 @@ module render {
     array Uint32Array
     stride 2
     value Lut
+  }
+
+  column EnvironmentMap {
+    doc "An EnvironmentMap handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value EnvironmentMap
+  }
+
+  resource Environment {
+    doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
+    field map EnvironmentMap "The map from og.load.environment; 0 lights by the sky."
+    field intensity f32 "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity." {
+      default 1
+      min 0
+      tunable true
+    }
+    field rotation f32 "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together." {
+      unit deg
+      tunable true
+    }
+    field background bool "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it."
+    field backgroundIntensity f32 "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed." {
+      default 1
+      min 0
+      tunable true
+    }
   }
 
   column ParticleEmitter {
@@ -2957,6 +2985,13 @@ module load {
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `luts/warm.cube`."
     returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
+  }
+
+  fn environment {
+    doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `env/studio.ogt`."
+    returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
   }
 
   fn emitter {

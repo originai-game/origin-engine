@@ -681,6 +681,12 @@ pub fn og_load_lut(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_lut(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_environment")]
+pub fn og_load_environment(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_environment(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_emitter")]
 pub fn og_load_emitter(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

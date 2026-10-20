@@ -16,7 +16,7 @@ runtime = []
 # transcodes with Binomial's wasm transcoder).
 transcode = ["runtime", "dep:basis-universal", "dep:ruzstd"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["runtime", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga"]
+cook = ["runtime", "og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["dep:basis-universal", "dep:ruzstd"]
@@ -42,7 +42,7 @@ basis-universal = { version = "0.3.1", optional = true }
 ruzstd = { version = "0.9.1", optional = true }
 gltf = { workspace = true, optional = true }
 # EXR heightmaps for terrains (`exr`), beside the workspace's PNG and JPEG.
-image = { workspace = true, optional = true, features = ["exr"] }
+image = { workspace = true, optional = true, features = ["exr", "hdr"] }
 meshopt = { version = "0.6.2", optional = true }
 mikktspace = { version = "0.3.0", default-features = false, features = ["glam"], optional = true }
 fdsm = { version = "0.8.0", optional = true }

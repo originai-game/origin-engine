@@ -421,6 +421,9 @@ impl LoadApi for WebHost {
     fn og_load_lut(&self, world: u32, path: String) -> String {
         rt::og_load_lut(world, path)
     }
+    fn og_load_environment(&self, world: u32, path: String) -> String {
+        rt::og_load_environment(world, path)
+    }
     fn og_load_emitter(&self, world: u32, path: String) -> String {
         rt::og_load_emitter(world, path)
     }

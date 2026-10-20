@@ -1147,9 +1147,12 @@
         "ToneMapping",
         "RenderSettings",
         "Lut",
+        "EnvironmentMap",
         "ParticleEmitter",
         "Texture",
         "Lut",
+        "EnvironmentMap",
+        "Environment",
         "ParticleEmitter",
         "AoMethod",
         "AoMethod",
@@ -1722,6 +1725,27 @@
           ],
           "returns": "Result<Lut>",
           "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook).",
+          "publish": true
+        },
+        {
+          "name": "environment",
+          "doc": "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `env/studio.ogt`."
+            }
+          ],
+          "returns": "Result<EnvironmentMap>",
+          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.",
           "publish": true
         },
         {
@@ -10435,12 +10459,59 @@
       "type": "integer",
       "minimum": 0
     },
+    "EnvironmentMap": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`).",
+      "type": "integer",
+      "minimum": 0
+    },
     "ParticleEmitter": {
       "x-og-kind": "handle",
       "x-og-module": "render",
       "description": "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`).",
       "type": "integer",
       "minimum": 0
+    },
+    "Environment": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.",
+      "type": "object",
+      "properties": {
+        "map": {
+          "$ref": "#/$defs/EnvironmentMap",
+          "description": "The map from og.load.environment; 0 lights by the sky.",
+          "default": 0
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together.",
+          "default": 0,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "background": {
+          "type": "boolean",
+          "description": "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it.",
+          "default": false
+        },
+        "backgroundIntensity": {
+          "type": "number",
+          "description": "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
     },
     "AoMethod": {
       "x-og-kind": "enum",

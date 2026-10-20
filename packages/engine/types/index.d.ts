@@ -114,6 +114,8 @@ export interface ColumnKinds {
   Texture: { readonly array: Uint32Array; readonly stride: 2; readonly value: Texture };
   /** A Lut handle field (0 is none). */
   Lut: { readonly array: Uint32Array; readonly stride: 2; readonly value: Lut };
+  /** An EnvironmentMap handle field (0 is none). */
+  EnvironmentMap: { readonly array: Uint32Array; readonly stride: 2; readonly value: EnvironmentMap };
   /** A ParticleEmitter handle field (0 is none). */
   ParticleEmitter: { readonly array: Uint32Array; readonly stride: 2; readonly value: ParticleEmitter };
   /** An AoMethod field: the variant's index. */
@@ -3007,6 +3009,13 @@ export interface RenderSettings {
 export type Lut = number & { readonly [handleType]: "Lut" };
 
 /**
+ * A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type EnvironmentMap = number & { readonly [handleType]: "EnvironmentMap" };
+
+/**
  * A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`).
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -3030,6 +3039,52 @@ export declare function Texture(value?: Texture, options?: FieldOptions): FieldS
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function Lut(value?: Lut, options?: FieldOptions): FieldSpec<"Lut">;
+
+/**
+ * An EnvironmentMap handle field (0 is none).
+ *
+ * A `EnvironmentMap` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function EnvironmentMap(value?: EnvironmentMap, options?: FieldOptions): FieldSpec<"EnvironmentMap">;
+
+/**
+ * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
+ *
+ * The `Environment` resource (token `og.Environment`).
+ */
+export interface Environment {
+  /** The map from og.load.environment; 0 lights by the sky. */
+  map: EnvironmentMap;
+  /**
+   * The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together.
+   *
+   * @unit deg (degrees)
+   * @tunable
+   */
+  rotation: number;
+  /**
+   * Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it.
+   */
+  background: boolean;
+  /**
+   * Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  backgroundIntensity: number;
+}
 
 /**
  * A ParticleEmitter handle field (0 is none).
@@ -4653,6 +4708,7 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
 
 
 
@@ -15854,6 +15910,10 @@ export declare namespace og {
    */
   const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly decalAtlas: FieldSpec<"Texture"> }, RenderSettings>;
   /**
+   * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
+   */
+  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32"> }, Environment>;
+  /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
@@ -16094,6 +16154,14 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle (the reason says to run og cook).
      */
     function lut(world: World, path: string): Result<Lut>;
+    /**
+     * A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it), `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `env/studio.ogt`.
+     * @returns Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.
+     */
+    function environment(world: World, path: string): Result<EnvironmentMap>;
     /**
      * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.
      *

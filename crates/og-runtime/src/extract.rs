@@ -139,6 +139,8 @@ pub(crate) struct RenderState {
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoState,
+    /// The environment maps loaded (`super::environment`).
+    pub env: super::environment::EnvState,
     /// The terrains loaded (`super::terrain`).
     pub terrain: super::terrain::TerrainState,
 }
@@ -167,6 +169,7 @@ impl RenderState {
             notes: Vec::new(),
             feel: Default::default(),
             atmo: Default::default(),
+            env: Default::default(),
             terrain: Default::default(),
         }
     }
@@ -193,7 +196,7 @@ fn on(v: &Value, key: &str, default: bool) -> bool {
 }
 
 /// The value of a resource the world holds, decoded with its layout.
-fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
+pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
     let layout = layout?;
     let id = world.id_by_name(&layout.schema).ok()?;
     let bytes = world.resource_bytes(id).ok()?;
@@ -330,6 +333,8 @@ pub(crate) struct DrawLayouts {
     pub fx: super::fx::FxLayouts,
     /// The atmosphere's and the physics extras' records (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoLayouts,
+    /// og.Environment (`super::environment`).
+    pub environment: Option<Layout>,
     /// og.Terrain and og.TerrainScatter (`super::terrain`).
     pub terrain: Option<Layout>,
     pub scatter: Option<Layout>,
@@ -568,6 +573,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::components(world, rs, &mut h, tick);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
+    super::environment::extract(world, rs);
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, &mut h));
     let vp = super::fx::viewport(rs);
