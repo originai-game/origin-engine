@@ -456,6 +456,8 @@ const LANES_FILES = ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm", "s
 /** Each engine variant's own files: the service worker precaches the one its page boots. */
 const SINGLE_ENGINE = /^origin-engine(\.js|_bg\.wasm)$/;
 const LANES_ENGINE = /^(origin-engine-lanes(\.js|_bg\.wasm)|snippets\/.*)$/;
+/** A chunk of a sound cooked in chunks: fetched as its playhead nears it, cached then. */
+const SOUND_CHUNK = /^cooked\/.*\.chunk\d+\.ogb$/;
 
 /**
  * Why `out` may not be wiped for a build, or null. A build replaces its
@@ -608,10 +610,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
     const sw = await bundleScript(join(SHELL_DIR, "sw.ts"), true);
     if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
     // The first group is precached; a streaming group's pack is cached when the engine fetches it.
-    const precache = fileRows().map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f) && !packs.has(f));
+    // So is a long sound's chunk (cooked/<sound>.chunk<n>.ogb).
+    const precache = fileRows().map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f) && !packs.has(f) && !SOUND_CHUNK.test(f));
+    const chunks = fileRows().map((f) => f.path).filter((f) => SOUND_CHUNK.test(f));
     const common = precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f));
     const variants = { single: precache.filter((f) => SINGLE_ENGINE.test(f)), lanes: precache.filter((f) => LANES_ENGINE.test(f)) };
-    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...common], lazy: [...packs].sort(), ...variants })};\n${sw}`);
+    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...common], lazy: [...packs, ...chunks].sort(), ...variants })};\n${sw}`);
     version = identity(fileRows());
   }
 

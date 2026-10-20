@@ -71,7 +71,18 @@ pub struct AnimSettings {
     pub libraries: Vec<String>,
     /// Retargeting solves the legs so planted feet stay on the ground.
     pub foot_ik: bool,
+    /// Quantised keys with keyframe reduction (`crate::anim_codec`)
+    /// instead of f32 samples.
+    pub compress: bool,
+    /// The largest difference compression may make to a resampled value,
+    /// per lane in the channel's units (metres, unit-quaternion
+    /// components, scale factors, morph weights).
+    pub tolerance: f32,
 }
+
+/// `animation { tolerance }` when the settings give none: 1e-4 (0.1 mm in
+/// metres; 0.011° of rotation).
+pub const DEFAULT_TOLERANCE: f32 = 1e-4;
 
 impl Default for AnimSettings {
     fn default() -> Self {
@@ -81,6 +92,8 @@ impl Default for AnimSettings {
             rig: None,
             libraries: Vec::new(),
             foot_ik: true,
+            compress: false,
+            tolerance: DEFAULT_TOLERANCE,
         }
     }
 }
@@ -88,8 +101,13 @@ impl Default for AnimSettings {
 impl AnimSettings {
     pub fn describe(&self) -> String {
         let mut s = format!(
-            "rate {} resample f64 skin u16x4/unorm16x4 morph f32 codec meshopt-v1",
-            self.rate.map_or("source".to_string(), |r| r.to_string())
+            "rate {} resample f64 skin u16x4/unorm16x4 morph f32 sparse codec meshopt-v1 samples {}",
+            self.rate.map_or("source".to_string(), |r| r.to_string()),
+            if self.compress {
+                format!("quantized-v1 tolerance {}", self.tolerance)
+            } else {
+                "f32".to_string()
+            }
         );
         for (c, n, t) in &self.events {
             s.push_str(&format!(" event {c:?} {n:?} {t}"));
@@ -141,9 +159,25 @@ impl AnimSettings {
                         .and_then(|v| v.as_bool())
                         .ok_or_else(|| format!("line {}: footIk takes true or false", e.line))?
                 }
+                "compress" => {
+                    a.compress =
+                        e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                            format!("line {}: compress takes true or false", e.line)
+                        })?
+                }
+                "tolerance" => {
+                    let t = e.f32(0).map_err(err)?;
+                    if !(t > 0.0 && t <= 0.1) {
+                        return Err(format!(
+                            "line {}: animation tolerance must be above 0 and at most 0.1",
+                            e.line
+                        ));
+                    }
+                    a.tolerance = t;
+                }
                 k => {
                     return Err(format!(
-                        "line {}: unknown animation setting '{k}' (rate, event, rig, library, footIk)",
+                        "line {}: unknown animation setting '{k}' (rate, event, rig, library, footIk, compress, tolerance)",
                         e.line
                     ));
                 }
@@ -451,6 +485,68 @@ fn events_of(
     Ok(events)
 }
 
+/// The channels of a blob as they are written: rows, `samples` and
+/// `packed`, each channel encoded by `crate::anim_codec`.
+#[derive(Default)]
+struct Samples {
+    tolerance: Option<f32>,
+    channels: Vec<ChannelRow>,
+    samples: Vec<f32>,
+    packed: Vec<u16>,
+    /// Channels per codec, and the frames' floats before and the stored
+    /// floats and u16s after.
+    by_codec: [u32; 3],
+    frames_in: usize,
+}
+
+impl Samples {
+    fn push(
+        &mut self,
+        node: u32,
+        path: u32,
+        interpolation: u32,
+        lanes: u32,
+        frames: u32,
+        data: &[f32],
+    ) {
+        let e = crate::anim_codec::encode(
+            path,
+            interpolation == interpolation::STEP,
+            lanes,
+            frames,
+            data,
+            self.tolerance,
+        );
+        self.by_codec[e.codec as usize] += 1;
+        self.frames_in += data.len();
+        self.channels.push(ChannelRow {
+            node,
+            path,
+            interpolation,
+            lanes,
+            sample_offset: self.samples.len() as u32,
+            codec: e.codec,
+            keys: e.keys,
+            packed_offset: self.packed.len() as u32,
+        });
+        self.samples.extend_from_slice(&e.floats);
+        self.packed.extend_from_slice(&e.words);
+    }
+
+    fn describe(&self) -> String {
+        format!(
+            "samples: {} f32, {} constant, {} quantised channel(s); {} B of f32 samples stored in {} B{}",
+            self.by_codec[0],
+            self.by_codec[1],
+            self.by_codec[2],
+            self.frames_in * 4,
+            self.samples.len() * 4 + self.packed.len() * 2,
+            self.tolerance
+                .map_or(String::new(), |t| format!(" (tolerance {t})"))
+        )
+    }
+}
+
 /// Quantises weights to unorm16 summing to exactly 65535 (the remainder on
 /// the largest weight).
 fn quantize_weights(w: [f32; 4]) -> [u16; 4] {
@@ -488,7 +584,12 @@ pub fn cook(
     if settings.libraries.is_empty() {
         return cook_with(src, bytes, mesh, settings, stamp, &[]);
     }
-    let (own_blob, _) = cook_with(src, bytes, mesh, settings, stamp, &[])?;
+    // Retargeting reads the clips as resampled, never as compressed.
+    let exact = AnimSettings {
+        compress: false,
+        ..settings.clone()
+    };
+    let (own_blob, _) = cook_with(src, bytes, mesh, &exact, stamp, &[])?;
     let own = crate::runtime::CookedAnimation::from_bytes("model#anim", &own_blob)
         .map_err(|e| CookError(e.to_string()))?;
     let target_map = humanoid(root, settings.rig.as_deref(), &own.skeleton).map_err(CookError)?;
@@ -510,7 +611,11 @@ pub fn cook(
                 "an animation library cannot name libraries of its own".into(),
             ));
         }
-        let (lib_blob, _) = cook_with(&lib_src, &lib_bytes, mesh, &lib_settings, 0, &[])?;
+        let lib_exact = AnimSettings {
+            compress: false,
+            ..lib_settings.clone()
+        };
+        let (lib_blob, _) = cook_with(&lib_src, &lib_bytes, mesh, &lib_exact, 0, &[])?;
         let library = crate::runtime::CookedAnimation::from_bytes("library#anim", &lib_blob)
             .map_err(|e| fail(e.to_string()))?;
         let source_map =
@@ -602,8 +707,10 @@ fn cook_with(
 
     // Clips.
     let mut clips = Vec::new();
-    let mut channels: Vec<ChannelRow> = Vec::new();
-    let mut samples: Vec<f32> = Vec::new();
+    let mut store = Samples {
+        tolerance: settings.compress.then_some(settings.tolerance),
+        ..Samples::default()
+    };
     let mut events: Vec<EventRow> = Vec::new();
     let mut clip_names: Vec<String> = Vec::new();
     for anim in doc.animations() {
@@ -639,9 +746,9 @@ fn cook_with(
         });
         let rate = rate.clamp(1.0, 120.0);
         let frames = og_anim::ClipAsset::frames_for(duration, rate);
-        let channel_first = channels.len() as u32;
+        let channel_first = store.channels.len() as u32;
         for c in &source {
-            let sample_offset = samples.len() as u32;
+            let mut data = Vec::with_capacity(frames as usize * c.lanes);
             for i in 0..frames {
                 let t = (i as f64 / rate as f64).min(duration as f64);
                 let v = evaluate(
@@ -652,15 +759,16 @@ fn cook_with(
                     c.path == path::ROTATION,
                     t,
                 );
-                samples.extend(v.iter().map(|&x| x as f32));
+                data.extend(v.iter().map(|&x| x as f32));
             }
-            channels.push(ChannelRow {
-                node: c.node,
-                path: c.path,
-                interpolation: c.interpolation,
-                lanes: c.lanes as u32,
-                sample_offset,
-            });
+            store.push(
+                c.node,
+                c.path,
+                c.interpolation,
+                c.lanes as u32,
+                frames,
+                &data,
+            );
         }
         let event_first = events.len() as u32;
         for (n, t) in
@@ -683,7 +791,7 @@ fn cook_with(
             source_rate,
             frames,
             channel_first,
-            channel_count: channels.len() as u32 - channel_first,
+            channel_count: store.channels.len() as u32 - channel_first,
             event_first,
             event_count: events.len() as u32 - event_first,
         });
@@ -696,20 +804,21 @@ fn cook_with(
         ));
     }
     for clip in extra {
-        let channel_first = channels.len() as u32;
+        let channel_first = store.channels.len() as u32;
         for ch in &clip.channels {
-            channels.push(ChannelRow {
-                node: ch.node,
-                path: ch.path.code(),
-                interpolation: if ch.step {
-                    interpolation::STEP
-                } else {
-                    interpolation::LINEAR
-                },
-                lanes: ch.lanes,
-                sample_offset: samples.len() as u32,
-            });
-            samples.extend_from_slice(&ch.samples);
+            let interpolation = if ch.step {
+                interpolation::STEP
+            } else {
+                interpolation::LINEAR
+            };
+            store.push(
+                ch.node,
+                ch.path.code(),
+                interpolation,
+                ch.lanes,
+                clip.frames,
+                &ch.samples,
+            );
         }
         let event_first = events.len() as u32;
         for e in &clip.events {
@@ -730,7 +839,7 @@ fn cook_with(
             source_rate: clip.source_rate,
             frames: clip.frames,
             channel_first,
-            channel_count: channels.len() as u32 - channel_first,
+            channel_count: store.channels.len() as u32 - channel_first,
             event_first,
             event_count: events.len() as u32 - event_first,
         });
@@ -833,38 +942,59 @@ fn cook_with(
             if !morph.is_empty() {
                 let normals = morph.iter().all(|t| t.1.is_some());
                 let stride = if normals { 24 } else { 12 };
-                let mut packed = Vec::with_capacity(morph.len() * vertex_count * stride);
-                for (p, n) in &morph {
-                    for &s in &cooked.sources {
-                        let d = p.get(s as usize).copied().unwrap_or_default();
-                        d.iter()
+                // Sparse: per target only the vertices it moves (any bit
+                // of a delta set), with their indices.
+                let mut packed = Vec::new();
+                let mut indices: Vec<u8> = Vec::new();
+                let mut moved = 0u32;
+                let target_first = targets.len() as u32;
+                for (t, (p, n)) in morph.iter().enumerate() {
+                    let first = moved;
+                    for (v, &s) in cooked.sources.iter().enumerate() {
+                        let dp = p.get(s as usize).copied().unwrap_or_default();
+                        let dn = n
+                            .as_ref()
+                            .and_then(|n| n.get(s as usize))
+                            .copied()
+                            .unwrap_or_default();
+                        let nonzero = |d: &[f32; 3]| d.iter().any(|x| x.to_bits() != 0);
+                        if !nonzero(&dp) && !(normals && nonzero(&dn)) {
+                            continue;
+                        }
+                        dp.iter()
                             .for_each(|x| packed.extend_from_slice(&x.to_le_bytes()));
                         if normals {
-                            let d = n
-                                .as_ref()
-                                .and_then(|n| n.get(s as usize))
-                                .copied()
-                                .unwrap_or_default();
-                            d.iter()
+                            dn.iter()
                                 .for_each(|x| packed.extend_from_slice(&x.to_le_bytes()));
                         }
+                        indices.extend_from_slice(&(v as u32).to_le_bytes());
+                        moved += 1;
                     }
-                }
-                let enc = model::encode_vertices(&packed, morph.len() * vertex_count, stride)
-                    .map_err(|e| CookError(format!("{what}: {e}")))?;
-                while !morph_data.len().is_multiple_of(4) {
-                    morph_data.push(0);
-                }
-                let target_first = targets.len() as u32;
-                for t in 0..morph.len() {
                     let (name_offset, name_len) =
                         strings.add(target_names.get(t).map_or("", |s| s.as_str()));
                     targets.push(TargetRow {
                         name_offset,
                         name_len,
                         default_weight: default_weights.get(t).copied().unwrap_or(0.0),
+                        moved_first: first,
+                        moved_count: moved - first,
                     });
                 }
+                let mut put = |bytes: &[u8], stride: usize| -> Result<(u32, u32), CookError> {
+                    if moved == 0 {
+                        return Ok((morph_data.len() as u32, 0));
+                    }
+                    let enc = model::encode_vertices(bytes, moved as usize, stride)
+                        .map_err(|e| CookError(format!("{what}: {e}")))?;
+                    while !morph_data.len().is_multiple_of(4) {
+                        morph_data.push(0);
+                    }
+                    let at = morph_data.len() as u32;
+                    morph_data.extend_from_slice(&enc);
+                    Ok((at, enc.len() as u32))
+                };
+                let (data_offset, data_size) = put(&packed, stride)?;
+                let (index_offset, index_size) = put(&indices, 4)?;
                 morphs.push(MorphRow {
                     primitive: index,
                     mesh: m.index() as u32,
@@ -872,10 +1002,12 @@ fn cook_with(
                     target_first,
                     target_count: morph.len() as u32,
                     normals: normals as u32,
-                    data_offset: morph_data.len() as u32,
-                    data_size: enc.len() as u32,
+                    data_offset,
+                    data_size,
+                    moved,
+                    index_offset,
+                    index_size,
                 });
-                morph_data.extend_from_slice(&enc);
             }
         }
     }
@@ -888,12 +1020,13 @@ fn cook_with(
         skin_streams.len(),
         morphs.len()
     ));
+    notes.push(store.describe());
     let meta = AnimMeta {
         node_count: order.rows.len() as u32,
         skin_count: skins.len() as u32,
         joint_count: joints.len() as u32,
         clip_count: clips.len() as u32,
-        channel_count: channels.len() as u32,
+        channel_count: store.channels.len() as u32,
         event_count: events.len() as u32,
         skin_stream_count: skin_streams.len() as u32,
         morph_count: morphs.len() as u32,
@@ -909,8 +1042,9 @@ fn cook_with(
         .table("joints", &joints, 0)
         .table("inverse_binds", &inverse_binds, 0)
         .table("clips", &clips, row_hash::<ClipRow>())
-        .table("channels", &channels, row_hash::<ChannelRow>())
-        .table("samples", &samples, 0)
+        .table("channels", &store.channels, row_hash::<ChannelRow>())
+        .table("samples", &store.samples, 0)
+        .table("packed", &store.packed, 0)
         .table("events", &events, row_hash::<EventRow>())
         .table("skin_streams", &skin_streams, row_hash::<SkinStreamRow>())
         .raw("skin_data", skin_data, 16)

@@ -233,7 +233,9 @@ export interface Fetched {
  * included). Its textures are transcoded by `transcodeBundle` once the
  * renderer is attached, to the encoding the renderer takes. A streaming
  * group's outputs are not fetched: the engine reads its pack
- * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads.
+ * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads;
+ * nor are the chunks of a sound cooked in chunks, which the engine reads
+ * through the fetcher ahead of the playheads.
  */
 export async function preloadBundle(
   glue: WebExtras,
@@ -253,7 +255,8 @@ export async function preloadBundle(
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
   const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
-  const listed = all.filter((o) => o.group === undefined);
+  // A long sound's chunks (og.SoundChunk) are fetched as its playheads near them.
+  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk");
   let fetched = 0;
   let failed = 0;
   const blobs = new Map<string, Uint8Array>();

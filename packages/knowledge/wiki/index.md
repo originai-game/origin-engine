@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-861 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+864 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -472,6 +472,7 @@ Field units the docs and Tune use.
 | [`og.load.soundInfo`](load.md#fn-soundInfo) | function | load | `og_load_sound_info` |
 | [`og.load.status`](load.md#fn-status) | function | load | `og_load_status` |
 | [`og.load.texture`](load.md#fn-texture) | function | load | `og_load_texture` |
+| [`og.load.textureArray`](load.md#fn-textureArray) | function | load | `og_load_texture_array` |
 | [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
@@ -910,6 +911,8 @@ Field units the docs and Tune use.
 | [`TextMetrics`](render.md#type-TextMetrics) | struct | render | — |
 | [`Texture`](render.md#type-Texture) | handle | render | — |
 | [`Texture()`](render.md#column-Texture) | column kind | render | — |
+| [`TextureArray`](load.md#type-TextureArray) | handle | load | — |
+| [`TextureArrayInfo`](load.md#type-TextureArrayInfo) | struct | load | — |
 | [`ThemeColor`](ui.md#type-ThemeColor) | enum | ui | — |
 | [`TileCell`](tilemap.md#type-TileCell) | struct | tilemap | — |
 | [`TileLayerInfo`](tilemap.md#type-TileLayerInfo) | struct | tilemap | — |

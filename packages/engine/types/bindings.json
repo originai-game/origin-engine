@@ -8520,6 +8520,28 @@
     {
       "id": 102,
       "kind": "fn",
+      "path": "og.load.textureArray",
+      "symbol": "og_load_texture_array",
+      "module": "load",
+      "name": "textureArray",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TextureArrayInfo>",
+      "publish": true
+    },
+    {
+      "id": 103,
+      "kind": "fn",
       "path": "og.load.skin",
       "symbol": "og_load_skin",
       "module": "load",
@@ -8540,7 +8562,7 @@
       "publish": true
     },
     {
-      "id": 103,
+      "id": 104,
       "kind": "fn",
       "path": "og.load.soundInfo",
       "symbol": "og_load_sound_info",
@@ -8562,7 +8584,7 @@
       "publish": true
     },
     {
-      "id": 104,
+      "id": 105,
       "kind": "fn",
       "path": "og.load.status",
       "symbol": "og_load_status",
@@ -8584,7 +8606,7 @@
       "publish": true
     },
     {
-      "id": 105,
+      "id": 106,
       "kind": "fn",
       "path": "og.load.error",
       "symbol": "og_load_error",
@@ -8606,7 +8628,7 @@
       "publish": true
     },
     {
-      "id": 106,
+      "id": 107,
       "kind": "fn",
       "path": "og.load.gltfInfo",
       "symbol": "og_load_gltf_info",
@@ -8628,7 +8650,7 @@
       "publish": true
     },
     {
-      "id": 107,
+      "id": 108,
       "kind": "fn",
       "path": "og.load.animation",
       "symbol": "og_load_animation",
@@ -8650,7 +8672,7 @@
       "publish": true
     },
     {
-      "id": 108,
+      "id": 109,
       "kind": "fn",
       "path": "og.load.rig",
       "symbol": "og_load_rig",
@@ -8672,7 +8694,7 @@
       "publish": true
     },
     {
-      "id": 109,
+      "id": 110,
       "kind": "fn",
       "path": "og.load.flipbook",
       "symbol": "og_load_flipbook",
@@ -8694,7 +8716,7 @@
       "publish": true
     },
     {
-      "id": 110,
+      "id": 111,
       "kind": "fn",
       "path": "og.load.tilemap",
       "symbol": "og_load_tilemap",
@@ -8716,7 +8738,7 @@
       "publish": true
     },
     {
-      "id": 111,
+      "id": 112,
       "kind": "fn",
       "path": "og.physics.raycast",
       "symbol": "og_physics_raycast",
@@ -8738,7 +8760,7 @@
       "publish": true
     },
     {
-      "id": 112,
+      "id": 113,
       "kind": "fn",
       "path": "og.physics.shapeCast",
       "symbol": "og_physics_shape_cast",
@@ -8760,7 +8782,7 @@
       "publish": true
     },
     {
-      "id": 113,
+      "id": 114,
       "kind": "fn",
       "path": "og.physics.overlap",
       "symbol": "og_physics_overlap",
@@ -8782,7 +8804,7 @@
       "publish": true
     },
     {
-      "id": 114,
+      "id": 115,
       "kind": "fn",
       "path": "og.physics.setMesh",
       "symbol": "og_physics_set_mesh",
@@ -8809,7 +8831,7 @@
       "publish": true
     },
     {
-      "id": 115,
+      "id": 116,
       "kind": "fn",
       "path": "og.physics.ropePoints",
       "symbol": "og_physics_rope_points",
@@ -8831,7 +8853,7 @@
       "publish": true
     },
     {
-      "id": 116,
+      "id": 117,
       "kind": "fn",
       "path": "og.physics.clothPoints",
       "symbol": "og_physics_cloth_points",
@@ -8853,7 +8875,7 @@
       "publish": true
     },
     {
-      "id": 117,
+      "id": 118,
       "kind": "fn",
       "path": "og.physics.fluidParticles",
       "symbol": "og_physics_fluid_particles",
@@ -8875,7 +8897,7 @@
       "publish": true
     },
     {
-      "id": 118,
+      "id": 119,
       "kind": "fn",
       "path": "og.physics.fluid3dParticles",
       "symbol": "og_physics_fluid3d_particles",
@@ -8897,7 +8919,7 @@
       "publish": true
     },
     {
-      "id": 119,
+      "id": 120,
       "kind": "fn",
       "path": "og.physics.waterHeight",
       "symbol": "og_physics_water_height",
@@ -8929,7 +8951,7 @@
       "publish": true
     },
     {
-      "id": 120,
+      "id": 121,
       "kind": "fn",
       "path": "og.physics.vehicleWheels",
       "symbol": "og_physics_vehicle_wheels",
@@ -8951,7 +8973,7 @@
       "publish": true
     },
     {
-      "id": 121,
+      "id": 122,
       "kind": "fn",
       "path": "og.physics.ragdollRigFromSkeleton",
       "symbol": "og_physics_ragdoll_rig_from_skeleton",
@@ -8973,7 +8995,7 @@
       "publish": true
     },
     {
-      "id": 122,
+      "id": 123,
       "kind": "fn",
       "path": "og.physics.setRagdollRig",
       "symbol": "og_physics_set_ragdoll_rig",
@@ -9000,7 +9022,7 @@
       "publish": true
     },
     {
-      "id": 123,
+      "id": 124,
       "kind": "fn",
       "path": "og.physics.ragdollPose",
       "symbol": "og_physics_ragdoll_pose",
@@ -9022,7 +9044,7 @@
       "publish": true
     },
     {
-      "id": 124,
+      "id": 125,
       "kind": "fn",
       "path": "og.atmosphere.timeOfDay",
       "symbol": "og_atmosphere_time_of_day",
@@ -9039,7 +9061,7 @@
       "publish": true
     },
     {
-      "id": 125,
+      "id": 126,
       "kind": "fn",
       "path": "og.anim.graph",
       "symbol": "og_anim_graph",
@@ -9061,7 +9083,7 @@
       "publish": true
     },
     {
-      "id": 126,
+      "id": 127,
       "kind": "fn",
       "path": "og.anim.humanoid",
       "symbol": "og_anim_humanoid",
@@ -9083,7 +9105,7 @@
       "publish": true
     },
     {
-      "id": 127,
+      "id": 128,
       "kind": "fn",
       "path": "og.anim.retarget",
       "symbol": "og_anim_retarget",
@@ -9105,7 +9127,7 @@
       "publish": true
     },
     {
-      "id": 128,
+      "id": 129,
       "kind": "fn",
       "path": "og.tween.to",
       "symbol": "og_tween_to",
@@ -9127,7 +9149,7 @@
       "publish": true
     },
     {
-      "id": 129,
+      "id": 130,
       "kind": "fn",
       "path": "og.tween.sequence",
       "symbol": "og_tween_sequence",
@@ -9154,7 +9176,7 @@
       "publish": true
     },
     {
-      "id": 130,
+      "id": 131,
       "kind": "fn",
       "path": "og.tween.parallel",
       "symbol": "og_tween_parallel",
@@ -9181,7 +9203,7 @@
       "publish": true
     },
     {
-      "id": 131,
+      "id": 132,
       "kind": "fn",
       "path": "og.tween.cancel",
       "symbol": "og_tween_cancel",
@@ -9203,7 +9225,7 @@
       "publish": true
     },
     {
-      "id": 132,
+      "id": 133,
       "kind": "fn",
       "path": "og.tween.cancelEntity",
       "symbol": "og_tween_cancel_entity",
@@ -9225,7 +9247,7 @@
       "publish": true
     },
     {
-      "id": 133,
+      "id": 134,
       "kind": "fn",
       "path": "og.tween.active",
       "symbol": "og_tween_active",
@@ -9247,7 +9269,7 @@
       "publish": true
     },
     {
-      "id": 134,
+      "id": 135,
       "kind": "fn",
       "path": "og.tween.squash",
       "symbol": "og_tween_squash",
@@ -9269,7 +9291,7 @@
       "publish": true
     },
     {
-      "id": 135,
+      "id": 136,
       "kind": "fn",
       "path": "og.tween.flash",
       "symbol": "og_tween_flash",
@@ -9291,7 +9313,7 @@
       "publish": true
     },
     {
-      "id": 136,
+      "id": 137,
       "kind": "fn",
       "path": "og.tilemap.setTile",
       "symbol": "og_tilemap_set_tile",
@@ -9313,7 +9335,7 @@
       "publish": true
     },
     {
-      "id": 137,
+      "id": 138,
       "kind": "fn",
       "path": "og.tilemap.getTile",
       "symbol": "og_tilemap_get_tile",
@@ -9350,7 +9372,7 @@
       "publish": true
     },
     {
-      "id": 138,
+      "id": 139,
       "kind": "fn",
       "path": "og.tilemap.cellAt",
       "symbol": "og_tilemap_cell_at",
@@ -9377,7 +9399,7 @@
       "publish": true
     },
     {
-      "id": 139,
+      "id": 140,
       "kind": "fn",
       "path": "og.tilemap.cellCenter",
       "symbol": "og_tilemap_cell_center",
@@ -9409,7 +9431,7 @@
       "publish": true
     },
     {
-      "id": 140,
+      "id": 141,
       "kind": "fn",
       "path": "og.audio.outputLatency",
       "symbol": "og_audio_output_latency",
@@ -9426,7 +9448,7 @@
       "publish": true
     },
     {
-      "id": 141,
+      "id": 142,
       "kind": "fn",
       "path": "og.nav.grid",
       "symbol": "og_nav_grid",
@@ -9448,7 +9470,7 @@
       "publish": true
     },
     {
-      "id": 142,
+      "id": 143,
       "kind": "fn",
       "path": "og.nav.gridFromTilemap",
       "symbol": "og_nav_grid_from_tilemap",
@@ -9470,7 +9492,7 @@
       "publish": true
     },
     {
-      "id": 143,
+      "id": 144,
       "kind": "fn",
       "path": "og.nav.setCost",
       "symbol": "og_nav_set_cost",
@@ -9507,7 +9529,7 @@
       "publish": true
     },
     {
-      "id": 144,
+      "id": 145,
       "kind": "fn",
       "path": "og.nav.cellAt",
       "symbol": "og_nav_cell_at",
@@ -9534,7 +9556,7 @@
       "publish": true
     },
     {
-      "id": 145,
+      "id": 146,
       "kind": "fn",
       "path": "og.nav.findPath",
       "symbol": "og_nav_find_path",
@@ -9556,7 +9578,7 @@
       "publish": true
     },
     {
-      "id": 146,
+      "id": 147,
       "kind": "fn",
       "path": "og.nav.flowField",
       "symbol": "og_nav_flow_field",
@@ -9578,7 +9600,7 @@
       "publish": true
     },
     {
-      "id": 147,
+      "id": 148,
       "kind": "fn",
       "path": "og.nav.setFlowTargets",
       "symbol": "og_nav_set_flow_targets",
@@ -9605,7 +9627,7 @@
       "publish": true
     },
     {
-      "id": 148,
+      "id": 149,
       "kind": "fn",
       "path": "og.nav.flowAt",
       "symbol": "og_nav_flow_at",
@@ -9632,7 +9654,7 @@
       "publish": true
     },
     {
-      "id": 149,
+      "id": 150,
       "kind": "fn",
       "path": "og.nav.load",
       "symbol": "og_nav_load",
@@ -9654,7 +9676,7 @@
       "publish": true
     },
     {
-      "id": 150,
+      "id": 151,
       "kind": "fn",
       "path": "og.nav.build",
       "symbol": "og_nav_build",
@@ -9676,7 +9698,7 @@
       "publish": true
     },
     {
-      "id": 151,
+      "id": 152,
       "kind": "fn",
       "path": "og.nav.setObstacle",
       "symbol": "og_nav_set_obstacle",
@@ -9708,7 +9730,7 @@
       "publish": true
     },
     {
-      "id": 152,
+      "id": 153,
       "kind": "fn",
       "path": "og.nav.nearest",
       "symbol": "og_nav_nearest",
@@ -9740,7 +9762,7 @@
       "publish": true
     },
     {
-      "id": 153,
+      "id": 154,
       "kind": "fn",
       "path": "og.nav.pathOf",
       "symbol": "og_nav_path_of",
@@ -9762,7 +9784,7 @@
       "publish": true
     },
     {
-      "id": 154,
+      "id": 155,
       "kind": "fn",
       "path": "og.ai.load",
       "symbol": "og_ai_load",
@@ -9784,7 +9806,7 @@
       "publish": true
     },
     {
-      "id": 155,
+      "id": 156,
       "kind": "fn",
       "path": "og.ai.parse",
       "symbol": "og_ai_parse",
@@ -9806,7 +9828,7 @@
       "publish": true
     },
     {
-      "id": 156,
+      "id": 157,
       "kind": "fn",
       "path": "og.ai.get",
       "symbol": "og_ai_get",
@@ -9833,7 +9855,7 @@
       "publish": true
     },
     {
-      "id": 157,
+      "id": 158,
       "kind": "fn",
       "path": "og.ai.set",
       "symbol": "og_ai_set",
@@ -9865,7 +9887,7 @@
       "publish": true
     },
     {
-      "id": 158,
+      "id": 159,
       "kind": "fn",
       "path": "og.ai.noise",
       "symbol": "og_ai_noise",
@@ -9887,7 +9909,7 @@
       "publish": true
     },
     {
-      "id": 159,
+      "id": 160,
       "kind": "fn",
       "path": "og.ai.describe",
       "symbol": "og_ai_describe",
@@ -9909,7 +9931,7 @@
       "publish": true
     },
     {
-      "id": 160,
+      "id": 161,
       "kind": "fn",
       "path": "og.platform.storeGet",
       "symbol": "og_platform_store_get",
@@ -9931,7 +9953,7 @@
       "publish": true
     },
     {
-      "id": 161,
+      "id": 162,
       "kind": "fn",
       "path": "og.platform.storeSet",
       "symbol": "og_platform_store_set",
@@ -9953,7 +9975,7 @@
       "publish": true
     },
     {
-      "id": 162,
+      "id": 163,
       "kind": "fn",
       "path": "og.platform.storeList",
       "symbol": "og_platform_store_list",
@@ -9970,7 +9992,7 @@
       "publish": true
     },
     {
-      "id": 163,
+      "id": 164,
       "kind": "fn",
       "path": "og.platform.leaderboardSubmit",
       "symbol": "og_platform_leaderboard_submit",
@@ -9992,7 +10014,7 @@
       "publish": true
     },
     {
-      "id": 164,
+      "id": 165,
       "kind": "fn",
       "path": "og.platform.leaderboardTop",
       "symbol": "og_platform_leaderboard_top",
@@ -10014,7 +10036,7 @@
       "publish": true
     },
     {
-      "id": 165,
+      "id": 166,
       "kind": "fn",
       "path": "og.platform.leaderboardAround",
       "symbol": "og_platform_leaderboard_around",
@@ -10036,7 +10058,7 @@
       "publish": true
     },
     {
-      "id": 166,
+      "id": 167,
       "kind": "fn",
       "path": "og.platform.telemetry",
       "symbol": "og_platform_telemetry",
@@ -10063,7 +10085,7 @@
       "publish": true
     },
     {
-      "id": 167,
+      "id": 168,
       "kind": "fn",
       "path": "og.platform.point",
       "symbol": "og_platform_point",
@@ -10085,7 +10107,7 @@
       "publish": true
     },
     {
-      "id": 168,
+      "id": 169,
       "kind": "fn",
       "path": "og.platform.aiMark",
       "symbol": "og_platform_ai_mark",
@@ -10107,7 +10129,7 @@
       "publish": true
     },
     {
-      "id": 169,
+      "id": 170,
       "kind": "fn",
       "path": "og.platform.loadSettings",
       "symbol": "og_platform_load_settings",
@@ -10124,7 +10146,7 @@
       "publish": true
     },
     {
-      "id": 170,
+      "id": 171,
       "kind": "fn",
       "path": "og.platform.saveSettings",
       "symbol": "og_platform_save_settings",
@@ -10146,7 +10168,7 @@
       "publish": true
     },
     {
-      "id": 171,
+      "id": 172,
       "kind": "fn",
       "path": "og.platform.result",
       "symbol": "og_platform_result",
@@ -10168,7 +10190,7 @@
       "publish": true
     },
     {
-      "id": 172,
+      "id": 173,
       "kind": "fn",
       "path": "og.platform.info",
       "symbol": "og_platform_info",
@@ -10185,7 +10207,7 @@
       "publish": true
     },
     {
-      "id": 173,
+      "id": 174,
       "kind": "fn",
       "path": "og.platform.now",
       "symbol": "og_platform_now",
@@ -10202,7 +10224,7 @@
       "publish": true
     },
     {
-      "id": 174,
+      "id": 175,
       "kind": "fn",
       "path": "og.i18n.load",
       "symbol": "og_i18n_load",
@@ -10224,7 +10246,7 @@
       "publish": true
     },
     {
-      "id": 175,
+      "id": 176,
       "kind": "fn",
       "path": "og.i18n.setLocale",
       "symbol": "og_i18n_set_locale",
@@ -10246,7 +10268,7 @@
       "publish": true
     },
     {
-      "id": 176,
+      "id": 177,
       "kind": "fn",
       "path": "og.i18n.locale",
       "symbol": "og_i18n_locale",
@@ -10263,7 +10285,7 @@
       "publish": true
     },
     {
-      "id": 177,
+      "id": 178,
       "kind": "fn",
       "path": "og.i18n.t",
       "symbol": "og_i18n_t",
@@ -10290,7 +10312,7 @@
       "publish": true
     },
     {
-      "id": 178,
+      "id": 179,
       "kind": "fn",
       "path": "og.i18n.has",
       "symbol": "og_i18n_has",
@@ -10312,7 +10334,7 @@
       "publish": true
     },
     {
-      "id": 179,
+      "id": 180,
       "kind": "fn",
       "path": "og.ui.configure",
       "symbol": "og_ui_configure",
@@ -10334,7 +10356,7 @@
       "publish": true
     },
     {
-      "id": 180,
+      "id": 181,
       "kind": "fn",
       "path": "og.ui.viewport",
       "symbol": "og_ui_viewport",
@@ -10351,7 +10373,7 @@
       "publish": true
     },
     {
-      "id": 181,
+      "id": 182,
       "kind": "fn",
       "path": "og.ui.theme",
       "symbol": "og_ui_theme",
@@ -10368,7 +10390,7 @@
       "publish": true
     },
     {
-      "id": 182,
+      "id": 183,
       "kind": "fn",
       "path": "og.ui.open",
       "symbol": "og_ui_open",
@@ -10390,7 +10412,7 @@
       "publish": true
     },
     {
-      "id": 183,
+      "id": 184,
       "kind": "fn",
       "path": "og.ui.openPanel",
       "symbol": "og_ui_open_panel",
@@ -10412,7 +10434,7 @@
       "publish": true
     },
     {
-      "id": 184,
+      "id": 185,
       "kind": "fn",
       "path": "og.ui.openScroll",
       "symbol": "og_ui_open_scroll",
@@ -10434,7 +10456,7 @@
       "publish": true
     },
     {
-      "id": 185,
+      "id": 186,
       "kind": "fn",
       "path": "og.ui.close",
       "symbol": "og_ui_close",
@@ -10445,7 +10467,7 @@
       "publish": true
     },
     {
-      "id": 186,
+      "id": 187,
       "kind": "fn",
       "path": "og.ui.richText",
       "symbol": "og_ui_rich_text",
@@ -10472,7 +10494,7 @@
       "publish": true
     },
     {
-      "id": 187,
+      "id": 188,
       "kind": "fn",
       "path": "og.ui.label",
       "symbol": "og_ui_label",
@@ -10499,7 +10521,7 @@
       "publish": true
     },
     {
-      "id": 188,
+      "id": 189,
       "kind": "fn",
       "path": "og.ui.button",
       "symbol": "og_ui_button",
@@ -10526,7 +10548,7 @@
       "publish": true
     },
     {
-      "id": 189,
+      "id": 190,
       "kind": "fn",
       "path": "og.ui.image",
       "symbol": "og_ui_image",
@@ -10548,7 +10570,7 @@
       "publish": true
     },
     {
-      "id": 190,
+      "id": 191,
       "kind": "fn",
       "path": "og.ui.zoomView",
       "symbol": "og_ui_zoom_view",

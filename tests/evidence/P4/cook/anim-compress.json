@@ -1,0 +1,14 @@
+{
+  "tolerance": 0.0001,
+  "models": [
+    {"id": "models/walker.glb", "clips": 6, "blob_f32": 9051, "blob_quantized": 6203, "samples_f32": 4892, "samples_quantized": 2028, "max_lane_error": 9.280e-5, "max_node_error_m": 1.374e-4, "extent": 1.7000},
+    {"id": "models/trickster.glb", "clips": 4, "blob_f32": 106967, "blob_quantized": 99479, "samples_f32": 9504, "samples_quantized": 2012, "max_lane_error": 9.973e-5, "max_node_error_m": 1.406e-4, "extent": 0.8000},
+    {"id": "models/strider.glb", "clips": 3, "blob_f32": 20501, "blob_quantized": 10293, "samples_f32": 14660, "samples_quantized": 4448, "max_lane_error": 7.623e-5, "max_node_error_m": 1.490e-4, "extent": 1.9220},
+    {"id": "models/stout.glb", "clips": 0, "blob_f32": 4200, "blob_quantized": 4200, "samples_f32": 0, "samples_quantized": 0, "max_lane_error": 0.000e0, "max_node_error_m": 0.000e0, "extent": 1.5060},
+    {"id": "models/puppet2d.glb", "clips": 1, "blob_f32": 8603, "blob_quantized": 5899, "samples_f32": 4836, "samples_quantized": 2132, "max_lane_error": 2.160e-5, "max_node_error_m": 7.446e-5, "extent": 1.5500},
+    {"id": "anims/humanoid-clips.glb", "clips": 3, "blob_f32": 12576, "blob_quantized": 7648, "samples_f32": 9076, "samples_quantized": 4150, "max_lane_error": 8.939e-5, "max_node_error_m": 1.795e-4, "extent": 1.6900}
+  ],
+  "total_f32": 161898,
+  "total_quantized": 133722,
+  "frame": {"model": "models/trickster.glb", "clip": "die", "time": 0.5, "rmse": 0.002795, "max_channel_diff": 210, "outliers": 73, "pixels": 921600}
+}

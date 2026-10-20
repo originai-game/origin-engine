@@ -58,6 +58,7 @@ mod sprites;
 mod terrain;
 mod terrain_tiles;
 mod texture;
+mod texture_array;
 mod water;
 mod weather;
 
@@ -106,6 +107,7 @@ pub use terrain_tiles::{
     TerrainTile, TerrainView, terrain_tiles_wanted, tile_heights,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
+pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
@@ -755,6 +757,8 @@ struct SceneCache {
     luts: Vec<wgpu::TextureView>,
     /// Environment maps as cube textures (kept for their views).
     environment_maps: Vec<(wgpu::Texture, wgpu::TextureView)>,
+    /// Texture arrays, each one 2D-array texture.
+    texture_arrays: Vec<texture_array::GpuTextureArray>,
 }
 
 /// What the image-based light was last generated from: the sky, or an
@@ -2351,6 +2355,21 @@ impl Renderer {
             })?;
             let gpu = environment::upload(&self.device, &self.queue, map);
             self.cache.environment_maps.push(gpu);
+        }
+        for (index, data) in scene.texture_arrays()[self.cache.texture_arrays.len()..]
+            .iter()
+            .enumerate()
+        {
+            let at = self.cache.texture_arrays.len() + index;
+            let bad = |e: String| RenderError::InvalidData(format!("texture array {at}: {e}"));
+            let info = data.info().map_err(bad)?;
+            if info.format != TextureFormat::Rgba8
+                && !self.info.texture_formats.supported.contains(&info.format)
+            {
+                return Err(bad(format!("{} is not supported here", info.format.name())));
+            }
+            let gpu = texture_array::upload(&self.device, &self.queue, data, info).map_err(bad)?;
+            self.cache.texture_arrays.push(gpu);
         }
         for (index, lut) in scene.luts()[self.cache.luts.len()..].iter().enumerate() {
             lut.validate().map_err(|e| {
@@ -4608,7 +4627,13 @@ impl Renderer {
             lights_culled: cluster_stats.culled,
             cluster_lights: cluster_stats.refs,
             cluster_lights_dropped: cluster_stats.refs_dropped,
-            texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum(),
+            texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum::<u64>()
+                + self
+                    .cache
+                    .texture_arrays
+                    .iter()
+                    .map(|a| a.info.bytes)
+                    .sum::<u64>(),
             sprites: sprite_frame.sprites,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
