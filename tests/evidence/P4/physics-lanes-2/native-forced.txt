@@ -1,0 +1,254 @@
+# b6ff2494 lanes_costs --forced (Grains::always: every step on the pool, every pass split); OG_LANES=off without --forced
+## round 1 OG_LANES=off load 13.66 15.50 11.50
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.463 | 2be8de152ac7b522 | 0 |
+| a pen | 256 | 0.405 | a24ec14d9364821c | 0 |
+| a pen | 384 | 0.638 | cb3258045bae8a8b | 0 |
+| a pen | 512 | 0.883 | 0cc7778b55d593bf | 0 |
+| a pen | 640 | 1.169 | 8225fc26d947f926 | 0 |
+| a pen | 768 | 1.424 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 1.952 | d58922edef589f4e | 0 |
+| a pen | 1250 | 2.583 | 619fba1bac49043c | 0 |
+| a pen | 1500 | 3.634 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 5.530 | d0b5c28399fbdc50 | 0 |
+## round 1 OG_LANES=2 load 11.99 15.03 11.41
+lanes on, 2 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.154 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.407 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.594 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.813 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.092 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.385 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 5.332 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 3.945 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.911 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 6.086 | d0b5c28399fbdc50 | 1594 |
+## round 1 OG_LANES=3 load 13.24 15.10 11.51
+lanes on, 3 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.547 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.441 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.657 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.864 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.060 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.245 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 6.010 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 3.320 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.804 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.879 | d0b5c28399fbdc50 | 1594 |
+## round 1 OG_LANES=4 load 13.61 15.08 11.57
+lanes on, 4 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.098 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.503 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.673 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.830 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 0.962 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.144 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.497 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.231 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.584 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.813 | d0b5c28399fbdc50 | 1594 |
+## round 1 OG_LANES=6 load 12.19 14.69 11.49
+lanes on, 6 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.426 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.580 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.807 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 1.058 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.356 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 2.013 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.764 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.377 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 4.877 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 5.363 | d0b5c28399fbdc50 | 1594 |
+## round 1 OG_LANES=8 load 11.54 14.38 11.45
+lanes on, 8 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 2.210 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.996 | a24ec14d9364821c | 840 |
+| a pen | 384 | 1.187 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 1.670 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 5.084 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 3.110 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 3.370 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 3.770 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 4.762 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 17.072 | d0b5c28399fbdc50 | 1594 |
+## round 2 OG_LANES=off load 12.60 14.32 11.53
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.762 | 2be8de152ac7b522 | 0 |
+| a pen | 256 | 0.427 | a24ec14d9364821c | 0 |
+| a pen | 384 | 0.659 | cb3258045bae8a8b | 0 |
+| a pen | 512 | 1.240 | 0cc7778b55d593bf | 0 |
+| a pen | 640 | 1.519 | 8225fc26d947f926 | 0 |
+| a pen | 768 | 1.719 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 3.350 | d58922edef589f4e | 0 |
+| a pen | 1250 | 3.475 | 619fba1bac49043c | 0 |
+| a pen | 1500 | 3.741 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 4.991 | d0b5c28399fbdc50 | 0 |
+## round 2 OG_LANES=2 load 17.85 15.37 11.96
+lanes on, 2 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.305 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.456 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.703 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.919 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.175 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.396 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.979 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.398 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.959 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.919 | d0b5c28399fbdc50 | 1594 |
+## round 2 OG_LANES=3 load 15.49 14.96 11.88
+lanes on, 3 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.239 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.474 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.638 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 2.004 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 2.140 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.311 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.244 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.198 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 4.007 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.822 | d0b5c28399fbdc50 | 1594 |
+## round 2 OG_LANES=4 load 14.81 14.84 11.89
+lanes on, 4 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.063 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.452 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.651 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.914 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.578 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.302 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.658 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.143 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.791 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.301 | d0b5c28399fbdc50 | 1594 |
+## round 2 OG_LANES=6 load 14.54 14.78 11.92
+lanes on, 6 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.073 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.481 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.719 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.938 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.069 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.363 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.518 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.236 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.730 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.684 | d0b5c28399fbdc50 | 1594 |
+## round 2 OG_LANES=8 load 14.70 14.81 11.98
+lanes on, 8 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.406 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.664 | a24ec14d9364821c | 840 |
+| a pen | 384 | 1.025 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 1.318 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.682 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 2.009 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.419 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.956 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 3.894 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.335 | d0b5c28399fbdc50 | 1594 |
+## round 3 OG_LANES=off load 13.69 14.59 11.95
+lanes off (off by OG_LANES); never on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 2.262 | 2be8de152ac7b522 | 0 |
+| a pen | 256 | 0.880 | a24ec14d9364821c | 0 |
+| a pen | 384 | 1.139 | cb3258045bae8a8b | 0 |
+| a pen | 512 | 0.924 | 0cc7778b55d593bf | 0 |
+| a pen | 640 | 1.172 | 8225fc26d947f926 | 0 |
+| a pen | 768 | 1.810 | 11a894f0ef44bc2f | 0 |
+| a pen | 1000 | 2.100 | d58922edef589f4e | 0 |
+| a pen | 1250 | 3.685 | 619fba1bac49043c | 0 |
+| a pen | 1500 | 4.215 | 258291b09de2bf0e | 0 |
+| a pen | 2000 | 5.211 | d0b5c28399fbdc50 | 0 |
+## round 3 OG_LANES=2 load 13.39 14.48 11.97
+lanes on, 2 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.195 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.419 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.685 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 1.240 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.198 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.489 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.946 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.780 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 3.411 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.087 | d0b5c28399fbdc50 | 1594 |
+## round 3 OG_LANES=3 load 12.11 14.14 11.90
+lanes on, 3 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.159 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.435 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.646 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.819 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.021 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.241 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.655 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.170 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.723 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.996 | d0b5c28399fbdc50 | 1594 |
+## round 3 OG_LANES=4 load 11.32 13.87 11.84
+lanes on, 4 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.152 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.499 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.681 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 0.888 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.156 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.291 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.930 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.100 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.560 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 3.402 | d0b5c28399fbdc50 | 1594 |
+## round 3 OG_LANES=6 load 10.59 13.63 11.78
+lanes on, 6 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.148 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.538 | a24ec14d9364821c | 840 |
+| a pen | 384 | 0.820 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 1.000 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 1.571 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.427 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 1.934 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.294 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 2.868 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.275 | d0b5c28399fbdc50 | 1594 |
+## round 3 OG_LANES=8 load 10.57 13.47 11.75
+lanes on, 8 threads; every step on the pool
+| scene | bodies | ms per tick | world hash | physics calls |
+|---|---|---|---|---|
+| the pile (paddle, sensor, churn) | 500 | 1.418 | 2be8de152ac7b522 | 1525 |
+| a pen | 256 | 0.715 | a24ec14d9364821c | 840 |
+| a pen | 384 | 1.229 | cb3258045bae8a8b | 1470 |
+| a pen | 512 | 1.582 | 0cc7778b55d593bf | 1525 |
+| a pen | 640 | 2.148 | 8225fc26d947f926 | 1537 |
+| a pen | 768 | 1.999 | 11a894f0ef44bc2f | 1551 |
+| a pen | 1000 | 2.400 | d58922edef589f4e | 1562 |
+| a pen | 1250 | 2.900 | 619fba1bac49043c | 1572 |
+| a pen | 1500 | 3.482 | 258291b09de2bf0e | 1579 |
+| a pen | 2000 | 4.941 | d0b5c28399fbdc50 | 1594 |
+DONE

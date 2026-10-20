@@ -172,7 +172,7 @@ cloths and fluid sets pay as soon as there are a few: 128 ropes 0.90 to
 0.29 ms on four lanes, 32 cloths 1.22 to 0.38, eight 3D fluids of 1,000
 6.5 to 1.8 (1.4 on eight lanes). One fluid gains from its split passes:
 a 2D fluid of 1,000 particles 1.39 to 0.77 ms, of 8,000 15.1 to 6.6; a
-3D fluid of 2,000 1.81 to 1.47, of 8,000 11.6 to 8.0 (its serial
+3D fluid of 2,000 1.81 to 1.47, of 8,000 11.6 to 7.7 (its serial
 relaxation weighs more). Ragdolls stay flat either way.
 ## Beyond rigid bodies (the E5 round)
 
