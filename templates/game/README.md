@@ -19,6 +19,7 @@ og build .   # the play page
 |---|---|---|
 | The project: `project.ogt`, the entry's `og.game` default export, `cooked/` from `assets/` | `project.ogt`, `src/main.ts` | og-game §2, §5 |
 | Components, a resource, systems over archetype columns, one job each | `Health`, `Velocity`, `Spin`, `Run`; `Move`, `StartSpin`, `Drop`, `Rotate` | og-core §4, §5; og-game §3 |
+| The frame's art direction as data: a look extending a catalogue preset, applied by `GameDesc.look` | `assets/looks/origin-game.ogt` (a created game's is `<id>.ogt`), `og.game({ look })` | og-taste §1, §12 |
 | A text scene spawned before the first tick, a glTF model, a font, a box with a collider that falls | `assets/scenes/main.ogt`, `start` | og-game §4, §6, §13 |
 | A menu panel whose button answers with a look and a sound (og sfx's click preset) | `Menu`, `assets/audio/click.ogt` | og-ui §1, §3; og-taste §6; og-audio §2, §3 |
 | Every word the menu shows from a string table, the base one in the source language | `assets/strings/en.ogt`, `Menu` | og-i18n §1, §2 |

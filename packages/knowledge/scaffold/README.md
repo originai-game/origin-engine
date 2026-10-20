@@ -13,7 +13,7 @@ on top of the Web scaffold's `shared/`.
 | `package.json` | `@origingame/engine` pinned to the same version as `project.ogt`; scripts `dev`, `start`, `build`, `publish-build`, `cook`, `test` calling `og` |
 | `tsconfig.json` | Strict TypeScript over `src/` and `tests/` |
 | `tests/smoke.og.ts` | The first playtest `og test` runs headless through `og run --commands` |
-| `assets/` | Source assets with their import settings and licences: `scenes/main.ogt`, two glTF models, two textures (one normal map), a sound and a CJK-subset font |
+| `assets/` | Source assets with their import settings and licences: `scenes/main.ogt`, the game's look `looks/<id>.ogt` (extending a catalogue preset; `GameDesc.look` names it, og-taste §12), two glTF models, two textures (one normal map), a sound and a CJK-subset font |
 | `LICENSES.md` | One row per asset: licence and origin |
 | `.gitignore` | `cooked/`, `dist/` and `node_modules/` are build output |
 | `.gitattributes` | Media (models, textures, audio, fonts) through Git LFS; `.ogt` and `.ts` text with LF endings. The template stores it as `gitattributes`, renamed by the scaffolder and the mount, because the engine repository keeps the template's media as plain blobs |
