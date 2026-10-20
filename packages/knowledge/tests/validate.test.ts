@@ -212,6 +212,18 @@ test("every og.* name and Type.field a skill writes exists in the generated API"
   );
 });
 
+test("a field written as `key: value` or in a token's object literal is one the API has", () => {
+  const p = added((r) =>
+    edit(
+      join(r.pkg, "skills/og-audio/SKILL.md"),
+      (s) =>
+        `${s}\nLoop it with \`looping: true\`; \`loop: true\` and \`runs: 2\` are fine.\n\n\`\`\`ts\nworld.insert(e, og.AudioSource, { sound, loop: true, volumn: 0.5 });\n\`\`\`\n`,
+    ),
+  );
+  const why = "which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts";
+  expect(p.sort()).toEqual(["looping", "og.AudioSource.volumn"].map((n) => `skills/og-audio/SKILL.md: names \`${n}\`, ${why}`).sort());
+});
+
 test("og-taste §12's table is held to the catalogue, row by row", () => {
   const p = added((r) =>
     edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>

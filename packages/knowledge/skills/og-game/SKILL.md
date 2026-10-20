@@ -545,9 +545,13 @@ dissolve, wind-swayed grass and a ripple on the walking walker.
 
 ## 13. Physics
 
-`og.RigidBody`, `og.Collider` and `og.Velocity` on an entity make it a body
-in the profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and
-sensors arrive as events, and `og.physics` answers queries:
+`og.RigidBody` and `og.Collider` on an entity make it a body in the
+profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and sensors
+arrive as events, and `og.physics` answers queries. `og.Velocity` is
+optional: the step adds it to a dynamic body that has none, and a kinematic
+body moves by it when it has one. `world.set(e, og.Velocity, ...)` refuses on
+an entity without one (a body in `start`, before its first step):
+`world.insert` it there, which adds and sets it.
 
 ```ts
 const hit = og.physics.raycast(world, { origin: eye, direction: { x: 0, y: 0, z: -1 }, maxDistance: 30, filter: { mask: 0b10, exclude: player } });
