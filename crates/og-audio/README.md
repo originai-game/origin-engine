@@ -264,6 +264,18 @@ cut apart, and decode to its samples exactly.
   the chunk is fetched like a streaming group's pack (not preloaded, taken
   from the Worker's files when read, cached by the service worker) and put
   in place at a later call, four seconds being the fetch's margin.
+- `chunk_distances(world, bank)` is `chunks_wanted` with, per chunk, how
+  soon a playhead needs it: 0 for the chunk a voice is in (and one it has
+  just left, which a free-running device may still be rendering), else
+  the seconds of the device until the nearest voice reaches the chunk's
+  first frame at its pitch, and for a loop's start chunk (and the next)
+  the time to the wrap plus their offset from the loop start. og-runtime
+  reads every streamed file through one queue (its README's streaming
+  groups, `stream.rs`): these chunks first, the smallest distance first,
+  then the loading groups' packs by priority, at most four in flight, so
+  on the web the chunk a playhead is about to reach is never queued
+  behind a pack or a chunk four seconds away. Natively each read lands at
+  once and only the order shows (og-runtime's `tests/stream_fetch.rs`).
 - A voice holds the chunk it reads and the next, so one fading out after
   its playhead is gone (a crossfade's outgoing track) keeps its samples
   while the bank drops them.
@@ -277,7 +289,10 @@ cut apart, and decode to its samples exactly.
 Nothing here reaches the world: the tick side times a sound by its rate
 and length alone, so `world_hash` is the same chunked or whole.
 
-Tests: `tests/chunks.rs` (each broken once: without the voice's held
+Tests: `tests/chunks.rs` (the distances of a voice looping from 20 s,
+30 s in, and of a second at twice the pitch: the chunk under each
+playhead 0, the next by its seconds, the loop start's by the wrap; each
+broken once: without the voice's held
 chunks the crossfade's tail went silent at sample 5,765,120; with chunks
 indexed past their last frame a wrong-length chunk was accepted). A
 3-minute stereo 48 kHz track (6.99 MB of QOA, 46 chunks of 3.9 s) looping
@@ -415,5 +430,5 @@ sounds). Still owed:
 - Better resampling (windowed sinc), voice virtualisation (a culled voice
   resuming where it would be), retrigger without a level change.
 - Decoding off the engine Worker (the mixer decodes QOA frames as voices
-  reach them), and a chunk's fetch prioritised by how soon its playhead
-  needs it.
+  reach them). (A chunk's fetch is prioritised by how soon its playhead
+  needs it since the cook round three: §Chunked sounds.)

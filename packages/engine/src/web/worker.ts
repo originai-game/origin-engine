@@ -235,7 +235,9 @@ export interface Fetched {
  * group's outputs are not fetched: the engine reads its pack
  * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads;
  * nor are the chunks of a sound cooked in chunks, which the engine reads
- * through the fetcher ahead of the playheads.
+ * through the fetcher ahead of the playheads. The engine asks for at most
+ * four such files at a time (og-runtime's `stream::fetch`): the chunks a
+ * playhead needs soonest first, then the packs by their group's priority.
  */
 export async function preloadBundle(
   glue: WebExtras,
