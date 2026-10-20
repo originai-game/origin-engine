@@ -987,7 +987,8 @@ compaction and the instance buffer carry it without a new stream (a
 float holds layers exactly to 2^24). The array-map variant's vertex stages
 read it and zero it before the transform is used, so positions are the
 standard path's; GPU culling's `cull.wgsl` zeroes it before boxing an
-instance, and array-map materials are never occluders (the occluder depth
+instance, as does Stylise's object pass, and array-map materials are
+never occluders (the occluder depth
 pass reads transforms as they are).
 
 One variant of the standard lit, prepass and shadow pipelines draws them,
