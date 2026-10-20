@@ -9,8 +9,9 @@
 //   side's pine and ruined arch), each with its import settings
 //   (`model { voxScale voxOrigin }`).
 // - models/slime.glb: the slime's voxels meshed here into a skinned glTF
-//   (two joints, clips `idle` and `chase`), because a .vox cooks into a
-//   static model and og.AnimationPlayer needs a skeleton (FINDINGS.md).
+//   (two joints, clips `idle` and `chase`): its body bends between weighted
+//   joints and takes a glassy material, which a .vox's frame clips (the
+//   cook swaps whole frames, voxFps and voxClip) do not give.
 // - textures/*.png: tileable grass, path, rock and moss for the terrain, a
 //   spark for the lantern's burst.
 // - sprites/faces/*.png: the slimes' expression bubbles (32x32 pixel art),
