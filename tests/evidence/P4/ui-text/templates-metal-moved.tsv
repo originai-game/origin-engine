@@ -46,3 +46,4 @@ templates/fx-showcase/references/metal/weather.png	moved	0.23% px	0.139% outlier
 templates/archetypes/third-person/references/metal/beacon.png	moved	0.06% px changed	0.018% outliers	RMSE 0.00383
 templates/archetypes/third-person/references/metal/dawn.png	moved	0.38% px changed	0.148% outliers	RMSE 0.01324
 templates/archetypes/third-person/references/metal/title.png	moved	0.91% px changed	0.545% outliers	RMSE 0.03599
+templates/fx-showcase/references/metal/environment.png	moved	0.23% px	0.146% outliers	RMSE 0.01237	(against main 20a6d47's fresh frame)
