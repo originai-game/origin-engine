@@ -1235,8 +1235,9 @@ fn render(eng: &Engine) -> Result<bool, String> {
             let missing = b.missing_glyphs();
             if missing > 0 && !rs.missing_warned {
                 rs.missing_warned = true;
+                let which = missing_chars(&rs.scene);
                 rs.notes.push(format!(
-                    "a frame drew {missing} character(s) of text its fonts lack (FrameStats::missing_glyphs): cook them (`font {{ chars }}`) or ship the font file (`font {{ runtime true }}`)"
+                    "a frame drew {missing} character(s) of text its fonts lack (FrameStats::missing_glyphs: {which}): cook them (`font {{ chars }}`) or ship the font file (`font {{ runtime true }}`)"
                 ));
             }
         }
@@ -1251,6 +1252,34 @@ fn render(eng: &Engine) -> Result<bool, String> {
         }
     }
     Ok(true)
+}
+
+/// The characters a scene's texts draw that their fonts lack (at most 8,
+/// as `"x" U+0078` each), for the missing-glyph warning.
+fn missing_chars(scene: &og_render::RenderScene) -> String {
+    let mut out: Vec<char> = Vec::new();
+    let texts = scene
+        .texts
+        .iter()
+        .chain(scene.overlay.iter().flat_map(|o| o.texts.iter()));
+    for t in texts {
+        let Some(font) = scene.font(t.font) else {
+            continue;
+        };
+        for c in t.text.chars() {
+            if !c.is_whitespace()
+                && !out.contains(&c)
+                && !font.glyphs.iter().any(|g| g.codepoint == c)
+            {
+                out.push(c);
+            }
+        }
+    }
+    out.iter()
+        .take(8)
+        .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// `og_engine_call`: the probe's JSON-RPC entry.

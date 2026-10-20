@@ -408,6 +408,21 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   it (an input method's window opens there) and copies the selection on
   the page's copy and cut events.
 
+## What it costs
+
+The shipping wasm (`og_host_web-publish`, after wasm-opt, brotli -q 11;
+`tests/evidence/P4/ui-text/NOTES.md`): 3,205,718 B before the phase 4 text
+round, 3,243,486 B after it (+37,768 B, +1.2 %: unicode-bidi, ttf-parser's
+outline reader, the run-time glyph renderer, the editing and the kerning;
+77.3 % of the 4 MB budget). rustybuzz was already in it: built without the
+`shaping` feature the same module is 3,113,221 B, so shaping costs 130,265
+B brotli (444 KB raw), which a game with no shaped script can leave out
+(`og-host-web --no-default-features --features publish`; the shipped build
+keeps it on). A run-time CJK glyph takes 1.26 ms on average and at most
+2.37 ms to render natively at 32 px/em (`examples/glyph_costs.rs`, 16
+characters, release, Apple M4 Pro); once per character, then it is an
+atlas glyph like any other.
+
 ## Layout
 
 Sizes per axis: `Size::Fit { min, max }` (content; the default),

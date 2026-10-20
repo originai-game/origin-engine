@@ -312,7 +312,9 @@ def cmap_chars(path):
 
 def font():
     text = open(os.path.join(assets, "strings", "zh-CN.ogt"), encoding="utf-8").read()
-    chars = "".join(sorted({ch for ch in text if ord(ch) > 0x2E7F}))
+    # And the star the summary draws after a new best (src/ui.ts), which the
+    # charset does not hold: it was a missing glyph until og-ui warned.
+    chars = "".join(sorted({ch for ch in text if ord(ch) > 0x2E7F} | {"★"}))
     src = os.path.join(root, "..", "..", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf")
     dst = os.path.join(assets, "fonts", "NotoSansSC-subset.ttf")
     try:

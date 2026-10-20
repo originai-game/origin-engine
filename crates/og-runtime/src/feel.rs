@@ -2065,8 +2065,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
 
 fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
     let list = lock(&feel.shared).floating.clone();
-    let body = rs.ui.as_ref().and_then(|u| u.lock().fonts().body.handle);
+    let ui = rs.ui.clone();
     for t in list {
+        // No font of its own: the UI's for this text (its body face, or the
+        // locale's or a fallback when the body face lacks a character).
+        let body = ui.as_ref().and_then(|u| {
+            u.lock()
+                .fonts()
+                .for_text(og_ui::FontRole::Body, &t.text)
+                .handle
+        });
         let age = (now - t.start) as f32;
         if age < 0.0 || age > t.lifetime {
             continue;
