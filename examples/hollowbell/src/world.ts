@@ -302,6 +302,8 @@ function spawnHero(world: World, g: Value<typeof Game>, art: Art, x: number, y: 
   must(world.insert(e, og.Sprite, { texture: art.hero.texture, width: 1.5, height: 1.5, anchor: { x: 0.5, y: 0 }, layer: Draw.hero }));
   must(world.insert(e, og.Flipbook, { sheet: art.hero.sheet, clip: HERO_CLIP.idle }));
   must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: HERO_BOX.w, y: HERO_BOX.h, z: 1 }, offset: { x: 0, y: HERO_BOX.h / 2, z: 0 }, layers: Bits.Hero, mask: Bits.World | Bits.Stone | Bits.Plank }));
+  // Its run stutters on flat ground: every few ticks its velocity drops to almost 0 and it
+  // accelerates again (FINDINGS.md #F-stutter); no skin or snap setting made it steadier.
   must(world.insert(e, og.PlatformerController, { oneWayLayers: Bits.Plank, wallJumps: false, coyoteTime: 0.1, jumpBuffer: 0.12, maxFallSpeed: 18 }));
   must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.86, b: 0.6 }, intensity: 1.1, radius: light, falloff: 1.4, sourceRadius: 0.2 }));
   const half = viewHalfWidth(world);

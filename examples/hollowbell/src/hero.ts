@@ -88,7 +88,7 @@ export const Control = defineSystem(
               heal(g);
               g.warp = true;
               g.warpX = g.checkpoint >= 0 ? g.checkX : g.spawnX;
-              g.warpY = g.checkpoint >= 0 ? g.checkY : g.spawnY;
+              g.warpY = (g.checkpoint >= 0 ? g.checkY : g.spawnY) + 0.05; // FINDINGS.md #F-stuck
               g.invulnerable = t.iframes;
               og.ui.toast(world, say(world, "toast.woke"));
             }

@@ -19,7 +19,7 @@ import { Enemies, touchHero } from "./enemies.ts";
 import { Control } from "./hero.ts";
 import { Areas, Backdrop, Bells, Effects, Flickers, Hazards, Lanterns, Lifts, MapShade, Moles, Pickups, Pools, Stones } from "./props.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { continueRun, LANGUAGES, newRun, setLanguage, setName, toTitle, Ui } from "./ui.ts";
+import { continueRun, LANGUAGES, newRun, setLanguage, setName, toTitle, Ui, WARP_LIFT } from "./ui.ts";
 import { buildHollow, loadArt, must } from "./world.ts";
 
 function start(world: World): void {
@@ -59,24 +59,24 @@ function resume(world: World): void {
   if (!continueRun(world, gameOf(world), must(world.resource(Prefs)))) throw new Error("no save has answered yet: continue needs a save in the store");
 }
 
-/** `warp:<x>:<y>` or `warp:<entity>`: put Wren's feet at a world point, or beside a named entity (lantern-1, mole, bell, chime-0, gloam...). */
+/** `warp:<x>:<y>` or `warp:<entity>[:<dx>[:<dy>]]`: put Wren's feet at a world point, or by a named entity (1.5 m left of it unless dx, dy say). */
 function warp(world: World, args: readonly string[]): void {
   const g = gameOf(world);
   let x: number;
   let y: number;
-  if (args.length >= 2) {
+  if (Number.isFinite(Number(args[0])) && args[0] !== "") {
     x = num(args[0], "x");
     y = num(args[1], "y");
   } else {
     const e = world.find(args[0] ?? "");
-    if (e === null) throw new Error(`no entity named ${args[0]}: write warp:<x>:<y> or warp:<name>`);
+    if (e === null) throw new Error(`no entity named ${args[0]}: write warp:<x>:<y> or warp:<name>[:<dx>[:<dy>]]`);
     const p = must(world.get(e, og.Transform)).position;
-    x = p.x - 1.5;
-    y = p.y;
+    x = p.x + (args[1] === undefined ? -1.5 : num(args[1], "dx"));
+    y = p.y + (args[2] === undefined ? 0 : num(args[2], "dy"));
   }
   g.warp = true;
   g.warpX = x;
-  g.warpY = y;
+  g.warpY = y + WARP_LIFT;
 }
 
 /** `give:<chimes|glimmers|wick|cloak>[:<n>]`: progress at once (chimes:<n> takes the first n). */
@@ -161,7 +161,7 @@ export default og.game({
   commandHelp: {
     play: { usage: "", doc: "Start a new run now, as Begin in the name dialog does." },
     continue: { usage: "", doc: "Continue the saved run, as Continue on the title does." },
-    warp: { usage: "<x>:<y> | <entity>", doc: "Put Wren's feet at a world point, or just left of a named entity (lantern-1, mole, bell, chime-0, gloam)." },
+    warp: { usage: "<x>:<y> | <entity>[:<dx>[:<dy>]]", doc: "Put Wren's feet at a world point, or by a named entity (lantern-1, mole, bell, lift, gloam): 1.5 m left of it unless dx, dy say." },
     give: { usage: "<chimes|glimmers|wick|cloak>[:<n>]", doc: "Progress at once: the first n chimes, n glimmers, the wick, the cloak." },
     hearts: { usage: "<n>", doc: "Set the hearts; losing them lands as a beetle's touch does." },
     ring: { usage: "", doc: "Ring the bell now (the three chimes needed)." },

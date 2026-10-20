@@ -102,6 +102,14 @@ function takeSettings(world: World, p: PrefsV, s: GameSettings): void {
 }
 
 /** The title's world: the village at the spawn, the hollow as a fresh run has it. */
+/**
+ * Where a warp puts Wren's feet: 5 cm over the floor it names. Put exactly on
+ * a tilemap's floor, the controller sinks 7 mm into the tiles' colliders at
+ * some places and cannot run sideways until it jumps (FINDINGS.md #F-stuck);
+ * from 5 cm up it lands on its first step.
+ */
+export const WARP_LIFT = 0.05;
+
 export function toTitle(world: World, g: GameV): void {
   resetProgress(g);
   g.phase = Phase.Title;
@@ -109,7 +117,7 @@ export function toTitle(world: World, g: GameV): void {
   g.start = true;
   g.warp = true;
   g.warpX = g.spawnX;
-  g.warpY = g.spawnY;
+  g.warpY = g.spawnY + WARP_LIFT;
   void world;
 }
 
@@ -121,7 +129,7 @@ export function newRun(world: World, g: GameV): void {
   g.start = true;
   g.warp = true;
   g.warpX = g.spawnX;
-  g.warpY = g.spawnY;
+  g.warpY = g.spawnY + WARP_LIFT;
   g.area = -1;
   void world;
 }
@@ -136,7 +144,7 @@ export function continueRun(world: World, g: GameV, p: PrefsV): boolean {
   g.start = true;
   g.warp = true;
   g.warpX = g.checkX;
-  g.warpY = g.checkY;
+  g.warpY = g.checkY + WARP_LIFT;
   g.area = -1;
   g.loads += 1;
   og.ui.toast(world, say(world, "toast.welcome", { name: p.name === "" ? say(world, "name.placeholder") : p.name }), { tone: "accent" });

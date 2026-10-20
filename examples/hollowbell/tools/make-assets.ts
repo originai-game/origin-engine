@@ -502,17 +502,17 @@ const MH = 48;
 
 /** Plank runs: [x0, x1, row]. Drawn on the `planks` layer; each is a `oneway` object the game gives a one-way collider. */
 const PLANKS: [number, number, number][] = [
-  // The well.
+  // The well (down only: its bottom opens high over the upper cave).
   [22, 23, 15],
   [25, 26, 18],
-  // The upper cave, up to the first chime.
-  [52, 55, 27],
-  [56, 60, 24],
-  // The gloam's arena.
-  [43, 46, 40],
-  [53, 56, 40],
+  // The upper cave, up to the first chime: three rows apart, a full jump each.
+  [50, 53, 29],
+  [54, 58, 26],
+  // The gloam's arena: out of reach of its charge.
+  [43, 46, 42],
+  [53, 56, 42],
   // The root climb back to the surface, alternating sides every three rows.
-  ...[41, 38, 35, 32, 29, 26, 23, 20, 17, 14].map((row, i): [number, number, number] => (i % 2 === 0 ? [2, 4, row] : [5, 7, row])),
+  ...[42, 39, 36, 33, 30, 27, 24, 21, 18, 15].map((row, i): [number, number, number] => (i % 2 === 0 ? [2, 4, row] : [5, 7, row])),
 ];
 
 /** Rock that blocks the 2D light: [x, row, w, h] (stalactites, a pillar, the ledge, a mound). */
@@ -520,7 +520,7 @@ const OCCLUDERS: [number, number, number, number][] = [
   [30, 22, 1, 3],
   [46, 22, 2, 4],
   [58, 22, 1, 2],
-  [19, 27, 1, 5],
+  [19, 22, 1, 5],
   [34, 29, 4, 3],
   [36, 35, 1, 3],
   [70, 35, 2, 4],
@@ -532,11 +532,11 @@ const CRYSTALS: [number, number][] = [[25, 31], [55, 31], [33, 44], [60, 44], [8
 
 const GLIMMERS: [number, number][] = [
   [24, 14.5], [24, 17.5], [24, 20.5],
-  [13, 30.5], [15, 30.5], [17, 30.5], [33, 30.5], [35.5, 28.5], [36.5, 28.5], [40, 30.5], [44, 30.5],
-  [53, 26.5], [54.5, 26.5], [57, 23.5], [60, 23.5], [62, 30.5], [68, 30.5], [71, 30.5],
-  [88, 43.5], [84, 43.5], [76, 43.5], [70, 43.5], [63.5, 41.5], [58, 43.5], [42, 43.5], [45, 39.5], [55, 39.5],
-  [35, 43.5], [27, 41.5], [29, 41.5], [18, 43.5], [11, 40.5], [14, 40.5],
-  [6, 39.5], [3, 33.5], [6, 27.5], [3, 21.5], [6, 15.5],
+  [13, 30.5], [15, 30.5], [17, 30.5], [33, 30.5], [35.5, 28.3], [36.5, 28.3], [40, 30.5], [44, 30.5],
+  [51, 28.3], [52.5, 28.3], [55.5, 25.3], [57.5, 25.3], [62, 30.5], [68, 30.5], [71, 30.5],
+  [88, 43.5], [84, 43.5], [76, 43.5], [70, 43.5], [63.5, 42.3], [58, 43.5], [42, 43.5], [44.5, 41.3], [54.5, 41.3],
+  [35, 43.5], [27, 42.2], [29, 42.2], [18, 43.5], [11, 41.3], [14, 41.3],
+  [6, 38.3], [6, 32.3], [6, 26.3], [6, 20.3], [6, 14.3],
 ];
 
 function mapLayout() {
@@ -553,7 +553,7 @@ function mapLayout() {
   fill(30, 22, 30, 24); // stalactites
   fill(46, 22, 47, 25);
   fill(58, 22, 58, 23);
-  fill(19, 27, 19, 31); // a pillar
+  fill(19, 22, 19, 26); // a hanging pillar of rock: Wren walks under it
   carve(82, 32, 85, 34); // the drop to the lower cave
   carve(2, 35, 93, 44); // the lower cave
   carve(22, 45, 32, 46); // the pit
@@ -608,12 +608,12 @@ function tiledMap(): object {
   // Points stand things on their feet: x is the middle of a cell, y the top of the floor's row.
   obj("spawn", "spawn", 16.5, 12);
   obj("bell", "bell", 11.5, 12);
-  obj("chime-0", "chime", 58.5, 23.5);
+  obj("chime-0", "chime", 56.5, 25.2);
   obj("chime-1", "chime", 12.5, 40.5);
   obj("chime-2", "chime", 50.5, 43.5, 0, 0, [prop("boss", "bool", true)]);
   GLIMMERS.forEach(([x, y], i) => obj(`glimmer-${i}`, "glimmer", x, y));
-  obj("heart-0", "heart", 59.5, 23.5);
-  obj("heart-1", "heart", 63.5, 41.5);
+  obj("heart-0", "heart", 54.5, 25.3);
+  obj("heart-1", "heart", 63.5, 42.3);
   obj("beetle-0", "beetle", 42.5, 32, 0, 0, [prop("range", "float", 4)]);
   obj("beetle-1", "beetle", 66.5, 32, 0, 0, [prop("range", "float", 4)]);
   obj("beetle-2", "beetle", 80.5, 45, 0, 0, [prop("range", "float", 5)]);
