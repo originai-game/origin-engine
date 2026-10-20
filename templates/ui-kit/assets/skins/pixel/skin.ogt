@@ -17,7 +17,7 @@ palette {
   materialThin "#221e38cc"
   fg "#f4f1de"
   fgMuted "#c9c2a8"
-  fgSubtle "#a49e86"
+  fgSubtle "#ada792"
   fgInverse "#14111f"
   fill "#3f3a5e"
   fillStrong "#4c4570"

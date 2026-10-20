@@ -1,5 +1,7 @@
 //! button_contrast.rs for the style packs: every button role's label, in
-//! every state, and the three label inks (`fg`, `fgMuted`, `fgSubtle`), as
+//! every state, the three label inks (`fg`, `fgMuted`, `fgSubtle`) and a
+//! text field's placeholder (`fgSubtle` on the field's frame) and typed
+//! text, at rest and focused, as
 //! og-ui draws them with a pack's skin, read against what is really under
 //! them: the frame's draw commands composited in linear light, a skinned
 //! piece as the mean of its atlas texels (the pack's `atlas.png`) times its
@@ -22,7 +24,12 @@
 //! Ways this could fail: a pack's accent or fill too dark for its ink once
 //! the frame art shades it; a muted or subtle ink that reads on paper
 //! only; a hovered or pressed state darker than its rest; a translucent
-//! piece that reads over one ground only.
+//! piece that reads over one ground only; a placeholder under 4.5:1 (the
+//! fantasy pack's read 4.40:1 here and 2.93:1 in lantern-vale's polish
+//! frame, FINDINGS #29; pixel 4.22, cartoon 4.13, before their fgSubtle
+//! moved), or the focus ring showing through a focused field's frame
+//! (scifi 3.52:1 and neon 3.00:1 on the ring's colour, before og-ui cut
+//! the ring under every control).
 
 mod support;
 
@@ -379,6 +386,91 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     failing.push(format!(
                         "{name}: {ink_name} on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
                     ));
+                }
+            }
+        }
+        // A text field's placeholder (fgSubtle on the field's fill and
+        // frame), and its typed text (fg), unfocused and focused, on the
+        // screen and in a panel: the pack's own settings screens show both.
+        for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
+            for (what, value) in [("placeholder", ""), ("text", "Ada")] {
+                for focused in [false, true] {
+                    let mut scene = RenderScene::new();
+                    let mut ui = ui_with_font(add_test_font(&mut scene));
+                    ui.set_theme(theme);
+                    let vp = Viewport::new(800.0, 600.0);
+                    let mut v = value.to_string();
+                    let step = |ui: &mut Ui, v: &mut String, input: InputFrame| {
+                        ui.begin(input, vp);
+                        let mut field = |ui: &mut Ui| {
+                            ui.text_field(
+                                "F",
+                                v,
+                                &FieldDesc {
+                                    placeholder: "Your name".into(),
+                                    ..FieldDesc::default()
+                                },
+                            );
+                        };
+                        match panel {
+                            Some(bg) => ui.panel(
+                                "G",
+                                PanelDesc {
+                                    background: Some(bg),
+                                    ..PanelDesc::default()
+                                },
+                                field,
+                            ),
+                            None => field(ui),
+                        }
+                        ui.end();
+                    };
+                    for _ in 0..40 {
+                        step(&mut ui, &mut v, InputFrame::default());
+                    }
+                    if focused {
+                        let path = if panel.is_some() { "G/F" } else { "F" };
+                        let (x, y) = ui.frame().element(path).expect("the field").center();
+                        let at = InputFrame {
+                            pointer: Vec2::new(x, y),
+                            pointer_inside: true,
+                            ..InputFrame::default()
+                        };
+                        step(
+                            &mut ui,
+                            &mut v,
+                            InputFrame {
+                                down: true,
+                                pressed: true,
+                                ..at.clone()
+                            },
+                        );
+                        step(
+                            &mut ui,
+                            &mut v,
+                            InputFrame {
+                                released: true,
+                                ..at.clone()
+                            },
+                        );
+                        for _ in 0..20 {
+                            step(&mut ui, &mut v, at.clone());
+                        }
+                    }
+                    let shown = if value.is_empty() { "Your name" } else { value };
+                    let (ink, fill) = measured(&ui, shown, bg, tex, &atlas);
+                    let r = ratio(ink, fill);
+                    let state = if focused { "focused" } else { "rest" };
+                    rows.push(format!(
+                        "{name:8} {what:11} {state:7} on the {ground_name:6} {r:6.2}:1  {} on {}",
+                        hex(ink),
+                        hex(fill)
+                    ));
+                    if r < LABEL_BAR {
+                        failing.push(format!(
+                            "{name}: a field's {what}, {state}, on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
+                        ));
+                    }
                 }
             }
         }

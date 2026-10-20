@@ -2962,9 +2962,10 @@ impl Ui {
                 t.space.xxs
             };
             cmds.push(quad(rect.outset(w + gap), n.el.radius + w + gap, color));
-            if gap > 0.0 || (outline && !field_ring) {
-                cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
-            }
+            // Cut always: a field's skinned frame is not wholly opaque, and
+            // the ring under it tinted its text's ground (the scifi pack's
+            // focused placeholder read 3.5:1 on amber-tinted navy).
+            cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
         }
         if let Some(bg) = n.el.background {
             let (pressed, press) = match n.widget {

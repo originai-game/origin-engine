@@ -348,7 +348,7 @@ def pixel_pack():
         palette=dict(
             bg="#14111f", bgSubtle="#1d1930", surface="#2b2745", surfaceRaised="#2b2745", surfaceHover="#3a3459",
             materialThick="#221e38f2", materialRegular="#221e38e6", materialThin="#221e38cc",
-            fg="#f4f1de", fgMuted="#c9c2a8", fgSubtle="#a49e86", fgInverse="#14111f",
+            fg="#f4f1de", fgMuted="#c9c2a8", fgSubtle="#ada792", fgInverse="#14111f",
             fill="#3f3a5e", fillStrong="#4c4570", border="#5b5480", borderStrong="#a79ccf",
             accent="#ffcd4a", accentHover="#ffdb75", accentActive="#e6ad1f", accentFg="#14111f", accentInk="#ffd86b",
             accentSoft="#ffcd4a33", focus="#ffcd4a", thumb="#5b5480", scrim="#0a0812b3",
@@ -409,7 +409,7 @@ def cartoon_pack():
         palette=dict(
             bg="#2a1d5c", bgSubtle="#33246e", surface="#fff4dc", surfaceRaised="#fff4dc", surfaceHover="#ffe9bd",
             materialThick="#fff4dcf5", materialRegular="#fff4dcee", materialThin="#fff4dce0",
-            fg="#2b1a4a", fgMuted="#5a4880", fgSubtle="#6a5a88", fgInverse="#fff4dc",
+            fg="#2b1a4a", fgMuted="#5a4880", fgSubtle="#61527c", fgInverse="#fff4dc",
             fill="#fff3cc", fillStrong="#ffecb5", border="#2b1a4a", borderStrong="#2b1a4a",
             accent="#a24112", accentHover="#a94414", accentActive="#8c370e", accentFg="#fff4dc", accentInk="#b4430a",
             accentSoft="#a2411240", focus="#3fa7ff", thumb="#ffffff", scrim="#1a0f3ccc",
@@ -514,7 +514,7 @@ def fantasy_pack():
         palette=dict(
             bg="#1a120b", bgSubtle="#241910", surface="#efdfb8", surfaceRaised="#efdfb8", surfaceHover="#f4e8c8",
             materialThick="#efdfb8", materialRegular="#efdfb8f2", materialThin="#efdfb8e6",
-            fg="#2a1a0c", fgMuted="#3d2a18", fgSubtle="#6a4f33", fgInverse="#f4e8c8",
+            fg="#2a1a0c", fgMuted="#3d2a18", fgSubtle="#654b31", fgInverse="#f4e8c8",
             fill="#e2cc98", fillStrong="#d6bc82", border="#9b7a4a", borderStrong="#5c4127",
             accent="#7a520f", accentHover="#74500e", accentActive="#6a470c", accentFg="#fff4dc", accentInk="#7a4f0e",
             accentSoft="#7a520f40", focus="#8f2d1f", thumb="#f4e8c8", scrim="#0d0805cc",
