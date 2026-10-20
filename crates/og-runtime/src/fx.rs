@@ -103,8 +103,12 @@ pub(crate) struct FxState {
     /// Instance transforms by (entity, part) of the last two ticks, for
     /// per-object motion blur.
     pub tick: u64,
-    pub current: BTreeMap<(u64, u32), Mat4>,
-    pub previous: BTreeMap<(u64, u32), Mat4>,
+    /// In instance order; a key's last entry is its transform.
+    pub current: Vec<((u64, u32), Mat4)>,
+    pub previous: Vec<((u64, u32), Mat4)>,
+    /// `previous` by key, made when a frame with object motion blur first
+    /// asks for it in its tick (most frames never do).
+    pub previous_by_key: Option<BTreeMap<(u64, u32), Mat4>>,
 }
 
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
@@ -664,20 +668,25 @@ pub(crate) fn posed_model(
 pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64) {
     let RenderState { scene, fx, .. } = rs;
     if fx.tick != tick {
-        fx.previous = std::mem::take(&mut fx.current);
+        std::mem::swap(&mut fx.previous, &mut fx.current);
+        fx.previous_by_key = None;
         fx.tick = tick;
     }
-    fx.current = keys
-        .iter()
-        .zip(&scene.instances)
-        .map(|(k, i)| (*k, i.transform))
-        .collect();
+    fx.current.clear();
+    fx.current.extend(
+        keys.iter()
+            .zip(&scene.instances)
+            .map(|(k, i)| (*k, i.transform)),
+    );
     scene.previous_transforms.clear();
     if scene.post.motion_blur.is_some() && keys.len() == scene.instances.len() {
+        let previous = fx
+            .previous_by_key
+            .get_or_insert_with(|| fx.previous.iter().copied().collect());
         scene.previous_transforms = keys
             .iter()
             .zip(&scene.instances)
-            .map(|(k, i)| fx.previous.get(k).copied().unwrap_or(i.transform))
+            .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
             .collect();
     }
 }
