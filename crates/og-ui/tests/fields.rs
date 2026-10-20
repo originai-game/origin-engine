@@ -398,3 +398,30 @@ fn a_drag_past_a_text_area_scrolls_it_line_by_line() {
     assert!(rig.selection().is_empty() || rig.selection().starts_with("line 1"));
     rig.release(above);
 }
+
+/// The `text-fields-2` reference scene (tests/gfx.rs renders it) is in the
+/// state its documentation names: "select" double-clicked, the undone
+/// field at "one two ", the area scrolled with a selection over the lines
+/// the drag passed.
+#[test]
+fn the_text_fields_scene_is_what_its_frame_shows() {
+    let mut scene = og_render::RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let (ui, area) = text_fields_uis(&font);
+    let target = ui.frame().text_input.clone().expect("the words field");
+    assert_eq!(target.selection, "select");
+    assert_eq!(ui.frame().element("Undo").expect("undo").text, "one two ");
+    let selected = area.frame().text_input.clone().expect("the area").selection;
+    assert!(
+        selected.contains(" 1 of the notes\nLine 2") && selected.lines().count() >= 5,
+        "{selected:?}"
+    );
+    assert!(
+        !selected.contains("Line 9"),
+        "scrolled part way: {selected:?}"
+    );
+    // Built twice, the same frames.
+    let (again, area2) = text_fields_uis(&font);
+    assert_eq!(again.frame().items, ui.frame().items);
+    assert_eq!(area2.frame().items, area.frame().items);
+}
