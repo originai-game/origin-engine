@@ -242,3 +242,33 @@ fn directions_follow_the_first_strong_character_and_the_locale() {
     let forced = table("ar", "direction ltr\n", &[]);
     assert_eq!(forced.direction, Direction::Ltr);
 }
+
+/// UAX #29 words as word moves take them: punctuation runs merged, Han
+/// and Hiragana a word per character, Thai per grapheme cluster, marks
+/// with their base; grapheme clusters keep a base and its marks.
+#[test]
+fn words_and_graphemes_follow_uax_29() {
+    use og_i18n::{WordKind, graphemes, word_segments};
+    let cut = |t: &str| -> Vec<String> {
+        let chars: Vec<char> = t.chars().collect();
+        word_segments(&chars)
+            .iter()
+            .map(|s| chars[s.start..s.end].iter().collect())
+            .collect()
+    };
+    assert_eq!(
+        cut("can't stop_now 3.14...?!"),
+        ["can't", " ", "stop_now", " ", "3.14", "...?!"]
+    );
+    assert_eq!(cut("東京へ行く。"), ["東", "京", "へ", "行", "く", "。"]);
+    assert_eq!(cut("Score 原点42"), ["Score", " ", "原", "点", "42"]);
+    assert_eq!(cut("안녕하세요 세계"), ["안녕하세요", " ", "세계"]);
+    assert_eq!(cut("ไทยง่าย"), ["ไ", "ท", "ย", "ง\u{e48}", "า", "ย"]);
+    assert_eq!(cut("e\u{301}cole x"), ["e\u{301}cole", " ", "x"]);
+    let chars: Vec<char> = "a\nb".chars().collect();
+    let kinds: Vec<WordKind> = word_segments(&chars).iter().map(|s| s.kind).collect();
+    assert_eq!(kinds, [WordKind::Word, WordKind::Break, WordKind::Word]);
+    assert_eq!(graphemes("e\u{301}a"), [(0, 2), (2, 3)]);
+    // A conjunct (consonant, virama, consonant) and its sign: one cluster (GB9c).
+    assert_eq!(graphemes("नमस्ते"), [(0, 1), (1, 2), (2, 6)]);
+}

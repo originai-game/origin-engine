@@ -98,16 +98,25 @@ that keys, pads and touch reach like a button; the result's `link` names
 the one clicked. A typo in a tag stays visible as text and warns.
 
 `textField` and `textArea` edit as a player's system does, with nothing to
-wire: Alt or Ctrl with the arrows moves by words (with Backspace or Delete,
-deletes one), a double click selects a word and a triple click the line,
-Ctrl/Cmd+Z undoes and Shift+Z or Y redoes (typing undoes a word at a
-time), and a drag past an area's edge scrolls it. A text the game sets
-starts the field's undo history again.
+wire. On a Mac (the web shell says so: `Viewport.macKeys`) Cmd+A, C, X, Z
+are the shortcuts, Cmd+←/→ go to the line's ends, Option+←/→ (and
+Option+Backspace or Delete) move by words and Ctrl+A/E go to the line's
+ends; elsewhere Ctrl takes the shortcuts and moves by words. Words are
+Unicode's (UAX #29): `can't` is one, each Chinese character is one, Thai
+moves a cluster at a time. A double click selects a word and a triple
+click the line, Shift+Z or Y redoes (typing undoes a word at a time, an
+input method's commit at a time), and a drag past an area's edge scrolls
+it. A text the game sets starts the field's undo history again. Script a
+chord with the modifier before the key: `key_down:Meta+ArrowLeft`
+(Command), `key_down:Ctrl+Shift+KeyZ`; native hosts use the non-Mac keys,
+so a script edits the same on every OS (`og.ui.previewViewport` with
+`macKeys: true` tries the Mac's).
 
 Scripts: a label mixing scripts draws each run in the first font that has
 it (the Latin in the body or the pack's face, CJK, Arabic or Hebrew from the
-locale's fonts or `fallbackFonts` in `og.ui.configure`), so `"Level 3 ·
-古い水車小屋"` needs no font of its own; a string a locale's font covers
+locale's fonts or `fallbackFonts` in `og.ui.configure`), a letter and its
+accents always in one face, so `"Level 3 · 古い水車小屋"` needs no font of
+its own; a string a locale's font covers
 whole keeps that face.
 
 Icons: an icon set cooked from SVGs (an `.ogt` of `type icons` naming
@@ -135,7 +144,8 @@ On the web the shell mirrors this tree into the page for screen readers
 clicks pressing the control), so the names you give are what a blind
 player hears. The page's `prefers-reduced-motion` and `prefers-contrast:
 more` turn on the reduced-motion and high-contrast themes on top of the
-game's own settings: nothing to wire.
+game's own settings: nothing to wire. A stepper is adjusted as a whole
+(VoiceOver's swipe up or down on it steps it), like a slider.
 
 There are no label or role fields to set: a node's `role` comes from the
 widget (button, link, text, heading, image, checkbox, slider, textbox,
@@ -253,7 +263,10 @@ when any is on screen (about 0.8 ms at 1280×720 on an M4 Pro), and one more
 pyramid for each glass layer with UI under it, nothing without glass.
 A player whose system asks for less transparency (`prefers-reduced-
 transparency`, or `reducedTransparency: true` in `og.ui.configure` from a
-settings toggle) gets glass parts as opaque surfaces.
+settings toggle) gets glass parts as opaque surfaces and dialog scrims and
+translucent fills (secondary buttons, chips, tracks) flat. Your own
+see-through overlays should follow: read `og.ui.frameTheme().reducedTransparency`
+(and `reducedMotion`) and draw them opaque.
 
 A skin of the game's own art: draw each part as a nine-patch PNG
 (`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
@@ -317,7 +330,7 @@ save.note = note.value;
 ```
 
 Both take the press point as the caret, select by drag, Shift with
-arrows, and Ctrl or Cmd with A; copy, cut and paste use the page's
+arrows, and Cmd (on a Mac) or Ctrl with A; copy, cut and paste use the page's
 clipboard; typed text replaces the selection; the text scrolls to keep the
 caret in view and the caret blinks by the tick (steady under reduced
 motion). An area's Enter is a new line, Up and Down move between lines

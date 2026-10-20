@@ -918,7 +918,24 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
                 .particles
                 .iter()
                 .any(|p| rs.scene.emitter(p.emitter).and_then(|e| e.array) == Some(h));
-            emitted.then_some("a particle emitter draws from it")
+            if emitted {
+                return Some("a particle emitter draws from it");
+            }
+            let slot = h.slot();
+            let sampled = rs
+                .materials
+                .iter()
+                .filter_map(|&m| rs.scene.standard_material(m))
+                .any(|m| m.mapArray == slot || m.normalMapArray == slot);
+            if sampled {
+                return Some("a material samples it (mapArray, normalMapArray)");
+            }
+            let layered = rs
+                .terrain
+                .loaded
+                .iter()
+                .any(|t| t.layer_arrays.contains(&Some(i)));
+            layered.then_some("a terrain's layers sample it (layers, layerNormals)")
         }
         Held::Palette(i) => {
             let h = rs.fx.look.palettes.get(i)?.1?;

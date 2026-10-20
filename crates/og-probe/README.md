@@ -77,7 +77,7 @@ and when it runs still unknown, warns and the script continues. `type` and
 | `touch_move_to:<ui id>` | pointer to the centre of an element: an id (topmost first) or a `Parent/Child` path | warns "target not found" |
 | `move_to_text:[=]text[@N]` | pointer to the element showing the text: substring, `=` exact, Nth match (0-based, negative from the end), topmost first | warns |
 | `touch_move:x,y` / `touch_start` / `touch_end` / `scroll:dx,dy` | pointer move, left press and release where the pointer is, wheel at the pointer | — |
-| `key_down:<Key>` / `key_up:<Key>` / `type:<text>` | `KeyboardEvent.code` keys; `type` presses one key per character, two ticks apart, Shift for capitals and symbols (US layout) | — |
+| `key_down:[Mod+]<Key>` / `key_up:[Mod+]<Key>` / `type:<text>` | `KeyboardEvent.code` keys; a chord names its modifiers first (`Meta+ArrowLeft` for Command, `Ctrl+Shift+KeyZ`; Shift, Ctrl/Control, Alt/Option, Meta/Cmd/Command), held before the key goes down and released after it goes up; `type` presses one key per character, two ticks apart, Shift for capitals and symbols (US layout) | — |
 | `teleport:<entity>:x,y[,z]` | write `og.Transform.position` (two numbers keep z) | — |
 | `frame_entity:<entity>` | turn `og.Camera.quaternion` so its -Z looks at the entity | warns without `og.Camera` |
 | `dump_world[:path]` / `dump_entity:<entity>[:path]` / `dump_ui[:path]` | JSON outputs, as `dump` returns them | `dump_ui` is empty |

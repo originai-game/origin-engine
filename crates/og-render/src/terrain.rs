@@ -30,8 +30,16 @@
 //! the transitions. Weights are normalised; where every weight is 0 the
 //! first layer shows. A layer is sampled over world xz every `tile` metres
 //! or triplanar (cliffs), with an optional normal map.
+//!
+//! **Layer arrays.** A terrain's layers may take their albedo and normal
+//! maps from two texture arrays instead ([`Terrain::layer_arrays`], each
+//! layer naming its layers with [`TerrainLayer::albedo_layer`] and
+//! `normal_layer`): two sampled textures instead of up to eight, through
+//! a variant of the terrain's group layout and pipelines made when a
+//! terrain first uses it. A terrain of separate textures draws exactly as
+//! before.
 
-use crate::scene::{TerrainHandle, TextureHandle};
+use crate::scene::{TerrainHandle, TextureArrayHandle, TextureHandle};
 use crate::terrain_tiles::{
     ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
     TerrainTile, TerrainView, terrain_tiles_wanted,
@@ -266,6 +274,31 @@ pub struct TerrainLayer {
     /// The heights above the terrain's origin where it shows, and the fade.
     pub altitude: [f32; 2],
     pub altitude_fade: f32,
+    /// With [`Terrain::layer_arrays`]: the layer of the albedo array this
+    /// layer's colour (and height, in alpha) is (`None`: `color` alone).
+    /// Past the array's last layer: the last.
+    pub albedo_layer: Option<u32>,
+    /// With [`Terrain::layer_arrays`]: the layer of the normal array this
+    /// layer's normal map is (`None`: none).
+    pub normal_layer: Option<u32>,
+}
+
+/// Two texture arrays a terrain's layers take their maps from
+/// ([`Terrain::layer_arrays`]): the albedos (sRGB, the height in alpha)
+/// and the normal maps (linear). With either set, each layer's
+/// [`TerrainLayer::albedo_layer`] and `normal_layer` name its layers and
+/// its `albedo` and `normal` textures are not read.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TerrainLayerArrays {
+    pub albedo: Option<TextureArrayHandle>,
+    pub normal: Option<TextureArrayHandle>,
+}
+
+impl TerrainLayerArrays {
+    /// Whether the layers sample arrays.
+    pub fn any(&self) -> bool {
+        self.albedo.is_some() || self.normal.is_some()
+    }
 }
 
 impl Default for TerrainLayer {
@@ -282,6 +315,8 @@ impl Default for TerrainLayer {
             slope_fade: 4.0,
             altitude: [-1.0e6, 1.0e6],
             altitude_fade: 4.0,
+            albedo_layer: None,
+            normal_layer: None,
         }
     }
 }
@@ -330,6 +365,9 @@ pub struct Terrain {
     pub transform: Mat4,
     /// Up to [`MAX_TERRAIN_LAYERS`] layers (more are ignored).
     pub layers: Vec<TerrainLayer>,
+    /// The texture arrays the layers' maps come from (none: each layer's
+    /// own textures).
+    pub layer_arrays: TerrainLayerArrays,
     /// How much the layers' heights (their albedo's alpha) sharpen their
     /// transitions (0: weights alone).
     pub height_blend: f32,
@@ -346,6 +384,7 @@ impl Terrain {
             terrain,
             transform: Mat4::IDENTITY,
             layers: vec![TerrainLayer::default()],
+            layer_arrays: TerrainLayerArrays::default(),
             height_blend: 0.0,
             cast_shadows: true,
             lod: TerrainLod::default(),
@@ -407,6 +446,9 @@ pub(crate) struct LevelDraw {
 /// One terrain ready to draw in this frame's passes.
 pub(crate) struct TerrainDraw {
     pub group: wgpu::BindGroup,
+    /// Its pipelines (the layer-array variant's when its layers sample
+    /// arrays).
+    pub passes: TerrainPasses,
     pub levels: Vec<LevelDraw>,
     pub cast_shadows: bool,
 }
@@ -586,15 +628,30 @@ struct Slot {
     group: Option<(GroupKey, wgpu::BindGroup)>,
 }
 
-type GroupKey = (usize, u64, [Option<TextureHandle>; 2 * MAX_TERRAIN_LAYERS]);
+type GroupKey = (
+    usize,
+    u64,
+    [Option<TextureHandle>; 2 * MAX_TERRAIN_LAYERS],
+    TerrainLayerArrays,
+);
 
 /// Draws [`Terrain`]s: the pipelines, each data's tiles, a uniform and
 /// level buffer per drawn terrain, kept across frames.
 pub(crate) struct TerrainRenderer {
     layout: wgpu::BindGroupLayout,
-    pub lit: wgpu::RenderPipeline,
-    pub prepass: wgpu::RenderPipeline,
-    pub shadow: wgpu::RenderPipeline,
+    passes: TerrainPasses,
+    /// The layer-array variant (a terrain whose layers sample texture
+    /// arrays, [`Terrain::layer_arrays`]): its group layout, with the
+    /// albedo (5) and normal (9) maps as 2D arrays and no other layer
+    /// texture, and its pipelines; made when a terrain first needs it.
+    arrays: Option<(wgpu::BindGroupLayout, TerrainPasses)>,
+    /// The variant's stand-ins for a missing array: white and the flat normal.
+    array_stand_ins: Option<(wgpu::TextureView, wgpu::TextureView)>,
+    /// What the variant is made from.
+    frame_layout: wgpu::BindGroupLayout,
+    shadow_layout: wgpu::BindGroupLayout,
+    lit_source: String,
+    samples: u32,
     layer_sampler: wgpu::Sampler,
     map_sampler: wgpu::Sampler,
     white: wgpu::TextureView,
@@ -637,6 +694,101 @@ impl TerrainRenderer {
         for slot in &mut self.slots {
             slot.group = None;
         }
+    }
+
+    /// The layer-array variant: the group layout with the albedo (5) and
+    /// normal (9) maps as 2D arrays and bindings 6 to 8 and 10 to 12 gone,
+    /// its lit, prepass and shadow pipelines, and (kept on `self`) the
+    /// one-layer stand-ins for a missing array.
+    fn array_variant(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> (wgpu::BindGroupLayout, TerrainPasses) {
+        let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
+        let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: vf,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable },
+                view_dimension: wgpu::TextureViewDimension::D2Array,
+                multisampled: false,
+            },
+            count: None,
+        };
+        let uniform = |binding, dynamic| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: vf,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: dynamic,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let sampler = |binding| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        };
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("terrain (layer arrays)"),
+            entries: &[
+                uniform(0, false),
+                uniform(1, true),
+                tex(2, false),
+                tex(3, true),
+                tex(4, true),
+                tex(5, true),
+                tex(9, true),
+                sampler(13),
+                sampler(14),
+                uniform(15, false),
+            ],
+        });
+        let passes = terrain_passes(
+            device,
+            &self.frame_layout,
+            &self.shadow_layout,
+            &layout,
+            self.samples,
+            terrain_lit_array_source(&self.lit_source),
+            terrain_shadow_array_source(),
+        );
+        let solid = |label, rgba: [u8; 4]| {
+            let layers = crate::gl_safe_array_layers(1);
+            let texels: Vec<u8> = (0..layers).flat_map(|_| rgba).collect();
+            wgpu::util::DeviceExt::create_texture_with_data(
+                device,
+                queue,
+                &wgpu::TextureDescriptor {
+                    label: Some(label),
+                    size: wgpu::Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: layers,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    view_formats: &[],
+                },
+                wgpu::util::TextureDataOrder::LayerMajor,
+                &texels,
+            )
+            .create_view(&wgpu::TextureViewDescriptor {
+                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                ..Default::default()
+            })
+        };
+        self.array_stand_ins = Some((
+            solid("terrain arrays: white", [255; 4]),
+            solid("terrain arrays: flat normal", [128, 128, 255, 255]),
+        ));
+        (layout, passes)
     }
 
     pub(crate) fn new(
@@ -686,113 +838,15 @@ impl TerrainRenderer {
             label: Some("terrain"),
             entries: &entries,
         });
-        let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("terrain"),
-            source: wgpu::ShaderSource::Wgsl(
-                terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl).into(),
-            ),
-        });
-        let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("terrain shadow"),
-            source: wgpu::ShaderSource::Wgsl(terrain_shadow_source().into()),
-        });
-        let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
-            let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(label),
-                bind_group_layouts: &layouts,
-                immediate_size: 0,
-            })
-        };
-        let lit_layout = pl("terrain", &[p.frame_layout, &layout]);
-        let shadow_layout = pl("terrain shadow", &[p.shadow_layout, &layout]);
-        let lit = crate::hdr_pipeline(
+        let passes = terrain_passes(
             device,
-            crate::HdrPipeline {
-                label: "terrain",
-                layout: &lit_layout,
-                module: &lit_module,
-                vs: "vs",
-                fs: "fs",
-                buffers: &[],
-                cull: Some(wgpu::Face::Back),
-                depth_write: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                blend: None,
-                samples: p.samples,
-            },
+            p.frame_layout,
+            p.shadow_layout,
+            &layout,
+            p.samples,
+            terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl),
+            terrain_shadow_source(),
         );
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
-        let depth = |write| {
-            Some(wgpu::DepthStencilState {
-                format: crate::DEPTH_FORMAT,
-                depth_write_enabled: Some(write),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: Default::default(),
-                bias: Default::default(),
-            })
-        };
-        let prepass = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("terrain prepass"),
-            layout: Some(&lit_layout),
-            vertex: wgpu::VertexState {
-                module: &lit_module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: Some(wgpu::Face::Back),
-                ..Default::default()
-            },
-            depth_stencil: depth(true),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &lit_module,
-                entry_point: Some("fs_prepass"),
-                compilation_options: Default::default(),
-                targets: &[
-                    target(crate::post::GBUFFER_FORMAT),
-                    target(crate::post::LINDEPTH_FORMAT),
-                    target(crate::post::OUTLINE_FORMAT),
-                ],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
-        // An open surface: both faces cast (the bias in the lit pass keeps
-        // its own lit side from shadowing itself).
-        let shadow = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("terrain shadow"),
-            layout: Some(&shadow_layout),
-            vertex: wgpu::VertexState {
-                module: &shadow_module,
-                entry_point: Some("vs_shadow"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: depth(true),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &shadow_module,
-                entry_point: Some("fs_shadow"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::R32Float,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::RED,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
         let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("terrain layers"),
             address_mode_u: wgpu::AddressMode::Repeat,
@@ -848,9 +902,13 @@ impl TerrainRenderer {
         });
         TerrainRenderer {
             layout,
-            lit,
-            prepass,
-            shadow,
+            passes,
+            arrays: None,
+            array_stand_ins: None,
+            frame_layout: p.frame_layout.clone(),
+            shadow_layout: p.shadow_layout.clone(),
+            lit_source: terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl),
+            samples: p.samples,
             layer_sampler,
             map_sampler,
             white: p.white,
@@ -1235,6 +1293,7 @@ impl TerrainRenderer {
         view_proj: Mat4,
         prev_view_proj: Mat4,
         textures: impl Fn(TextureHandle) -> Option<&'t wgpu::TextureView>,
+        arrays: impl Fn(TextureArrayHandle) -> Option<&'t wgpu::Texture>,
     ) -> Result<Vec<TerrainDraw>, crate::RenderError> {
         if scene.terrains.is_empty() {
             self.uploads = 0;
@@ -1283,6 +1342,10 @@ impl TerrainRenderer {
         }
         let mut draws = Vec::with_capacity(scene.terrains.len());
         for (ti, t) in scene.terrains.iter().enumerate() {
+            if t.layer_arrays.any() && self.arrays.is_none() {
+                let variant = self.array_variant(device, queue);
+                self.arrays = Some(variant);
+            }
             let di = t.terrain.index();
             let Some(Some(data)) = self.datas.get(di) else {
                 return Err(crate::RenderError::InvalidHandle(format!("terrain {di}")));
@@ -1299,7 +1362,47 @@ impl TerrainRenderer {
             let mut layers = [LayerGpu::default(); MAX_TERRAIN_LAYERS];
             let mut handles = [None; 2 * MAX_TERRAIN_LAYERS];
             let count = t.layers.len().min(MAX_TERRAIN_LAYERS);
+            let arrayed = t.layer_arrays.any();
+            for (k, h) in [t.layer_arrays.albedo, t.layer_arrays.normal]
+                .into_iter()
+                .enumerate()
+            {
+                if let Some(h) = h
+                    && arrays(h).is_none()
+                {
+                    return Err(crate::RenderError::InvalidHandle(format!(
+                        "terrain {} array {}",
+                        ["albedo", "normal"][k],
+                        h.index()
+                    )));
+                }
+            }
             for (i, l) in t.layers.iter().take(MAX_TERRAIN_LAYERS).enumerate() {
+                if arrayed {
+                    // The layers' maps are the arrays' layers: two
+                    // textures, the layer indices in slope.w and altitude.w.
+                    let albedo = t.layer_arrays.albedo.and(l.albedo_layer);
+                    let normal = t.layer_arrays.normal.and(l.normal_layer);
+                    let bits = u32::from(albedo.is_some()) | (u32::from(normal.is_some()) << 1);
+                    let at = |layer: Option<u32>| layer.unwrap_or(0).min(1 << 24) as f32;
+                    layers[i] = LayerGpu {
+                        color: l.color.extend(l.roughness.clamp(0.04, 1.0)).to_array(),
+                        mapping: [
+                            1.0 / l.tile.max(1e-3),
+                            f32::from(l.triplanar),
+                            l.normal_strength,
+                            bits as f32,
+                        ],
+                        slope: [l.slope[0], l.slope[1], l.slope_fade.max(0.0), at(albedo)],
+                        altitude: [
+                            l.altitude[0],
+                            l.altitude[1],
+                            l.altitude_fade.max(0.0),
+                            at(normal),
+                        ],
+                    };
+                    continue;
+                }
                 for (k, h) in [(i, l.albedo), (MAX_TERRAIN_LAYERS + i, l.normal)] {
                     if let Some(h) = h {
                         if textures(h).is_none() {
@@ -1420,7 +1523,54 @@ impl TerrainRenderer {
                 });
             }
             queue.write_buffer(&slot.levels, 0, &level_bytes);
-            let key: GroupKey = (di, data.generation, handles);
+            let key: GroupKey = (di, data.generation, handles, t.layer_arrays);
+            if slot.group.as_ref().is_none_or(|(k, _)| *k != key) && arrayed {
+                let (layout, _) = self.arrays.as_ref().expect("made above");
+                let (white, flat) = self
+                    .array_stand_ins
+                    .as_ref()
+                    .expect("made with the variant");
+                let view = |h: Option<TextureArrayHandle>, fallback: &wgpu::TextureView| {
+                    h.and_then(&arrays).map_or_else(
+                        || fallback.clone(),
+                        |t| {
+                            t.create_view(&wgpu::TextureViewDescriptor {
+                                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                                ..Default::default()
+                            })
+                        },
+                    )
+                };
+                let (albedo, normal) = (
+                    view(t.layer_arrays.albedo, white),
+                    view(t.layer_arrays.normal, flat),
+                );
+                let control = data.control.as_ref().map_or(&self.white_array, |c| &c.1);
+                let level = wgpu::BufferBinding {
+                    buffer: &slot.levels,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(std::mem::size_of::<LevelGpu>() as u64),
+                };
+                let entries = [
+                    (0, slot.uniform.as_entire_binding()),
+                    (1, wgpu::BindingResource::Buffer(level)),
+                    (2, wgpu::BindingResource::TextureView(&data.heights_view)),
+                    (3, wgpu::BindingResource::TextureView(&data.normals_view)),
+                    (4, wgpu::BindingResource::TextureView(control)),
+                    (5, wgpu::BindingResource::TextureView(&albedo)),
+                    (9, wgpu::BindingResource::TextureView(&normal)),
+                    (13, wgpu::BindingResource::Sampler(&self.layer_sampler)),
+                    (14, wgpu::BindingResource::Sampler(&self.map_sampler)),
+                    (15, data.table.as_entire_binding()),
+                ]
+                .map(|(binding, resource)| wgpu::BindGroupEntry { binding, resource });
+                let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("terrain (layer arrays)"),
+                    layout,
+                    entries: &entries,
+                });
+                slot.group = Some((key, group));
+            }
             if slot.group.as_ref().is_none_or(|(k, _)| *k != key) {
                 let white = &self.white;
                 let flat = &self.flat_normal;
@@ -1466,6 +1616,10 @@ impl TerrainRenderer {
             }
             draws.push(TerrainDraw {
                 group: slot.group.as_ref().expect("made above").1.clone(),
+                passes: match &self.arrays {
+                    Some((_, passes)) if arrayed => passes.clone(),
+                    _ => self.passes.clone(),
+                },
                 levels: out,
                 cast_shadows: t.cast_shadows,
             });
@@ -1523,16 +1677,23 @@ pub(crate) fn draw_levels(
     pass: &mut wgpu::RenderPass,
     draws: &[TerrainDraw],
     indices: &wgpu::Buffer,
-    shadows_only: bool,
+    which: TerrainPass,
     visible: impl Fn(Vec3, f32) -> bool,
 ) -> (u32, u64) {
     let mut calls = 0;
     let mut triangles = 0;
     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
     for d in draws {
-        if shadows_only && !d.cast_shadows {
+        if which == TerrainPass::Shadow && !d.cast_shadows {
             continue;
         }
+        // Each terrain's own pipeline: the standard one, or the layer-array
+        // variant's.
+        pass.set_pipeline(match which {
+            TerrainPass::Lit => &d.passes.lit,
+            TerrainPass::Prepass => &d.passes.prepass,
+            TerrainPass::Shadow => &d.passes.shadow,
+        });
         for l in &d.levels {
             if !visible(l.center, l.radius) {
                 continue;
@@ -1546,6 +1707,145 @@ pub(crate) fn draw_levels(
     (calls, triangles)
 }
 
+/// The lit, prepass and shadow pipelines of one terrain group layout: the
+/// standard one, or the layer-array variant's ([`TerrainRenderer`]).
+#[derive(Clone)]
+pub(crate) struct TerrainPasses {
+    pub lit: wgpu::RenderPipeline,
+    pub prepass: wgpu::RenderPipeline,
+    pub shadow: wgpu::RenderPipeline,
+}
+
+/// Which pass [`draw_levels`] draws: each terrain sets its own pipeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TerrainPass {
+    Lit,
+    Prepass,
+    Shadow,
+}
+
+/// The pipelines in [`TerrainPasses`] over `layout`, from these modules.
+fn terrain_passes(
+    device: &wgpu::Device,
+    frame_layout: &wgpu::BindGroupLayout,
+    shadow_layout: &wgpu::BindGroupLayout,
+    layout: &wgpu::BindGroupLayout,
+    samples: u32,
+    lit_source: String,
+    shadow_source: String,
+) -> TerrainPasses {
+    let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("terrain"),
+        source: wgpu::ShaderSource::Wgsl(lit_source.into()),
+    });
+    let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("terrain shadow"),
+        source: wgpu::ShaderSource::Wgsl(shadow_source.into()),
+    });
+    let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
+        let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
+        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some(label),
+            bind_group_layouts: &layouts,
+            immediate_size: 0,
+        })
+    };
+    let lit_layout = pl("terrain", &[frame_layout, layout]);
+    let shadow_layout = pl("terrain shadow", &[shadow_layout, layout]);
+    let lit = crate::hdr_pipeline(
+        device,
+        crate::HdrPipeline {
+            label: "terrain",
+            layout: &lit_layout,
+            module: &lit_module,
+            vs: "vs",
+            fs: "fs",
+            buffers: &[],
+            cull: Some(wgpu::Face::Back),
+            depth_write: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            blend: None,
+            samples,
+        },
+    );
+    let target = |format| {
+        Some(wgpu::ColorTargetState {
+            format,
+            blend: None,
+            write_mask: wgpu::ColorWrites::ALL,
+        })
+    };
+    let depth = |write| {
+        Some(wgpu::DepthStencilState {
+            format: crate::DEPTH_FORMAT,
+            depth_write_enabled: Some(write),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            bias: Default::default(),
+        })
+    };
+    let prepass = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("terrain prepass"),
+        layout: Some(&lit_layout),
+        vertex: wgpu::VertexState {
+            module: &lit_module,
+            entry_point: Some("vs"),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: wgpu::PrimitiveState {
+            cull_mode: Some(wgpu::Face::Back),
+            ..Default::default()
+        },
+        depth_stencil: depth(true),
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &lit_module,
+            entry_point: Some("fs_prepass"),
+            compilation_options: Default::default(),
+            targets: &[
+                target(crate::post::GBUFFER_FORMAT),
+                target(crate::post::LINDEPTH_FORMAT),
+                target(crate::post::OUTLINE_FORMAT),
+            ],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    });
+    // An open surface: both faces cast (the bias in the lit pass keeps
+    // its own lit side from shadowing itself).
+    let shadow = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("terrain shadow"),
+        layout: Some(&shadow_layout),
+        vertex: wgpu::VertexState {
+            module: &shadow_module,
+            entry_point: Some("vs_shadow"),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: Default::default(),
+        depth_stencil: depth(true),
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shadow_module,
+            entry_point: Some("fs_shadow"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: wgpu::TextureFormat::R32Float,
+                blend: None,
+                write_mask: wgpu::ColorWrites::RED,
+            })],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    });
+    TerrainPasses {
+        lit,
+        prepass,
+        shadow,
+    }
+}
+
 const TERRAIN_WGSL: &str = include_str!("../shaders/terrain.wgsl");
 
 /// The terrain's lit module after the frame group, the light tables and the lighting.
@@ -1554,6 +1854,68 @@ pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> S
         "{frame}{tables}{lighting}{TERRAIN_WGSL}{}",
         include_str!("../shaders/terrain_lit.wgsl")
     )
+}
+
+/// The eight layer textures' declarations (terrain.wgsl), and the layer
+/// arrays' that replace them in the layer-array variant.
+const LAYER_TEXTURES: &str = "@group(1) @binding(5) var albedo0: texture_2d<f32>;
+@group(1) @binding(6) var albedo1: texture_2d<f32>;
+@group(1) @binding(7) var albedo2: texture_2d<f32>;
+@group(1) @binding(8) var albedo3: texture_2d<f32>;
+@group(1) @binding(9) var normal0: texture_2d<f32>;
+@group(1) @binding(10) var normal1: texture_2d<f32>;
+@group(1) @binding(11) var normal2: texture_2d<f32>;
+@group(1) @binding(12) var normal3: texture_2d<f32>;
+";
+const LAYER_ARRAYS: &str = "@group(1) @binding(5) var albedo_array: texture_2d_array<f32>;
+@group(1) @binding(9) var normal_array: texture_2d_array<f32>;
+";
+
+/// `source` (a terrain module) with the layer arrays declared in place of
+/// the eight layer textures.
+fn terrain_array_declarations(source: &str) -> String {
+    assert!(
+        source.contains(LAYER_TEXTURES),
+        "the layer-array variant cannot find terrain.wgsl's layer textures"
+    );
+    source.replacen(LAYER_TEXTURES, LAYER_ARRAYS, 1)
+}
+
+/// The terrain lit module (`standard`, [`terrain_lit_source`]) as its
+/// layer-array variant: the arrays declared, and `layer_albedo` and
+/// `layer_normal_map` reading layer `i`'s array layer (slope.w and
+/// altitude.w) instead of its texture. The rest is the same text, so the
+/// shading is the standard path's.
+pub(crate) fn terrain_lit_array_source(standard: &str) -> String {
+    let s = terrain_array_declarations(standard);
+    let start = s
+        .find("fn layer_albedo(")
+        .expect("terrain_lit.wgsl's layer_albedo");
+    let end = s[start..]
+        .find("// The weight of a rule")
+        .map(|e| start + e)
+        .expect("terrain_lit.wgsl's layer_normal_map ends before band");
+    format!(
+        "{}{}{}",
+        &s[..start],
+        "fn layer_albedo(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
+  return textureSampleGrad(albedo_array, layer_sampler, uv, i32(terrain.layers[i].slope.w), dx, dy);
+}
+
+fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3<f32> {
+  let t = textureSampleGrad(normal_array, layer_sampler, uv, i32(terrain.layers[i].altitude.w), dx, dy);
+  return t.xyz * 2.0 - 1.0;
+}
+
+",
+        &s[end..]
+    )
+}
+
+/// The terrain's shadow module for the layer-array variant's layout (the
+/// same entry points; the layer arrays declared).
+pub(crate) fn terrain_shadow_array_source() -> String {
+    terrain_array_declarations(&terrain_shadow_source())
 }
 
 /// The terrain's shadow module.
@@ -1568,6 +1930,31 @@ pub(crate) fn terrain_shadow_source() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The layer-array variant is the standard lit module with two arrays
+    /// declared in place of the eight layer textures, and its two layer
+    /// reads taking the layer from slope.w and altitude.w; nothing else.
+    #[test]
+    fn the_layer_array_variant_reads_two_arrays() {
+        let standard = terrain_lit_source("", "", "");
+        let array = terrain_lit_array_source(&standard);
+        for gone in [
+            "albedo0",
+            "albedo3",
+            "normal1",
+            "normal3",
+            "texture_2d<f32>",
+        ] {
+            assert!(standard.contains(gone));
+            assert!(!array.contains(gone), "{gone}");
+        }
+        assert_eq!(array.matches("texture_2d_array<f32>;").count(), 5);
+        assert!(array.contains("i32(terrain.layers[i].slope.w)"));
+        assert!(array.contains("i32(terrain.layers[i].altitude.w)"));
+        let tail = |s: &str| s[s.find("// The weight of a rule").unwrap()..].to_string();
+        assert_eq!(tail(&array), tail(&standard));
+        assert!(!terrain_shadow_array_source().contains("albedo0"));
+    }
 
     /// Every level's hole (the ring variant its index range draws) is
     /// exactly the finer level's square, so the levels tile the plane: no

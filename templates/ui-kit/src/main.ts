@@ -12,7 +12,8 @@
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
 // damage:<hp>, heal:<hp>, skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>
 // (a style pack from assets/skins), transition:<none|fade|wipe|iris|dissolve|slide>
-// (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default).
+// (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
+// mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens).
 
 import { og, defineComponent, defineSystem, bool, f32, f64, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
@@ -151,10 +152,12 @@ export const Demo = defineComponent("Demo", {
   skin: u32(0),
   wipe: u32(0),
   sounds: bool(true),
+  // `mixed:on`: a label mixing CJK, Latin and Arabic (menu.mixed) under the locale screens.
+  mixed: bool(),
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false };
 }
 
 export const ICONS = [
@@ -916,6 +919,13 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     }
   }
+  // A label of three scripts at once (`mixed:on`): each run in its own face
+  // (the role's Latin, a locale's CJK, the Arabic shaped), nothing missing.
+  if (d.mixed && (screen === "mainMenu" || screen === "pause" || screen === "confirm")) {
+    og.ui.anchor("Mixed", { anchor: "bottom", direction: "column", padding: { left: 0, top: 0, right: 0, bottom: 24 } }, () => {
+      og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
+    });
+  }
   if (back) d.screen = 0;
 }
 
@@ -1017,6 +1027,7 @@ export default og.game({
       const d = current(world);
       if (d) update(world, { hp: Math.min(100, d.hp + Number(args[0] ?? 10)) });
     },
+    mixed: (world, args) => update(world, { mixed: args[0] !== "off" }),
   },
   commandHelp: {
     show: { usage: "<screen>", doc: "Open a screen of the kit (gallery, widgets, mainMenu, pause, settings, ...)." },
@@ -1028,6 +1039,7 @@ export default og.game({
     skin: { usage: "<tokens|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
+    mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
   },
   facts: (world) => {
     const d = current(world);

@@ -1328,12 +1328,23 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         }
         for (id, ty, st, work) in outs {
             let file = output_file(&id);
+            // Up to date: the manifest's stamp and file agree, and the file
+            // still holds the type and schema version the loader expects
+            // today (a schema change without a cooker bump would otherwise
+            // keep a blob the loader refuses).
+            let want = format::expected_header(ty);
             let fresh = old_outputs.get(id.as_str()).is_some_and(|o| {
                 o.stamp == st
                     && o.ty == ty
                     && o.file == file
-                    && std::fs::read(cooked_dir.join(&file))
-                        .is_ok_and(|b| b.len() as u64 == o.bytes && hash_bytes(&b) == o.hash)
+                    && std::fs::read(cooked_dir.join(&file)).is_ok_and(|b| {
+                        b.len() as u64 == o.bytes
+                            && hash_bytes(&b) == o.hash
+                            && og_blob::Blob::parse(&b, &file).is_ok_and(|blob| {
+                                let h = blob.header();
+                                want == Some((h.type_hash, h.schema_version))
+                            })
+                    })
             });
             plan.push(Planned {
                 source: si,

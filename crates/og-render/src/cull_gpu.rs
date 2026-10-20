@@ -38,9 +38,15 @@ use glam::{Mat4, Vec4};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub(crate) const CULL_WGSL: &str = include_str!("../shaders/cull.wgsl");
+pub(crate) const CULL_WGSL: &str = concat!(
+    include_str!("../shaders/instance.wgsl"),
+    include_str!("../shaders/cull.wgsl")
+);
 const HIZ_WGSL: &str = include_str!("../shaders/hiz.wgsl");
-pub(crate) const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
+pub(crate) const DEPTH_WGSL: &str = concat!(
+    include_str!("../shaders/instance.wgsl"),
+    include_str!("../shaders/cull_depth.wgsl")
+);
 
 /// Passes one frame may cull: three cascades, twelve local light faces,
 /// the planar reflection, the occluders and the camera (the size of
@@ -219,7 +225,7 @@ pub(crate) struct GpuCulling {
     hiz_reduce: wgpu::ComputePipeline,
     depth_module: wgpu::ShaderModule,
     depth_pipeline_layout: wgpu::PipelineLayout,
-    depth_pipelines: HashMap<(Side, u32), wgpu::RenderPipeline>,
+    depth_pipelines: HashMap<(Side, bool, u32), wgpu::RenderPipeline>,
     view: wgpu::Buffer,
     view_group: wgpu::BindGroup,
     params: [wgpu::Buffer; 2],
@@ -754,18 +760,27 @@ impl GpuCulling {
         self.groups = None;
     }
 
-    fn depth_pipeline(&mut self, device: &wgpu::Device, side: Side, samples: u32) {
+    /// The occluders' depth pipeline for `side`, from the compact vertices
+    /// when `compact` (`compact.rs`).
+    fn depth_pipeline(&mut self, device: &wgpu::Device, side: Side, compact: bool, samples: u32) {
         self.depth_pipelines
-            .entry((side, samples))
+            .entry((side, compact, samples))
             .or_insert_with(|| {
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("occluder depth"),
                     layout: Some(&self.depth_pipeline_layout),
                     vertex: wgpu::VertexState {
                         module: &self.depth_module,
-                        entry_point: Some("vs"),
+                        entry_point: Some(if compact { "vs_compact" } else { "vs" }),
                         compilation_options: Default::default(),
-                        buffers: &[Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)],
+                        buffers: &[
+                            Some(if compact {
+                                crate::compact::POSITION_LAYOUT
+                            } else {
+                                crate::VERTEX_LAYOUT
+                            }),
+                            Some(crate::INSTANCE_LAYOUT),
+                        ],
                     },
                     primitive: wgpu::PrimitiveState {
                         cull_mode: cull_mode(side),
@@ -828,7 +843,7 @@ impl GpuCulling {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        transforms: &[[[f32; 4]; 4]],
+        transforms: &[crate::instances::GpuTransform],
         batches: &[Batch],
         meshes: &[GpuMesh],
         materials: &[GpuMaterial],
@@ -848,18 +863,18 @@ impl GpuCulling {
         let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
         if occlusion {
             self.ensure_pyramid(device, width, height, samples);
-            let occluder_sides: Vec<Side> = {
-                let mut s: Vec<Side> = batches
+            let occluder_kinds: Vec<(Side, bool)> = {
+                let mut s: Vec<(Side, bool)> = batches
                     .iter()
                     .filter(|x| materials[x.material].occluder)
-                    .map(|x| x.side)
+                    .map(|x| (x.side, x.compact))
                     .collect();
                 s.sort();
                 s.dedup();
                 s
             };
-            for side in occluder_sides {
-                self.depth_pipeline(device, side, samples);
+            for (side, compact) in occluder_kinds {
+                self.depth_pipeline(device, side, compact, samples);
             }
         }
 
@@ -941,6 +956,12 @@ impl GpuCulling {
             .map(|x| {
                 let m = &materials[x.material];
                 let (c, e) = meshes[x.mesh].bounds.unwrap_or_default();
+                // A compact batch's instance matrices take the unit box to
+                // the world (compact.rs): its bounds are the unit box's.
+                let (c, e, r) = match &meshes[x.mesh].compact {
+                    Some((_, dq)) if x.compact => dq.unit_bounds(c, e),
+                    _ => (c, e, e.length()),
+                };
                 BatchGpu {
                     first: x.first,
                     count: x.count,
@@ -948,7 +969,7 @@ impl GpuCulling {
                     flags: (x.transparent as u32 * TRANSPARENT)
                         | (m.occluder as u32 * OCCLUDER)
                         | (x.shader.is_none() as u32 * OCCLUDABLE),
-                    bounds: [c.x, c.y, c.z, e.length()],
+                    bounds: [c.x, c.y, c.z, r],
                     extent: [e.x, e.y, e.z, 0.0],
                 }
             })
@@ -1080,18 +1101,18 @@ impl GpuCulling {
                 });
                 if let Some(g) = passes.iter().position(|x| x.kind == PassKind::Occluders) {
                     pass.set_bind_group(0, &self.view_group, &[]);
-                    let mut side = None;
+                    let mut kind = None;
                     for (i, x) in batches.iter().enumerate() {
                         if !materials[x.material].occluder {
                             continue;
                         }
-                        if side != Some(x.side) {
-                            pass.set_pipeline(&self.depth_pipelines[&(x.side, samples)]);
-                            side = Some(x.side);
+                        if kind != Some((x.side, x.compact)) {
+                            pass.set_pipeline(&self.depth_pipelines[&(x.side, x.compact, samples)]);
+                            kind = Some((x.side, x.compact));
                         }
                         let mesh = &meshes[x.mesh];
                         let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
-                        pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+                        pass.set_vertex_buffer(0, mesh.vertex_buffer(x.compact).slice(..));
                         pass.set_vertex_buffer(
                             1,
                             self.instances

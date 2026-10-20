@@ -536,3 +536,47 @@ pub fn with_lod(mut scene: RenderScene, lod: TerrainLod) -> RenderScene {
     }
     scene
 }
+
+/// `scene` with every terrain's layer textures moved into two texture
+/// arrays (`Terrain::layer_arrays`): the albedos as layers of one, the
+/// normal maps of another, each layer naming its layers. The same images,
+/// so the same frame within mip filtering (an array's mips are box-filtered
+/// on the CPU, a texture's on the GPU).
+pub fn with_layer_arrays(mut scene: RenderScene) -> RenderScene {
+    use og_render::{TerrainLayerArrays, TextureArrayData, TextureSource};
+    for ti in 0..scene.terrains.len() {
+        let layers = scene.terrains[ti].layers.clone();
+        let mut albedos = Vec::new();
+        let mut normals = Vec::new();
+        let mut picked = Vec::new();
+        for l in &layers {
+            let take = |h: Option<og_render::TextureHandle>, list: &mut Vec<TextureSource>| {
+                h.map(|h| {
+                    list.push(TextureSource::Rgba(
+                        scene.texture(h).expect("a texture").clone(),
+                    ));
+                    list.len() as u32 - 1
+                })
+            };
+            picked.push((take(l.albedo, &mut albedos), take(l.normal, &mut normals)));
+        }
+        let mut array = |list: Vec<TextureSource>| {
+            (!list.is_empty()).then(|| {
+                scene
+                    .add_texture_array(TextureArrayData { layers: list })
+                    .expect("same-sized layers")
+            })
+        };
+        let arrays = TerrainLayerArrays {
+            albedo: array(albedos),
+            normal: array(normals),
+        };
+        let t = &mut scene.terrains[ti];
+        t.layer_arrays = arrays;
+        for (l, (albedo, normal)) in t.layers.iter_mut().zip(picked) {
+            l.albedo_layer = albedo;
+            l.normal_layer = normal;
+        }
+    }
+    scene
+}

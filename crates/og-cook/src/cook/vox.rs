@@ -14,8 +14,14 @@
 //!
 //! Axes: MagicaVoxel is z-up with y away from the viewer; the mesh is y-up
 //! (glTF): `(x, y, z)` → `(x, z, -y)`, the model's origin at its `nTRN`
-//! translation (the editor's pivot is the model's centre, floored, as
-//! MagicaVoxel exports it). The import settings' `model { voxScale
+//! translation. The pivot is MagicaVoxel's: `floor(size / 2)` (ogt_vox's
+//! documented convention, which vengi's importer matches), so voxel `v` of a
+//! model turned by `R` at translation `T` fills the cell whose lowest corner
+//! is `floor(T + R (v + 1/2 - floor(size / 2)))`; with a whole-voxel pivot
+//! and a signed axis permutation that is the box `T + R ([v, v + 1] -
+//! floor(size / 2))` the mesh is built from, turned or mirrored, odd sizes
+//! included (`tests/fixtures/vox/pivot.vox`: five turns and mirrors of a
+//! 3 x 2 x 5 model, checked voxel by voxel). The import settings' `model { voxScale
 //! voxOrigin }` ([`VoxSettings`]) give the metres per voxel (default 1) and
 //! the origin: `center` (the default) where the editor puts it, `bottom`
 //! the whole file lifted so its lowest voxel stands on y = 0.
@@ -878,7 +884,17 @@ mod tests {
         voxels: &[[u8; 4]],
         placements: &[([i32; 3], Option<u8>)],
     ) -> Vec<u8> {
-        let mut out = write(size, voxels, None);
+        write_placed_with(size, voxels, None, placements)
+    }
+
+    /// [`write_placed`] with a palette (`RGBA`, entry 0 for index 1).
+    fn write_placed_with(
+        size: [u32; 3],
+        voxels: &[[u8; 4]],
+        palette: Option<&[[u8; 4]]>,
+        placements: &[([i32; 3], Option<u8>)],
+    ) -> Vec<u8> {
+        let mut out = write(size, voxels, palette);
         let mut extra = Vec::new();
         let chunk = |out: &mut Vec<u8>, id: &[u8; 4], body: &[u8]| {
             out.extend_from_slice(id);
@@ -1006,6 +1022,107 @@ mod tests {
             assert!(faces_out(&glb), "_r {r} ({rot:?}) turns faces inwards");
         }
         assert_eq!((seen.len(), mirrors), (48, 24));
+    }
+
+    /// The pivot fixture (`tests/fixtures/vox/pivot.vox`, made by
+    /// [`pivot_fixture`]): one 3 x 2 x 5 model (odd in x and z) of five
+    /// isolated voxels, each its own colour, placed five times: as is, turned
+    /// 90 degrees about z (`_r` 17), mirrored in x (20), turned 180 degrees
+    /// about y (84) and the axes cycled (9), each at its own translation.
+    const PIVOT_VOXELS: [[u8; 4]; 5] = [
+        [0, 0, 0, 1],
+        [2, 0, 0, 2],
+        [0, 1, 2, 3],
+        [1, 0, 3, 4],
+        [2, 1, 4, 5],
+    ];
+    const PIVOT_PLACEMENTS: [([i32; 3], Option<u8>); 5] = [
+        ([0, 0, 0], None),
+        ([10, 0, 0], Some(17)),
+        ([0, 10, 0], Some(20)),
+        ([0, 0, 10], Some(84)),
+        ([-10, 3, -7], Some(9)),
+    ];
+
+    fn pivot_fixture() -> Vec<u8> {
+        let palette: Vec<[u8; 4]> = (1..=5u8)
+            .map(|i| [i * 40, 255 - i * 40, i * 20, 255])
+            .collect();
+        write_placed_with([3, 2, 5], &PIVOT_VOXELS, Some(&palette), &PIVOT_PLACEMENTS)
+    }
+
+    /// MagicaVoxel's placement of a voxel (ogt_vox's documented pivot, which
+    /// vengi's importer matches): a model's pivot is `floor(size / 2)`, and
+    /// voxel `v` of a model turned by `R` at translation `T` occupies the
+    /// world cell whose lowest corner is `floor(T + R (v + 1/2 - pivot))`.
+    /// The pivot is a whole voxel and `R` a signed axis permutation, so the
+    /// centre lands on a half and the cell is `T + R (v + 1/2 - pivot) - 1/2`.
+    fn magicavoxel_cell(size: [u32; 3], v: [u8; 3], t: [i32; 3], r: [(usize, i32); 3]) -> [i32; 3] {
+        let centre = |i: usize| 2 * v[i] as i32 + 1 - 2 * (size[i] / 2) as i32;
+        std::array::from_fn(|i| {
+            let turned = centre(r[i].0) * r[i].1;
+            (2 * t[i] + turned).div_euclid(2)
+        })
+    }
+
+    /// Every voxel of every turned or mirrored placement of an odd-sized
+    /// model lands where MagicaVoxel puts it: the committed fixture (made
+    /// by the test writer) is meshed and each colour's box compared with
+    /// [`magicavoxel_cell`] taken to the glTF frame.
+    #[test]
+    fn turned_and_mirrored_odd_models_keep_magicavoxels_pivot() {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vox/pivot.vox");
+        let made = pivot_fixture();
+        if std::env::var_os("OG_WRITE_FIXTURES").is_some() {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, &made).unwrap();
+        }
+        let bytes = std::fs::read(&path).expect("the committed pivot fixture");
+        assert_eq!(bytes, made, "the fixture is the test writer's");
+        let file = parse(&bytes).unwrap();
+        assert_eq!(file.placements.len(), PIVOT_PLACEMENTS.len());
+        let glb = to_glb(&bytes, &VoxSettings::default()).unwrap();
+        let g = gltf::Gltf::from_slice(&glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        let nodes: Vec<_> = g.document.nodes().collect();
+        assert_eq!(nodes.len(), PIVOT_PLACEMENTS.len());
+        let palette = &file.palette;
+        for (node, (placement, (t, r))) in nodes
+            .iter()
+            .zip(file.placements.iter().zip(PIVOT_PLACEMENTS))
+        {
+            let rot = r.map_or(IDENTITY, rotation_of);
+            assert_eq!(placement.rotation, rot);
+            let at = glam::Vec3::from(node.transform().decomposed().0);
+            let prim = node.mesh().unwrap().primitives().next().unwrap();
+            let reader = prim.reader(|_| Some(&blob[..]));
+            let pos: Vec<glam::Vec3> = reader
+                .read_positions()
+                .unwrap()
+                .map(glam::Vec3::from)
+                .collect();
+            let col: Vec<[f32; 4]> = reader.read_colors(0).unwrap().into_rgba_f32().collect();
+            for v in PIVOT_VOXELS {
+                let c = palette[v[3] as usize];
+                let want = [linear(c[0]), linear(c[1]), linear(c[2])];
+                let (mut lo, mut hi) = (glam::Vec3::MAX, glam::Vec3::MIN);
+                for (p, k) in pos.iter().zip(&col) {
+                    if (0..3).all(|i| (k[i] - want[i]).abs() < 1e-6) {
+                        lo = lo.min(at + *p);
+                        hi = hi.max(at + *p);
+                    }
+                }
+                let m = magicavoxel_cell([3, 2, 5], [v[0], v[1], v[2]], t, rot);
+                // MagicaVoxel's cell [m, m + 1] in glTF's frame: (x, z, -y).
+                let cell_lo = glam::Vec3::new(m[0] as f32, m[2] as f32, -(m[1] as f32) - 1.0);
+                assert_eq!(
+                    (lo, hi),
+                    (cell_lo, cell_lo + glam::Vec3::ONE),
+                    "voxel {v:?} of the placement at {t:?} turned by _r {r:?}"
+                );
+            }
+        }
     }
 
     #[test]

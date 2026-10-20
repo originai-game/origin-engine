@@ -722,6 +722,12 @@
             "g": 1,
             "b": 1
           }
+        },
+        {
+          "name": "materialLayer",
+          "column": "i32",
+          "default": -1,
+          "tunable": true
         }
       ]
     },
@@ -5479,6 +5485,12 @@
           "name": "hatchingSpace",
           "column": "StyliseSpace",
           "default": "screen"
+        },
+        {
+          "name": "hatchingDepth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "paintRadius",

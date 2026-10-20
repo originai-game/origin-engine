@@ -215,8 +215,25 @@ pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
             s.push_str(default);
         }
     }
+    s.push_str(if defines(code, "vertex_offset") {
+        MOVED_CLIP_OFFSET
+    } else {
+        MOVED_CLIP
+    });
     s
 }
+
+/// `moved_clip`: how the lit vertex stage projects the point a material's
+/// `vertex_offset` moved (pbr.wgsl `lit_place`). Without an offset the
+/// point is the instance matrix's, projected with `mul_point`
+/// (instance.wgsl); moved by an offset, its xyz are later values than its
+/// w, and the plain product orders the sum as before the instance matrix
+/// had a literal fourth row. Either way a lit vertex lands where the full
+/// 4x4 put it, bit for bit.
+const MOVED_CLIP: &str =
+    "fn moved_clip(m: mat4x4<f32>, p: vec4<f32>) -> vec4<f32> { return mul_point(m, p); }\n";
+const MOVED_CLIP_OFFSET: &str =
+    "fn moved_clip(m: mat4x4<f32>, p: vec4<f32>) -> vec4<f32> { return m * p; }\n";
 
 /// The built-in hooks (identities).
 pub(crate) fn default_hooks() -> String {

@@ -5,8 +5,10 @@
 //! A KTX2 cube map has `faceCount` 6, square faces in the order +x −x +y
 //! −y +z −z with rows from the top (KTX2's and WebGPU's cube layout, the
 //! one og-render's `face_direction` draws), no array layers. Level 0 is
-//! read (a file's own mip chain, prefiltered or not, is not: the bake makes
-//! its own levels). Its texels may be:
+//! read and the bake makes its own levels, unless the environment says
+//! `prefiltered true`: then every level is read ([`read_ktx2_cube_levels`])
+//! and taken as the prefiltered radiance (`bake::from_prefiltered`). Its
+//! texels may be:
 //!
 //! | `vkFormat` | name | decoded |
 //! |---:|---|---|
@@ -86,14 +88,23 @@ fn small_float(bits: u32, man: u32) -> f32 {
     }
 }
 
-/// Reads level 0 of a KTX2 cube map into linear RGB.
-pub fn read_ktx2_cube(bytes: &[u8]) -> Result<CubeImage, String> {
+/// What a KTX2 cube map's header says.
+struct Header {
+    vk_format: u32,
+    size: u32,
+    levels: u32,
+    supercompression: u32,
+    format: &'static str,
+}
+
+fn header(bytes: &[u8]) -> Result<Header, String> {
     if bytes.len() < 80 || bytes[..12] != crate::ktx2::IDENTIFIER {
         return Err("not a KTX2 file".into());
     }
     let vk_format = u32_at(bytes, 12)?;
     let (width, height) = (u32_at(bytes, 20)?, u32_at(bytes, 24)?);
     let (depth, layers, faces) = (u32_at(bytes, 28)?, u32_at(bytes, 32)?, u32_at(bytes, 36)?);
+    let levels = u32_at(bytes, 40)?;
     let supercompression = u32_at(bytes, 44)?;
     let format = format_name(vk_format).ok_or_else(|| {
         format!(
@@ -123,30 +134,79 @@ pub fn read_ktx2_cube(bytes: &[u8]) -> Result<CubeImage, String> {
             "KTXorientation \"{o}\": a cube map's faces are x right, y down (\"rd\")"
         ));
     }
-    let (offset, length) = (u64_at(bytes, 80)?, u64_at(bytes, 88)?);
+    Ok(Header {
+        vk_format,
+        size: width,
+        // 0: the file asks for mips to be generated; it holds level 0.
+        levels: levels.max(1),
+        supercompression,
+        format,
+    })
+}
+
+/// Reads level 0 of a KTX2 cube map into linear RGB.
+pub fn read_ktx2_cube(bytes: &[u8]) -> Result<CubeImage, String> {
+    let h = header(bytes)?;
+    Ok(CubeImage {
+        size: h.size,
+        rgb: read_level(bytes, &h, 0)?,
+        format: h.format,
+    })
+}
+
+/// A KTX2 cube map's own mip chain, each level decoded as
+/// [`read_ktx2_cube`] decodes level 0: level `k` six faces of
+/// `max(1, size >> k)` texels.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CubeLevels {
+    pub size: u32,
+    pub levels: Vec<Vec<f32>>,
+    pub format: &'static str,
+}
+
+/// Reads every level of a KTX2 cube map (`prefiltered true`: the levels
+/// are the prefiltered radiance, taken as they are).
+pub fn read_ktx2_cube_levels(bytes: &[u8]) -> Result<CubeLevels, String> {
+    let h = header(bytes)?;
+    let levels = (0..h.levels)
+        .map(|k| read_level(bytes, &h, k))
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(CubeLevels {
+        size: h.size,
+        levels,
+        format: h.format,
+    })
+}
+
+/// Level `k` of a KTX2 cube map as linear RGB, six faces in og-render's order.
+fn read_level(bytes: &[u8], h: &Header, k: u32) -> Result<Vec<f32>, String> {
+    let vk_format = h.vk_format;
+    let format = h.format;
+    let at = 80 + 24 * k as usize;
+    let (offset, length) = (u64_at(bytes, at)?, u64_at(bytes, at + 8)?);
     let stored = offset
         .checked_add(length)
         .and_then(|end| bytes.get(offset..end))
-        .ok_or("KTX2 level 0 runs past the end of the file")?;
-    let data = match supercompression {
+        .ok_or_else(|| format!("KTX2 level {k} runs past the end of the file"))?;
+    let data = match h.supercompression {
         crate::ktx2::SS_NONE => stored.to_vec(),
         crate::ktx2::SS_ZSTD => {
             let mut out = Vec::new();
             let mut decoder = ruzstd::decoding::StreamingDecoder::new(stored)
-                .map_err(|e| format!("KTX2 zstd level 0: {e}"))?;
+                .map_err(|e| format!("KTX2 zstd level {k}: {e}"))?;
             std::io::Read::read_to_end(&mut decoder, &mut out)
-                .map_err(|e| format!("KTX2 zstd level 0: {e}"))?;
+                .map_err(|e| format!("KTX2 zstd level {k}: {e}"))?;
             out
         }
         crate::ktx2::SS_ZLIB => miniz_oxide::inflate::decompress_to_vec_zlib(stored)
-            .map_err(|e| format!("KTX2 zlib level 0: {e:?}"))?,
+            .map_err(|e| format!("KTX2 zlib level {k}: {e:?}"))?,
         s => {
             return Err(format!(
                 "KTX2 supercompression {s}: an HDR cube map is stored plain, with Zstandard or with zlib"
             ));
         }
     };
-    let n = width as usize;
+    let n = (h.size >> k).max(1) as usize;
     let texels = n * n;
     let mut rgb = vec![0f32; 6 * texels * 3];
     let face_bytes = match vk_format {
@@ -159,7 +219,7 @@ pub fn read_ktx2_cube(bytes: &[u8]) -> Result<CubeImage, String> {
     };
     if data.len() < 6 * face_bytes {
         return Err(format!(
-            "KTX2 level 0 holds {} bytes; six {n} x {n} {format} faces take {}",
+            "KTX2 level {k} holds {} bytes; six {n} x {n} {format} faces take {}",
             data.len(),
             6 * face_bytes
         ));
@@ -210,8 +270,13 @@ pub fn read_ktx2_cube(bytes: &[u8]) -> Result<CubeImage, String> {
         }
         if let Some(i) = dst.iter().position(|v| !v.is_finite()) {
             let t = i / 3;
+            let level = if k == 0 {
+                String::new()
+            } else {
+                format!("level {k} ")
+            };
             return Err(format!(
-                "face {face} ({}) texel ({}, {}) is not a finite number",
+                "{level}face {face} ({}) texel ({}, {}) is not a finite number",
                 ["+x", "-x", "+y", "-y", "+z", "-z"][face],
                 t % n,
                 t / n
@@ -221,11 +286,7 @@ pub fn read_ktx2_cube(bytes: &[u8]) -> Result<CubeImage, String> {
     for v in &mut rgb {
         *v = v.max(0.0);
     }
-    Ok(CubeImage {
-        size: width,
-        rgb,
-        format,
-    })
+    Ok(rgb)
 }
 
 #[cfg(test)]

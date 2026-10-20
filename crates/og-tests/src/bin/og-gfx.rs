@@ -14,6 +14,9 @@
 //! the CPU on every tier, `gpu` on the GPU on the full tier whatever the
 //! scene's size, `auto` (the default) on the GPU from
 //! `og_render::GPU_CULLING_MIN_INSTANCES` instances.
+//! `OG_GFX_COMPACT=1` sets every mesh of the scene to
+//! `VertexEncoding::Compact` (16-byte vertices where a plain material draws
+//! it; quantised, so the frame is close to the reference, not equal).
 //! `OG_GFX_PIPELINE_CACHE=DIR` keeps compiled pipelines in DIR across runs
 //! where the backend can (Vulkan; `RenderInfo::pipeline_cache`).
 //! `OG_GFX_SERIAL=1` waits for the GPU after every timed frame and reports
@@ -170,6 +173,15 @@ fn run(
     }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
         built.scene.debug = og_render::DebugView::Cascades;
+    }
+    if std::env::var_os("OG_GFX_COMPACT").is_some() {
+        for i in 0..built.scene.mesh_count() {
+            if let Some(mesh) = built.scene.mesh_handle(i) {
+                built
+                    .scene
+                    .set_vertex_encoding(mesh, og_render::VertexEncoding::Compact);
+            }
+        }
     }
     if std::env::var_os("OG_GFX_DEBUG_AO").is_some() {
         built.scene.debug = og_render::DebugView::AmbientOcclusion;

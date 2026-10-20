@@ -74,6 +74,12 @@ to keys (`gamepad.ts`), the fallback for games that read only `og.Input`.
   after and raises `KeyUp` / `PointerUp` (at the pointer).
 - **Repeats**: a down for a held key raises `KeyDown { repeat: true }` and no
   edge. An up for a key not held does nothing. Button `none` only moves.
+- **Modifiers**: a key `down` or `press` whose `modifiers` name a modifier
+  that neither of its keys holds (Shift, Control, Alt, `platform` as
+  `MetaLeft`: Command, told apart from Control) presses its left key first
+  for that tick (held, a pressed edge, `KeyDown`, released when the tick
+  ends); a held one stays as it is, and an `up` releases none (they were
+  held while it happened).
 - **Pointer moves**: `PointerMove` for every `move`, and before the button
   or wheel event of any other event that changes the position.
 - **Order**: events reach the world in injection order; the ring is drained
@@ -128,7 +134,9 @@ are unchanged.
   wheel steps, a sub-tick tap, a repeat, an axis, an unknown code) observed
   by a game system tick by tick, against the expected table; writes
   `$CARGO_TARGET_TMPDIR/input-edges-transcript.json`. A snapshot between
-  ticks restored into a fresh world replays the rest identically.
+  ticks restored into a fresh world replays the rest identically. A key
+  event's modifiers are held for its tick (Command as `MetaLeft`, not
+  Control), a held one stays, an `up` releases none.
 - `tests/ring.rs`: `tests/fixtures/ring.bin`, written by the web shell's own
   `writeRing` with the live events across the slot wrap, decodes to what its
   `drainRing` read (`ring.json`); the Rust writer round-trips, a full ring

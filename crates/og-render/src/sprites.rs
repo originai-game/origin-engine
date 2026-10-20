@@ -23,12 +23,16 @@ pub(crate) struct SpriteInstance {
     flash: [u8; 4],
     /// x: glow strength, y: 1 when 2D lighting applies, z: 1 for a soft dot
     /// (untextured particles). A drop shadow (none of those) carries its
-    /// ground's slope in yz instead: the rise per metre along x and z.
+    /// ground's slope in yz instead: the rise per metre along x and z; a
+    /// cell of a bent one its corners' heights (below).
     fx: [f32; 3],
     /// A drop shadow's projection (`SpriteShadow`): x 1 projects the
     /// standing quad onto the ground, yz the x and z it moves per metre of
     /// height, w the ground's height under the anchor. All 0 for every
-    /// other instance.
+    /// other instance. x 2: one cell of a bent shadow (`ShadowBend`): the
+    /// cell's column and row in `flash`'s first two bytes, its corners'
+    /// heights in w (bottom left), fx.x (bottom right), fx.y (top right)
+    /// and fx.z (top left).
     ground: [f32; 4],
     /// The texture array layer an array sprite draws (sprite_array.wgsl;
     /// the other sprite pipelines do not read it).
@@ -252,6 +256,34 @@ pub(crate) fn shadow_ground(direction_to_light: glam::Vec3) -> Option<[f32; 4]> 
     Some([1.0, -l.x / ly, -l.z / ly, crate::SPRITE_SHADOW_LIFT])
 }
 
+/// The cells of a bent drop shadow (`ShadowBend`), each `shadow` (the
+/// whole quad's instance) marked as a cell (`ground.x` 2) with its column
+/// and row and its corners' heights raised by `lift`. The shader computes
+/// each corner from the whole quad, so neighbouring cells meet exactly.
+fn bent_shadow(
+    shadow: SpriteInstance,
+    bend: &crate::ShadowBend,
+    lift: f32,
+) -> impl Iterator<Item = SpriteInstance> + '_ {
+    let h = move |row: usize, column: usize| {
+        let v = bend.heights[row][column];
+        if v.is_finite() { v + lift } else { lift }
+    };
+    (0..crate::SHADOW_BEND_ROWS - 1).flat_map(move |row| {
+        (0..crate::SHADOW_BEND_COLUMNS - 1).map(move |column| {
+            let mut cell = shadow;
+            cell.ground = [2.0, shadow.ground[1], shadow.ground[2], h(row, column)];
+            cell.fx = [
+                h(row, column + 1),
+                h(row + 1, column + 1),
+                h(row + 1, column),
+            ];
+            cell.flash = [column as u8, row as u8, 0, 0];
+            cell
+        })
+    })
+}
+
 /// The world rectangle an orthographic camera sees (for culling tiles).
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ViewRect {
@@ -455,8 +487,19 @@ pub(crate) fn build<'a>(
                 }
                 None => RunSource::Sprite(SpriteBlend::Alpha, s.texture),
             };
-            keyed.push((s.layer, f32::MIN, source, shadow));
-            shadow_count += 1;
+            match on.bend {
+                // Bent over the ground: one instance per cell of the quad.
+                Some(bend) => {
+                    for cell in bent_shadow(shadow, &bend, g[3]) {
+                        keyed.push((s.layer, f32::MIN, source, cell));
+                        shadow_count += 1;
+                    }
+                }
+                None => {
+                    keyed.push((s.layer, f32::MIN, source, shadow));
+                    shadow_count += 1;
+                }
+            }
         }
         if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
             inst.layer = layer;
@@ -731,6 +774,7 @@ mod tests {
                 ground: ShadowGround {
                     height: 1.5,
                     normal: Vec3::new(-0.5, 1.0, 0.25).normalize(),
+                    bend: None,
                 },
             },
         ];
@@ -751,11 +795,13 @@ mod tests {
         let cliff = ShadowGround {
             height: 0.0,
             normal: Vec3::X,
+            bend: None,
         };
         assert_eq!(cliff.slope(), [0.0, 0.0]);
         let steep = ShadowGround {
             height: 0.0,
             normal: Vec3::new(-1.0, 0.1, 0.0),
+            bend: None,
         };
         assert!(
             (2.5..3.0).contains(&steep.slope()[0]),
@@ -789,6 +835,66 @@ mod tests {
         // No sun above the horizon: level at the anchor's ground.
         let g = ShadowGround::fit(plane, &sprite, Vec3::NEG_Y);
         assert_eq!(g, ShadowGround::level(plane(1.0, 2.0)));
+    }
+
+    #[test]
+    fn a_shadow_bends_over_a_hollow_narrower_than_itself() {
+        use crate::{SHADOW_BEND_COLUMNS, SHADOW_BEND_ROWS, ShadowGround};
+        // The sun behind, the shadow falling 1 m along +z per metre of
+        // height: a 2 m sprite's shadow runs from z 2 to z 4.
+        let sun = Vec3::new(0.0, 1.0, -1.0);
+        let sprite = Sprite {
+            position: Vec3::new(1.0, 0.0, 2.0),
+            size: glam::Vec2::new(1.0, 2.0),
+            anchor: glam::Vec2::new(0.5, 0.0),
+            ..Default::default()
+        };
+        // Level ground: the plane, no bend.
+        let g = ShadowGround::fit(|_, _| 0.0, &sprite, sun);
+        assert_eq!(g, ShadowGround::level(0.0));
+        // A pit 0.5 m deep under the middle of the shadow, 0.6 m across.
+        let pit = |_x: f32, z: f32| if (z - 3.0).abs() < 0.3 { -0.5 } else { 0.0 };
+        let g = ShadowGround::fit(pit, &sprite, sun);
+        let bend = g.bend.expect("a pit narrower than the shadow bends it");
+        // Row 2 is the quad's middle, 1 m up: its ray enters the pit at
+        // z 3 and meets the far wall 0.3 m down (z 3.3); the base and the
+        // tip land on the level ground.
+        for column in 0..SHADOW_BEND_COLUMNS {
+            assert_eq!(bend.heights[0][column], 0.0);
+            assert!((bend.heights[2][column] + 0.3).abs() < 1e-3, "{bend:?}");
+            assert!(bend.heights[SHADOW_BEND_ROWS - 1][column].abs() < 1e-3);
+        }
+        // Drawn as eight cells of the quad, each corner at its height.
+        let mut scene = RenderScene::new();
+        scene.light.direction_to_light = sun;
+        scene.sprites = vec![sprite];
+        scene.sprite_shadows = vec![SpriteShadow {
+            sprite: 0,
+            opacity: 0.5,
+            ground: g,
+        }];
+        let f = frame(&scene);
+        assert_eq!(f.sprites, 1);
+        let cells: Vec<_> = f.instances.iter().filter(|i| i.ground[0] > 1.5).collect();
+        assert_eq!(cells.len(), 8, "4 x 2 cells");
+        let lift = crate::SPRITE_SHADOW_LIFT;
+        // The cell in row 1, column 0: its top corners are row 2's.
+        let cell = cells
+            .iter()
+            .find(|c| c.flash[..2] == [0, 1])
+            .expect("row 1, column 0");
+        assert_eq!(cell.ground[3], bend.heights[1][0] + lift);
+        assert_eq!(
+            cell.fx,
+            [
+                bend.heights[1][1] + lift,
+                bend.heights[2][1] + lift,
+                bend.heights[2][0] + lift,
+            ]
+        );
+        // A ridge is bent over too, not only a pit.
+        let ridge = |_x: f32, z: f32| if (z - 3.5).abs() < 0.2 { 0.4 } else { 0.0 };
+        assert!(ShadowGround::fit(ridge, &sprite, sun).bend.is_some());
     }
 
     #[test]
