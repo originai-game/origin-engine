@@ -34,6 +34,8 @@ ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] 
 [dev-dependencies]
 serde_json = "1"
 image = { workspace = true }
+# tests/text_gfx.rs cooks the UI kit's fonts (kerning, shaped scripts) to draw with.
+og-cook = { path = "../og-cook" }
 
 # The theme generator (scripts/gen-theme.sh runs it).
 [[example]]

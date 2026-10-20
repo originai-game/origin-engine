@@ -1983,6 +1983,7 @@ name = "og-ui"
 version = "0.0.1"
 dependencies = [
  "image",
+ "og-cook",
  "og-core",
  "og-ecs",
  "og-i18n",

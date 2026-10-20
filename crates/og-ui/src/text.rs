@@ -664,7 +664,14 @@ pub(crate) fn break_lines(
                 continue;
             }
             let w = m.measure_tracked(unit, size, tracking);
-            if !line.is_empty() && width + spaces_w + w > max {
+            // Kerned or shaped text measures differently whole than unit by
+            // unit (pairs across the units, a run shaped together): a line
+            // that fits whole stays whole.
+            let fits_whole = |line: &str| {
+                (m.kerns() || needs_visual(line))
+                    && m.measure_tracked(&format!("{line}{spaces}{unit}"), size, tracking) <= max
+            };
+            if !line.is_empty() && width + spaces_w + w > max && !fits_whole(&line) {
                 lines.push(Line {
                     text: std::mem::take(&mut line),
                     width,
@@ -701,9 +708,10 @@ pub(crate) fn break_lines(
             lines.push(Line { text: line, width });
         }
     }
-    // A kerning font kerns across the units too: each line's width is its
-    // whole text measured (what is drawn), not the sum of its units.
-    if m.kerns() {
+    // A kerning font kerns across the units too, and a shaped run is shaped
+    // whole: each line's width is its whole text measured (what is drawn),
+    // not the sum of its units.
+    if m.kerns() || needs_visual(text) {
         for l in &mut lines {
             l.width = m.measure_tracked(&l.text, size, tracking);
         }
