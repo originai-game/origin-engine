@@ -930,6 +930,7 @@ function makeProbe(id: number) {
     restore: (sid: string) => { epoch++; return a().og_engine_probe_restore(id, sid); },
     dump: (desc?: unknown) => parse(a().og_engine_probe_dump(id, json(desc))),
     commands: (script: string) => parse(a().og_engine_probe_commands(id, script)),
+    listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),
   });
 }
 
@@ -977,6 +978,7 @@ export const load = Object.freeze({
   fontInfo: (world: WorldImpl, font: number) => parse(abi().og_load_font_info(world.id, font)),
   sound: (world: WorldImpl, path: string) => parse(abi().og_load_sound(world.id, path)),
   texture: (world: WorldImpl, path: string) => parse(abi().og_load_texture(world.id, path)),
+  textureArray: (world: WorldImpl, path: string) => parse(abi().og_load_texture_array(world.id, path)),
   lut: (world: WorldImpl, path: string) => parse(abi().og_load_lut(world.id, path)),
   environment: (world: WorldImpl, path: string) => parse(abi().og_load_environment(world.id, path)),
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
