@@ -124,6 +124,14 @@ fn perf_spheres_20k() {
     perf("spheres-20k");
 }
 
+/// The per-instance cost when every transform changes each frame (owed
+/// row 50): the sphere field bobbing, every instance uploaded again.
+#[test]
+#[ignore]
+fn perf_spheres_20k_moving() {
+    perf("spheres-20k-moving");
+}
+
 /// The M3 budget: 20,000 moving sprites in at most 2 ms on the M4 Pro.
 #[test]
 #[ignore]

@@ -14,7 +14,7 @@ bun-test:   ; scripts/check.sh bun-test
 bun-quick:  ; scripts/check.sh bun-quick
 determinism: ; scripts/check.sh determinism
 tools:      ; scripts/install-tools.sh
-perf:       ; cargo test -p og-tests --release -- --ignored perf
+perf:       ; cargo test -p og-tests -p og-runtime --release -- --ignored perf
 # The webgpu and webgl2 tiers of templates/fx-showcase in headless Chrome (docs/ci.md); needs Chrome.
 # Path-aware like the lanes: skipped when its inputs did not change (scripts/check.sh --all web-reference runs it).
 web-reference: ; scripts/check.sh web-reference
