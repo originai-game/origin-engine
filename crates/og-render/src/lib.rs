@@ -28,6 +28,7 @@
 //! ```
 
 mod atmosphere;
+mod blue_noise;
 mod capture;
 mod clusters;
 mod cull_gpu;
@@ -4187,8 +4188,11 @@ impl Renderer {
         let god_rays = post_fx.god_rays;
         let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
+        // Ink on depth edges reads the prepass in the lines pass.
+        let ink_depth = scene.stylise.ink.is_some_and(|i| i.depth > 0.0);
         let prepass = ao.is_some()
             || depth_bands.is_some()
+            || ink_depth
             || outline
             || dof.is_some()
             || motion_blur.is_some()
@@ -5253,7 +5257,8 @@ impl Renderer {
                 Some(DitherPattern::Bayer2) => 2.0,
                 Some(DitherPattern::Bayer4) => 4.0,
                 Some(DitherPattern::Bayer8) => 8.0,
-                Some(DitherPattern::BlueNoise) => -1.0,
+                Some(DitherPattern::InterleavedGradient) => -1.0,
+                Some(DitherPattern::BlueNoise) => -2.0,
                 _ => 0.0,
             };
             let palette_count = q
@@ -5320,9 +5325,16 @@ impl Renderer {
                     ]
                 }),
                 ink: ink.map_or([0.0; 4], |i| {
-                    [1.0, i.threshold.clamp(0.0, 1.0), i.width.max(0.5), 0.0]
+                    [
+                        1.0,
+                        i.threshold.clamp(0.0, 1.0),
+                        i.width.max(0.5),
+                        i.depth.clamp(0.0, 1.0),
+                    ]
                 }),
                 ink_color: ink.map_or([0.0; 4], |i| [i.color[0], i.color[1], i.color[2], 1.0]),
+                // The outline pass's default thresholds.
+                ink_depth: [camera.far, 0.04, 0.4, 0.0],
             };
             self.post.write_stylise(&self.queue, &u);
         }

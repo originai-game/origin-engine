@@ -1,13 +1,15 @@
 type look
 version 1
 ---
-# Anisotropic brush strokes with pigment pooling and a little bleed over the lit scene.
+# Anisotropic brush strokes with pigment pooling and a little bleed over the lit scene, on a woven canvas (the engine's @canvas/linen).
 name "Painterly 3D"
 Stylise {
   paintRadius 3
   paintAnisotropy 0.7
   paintEdgeDarkening 0.4
   paintBleed 0.3
+  paintCanvas "@canvas/linen"
+  paintCanvasStrength 0.45
 }
 PostEffects {
   vignette true

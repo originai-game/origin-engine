@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# Flat facets with a fine contour, twelve tones and ambient occlusion in the folds.
+# Flat facets with a fine contour, twelve tones, ambient occlusion in the folds and a paper grain over all of it (the engine's @canvas/paper).
 name "Folded paper & papercraft"
 MaterialStyle {
   flatShading true
@@ -10,6 +10,8 @@ MaterialStyle {
 }
 Stylise {
   posterize 12
+  paintCanvas "@canvas/paper"
+  paintCanvasStrength 0.5
 }
 PostEffects {
   ao true

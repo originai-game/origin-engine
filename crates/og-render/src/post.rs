@@ -140,6 +140,9 @@ pub(crate) struct StyliseUniform {
     pub canvas: [f32; 4],
     pub ink: [f32; 4],
     pub ink_color: [f32; 4],
+    /// x: the camera's far plane (the prepass's sky depth), y: the depth
+    /// step that is an edge (relative), z: the normal turn that is a crease.
+    pub ink_depth: [f32; 4],
 }
 
 #[repr(C)]
@@ -279,6 +282,8 @@ pub(crate) struct PostPasses {
     pub stylise_buffer: wgpu::Buffer,
     /// Repeats: the paint pass's canvas texture.
     repeat_sampler: wgpu::Sampler,
+    /// The blue-noise dither's thresholds ([`crate::blue_noise`]).
+    blue_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
     black: wgpu::TextureView,
     /// The identity 32³ grading LUT (bound when no grading is set).
@@ -329,15 +334,26 @@ fn one_texel(
     format: wgpu::TextureFormat,
     bytes: &[u8],
 ) -> wgpu::TextureView {
+    texture_with_data(device, queue, 1, format, bytes)
+}
+
+/// A square `size` × `size` texture of `bytes`, sampled only.
+fn texture_with_data(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    size: u32,
+    format: wgpu::TextureFormat,
+    bytes: &[u8],
+) -> wgpu::TextureView {
     use wgpu::util::DeviceExt;
     device
         .create_texture_with_data(
             queue,
             &wgpu::TextureDescriptor {
-                label: Some("placeholder"),
+                label: Some("post data"),
                 size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
+                    width: size,
+                    height: size,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -445,7 +461,9 @@ impl PostPasses {
         let source_pl = pipeline_layout("post source", &source_layout);
         let post_pl = pipeline_layout("post", &post_layout);
         // The stylisation passes (stylise.wgsl): the source, its sampler,
-        // the parameters, the palette, the canvas and its repeating sampler.
+        // the parameters, the palette, the canvas and its repeating sampler,
+        // the blue-noise tile, the prepass's view depth and normals (ink on
+        // depth edges; placeholders without a prepass).
         let stylise_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("stylise"),
             entries: &[
@@ -455,6 +473,9 @@ impl PostPasses {
                 layout_entry(3, float_texture(true)),
                 layout_entry(4, float_texture(true)),
                 layout_entry(5, sampler_ty),
+                layout_entry(6, float_texture(true)),
+                layout_entry(7, float_texture(false)),
+                layout_entry(8, float_texture(false)),
             ],
         });
         let stylise_pl = pipeline_layout("stylise", &stylise_layout);
@@ -679,7 +700,15 @@ impl PostPasses {
             bytemuck::bytes_of(&FAR_DEPTH),
         );
         let white = one_texel(device, queue, AO_FORMAT, &[255]);
+        let blue_noise = texture_with_data(
+            device,
+            queue,
+            crate::blue_noise::BLUE_NOISE_SIZE,
+            wgpu::TextureFormat::R8Unorm,
+            crate::blue_noise::BLUE_NOISE,
+        );
         PostPasses {
+            blue_noise,
             identity_lut,
             far_depth,
             white,
@@ -1699,7 +1728,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 } else {
                     ldr_name(i + 1)
                 };
-                g.pass(name, &[read.as_str()], &[write.as_str()])
+                // The lines pass binds the prepass (`Bindings::chain`).
+                let mut reads = vec![read.as_str()];
+                if p == FramePass::Lines && prepass {
+                    reads.extend(["lindepth", "gbuffer"]);
+                }
+                g.pass(name, &reads, &[write.as_str()])
             }
         };
     }
@@ -1930,8 +1964,22 @@ impl FrameGraph {
             })
         });
         let mut chain = HashMap::new();
+        // The lines pass reads the prepass (ink on depth edges) when the
+        // frame has one; the other passes bind placeholders.
+        let prepass_of = |p: FramePass| {
+            let lines = p == FramePass::Lines;
+            (
+                self.try_view("lindepth")
+                    .filter(|_| lines)
+                    .unwrap_or(&passes.far_depth),
+                self.try_view("gbuffer")
+                    .filter(|_| lines)
+                    .unwrap_or(&passes.black),
+            )
+        };
         for (i, p) in chain_passes(frame).into_iter().enumerate() {
             let source = self.view(&ldr_name(i));
+            let (depth, normals) = prepass_of(p);
             let g = if p == FramePass::Fxaa {
                 group(
                     "fxaa",
@@ -1949,6 +1997,9 @@ impl FrameGraph {
                         tex(stylise.0),
                         tex(stylise.1),
                         wgpu::BindingResource::Sampler(&passes.repeat_sampler),
+                        tex(&passes.blue_noise),
+                        tex(depth),
+                        tex(normals),
                     ],
                 )
             };

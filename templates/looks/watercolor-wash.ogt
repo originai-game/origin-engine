@@ -1,13 +1,15 @@
 type look
 version 1
 ---
-# Soft strokes that bleed into each other and pool at their rims, a bright exposure (add paintCanvas for paper grain).
+# Soft strokes that bleed into each other and pool at their rims on cold-pressed paper (the engine's @canvas/watercolor), a bright exposure.
 name "Watercolor washes"
 Stylise {
   paintRadius 3
   paintAnisotropy 0.4
   paintEdgeDarkening 0.8
   paintBleed 0.8
+  paintCanvas "@canvas/watercolor"
+  paintCanvasStrength 0.6
 }
 RenderSettings {
   exposure 1.15

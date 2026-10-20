@@ -1,0 +1,4 @@
+; One bit: black and white.
+; The engine's built-in palette @palettes/1bit (templates/looks/assets/generate.ts), CC0.
+000000
+ffffff

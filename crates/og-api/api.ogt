@@ -2333,7 +2333,8 @@ module render {
     variant bayer2 "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds."
     variant bayer4 "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art."
     variant bayer8 "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours."
-    variant blueNoise "Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl."
+    variant blueNoise "Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl."
+    variant interleavedGradient "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
   }
 
   column DitherPattern {
@@ -2449,7 +2450,7 @@ module render {
       min 0.125
       max 8
     }
-    field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass."
+    field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases."
     field inkThreshold f32 "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines." {
       default 0.1
       min 0
@@ -2464,6 +2465,12 @@ module render {
     }
     field inkColor Color "The line colour (linear)." {
       default 0.02 0.02 0.03
+    }
+    field inkDepth f32 "With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
     }
     field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
       min 0
@@ -2890,6 +2897,10 @@ module render {
     }
     field blend SpriteBlend "Alpha or additive."
     field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on." {
+      min 0
+      max 1
+    }
     field flipX bool "Mirror the region left to right."
     field flipY bool "Mirror the region top to bottom."
     field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -2975,6 +2986,11 @@ module render {
     }
     field shadowOffset Vector2 "The blob's centre relative to the anchor." {
       unit m
+    }
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
+      min 0
+      max 1
+      tunable true
     }
     field visible bool "Whether it is drawn." {
       default true
@@ -3167,7 +3183,7 @@ module render {
     field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
-    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
   }
 
   fn standardMaterial {
@@ -5485,6 +5501,11 @@ module anim {
       min 0
       max 10
       unit s
+      tunable true
+    }
+    field stepFps f32 "Stepped playback: each pose is held for 1/stepFps seconds, the clip sampled at its time floored to that step (12 is stop motion \"on twos\", 8 on threes), the same on every tick rate; 0 samples every tick. `time`, markers and root motion stay continuous; a one-shot still ends on its last frame." {
+      min 0
+      max 60
       tunable true
     }
     field finished bool "Written: a non-looping clip reached its end." {

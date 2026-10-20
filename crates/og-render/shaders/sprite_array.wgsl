@@ -1,5 +1,5 @@
 // Sprites drawn from a layer of a texture array (RenderScene::sprite_arrays):
-// sprite.wgsl's quads with the instance's layer in location 6, sampling a
+// sprite.wgsl's quads with the instance's layer in location 7, sampling a
 // texture_2d_array, so every sprite of one array is one instanced draw
 // whichever layer (frame) each shows. Hit flash and 2D lighting as
 // sprite.wgsl; no MSDF text, no soft dot, no glow. On WebGL2 the array
@@ -24,7 +24,8 @@ struct SpriteIn {
   @location(3) color: vec4<f32>,
   @location(4) flash: vec4<f32>,              // rgb: flash colour, a: amount
   @location(5) fx: vec3<f32>,                 // x: glow (unused), y: lit
-  @location(6) layer: u32,
+  @location(6) ground: vec4<f32>,             // a drop shadow's projection (sprite.wgsl)
+  @location(7) layer: u32,
 };
 
 struct SpriteOut {
@@ -47,7 +48,12 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
-  let world = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  var world = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  if (s.ground.x > 0.5) {
+    // A drop shadow: down the sun to the ground (sprite.wgsl ground_shadow).
+    let h = world.y - s.ground.w;
+    world = vec3<f32>(world.x + s.ground.y * h, s.ground.w, world.z + s.ground.z * h);
+  }
   var o: SpriteOut;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, c.x), mix(s.uv_rect.w, s.uv_rect.y, c.y));

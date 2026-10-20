@@ -11557,14 +11557,16 @@
         "bayer2",
         "bayer4",
         "bayer8",
-        "blueNoise"
+        "blueNoise",
+        "interleavedGradient"
       ],
       "x-og-variants": {
         "none": "No dither: every pixel rounds to its nearest step or colour, in flat bands.",
         "bayer2": "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds.",
         "bayer4": "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art.",
         "bayer8": "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours.",
-        "blueNoise": "Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl."
+        "blueNoise": "Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl.",
+        "interleavedGradient": "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
       }
     },
     "Stylise": {
@@ -11760,7 +11762,7 @@
         },
         "ink": {
           "type": "boolean",
-          "description": "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass.",
+          "description": "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases.",
           "default": false
         },
         "inkThreshold": {
@@ -11787,6 +11789,15 @@
             "g": 0.02,
             "b": 0.03
           }
+        },
+        "inkDepth": {
+          "type": "number",
+          "description": "With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
         },
         "depthBands": {
           "type": "integer",
@@ -12840,6 +12851,13 @@
           "description": "Block 2D light (Lighting2D) with the sprite's rectangle.",
           "default": false
         },
+        "dropShadow": {
+          "type": "number",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
         "flipX": {
           "type": "boolean",
           "description": "Mirror the region left to right.",
@@ -13074,6 +13092,14 @@
             "y": 0
           },
           "x-og-unit": "m"
+        },
+        "dropShadow": {
+          "type": "number",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
         },
         "visible": {
           "type": "boolean",
@@ -13393,7 +13419,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
         }
       },
       "required": [
@@ -17113,6 +17139,14 @@
           "minimum": 0,
           "maximum": 10,
           "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "stepFps": {
+          "type": "number",
+          "description": "Stepped playback: each pose is held for 1/stepFps seconds, the clip sampled at its time floored to that step (12 is stop motion \"on twos\", 8 on threes), the same on every tick rate; 0 samples every tick. `time`, markers and root motion stay continuous; a one-shot still ends on its last frame.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 60,
           "x-og-tunable": true
         },
         "finished": {

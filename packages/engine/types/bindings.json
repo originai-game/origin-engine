@@ -1307,6 +1307,12 @@
           }
         },
         {
+          "name": "dropShadow",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "visible",
           "column": "bool",
           "default": true
@@ -3091,6 +3097,12 @@
           "name": "fade",
           "column": "f32",
           "default": 0.2,
+          "tunable": true
+        },
+        {
+          "name": "stepFps",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {
@@ -5495,6 +5507,12 @@
             "g": 0.02,
             "b": 0.03
           }
+        },
+        {
+          "name": "inkDepth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "depthBands",

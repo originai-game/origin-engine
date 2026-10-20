@@ -31,6 +31,7 @@ the world → scene extraction belongs to the layer above.
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, the cook's prefilter. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
 | `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays`: a world sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture. See [The 2D batch](#the-2d-batch-e4). |
+| `SpriteShadow`, `SPRITE_SHADOW_LIFT` | `sprite_shadows`: a world sprite's drop shadow on the ground plane y = 0 along the sun, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
@@ -573,7 +574,7 @@ every gfx and effects reference passes unchanged.
 }`): a world sprite draws from a layer of a texture array instead of its
 texture, through a pipeline variant (`shaders/sprite_array.wgsl`, made on
 the first frame that draws one) that samples a `texture_2d_array`. The
-instance carries its layer (location 6 of the sprite instance, which the
+instance carries its layer (location 7 of the sprite instance, which the
 other sprite pipelines do not read), so the run key is (blend, array):
 every sprite of one array is one instanced draw whichever layer it shows,
 where a sheet of separate textures would break the run at each frame. The
@@ -588,6 +589,25 @@ texture (`og.load.flipbook`); `SpriteDesc.array` is how a game draws from
 an array. Tests: og-tests `sprites-array` (an eight-frame pixel-art
 flipbook in two rows and a three-layer smooth array added over a plain
 strip: three draws) and `a_sprite_draws_the_layer_of_its_texture_array`.
+
+**Drop shadows** (`sprite_shadows`, `SpriteShadow { sprite, opacity }`;
+the IDL's `SpriteDesc.dropShadow` and `Sprite.dropShadow`): a world
+sprite's shadow is one more instance of its quad, region and texture (or
+array layer) in black at `opacity` times its alpha, keyed `f32::MIN` so it
+draws before every sprite of its layer, whose `ground` (location 6: on,
+the x and z moved per metre of height, the ground's height) makes the
+vertex shader carry each corner of the standing quad along the scene's
+sun (`RenderScene::light`) down to the plane y = 0, lifted
+`SPRITE_SHADOW_LIFT` (1 cm) over a ground mesh there. Depth-tested as the
+sprites are, so the set's geometry in front hides it. None with the sun at
+or below the horizon; a low sun is raised to about 11° so a shadow is at
+most five times the sprite's height (`shadow_ground`). Pixel sprites in a
+3D set (a perspective camera over the xz ground) cast shadows that agree
+with the meshes' cascades; a 2D camera looking down -z sees the plane edge
+on. Shadows are not counted in `FrameStats::sprites`. The instance grew
+by those 16 bytes (100 a sprite or glyph). Tests: `sprites.rs`'s
+`a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun` and
+`a_low_sun_casts_at_most_five_heights` (CPU), og-tests `sprites-shadow`.
 
 Tests: `tests/sprites2d.rs` (sort keys across textures within a layer,
 layers still win; tile culling, tiles under their layer's sprites, repeat
@@ -1141,11 +1161,29 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   - `lines`: cross-hatching from the tone (one stroke set per level, each
     turned further, over a paper-light ground), halftone dots on a
     rotated grid sized by the tone, and ink on luminance edges (a Sobel
-    gradient, widened by the max over the line's width).
+    gradient, widened by the max over the line's width). With
+    `Ink::depth` (the IDL's `Stylise.inkDepth`) above 0 the frame runs the
+    depth-normal prepass and the lines pass binds its `lindepth` and
+    `gbuffer` (stylise bindings 7 and 8; the far-depth and black
+    placeholders for the other chain passes and frames without one, and
+    the graph declares the reads so nothing aliases them first): a pixel
+    is also inked, at that strength, where a neighbour at the line's
+    width is farther by more than 4 % (a silhouette, on the nearer
+    surface) or of about the same depth and turned past 1 − cos 0.4 (a
+    crease), the outline pass's defaults, never on the sky. Comic looks
+    get contours round flat colours that luminance misses.
   - `quantize`: posterisation in display space with an ordered Bayer 2/4/8
-    dither (bit-interleaved in the shader) or interleaved-gradient noise,
+    dither (bit-interleaved in the shader), blue noise or
+    interleaved-gradient noise (`DitherPattern::InterleavedGradient`),
     then the nearest colour of a 256-entry palette (`RenderScene::add_palette`,
-    a 256 × 1 sRGB texture) by Oklab distance.
+    a 256 × 1 sRGB texture) by Oklab distance. The blue noise is a 64 × 64
+    void-and-cluster tile (`src/blue_noise.rs`, `data/blue-noise-64.r8`,
+    4096 B: each of 256 levels on 16 texels, a σ 1.5 Gaussian on the torus,
+    integer energies, a fixed seed; its test runs the routine again and
+    compares the bytes) uploaded once as `R8Unorm` with the post passes
+    (binding 6) and repeated per dither cell: every 8 × 8 block within 8.6
+    levels of the middle (31 for the same values shuffled), no
+    4-neighbours within 8 levels.
 - **Depth bands** (`DepthBands`): an HDR pass after the main pass
   (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
   `near` to `far` into `count` flat layers between two colours; `flatten`
@@ -1166,14 +1204,31 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   that distance over the view depth in the prepass (never for an
   orthographic camera).
 
+- **Built-in canvases and palettes**: a look names the engine's own
+  `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` (tileable
+  256² grey, the paint pass reads the red channel) and `"@palettes/lcd2"`,
+  `handheld4`, `dusk16`, `bright32`, `1bit`; the cook adds the ones its
+  looks name to the bundle under reserved ids (og-cook's README, *Built-in
+  look assets*), so the renderer sees an ordinary texture and palette.
+  watercolor-wash, paper-craft and painterly-3d lay the canvases,
+  monochrome-pixel and monochrome-dither-3d quantise to `handheld4` and
+  `1bit`.
+- Beside the frame's stylisation: sprite drop shadows ([The 2D
+  batch](#the-2d-batch-e4)) for pixel sprites in 3D sets, and og-anim's
+  stepped playback (`AnimationPlayer.stepFps`) for stop motion on twos.
+
 Scenes: `stylise-pixel`, `stylise-palette`, `stylise-print`,
 `stylise-halftone`, `stylise-paint`, `stylise-bands`, `stylise-retro`,
-`stylise-material` (og-tests, `metal` and `vulkan-cpu` references), and
-fx-showcase's `looks` station, one frame per preset of
-`templates/looks/`. Not yet: the paint pass's canvas and the palettes ship
-as a game's own assets (no engine canvas texture); a blue-noise texture
-(interleaved-gradient noise stands in); the ink and hatching passes work
-on luminance only (no depth edges: `PostEffects.outline` is the depth one).
+`stylise-material`, `stylise-ink-depth` (flat unlit shapes of one colour
+where every line is a silhouette or crease) and `sprites-shadow` (og-tests,
+`metal` and `vulkan-cpu` references), and fx-showcase's `looks` station,
+one frame per preset of `templates/looks/`. Every style of the catalogue
+(`packages/knowledge/looks/catalogue.json`) is now `full` or `content`.
+Not yet: hatching works on luminance only (strokes follow the tone, not
+the surface's curvature); the canvas is laid over the frame in screen
+space (it does not stick to surfaces); drop shadows fall on the plane
+y = 0 only (not on terrain or steps, and they do not darken by the
+cascades); `inkDepth` uses fixed depth and crease thresholds.
 
 ## What phase 2 owes
 
