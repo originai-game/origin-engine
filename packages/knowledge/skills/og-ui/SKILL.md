@@ -97,6 +97,19 @@ messages are markup). A link is a child element (`Hint/shop`, kind `link`)
 that keys, pads and touch reach like a button; the result's `link` names
 the one clicked. A typo in a tag stays visible as text and warns.
 
+`textField` and `textArea` edit as a player's system does, with nothing to
+wire: Alt or Ctrl with the arrows moves by words (with Backspace or Delete,
+deletes one), a double click selects a word and a triple click the line,
+Ctrl/Cmd+Z undoes and Shift+Z or Y redoes (typing undoes a word at a
+time), and a drag past an area's edge scrolls it. A text the game sets
+starts the field's undo history again.
+
+Scripts: a label mixing scripts draws each run in the first font that has
+it (the Latin in the body or the pack's face, CJK, Arabic or Hebrew from the
+locale's fonts or `fallbackFonts` in `og.ui.configure`), so `"Level 3 ·
+古い水車小屋"` needs no font of its own; a string a locale's font covers
+whole keeps that face.
+
 Icons: an icon set cooked from SVGs (an `.ogt` of `type icons` naming
 them; the UI kit ships 64 iconoir icons as `icons/iconoir.ogt`) loads with
 `og.load.font` and becomes the atlas with `og.ui.configure(world, { icons:
@@ -196,6 +209,9 @@ its frame drawn at `fill` opacity (the scifi pack's dialogs:
 it (a HUD under a glass dialog); it costs a frame copy and a blur pyramid
 when any is on screen (about 0.8 ms at 1280×720 on an M4 Pro), and one more
 pyramid for each glass layer with UI under it, nothing without glass.
+A player whose system asks for less transparency (`prefers-reduced-
+transparency`, or `reducedTransparency: true` in `og.ui.configure` from a
+settings toggle) gets glass parts as opaque surfaces.
 
 A skin of the game's own art: draw each part as a nine-patch PNG
 (`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
