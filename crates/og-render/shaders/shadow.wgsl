@@ -82,11 +82,22 @@ struct LeanVsOut {
 
 @vertex
 fn vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {
+  return lean_caster(position, i);
+}
+
+fn lean_caster(position: vec3<f32>, i: InstanceIn) -> LeanVsOut {
   let world = instance_matrix(i.m0, i.m1, i.m2, i.m3) * vec4<f32>(position, 1.0);
   var o: LeanVsOut;
   o.clip = shadow_project(world, mul_point(shadow_pass.view_proj, world));
   o.world = world.xyz;
   return o;
+}
+
+// `vs_lean` from a compact vertex (compact.rs): the position in the
+// mesh's unit box, the instance matrix holding the dequantisation.
+@vertex
+fn vs_lean_compact(@location(0) position: vec4<f32>, i: InstanceIn) -> LeanVsOut {
+  return lean_caster(position.xyz, i);
 }
 
 fn shadow_hook(o: VsOut) -> Hook {

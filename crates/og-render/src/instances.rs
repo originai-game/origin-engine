@@ -24,12 +24,24 @@ pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
 }
 
 /// One (mesh, material) run of the sorted instances.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Run {
     pub mesh: usize,
     pub material: usize,
     pub first: u32,
     pub count: u32,
+    /// The run draws its mesh's compact vertices (`compact.rs`): this
+    /// undoes their quantisation, as the right factor of each instance's
+    /// GPU transform.
+    pub dequant: Option<Mat4>,
+}
+
+/// An instance's GPU transform in a run with `dequant`.
+fn run_transform(m: &Mat4, dequant: Option<Mat4>) -> GpuTransform {
+    match dequant {
+        Some(d) => gpu_transform(&(*m * d)),
+        None => gpu_transform(m),
+    }
 }
 
 /// The sorted instances of the last frame and what was derived from them.
@@ -110,13 +122,15 @@ impl SortedInstances {
     /// The frame's sorted instances, from the last frame's where they still
     /// hold. Fails on an instance whose mesh or material index is not below
     /// `meshes` / `materials` (the renderer's copies of the scene's);
-    /// `mesh` describes the mesh at an index below `meshes`.
+    /// `mesh` describes the mesh at an index below `meshes`, `dequant` a
+    /// (mesh, material) run's [`Run::dequant`].
     pub fn update(
         &mut self,
         scene: &RenderScene,
         meshes: usize,
         mesh: impl Fn(usize) -> MeshInfo,
         materials: usize,
+        dequant: impl Fn(usize, usize) -> Option<Mat4>,
     ) -> Result<Sorted, RenderError> {
         let instances = &scene.instances;
         for (i, inst) in instances.iter().enumerate() {
@@ -144,14 +158,22 @@ impl SortedInstances {
                 same = false;
             }
         }
+        let same_dequant = |a: Option<Mat4>, b: Option<Mat4>| match (a, b) {
+            (Some(a), Some(b)) => same_bits(&a, &b),
+            (a, b) => a.is_none() && b.is_none(),
+        };
         same = same
             && self.meshes.iter().all(|&(m, info)| mesh(m) == info)
+            && self
+                .runs
+                .iter()
+                .all(|r| same_dequant(r.dequant, dequant(r.mesh, r.material)))
             && self.transforms.len() == self.order.len()
             && self.spheres.len() == self.order.len();
         if same {
             self.refresh(scene, &mesh);
         } else {
-            self.rebuild(scene, &mesh);
+            self.rebuild(scene, &mesh, &dequant);
         }
         Ok(Sorted {
             runs: self.runs.clone(),
@@ -172,7 +194,12 @@ impl SortedInstances {
 
     /// Sorts and derives everything again; returns how many instances it
     /// computed (all those drawn).
-    fn rebuild(&mut self, scene: &RenderScene, mesh_info: &impl Fn(usize) -> MeshInfo) -> usize {
+    fn rebuild(
+        &mut self,
+        scene: &RenderScene,
+        mesh_info: &impl Fn(usize) -> MeshInfo,
+        dequant: &impl Fn(usize, usize) -> Option<Mat4>,
+    ) -> usize {
         let instances = &scene.instances;
         let mut order: Vec<usize> = (0..instances.len()).collect();
         // Stable: instances of one batch keep their submission order.
@@ -201,11 +228,13 @@ impl SortedInstances {
                     material,
                     first: self.order.len() as u32,
                     count: 1,
+                    dequant: dequant(mesh, material),
                 }),
             }
             let m = inst.transform;
             self.spheres.push(world_sphere(&m, bounds));
-            self.transforms.push(gpu_transform(&m));
+            let d = self.runs.last().and_then(|r| r.dequant);
+            self.transforms.push(run_transform(&m, d));
             self.matrices.push(m);
             self.order.push(i as u32);
         }
@@ -226,7 +255,7 @@ impl SortedInstances {
                     continue;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
-                self.transforms[k] = gpu_transform(m);
+                self.transforms[k] = run_transform(m, run.dequant);
                 self.matrices[k] = *m;
                 changed += 1;
             }
@@ -269,7 +298,7 @@ mod tests {
 
     fn fresh(scene: &RenderScene) -> Sorted {
         SortedInstances::default()
-            .update(scene, 3, info, 2)
+            .update(scene, 3, info, 2, |_, _| None)
             .unwrap()
     }
 
@@ -295,7 +324,7 @@ mod tests {
     fn kept_instances_are_a_fresh_builds() {
         let mut scene = scene();
         let mut kept = SortedInstances::default();
-        let first = kept.update(&scene, 3, info, 2).unwrap();
+        let first = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
         assert_same(&first, &fresh(&scene));
         // The empty mesh's instances are dropped.
         assert_eq!(first.submission.len(), 200);
@@ -308,7 +337,7 @@ mod tests {
         kept.restore(first.transforms, first.spheres);
         // Unchanged: nothing computed.
         assert_eq!(kept.refresh(&scene, &info), 0);
-        let still = kept.update(&scene, 3, info, 2).unwrap();
+        let still = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
         assert_same(&still, &fresh(&scene));
         let mut culled = still.transforms;
         culled.push([[9.0; 3]; 4]);
@@ -319,16 +348,16 @@ mod tests {
         scene.instances[7].transform.w_axis.y = -0.0;
         assert_eq!(kept.refresh(&scene, &info), 3);
         kept.refresh(&scene, &info);
-        let moved = kept.update(&scene, 3, info, 2).unwrap();
+        let moved = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
         assert_same(&moved, &fresh(&scene));
         kept.restore(moved.transforms, moved.spheres);
         // Another order: sorted again.
         scene.instances.swap(0, 1);
         scene.instances[5].material = scene.instances[6].material;
-        let resorted = kept.update(&scene, 3, info, 2).unwrap();
+        let resorted = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
         assert_same(&resorted, &fresh(&scene));
         // Not given back: rebuilt.
-        let rebuilt = kept.update(&scene, 3, info, 2).unwrap();
+        let rebuilt = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
         assert_same(&rebuilt, &fresh(&scene));
         // A mesh's bounds changed: rebuilt with the new ones.
         kept.restore(rebuilt.transforms, rebuilt.spheres);
@@ -339,16 +368,43 @@ mod tests {
                 info(i)
             }
         };
-        let after = kept.update(&scene, 3, grown, 2).unwrap();
+        let after = kept.update(&scene, 3, grown, 2, |_, _| None).unwrap();
         assert_same(
             &after,
             &SortedInstances::default()
-                .update(&scene, 3, grown, 2)
+                .update(&scene, 3, grown, 2, |_, _| None)
                 .unwrap(),
         );
         assert!(matches!(
-            kept.update(&scene, 2, info, 2),
+            kept.update(&scene, 2, info, 2, |_, _| None),
             Err(RenderError::InvalidHandle(_))
         ));
+    }
+
+    /// A run drawing compact vertices carries their dequantisation in its
+    /// instances' GPU transforms; turning it on or off sorts again.
+    #[test]
+    fn compact_runs_fold_the_dequantisation_into_the_transforms() {
+        let scene = scene();
+        let d =
+            Mat4::from_translation(Vec3::splat(-0.5)) * Mat4::from_scale(Vec3::new(1.0, 2.0, 0.5));
+        let compact = |mesh: usize, material: usize| (mesh == 1 && material == 0).then_some(d);
+        let mut kept = SortedInstances::default();
+        let plain = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        kept.restore(plain.transforms.clone(), plain.spheres.clone());
+        let with = kept.update(&scene, 3, info, 2, compact).unwrap();
+        for r in &with.runs {
+            assert_eq!(r.dequant.is_some(), r.mesh == 1 && r.material == 0);
+            for k in r.first as usize..(r.first + r.count) as usize {
+                let m = scene.instances[with.submission[k] as usize].transform;
+                let want = gpu_transform(&r.dequant.map_or(m, |d| m * d));
+                assert_eq!(with.transforms[k], want);
+            }
+        }
+        // The spheres are the mesh's, whatever the vertices.
+        assert_eq!(with.spheres, plain.spheres);
+        kept.restore(with.transforms, with.spheres);
+        let back = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        assert_same(&back, &plain);
     }
 }

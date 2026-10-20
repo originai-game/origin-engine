@@ -51,6 +51,24 @@ impl Default for Vertex {
     }
 }
 
+/// How a mesh's vertices are held on the GPU
+/// ([`RenderScene::set_vertex_encoding`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum VertexEncoding {
+    /// [`Vertex`] as given: 64 bytes a vertex in f32, for every pipeline.
+    #[default]
+    Full,
+    /// 16 bytes a vertex where the mesh is drawn with a plain material (the
+    /// lean pipelines; README "Instance and vertex encodings"): the
+    /// position quantised to 16 bits per axis over the mesh's bounds, the
+    /// normal octahedral in two 16-bit snorms, the colour in 8 bits a
+    /// channel. Quantised, so its pixels are close to [`VertexEncoding::Full`]'s
+    /// but not the same. The f32 vertices are uploaded too only if a
+    /// material that is not plain, a scatter or a skinned instance draws
+    /// the mesh. Ignored for skinned and morphed meshes.
+    Compact,
+}
+
 /// Triangle-list geometry: vertices and `u32` indices (three per triangle).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MeshData {
@@ -1060,6 +1078,8 @@ pub struct RenderScene {
     meshes: Vec<MeshData>,
     /// Per mesh: how many times [`RenderScene::set_mesh`] replaced it.
     mesh_revisions: Vec<u64>,
+    /// Per mesh: [`RenderScene::set_vertex_encoding`].
+    mesh_encodings: Vec<VertexEncoding>,
     textures: Vec<TextureSource>,
     /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
     texture_revisions: Vec<u64>,
@@ -1215,6 +1235,7 @@ impl RenderScene {
             id: NEXT_SCENE_ID.fetch_add(1, Ordering::Relaxed),
             meshes: Vec::new(),
             mesh_revisions: Vec::new(),
+            mesh_encodings: Vec::new(),
             textures: Vec::new(),
             texture_revisions: Vec::new(),
             materials: Vec::new(),
@@ -1826,11 +1847,13 @@ impl RenderScene {
         if reused {
             self.meshes[i] = mesh;
             self.mesh_revisions[i] += 1;
+            self.mesh_encodings[i] = VertexEncoding::Full;
         } else {
             self.meshes.push(mesh);
             self.skins.push(None);
             self.morphs.push(None);
             self.mesh_revisions.push(0);
+            self.mesh_encodings.push(VertexEncoding::Full);
         }
         MeshHandle::from_parts(i, generation)
     }
@@ -1877,6 +1900,31 @@ impl RenderScene {
 
     pub(crate) fn mesh_revisions(&self) -> &[u64] {
         &self.mesh_revisions
+    }
+
+    /// Sets how a mesh's vertices are held on the GPU (default
+    /// [`VertexEncoding::Full`]); the renderer uploads it again before the
+    /// next frame when this changes it. False for a bad handle.
+    pub fn set_vertex_encoding(&mut self, handle: MeshHandle, encoding: VertexEncoding) -> bool {
+        let i = handle.index();
+        if !self.mesh_slots.live(i, handle.generation()) {
+            return false;
+        }
+        if self.mesh_encodings[i] != encoding {
+            self.mesh_encodings[i] = encoding;
+            self.mesh_revisions[i] += 1;
+        }
+        true
+    }
+
+    /// A mesh's [`VertexEncoding`] (`None`: a bad handle).
+    pub fn vertex_encoding(&self, handle: MeshHandle) -> Option<VertexEncoding> {
+        self.contains_mesh(handle)
+            .then(|| self.mesh_encodings[handle.index()])
+    }
+
+    pub(crate) fn mesh_encodings(&self) -> &[VertexEncoding] {
+        &self.mesh_encodings
     }
 
     /// Adds an RGBA8 texture (mips generated on the GPU when asked).

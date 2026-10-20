@@ -22,6 +22,24 @@ struct LeanVertexIn {
   @location(3) color: vec4<f32>,
 };
 
+// A compact vertex (compact.rs): the position in the mesh's unit box (the
+// instance matrix holds the dequantisation), the normal octahedral (of the
+// normal through the dequantisation's scale), the colour in 8 bits.
+struct CompactVertexIn {
+  @location(0) position: vec4<f32>,
+  @location(1) normal: vec2<f32>,
+  @location(3) color: vec4<f32>,
+};
+
+// An octahedral unit vector (compact.rs `oct_encode`).
+fn oct_decode(e: vec2<f32>) -> vec3<f32> {
+  var v = vec3<f32>(e.x, e.y, 1.0 - abs(e.x) - abs(e.y));
+  let t = max(-v.z, 0.0);
+  v.x += select(t, -t, v.x >= 0.0);
+  v.y += select(t, -t, v.y >= 0.0);
+  return normalize(v);
+}
+
 struct LeanOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world_pos: vec3<f32>,
@@ -32,6 +50,18 @@ struct LeanOut {
 @vertex
 fn vs_lean(v: LeanVertexIn, i: InstanceIn) -> LeanOut {
   let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position, v.normal, vec2<f32>(0.0), v.color);
+  var o: LeanOut;
+  o.clip = p.clip;
+  o.world_pos = p.world;
+  o.normal = p.normal;
+  o.color = v.color;
+  return o;
+}
+
+@vertex
+fn vs_lean_compact(v: CompactVertexIn, i: InstanceIn) -> LeanOut {
+  let n = oct_decode(v.normal);
+  let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position.xyz, n, vec2<f32>(0.0), v.color);
   var o: LeanOut;
   o.clip = p.clip;
   o.world_pos = p.world;
@@ -64,6 +94,10 @@ struct LeanPrepassOut {
 
 @vertex
 fn vs_prepass_lean(@location(0) position: vec3<f32>, @location(1) normal: vec3<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
+  return prepass_lean(position, normal, i, prev);
+}
+
+fn prepass_lean(position: vec3<f32>, normal: vec3<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
   let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), position, normal, vec2<f32>(0.0), vec4<f32>(1.0));
   var o: LeanPrepassOut;
   o.clip = p.clip;
@@ -72,6 +106,11 @@ fn vs_prepass_lean(@location(0) position: vec3<f32>, @location(1) normal: vec3<f
   o.cur_clip = fx.view_proj_unjittered * vec4<f32>(p.world, 1.0);
   o.prev_clip = mul_point(fx.prev_view_proj, instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3) * vec4<f32>(position, 1.0));
   return o;
+}
+
+@vertex
+fn vs_prepass_lean_compact(@location(0) position: vec4<f32>, @location(1) normal: vec2<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
+  return prepass_lean(position.xyz, oct_decode(normal), i, prev);
 }
 
 @fragment
