@@ -39,6 +39,7 @@ fn tree(ui: &mut Ui) {
             bottom: 0.0,
         },
         coarse_pointer: false,
+        ..Viewport::default()
     };
     ui.begin(InputFrame::default(), viewport);
     // A bar: fixed icon, text, a growing spacer and a growing badge capped at 50.

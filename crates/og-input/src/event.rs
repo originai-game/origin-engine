@@ -140,9 +140,59 @@ pub struct GamepadState {
     pub triggers: [f32; 2],
 }
 
-/// One input event in the game's own vocabulary (protocol 5, plus three
-/// engine extensions: a pointer `id` for multi-touch, the `gamepad` kind and
-/// the `text` kind).
+/// What an assistive technology asks of one UI control (the `a11y` kind):
+/// the web shell's mirror of the accessibility tree sends it when a screen
+/// reader focuses, activates or adjusts a mirrored node.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum A11yAct {
+    /// Move the UI's focus to the control (with the focus ring).
+    Focus,
+    /// Press it, as Enter on it would.
+    Activate,
+    /// Step an adjustable control (a slider, a stepper) up.
+    Increment,
+    /// Step it down.
+    Decrement,
+}
+
+impl A11yAct {
+    /// Every action, in variant order (the IDL's `A11yActionKind`).
+    pub const ALL: [A11yAct; 4] = [
+        A11yAct::Focus,
+        A11yAct::Activate,
+        A11yAct::Increment,
+        A11yAct::Decrement,
+    ];
+    /// The variant names, by index.
+    pub const NAMES: [&'static str; 4] = ["focus", "activate", "increment", "decrement"];
+
+    /// Its variant index.
+    pub fn index(self) -> u32 {
+        A11yAct::ALL.iter().position(|a| *a == self).unwrap_or(0) as u32
+    }
+
+    /// The action of a variant index.
+    pub fn from_index(index: u32) -> Option<A11yAct> {
+        A11yAct::ALL.get(index as usize).copied()
+    }
+
+    /// Its IDL name.
+    pub fn name(self) -> &'static str {
+        A11yAct::NAMES[self.index() as usize]
+    }
+
+    /// The action an IDL name names.
+    pub fn from_name(name: &str) -> Option<A11yAct> {
+        A11yAct::NAMES
+            .iter()
+            .position(|n| *n == name)
+            .map(|i| A11yAct::ALL[i])
+    }
+}
+
+/// One input event in the game's own vocabulary (protocol 5, plus four
+/// engine extensions: a pointer `id` for multi-touch, the `gamepad` kind,
+/// the `text` kind and the `a11y` kind).
 /// Positions are CSS pixels of the play surface, the space `pick` reads;
 /// `key` is a `KeyboardEvent.code` name.
 #[derive(Clone, Debug, PartialEq)]
@@ -175,6 +225,11 @@ pub enum InjectedInput {
     /// underlined text not yet committed; empty ends it). Raises
     /// [`crate::TextInput`] events; the UI's focused field takes them.
     Text { text: String, composing: bool },
+    /// An assistive technology's request on the UI control at `path` (an
+    /// engine extension): focus, activate, increment or decrement it.
+    /// Raises an [`crate::A11yAction`] event; the UI acts on it at the
+    /// start of the next frame, against the last frame's controls.
+    A11y { action: A11yAct, path: String },
 }
 
 fn number(value: &Value, key: &str) -> Option<f32> {
@@ -275,6 +330,16 @@ impl InjectedInput {
                     Some(v) => v.as_bool()?,
                 },
             }),
+            "a11y" => {
+                let path = value.get("path")?.as_str()?;
+                if path.is_empty() {
+                    return None;
+                }
+                Some(InjectedInput::A11y {
+                    action: A11yAct::from_name(value.get("action")?.as_str()?)?,
+                    path: path.to_owned(),
+                })
+            }
             "wheel" => Some(InjectedInput::Wheel {
                 x: number(value, "x")?,
                 y: number(value, "y")?,
@@ -337,6 +402,9 @@ impl InjectedInput {
                     v["composing"] = json!(true);
                 }
                 v
+            }
+            InjectedInput::A11y { action, path } => {
+                json!({"kind": "a11y", "action": action.name(), "path": path})
             }
         }
     }

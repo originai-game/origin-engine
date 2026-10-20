@@ -534,6 +534,8 @@ pub trait UiApi: Wire {
     fn og_ui_button(&self, id: String, text: String, desc: Option<String>) -> String;
     /// `og.ui.image`
     fn og_ui_image(&self, id: String, desc: Option<String>);
+    /// `og.ui.zoomView`
+    fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.progress`
     fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>);
     /// `og.ui.slider`
@@ -949,6 +951,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_label",
     "og_ui_button",
     "og_ui_image",
+    "og_ui_zoom_view",
     "og_ui_progress",
     "og_ui_slider",
     "og_ui_toggle",
@@ -2587,6 +2590,41 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Vertical scroll in CSS pixels.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "event",
+        name: "A11yAction",
+        schema: "og.A11yAction",
+        fields: &[
+            FieldDecl {
+                name: "action",
+                column: "A11yActionKind",
+                default: "\"focus\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "What is asked.",
+                variants: &["focus", "activate", "increment", "decrement"],
+            },
+            FieldDecl {
+                name: "path",
+                column: "String",
+                default: "\"\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The control's path, as og.ui.a11y() names it.",
                 variants: &[],
             },
         ],

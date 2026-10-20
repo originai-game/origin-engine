@@ -270,6 +270,32 @@ pub struct MapMarker {
     pub player: bool,
 }
 
+/// A zoomable picture ([`Ui::zoom_view`]): a map, an artwork.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ZoomViewDesc {
+    /// `None` draws a solid rectangle of `tint`.
+    pub texture: Option<TextureHandle>,
+    /// The picture: `None` is the whole texture (`[u0, v0, u1, v1]`, v down).
+    pub uv: Option<[f32; 4]>,
+    /// `None`: white.
+    pub tint: Option<Srgba>,
+    pub width: Size,
+    pub height: Size,
+    /// Width over height (0: none), as `ImageDesc::aspect`.
+    pub aspect: f32,
+    /// The zoom limits; 0: 1 and 4.
+    pub min_zoom: f32,
+    pub max_zoom: f32,
+}
+
+/// Where a zoom view is: its zoom and the middle of what it shows, as a
+/// fraction of its picture ((0.5, 0.5) at rest).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ZoomResponse {
+    pub zoom: f32,
+    pub center: og_core::glam::Vec2,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MinimapDesc {
     pub texture: Option<TextureHandle>,
@@ -2185,23 +2211,41 @@ impl Ui {
                 ..Element::default()
             },
         );
-        if let (Some(tex), Some(k)) = (self.icons.texture, index) {
-            self.nodes[i].content = Content::Image {
-                texture: Some(tex),
-                uv: self.icons.uv(k),
-                tint: desc.tint.unwrap_or(self.theme.palette.fg),
-            };
+        let tint = desc.tint.unwrap_or(self.theme.palette.fg);
+        match index.map(|k| (k, self.icons.glyph(k))) {
+            Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
+                frame: Frame::FULL,
+                font,
+                ch,
+                color: tint,
+            }),
+            Some((k, None)) if self.icons.texture.is_some() => {
+                self.nodes[i].content = Content::Image {
+                    texture: self.icons.texture,
+                    uv: self.icons.uv(k),
+                    tint,
+                };
+            }
+            _ => {}
         }
         self.nodes[i].probe_text = name.to_owned();
     }
 
     /// Whether the icon atlas has an icon of this name.
     pub fn has_icon(&self, name: &str) -> bool {
-        self.icons.texture.is_some() && self.icons.index_of(name).is_some()
+        self.icons.is_drawn() && self.icons.index_of(name).is_some()
     }
 
     fn icon_shape(&self, name: &str, frame: Frame, color: Srgba) -> Option<Shape> {
         let k = self.icons.index_of(name)?;
+        if let Some((font, ch)) = self.icons.glyph(k) {
+            return Some(Shape::Glyph {
+                frame,
+                font,
+                ch,
+                color,
+            });
+        }
         Some(Shape::Image {
             frame,
             texture: self.icons.texture?,
@@ -2434,6 +2478,63 @@ impl Ui {
             format!("{:.0}%", remaining.clamp(0.0, 1.0) * 100.0)
         });
         r
+    }
+
+    /// A zoomable picture (a map, an artwork): two fingers pinch it to zoom
+    /// about their centre and pan it as they move (og.Pointers), the wheel
+    /// zooms about the pointer, a drag pans. It stays on its picture and
+    /// within its zoom limits; the zoom and the centre are UI state.
+    /// Answers where it is.
+    pub fn zoom_view(&mut self, id: impl Into<Id>, desc: &ZoomViewDesc) -> ZoomResponse {
+        let i = self.leaf(
+            "zoom",
+            id.into(),
+            Element {
+                width: desc.width,
+                height: desc.height,
+                aspect: desc.aspect.max(0.0),
+                // A scroller to the pointer, the wheel and two touches.
+                scroll: true,
+                ..Element::default()
+            },
+        );
+        let key = self.nodes[i].key;
+        let (min, max) = match (desc.min_zoom, desc.max_zoom) {
+            (a, b) if a > 0.0 && b >= a => (a, b),
+            _ => (1.0, 4.0),
+        };
+        let s = self.zoom_state(key).unwrap_or(crate::scroll::ZoomState {
+            zoom: min,
+            center: og_core::glam::Vec2::splat(0.5),
+            min,
+            max,
+        });
+        let s = crate::scroll::ZoomState { min, max, ..s };
+        self.set_zoom_state(key, s);
+        let s = self.zoom_state(key).unwrap_or(s);
+        let [u0, v0, u1, v1] = desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
+        let half = 0.5 / s.zoom;
+        let (fx0, fy0) = (s.center.x - half, s.center.y - half);
+        let (fx1, fy1) = (s.center.x + half, s.center.y + half);
+        let n = &mut self.nodes[i];
+        n.content = Content::Image {
+            texture: desc.texture,
+            uv: [
+                u0 + (u1 - u0) * fx0,
+                v0 + (v1 - v0) * fy0,
+                u0 + (u1 - u0) * fx1,
+                v0 + (v1 - v0) * fy1,
+            ],
+            tint: desc.tint.unwrap_or(Srgba::WHITE),
+        };
+        // A picture named by its id (a map), its zoom as its value.
+        n.a11y.role = Some("image");
+        n.a11y.name = Some(n.id.clone());
+        n.a11y.value = Some(format!("{:.0}%", s.zoom * 100.0));
+        ZoomResponse {
+            zoom: s.zoom,
+            center: s.center,
+        }
     }
 
     /// A mini-map frame: the map texture (or the stage colour) in a

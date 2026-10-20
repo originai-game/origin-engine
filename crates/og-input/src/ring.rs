@@ -24,7 +24,10 @@
 //! method's composition, word 2 1 when it continues the text of the slot
 //! before it (a text longer than [`TEXT_BYTES`] is split between characters
 //! over several slots, which [`drain`] joins), word 3 the UTF-8 length and
-//! the text in words 4–15. A key or pointer slot carries
+//! the text in words 4–15. An a11y slot (kind 5, an engine extension) is
+//! laid out as a text slot, word 1 the action (0 focus, 1 activate, 2
+//! increment, 3 decrement) and the control's path as the text. A key or
+//! pointer slot carries
 //! the event's time in words 6–7 (an f64: the page's
 //! `performance.timeOrigin + timeStamp`, ms; 0 unknown), which the Worker
 //! turns into the event's `at` (IDL `KeyInput.at`) before it injects it;
@@ -37,7 +40,8 @@
 //! first 2^31 events of a page.
 
 use crate::event::{
-    GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, Modifiers, PointerAction, PointerButton,
+    A11yAct, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, Modifiers, PointerAction,
+    PointerButton,
 };
 
 /// Header words (write index, read index).
@@ -53,7 +57,7 @@ pub const BYTE_LEN: usize = (HEADER_WORDS + SLOTS * SLOT_WORDS) * 4;
 /// Bytes of text a text slot holds (words 4–15).
 pub const TEXT_BYTES: usize = 48;
 /// `kind` values, by index.
-pub const KINDS: [&str; 5] = ["key", "pointer", "wheel", "gamepad", "text"];
+pub const KINDS: [&str; 6] = ["key", "pointer", "wheel", "gamepad", "text", "a11y"];
 /// `action` values, by index.
 pub const ACTIONS: [&str; 5] = ["press", "down", "up", "click", "move"];
 /// `button` values, by index.
@@ -103,6 +107,20 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
             }),
             a => Err(format!("text action {}", a as i32)),
         };
+    }
+    if w(0) == 5 {
+        let len = w(3) as usize;
+        if len > TEXT_BYTES {
+            return Err(format!("a11y path length {}", w(3) as i32));
+        }
+        let path = std::str::from_utf8(&slot[16..16 + len])
+            .map_err(|_| "an a11y path that is not UTF-8".to_owned())?;
+        let action =
+            A11yAct::from_index(w(1)).ok_or_else(|| format!("a11y action {}", w(1) as i32))?;
+        return Ok(InjectedInput::A11y {
+            action,
+            path: path.to_owned(),
+        });
     }
     let action = ACTIONS
         .get(w(1) as usize)
@@ -193,13 +211,13 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
     let mut slot = [0u8; SLOT_WORDS * 4];
     let index =
         |table: &[&str], name: &str| table.iter().position(|n| *n == name).unwrap_or(0) as u32;
-    if let InjectedInput::Text { text, composing } = event {
+    if let Some((kind, action, text)) = text_slot(event) {
         let mut cut = text.len().min(TEXT_BYTES);
         while !text.is_char_boundary(cut) {
             cut -= 1;
         }
-        set_word(&mut slot, 0, 4);
-        set_word(&mut slot, 1, u32::from(*composing));
+        set_word(&mut slot, 0, kind);
+        set_word(&mut slot, 1, action);
         set_word(&mut slot, 3, cut as u32);
         slot[16..16 + cut].copy_from_slice(&text.as_bytes()[..cut]);
         return slot;
@@ -245,7 +263,7 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             set_word(&mut slot, 10, g.triggers[1].to_bits());
             (3, 0, g.pad, (g.axes[0], g.axes[1]), (g.axes[2], g.axes[3]))
         }
-        InjectedInput::Text { .. } => unreachable!("encoded above"),
+        InjectedInput::Text { .. } | InjectedInput::A11y { .. } => unreachable!("encoded above"),
     };
     set_word(&mut slot, 0, kind);
     set_word(&mut slot, 1, action);
@@ -255,6 +273,31 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
     set_word(&mut slot, 6, delta.0.to_bits());
     set_word(&mut slot, 7, delta.1.to_bits());
     slot
+}
+
+/// A text-shaped slot's kind, action word and text: typed text (kind 4,
+/// composing or not) and an a11y request (kind 5, its path).
+fn text_slot(event: &InjectedInput) -> Option<(u32, u32, &str)> {
+    match event {
+        InjectedInput::Text { text, composing } => Some((4, u32::from(*composing), text)),
+        InjectedInput::A11y { action, path } => Some((5, action.index(), path)),
+        _ => None,
+    }
+}
+
+/// `event` with its text (or path) replaced by `piece`.
+fn with_piece(event: &InjectedInput, piece: &str) -> InjectedInput {
+    match event {
+        InjectedInput::Text { composing, .. } => InjectedInput::Text {
+            text: piece.to_owned(),
+            composing: *composing,
+        },
+        InjectedInput::A11y { action, .. } => InjectedInput::A11y {
+            action: *action,
+            path: piece.to_owned(),
+        },
+        e => e.clone(),
+    }
 }
 
 /// A new, empty ring (all zero).
@@ -269,21 +312,19 @@ pub fn write(ring: &mut [u8], event: &InjectedInput) -> bool {
     if ring.len() != BYTE_LEN {
         return false;
     }
-    // A text longer than a slot takes several, the later ones continuing it.
-    let slots: Vec<[u8; SLOT_WORDS * 4]> = match event {
-        InjectedInput::Text { text, composing } => {
+    // A text (or a path) longer than a slot takes several, the later ones
+    // continuing it.
+    let slots: Vec<[u8; SLOT_WORDS * 4]> = match text_slot(event) {
+        Some((_, _, text)) => {
             let mut out = Vec::new();
-            let mut rest = text.as_str();
+            let mut rest = text;
             loop {
                 let mut cut = rest.len().min(TEXT_BYTES);
                 while !rest.is_char_boundary(cut) {
                     cut -= 1;
                 }
                 let (head, tail) = rest.split_at(cut);
-                let mut slot = encode_slot(&InjectedInput::Text {
-                    text: head.to_owned(),
-                    composing: *composing,
-                });
+                let mut slot = encode_slot(&with_piece(event, head));
                 set_word(&mut slot, 2, u32::from(!out.is_empty()));
                 out.push(slot);
                 if tail.is_empty() {
@@ -292,7 +333,7 @@ pub fn write(ring: &mut [u8], event: &InjectedInput) -> bool {
                 rest = tail;
             }
         }
-        e => vec![encode_slot(e)],
+        None => vec![encode_slot(event)],
     };
     let (w, r) = (word(ring, 0), word(ring, 1));
     if w.wrapping_sub(r) as usize + slots.len() > SLOTS {
@@ -337,6 +378,15 @@ pub fn drain(ring: &[u8]) -> Drained {
             {
                 if let Some(InjectedInput::Text { text: before, .. }) = out.events.last_mut() {
                     before.push_str(&text);
+                }
+            }
+            // So does an a11y slot continuing a path.
+            Ok(InjectedInput::A11y { action, path })
+                if word(slot, 2) == 1
+                    && matches!(out.events.last(), Some(InjectedInput::A11y { action: a, .. }) if *a == action) =>
+            {
+                if let Some(InjectedInput::A11y { path: before, .. }) = out.events.last_mut() {
+                    before.push_str(&path);
                 }
             }
             Ok(event) => out.events.push(event),

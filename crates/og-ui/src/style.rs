@@ -244,6 +244,12 @@ pub struct Theme {
     pub reduced_motion: bool,
     /// The game's look beyond the tokens (`crate::skin`); the default dresses nothing.
     pub skin: crate::skin::Skin,
+    /// The card edge (`shadow-edge`): inset layers drawn inside the edge of
+    /// an opaque surface (a dialog, a panel, a card, a tooltip) in the
+    /// token look. In dark it is the edge light (a 0.5 px top highlight and
+    /// a hairline inside, which a drop shadow cannot give on black), in
+    /// light a hairline.
+    pub edge: &'static [crate::theme::InsetShadow],
 }
 
 impl Default for Theme {
@@ -280,6 +286,10 @@ impl Theme {
             outline: false,
             reduced_motion: false,
             skin: crate::skin::Skin::default(),
+            edge: match scheme {
+                Scheme::Light => tokens::SHADOW_EDGE_LIGHT,
+                Scheme::Dark => tokens::SHADOW_EDGE_DARK,
+            },
         }
     }
 

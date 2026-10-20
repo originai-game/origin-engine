@@ -3,9 +3,46 @@
 //! momentum after a drag (a fling that decays over `motion.spring.momentum`'s
 //! response), and scrollbars a press can grab. Everything is by the tick and
 //! in the UI state; the layout clamps the offsets to the content.
+//!
+//! Two touches (og-input's `og.Pointers`): while two fingers are held on
+//! one scroll container or zoom view (the innermost under each), it
+//! follows them: a container scrolls by the centre's movement (two-finger
+//! scroll, which a list of buttons needs: one finger presses a row), a zoom
+//! view ([`Ui::zoom_view`]) pans by it and zooms by the change of their
+//! spread about the centre (pinch). The press the first finger began
+//! presses nothing once the second lands.
 
-use crate::ui::{HIT_SCROLL, Ui};
+use crate::id::child_key;
+use crate::ui::{HIT_OFFSCREEN, HIT_SCROLL, Ui};
 use og_core::glam::Vec2;
+
+/// Two touches moving something: the scroll container or zoom view under
+/// their centre when the second landed (0: none), and their centre and
+/// spread (the distance between them) last tick.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Pinch {
+    pub key: u64,
+    pub center: Vec2,
+    pub spread: f32,
+}
+
+/// A zoom view's state: its zoom and the centre of what it shows, as a
+/// fraction of its picture (0.5, 0.5: the middle), and its zoom limits.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct ZoomState {
+    pub zoom: f32,
+    pub center: Vec2,
+    pub min: f32,
+    pub max: f32,
+}
+
+fn zoom_key(key: u64) -> u64 {
+    child_key(key, "\u{1}zoom")
+}
+
+fn pan_key(key: u64) -> u64 {
+    child_key(key, "\u{1}pan")
+}
 
 /// How wide a scrollbar's grab strip is along a scroll container's edge, CSS px.
 pub(crate) const BAR_GRAB: f32 = 12.0;
@@ -30,6 +67,140 @@ pub(crate) struct Thumb {
 }
 
 impl Ui {
+    /// The zoom view `key`'s state, when `key` is one.
+    pub(crate) fn zoom_state(&self, key: u64) -> Option<ZoomState> {
+        let z = self.state.anims.get(&zoom_key(key))?;
+        let p = self
+            .state
+            .anims
+            .get(&pan_key(key))
+            .copied()
+            .unwrap_or_default();
+        Some(ZoomState {
+            zoom: z.a,
+            center: Vec2::new(p.a, p.b),
+            min: f32::from_bits(z.t as u32),
+            max: f32::from_bits(z.h as u32),
+        })
+    }
+
+    /// Stores a zoom view's state (marking it used this frame), clamped:
+    /// the zoom to its limits, the centre so the view stays on the picture.
+    pub(crate) fn set_zoom_state(&mut self, key: u64, s: ZoomState) {
+        let zoom = s.zoom.clamp(s.min, s.max);
+        let half = 0.5 / zoom;
+        let c = Vec2::new(
+            s.center.x.clamp(half.min(0.5), (1.0 - half).max(0.5)),
+            s.center.y.clamp(half.min(0.5), (1.0 - half).max(0.5)),
+        );
+        self.set_anim(
+            zoom_key(key),
+            crate::ui::Anim {
+                a: zoom,
+                b: 0.0,
+                t: u64::from(s.min.to_bits()),
+                h: u64::from(s.max.to_bits()),
+            },
+        );
+        self.set_anim(
+            pan_key(key),
+            crate::ui::Anim {
+                a: c.x,
+                b: c.y,
+                t: 0,
+                h: 0,
+            },
+        );
+    }
+
+    /// Zooms view `key` by `k` about the point `at` (CSS px) and pans it by
+    /// `moved` (CSS px, the picture following the pointer).
+    fn zoom_by(&mut self, key: u64, k: f32, at: Vec2, moved: Vec2) {
+        let (Some(mut s), Some(h)) = (self.zoom_state(key), self.hit(key).copied()) else {
+            return;
+        };
+        let r = h.full;
+        if r.width <= 0.0 || r.height <= 0.0 {
+            return;
+        }
+        let size = Vec2::new(r.width, r.height);
+        // The picture point under `at` stays under it.
+        let f = (at - Vec2::new(r.x, r.y)) / size - Vec2::splat(0.5);
+        let to = (s.zoom * if k.is_finite() && k > 0.0 { k } else { 1.0 }).clamp(s.min, s.max);
+        s.center += f / s.zoom - f / to;
+        s.zoom = to;
+        s.center -= moved / (size * s.zoom);
+        self.set_zoom_state(key, s);
+    }
+
+    /// Two touches: track them, and move what is under them. Answers
+    /// whether a two-finger gesture holds the pointer this tick.
+    fn two_touches(&mut self, input: &crate::input::InputFrame) -> bool {
+        let p = &input.pointers;
+        let held: Vec<u32> = (0..og_input::MAX_POINTERS as u32)
+            .filter(|&id| p.down(id))
+            .collect();
+        if held.len() < 2 {
+            self.state.pinch = None;
+            return false;
+        }
+        let (a, b) = (p.position(held[0]), p.position(held[1]));
+        let center = (a + b) / 2.0;
+        let spread = a.distance(b);
+        match self.state.pinch {
+            Some(last) => {
+                let moved = center - last.center;
+                if last.key != 0 {
+                    if self.zoom_state(last.key).is_some() {
+                        let k = if last.spread > 1.0 {
+                            spread / last.spread
+                        } else {
+                            1.0
+                        };
+                        self.zoom_by(last.key, k, center, moved);
+                    } else {
+                        self.scroll_chain_by(last.key, -moved);
+                    }
+                }
+                self.state.pinch = Some(Pinch {
+                    key: last.key,
+                    center,
+                    spread,
+                });
+            }
+            None => {
+                // Both touches on one scroller or zoom view (the innermost
+                // under each): anything else (a stick and a button, two
+                // controls) is not a gesture.
+                let under = |p: Vec2| {
+                    self.state
+                        .hits
+                        .iter()
+                        .rev()
+                        .find(|h| {
+                            h.has(HIT_SCROLL) && !h.has(HIT_OFFSCREEN) && h.rect.contains(p.x, p.y)
+                        })
+                        .map_or(0, |h| h.key)
+                };
+                let key = under(a);
+                if key == 0 || under(b) != key {
+                    return false;
+                }
+                self.state.pinch = Some(Pinch {
+                    key,
+                    center,
+                    spread,
+                });
+                // What the first finger pressed is not pressed.
+                self.state.active = 0;
+                self.state.fling = None;
+                self.state.thumb = None;
+                self.state.drag_v = Vec2::ZERO;
+            }
+        }
+        true
+    }
+
     /// The offset of scroll container `key` (x, y).
     pub(crate) fn offset(&self, key: u64) -> Vec2 {
         Vec2::new(
@@ -118,6 +289,10 @@ impl Ui {
     /// scroll container a press on a scrollbar grabbed (it holds the press).
     pub(crate) fn scroll_input(&mut self, input: &crate::input::InputFrame) -> Option<u64> {
         let p = input.pointer;
+        self.gesture = self.two_touches(input);
+        if self.gesture {
+            return None;
+        }
         let mut grabbed = None;
         if input.pressed {
             // A press stops a fling; one on a scrollbar grabs it.
@@ -161,12 +336,25 @@ impl Ui {
                 .find(|h| h.has(HIT_SCROLL) && h.rect.contains(p.x, p.y))
             {
                 let key = h.key;
-                self.scroll_chain_by(key, input.wheel);
+                if self.zoom_state(key).is_some() {
+                    // A zoom view zooms about the pointer: a notch (100 px
+                    // of wheel) up is about a seventh in.
+                    let k = 0.9985f32.powf(input.wheel.y);
+                    self.zoom_by(key, k, p, Vec2::ZERO);
+                } else {
+                    self.scroll_chain_by(key, input.wheel);
+                }
             }
         }
         // A drag on a container that holds the press, with its velocity kept.
         let active = self.state.active;
-        if self.hit(active).is_some_and(|h| h.has(HIT_SCROLL)) {
+        if self.zoom_state(active).is_some() {
+            // A drag on a zoom view pans it.
+            if input.down && !input.pressed {
+                let moved = p - self.state.pointer;
+                self.zoom_by(active, 1.0, p, moved);
+            }
+        } else if self.hit(active).is_some_and(|h| h.has(HIT_SCROLL)) {
             if input.down && !input.pressed {
                 let d = self.state.pointer - p;
                 self.scroll_chain_by(active, d);

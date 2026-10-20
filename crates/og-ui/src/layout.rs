@@ -275,6 +275,11 @@ pub struct Element {
     /// The skin frame its background takes (`None`: a plain fill). Without
     /// a skin, or a skin without that part, the background is the fill.
     pub skin: Option<crate::skin::SkinPart>,
+    /// Width over height (0: none). With the height left to fit, the
+    /// element is as tall as its laid-out width over this; with a fixed
+    /// height and the width left to fit, as wide as the height times it
+    /// (an image keeps its picture's proportions in a growing column).
+    pub aspect: f32,
 }
 
 impl Element {
@@ -457,6 +462,14 @@ pub(crate) enum Shape {
         step: TypeStep,
         color: Srgba,
         font: FontRole,
+    },
+    /// An icon of an icon set (an MTSDF font, `IconAtlas::font`): the
+    /// glyph's em square fitted to the frame's shorter side, centred.
+    Glyph {
+        frame: Frame,
+        font: og_render::FontHandle,
+        ch: char,
+        color: Srgba,
     },
 }
 
@@ -954,6 +967,14 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
             }
         }
     };
+    // A fixed height and an aspect ratio give the width.
+    let (pref, min) = match (n.el.aspect > 0.0, n.el.height, n.el.width) {
+        (true, Size::Fixed(h), Size::Fit { .. }) => {
+            let w = (h - n.el.padding.vertical()).max(0.0) * n.el.aspect;
+            (w, w)
+        }
+        _ => (pref, min),
+    };
     let pad = n.el.padding.horizontal();
     // A horizontal scroller never shrinks its content: it overflows and scrolls.
     let min = if n.el.scroll_x { 0.0 } else { min };
@@ -1166,7 +1187,15 @@ fn size_h(nodes: &mut [Node], i: usize) {
             }
         }
     };
-    let scroll = n.el.scroll;
+    // An aspect ratio gives a fitting height from the laid-out width.
+    let (pref, min) = match (n.el.aspect > 0.0, n.el.height) {
+        (true, Size::Fit { .. }) => {
+            let h = (n.w - n.el.padding.horizontal()).max(0.0) / n.el.aspect;
+            (h, h)
+        }
+        _ => (pref, min),
+    };
+    let scroll = n.el.scroll && n.el.aspect <= 0.0;
     let pad = n.el.padding.vertical();
     let content_min = if scroll { 0.0 } else { min };
     let (p, m) = apply_size(n.el.height, pad + pref, pad + content_min);

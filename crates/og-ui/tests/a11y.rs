@@ -299,3 +299,112 @@ fn tab_walks_the_focus_order_and_a_dialog_keeps_it() {
         "the page under the dialog is not focusable"
     );
 }
+
+fn asked(act: og_input::A11yAct, path: &str) -> InputFrame {
+    InputFrame {
+        a11y: vec![(act, path.to_owned())],
+        ..InputFrame::default()
+    }
+}
+
+/// A screen reader's requests (`InputFrame::a11y`, og-input's
+/// `og.A11yAction`) act on the control the tree names: Focus moves focus
+/// there with the ring, Activate presses it as Enter does (a switch
+/// toggles, a tab is chosen), Increment and Decrement step a slider, a
+/// text field takes the focus to edit; a path outside an open dialog, or
+/// naming no control, does nothing.
+///
+/// Ways it could fail: the path resolves to another key than the frame
+/// gave the control (layers, nested rows, links); the request acts a tick
+/// late or twice; it reaches the page under a dialog.
+#[test]
+fn a_screen_readers_requests_reach_the_control_the_tree_names() {
+    use og_input::A11yAct;
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut f = Form::default();
+    for _ in 0..2 {
+        tick(&mut ui, &mut f, InputFrame::default());
+    }
+    tick(&mut ui, &mut f, asked(A11yAct::Focus, "Form/Hints"));
+    assert_eq!(ui.a11y().focused, "Form/Hints");
+    assert!(!f.check, "focus alone does not check it");
+    tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Music"));
+    assert!(f.on, "activating the switch toggles it");
+    assert_eq!(ui.a11y().focused, "Form/Music");
+    tick(&mut ui, &mut f, InputFrame::default());
+    assert!(f.on, "once");
+    tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Mode/Tab#1"));
+    assert_eq!(f.tab, 1, "activating a tab chooses it");
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Volume"));
+    assert_eq!(f.volume, 5.0, "increment steps the slider by its step");
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Volume"));
+    tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Volume"));
+    assert_eq!(f.volume, 5.0);
+    tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Name"));
+    assert_eq!(ui.a11y().focused, "Form/Name", "a field takes the focus");
+    tick(
+        &mut ui,
+        &mut f,
+        asked(A11yAct::Activate, "Form/Nothing here"),
+    );
+    assert_eq!(
+        ui.a11y().focused,
+        "Form/Name",
+        "an unknown path does nothing"
+    );
+    // A dialog's scope: the page under it is out of reach.
+    f.dialog = true;
+    for _ in 0..30 {
+        tick(&mut ui, &mut f, InputFrame::default());
+    }
+    tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Music"));
+    assert!(f.on, "the switch under the dialog did not toggle");
+    tick(
+        &mut ui,
+        &mut f,
+        asked(A11yAct::Focus, "Confirm/Panel/Delete"),
+    );
+    assert_eq!(ui.a11y().focused, "Confirm/Panel/Delete");
+    // The tree's digest moves with what a mirror shows.
+    let before = ui.a11y().digest();
+    tick(&mut ui, &mut f, InputFrame::default());
+    assert_eq!(ui.a11y().digest(), before, "an unchanged frame keeps it");
+    tick(
+        &mut ui,
+        &mut f,
+        asked(A11yAct::Focus, "Confirm/Panel/Cancel"),
+    );
+    assert_ne!(ui.a11y().digest(), before, "focus moved: it changes");
+}
+
+/// The page's preferences arrive with the viewport: reduced motion turns
+/// the theme's flag on, more contrast takes the high-contrast variant,
+/// over whatever the game configured, and leave again when the page
+/// drops them.
+#[test]
+fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut f = Form::default();
+    let configured = *ui.theme();
+    assert!(!configured.reduced_motion && configured.contrast == Contrast::Standard);
+    let at = |reduced_motion, high_contrast| Viewport {
+        reduced_motion,
+        high_contrast,
+        ..Viewport::new(800.0, 1000.0)
+    };
+    for (reduced, high) in [(true, false), (false, true), (true, true), (false, false)] {
+        ui.begin(InputFrame::default(), at(reduced, high));
+        form(&mut ui, &mut f);
+        ui.end();
+        let t = ui.theme();
+        assert_eq!(t.reduced_motion, reduced, "reduced motion {reduced}");
+        assert_eq!(t.contrast == Contrast::High, high, "high contrast {high}");
+        if high {
+            assert_eq!(
+                t.palette.fg_muted, t.palette.fg,
+                "high contrast inks muted text as fg"
+            );
+        }
+    }
+    assert_eq!(*ui.theme(), configured, "the configured theme is back");
+}

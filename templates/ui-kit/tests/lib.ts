@@ -43,6 +43,8 @@ export interface DemoState {
   rules: number;
   a11yNodes: number;
   a11yFocus: number;
+  zoom: number;
+  quests: number;
 }
 
 export const demo = (run: PlaytestRun, file: string): DemoState =>

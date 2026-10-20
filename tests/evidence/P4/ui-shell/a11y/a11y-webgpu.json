@@ -1,0 +1,430 @@
+{
+  "tier": "webgpu",
+  "renderer": "webgpu",
+  "tree": 19,
+  "pause": {
+    "moving": {
+      "early": 326.6055908203125,
+      "settled": 340
+    },
+    "reduced": {
+      "early": 340,
+      "settled": 340
+    }
+  },
+  "engine": [],
+  "checks": [
+    {
+      "check": "the mirror has the settings screen's tree (19 nodes)",
+      "ok": true,
+      "detail": [
+        "Back/Gallery",
+        "Settings/Panel",
+        "Settings/Panel/Title",
+        "Settings/Panel/Section",
+        "Settings/Panel/Section/Tab#0",
+        "Settings/Panel/Section/Tab#1",
+        "Settings/Panel/Section/Tab#2",
+        "Settings/Panel/Section/Tab#3",
+        "Settings/Panel/Body/Master/Label",
+        "Settings/Panel/Body/Master/Slider",
+        "Settings/Panel/Body/Master/Value",
+        "Settings/Panel/Body/Music/Label",
+        "Settings/Panel/Body/Music/Slider",
+        "Settings/Panel/Body/Music/Value",
+        "Settings/Panel/Body/Effects/Label",
+        "Settings/Panel/Body/Effects/Slider",
+        "Settings/Panel/Body/Effects/Value",
+        "Settings/Panel/Body/Mute",
+        "Settings/Panel/Footer/Done"
+      ]
+    },
+    {
+      "check": "one element per node, in tree order",
+      "ok": true,
+      "detail": {
+        "dom": [
+          "Back/Gallery",
+          "Settings/Panel",
+          "Settings/Panel/Title",
+          "Settings/Panel/Section",
+          "Settings/Panel/Section/Tab#0",
+          "Settings/Panel/Section/Tab#1",
+          "Settings/Panel/Section/Tab#2",
+          "Settings/Panel/Section/Tab#3",
+          "Settings/Panel/Body/Master/Label",
+          "Settings/Panel/Body/Master/Slider",
+          "Settings/Panel/Body/Master/Value",
+          "Settings/Panel/Body/Music/Label",
+          "Settings/Panel/Body/Music/Slider",
+          "Settings/Panel/Body/Music/Value",
+          "Settings/Panel/Body/Effects/Label",
+          "Settings/Panel/Body/Effects/Slider",
+          "Settings/Panel/Body/Effects/Value",
+          "Settings/Panel/Body/Mute",
+          "Settings/Panel/Footer/Done"
+        ],
+        "tree": [
+          "Back/Gallery",
+          "Settings/Panel",
+          "Settings/Panel/Title",
+          "Settings/Panel/Section",
+          "Settings/Panel/Section/Tab#0",
+          "Settings/Panel/Section/Tab#1",
+          "Settings/Panel/Section/Tab#2",
+          "Settings/Panel/Section/Tab#3",
+          "Settings/Panel/Body/Master/Label",
+          "Settings/Panel/Body/Master/Slider",
+          "Settings/Panel/Body/Master/Value",
+          "Settings/Panel/Body/Music/Label",
+          "Settings/Panel/Body/Music/Slider",
+          "Settings/Panel/Body/Music/Value",
+          "Settings/Panel/Body/Effects/Label",
+          "Settings/Panel/Body/Effects/Slider",
+          "Settings/Panel/Body/Effects/Value",
+          "Settings/Panel/Body/Mute",
+          "Settings/Panel/Footer/Done"
+        ]
+      }
+    },
+    {
+      "check": "each element is nested under its node's parent",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "each element lies at its node's bounds over the canvas",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "each element has its node's role",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "check": "the settings dialog: role dialog, named Settings, modal",
+      "ok": true,
+      "detail": {
+        "path": "Settings/Panel",
+        "parentPath": null,
+        "role": "dialog",
+        "label": "Settings",
+        "text": "",
+        "attrs": {
+          "aria-label": "Settings",
+          "aria-modal": "true"
+        },
+        "box": [
+          340,
+          142,
+          600,
+          436
+        ]
+      }
+    },
+    {
+      "check": "the section tabs: Audio selected, Graphics not",
+      "ok": true,
+      "detail": {
+        "audio": {
+          "path": "Settings/Panel/Section/Tab#0",
+          "parentPath": "Settings/Panel/Section",
+          "role": "tab",
+          "label": "Audio",
+          "text": "",
+          "attrs": {
+            "aria-label": "Audio",
+            "aria-selected": "true",
+            "tabindex": "-1",
+            "aria-current": "true"
+          },
+          "box": [
+            366,
+            208,
+            136,
+            28
+          ]
+        },
+        "graphics": {
+          "path": "Settings/Panel/Section/Tab#1",
+          "parentPath": "Settings/Panel/Section",
+          "role": "tab",
+          "label": "Graphics",
+          "text": "",
+          "attrs": {
+            "aria-label": "Graphics",
+            "aria-selected": "false",
+            "tabindex": "-1"
+          },
+          "box": [
+            504,
+            208,
+            135,
+            28
+          ]
+        }
+      }
+    },
+    {
+      "check": "the Master slider: named by its row's label, its value, focusable",
+      "ok": true,
+      "detail": {
+        "path": "Settings/Panel/Body/Master/Slider",
+        "parentPath": "Settings/Panel",
+        "role": "slider",
+        "label": "Master",
+        "text": "",
+        "attrs": {
+          "aria-label": "Master",
+          "aria-valuenow": "1",
+          "aria-valuetext": "1.00",
+          "tabindex": "-1"
+        },
+        "box": [
+          516,
+          250,
+          340,
+          28
+        ]
+      }
+    },
+    {
+      "check": "the Mute switch: unchecked",
+      "ok": true,
+      "detail": {
+        "path": "Settings/Panel/Body/Mute",
+        "parentPath": "Settings/Panel",
+        "role": "switch",
+        "label": "Mute everything",
+        "text": "",
+        "attrs": {
+          "aria-label": "Mute everything",
+          "aria-checked": "false",
+          "tabindex": "-1"
+        },
+        "box": [
+          364,
+          358,
+          153,
+          28
+        ]
+      }
+    },
+    {
+      "check": "the Done button",
+      "ok": true,
+      "detail": [
+        {
+          "path": "Back/Gallery",
+          "parentPath": null,
+          "role": "button",
+          "label": "Gallery",
+          "text": "",
+          "attrs": {
+            "aria-label": "Gallery"
+          },
+          "box": [
+            16,
+            676,
+            70,
+            28
+          ]
+        },
+        {
+          "path": "Settings/Panel/Footer/Done",
+          "parentPath": "Settings/Panel",
+          "role": "button",
+          "label": "Done",
+          "text": "",
+          "attrs": {
+            "aria-label": "Done",
+            "tabindex": "-1"
+          },
+          "box": [
+            850,
+            522,
+            66,
+            32
+          ]
+        }
+      ]
+    },
+    {
+      "check": "Chrome's accessibility tree reads a switch named Mute everything, not checked",
+      "ok": true,
+      "detail": {
+        "nodeId": "30",
+        "ignored": false,
+        "role": {
+          "type": "role",
+          "value": "switch"
+        },
+        "chromeRole": {
+          "type": "internalRole",
+          "value": 163
+        },
+        "name": {
+          "type": "computedString",
+          "value": "Mute everything",
+          "sources": [
+            {
+              "type": "relatedElement",
+              "attribute": "aria-labelledby"
+            },
+            {
+              "type": "attribute",
+              "value": {
+                "type": "computedString",
+                "value": "Mute everything"
+              },
+              "attribute": "aria-label",
+              "attributeValue": {
+                "type": "string",
+                "value": "Mute everything"
+              }
+            },
+            {
+              "type": "contents",
+              "superseded": true
+            },
+            {
+              "type": "attribute",
+              "attribute": "title",
+              "superseded": true
+            }
+          ]
+        },
+        "properties": [
+          {
+            "name": "focusable",
+            "value": {
+              "type": "booleanOrUndefined",
+              "value": true
+            }
+          },
+          {
+            "name": "checked",
+            "value": {
+              "type": "tristate",
+              "value": "false"
+            }
+          }
+        ],
+        "parentId": "14",
+        "childIds": [],
+        "backendDOMNodeId": 30
+      }
+    },
+    {
+      "check": "and a slider named Master",
+      "ok": true,
+      "detail": [
+        "Master",
+        "Music",
+        "Effects"
+      ]
+    },
+    {
+      "check": "a settled screen's frames carry no tree (0 of 20 did)",
+      "ok": true
+    },
+    {
+      "check": "the click changed the tree (1 frames carried one)",
+      "ok": true
+    },
+    {
+      "check": "the click reached the UI: the Mute switch is checked",
+      "ok": true,
+      "detail": {
+        "clipped": false,
+        "disabled": false,
+        "height": 28,
+        "id": "Mute",
+        "kind": "toggle",
+        "name": "Mute everything",
+        "parent": "Body",
+        "role": "switch",
+        "states": [
+          "checked",
+          "focusable",
+          "focused"
+        ],
+        "text": "Mute everything",
+        "value": "",
+        "width": 153,
+        "x": 364,
+        "y": 358
+      }
+    },
+    {
+      "check": "the mirror's aria-checked followed",
+      "ok": true,
+      "detail": {
+        "path": "Settings/Panel/Body/Mute",
+        "parentPath": "Settings/Panel",
+        "role": "switch",
+        "label": "Mute everything",
+        "text": "",
+        "attrs": {
+          "aria-label": "Mute everything",
+          "aria-checked": "true",
+          "tabindex": "-1",
+          "aria-current": "true"
+        },
+        "box": [
+          364,
+          358,
+          153,
+          28
+        ]
+      }
+    },
+    {
+      "check": "the UI's focus moved to the switch and the DOM focus followed",
+      "ok": true,
+      "detail": {
+        "focusedPath": "Settings/Panel/Body/Mute"
+      }
+    },
+    {
+      "check": "clicking the Graphics tab changed the section (High contrast is there, Mute is gone)",
+      "ok": true,
+      "detail": [
+        "Show frame rate",
+        "Reduce motion",
+        "High contrast"
+      ]
+    },
+    {
+      "check": "Done saved, and the toast was written into the polite live region",
+      "ok": true,
+      "detail": "Settings saved"
+    },
+    {
+      "check": "prefers-contrast: more changed the frame (the high-contrast theme)",
+      "ok": true
+    },
+    {
+      "check": "and ending it brought the standard frame back",
+      "ok": true
+    },
+    {
+      "check": "without the preference the pause dialog scales in",
+      "ok": true,
+      "detail": {
+        "early": 326.6055908203125,
+        "settled": 340
+      }
+    },
+    {
+      "check": "under prefers-reduced-motion it arrives at its full size (a fade)",
+      "ok": true,
+      "detail": {
+        "early": 340,
+        "settled": 340
+      }
+    }
+  ],
+  "log": []
+}

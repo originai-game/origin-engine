@@ -15,8 +15,9 @@
 //! frame (owed row 48); with every primary and secondary label at 7:1 here
 //! the lowest in its polish frames is 4.65:1
 //! (tests/evidence/P4/web-host-tools/fantasy-contrast.md). The bars hold
-//! for the fantasy pack and Ember Vale's copy; the other packs' rows are
-//! printed (several are under, recorded in that file).
+//! for every pack (the fantasy family since the web host and tools round,
+//! the other five since the UI shell round's palettes:
+//! tests/evidence/P4/ui-shell/pack-contrast.md); every row is printed.
 //!
 //! Ways this could fail: a pack's accent or fill too dark for its ink once
 //! the frame art shades it; a muted or subtle ink that reads on paper
@@ -43,9 +44,6 @@ const ROLES: [(&str, ButtonVariant); 4] = [
 /// quiet and danger buttons, the label inks on a panel.
 const BUTTON_BAR: f32 = 7.0;
 const LABEL_BAR: f32 = 4.5;
-
-/// The packs the bars hold for: the fantasy pack and Ember Vale's copy.
-const STRICT: [&str; 2] = ["fantasy", "ember"];
 
 fn packs() -> Vec<(String, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates");
@@ -80,6 +78,19 @@ fn ratio(a: [f32; 3], b: [f32; 3]) -> f32 {
 /// `top` (linear, straight alpha) over the opaque linear `below`.
 fn over(top: [f32; 4], below: [f32; 3]) -> [f32; 3] {
     [0, 1, 2].map(|i| top[i] * top[3] + below[i] * (1.0 - top[3]))
+}
+
+/// A linear colour as `#rrggbb` (sRGB), for the printed rows.
+fn hex(c: [f32; 3]) -> String {
+    let e = |v: f32| {
+        let s = if v <= 0.003_130_8 {
+            v * 12.92
+        } else {
+            1.055 * v.powf(1.0 / 2.4) - 0.055
+        };
+        (s.clamp(0.0, 1.0) * 255.0).round() as u8
+    };
+    format!("#{:02x}{:02x}{:02x}", e(c[0]), e(c[1]), e(c[2]))
 }
 
 fn rgb(c: Srgba) -> [f32; 3] {
@@ -295,11 +306,10 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     let (ink, fill) = measured(&ui, label, bg, tex, &atlas);
                     let r = ratio(ink, fill);
                     rows.push(format!(
-                        "{name:8} {label:9} {state:7} on the {ground_name:6} {r:6.2}:1"
+                        "{name:8} {label:9} {state:7} on the {ground_name:6} {r:6.2}:1  {} on {}",
+                        hex(ink),
+                        hex(fill)
                     ));
-                    // The bars hold for the fantasy family (owed row 48); the
-                    // other packs are printed (tests/evidence/P4/web-host-tools).
-                    let strict = STRICT.contains(&name.as_str());
                     let bar = if matches!(state, "rest" | "hovered")
                         && matches!(label, "Primary" | "Secondary")
                     {
@@ -310,8 +320,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     // Quiet and danger buttons have no fill of their own (a
                     // tint over what is behind): their ink is for the pack's
                     // surfaces, not the bare screen.
-                    let applies =
-                        strict && (panel.is_some() || matches!(label, "Primary" | "Secondary"));
+                    let applies = panel.is_some() || matches!(label, "Primary" | "Secondary");
                     if applies && r < bar {
                         failing.push(format!(
                             "{name}: the {label} button's label, {state}, on the {ground_name}: {r:.2}:1 (under {bar}:1)"
@@ -359,11 +368,13 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 let (ink_l, ground) = measured(&ui, "Ink", bg, tex, &atlas);
                 let r = ratio(ink_l, ground);
                 rows.push(format!(
-                    "{name:8} {ink_name:9} label   on the {ground_name:6} {r:6.2}:1"
+                    "{name:8} {ink_name:9} label   on the {ground_name:6} {r:6.2}:1  {} on {}",
+                    hex(ink_l),
+                    hex(ground)
                 ));
                 // On the bare screen a pack's light ink is for a dark bg it
                 // never sits on in the kit; the screen's own text is fg.
-                let bar_applies = STRICT.contains(&name.as_str()) && panel.is_some();
+                let bar_applies = panel.is_some();
                 if bar_applies && r < LABEL_BAR {
                     failing.push(format!(
                         "{name}: {ink_name} on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"

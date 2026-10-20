@@ -11,9 +11,15 @@
 // point, so a stick and a button can be held together. Gamepads are polled
 // on the display frame (gamepad.ts) and delivered both as og.Gamepad states
 // and, for games that only read keys, as the keys of their standard mapping.
+//
+// Accessibility: the UI's accessibility tree is mirrored into the page over
+// the canvas (a11y.ts), and the page's `prefers-reduced-motion: reduce` and
+// `prefers-contrast: more` reach the UI with the viewport (og-ui's theme
+// takes them over the game's settings), followed as they change.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
+import { A11yMirror, type A11yTree } from "./a11y.ts";
 import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
@@ -69,6 +75,12 @@ export interface ShellOptions {
 export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio: number, dprCap = 2): { width: number; height: number; dpr: number } {
   const dpr = Math.max(0.5, Math.min(devicePixelRatio || 1, dprCap > 0 ? dprCap : 2));
   return { width: Math.max(1, Math.round(cssWidth * dpr)), height: Math.max(1, Math.round(cssHeight * dpr)), dpr };
+}
+
+/** The page's motion and contrast preferences, as the viewport carries them to og-ui. */
+export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean } {
+  const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
+  return { reducedMotion: query("(prefers-reduced-motion: reduce)"), highContrast: query("(prefers-contrast: more)") };
 }
 
 /** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
@@ -151,6 +163,10 @@ export class Shell {
   #stopped: Error | null = null;
   /** The hidden textarea that takes the page's text for the UI's focused field (text-input.ts). */
   #text: TextEntry | undefined;
+  /** The DOM mirror of the UI's accessibility tree (a11y.ts). */
+  #a11y: A11yMirror | undefined;
+  /** The viewport last sent to the Worker (the page's preferences are re-read into it when they change). */
+  #viewport: Record<string, unknown> = {};
   /** What stopped the engine, once something did. */
   #error: HostError | null = null;
   /** When the Worker last said it plays (`beat`), and the tick it reached. */
@@ -194,6 +210,10 @@ export class Shell {
       }
       if (m.type === "copy") {
         this.#text?.copied((m as unknown as { text: string }).text);
+        return;
+      }
+      if (m.type === "a11y") {
+        this.#a11y?.update((m as unknown as { tree: A11yTree }).tree);
         return;
       }
       if (m.type === "rpc" && m.frame !== undefined) {
@@ -296,7 +316,7 @@ export class Shell {
         locale: options.locale ?? globalThis.navigator?.language,
         ...(options.expect ? { expect: options.expect } : {}),
         ...(options.prime ? { prime: true } : {}),
-        viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false },
+        viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false, ...pagePreferences() },
       },
       [offscreen],
     );
@@ -313,6 +333,7 @@ export class Shell {
     shell.#onCrash = options.onCrash;
     shell.#onFirstFrame = options.onFirstFrame;
     shell.#playing = options.autoplay ?? true;
+    shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
     shell.#beat = shell.#watched = performance.now();
     shell.#watchdog = setInterval(() => shell.#watch(), 1000);
     if (options.platform) shell.setPlatform(options.platform);
@@ -440,8 +461,14 @@ export class Shell {
       ...(safeArea ? { safeArea } : {}),
       coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false,
     };
-    this.worker.postMessage({ type: "resize", width: size.width, height: size.height, viewport });
+    this.#viewport = viewport;
+    this.worker.postMessage({ type: "resize", width: size.width, height: size.height, viewport: { ...viewport, ...pagePreferences() } });
     return size;
+  }
+
+  /** The DOM mirror of the UI's accessibility tree (a11y.ts). */
+  get a11y(): A11yMirror | undefined {
+    return this.#a11y;
   }
 
   /** Deliver one event as page input (the ring when isolated, else a message). */
@@ -467,6 +494,18 @@ export class Shell {
     const text = new TextEntry(canvas, (e) => this.#send(ring, e));
     this.#text = text;
     this.#listeners.push(() => text.dispose());
+    // The accessibility tree over the canvas; what a screen reader does there reaches the UI as input.
+    const mirror = new A11yMirror(canvas, (e) => this.#send(ring, e));
+    this.#a11y = mirror;
+    this.#listeners.push(() => mirror.dispose());
+    // The page's motion and contrast preferences, followed as the reader changes them.
+    for (const q of ["(prefers-reduced-motion: reduce)", "(prefers-contrast: more)"]) {
+      const media = globalThis.matchMedia?.(q);
+      if (!media?.addEventListener) continue;
+      const changed = () => this.worker.postMessage({ type: "viewport", viewport: { ...this.#viewport, ...pagePreferences() } });
+      media.addEventListener("change", changed);
+      this.#listeners.push(() => media.removeEventListener("change", changed));
+    }
     const typing = (e: KeyboardEvent) => {
       if (text.owns(e.target)) return e.isComposing || text.composing || e.keyCode === 229;
       const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;

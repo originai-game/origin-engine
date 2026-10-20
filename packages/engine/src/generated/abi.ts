@@ -427,6 +427,8 @@ export interface HostAbi<A, V> {
   og_ui_button(id: string, text: string, desc: string | undefined): string;
   /** `og.ui.image` */
   og_ui_image(id: string, desc: string | undefined): void;
+  /** `og.ui.zoomView` */
+  og_ui_zoom_view(id: string, desc: string | undefined): string;
   /** `og.ui.progress` */
   og_ui_progress(id: string, value: number, desc: string | undefined): void;
   /** `og.ui.slider` */
@@ -821,6 +823,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_label",
   "og_ui_button",
   "og_ui_image",
+  "og_ui_zoom_view",
   "og_ui_progress",
   "og_ui_slider",
   "og_ui_toggle",

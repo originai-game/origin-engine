@@ -1229,6 +1229,25 @@ export interface TextEntry {
 }
 
 /**
+ * What an assistive technology asks of a UI control.
+ * - `"focus"`: Move the UI's focus to it (with the focus ring).
+ * - `"activate"`: Press it, as Enter on it would (a text control takes the focus).
+ * - `"increment"`: Step an adjustable control (a slider, a stepper) up.
+ * - `"decrement"`: Step an adjustable control down.
+ */
+export type A11yActionKind = "focus" | "activate" | "increment" | "decrement";
+
+/**
+ * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored).
+ */
+export interface A11yRequest {
+  /** What is asked. */
+  readonly action: A11yActionKind;
+  /** The control's path, as og.ui.a11y() names it. */
+  readonly path: string;
+}
+
+/**
  * One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it.
  */
 export type InjectedInput =
@@ -1241,7 +1260,9 @@ export type InjectedInput =
   /** A gamepad's state. */
   | ({ readonly kind: "gamepad" } & GamepadInput)
   /** Typed or composed text. */
-  | ({ readonly kind: "text" } & TextEntry);
+  | ({ readonly kind: "text" } & TextEntry)
+  /** A screen reader's request on a UI control. */
+  | ({ readonly kind: "a11y" } & A11yRequest);
 
 /**
  * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
@@ -1890,6 +1911,18 @@ export interface Wheel {
   readonly deltaX: number;
   /** Vertical scroll in CSS pixels. */
   readonly deltaY: number;
+}
+
+/**
+ * A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
+ *
+ * The payload of the `A11yAction` event (token `og.A11yAction`).
+ */
+export interface A11yAction {
+  /** What is asked. */
+  readonly action: A11yActionKind;
+  /** The control's path, as og.ui.a11y() names it. */
+  readonly path: string;
 }
 
 // ── camera ──────────────────────────────────────────────────────
@@ -5355,6 +5388,10 @@ export interface FontInfo {
   readonly descender: number;
   /** Ascender minus descender plus the line gap. */
   readonly lineHeight: number;
+  /**
+   * The icons of an icon set (an `.ogt` of `type icons`, SVGs cooked like a font for UiDesc.icons.font); 0 for a text font.
+   */
+  readonly icons: number;
 }
 
 /** A loaded sound. */
@@ -11577,6 +11614,13 @@ export interface ElementDesc {
    * @default null
    */
   readonly frame?: SkinPart | null;
+  /**
+   * Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
 }
 
 /**
@@ -11812,6 +11856,82 @@ export interface ImageDesc {
    * @default null
    */
   readonly height?: Size | null;
+  /**
+   * Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+}
+
+/**
+ * A zoomable picture (a map, an artwork): what it shows and its zoom limits.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ZoomViewDesc {
+  /**
+   * The picture; null draws a solid rectangle of the tint.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The picture's region, [u0, v0, u1, v1] with v down; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * Multiplies the texture; null is white.
+   *
+   * @default null
+   */
+  readonly tint?: Paint | null;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Width over height (0: none), as ImageDesc.aspect.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * The least zoom; 0 is 1 (the whole picture).
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly minZoom?: number;
+  /**
+   * The most zoom; 0 is 4.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly maxZoom?: number;
+}
+
+/** Where a zoom view is. */
+export interface ZoomResult {
+  /** Its zoom: 1 shows the whole picture, 2 half of it each way. */
+  readonly zoom: number;
+  /** The middle of what it shows, as a fraction of the picture's width (0.5 at rest). */
+  readonly centerX: number;
+  /** The middle of what it shows, as a fraction of the picture's height (0.5 at rest). */
+  readonly centerY: number;
 }
 
 /**
@@ -11999,6 +12119,14 @@ export interface Viewport {
   readonly safeArea: Insets;
   /** A touch screen or another coarse pointer. */
   readonly coarsePointer: boolean;
+  /**
+   * The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false.
+   */
+  readonly reducedMotion?: boolean;
+  /**
+   * The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false.
+   */
+  readonly highContrast?: boolean;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
 }
@@ -12052,7 +12180,7 @@ export interface UiDesc {
    */
   readonly fallbackFonts?: readonly Font[];
   /**
-   * Standard or high contrast.
+   * Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast).
    *
    * @default "standard"
    */
@@ -12070,7 +12198,7 @@ export interface UiDesc {
    */
   readonly accentColor?: Color | null;
   /**
-   * Transitions only fade; sheens stop (prefers-reduced-motion).
+   * Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion).
    *
    * @default false
    */
@@ -12331,6 +12459,7 @@ export interface RichTextResult {
 
 
 
+
 /**
  * A point of the safe area an anchored group sits at.
  * - `"topLeft"`: The top left corner.
@@ -12453,11 +12582,17 @@ export interface UiRect {
 }
 
 /**
- * The icon atlas: a texture of equal cells in a grid, named in reading order.
+ * The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font).
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface IconAtlasDesc {
+  /**
+   * An icon set from og.load.font (an `.ogt` of `type icons` naming SVGs, such as the UI kit's iconoir set): its icons are distance-field glyphs, crisp at any size and tinted by their ink, named by the set; texture, columns, rows and names are then not used.
+   *
+   * @default null
+   */
+  readonly font?: Font | null;
   /**
    * The atlas texture, from og.load.texture.
    *
@@ -16607,6 +16742,10 @@ export declare namespace og {
   /** A wheel or trackpad scroll. */
   const Wheel: EventType<Wheel>;
   /**
+   * A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
+   */
+  const A11yAction: EventType<A11yAction>;
+  /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
   const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32"> }, Camera>;
@@ -16920,7 +17059,7 @@ export declare namespace og {
      */
     function scene(world: World, path: string): Result<Asset>;
     /**
-     * Load a cooked MSDF font for og.render.text.
+     * Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font.
      *
      * @param world The world that owns the font.
      * @param path The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`.
@@ -18021,12 +18160,19 @@ export declare namespace og {
      */
     function button(id: string, text: string, desc?: ButtonDesc): Response;
     /**
-     * A texture region, or a solid rectangle.
+     * A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other.
      *
      * @param id Its id.
-     * @param desc Texture, region, tint and size.
+     * @param desc Texture, region, tint, size and aspect ratio.
      */
     function image(id: string, desc?: ImageDesc): void;
+    /**
+     * A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way. The probe reads its zoom as its value.
+     *
+     * @param id Its id.
+     * @param desc The picture, its size and zoom limits.
+     */
+    function zoomView(id: string, desc?: ZoomViewDesc): ZoomResult;
     /**
      * A capsule track filled to a fraction.
      *
@@ -18324,7 +18470,7 @@ export declare namespace og {
      */
     function spinner(id: string, size: number): void;
     /**
-     * An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.
+     * An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name.
      *
      * @param id Its id.
      * @param name The icon's name.

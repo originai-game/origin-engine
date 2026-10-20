@@ -20,7 +20,7 @@ import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
-  "players", "text",
+  "players", "text", "materials",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -53,6 +53,7 @@ const BLURBS: Record<Screen, string> = {
   toasts: "The toast queue in every tone",
   players: "Local multiplayer: four pads, four rings",
   text: "Kerning, ellipses, scripts, fields and text areas",
+  materials: "Icons, edge light, pictures, two-finger scroll and pinch",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -67,6 +68,12 @@ export const Demo = defineComponent("Demo", {
   hebrewFont: f64(0),
   devanagariFont: f64(0),
   icons: f64(0),
+  // The iconoir icon set (assets/icons/iconoir.ogt, cooked like a font) and whether it is the atlas now.
+  iconSet: f64(0),
+  iconoir: bool(),
+  // The materials screen: the map's zoom and the quests pressed.
+  zoom: f32(1),
+  quests: u32(0),
   backdrop: f64(0),
   hp: f32(72),
   mana: f32(40),
@@ -147,7 +154,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
 }
 
 export const ICONS = [
@@ -324,7 +331,12 @@ function applyTheme(world: World, d: DemoState): void {
     fallbackFonts: [d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
-    ...(skin ? { skin } : { icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {} }),
+    // The materials screen draws from the iconoir set; the others from the kit's grid (or the pack's).
+    ...(d.iconoir && d.iconSet
+      ? { icons: { font: d.iconSet as never }, ...(skin ? { skin } : {}) }
+      : skin
+        ? { skin }
+        : { icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {} }),
     ...(d.sounds ? { sounds } : {}),
   });
 }
@@ -393,6 +405,62 @@ function textScreen(): void {
     });
     typed.name = og.ui.textField("Name", typed.name, { placeholder: "Your name", width: grow }).value;
     typed.notes = og.ui.textArea("Notes", typed.notes, { placeholder: "Notes", rows: 3, width: grow }).value;
+  });
+}
+
+/** iconoir icons the materials screen shows (assets/icons/iconoir.ogt names 64). */
+const ICONOIR = [
+  "heart", "star", "coins", "trophy", "medal", "crown", "gift", "shield",
+  "flash", "fire-flame", "potion", "magic-wand", "sparks", "flask", "cube", "puzzle",
+  "home", "settings", "play", "pause", "refresh", "search", "lock", "key",
+  "map", "compass", "clock", "hourglass", "gamepad", "dice-five", "rocket", "cart",
+];
+
+/** Materials: the iconoir set (distance-field glyphs, in rich text too),
+ * the dark surfaces' edge light, a picture that keeps its aspect ratio, a
+ * map two fingers pinch and pan, and a quest list two fingers scroll. */
+function materialsScreen(d: DemoState): void {
+  const vp = og.ui.frameViewport();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  const t = og.ui.frameTheme();
+  const grow = { kind: "grow" } as const;
+  og.ui.anchor("Materials", {
+    anchor: phone ? "top" : "center",
+    offsetY: phone ? 100 : 0,
+    direction: "column",
+    gap: t.space.md,
+    width: phone ? grow : { kind: "fixed", px: 900 },
+    padding: { left: t.space.xl, top: t.space.lg, right: t.space.xl, bottom: t.space.lg },
+    background: { token: "surface" },
+    radius: t.radius.panel,
+  }, () => {
+    og.ui.label("Title", "Icons, pictures and gestures", { step: "xl", font: "display", heading: true });
+    og.ui.row("Icons", { gap: t.space.sm, wrap: true, width: grow }, () => {
+      ICONOIR.slice(0, phone ? 16 : 32).forEach((name, i) => og.ui.icon(og.ui.idi("Icon", i), name, { size: i % 8 === 0 ? 32 : 24, tint: { token: i % 8 === 0 ? "accent" : "fgMuted" } }));
+    });
+    og.ui.richText("Rich", "Collect [icon=coins] coins and [icon=heart] hearts, then [b]claim[/b] the [icon=trophy] trophy.", { width: grow });
+    // On a phone the two pictures share a line and the list takes the next.
+    const inner = t.sizes.gutter;
+    const half = Math.floor((vp.width - 2 * inner - 2 * t.space.xl - t.space.md) / 2);
+    og.ui.row("Pictures", { gap: t.space.md, width: grow, wrap: phone }, () => {
+      og.ui.column("Left", { width: phone ? { kind: "fixed", px: half } : grow, gap: t.space.xs }, () => {
+        og.ui.label("PictureLabel", "A 16:9 picture", { step: "meta", color: { token: "fgMuted" } });
+        og.ui.image("Picture", { texture: d.backdrop ? (d.backdrop as never) : null, width: grow, aspect: 16 / 9 });
+      });
+      og.ui.column("Middle", { width: phone ? { kind: "fixed", px: half } : grow, gap: t.space.xs }, () => {
+        og.ui.label("MapLabel", `Pinch or wheel: ${Math.round(d.zoom * 100)}%`, { step: "meta", color: { token: "fgMuted" } });
+        const z = og.ui.zoomView("Map", { texture: d.backdrop ? (d.backdrop as never) : null, width: grow, aspect: 16 / 9, maxZoom: 4 });
+        d.zoom = z.zoom;
+      });
+      og.ui.column("Right", { width: phone ? { kind: "fixed", px: 2 * half + t.space.md } : { kind: "fixed", px: 200 }, gap: t.space.xs }, () => {
+        og.ui.label("QuestsLabel", "Two fingers scroll", { step: "meta", color: { token: "fgMuted" } });
+        og.ui.scroll("Quests", { width: grow, height: { kind: "fixed", px: phone ? 220 : 200 }, gap: t.space.xs, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 } }, () => {
+          for (let i = 0; i < 12; i++) {
+            if (og.ui.button(og.ui.idi("Quest", i), `Quest ${i + 1}`, { width: grow, size: "small" }).clicked) d.quests += 1;
+          }
+        });
+      });
+    });
   });
 }
 
@@ -533,6 +601,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   d.a11yNodes = tree.nodes.length;
   d.a11yFocus = tree.focusOrder.length;
   let screen: Screen = SCREENS[d.screen] ?? "gallery";
+  if ((screen === "materials") !== d.iconoir) {
+    d.iconoir = screen === "materials";
+    applyTheme(world, d);
+  }
   const wipe = WIPES[d.wipe] ?? "none";
   if (wipe !== "none") {
     // Screen changes cover the old screen, switch, and reveal the new one.
@@ -827,6 +899,11 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       textScreen();
       back = og.ui.back();
       break;
+    case "materials":
+      // Its icons are the iconoir set: configured first, drawn from the next tick.
+      if (d.iconoir) materialsScreen(d);
+      back = og.ui.back();
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "surface" }, radius: t.radius.panel }, () => {
@@ -895,6 +972,7 @@ export default og.game({
     }
     const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
     const icons = og.load.texture(world, "textures/icons.png");
+    const iconSet = og.load.font(world, "icons/iconoir.ogt");
     const backdrop = og.load.texture(world, "textures/backdrop.png");
     const handle = (r: { ok: boolean; value?: unknown }): number => (r.ok ? (r.value as number) : 0);
     const face = (path: string) => handle(og.load.font(world, path));
@@ -905,6 +983,7 @@ export default og.game({
       hebrewFont: face("fonts/NotoSansHebrew-subset.ttf"),
       devanagariFont: face("fonts/NotoSansDevanagari-subset.ttf"),
       icons: handle(icons),
+      iconSet: handle(iconSet),
       backdrop: handle(backdrop),
     });
     const d = current(world);

@@ -32,7 +32,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
         .iter()
         .map(|e| InjectedInput::from_json(e).unwrap())
         .collect();
-    assert_eq!(expected.len(), 14);
+    assert_eq!(expected.len(), 16);
     let read = json["read"].as_u64().unwrap() as usize;
     assert!(
         read % SLOTS + expected.len() > SLOTS,
@@ -45,7 +45,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
     assert_eq!(drained.read as u64, json["write"].as_u64().unwrap());
 
     let mut owned = bin.clone();
-    assert_eq!(ring::drain_mut(&mut owned).events.len(), 14);
+    assert_eq!(ring::drain_mut(&mut owned).events.len(), 16);
     assert!(
         ring::drain(&owned).events.is_empty(),
         "the read index was stored"
@@ -87,6 +87,14 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
         InjectedInput::Text {
             text: String::new(),
             composing: false,
+        },
+        InjectedInput::A11y {
+            action: og_input::A11yAct::Decrement,
+            path: "Options/Panel/Body/Volume row/Volume/a path past one slot".into(),
+        },
+        InjectedInput::A11y {
+            action: og_input::A11yAct::Focus,
+            path: "Start".into(),
         },
     ];
     for e in &events {
@@ -132,8 +140,8 @@ fn the_input_layer_drains_a_ring_into_the_world() {
     let mut layer = InputLayer::new();
     layer.attach(&mut w).unwrap();
     let report = layer.drain_ring(&mut w, &bin);
-    assert_eq!((report.accepted, report.refused), (14, 0));
-    assert_eq!(layer.accepted(), 14);
+    assert_eq!((report.accepted, report.refused), (16, 0));
+    assert_eq!(layer.accepted(), 16);
     let input = *w.resource::<Input>().unwrap();
     assert!(input.down("KeyW") && input.down("ArrowLeft") && !input.down("NumpadSubtract"));
     assert!(input.button_down(PointerButton::Left) && input.button_down(PointerButton::Right));
@@ -165,6 +173,20 @@ fn the_input_layer_drains_a_ring_into_the_world() {
             (
                 "Typed text longer than one slot holds: 日本語のテキスト",
                 false
+            )
+        ]
+    );
+    // The a11y slots, the long path joined again, became og.A11yAction events.
+    let asked = w.pending_events::<og_input::A11yAction>().unwrap();
+    let asked: Vec<(Option<og_input::A11yAct>, &str)> =
+        asked.iter().map(|e| (e.act(), e.path.as_str())).collect();
+    assert_eq!(
+        asked,
+        [
+            (Some(og_input::A11yAct::Activate), "Settings/Tabs/Audio"),
+            (
+                Some(og_input::A11yAct::Increment),
+                "Settings/Panel/Body/AudioPane/MasterRow/Master/Slider"
             )
         ]
     );

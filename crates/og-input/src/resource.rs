@@ -202,6 +202,27 @@ impl TextInput {
     }
 }
 
+/// An assistive technology's request on a UI control (IDL
+/// `input.A11yAction`, an engine extension): the web shell's mirror of
+/// `og.ui.a11y()` sends it when a screen reader focuses, activates or
+/// adjusts a mirrored node. og-ui acts on it at the start of the next
+/// frame, against the last frame's controls.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.A11yAction")]
+pub struct A11yAction {
+    /// What is asked ([`crate::A11yAct::index`]).
+    #[reflect(variants = ["focus", "activate", "increment", "decrement"])]
+    pub action: u32,
+    /// The control's path, as `og.ui.a11y()` names it.
+    pub path: Str256,
+}
+
+impl A11yAction {
+    pub fn act(&self) -> Option<crate::A11yAct> {
+        crate::A11yAct::from_index(self.action)
+    }
+}
+
 /// A wheel or trackpad scroll (IDL `input.Wheel`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.Wheel")]
@@ -253,9 +274,10 @@ impl InputEvent {
 }
 
 /// Registers [`Input`] and the six events, then [`Pointers`],
-/// [`Gamepad`] and [`TextInput`], in this order: `og.Input`, `og.KeyDown`,
-/// `og.KeyUp`, `og.PointerDown`, `og.PointerUp`, `og.PointerMove`,
-/// `og.Wheel`, `og.Pointers`, `og.Gamepad`, `og.TextInput`. Idempotent.
+/// [`Gamepad`], [`TextInput`] and [`A11yAction`], in this order:
+/// `og.Input`, `og.KeyDown`, `og.KeyUp`, `og.PointerDown`, `og.PointerUp`,
+/// `og.PointerMove`, `og.Wheel`, `og.Pointers`, `og.Gamepad`,
+/// `og.TextInput`, `og.A11yAction`. Idempotent.
 pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Input>()?;
     world.register::<KeyDown>()?;
@@ -267,6 +289,7 @@ pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Pointers>()?;
     world.register::<Gamepad>()?;
     world.register::<TextInput>()?;
+    world.register::<A11yAction>()?;
     Ok(())
 }
 
@@ -424,7 +447,8 @@ impl Input {
             }
             // Further touches, pads and text have their own resources and events.
             InjectedInput::Pointer { id, .. } if *id != 0 => {}
-            InjectedInput::Gamepad(_) | InjectedInput::Text { .. } => {}
+            InjectedInput::Gamepad(_) | InjectedInput::Text { .. } | InjectedInput::A11y { .. } => {
+            }
             InjectedInput::Pointer {
                 action,
                 x,

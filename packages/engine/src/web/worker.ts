@@ -31,7 +31,8 @@
 // { type: "log", lines } with
 // the engine's log and the Worker's console (the crash card shows the last
 // 200); { type: "text", target } when the UI's focused text control changes
-// and { type: "copy", text } when a copy took text (text-input.ts); { type: "result", id, value | error } for `call` (`advance`,
+// and { type: "copy", text } when a copy took text (text-input.ts); { type: "a11y", tree } when the UI's
+// accessibility tree changed (a11y.ts); { type: "result", id, value | error } for `call` (`advance`,
 // `command`, `hash`, `frame`, `probe`, and `timings`: the played frames'
 // display intervals and engine work); { type: "rpc",
 // frame } for an answer that did not cross the ring.
@@ -87,7 +88,7 @@ interface Start {
   prime?: boolean;
 }
 
-type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean };
+type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean };
 
 interface Call {
   type: "call";
@@ -548,6 +549,18 @@ export function startWorker(game: GameToken): void {
     if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(stamped(event, now));
   };
 
+  /** What a frame's answer tells the shell: the UI's focused text control (text-input.ts), a copy, and the accessibility tree when it changed (a11y.ts). */
+  const relay = (answered: ReturnType<Engine["frame"]>) => {
+    if (!answered.ok) return;
+    const target = JSON.stringify(answered.text ?? null);
+    if (target !== textTarget) {
+      textTarget = target;
+      self.postMessage({ type: "text", target: answered.text ?? null });
+    }
+    if (answered.copy !== undefined) self.postMessage({ type: "copy", text: answered.copy });
+    if (answered.a11y !== undefined) self.postMessage({ type: "a11y", tree: answered.a11y });
+  };
+
   const answer = (frame: string, viaRing: boolean) => {
     if (!viaRing || !rpc || !writeFrame(rpc.answers, frame)) self.postMessage({ type: "rpc", frame });
   };
@@ -620,13 +633,7 @@ export function startWorker(game: GameToken): void {
           recorded++;
         }
         behind = answered.behind ?? 0;
-        // The UI's focused text control, for the shell's text target (text-input.ts).
-        const target = JSON.stringify(answered.text ?? null);
-        if (target !== textTarget) {
-          textTarget = target;
-          self.postMessage({ type: "text", target: answered.text ?? null });
-        }
-        if (answered.copy !== undefined) self.postMessage({ type: "copy", text: answered.copy });
+        relay(answered);
         if (typeof answered.tick === "number") lastTick = answered.tick;
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
@@ -687,6 +694,7 @@ export function startWorker(game: GameToken): void {
     try {
       const answered = engine.frame(0);
       if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
+      relay(answered);
       if (!firstFrame && answered.rendered !== false) {
         firstFrame = true;
         self.postMessage({ type: "frame", first: true });
@@ -705,7 +713,11 @@ export function startWorker(game: GameToken): void {
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
     fault: (_, [site]) => glueRef?.og_web_lanes_fault?.(String(site)) ?? false,
-    frame: (e, [ms]) => e.frame(Number(ms)),
+    frame: (e, [ms]) => {
+      const answered = e.frame(Number(ms));
+      relay(answered);
+      return answered;
+    },
     // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
     timings: (_, [reset]) => {
       const n = Math.min(recorded, FRAME_RECORDS);
@@ -788,6 +800,7 @@ export function startWorker(game: GameToken): void {
           ...(data.profile === undefined ? {} : { profile: data.profile }),
           ...(data.locale ? { locale: data.locale } : {}),
           deferStart: true,
+          a11y: true,
         });
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;

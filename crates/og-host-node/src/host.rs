@@ -745,6 +745,9 @@ impl UiApi for NodeHost {
     fn og_ui_minimap(&self, id: String, desc: Option<String>) {
         rt::og_ui_minimap(id, desc)
     }
+    fn og_ui_zoom_view(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_zoom_view(id, desc)
+    }
     fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_dialogue(id, desc)
     }

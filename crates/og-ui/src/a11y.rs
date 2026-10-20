@@ -58,6 +58,34 @@ pub struct A11yTree {
     pub focused: String,
 }
 
+impl A11yTree {
+    /// A digest of the whole tree (every node's path, role, name, value,
+    /// states and bounds rounded to the CSS pixel, the focus order and the
+    /// focused path): a host mirroring the tree rebuilds its copy only when
+    /// this changes.
+    pub fn digest(&self) -> u64 {
+        let mut h = og_core::hash::StableHasher::new();
+        for n in &self.nodes {
+            for s in [&n.path, &n.parent, &n.role, &n.name, &n.value] {
+                h.write_str(s);
+            }
+            h.write_u64(n.states.len() as u64);
+            for s in &n.states {
+                h.write_str(s);
+            }
+            for v in [n.x, n.y, n.width, n.height] {
+                h.write_u64(v.round() as i64 as u64);
+            }
+        }
+        h.write_u64(self.focus_order.len() as u64);
+        for p in &self.focus_order {
+            h.write_str(p);
+        }
+        h.write_str(&self.focused);
+        h.finish()
+    }
+}
+
 /// The role an element of `kind` has by default.
 pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
     if let Some(r) = n.a11y.role {
@@ -85,7 +113,7 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
         "toast" => "status",
         "divider" => "separator",
         "tooltip" => "tooltip",
-        "image" | "icon" | "portrait" | "map" => "image",
+        "image" | "icon" | "portrait" | "map" | "zoom" => "image",
         "joystick" | "dpad" | "dialogue" => "group",
         // A container keys and pads reach (a shop card) is a button unless
         // its widget says otherwise.

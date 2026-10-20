@@ -1,0 +1,63 @@
+frame	changed_px	outliers_pct	rmse	box(x0,y0,x1,y1)
+glass.png	14399	8.400	0.10266	40,60,279,111
+kit-desktop-alert.png	790	0.000	0.00154	430,439,430,440
+kit-desktop-confirm.png	790	0.000	0.00154	430,439,430,440
+kit-desktop-cutscene.png	2702	0.000	0.00382	
+kit-desktop-gallery.png	1366	0.003	0.00261	890,352,893,359
+kit-desktop-idle.png	1238	0.004	0.00160	924,455,1263,467
+kit-desktop-inventory.png	1283	0.000	0.00209	
+kit-desktop-leaderboard.png	1200	0.000	0.00204	
+kit-desktop-levels.png	1228	0.000	0.00203	
+kit-desktop-pause.png	723	0.000	0.00147	
+kit-desktop-players.png	1096	0.006	0.00211	320,477,959,493
+kit-desktop-results.png	990	0.000	0.00182	
+kit-desktop-settings.png	1217	0.000	0.00205	
+kit-desktop-shop.png	1203	0.000	0.00199	260,475,260,476
+kit-desktop-text-compose.png	1198	0.000	0.00206	
+kit-desktop-text-select.png	1198	0.000	0.00206	
+kit-desktop-text.png	1198	0.000	0.00206	
+kit-desktop-toasts.png	736	0.000	0.00150	
+kit-desktop-tutorial.png	652	0.000	0.00145	
+kit-desktop-widgets.png	1380	0.000	0.00241	
+kit-locale-confirm-ar.png	768	0.000	0.00150	430,427,430,428
+kit-locale-confirm-en.png	790	0.000	0.00154	430,439,430,440
+kit-locale-confirm-ja.png	791	0.000	0.00155	430,440,430,441
+kit-locale-confirm-ko.png	770	0.000	0.00150	430,428,430,429
+kit-locale-confirm-zh-CN.png	770	0.000	0.00150	430,428,430,429
+kit-locale-pause-ar.png	723	0.000	0.00147	
+kit-locale-pause-en.png	723	0.000	0.00147	
+kit-locale-pause-ja.png	726	0.000	0.00148	
+kit-locale-pause-ko.png	726	0.000	0.00148	
+kit-locale-pause-zh-CN.png	726	0.000	0.00148	
+kit-phone-alert.png	5823	0.033	0.00328	49,986,1070,1541
+kit-phone-confirm.png	5823	0.033	0.00328	49,986,1070,1541
+kit-phone-cutscene.png	7302	0.043	0.00466	0,141,1169,2201
+kit-phone-gallery.png	11140	0.049	0.00510	95,197,1074,1468
+kit-phone-idle.png	5600	0.034	0.00357	87,1734,1082,1734
+kit-phone-inventory.png	7804	0.033	0.00366	98,659,1071,659
+kit-phone-leaderboard.png	8782	0.033	0.00383	98,500,1071,500
+kit-phone-levels.png	8382	0.033	0.00377	98,566,1071,566
+kit-phone-pause.png	6092	0.031	0.00330	126,914,1043,914
+kit-phone-results.png	8030	0.033	0.00371	98,623,1071,623
+kit-phone-settings.png	8562	0.033	0.00380	98,536,1071,536
+kit-phone-shop.png	7786	0.033	0.00362	98,662,1071,662
+kit-phone-toasts.png	6356	0.027	0.00343	185,806,984,806
+kit-phone-tutorial.png	5232	0.029	0.00319	147,1752,1004,1752
+kit-phone-widgets.png	8566	0.033	0.00415	95,189,1074,189
+kit-skin-cartoon-phone.png	size 3900x1688 -> 3900x2532			
+kit-skin-cartoon.png	390215	7.483	0.11484	10,13,4479,1079
+kit-skin-fantasy-phone.png	size 3900x1688 -> 3900x2532			
+kit-skin-fantasy.png	237804	4.710	0.10199	3840,720,4479,1079
+kit-skin-neon-phone.png	size 3900x1688 -> 3900x2532			
+kit-skin-neon.png	928092	5.210	0.06548	16,12,4479,1079
+kit-skin-paper-phone.png	size 3900x1688 -> 3900x2532			
+kit-skin-paper.png	256930	5.129	0.11683	16,14,4479,1079
+kit-skin-pixel-phone.png	size 3900x1688 -> 3900x2532			
+kit-skin-pixel.png	371767	5.320	0.06014	9,13,4479,1079
+kit-skin-scifi-phone.png	size 3900x1688 -> 3900x2532			
+kit-skin-scifi.png	803412	7.380	0.06243	12,10,4479,1079
+sample-screen.png	5696	0.125	0.00674	54,36,1145,327
+widget-set.png	2667	0.051	0.00431	42,24,575,24
+kit-desktop-materials.png	new			
+kit-phone-materials.png	new			
+materials.png	new			

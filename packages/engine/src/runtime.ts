@@ -683,6 +683,8 @@ export interface CreateOptions {
   readonly deferStart?: boolean;
   /** The locale the host asks og.i18n for: the browser's language, `og run --locale`. */
   readonly locale?: string;
+  /** The host mirrors the UI's accessibility tree (the web Worker): a frame's answer carries `a11y` when the tree changed. */
+  readonly a11y?: boolean;
 }
 
 /** A file the command channel produced (`og_engine_take_outputs`). */
@@ -807,6 +809,8 @@ export class Engine {
     text?: { path: string; rect: [number, number, number, number]; multiline: boolean; selection: string; composing: boolean } | null;
     /** Text a copy or cut took this frame. */
     copy?: string;
+    /** The UI's accessibility tree, on the frames where it changed, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
+    a11y?: Api.A11yTree;
   } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));

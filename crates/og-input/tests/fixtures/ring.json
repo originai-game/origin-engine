@@ -1,5 +1,5 @@
 {
-  "write": 521,
+  "write": 524,
   "read": 506,
   "slots": 256,
   "bytes": 16392,
@@ -110,6 +110,16 @@
     {
       "kind": "text",
       "text": "Typed text longer than one slot holds: 日本語のテキスト"
+    },
+    {
+      "kind": "a11y",
+      "action": "activate",
+      "path": "Settings/Tabs/Audio"
+    },
+    {
+      "kind": "a11y",
+      "action": "increment",
+      "path": "Settings/Panel/Body/AudioPane/MasterRow/Master/Slider"
     }
   ]
 }

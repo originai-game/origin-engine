@@ -2081,6 +2081,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("luminance", LUMINANCE_WGSL),
         ("exposure", EXPOSURE_WGSL),
         ("taa", TAA_WGSL),
+        ("fxaa", FXAA_WGSL),
         ("fx post", FXPOST_WGSL),
     ]
     .into_iter()

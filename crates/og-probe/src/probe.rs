@@ -656,7 +656,8 @@ impl Probe {
                 InjectedInput::Pointer { .. }
                 | InjectedInput::Key { .. }
                 | InjectedInput::Gamepad(_)
-                | InjectedInput::Text { .. } => {}
+                | InjectedInput::Text { .. }
+                | InjectedInput::A11y { .. } => {}
             }
         }
         accepted

@@ -37,6 +37,9 @@ const events = [
   { kind: "text", text: "にほんご", composing: true },
   // Past one slot's 48 bytes: split between characters, joined by the drain.
   { kind: "text", text: "Typed text longer than one slot holds: 日本語のテキスト" },
+  // A screen reader's requests (a11y.ts): a path past 48 bytes is split as text is.
+  { kind: "a11y", action: "activate", path: "Settings/Tabs/Audio" },
+  { kind: "a11y", action: "increment", path: "Settings/Panel/Body/AudioPane/MasterRow/Master/Slider" },
 ];
 for (const e of events) if (!writeRing(ring, e)) throw new Error("full");
 const copy = new SharedArrayBuffer(ring.byteLength);

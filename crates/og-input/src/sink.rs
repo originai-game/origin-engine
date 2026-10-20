@@ -123,6 +123,19 @@ impl InputSink for InputLayer {
                     }
                 }
             }
+            InjectedInput::A11y { action, path } => {
+                // A path past an event's 255 bytes names no control.
+                let Ok(path) = og_core::Str256::new(path) else {
+                    return false;
+                };
+                let e = crate::resource::A11yAction {
+                    action: action.index(),
+                    path,
+                };
+                if world.send(e).is_err() {
+                    return false;
+                }
+            }
             InjectedInput::Gamepad(state) => {
                 let Ok(pad) = world.resource_mut::<Gamepad>() else {
                     return false;

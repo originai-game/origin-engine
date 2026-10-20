@@ -741,6 +741,7 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
             bottom: 34.0,
         },
         coarse_pointer: true,
+        ..Viewport::default()
     };
     let b = &mut |ui: &mut Ui, s: &mut JoystickResponse| {
         ui.anchor(
@@ -1342,4 +1343,346 @@ fn scroll_views_scroll_both_ways_hand_off_fling_and_grab() {
         Some(t0),
         "the offsets are UI state"
     );
+}
+
+/// Touches as og-input's `og.Pointers` holds them, tick by tick: each
+/// `(id, at)` is down at `at` (landing this tick when it was not held).
+struct Fingers {
+    p: og_input::Pointers,
+}
+
+impl Fingers {
+    fn new() -> Fingers {
+        Fingers {
+            p: og_input::Pointers::default(),
+        }
+    }
+
+    fn event(&mut self, action: og_input::PointerAction, id: u32, at: Vec2) {
+        self.p
+            .apply(&og_input::InjectedInput::Pointer {
+                action,
+                x: at.x,
+                y: at.y,
+                button: og_input::PointerButton::Left,
+                id,
+            })
+            .expect("a pointer id under five");
+    }
+
+    /// This tick's frame with the fingers at `at` (each id down there).
+    fn at(&mut self, at: &[(u32, Vec2)]) -> InputFrame {
+        self.p.end_tick();
+        for &(id, pos) in at {
+            let action = if self.p.down(id) {
+                og_input::PointerAction::Move
+            } else {
+                og_input::PointerAction::Down
+            };
+            self.event(action, id, pos);
+        }
+        self.frame()
+    }
+
+    /// This tick's frame with finger `id` lifted.
+    fn lift(&mut self, id: u32) -> InputFrame {
+        self.p.end_tick();
+        let pos = self.p.position(id);
+        self.event(og_input::PointerAction::Up, id, pos);
+        self.frame()
+    }
+
+    /// The UI's frame: pointer 0 is og.Input's pointer.
+    fn frame(&self) -> InputFrame {
+        let p0 = self.p.position(0);
+        InputFrame {
+            pointer: p0,
+            pointer_inside: true,
+            down: self.p.down(0),
+            pressed: self.p.is_pressed(0),
+            released: self.p.is_released(0),
+            pointers: self.p,
+            ..InputFrame::default()
+        }
+    }
+}
+
+#[derive(Default)]
+struct Gestures {
+    clicks: u32,
+    zoom: Option<ZoomResponse>,
+}
+
+fn gestures(ui: &mut Ui, s: &mut Gestures) {
+    ui.row("Top", Element::row(), |ui| {
+        ui.scroll(
+            "List",
+            ScrollDesc {
+                width: Size::px(200.0),
+                height: Size::px(200.0),
+                ..ScrollDesc::default()
+            },
+            |ui| {
+                for k in 0..20 {
+                    if ui
+                        .button(ui_idi("Row", k), &format!("Row {k}"), ButtonDesc::default())
+                        .clicked
+                    {
+                        s.clicks += 1;
+                    }
+                }
+            },
+        );
+        s.zoom = Some(ui.zoom_view(
+            "Map",
+            &ZoomViewDesc {
+                width: Size::px(300.0),
+                height: Size::px(200.0),
+                ..ZoomViewDesc::default()
+            },
+        ));
+    });
+    ui.column(
+        "Pictures",
+        Element {
+            width: Size::px(400.0),
+            ..Element::column()
+        },
+        |ui| {
+            ui.image(
+                "Wide",
+                ImageDesc {
+                    width: Size::grow(),
+                    aspect: 2.0,
+                    ..ImageDesc::default()
+                },
+            );
+            ui.image(
+                "Tall",
+                ImageDesc {
+                    height: Size::px(90.0),
+                    aspect: 0.5,
+                    ..ImageDesc::default()
+                },
+            );
+        },
+    );
+}
+
+/// Two fingers (og.Pointers): moved together over a list of buttons they
+/// scroll it (one finger would press a row) and the row the first finger
+/// landed on is not clicked; spread apart over a zoom view they zoom it
+/// about their centre, moved together they pan it; the wheel zooms about
+/// the pointer; the zoom stays in its limits and the view on its picture;
+/// a pinch in progress replays after a restore. An image with an aspect
+/// ratio is as tall as its width over it, or as wide as its height times it.
+///
+/// Ways it could fail: the two touches fight the press (the row clicks,
+/// the list does not move), the pinch zooms about the view's corner (the
+/// centre moves), the zoom runs past its limits or the view off its
+/// picture, the gesture is outside the UI state, or the aspect is ignored.
+#[test]
+fn two_fingers_scroll_lists_and_pinch_zoom_views() {
+    let mut rig = Rig::new(Gestures::default());
+    let b = &mut gestures;
+    rig.idle(2, b);
+    // The aspect ratios.
+    let wide = rig
+        .ui
+        .frame()
+        .element("Pictures/Wide")
+        .expect("wide")
+        .clone();
+    assert_eq!(
+        (wide.width, wide.height),
+        (400.0, 200.0),
+        "grow 400 wide at 2:1"
+    );
+    let tall = rig
+        .ui
+        .frame()
+        .element("Pictures/Tall")
+        .expect("tall")
+        .clone();
+    assert_eq!((tall.width, tall.height), (45.0, 90.0), "90 tall at 1:2");
+    // Two-finger scroll over the list, starting on a row.
+    let row3 = rig.center("Top/List/Row#3");
+    let y3 = pos(&rig.ui, "Top/List/Row#3").expect("row 3").y;
+    let mut f = Fingers::new();
+    rig.step(f.at(&[(0, row3)]), b);
+    rig.step(f.at(&[(0, row3), (1, row3 + Vec2::new(40.0, 0.0))]), b);
+    for k in 1..=3 {
+        let up = Vec2::new(0.0, -20.0 * k as f32);
+        rig.step(
+            f.at(&[(0, row3 + up), (1, row3 + Vec2::new(40.0, 0.0) + up)]),
+            b,
+        );
+    }
+    rig.idle(1, b);
+    assert_eq!(
+        pos(&rig.ui, "Top/List/Row#3").expect("row 3").y,
+        y3 - 60.0,
+        "the list followed the two fingers up by 60"
+    );
+    rig.step(f.lift(1), b);
+    rig.step(f.lift(0), b);
+    rig.idle(1, b);
+    assert_eq!(
+        rig.state.clicks, 0,
+        "the row the first finger landed on is not clicked"
+    );
+    // A pinch over the map: 100 apart to 200 apart about its centre.
+    let map = rig.center("Top/Map");
+    let mut f = Fingers::new();
+    let apart = |d: f32| {
+        [
+            (0, map - Vec2::new(d / 2.0, 0.0)),
+            (1, map + Vec2::new(d / 2.0, 0.0)),
+        ]
+    };
+    rig.step(f.at(&apart(100.0)[..1]), b);
+    rig.step(f.at(&apart(100.0)), b);
+    for d in [125.0, 150.0, 175.0, 200.0] {
+        rig.step(f.at(&apart(d)), b);
+    }
+    let z = rig.state.zoom.expect("zoom");
+    assert!(
+        (z.zoom - 2.0).abs() < 1e-4,
+        "doubling the spread doubles the zoom ({})",
+        z.zoom
+    );
+    assert!(
+        (z.center - Vec2::splat(0.5)).length() < 1e-4,
+        "about the centre: the middle stays ({:?})",
+        z.center
+    );
+    // Both fingers right by 60: the picture follows them.
+    let saved = rig.ui.save_state();
+    let moved = |d: f32| {
+        let a = apart(200.0);
+        [
+            (0, a[0].1 + Vec2::new(d, 0.0)),
+            (1, a[1].1 + Vec2::new(d, 0.0)),
+        ]
+    };
+    rig.step(f.at(&moved(30.0)), b);
+    rig.step(f.at(&moved(60.0)), b);
+    let panned = rig.state.zoom.expect("zoom");
+    let want = 0.5 - 60.0 / (300.0 * 2.0);
+    assert!(
+        (panned.center.x - want).abs() < 1e-4 && (panned.center.y - 0.5).abs() < 1e-4,
+        "panned left by 60 px of a 2x view: {:?} (want x {want})",
+        panned.center
+    );
+    // A restore in the middle of the gesture replays it.
+    rig.ui.restore_state(&saved).expect("restore");
+    let mut g = Fingers { p: f.p };
+    g.p = {
+        let mut p = og_input::Pointers::default();
+        for (id, at) in apart(200.0) {
+            p.apply(&og_input::InjectedInput::Pointer {
+                action: og_input::PointerAction::Down,
+                x: at.x,
+                y: at.y,
+                button: og_input::PointerButton::Left,
+                id,
+            });
+        }
+        p
+    };
+    rig.step(g.at(&moved(30.0)), b);
+    rig.step(g.at(&moved(60.0)), b);
+    assert_eq!(rig.state.zoom, Some(panned), "the restored pinch replays");
+    rig.step(g.lift(0), b);
+    rig.step(g.lift(1), b);
+    // The limits: spread far apart, the zoom stops at 4; the view stays on the picture.
+    let mut f = Fingers::new();
+    rig.step(f.at(&apart(40.0)[..1]), b);
+    rig.step(f.at(&apart(40.0)), b);
+    rig.step(f.at(&apart(400.0)), b);
+    rig.step(
+        f.at(&apart(400.0).map(|(id, p)| (id, p + Vec2::new(500.0, 0.0)))),
+        b,
+    );
+    rig.idle(1, b);
+    let z = rig.state.zoom.expect("zoom");
+    assert_eq!(z.zoom, 4.0, "the zoom stops at its limit");
+    assert!(
+        z.center.x >= 0.125 - 1e-6,
+        "the view stays on the picture ({:?})",
+        z.center
+    );
+    rig.step(f.lift(1), b);
+    rig.step(f.lift(0), b);
+    // The wheel zooms out about the pointer.
+    rig.step(wheel(map, Vec2::new(0.0, 300.0)), b);
+    rig.idle(1, b);
+    let out = rig.state.zoom.expect("zoom");
+    assert!(out.zoom < 4.0, "a wheel down zooms out ({})", out.zoom);
+}
+
+/// An icon set (an MTSDF font, `IconAtlas::font`): `icon` draws its glyph
+/// (U+E000 + the icon's index) fitted to the icon's square in its ink,
+/// rich text's `[icon=]` draws the same glyph inline, and the probe reads
+/// the icon's name.
+#[test]
+fn an_icon_set_draws_its_glyphs_in_their_squares() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut scene = og_render::RenderScene::new();
+    let set = add_test_font(&mut scene);
+    let font = set.handle.expect("the test font draws");
+    ui.set_icons(IconAtlas {
+        font: Some(set),
+        names: vec!["heart".into(), "star".into()],
+        ..IconAtlas::default()
+    });
+    assert!(ui.has_icon("star") && !ui.has_icon("moon"));
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.icon(
+            "Star",
+            "star",
+            IconDesc {
+                size: 32.0,
+                tint: Some(Srgba::rgb(255, 0, 0)),
+            },
+        );
+        ui.rich_text("Line", "Gold [icon=heart] left", RichTextDesc::default());
+        ui.end();
+    }
+    let star = ui.frame().element("Star").expect("the icon").clone();
+    assert_eq!(star.text, "star", "the probe reads its name");
+    let glyphs: Vec<(String, f32, Rect, [f32; 4])> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Text {
+                text,
+                size,
+                bounds,
+                color,
+                font: f,
+                ..
+            } if *f == font && text.chars().all(|c| ('\u{E000}'..='\u{E001}').contains(&c)) => {
+                Some((text.clone(), *size, *bounds, *color))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(glyphs.len(), 2, "two icon glyphs drawn: {glyphs:?}");
+    let (text, size, bounds, color) = &glyphs[0];
+    assert_eq!(text, "\u{E001}", "star is icon 1");
+    assert_eq!(*size, 32.0);
+    assert_eq!(
+        (bounds.x, bounds.y, bounds.width, bounds.height),
+        (star.x, star.y, 32.0, 32.0),
+        "fitted to the icon's square"
+    );
+    assert_eq!(color[0], 1.0, "in its ink");
+    assert_eq!(
+        glyphs[1].0, "\u{E000}",
+        "rich text's [icon=heart] is icon 0"
+    );
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }

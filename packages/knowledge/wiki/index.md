@@ -113,11 +113,13 @@ Field units the docs and Tune use.
 
 ## Every name
 
-873 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+879 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
+| [`A11yActionKind`](input.md#type-A11yActionKind) | enum | input | — |
 | [`A11yNode`](ui.md#type-A11yNode) | struct | ui | — |
+| [`A11yRequest`](input.md#type-A11yRequest) | struct | input | — |
 | [`A11yTree`](ui.md#type-A11yTree) | struct | ui | — |
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
@@ -384,6 +386,7 @@ Field units the docs and Tune use.
 | [`NavPath`](nav.md#type-NavPath) | struct | nav | — |
 | [`NavRebuild`](nav.md#type-NavRebuild) | struct | nav | — |
 | [`NoiseDesc`](ai.md#type-NoiseDesc) | desc struct | ai | — |
+| [`og.A11yAction`](input.md#record-A11yAction) | event | input | — |
 | [`og.Afterimage`](render.md#record-Afterimage) | component | render | — |
 | [`og.ai.describe`](ai.md#fn-describe) | function | ai | `og_ai_describe` |
 | [`og.ai.get`](ai.md#fn-get) | function | ai | `og_ai_get` |
@@ -710,6 +713,7 @@ Field units the docs and Tune use.
 | [`og.ui.transition`](ui.md#fn-transition) | function | ui | — |
 | [`og.ui.tutorialOverlay`](ui.md#fn-tutorialOverlay) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
+| [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
 | [`og.Velocity`](physics.md#record-Velocity) | component | physics | — |
 | [`og.Water`](atmosphere.md#record-Water) | component | atmosphere | — |
@@ -990,3 +994,5 @@ Field units the docs and Tune use.
 | [`World.spawn`](world.md#member-World-spawn) | method | world | `og_world_spawn` |
 | [`World.tick`](world.md#member-World-tick) | property | world | `og_world_get_tick` |
 | [`WorldDump`](probe.md#type-WorldDump) | struct | probe | — |
+| [`ZoomResult`](ui.md#type-ZoomResult) | struct | ui | — |
+| [`ZoomViewDesc`](ui.md#type-ZoomViewDesc) | desc struct | ui | — |

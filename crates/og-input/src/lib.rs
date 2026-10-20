@@ -2,7 +2,7 @@
 //!
 //! | module | what it owns |
 //! |---|---|
-//! | [`resource`] | [`Input`] (`og.Input`), the resource systems poll; the events [`KeyDown`], [`KeyUp`], [`PointerDown`], [`PointerUp`], [`PointerMove`], [`Wheel`], [`TextInput`] (typed and composed text); [`Input::apply`] and [`Input::end_tick`], the edge rules |
+//! | [`resource`] | [`Input`] (`og.Input`), the resource systems poll; the events [`KeyDown`], [`KeyUp`], [`PointerDown`], [`PointerUp`], [`PointerMove`], [`Wheel`], [`TextInput`] (typed and composed text), [`A11yAction`] (a screen reader's request on a UI control); [`Input::apply`] and [`Input::end_tick`], the edge rules |
 //! | [`event`] | [`InjectedInput`] (protocol 5), [`KeyAction`], [`PointerAction`], [`PointerButton`], [`Modifiers`] |
 //! | [`keys`] | [`KEY_CODES`] (`KeyboardEvent.code`, the key-set bit order), [`key_index`], [`key_for_char`] |
 //! | [`sink`] | [`InputSink`] (the probe's seam) and [`InputLayer`], the engine's sink |
@@ -20,12 +20,12 @@ pub mod ring;
 pub mod sink;
 
 pub use event::{
-    GAMEPAD_BUTTONS, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, MAX_POINTERS, Modifiers,
-    PointerAction, PointerButton, gamepad_button,
+    A11yAct, GAMEPAD_BUTTONS, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, MAX_POINTERS,
+    Modifiers, PointerAction, PointerButton, gamepad_button,
 };
 pub use keys::{KEY_CODES, KEY_SET_BITS, key_for_char, key_index};
 pub use resource::{
-    Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PointerDown, PointerMove,
-    PointerUp, Pointers, TextInput, Wheel, register,
+    A11yAction, Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PointerDown,
+    PointerMove, PointerUp, Pointers, TextInput, Wheel, register,
 };
 pub use sink::{InputLayer, InputSink, RingReport, WorldInput};

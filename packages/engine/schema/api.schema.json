@@ -1010,6 +1010,8 @@
         "GamepadInput",
         "WheelInput",
         "TextEntry",
+        "A11yActionKind",
+        "A11yRequest",
         "InjectedInput",
         "Input",
         "Pointers",
@@ -1020,7 +1022,8 @@
         "PointerDown",
         "PointerUp",
         "PointerMove",
-        "Wheel"
+        "Wheel",
+        "A11yAction"
       ],
       "consts": [
         {
@@ -1696,7 +1699,7 @@
         },
         {
           "name": "font",
-          "doc": "Load a cooked MSDF font for og.render.text.",
+          "doc": "Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font.",
           "params": [
             {
               "name": "world",
@@ -4338,6 +4341,8 @@
         "ScrollAxes",
         "ScrollDesc",
         "ImageDesc",
+        "ZoomViewDesc",
+        "ZoomResult",
         "ProgressDesc",
         "SliderDesc",
         "FieldDesc",
@@ -4760,7 +4765,7 @@
         },
         {
           "name": "image",
-          "doc": "A texture region, or a solid rectangle.",
+          "doc": "A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other.",
           "params": [
             {
               "name": "id",
@@ -4772,10 +4777,30 @@
               "name": "desc",
               "type": "ImageDesc",
               "optional": true,
-              "doc": "Texture, region, tint and size."
+              "doc": "Texture, region, tint, size and aspect ratio."
             }
           ],
           "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "zoomView",
+          "doc": "A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way. The probe reads its zoom as its value.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ZoomViewDesc",
+              "optional": true,
+              "doc": "The picture, its size and zoom limits."
+            }
+          ],
+          "returns": "ZoomResult",
           "publish": true
         },
         {
@@ -5692,7 +5717,7 @@
         },
         {
           "name": "icon",
-          "doc": "An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.",
+          "doc": "An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name.",
           "params": [
             {
               "name": "id",
@@ -8404,6 +8429,45 @@
       ],
       "additionalProperties": false
     },
+    "A11yActionKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "What an assistive technology asks of a UI control.",
+      "type": "string",
+      "enum": [
+        "focus",
+        "activate",
+        "increment",
+        "decrement"
+      ],
+      "x-og-variants": {
+        "focus": "Move the UI's focus to it (with the focus ring).",
+        "activate": "Press it, as Enter on it would (a text control takes the focus).",
+        "increment": "Step an adjustable control (a slider, a stepper) up.",
+        "decrement": "Step an adjustable control down."
+      }
+    },
+    "A11yRequest": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored).",
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/A11yActionKind",
+          "description": "What is asked."
+        },
+        "path": {
+          "type": "string",
+          "description": "The control's path, as og.ui.a11y() names it."
+        }
+      },
+      "required": [
+        "action",
+        "path"
+      ],
+      "additionalProperties": false
+    },
     "InjectedInput": {
       "x-og-kind": "union",
       "x-og-module": "input",
@@ -8599,6 +8663,30 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "TextEntry"
+        },
+        {
+          "description": "A screen reader's request on a UI control.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "a11y"
+            },
+            "action": {
+              "$ref": "#/$defs/A11yActionKind",
+              "description": "What is asked."
+            },
+            "path": {
+              "type": "string",
+              "description": "The control's path, as og.ui.a11y() names it."
+            }
+          },
+          "required": [
+            "kind",
+            "action",
+            "path"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "A11yRequest"
         }
       ]
     },
@@ -9362,6 +9450,27 @@
       "required": [
         "deltaX",
         "deltaY"
+      ],
+      "additionalProperties": false
+    },
+    "A11yAction": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/A11yActionKind",
+          "description": "What is asked."
+        },
+        "path": {
+          "type": "string",
+          "description": "The control's path, as og.ui.a11y() names it."
+        }
+      },
+      "required": [
+        "action",
+        "path"
       ],
       "additionalProperties": false
     },
@@ -13476,6 +13585,12 @@
         "lineHeight": {
           "type": "number",
           "description": "Ascender minus descender plus the line gap."
+        },
+        "icons": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The icons of an icon set (an `.ogt` of `type icons`, SVGs cooked like a font for UiDesc.icons.font); 0 for a text font."
         }
       },
       "required": [
@@ -13485,7 +13600,8 @@
         "pxRange",
         "ascender",
         "descender",
-        "lineHeight"
+        "lineHeight",
+        "icons"
       ],
       "additionalProperties": false
     },
@@ -20998,6 +21114,12 @@
           ],
           "description": "The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way.",
           "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it.",
+          "default": 0,
+          "minimum": 0
         }
       },
       "additionalProperties": false
@@ -21339,8 +21461,132 @@
           ],
           "description": "Its height; null fits.",
           "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it.",
+          "default": 0,
+          "minimum": 0
         }
       },
+      "additionalProperties": false
+    },
+    "ZoomViewDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A zoomable picture (a map, an artwork): what it shows and its zoom limits.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The picture; null draws a solid rectangle of the tint.",
+          "default": null
+        },
+        "uv": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The picture's region, [u0, v0, u1, v1] with v down; null is the whole texture.",
+          "default": null
+        },
+        "tint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Multiplies the texture; null is white.",
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null fits.",
+          "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height (0: none), as ImageDesc.aspect.",
+          "default": 0,
+          "minimum": 0
+        },
+        "minZoom": {
+          "type": "number",
+          "description": "The least zoom; 0 is 1 (the whole picture).",
+          "default": 0,
+          "minimum": 0
+        },
+        "maxZoom": {
+          "type": "number",
+          "description": "The most zoom; 0 is 4.",
+          "default": 0,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ZoomResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where a zoom view is.",
+      "type": "object",
+      "properties": {
+        "zoom": {
+          "type": "number",
+          "description": "Its zoom: 1 shows the whole picture, 2 half of it each way."
+        },
+        "centerX": {
+          "type": "number",
+          "description": "The middle of what it shows, as a fraction of the picture's width (0.5 at rest)."
+        },
+        "centerY": {
+          "type": "number",
+          "description": "The middle of what it shows, as a fraction of the picture's height (0.5 at rest)."
+        }
+      },
+      "required": [
+        "zoom",
+        "centerX",
+        "centerY"
+      ],
       "additionalProperties": false
     },
     "ProgressDesc": {
@@ -21642,6 +21888,14 @@
           "type": "boolean",
           "description": "A touch screen or another coarse pointer."
         },
+        "reducedMotion": {
+          "type": "boolean",
+          "description": "The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false."
+        },
+        "highContrast": {
+          "type": "boolean",
+          "description": "The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false."
+        },
         "breakpoint": {
           "$ref": "#/$defs/Breakpoint",
           "description": "Its size class: phone portrait or landscape, tablet, desktop."
@@ -21731,7 +21985,7 @@
         },
         "contrast": {
           "$ref": "#/$defs/Contrast",
-          "description": "Standard or high contrast.",
+          "description": "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast).",
           "default": "standard"
         },
         "accentHue": {
@@ -21760,7 +22014,7 @@
         },
         "reducedMotion": {
           "type": "boolean",
-          "description": "Transitions only fade; sheens stop (prefers-reduced-motion).",
+          "description": "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion).",
           "default": false
         },
         "icons": {
@@ -22398,9 +22652,21 @@
     "IconAtlasDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "The icon atlas: a texture of equal cells in a grid, named in reading order.",
+      "description": "The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font).",
       "type": "object",
       "properties": {
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Font"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An icon set from og.load.font (an `.ogt` of `type icons` naming SVGs, such as the UI kit's iconoir set): its icons are distance-field glyphs, crisp at any size and tinted by their ink, named by the set; texture, columns, rows and names are then not used.",
+          "default": null
+        },
         "texture": {
           "anyOf": [
             {

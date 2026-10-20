@@ -70,3 +70,10 @@ pub(crate) fn child_key(parent: u64, id: &str) -> u64 {
     // 0 means "no element" in the interaction state.
     h.finish().max(1)
 }
+
+/// The key of the element at a full path (`Settings/Tabs/Audio`, as
+/// `og.ui.a11y()` and `og.ui.focus` name it): the path's ids hashed from
+/// the root down, as the frame keyed them; a layer is a child of the root.
+pub(crate) fn key_of_path(path: &str) -> u64 {
+    path.split('/').fold(1, child_key)
+}

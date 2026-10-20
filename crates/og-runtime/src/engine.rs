@@ -310,6 +310,13 @@ pub(crate) struct State {
     pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
+    /// The host mirrors the UI's accessibility tree (create option `a11y`,
+    /// the web Worker): frame answers carry the tree when it changed.
+    pub a11y_mirror: bool,
+    /// The digest of the accessibility tree the last frame answer carried
+    /// (`A11yTree::digest`; 0: none sent yet), so the mirror is sent the
+    /// tree only when it changes.
+    pub a11y_digest: u64,
     /// Undeclared accesses already logged (`system access name`), so each is
     /// logged once per system (`api::undeclared`).
     pub undeclared_logged: BTreeSet<String>,
@@ -958,6 +965,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics_meshes: BTreeMap::new(),
         physics_heightfields: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
+        a11y_mirror: options["a11y"].as_bool().unwrap_or(false),
+        a11y_digest: 0,
         undeclared_logged: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),
@@ -1264,6 +1273,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let behind = eng.state.borrow().accumulator_ms;
     let (text, copy) = text_entry(&eng);
+    let a11y = a11y_changed(&eng);
     let probe = eng.probe.borrow();
     // `behind`: real time the accumulator holds that no tick has simulated
     // yet, so a host can place an input event within the next tick.
@@ -1277,7 +1287,31 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if let Some(c) = copy {
         answer["copy"] = json!(c);
     }
+    // `a11y`: the UI's accessibility tree (as og.ui.a11y answers it), on
+    // the frames where it changed, for a host that mirrors it (create
+    // option `a11y`: the web shell's DOM mirror).
+    if let Some(tree) = a11y {
+        answer["a11y"] = tree;
+    }
     answer.to_string()
+}
+
+/// The UI's accessibility tree when it differs from the one the last frame
+/// answer carried (by [`og_ui::A11yTree::digest`]).
+fn a11y_changed(eng: &Engine) -> Option<Value> {
+    if !eng.state.borrow().a11y_mirror {
+        return None;
+    }
+    let ui = eng.state.borrow().ui.clone()?;
+    let ui = ui.lock();
+    let tree = ui.a11y();
+    let digest = tree.digest().max(1);
+    let mut st = eng.state.borrow_mut();
+    if st.a11y_digest == digest {
+        return None;
+    }
+    st.a11y_digest = digest;
+    Some(super::modules::a11y_json(tree))
 }
 
 /// The UI's focused text control as the web shell takes it (`null`: none),

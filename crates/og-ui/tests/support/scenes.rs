@@ -784,6 +784,38 @@ pub fn glass_panel() -> og_render::Glass {
     }
 }
 
+/// Overlay content around the reference glass panel: an amber bar on the
+/// overlay layer below it, crossing the panel (y 92..108, x 40..280), and
+/// a small cyan square on the layer above it, inside the panel at
+/// (190, 60), 16 px. The panel blurs the bar where it covers it and
+/// leaves the square sharp.
+pub fn glass_overlay_content() -> Vec<og_render::Sprite> {
+    let solid = |x: f32, y: f32, w: f32, h: f32, color: [f32; 4], layer: i32| og_render::Sprite {
+        texture: None,
+        position: Vec3::new(x, y, 0.0),
+        size: Vec2::new(w, h),
+        anchor: Vec2::new(0.0, 0.0),
+        color,
+        layer,
+        ..og_render::Sprite::default()
+    };
+    vec![
+        solid(40.0, 92.0, 240.0, 16.0, [1.0, 0.45, 0.0, 1.0], -1),
+        solid(190.0, 60.0, 16.0, 16.0, [0.0, 0.8, 1.0, 1.0], 1),
+    ]
+}
+
+/// The scene of `references/<tier>/glass.png`: the stripes, the panel
+/// (`glass_panel`) and the overlay content below and above it
+/// (`glass_overlay_content`).
+pub fn glass_reference_scene() -> (RenderScene, RenderDesc) {
+    let (mut scene, desc) = stripes_scene(&[glass_panel()]);
+    if let Some(o) = scene.overlay.as_mut() {
+        o.sprites.extend(glass_overlay_content());
+    }
+    (scene, desc)
+}
+
 /// The reference frames, by their file name under `references/<tier>/`.
 pub const REFERENCE_SCENES: [&str; 4] = ["sample-screen", "text-glow", "glass", "widget-set"];
 
@@ -795,7 +827,7 @@ pub fn reference_scene(name: &str, font: &FontFiles) -> Result<(RenderScene, Ren
             (s.scene, s.desc)
         }
         "text-glow" => glow_scene(font, true, 1),
-        "glass" => stripes_scene(&[glass_panel()]),
+        "glass" => glass_reference_scene(),
         "widget-set" => {
             let s = widget_set_shot(font);
             (s.scene, s.desc)

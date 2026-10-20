@@ -5,9 +5,19 @@
 //! of `pyramid` (level k at 1/2^(k+1) of the output, each a 13-tap blur of
 //! the level above). A glass panel samples the pyramid at its screen
 //! position, at the level its blur radius asks for (trilinear between
-//! levels), tints it and masks it to its rounded rectangle. The panels blur
-//! the scene, not other overlay content under them. A frame without glass
-//! pays nothing.
+//! levels), tints it and masks it to its rounded rectangle. A frame
+//! without glass pays nothing.
+//!
+//! Glass over overlay content: the overlay draws in its sort order (layer,
+//! then sprites, text and glass), so a glass run lies over every run before
+//! it. When overlay content comes before a glass run ([`rebuilds`]), the
+//! overlay draws into `source` (its sRGB view when the frame blends
+//! through one) instead of the output, the pyramid is written again from
+//! `source` before that glass run, and `source` is copied to the output
+//! once the overlay is done: a glass panel blurs the scene and the overlay
+//! layers below it. Each rebuild costs one pyramid (about a third of the
+//! output's pixels written); a frame whose glass lies under all of the
+//! overlay takes the one-pyramid path as before.
 
 use crate::post::fullscreen_pass;
 
@@ -30,10 +40,34 @@ pub(crate) struct GlassPasses {
     pyramid_params: wgpu::Buffer,
 }
 
+/// Where the pyramid is (re)built for an overlay's sorted runs: before
+/// each glass run that has overlay content drawn since the last build (the
+/// first build is before the first glass run). Empty when the overlay has
+/// no glass; `[i]` with nothing drawn before run `i` is the scene-only case.
+pub(crate) fn rebuilds(glass: &[bool]) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut drawn = false;
+    for (i, &is_glass) in glass.iter().enumerate() {
+        if is_glass {
+            if out.is_empty() || drawn {
+                out.push(i);
+            }
+            drawn = false;
+        } else {
+            drawn = true;
+        }
+    }
+    out
+}
+
 /// The textures of one output size.
 pub(crate) struct GlassTargets {
     pub size: (u32, u32),
     pub source_view: wgpu::TextureView,
+    /// `source` through the overlay's sRGB view format, when the output
+    /// blends through one (the overlay draws into `source` when glass lies
+    /// over overlay content).
+    pub source_linear_view: Option<wgpu::TextureView>,
     levels: Vec<wgpu::TextureView>,
     /// The pyramid for the overlay's glass runs (the sprite layout).
     pub overlay_group: wgpu::BindGroup,
@@ -141,15 +175,18 @@ impl GlassPasses {
         }
     }
 
-    /// The textures for an output of `width`×`height` in `format`.
+    /// The textures for an output of `width`×`height` in `format` (with a
+    /// `linear` view format: the sRGB one the overlay blends through).
     pub fn targets(
         &self,
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
+        linear: Option<wgpu::TextureFormat>,
         width: u32,
         height: u32,
         sprite_layout: &wgpu::BindGroupLayout,
     ) -> GlassTargets {
+        let view_formats: Vec<wgpu::TextureFormat> = linear.into_iter().collect();
         let source = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("glass source"),
             size: wgpu::Extent3d {
@@ -162,9 +199,16 @@ impl GlassPasses {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
+            view_formats: &view_formats,
         });
         let source_view = source.create_view(&Default::default());
+        let source_linear_view = linear.map(|f| {
+            source.create_view(&wgpu::TextureViewDescriptor {
+                label: Some("glass source (sRGB view)"),
+                format: Some(f),
+                ..Default::default()
+            })
+        });
         // Half the output, but never too small for LEVELS mips (an output
         // under 64 pixels on its longer side): the levels are sampled by uv,
         // so a larger pyramid only changes how much a tiny output blurs.
@@ -245,6 +289,7 @@ impl GlassPasses {
         GlassTargets {
             size: (width, height),
             source_view,
+            source_linear_view,
             levels,
             overlay_group,
             blit_group,
@@ -261,11 +306,16 @@ impl GlassPasses {
         output: &wgpu::TextureView,
         decode: bool,
     ) -> u32 {
-        queue.write_buffer(
-            &self.uniform,
-            0,
-            bytemuck::cast_slice(&[f32::from(u8::from(decode)), 0.0, 0.0, 0.0]),
-        );
+        self.blit(encoder, targets, output) + self.pyramid(queue, encoder, targets, decode)
+    }
+
+    /// Copies the source to the output, unchanged.
+    pub fn blit(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        targets: &GlassTargets,
+        output: &wgpu::TextureView,
+    ) -> u32 {
         fullscreen_pass(
             encoder,
             "glass blit",
@@ -273,6 +323,23 @@ impl GlassPasses {
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             &self.blit,
             &targets.blit_group,
+        );
+        1
+    }
+
+    /// Writes the pyramid's levels from the source as it is now (`decode`:
+    /// the source holds sRGB-encoded values).
+    pub fn pyramid(
+        &self,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        targets: &GlassTargets,
+        decode: bool,
+    ) -> u32 {
+        queue.write_buffer(
+            &self.uniform,
+            0,
+            bytemuck::cast_slice(&[f32::from(u8::from(decode)), 0.0, 0.0, 0.0]),
         );
         for (k, view) in targets.levels.iter().enumerate() {
             fullscreen_pass(
@@ -284,7 +351,7 @@ impl GlassPasses {
                 &targets.down_groups[k],
             );
         }
-        1 + LEVELS
+        LEVELS
     }
 }
 
@@ -294,3 +361,23 @@ pub(crate) const PYRAMID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 
 /// The glass passes' module (`crate::shaders` validates it).
 pub(crate) const GLASS_WGSL: &str = include_str!("../shaders/glass.wgsl");
+
+#[cfg(test)]
+mod tests {
+    use super::rebuilds;
+
+    #[test]
+    fn the_pyramid_is_rebuilt_before_glass_with_overlay_under_it() {
+        // No glass: no pyramid.
+        assert!(rebuilds(&[false, false]).is_empty());
+        // Glass under everything: one pyramid, of the scene.
+        assert_eq!(rebuilds(&[true, false, false]), [0]);
+        assert_eq!(rebuilds(&[true, true, false]), [0]);
+        // Content under the glass: built after it.
+        assert_eq!(rebuilds(&[false, true, false]), [1]);
+        // Glass, content, glass: built again for the second.
+        assert_eq!(rebuilds(&[true, false, true, false]), [0, 2]);
+        // Two glass runs with nothing between share a pyramid.
+        assert_eq!(rebuilds(&[false, true, true, false]), [1]);
+    }
+}

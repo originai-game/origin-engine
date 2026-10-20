@@ -1269,6 +1269,12 @@ pub fn og_ui_image(env: Env, id: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_image(&Host, id, desc)
 }
 
+#[napi(js_name = "og_ui_zoom_view")]
+pub fn og_ui_zoom_view(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_zoom_view(&Host, id, desc)
+}
+
 #[napi(js_name = "og_ui_progress")]
 pub fn og_ui_progress(env: Env, id: String, value: f64, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);

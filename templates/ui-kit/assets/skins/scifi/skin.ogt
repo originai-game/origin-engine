@@ -24,7 +24,7 @@ palette {
   border "#2c6a88"
   borderStrong "#6fd3f5"
   accent "#38e1ff"
-  accentHover "#6ae9ff"
+  accentHover "#30d4f0"
   accentActive "#16c4e6"
   accentFg "#e2f7ff"
   accentInk "#7fecff"

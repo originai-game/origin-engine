@@ -66,6 +66,8 @@ pub(crate) struct LoadedFont {
     /// true`): og-ui shapes with it and measures characters outside the
     /// atlas, which `super::glyphs` renders.
     pub file: Option<std::sync::Arc<og_ui::shape::FontFile>>,
+    /// An icon set's names (glyph U+E000 + i is icon i); empty for a text font.
+    pub icons: Vec<String>,
 }
 
 /// Everything an engine loaded.
@@ -499,6 +501,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         "glyphs": m.glyph_count, "pages": m.page_count, "emPx": m.em_px as u32,
         "pxRange": m.px_range, "ascender": m.ascender, "descender": m.descender,
         "lineHeight": m.ascender - m.descender + m.line_gap,
+        "icons": font.names.len(),
     });
     let mut rs = eng.render.borrow_mut();
     let pages = add_font(&mut rs.scene, &font);
@@ -520,6 +523,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         info,
         render,
         file,
+        icons: font.names.clone(),
     });
     Ok(assets.fonts.len() - 1)
 }

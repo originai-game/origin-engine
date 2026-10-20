@@ -16,6 +16,7 @@ mod e6;
 mod environment;
 mod flipbook;
 mod font;
+pub mod icons;
 pub mod ktx2_source;
 pub mod look;
 mod model;
@@ -413,6 +414,7 @@ enum Kind {
     Rig,
     Terrain,
     Environment,
+    Icons,
     Look,
     Palette,
     TextureArray,
@@ -439,6 +441,7 @@ impl Kind {
             Kind::Rig => "rig",
             Kind::Terrain => "terrain",
             Kind::Environment => "environment",
+            Kind::Icons => "icons",
             Kind::Look => "look",
             Kind::Palette => "palette",
             Kind::TextureArray => "texture-array",
@@ -493,6 +496,7 @@ enum Work<'a> {
     Rig(&'a Source),
     Terrain(&'a Source),
     Environment(&'a Source),
+    Icons(&'a Source),
     Look(&'a Source),
     Palette(&'a Source),
     /// A texture array's blob, and layer `n`'s texture.
@@ -690,6 +694,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
+                    Ok(doc) if doc.ty == icons::ICONS_TYPE => Kind::Icons,
                     Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
                     Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
                     Ok(doc) => {
@@ -697,7 +702,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, texture-array, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, texture-array, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -1039,6 +1044,12 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Rig => {
                 let st = stamp(&[b"rig", &hash]);
                 outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
+            }
+            Kind::Icons => {
+                // The stamp covers every SVG the set names.
+                let deps = icons::dependencies(s);
+                let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Font::NAME, st, Work::Icons(s)));
             }
             Kind::Terrain => {
                 let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
@@ -1577,6 +1588,7 @@ fn run(
             tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
+        Work::Icons(s) => icons::cook(s, p.stamp),
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
