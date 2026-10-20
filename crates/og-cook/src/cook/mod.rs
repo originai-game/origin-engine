@@ -1883,8 +1883,9 @@ fn output_group(id: &str, rel: &str, group_of: &BTreeMap<String, String>) -> Opt
 /// Every scene's streaming groups, checked across scenes: a group's name is
 /// taken once, an asset is in at most one group, and a group holds glTF
 /// models without skins or morph targets, textures and sounds (each swapped
-/// in behind a stand-in's handle), and texture arrays, environment maps,
-/// palettes and looks (pending until the group is resident, let go when it
+/// in behind a stand-in's handle), and texture arrays, flipbooks (an `array
+/// true` sheet with its array and layers), environment maps, palettes,
+/// looks and LUTs (loaded once the group is resident, let go when it
 /// unloads). A refusal is
 /// the scene's error, and its scene adds none of its groups.
 fn plan_groups(
@@ -1939,6 +1940,7 @@ fn plan_groups(
                         | Kind::Texture
                         | Kind::Sound
                         | Kind::TextureArray
+                        | Kind::Flipbook
                         | Kind::Environment
                         | Kind::Palette
                         | Kind::Look
@@ -1946,7 +1948,7 @@ fn plan_groups(
                 );
                 if !fits || skinned {
                     refused = Some(format!(
-                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, sounds, environment maps, palettes, looks and colour LUTs",
+                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks and colour LUTs",
                         g.name,
                         if skinned {
                             "a skinned or morphed model".to_string()

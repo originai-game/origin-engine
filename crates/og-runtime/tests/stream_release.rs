@@ -6,7 +6,9 @@
 //!
 //! A project with one manual group "zone" (`env/studio.ogt`,
 //! `tex/frames.ogt`, `palettes/dusk.hex`, `looks/dusk.ogt`, which
-//! quantises to that palette, and `grade/swap.cube`) is cooked once; a
+//! quantises to that palette, `grade/swap.cube` and `sprites/run.ogt`, an
+//! `array true` flipbook whose array and layers the cook packs with it) is
+//! cooked once; a
 //! renderer that draws nothing records what each frame names and which of
 //! the handles it has seen are still in the scene.
 //!
@@ -30,10 +32,10 @@ use og_render::{EnvironmentMapHandle, LutHandle, PaletteHandle, RenderScene, Tex
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
     og_engine_probe_commands, og_engine_take_log, og_engine_take_outputs, og_engine_write_resource,
-    og_game_game, og_host_begin_bundle, og_load_emitter, og_load_environment, og_load_look,
-    og_load_lut, og_load_texture_array, og_render_apply_look, og_render_sprite, og_stream_budget,
-    og_stream_release, og_stream_request, og_stream_status, og_world_despawn, og_world_insert,
-    og_world_spawn, set_hooks, set_render_backend,
+    og_game_game, og_host_begin_bundle, og_load_emitter, og_load_environment, og_load_flipbook,
+    og_load_look, og_load_lut, og_load_texture_array, og_render_apply_look, og_render_sprite,
+    og_stream_budget, og_stream_release, og_stream_request, og_stream_status, og_world_despawn,
+    og_world_insert, og_world_spawn, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -55,6 +57,7 @@ stream "zone" {
   asset "palettes/dusk.hex"
   asset "looks/dusk.ogt"
   asset "grade/swap.cube"
+  asset "sprites/run.ogt"
 }
 "#;
 
@@ -101,6 +104,14 @@ fn project() -> &'static Path {
         write(
             "grade/swap.cube",
             b"LUT_3D_SIZE 2\n0 0 0\n0 0 1\n0 1 0\n0 1 1\n1 0 0\n1 0 1\n1 1 0\n1 1 1\n",
+        );
+        write(
+            "sprites/strip.png",
+            &read("templates/archetypes/topdown/assets/sprites/slime.png"),
+        );
+        write(
+            "sprites/run.ogt",
+            b"type flipbook\nversion 1\n---\ntexture \"strip.png\"\narray true\ngrid 16 16 5 1\nclip run {\n  frames 0 1 2 3\n  fps 10\n}\n",
         );
         write(
             "fx/motes.ogt",
@@ -624,4 +635,99 @@ fn an_emitter_of_a_grouped_array_keeps_it_while_it_runs_and_follows_it_back() {
     let back = g.seen.borrow().emitters.clone();
     assert!(matches!(back[..], [Some(_)]), "{back:?}");
     assert_ne!(back, first, "a new renderer handle for the array");
+}
+
+/// An `array true` flipbook in the group: it loads once the group is
+/// resident (refused, naming the group, before), its sprites draw from
+/// its array; the unload keeps the array while a sprite of the sheet draws
+/// from it (warning that it does), lets it go once none does (the sheet's
+/// sprites then draw nothing), and once resident again the sheet's sprites
+/// draw from the array's new renderer handle. Broken once by leaving
+/// flipbooks out of the groups the cook takes (the scene is refused).
+#[test]
+fn an_array_flipbook_in_a_group_follows_its_array_out_and_back() {
+    let g = game();
+    value(og_stream_release(g.engine, "zone".into()));
+    g.frame();
+    g.frame();
+    assert_eq!(g.state(), "unloaded");
+    let refused = answer(og_load_flipbook(g.engine, "sprites/run.ogt".into()));
+    assert!(
+        refused
+            .as_ref()
+            .is_err_and(|e| e.contains("zone") && e.contains("unloaded")),
+        "a grouped sheet loads once resident: {refused:?}"
+    );
+    g.resident();
+    let info = value(og_load_flipbook(g.engine, "sprites/run.ogt".into()));
+    assert!(info["array"].as_f64().unwrap() > 0.0, "{info}");
+    let sprite = || {
+        let e = value(og_world_spawn(g.engine, Some("{}".into())))
+            .as_f64()
+            .unwrap();
+        value(og_world_insert(
+            g.engine,
+            e,
+            "og.Sprite".into(),
+            Some("{}".into()),
+        ));
+        let fb = json!({ "sheet": info["sheet"] }).to_string();
+        value(og_world_insert(g.engine, e, "og.Flipbook".into(), Some(fb)));
+        e
+    };
+    let e = sprite();
+    g.frame();
+    let first = {
+        let s = g.seen.borrow();
+        assert_eq!(s.arrays, 1, "the sheet's sprite draws from its array");
+        s.every_array.clone()
+    };
+    assert_eq!(first.len(), 1);
+    g.warnings();
+
+    // Unloaded while the sprite draws: kept, with a warning naming it.
+    value(og_stream_release(g.engine, "zone".into()));
+    g.frame();
+    g.frame();
+    assert_eq!(g.state(), "unloaded");
+    assert_eq!(
+        g.live()[2],
+        1,
+        "kept while a sprite of the sheet draws from it"
+    );
+    let warnings = g.warnings();
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("sprites/run.ogt#array is kept")
+                && w.contains("a sprite draws from it")),
+        "{warnings:?}"
+    );
+    assert!(
+        g.budget()["kept"].as_f64().unwrap() > 0.0,
+        "its layers count"
+    );
+    // The sprite goes: the array is let go; a new sprite of the sheet draws nothing.
+    value(og_world_despawn(g.engine, e));
+    g.frame();
+    g.frame();
+    assert_eq!(g.live()[2], 0, "let go once no sprite draws from it");
+    assert_eq!(g.budget()["kept"], json!(0.0));
+    let e = sprite();
+    g.frame();
+    assert_eq!(g.seen.borrow().arrays, 0, "nothing drawn while unloaded");
+
+    // Resident again: the same sheet draws from the array's new handle.
+    g.resident();
+    g.frame();
+    let s = g.seen.borrow();
+    assert_eq!(s.arrays, 1);
+    assert_eq!(
+        s.every_array.len(),
+        2,
+        "a new renderer handle for the array"
+    );
+    assert_eq!(s.live[2], 1);
+    drop(s);
+    value(og_world_despawn(g.engine, e));
 }

@@ -177,15 +177,19 @@ its rows, so a host migrates rows to its registered layout by field name.
 
 A scene's `stream "<name>" { asset ... }` blocks (`src/cook/stream.rs`)
 group glTF models without skins or morph targets, textures, texture
-arrays, sounds (not chunked), environment maps, palettes, looks and colour
+arrays, flipbooks (an `array true` sheet's `#array` and its layers go with
+it), sounds (not chunked), environment maps, palettes, looks and colour
 LUTs (`.cube`); any other kind is refused naming the scene. Each group's
 outputs are packed into `cooked/stream/<name>.ogb`, and the manifest lists
 the group with the memory its assets take once loaded (`memory_of`: a
 texture's RGBA8 with mips, a model's vertices and indices, a sound's
 samples, an environment map's RGB9E5 texels, a palette's 256 x 1 RGBA8, a
-LUT's 32³ RGBA8). The runtime loads a grouped texture array, environment
-map, palette, look or LUT once its group is resident and lets it go when
-the group unloads (og-runtime's `stream`).
+LUT's 32³ RGBA8). The runtime loads a grouped texture array, flipbook,
+environment map, palette, look or LUT once its group is resident and lets
+it go when the group unloads (og-runtime's `stream`): a sheet's array is
+kept while a sprite of the sheet draws from it, its sprites draw nothing
+while it is away, and they follow it back under its new renderer handle
+(og-runtime's `tests/stream_release.rs`).
 
 A particle emitter (`type particles`, `src/fx.rs`) may name a texture
 array instead of a texture: `array "<id>" [<layers>] [off | life <cycles>
@@ -425,7 +429,7 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | `anim_compress.rs` (separate file) | every committed animated model cooked f32 and compressed: every frame of every channel within the tolerance, every node within 0.5 mm per metre of the skeleton, smaller samples, the same skins and morphs; the trickster posed mid-clip by each cook within og-tests' default frame tolerance; the settings parse and enter the stamp; evidence `P4/cook/anim-compress.json` and the two frames |
 | `sound_chunks.rs` (separate file) | a 12.5 s WAV with `sound { stream true chunk 1.5 }` cooks to 8 chunks whose head and chunk blobs laid end to end are the bytes of the same WAV cooked whole, and go into og-audio's bank; nothing re-cooks unchanged, a chunk length edit re-cooks only that sound and removes the old chunks; the 1 MiB threshold and `stream false`; bad settings refused by line; a chunked sound in a stream group refused |
 | `vox.rs` (separate file; and `cook::vox`'s unit tests) | a `.vox` with `model { voxScale 0.25 voxOrigin bottom }` cooks to those bounds (its settings file sorts after it, so the conversion waits for it); an unchanged project cooks nothing, a settings edit re-cooks the model; a bad `voxOrigin` fails it naming the line; every one of the 48 signed axis permutations an `nTRN` frame holds keeps every triangle counter-clockwise about its normal (the 24 mirrors failed with the flip removed); `voxScale` and `voxOrigin bottom` place one and two models |
-| `flipbook.rs` (separate file) | atlases into sheets, and an `array true` sheet's frames cut into its texture array's layers texel for texel (broken once by cutting every layer from the texture's top rows), frames of two sizes refused |
+| `flipbook.rs` (separate file) | atlases into sheets, and an `array true` sheet's frames cut into its texture array's layers texel for texel (broken once by cutting every layer from the texture's top rows), frames of two sizes refused; such a sheet and a texture array in a streaming group pack the sheet, the array and every layer (each naming the group, the pack's bytes the files'), the group's memory counting the layers, the sheet's texture staying in the first group |
 | `fx.rs` (separate file) | a `.cube` and an emitter cook and load with every line reaching its field; an emitter's `array` line (its layers and mode, `round`), a missing array refused; a streaming group holding a LUT, its memory the LUT's 32³ RGBA8 |
 | `textures_p4.rs` (separate file) | an RGBA8 KTX2 tagged `ru`/`bgra` cooks to the source texels exactly; an `rd` RGBA8 or Basis KTX2 is taken byte for byte; a Basis KTX2 tagged `ru` is re-encoded the right way up (53.9 dB against 23.7 as stored); a texture array's layers cook in order, each also a texture, upload as one `D2Array` texture whose layers read back exactly (RGBA8) or in the device's block format (BC7 on Metal), counted in the frame's texture bytes; layers of two sizes refused; with `toktx` on PATH (else skipped with the reason printed), the template's two textures cook through it (40.8 and 45.9 dB, `rd`, its version in the stamp) and toktx's own `--lower_left_maps_to_s0t0` (`ru`) output is flipped back (40.3 dB); evidence `P4/cook/textures-*.json` |
 | `retarget.rs` (separate file) | fx-showcase's animation library retargeted at cook time into `strider.glb` (Mixamo names, armature scale 0.01, a rig file) and `stout.glb` (Unreal names, detected): the clips and markers arrive, and on every frame the library's walk plants a foot the character's foot is on its own ground within 2 mm and does not slide (0 m measured; 2.9 cm without foot IK); an edit of the rig file re-cooks only the model naming it, an edit of the library's settings both; a rig naming a missing node fails with the file and line; evidence `retarget-contacts.json` |
