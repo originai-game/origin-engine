@@ -170,6 +170,59 @@ export default og.game({
   expect(out.findings.some((f) => f.measure === "HUD occupancy")).toBeFalse();
 }, 300_000);
 
+test("og polish reads a toast over a dialog at rest and leaves out one sliding out", () => {
+  // lantern-vale FINDINGS #25: a toast leaving over the settings dialog read
+  // 1.15:1 (the toasts' layer is over the scrim, but a fade's pixels are a
+  // moment of it, not its colours). Two toasts over an open dialog: Saved
+  // dismissed on the tick before the second shot, Kept at rest.
+  const p = join(evidence, "toasts");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Toasts"\nid "toasts"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
+const Shown = defineResource("Shown", { saved: u32(0) });
+const Screen = defineSystem("Screen", { writes: [Shown] }, () => {
+  og.ui.confirmDialog("Quit", { open: true, title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
+});
+export default og.game({
+  tick: 60,
+  resources: [Shown],
+  systems: [Screen],
+  commands: {
+    toasts: (world) => {
+      const s = world.resource(Shown);
+      if (s.ok) s.value.saved = og.ui.toast(world, "Saved", { tone: "neutral" });
+      og.ui.toast(world, "Kept", { tone: "neutral" });
+    },
+    dismiss: (world) => { const s = world.resource(Shown); if (s.ok) og.ui.dismissToast(world, s.value.saved); },
+  },
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+  },
+});
+`,
+  );
+  writeFileSync(
+    join(p, "tests", "toasts.og.ts"),
+    'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "toasts", size: "1280x720", commands: "0.2:toasts;1.0:screenshot:rest.png;1.1:dismiss;1.15:screenshot:leaving.png;1.3:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n',
+  );
+  const r = run([ogBin(), "polish", p, "--frames", "2"]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish & {
+    playtests: Array<{ shots: Array<{ name: string; texts: number }> }>;
+  };
+  const [rest, leaving] = out.playtests[0]!.shots;
+  // At rest: the dialog's title, message, Leave and Cancel, and both toasts
+  // with their labels; leaving: Saved and its label are mid-exit.
+  expect(rest!.texts).toBe(8);
+  expect(leaving!.texts).toBe(6);
+  expect(out.findings.some((f) => f.measure === "contrast" && f.where.includes("Saved"))).toBeFalse();
+}, 300_000);
+
 test("og polish refuses a project without playtests", () => {
   const bare = join(evidence, "bare");
   rmSync(bare, { recursive: true, force: true });

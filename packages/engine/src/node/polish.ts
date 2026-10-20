@@ -328,12 +328,27 @@ function behindScrim(ui: UiDump): Set<number> {
   return out;
 }
 
-function textBoxes(img: Image, ui: UiDump): TextBox[] {
+/**
+ * What is mid-transition in a shot: an element whose bounds (CSS px) are not
+ * the same in the pulses of the ticks before and after it, such as a toast
+ * sliding and fading out over a dialog or a panel popping in. Its pixels are
+ * a moment of a fade, not its colours. Matched by id and bounds (ids repeat:
+ * every toast holds a `Text`).
+ */
+function inMotion(ui: UiDump, before: Pulse | undefined, after: Pulse | undefined): Set<number> {
+  const out = new Set<number>();
+  const still = (p: Pulse | undefined, e: UiDump["elements"][number]) =>
+    !p || p.ui.some((u) => u[0] === e.id && Math.abs(u[1] - e.x) < 0.5 && Math.abs(u[2] - e.y) < 0.5 && Math.abs(u[3] - e.width) < 0.5 && Math.abs(u[4] - e.height) < 0.5);
+  for (const [n, e] of ui.elements.entries()) if (!still(before, e) || !still(after, e)) out.add(n);
+  return out;
+}
+
+function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set()): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
   for (const [n, e] of ui.elements.entries()) {
-    if (dimmed.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
+    if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
     const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
@@ -591,7 +606,9 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     // The bounds are CSS pixels of the UI's surface; the frame is device pixels, maybe halved.
     const scale = img.width / (ui.surface?.width ?? rec.size.width);
     const scaled: UiDump = { ...ui, elements: ui.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
-    const boxes = textBoxes(img, scaled).map((b) => ({ ...b, ink: r2(b.ink / scale) }));
+    const at = tickIndex.get(shot.tick);
+    const moving = at === undefined ? new Set<number>() : inMotion(ui, s[at - 1], s[at + 1]);
+    const boxes = textBoxes(img, scaled, moving).map((b) => ({ ...b, ink: r2(b.ink / scale) }));
     const occ = occupancy(ui, ui.surface ? { width: ui.surface.width, height: ui.surface.height } : rec.size);
     let frame: string | null = null;
     if (written < frames) {

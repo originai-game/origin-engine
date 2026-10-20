@@ -129,10 +129,18 @@ every screen that matters.
 The report also lists clipped samples in the mix (og-audio §4). Contrast and
 text size read text only: icons and images (their "text" is a picture's
 name), disabled controls and what they hold (WCAG exempts them), the
-slivers a scroll container cuts and what a dialog's or a tutorial's scrim
-dims on purpose are left out, and each element is measured
+slivers a scroll container cuts, what a dialog's or a tutorial's scrim
+dims on purpose and what is mid-transition in the shot (an element whose
+bounds differ on the ticks before and after it: a toast sliding out over
+a dialog, a panel popping in) are left out, and each element is measured
 at the pixels of the surface `dump_ui` reports, so a phone preview
-(390×844 at 3×) is read at its own size. Facts are the game's `facts`
+(390×844 at 3×) is read at its own size. The ink is what the pixels show,
+so it depends on the glyphs' coverage: thin strokes cover few pixels
+whole, and a regular-weight CJK face at body sizes measures lower than
+Latin in the same colours (a 15 px "设置" 3.1:1 where "Settings" reads
+4.6:1 on one button), as it reads lower to the eye. Darken the ink in the
+skin's palette, give the CJK face a heavier weight or the label a larger
+step; the measure is not wrong there. Facts are the game's `facts`
 (og-game §3): expose `hp`, `hits` or `kills` there or the hit measures stay
 n/a. A baseline line says how often things change with no input at all;
 when it is high (a runner that always moves), read latency together with
