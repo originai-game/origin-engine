@@ -1,6 +1,7 @@
 # shellcheck shell=sh
 # The gate lock: one scripts/check.sh, or one release build.sh, per target
-# directory at a time (docs/ci.md §Running the gate locally). Two of them at
+# directory at a time (docs/ci.md §Running the gate locally;
+# scripts/wave-end.sh holds it across its stages). Two of them at
 # once only wait on cargo's lock and thrash memory. Sourced by lib.sh and by
 # packages/engine/scripts/build.sh, so it is POSIX sh.
 #
@@ -64,7 +65,7 @@ og_lock_alive() {
   kill -0 "$1" 2>/dev/null || return 1
   command -v ps >/dev/null 2>&1 || return 0
   case "$(ps -p "$1" -o command= 2>/dev/null)" in
-    *check.sh*|*build.sh*|*pack.sh*) return 0 ;;
+    *check.sh*|*build.sh*|*pack.sh*|*wave-end.sh*) return 0 ;;
     *) return 1 ;;
   esac
 }
