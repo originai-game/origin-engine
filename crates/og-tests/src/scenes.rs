@@ -83,6 +83,7 @@ pub const SCENES: &[&str] = &[
     "stylise-material",
     "sprites-array",
     "stylise-ink-depth",
+    "sprites-shadow",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -297,6 +298,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // three-layer smooth array (linear, mipmapped) added, around one
         // plain textured sprite; one draw per array and blend.
         "sprites-array" => g.scene = sprite_array_scene(),
+        // Pixel figures standing in a 3D set, each with a drop shadow on
+        // the ground along the sun (one without, one from a texture
+        // array), beside a pillar and a crate casting their own.
+        "sprites-shadow" => g.scene = sprites_shadow_scene(),
         // MSDF text at several sizes, rotated, Latin and CJK.
         "text-msdf" => g.scene = text_scene()?,
         // E4: a 256x256 tilemap with four layers (one animated, one at half
@@ -932,6 +937,146 @@ pub fn flipbook_frame(frame: u32) -> TextureData {
     });
     t.mips = Mips::None;
     t
+}
+
+/// A 16 x 16 pixel-art figure (head, tunic of `tunic`, legs), feet on
+/// the bottom row; transparent round it.
+fn pixel_figure(tunic: [u8; 3]) -> TextureData {
+    let mut t = texture(16, ColorSpace::Srgb, |u, v| {
+        let (x, y) = ((u * 16.0) as i32, (v * 16.0) as i32);
+        let skin = [236, 188, 150, 255];
+        let dark = [40, 32, 48, 255];
+        match (x, y) {
+            // Hair and head.
+            (6..=9, 1) => dark,
+            (5..=10, 2..=5) if (x - 7).abs() + (y - 3).abs() <= 4 => {
+                if y == 2 {
+                    dark
+                } else {
+                    skin
+                }
+            }
+            // Arms and tunic.
+            (4 | 11, 7..=10) => skin,
+            (5..=10, 6..=11) => [tunic[0], tunic[1], tunic[2], 255],
+            // Legs and boots.
+            (6 | 9, 12..=13) => [70, 60, 90, 255],
+            (5..=6 | 9..=10, 14..=15) => dark,
+            _ => [0, 0, 0, 0],
+        }
+    });
+    t.mips = Mips::None;
+    t
+}
+
+/// The `sprites-shadow` scene (see [`build`]).
+pub fn sprites_shadow_scene() -> RenderScene {
+    use og_render::{SpriteArray, SpriteShadow, TextureArrayData, TextureFilter, TextureSource};
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 40.0, 1.0, 0.9);
+    // The set: a pillar and a crate casting their own shadows.
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.7, 0.66, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.8, 2.6, 0.8)));
+    let crate_mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(0.9)));
+    scene.add_instance(
+        pillar,
+        stone,
+        Mat4::from_translation(Vec3::new(3.2, 1.3, -2.0)),
+    );
+    scene.add_instance(
+        crate_mesh,
+        stone,
+        Mat4::from_translation(Vec3::new(-3.4, 0.45, 0.4)) * Mat4::from_rotation_y(0.4),
+    );
+    let figures: Vec<_> = [[200, 60, 60], [60, 120, 210], [80, 170, 90]]
+        .into_iter()
+        .map(|tunic| {
+            let t = scene.add_texture(pixel_figure(tunic));
+            scene.set_texture_filter(t, TextureFilter::Nearest);
+            t
+        })
+        .collect();
+    let wheel = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..8)
+                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
+                .collect(),
+        })
+        .expect("eight frames of one size");
+    scene.set_texture_array_filter(wheel, TextureFilter::Nearest);
+    let stand = |x: f32, z: f32, size: f32| Sprite {
+        position: Vec3::new(x, 0.0, z),
+        size: Vec2::splat(size),
+        anchor: Vec2::new(0.5, 0.0),
+        ..Default::default()
+    };
+    // Three figures with drop shadows, the third darker; a fourth without
+    // one beside the pillar; a wheel drawn from the texture array with one.
+    let add = |scene: &mut RenderScene, sprite: Sprite, shadow: f32| {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(sprite);
+        if shadow > 0.0 {
+            scene.sprite_shadows.push(SpriteShadow {
+                sprite: i,
+                opacity: shadow,
+            });
+        }
+        i
+    };
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[0]),
+            ..stand(-1.6, 0.6, 1.4)
+        },
+        0.5,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[1]),
+            ..stand(0.2, -0.4, 1.4)
+        },
+        0.5,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[2]),
+            ..stand(1.4, 1.2, 1.4)
+        },
+        0.8,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(figures[1]),
+            ..stand(2.2, -1.6, 1.4)
+        },
+        0.0,
+    );
+    let w = add(&mut scene, stand(-0.6, -2.2, 1.2), 0.6);
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: w,
+        array: wheel,
+        layer: 3,
+    });
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.6, 0.8, 0.5),
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.6, 7.5),
+        target: Vec3::new(0.0, 0.6, -0.4),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
 }
 
 /// The `sprites-array` scene (see [`build`]).

@@ -28,6 +28,7 @@ struct SpriteIn {
   @location(3) color: vec4<f32>,
   @location(4) flash: vec4<f32>,              // rgb: flash colour, a: amount
   @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot
+  @location(6) ground: vec4<f32>,             // a drop shadow: x 1, yz: x and z moved per metre of height, w: the ground's height
 };
 
 struct SpriteOut {
@@ -40,6 +41,14 @@ struct SpriteOut {
   @location(5) world: vec3<f32>,
 };
 
+// A drop shadow's corner: the standing quad's corner carried along the sun
+// down to the ground plane (sprites.rs shadow_ground); others unchanged.
+fn ground_shadow(p: vec3<f32>, g: vec4<f32>) -> vec3<f32> {
+  if (g.x < 0.5) { return p; }
+  let h = p.y - g.w;
+  return vec3<f32>(p.x + g.y * h, g.w, p.z + g.z * h);
+}
+
 @vertex
 fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   // Two triangles: (0,0) (1,0) (1,1) / (0,0) (1,1) (0,1), counter-clockwise.
@@ -51,7 +60,7 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
-  let world = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  let world = ground_shadow(vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z), s.ground);
   var o: SpriteOut;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   // Bottom of the quad samples the bottom of the region (v grows downwards).

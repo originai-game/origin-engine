@@ -1307,6 +1307,12 @@
           }
         },
         {
+          "name": "dropShadow",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "visible",
           "column": "bool",
           "default": true

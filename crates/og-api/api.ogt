@@ -2897,6 +2897,10 @@ module render {
     }
     field blend SpriteBlend "Alpha or additive."
     field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on." {
+      min 0
+      max 1
+    }
     field flipX bool "Mirror the region left to right."
     field flipY bool "Mirror the region top to bottom."
     field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -2982,6 +2986,11 @@ module render {
     }
     field shadowOffset Vector2 "The blob's centre relative to the anchor." {
       unit m
+    }
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
+      min 0
+      max 1
+      tunable true
     }
     field visible bool "Whether it is drawn." {
       default true

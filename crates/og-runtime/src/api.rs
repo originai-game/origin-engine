@@ -1899,6 +1899,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                 clip: clip_of(&d["clip"]),
                 order,
                 array: array.map(|(h, layer, _)| (h, layer)),
+                drop_shadow: num(&d, "dropShadow", 0.0).clamp(0.0, 1.0),
             });
         }
         Ok(())

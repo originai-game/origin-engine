@@ -164,7 +164,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2912</sub>
+<sub>`api.ogt` line 2916</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -194,7 +194,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3076</sub>
+<sub>`api.ogt` line 3085</sub>
 
 <a id="fn-measureText"></a>
 
@@ -224,7 +224,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3083</sub>
+<sub>`api.ogt` line 3092</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -254,7 +254,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3143</sub>
+<sub>`api.ogt` line 3152</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -284,7 +284,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3150</sub>
+<sub>`api.ogt` line 3159</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -314,7 +314,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3157</sub>
+<sub>`api.ogt` line 3166</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -344,7 +344,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3180</sub>
+<sub>`api.ogt` line 3189</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -376,7 +376,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3187</sub>
+<sub>`api.ogt` line 3196</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -408,7 +408,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3197</sub>
+<sub>`api.ogt` line 3206</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -440,7 +440,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3205</sub>
+<sub>`api.ogt` line 3214</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -474,7 +474,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3213</sub>
+<sub>`api.ogt` line 3222</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -504,7 +504,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3222</sub>
+<sub>`api.ogt` line 3231</sub>
 
 <a id="fn-look"></a>
 
@@ -532,7 +532,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3229</sub>
+<sub>`api.ogt` line 3238</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -560,7 +560,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3235</sub>
+<sub>`api.ogt` line 3244</sub>
 
 <a id="fn-text"></a>
 
@@ -590,7 +590,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3241</sub>
+<sub>`api.ogt` line 3250</sub>
 
 ## Components, resources and events
 
@@ -1814,6 +1814,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `shadow` | `number` | `0` | 0 … 1 | — | tunable | A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer. |
 | `shadowSize` | `Vector2` | `{ x: 0, y: 0 }` | ≥ 0 | `m` | — | The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width. |
 | `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
@@ -1884,13 +1885,18 @@ component Sprite {
   field shadowOffset Vector2 "The blob's centre relative to the anchor." {
     unit m
   }
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
+    min 0
+    max 1
+    tunable true
+  }
   field visible bool "Whether it is drawn." {
     default true
   }
 }
 ```
 
-<sub>`api.ogt` line 2919</sub>
+<sub>`api.ogt` line 2923</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1938,7 +1944,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2991</sub>
+<sub>`api.ogt` line 3000</sub>
 
 ## Types
 
@@ -2874,6 +2880,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
 | `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -2930,6 +2937,10 @@ struct SpriteDesc {
   }
   field blend SpriteBlend "Alpha or additive."
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on." {
+    min 0
+    max 1
+  }
   field flipX bool "Mirror the region left to right."
   field flipY bool "Mirror the region top to bottom."
   field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -3031,7 +3042,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3018</sub>
+<sub>`api.ogt` line 3027</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3069,7 +3080,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3090</sub>
+<sub>`api.ogt` line 3099</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3101,7 +3112,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3110</sub>
+<sub>`api.ogt` line 3119</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3137,7 +3148,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3125</sub>
+<sub>`api.ogt` line 3134</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3172,7 +3183,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3167</sub>
+<sub>`api.ogt` line 3176</sub>
 
 <a id="type-Shader"></a>
 
@@ -3186,7 +3197,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3195</sub>
+<sub>`api.ogt` line 3204</sub>
 
 ## Column kinds
 
@@ -3362,10 +3373,10 @@ column DitherPattern {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3164</sub>
+<sub>`api.ogt` line 3173</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3165</sub>
+<sub>`api.ogt` line 3174</sub>

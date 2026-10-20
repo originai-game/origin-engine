@@ -69,6 +69,8 @@ pub(crate) struct QueuedSprite {
     pub order: f32,
     /// Drawn from this layer of a texture array instead of its texture.
     pub array: Option<(og_render::TextureArrayHandle, u32)>,
+    /// `SpriteDesc.dropShadow`: a flattened dark copy on the ground (0 none).
+    pub drop_shadow: f32,
 }
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
@@ -718,6 +720,12 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
             scene
                 .occluders_2d
                 .push(og_render::Occluder2d::from_sprite(&q.sprite, 0.0));
+        }
+        if q.drop_shadow > 0.0 {
+            scene.sprite_shadows.push(og_render::SpriteShadow {
+                sprite: index,
+                opacity: q.drop_shadow.min(1.0),
+            });
         }
         if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive {
             scene.sprite_fx.push(og_render::SpriteFx {
