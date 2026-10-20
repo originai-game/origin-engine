@@ -359,8 +359,8 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 ## Browser reference tiers
 
 og-tests' gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for
-four scenes, §og-tests' gfx scenes in the browser); og-ui's 74 reference
-frames cover `metal` and `vulkan-cpu`, and the browser tiers are judged
+four scenes, §og-tests' gfx scenes in the browser); og-ui's 80 reference
+frames cover `metal` and `vulkan-cpu` (the browser tiers run 74 of them), and the browser tiers are judged
 against `metal` (§og-ui's kit frames in the browser);
 fx-showcase's browser tiers
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev

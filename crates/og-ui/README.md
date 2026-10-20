@@ -655,10 +655,15 @@ Each was checked by breaking the code it covers (the kit round's breaks are
 in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
 release-inside rule, label probe text, element order, scroll clipping, wheel
 scrolling, a theme constant, the primary colour, the saved scroll state,
-Backspace, the toggle's click). Every reference frame (74: the four scenes,
-22 desktop and 21 phone kit screens, 15 locale screens, 12 skin sheets) is
-committed for four tiers: `metal`, `vulkan-cpu` (Mesa lavapipe, CI's tier),
-`webgpu` and `webgl2`. A tier without its own reference compares with the
+Backspace, the toggle's click). Every reference frame (80: the four scenes,
+the three text scenes, 22 desktop and 21 phone kit screens, the text
+screen's three, 15 locale screens, 12 skin sheets) is committed for
+`metal` and `vulkan-cpu` (Mesa lavapipe, CI's tier), and the browser tiers
+judge the 74 they run (not the text scenes, which cook their fonts, nor
+the kit's text playtest) against `metal`. All 80 were re-recorded in the
+phase 4 text round (kerning, error-corrected atlases, the display face;
+`tests/evidence/P4/ui-text/`), and the vulkan-cpu frames now match metal
+with no outlier (RMSE at most 0.0019). A tier without its own reference compares with the
 `metal` one and says so. `vulkan-cpu` is recorded with `OG_UI_CAPTURE=1`
 in the `og-lavapipe` image with Linux binaries from `cargo zigbuild
 --target x86_64-unknown-linux-gnu.2.31` (the commands are in
@@ -666,10 +671,11 @@ in the `og-lavapipe` image with Linux binaries from `cargo zigbuild
 `packages/engine/tests/web/reference-gfx.ts` (the four scenes, compiled
 into og-tests-web) and `reference-ui.ts` (the kit playtests through
 reference.ts), both in `scripts/check.sh web-reference`, `--record` to
-re-record (`docs/ci.md` §Browser reference tiers). The other tiers match
-`metal` within the tolerance everywhere; the largest gap is the large
-titles' edge coverage (0.038 % outliers, RMSE 0.0089 on `kit-desktop-settings`),
-which lavapipe and both browser tiers share. The test font is og-tests'
+re-record (`docs/ci.md` §Browser reference tiers). The other tiers matched
+`metal` within the tolerance everywhere before the text round (the largest
+gap the large titles' edge coverage, 0.038 % outliers, RMSE 0.0089 on
+`kit-desktop-settings`, which lavapipe and both browser tiers shared); the
+browser tiers have not been rerun against the re-recorded frames. The test font is og-tests'
 committed MSDF atlas (Noto Sans SC subset, OFL).
 
 ## What phase 2 owes
