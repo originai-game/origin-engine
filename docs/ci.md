@@ -359,8 +359,8 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 ## Browser reference tiers
 
 og-tests' gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for
-four scenes, §og-tests' gfx scenes in the browser); og-ui's 80 reference
-frames cover `metal` and `vulkan-cpu` (the browser tiers run 74 of them), and the browser tiers are judged
+four scenes, §og-tests' gfx scenes in the browser); og-ui's 83 reference
+frames cover `metal` and `vulkan-cpu` (the browser tiers run 76 of them), and the browser tiers are judged
 against `metal` (§og-ui's kit frames in the browser);
 fx-showcase's browser tiers
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
@@ -383,13 +383,17 @@ templates/archetypes/topdown --script "<the frames playtest's commands
 without screenshot and quit>" --shots start@30,crit@131,dash@168,east@216`
 compares (or with `--record` writes) `<project>/references/<tier>/`. What
 each template commits under `references/`: `metal` alone for idle, rhythm,
-roguelike and tower-defense; `metal` and `vulkan-cpu` for match3 and
-runner; `metal` and a WebGL2 `beacon` for third-person (below); all four
-tiers for fx-showcase and topdown. Topdown's `webgpu` and `webgl2` frames
-were recorded on those tiers (2026-10-18) and sit within RMSE 0.00009
-(WebGPU) and 0.00005 (WebGL2) of `metal`, three of the WebGL2 four byte for
-byte `metal`'s: they record no difference the tier makes, so they are
-redundant with `metal` under the rule below.
+roguelike and tower-defense; `metal` and `vulkan-cpu` for match3, runner
+and topdown; `metal` and a WebGL2 `beacon` for third-person (below);
+`metal`, `vulkan-cpu` and one WebGL2 frame (`water`, below) for
+fx-showcase. The UI shell round (2026-10-21) deleted topdown's `webgpu`
+and `webgl2` frames and 47 of fx-showcase's 48: each sits within the
+tolerance of `metal` on its tier (topdown within RMSE 0.00009, three of
+the WebGL2 four RMSE 0; fx-showcase's in
+`tests/evidence/P4/ui-shell/fx-showcase-browser-vs-metal.tsv`), so they
+recorded no difference the tier makes; the 36 that had gone stale when
+the UI text round kerned the station HUD on `metal` failed against their
+own copies, never against `metal`.
 
 A tier's references are looked up frame by frame: a frame with no file
 under `references/<tier>/` (or a tier with no directory at all) is judged
@@ -428,26 +432,27 @@ their view out for 16:9 instead of the surface; `og run` and `og polish`
 now create the engine with `deferStart` and run the start once the
 renderer is attached, as the web Worker always did.
 
-Against their own references both tiers reproduce exactly (RMSE 0 on two
-clean runs). Against `metal`, measured at the commit that recorded them
-(2026-10-18):
+Both tiers are judged against `metal` (2026-10-21, the UI shell branch
+merged with main 376f3cd):
 
 | Station | webgpu outliers | webgpu RMSE | webgl2 outliers | webgl2 RMSE |
 |---|---|---|---|---|
-| post | 0.000 % | 0.00107 | 0.000 % | 0.00498 |
-| lens | 0.007 % | 0.00188 | 0.007 % | 0.00186 |
-| fx | 0.000 % | 0.00173 | 0.013 % | 0.00272 |
-| 2d | 0.000 % | 0.00228 | 0.000 % | 0.00231 |
-| stylised | 0.022 % | 0.00360 | 0.022 % | 0.00360 |
+| post | 0.000 % | 0.00142 | 0.000 % | 0.00506 |
+| lens | 0.010 % | 0.00228 | 0.010 % | 0.00227 |
+| fx | 0.000 % | 0.00204 | 0.013 % | 0.00288 |
+| 2d | 0.000 % | 0.00251 | 0.000 % | 0.00254 |
+| stylised | 0.027 % | 0.00389 | 0.027 % | 0.00389 |
 
 The E5 stations (sky, weather, water, shaders, controller, joints, rope,
 fluid) each have a playtest of their own, so `tests/web/reference-e5.ts`
 reads each playtest's station and wait from `tests/<station>.og.ts`. It runs
 reference.ts once per station with `--script 0.5:station:<name> --shots
-<name>@<tick>`, so the browser run is the same fresh run. Against their own
-references both tiers reproduce exactly. Against `metal` (2026-10-19), every
-station is within RMSE 0.0010 on WebGPU and 0.0027 on WebGL2, except water
-on WebGL2 at RMSE 0.0216 (0.93 % outliers). That is expected: WebGL2 has no
+<name>@<tick>`, so the browser run is the same fresh run. Against `metal`
+(2026-10-21; the stations are now every `stationPlaytest`, 20 of them),
+every station is within RMSE 0.0085 on WebGPU (fluids3d; the rest under
+0.0020) and 0.0085 on WebGL2 (fluids3d, terrain 0.0078, environment
+0.0078; the rest under 0.0056), except water on WebGL2 at RMSE 0.0216
+(0.93 % outliers), which keeps its WebGL2 reference. That is expected: WebGL2 has no
 depth-prepass reflection march, so its water reflects the prefiltered sky
 cubemap (`crates/og-render/README.md` §E5).
 
@@ -513,8 +518,8 @@ native metal run gives against that reference.
 `packages/engine/tests/web/reference-ui.ts` runs templates/ui-kit's
 reference playtests in headless Chrome: `frames-desktop`, `frames-phone`,
 `players`, `locales` and the twelve `skin-<pack>[-phone]` playtests, all of
-them (70 frames: 22 desktop, 21 phone, 15 locale screens, 12 skin sheets of
-20 cells). It bundles each playtest (`bundleGame`, as `og test` does), reads
+them (72 frames: 23 desktop, 22 phone, 15 locale screens, 12 skin sheets of
+21 cells). It bundles each playtest (`bundleGame`, as `og test` does), reads
 its size, commands and screenshot times, and runs reference.ts once per
 playtest with `--project templates/ui-kit --references
 crates/og-ui/references --size <w>x<h> --script <the commands without
@@ -531,7 +536,7 @@ and sheet is judged against `metal`), and the summary goes to
 report per playtest beside it. `--only a,b` runs some playtests,
 `--record` writes the tier's frames and sheets.
 
-Both browser tiers are judged against `metal`'s 70 frames: per-tier
+Both browser tiers are judged against `metal`'s 72 frames: per-tier
 copies, recorded 2026-10-19 and reproduced exactly (RMSE 0) by both tiers,
 were dropped as duplicates of `metal`, since no frame differs by the
 tier's design. Against `metal` (Chrome for Testing 150, Apple M4 Pro,
@@ -547,6 +552,25 @@ except the paper pack's phone sheet at 0.0040.
 A tier takes 100 to 140 s (about 7 to 9 minutes while another heavy job
 shares the machine), so the full set runs in `web-reference` rather than
 a subset.
+
+### The accessibility mirror in the browser
+
+`packages/engine/tests/web/a11y.ts` (in `web-reference`, both tiers) runs
+the dev export of templates/ui-kit on a 1280×720 canvas with the
+reference page, one tick per `frame` call, on the settings screen, and
+checks the shell's DOM mirror of `og.ui.a11y()` (src/web/a11y.ts): one
+element per node in tree order, nested by parent, at each node's bounds,
+with its role; the settings dialog, the section tabs, the Master slider,
+the Mute switch and Done as ARIA; Chrome's own accessibility tree
+(`Accessibility.getFullAXTree`) reading the switch and the slider; no tree
+in the frame answers of a settled screen; a screen-reader-style
+`element.click()` on Mute toggling it (dump_ui's `checked`, the mirror's
+`aria-checked`, the UI's focus and the DOM focus on it); the Graphics tab
+and Done clicked the same way, the "Settings saved" toast in the polite
+live region; `prefers-contrast: more` (CDP's emulated media) changing the
+frame and its end bringing it back; and the pause dialog arriving at full
+size under `prefers-reduced-motion: reduce` where it otherwise scales in.
+It writes `dist/test-a11y/out/a11y-<tier>.json`.
 
 ## Updating a budget
 
