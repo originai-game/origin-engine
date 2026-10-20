@@ -116,7 +116,7 @@ at 1.0 is a mix bug, not loudness.
 
   Nothing changes in code: loops, `startOffset`, crossfades and stems play
   sample-identical to the whole file, and the world hash is the same.
-  `og.load.soundInfo(world, sound).value.chunks` says how many (0: whole).
+  `og.load.soundInfo(world, sound)` answers `chunks`, how many (0: whole).
   A chunk that has not arrived plays silence, so start a long track a beat
   before it must be heard rather than on the first frame of a scene; a
   chunked sound cannot go in a streaming group (og-game §6).
