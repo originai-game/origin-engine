@@ -1578,6 +1578,7 @@
         "Sound",
         "Skin",
         "TextureArray",
+        "TextureArray",
         "Asset",
         "Sound",
         "LoadStatus",
@@ -1760,7 +1761,7 @@
         },
         {
           "name": "lut",
-          "doc": "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path.",
+          "doc": "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle.",
           "params": [
             {
               "name": "world",
@@ -1802,7 +1803,7 @@
         },
         {
           "name": "emitter",
-          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.",
+          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -1818,7 +1819,7 @@
             }
           ],
           "returns": "Result<ParticleEmitter>",
-          "returnsDoc": "Refused for a path not in the bundle or a texture it cannot load.",
+          "returnsDoc": "Refused for a path not in the bundle, or a texture or texture array it cannot load.",
           "publish": true
         },
         {
@@ -1864,7 +1865,7 @@
         },
         {
           "name": "textureArray",
-          "doc": "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.\nSpriteDesc.array draws sprites from its layers (one draw per array, whatever layer each shows; materials and terrain layers do not sample arrays yet); TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go and sprites of it are refused until the group is resident again, when it comes back under the same handle.",
+          "doc": "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.\nSpriteDesc.array (world and screen sprites), og.Sprite.array and 2D particle emitters (an emitter's `array` line) draw from its layers, one draw per array whatever layer each shows, with glow and the additive blend; an `array true` flipbook sheet cooks its frames into one (materials and terrain layers do not sample arrays yet). TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go, og.render.sprite of it is refused and og.Sprite and particles of it draw nothing until the group is resident again, when it comes back under the same handle.",
           "params": [
             {
               "name": "world",
@@ -2094,7 +2095,7 @@
         },
         {
           "name": "flipbook",
-          "doc": "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.",
+          "doc": "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. Loading the same path again answers the same handles.",
           "params": [
             {
               "name": "world",
@@ -7311,7 +7312,7 @@
     },
     {
       "name": "stream",
-      "doc": "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, sounds, environment maps, palettes and looks that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.\nAt every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.\nTexture arrays, environment maps, palettes and looks have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, a sprite of the array and applying the look are refused) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite draws from, the look last applied) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it.\nEvery change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading), the recent changes and the terrain streamer's tiles.",
+      "doc": "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.\nAt every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.\nTexture arrays, environment maps, palettes, looks and colour LUTs have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, PostEffects.lut grades nothing, og.render.sprite of the array and applying the look are refused, an og.Sprite or a particle emitter of the array draws nothing) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite, a screen sprite or a particle emitter draws from, the look last applied, the LUT PostEffects grades with) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it. What is kept still takes its memory: its bytes count in the budget's `used` (and `kept`, and its group's StreamStatus.kept) until it is let go, so a group that would not fit beside it waits.\nEvery change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading with each asset's bytes), the recent changes and the terrain streamer's tiles.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -11409,7 +11410,7 @@
         },
         "lut": {
           "$ref": "#/$defs/Lut",
-          "description": "Colour grading by a lookup table from og.load.lut; 0 is none.",
+          "description": "Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident).",
           "default": 0
         },
         "lutIntensity": {
@@ -12720,7 +12721,7 @@
               "type": "null"
             }
           ],
-          "description": "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World sprites only (not `screen`). null uses `texture`.",
+          "description": "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`.",
           "default": null
         },
         "arrayLayer": {
@@ -12906,12 +12907,24 @@
     "Sprite": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame.\nSorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.",
+      "description": "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.\nSorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.",
       "type": "object",
       "properties": {
         "texture": {
           "$ref": "#/$defs/Texture",
           "description": "The texture (og.load.texture); 0 draws a solid quad of the colour.",
+          "default": 0
+        },
+        "array": {
+          "$ref": "#/$defs/TextureArray",
+          "description": "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing.",
+          "default": 0
+        },
+        "arrayLayer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer.",
           "default": 0
         },
         "width": {
@@ -17680,7 +17693,7 @@
     "Flipbook": {
       "x-og-kind": "component",
       "x-og-module": "anim",
-      "description": "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.\nChanging clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).",
+      "description": "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.\nChanging clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).",
       "type": "object",
       "properties": {
         "sheet": {
@@ -17837,7 +17850,11 @@
         },
         "texture": {
           "$ref": "#/$defs/Texture",
-          "description": "The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`)."
+          "description": "The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`); 0 for an `array true` sheet."
+        },
+        "array": {
+          "$ref": "#/$defs/TextureArray",
+          "description": "An `array true` sheet's texture array (its frames as layers, loaded with it); 0 otherwise."
         },
         "clips": {
           "type": "array",
@@ -17868,6 +17885,7 @@
       "required": [
         "sheet",
         "texture",
+        "array",
         "clips",
         "frames",
         "frameWidth",
@@ -28195,6 +28213,11 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "How many times it became resident."
+        },
+        "kept": {
+          "type": "number",
+          "description": "The bytes of its assets kept for the frame after it unloaded (counted in StreamBudget.used until let go); 0 otherwise.",
+          "x-og-unit": "bytes"
         }
       },
       "required": [
@@ -28210,7 +28233,8 @@
         "assets",
         "reason",
         "since",
-        "loads"
+        "loads",
+        "kept"
       ],
       "additionalProperties": false
     },
@@ -28227,7 +28251,12 @@
         },
         "used": {
           "type": "number",
-          "description": "The bytes they take now.",
+          "description": "The bytes they take now, with what unloaded groups keep for the frame.",
+          "x-og-unit": "bytes"
+        },
+        "kept": {
+          "type": "number",
+          "description": "Of `used`, the bytes of assets kept for the frame after their group unloaded (an array a sprite still draws, the map the frame is lit by, ...).",
           "x-og-unit": "bytes"
         },
         "peak": {
@@ -28246,6 +28275,7 @@
       "required": [
         "budget",
         "used",
+        "kept",
         "peak",
         "groups"
       ],

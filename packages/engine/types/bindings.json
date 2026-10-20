@@ -148,6 +148,12 @@
       "value": "DitherPattern"
     },
     {
+      "name": "TextureArray",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "TextureArray"
+    },
+    {
       "name": "Asset",
       "array": "Uint32Array",
       "stride": 2,
@@ -1160,6 +1166,16 @@
         {
           "name": "texture",
           "column": "Texture",
+          "default": 0
+        },
+        {
+          "name": "array",
+          "column": "TextureArray",
+          "default": 0
+        },
+        {
+          "name": "arrayLayer",
+          "column": "u32",
           "default": 0
         },
         {

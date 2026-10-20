@@ -149,7 +149,8 @@ lists every loader and what each returns.
 **Streaming groups** (`reference/stream.md`) keep a big world's assets off
 the GPU until the player is near them. A scene names glTF models (no skins
 or morph targets), textures, texture arrays, sounds, environment maps,
-palettes and looks that load and unload together, and what loads them:
+palettes, looks and colour LUTs (`.cube`) that load and unload together,
+and what loads them:
 
 ```
 stream "harbour" {
@@ -174,11 +175,13 @@ draws its proxy (its coarsest LOD, untextured), a texture is a grey 1x1 and
 a sound plays silence of its own length; then the real ones take over the
 same handles. Physics always collides with the proxy, so the simulation and
 the world hash never depend on what is resident. Texture arrays,
-environment maps, palettes and looks have no stand-in: load them once the
-group is resident; when it unloads their handles wait (the sky lights the
-scene, a sprite of the array is refused) and come back with the group. One
-the frame still uses when its group unloads is kept, with a warning, until
-the frame stops using it. Groups are admitted by
+environment maps, palettes, looks and LUTs have no stand-in: load them once
+the group is resident; when it unloads their handles wait (the sky lights
+the scene, `og.render.sprite` of the array is refused, an `og.Sprite` or a
+particle emitter of it draws nothing, `PostEffects.lut` grades nothing) and
+come back with the group. One the frame still uses when its group unloads
+is kept, with a warning, until the frame stops using it, and its bytes
+count in the budget meanwhile (`og.stream.budget().kept`). Groups are admitted by
 priority within `og.stream.setBudget` (256 MiB by default); a lower-priority
 group is evicted to make room for a higher one. `og.stream.status`,
 `og.stream.budget`, `og.StreamEvent` (state `STREAM_RESIDENT` and the rest)
@@ -222,6 +225,13 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   sprite's entity plays it, and `og.FlipbookEvent` reports the frames named
   by `event` (footsteps, the frame a hit lands). Give pixel art
   `texture { kind pixel }` import settings (lossless, nearest).
+- **Texture arrays** batch frames: `og.load.textureArray` (a `type
+  texture-array` of same-sized images) and `og.Sprite { array, arrayLayer }`
+  (or `og.render.sprite`'s `array`, world or `screen`) draw every sprite of
+  one array in one draw whichever layer each shows, glow and blend
+  included. A flipbook with `array true` cooks its frames into an array
+  (frame n is layer n, one size); a 2D emitter's `array "<id>" random` (or
+  `life <cycles>`, `fps <n>`) draws its particles from the layers.
 - **Tilemaps**: a tileset `.ogt` (`type tileset`: grid, `solid` tiles,
   `collide` rects, animated tiles, `terrain` auto-tiling rules) and a map:
   a Tiled `.tmj`, an LDtk `.ldtk` or a hand-written `.ogt` of `type tilemap`

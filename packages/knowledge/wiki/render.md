@@ -79,7 +79,7 @@ module render {
 | [`TextMetrics`](#type-TextMetrics) | struct | The extent of a laid-out text, in world units. |
 | [`SpriteDesc`](#type-SpriteDesc) | desc struct | A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene. |
 | [`og.render.sprite`](#fn-sprite) | function | Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show. |
-| [`og.Sprite`](#record-Sprite) | component | A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame. |
+| [`og.Sprite`](#record-Sprite) | component | A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame. |
 | [`og.Afterimage`](#record-Afterimage) | component | Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block). |
 | [`FloatingTextDesc`](#type-FloatingTextDesc) | desc struct | A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block). |
 | [`og.render.floatingText`](#fn-floatingText) | function | Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it. |
@@ -194,7 +194,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3069</sub>
+<sub>`api.ogt` line 3071</sub>
 
 <a id="fn-measureText"></a>
 
@@ -224,7 +224,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3076</sub>
+<sub>`api.ogt` line 3078</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -254,7 +254,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3136</sub>
+<sub>`api.ogt` line 3138</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -284,7 +284,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3143</sub>
+<sub>`api.ogt` line 3145</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -314,7 +314,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3150</sub>
+<sub>`api.ogt` line 3152</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -344,7 +344,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3173</sub>
+<sub>`api.ogt` line 3175</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -376,7 +376,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3180</sub>
+<sub>`api.ogt` line 3182</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -408,7 +408,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3190</sub>
+<sub>`api.ogt` line 3192</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -440,7 +440,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3198</sub>
+<sub>`api.ogt` line 3200</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -474,7 +474,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3206</sub>
+<sub>`api.ogt` line 3208</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -504,7 +504,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3215</sub>
+<sub>`api.ogt` line 3217</sub>
 
 <a id="fn-look"></a>
 
@@ -532,7 +532,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3222</sub>
+<sub>`api.ogt` line 3224</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -560,7 +560,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3228</sub>
+<sub>`api.ogt` line 3230</sub>
 
 <a id="fn-text"></a>
 
@@ -590,7 +590,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3234</sub>
+<sub>`api.ogt` line 3236</sub>
 
 ## Components, resources and events
 
@@ -943,7 +943,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `godRaysThreshold` | `number` | `2` | ≥ 0 | — | — | Sky brightness (linear, before exposure) below which the sky carries no rays. |
 | `glow` | `boolean` | `false` | — | — | — | Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom. |
 | `glowIntensity` | `number` | `1` | ≥ 0 | — | tunable | How much of the blurred glow is added back. |
-| `lut` | `Lut` | `0` | — | — | — | Colour grading by a lookup table from og.load.lut; 0 is none. |
+| `lut` | `Lut` | `0` | — | — | — | Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident). |
 | `lutIntensity` | `number` | `1` | 0 … 1 | — | tunable | 0 leaves the image as tone mapped, 1 applies the table fully. |
 | `vignette` | `boolean` | `false` | — | — | — | Darkened (or tinted) edges of the frame. |
 | `vignetteIntensity` | `number` | `0.35` | 0 … 1 | — | tunable | 0 none, 1 black corners. |
@@ -1068,7 +1068,7 @@ resource PostEffects {
     min 0
     tunable true
   }
-  field lut Lut "Colour grading by a lookup table from og.load.lut; 0 is none."
+  field lut Lut "Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident)."
   field lutIntensity f32 "0 leaves the image as tone mapped, 1 applies the table fully." {
     default 1
     min 0
@@ -1776,7 +1776,7 @@ component Beam {
 
 ### `og.Sprite` (component)
 
-A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame.
+A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
 
 Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
 
@@ -1785,6 +1785,8 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `texture` | `Texture` | `0` | — | — | — | The texture (og.load.texture); 0 draws a solid quad of the colour. |
+| `array` | `TextureArray` | `0` | — | — | — | Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing. |
+| `arrayLayer` | `number` | `0` | — | — | — | With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer. |
 | `width` | `number` | `1` | ≥ 0 | `m` | tunable | Its width in world units (times Transform.scale.x). |
 | `height` | `number` | `1` | ≥ 0 | `m` | tunable | Its height in world units (times Transform.scale.y). |
 | `anchor` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | — | The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it. |
@@ -1811,9 +1813,11 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 
 ```ogt
 component Sprite {
-  doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame."
+  doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
   doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
   field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
+  field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
+  field arrayLayer u32 "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer."
   field width f32 "Its width in world units (times Transform.scale.x)." {
     default 1
     min 0
@@ -1931,7 +1935,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2984</sub>
+<sub>`api.ogt` line 2986</sub>
 
 ## Types
 
@@ -2849,7 +2853,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `texture` | `Texture \| null` | `null` | — | — | — | The texture from og.load.texture; null draws a solid quad of the colour. |
-| `array` | `TextureArray \| null` | `null` | — | — | — | Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World sprites only (not `screen`). null uses `texture`. |
+| `array` | `TextureArray \| null` | `null` | — | — | — | Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`. |
 | `arrayLayer` | `number` | `0` | — | — | — | With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer. |
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the anchor point is. |
 | `width` | `number` | `1` | ≥ 0 | `m` | — | Its width in world units. |
@@ -2878,7 +2882,7 @@ struct SpriteDesc {
   doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
   desc true
   field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
-  field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World sprites only (not `screen`). null uses `texture`."
+  field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`."
   field arrayLayer u32 "With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer."
   field position Vector3 "Where the anchor point is." {
     unit m
@@ -3022,7 +3026,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3011</sub>
+<sub>`api.ogt` line 3013</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3060,7 +3064,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3083</sub>
+<sub>`api.ogt` line 3085</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3092,7 +3096,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3103</sub>
+<sub>`api.ogt` line 3105</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3128,7 +3132,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3118</sub>
+<sub>`api.ogt` line 3120</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3163,7 +3167,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3160</sub>
+<sub>`api.ogt` line 3162</sub>
 
 <a id="type-Shader"></a>
 
@@ -3177,7 +3181,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3188</sub>
+<sub>`api.ogt` line 3190</sub>
 
 ## Column kinds
 
@@ -3353,10 +3357,10 @@ column DitherPattern {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3157</sub>
+<sub>`api.ogt` line 3159</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3158</sub>
+<sub>`api.ogt` line 3160</sub>
