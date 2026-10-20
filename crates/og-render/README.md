@@ -174,9 +174,10 @@ records, one word per cluster with its first reference and count, and the
 references as bytes): storage buffers on the full tier, uniform buffers of
 at most 16 KiB on WebGL2. A tile table texture, as first planned for
 WebGL2, would need a seventeenth texture slot in the skinned lit pipeline
-(below). The build runs on the CPU on both tiers: tens of microseconds for
-256 lights (`tests/evidence/P2/render/forward-plus.md`), less than a
-compute dispatch would cost. Stats: `lights` (drawn), `lights_culled`,
+(below). The build runs on the CPU on both tiers: 38 to 53 microseconds for
+256 lights, less than a compute build costs to record and submit alone
+(`tests/evidence/P4/perf/clusters-compute.md`; the P2 numbers in
+`tests/evidence/P2/render/forward-plus.md`). Stats: `lights` (drawn), `lights_culled`,
 `lights_dropped`, `cluster_lights` (references stored),
 `cluster_lights_dropped`.
 
@@ -960,8 +961,39 @@ with their mips, chosen per tier and reported in
   shaped placements and glyph tables that grow at run time landed in the
   phase 4 UI text round; shaping and bidi themselves are og-ui's, CJK
   coverage the cook's `runtime true` with og-ui's run-time glyphs.)
-- Instance upload is the whole buffer every frame; dirty tracking is still
-  to do (GPU culling on the full tier landed in phase 3). Resources cannot
-  be removed.
-  Shaders are WGSL compiled by naga at pipeline creation; cooking per
-  backend at build time is still to do.
+- *Delivered (P4 perf, `tests/evidence/P4/perf/`):*
+  - **Instance upload dirty tracking** (12749c1): the CPU path's instance
+    buffer and GPU culling's input region keep a copy of what they hold and
+    write only the 4 KiB blocks that changed (`src/upload.rs`), on both
+    tiers; a buffer just grown, or a frame of another length, is written
+    whole. `FrameStats::instance_upload_bytes`; og-tests `tests/upload.rs`.
+  - **Resources can be removed** (db105bd): `RenderScene::remove_mesh`,
+    `remove_texture`, `remove_material`, `remove_font` free the slot on the
+    GPU before the next frame; the next add of the kind reuses it under a
+    new generation (handles carry the slot in 24 bits and an 8-bit
+    generation), so a removed handle is refused by every setter and, in a
+    frame's instances, sprites, texts or font atlases, by `render`
+    (`InvalidHandle`). Removing a texture clears the material slots that
+    sampled it. A skinned or morphed mesh's slot is retired, not reused.
+    og-runtime unloads a streaming group's model textures through
+    `remove_texture`. og-tests `tests/removal.rs`.
+  - **Shader cooking per backend** (912e333, 8779ca8): every WGSL module
+    of both tiers (`og_render::shader_sources`) is validated by naga and
+    written as MSL and SPIR-V (full tier) or GLSL ES 3.0 (GL tier) in the
+    gate (`tests/shaders.rs`), so a shader error is a failed build, not a
+    player's crash. Compiled pipelines are kept across runs where wgpu has
+    a pipeline cache (Vulkan; `set_pipeline_cache_dir`,
+    `RenderInfo::pipeline_cache`); Metal and the browsers keep their own.
+    The wasm still ships WGSL: the browser compiles WGSL itself, and a
+    second form would only add to the download.
+  - **Cluster build in compute**: measured, not kept. For `lights-256` the
+    CPU build takes 38 to 53 us a frame; the cheapest compute build (one
+    dispatch, no importance order, so not even byte-identical) takes 97 to
+    134 us to upload, encode and submit and 279 to 385 us of GPU on Metal
+    (`tests/evidence/P4/perf/clusters-compute.md`,
+    og-tests `tests/cluster_compute.rs`). The CPU build stays on both tiers.
+- Still owed: the per-instance GPU cost of the lit pass (the sphere field's
+  frame is GPU-bound at about 4 ms in Chrome against three.js's 1.5 ms on
+  WebGPU: a 64-byte vertex and 23 interpolated floats a vertex, where
+  three.js's standard material interpolates about 7;
+  `tests/evidence/P4/perf/threejs-spheres.md`).
