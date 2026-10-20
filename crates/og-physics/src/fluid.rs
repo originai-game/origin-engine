@@ -88,30 +88,52 @@ impl Grid {
 
     /// Every pair (i, j) with j > i closer than the cell size, as flat lists
     /// per particle (`start[i]..start[i + 1]` into `pairs`), j ascending.
+    /// By ranges of particles on the lanes from two grains of them, the
+    /// ranges joined in particle order: what one thread finds.
     fn neighbours(&self, positions: &[Vec2]) -> (Vec<u32>, Vec<u32>) {
         let n = positions.len();
         let h2 = self.cell * self.cell;
         let inv = 1.0 / self.cell;
-        let mut start = Vec::with_capacity(n + 1);
-        let mut pairs = Vec::new();
-        let mut found: Vec<u32> = Vec::new();
-        for (i, p) in positions.iter().enumerate() {
-            start.push(pairs.len() as u32);
-            let (cx, cy) = ((p.x * inv).floor() as i32, (p.y * inv).floor() as i32);
-            found.clear();
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    for &(_, _, j) in self.range(cx + dx, cy + dy) {
-                        if j as usize > i && (positions[j as usize] - *p).length_squared() < h2 {
-                            found.push(j);
+        // Per range: each particle's pair count, and the pairs.
+        let search = |particles: std::ops::Range<usize>| {
+            let mut counts = Vec::with_capacity(particles.len());
+            let mut pairs = Vec::new();
+            let mut found: Vec<u32> = Vec::new();
+            for i in particles {
+                let p = positions[i];
+                let (cx, cy) = ((p.x * inv).floor() as i32, (p.y * inv).floor() as i32);
+                found.clear();
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        for &(_, _, j) in self.range(cx + dx, cy + dy) {
+                            if j as usize > i && (positions[j as usize] - p).length_squared() < h2 {
+                                found.push(j);
+                            }
                         }
                     }
                 }
+                found.sort_unstable();
+                counts.push(found.len() as u32);
+                pairs.extend_from_slice(&found);
             }
-            found.sort_unstable();
-            pairs.extend_from_slice(&found);
+            (counts, pairs)
+        };
+        let parts = crate::lanes::map_ranges(n, crate::lanes::now().particles_2d, search);
+        let mut start = Vec::with_capacity(n + 1);
+        let mut at = 0u32;
+        for (counts, _) in &parts {
+            for c in counts {
+                start.push(at);
+                at += c;
+            }
         }
-        start.push(pairs.len() as u32);
+        start.push(at);
+        let mut parts: Vec<Vec<u32>> = parts.into_iter().map(|(_, p)| p).collect();
+        let pairs = if parts.len() == 1 {
+            parts.pop().unwrap_or_default()
+        } else {
+            parts.concat()
+        };
         (start, pairs)
     }
 }
@@ -246,19 +268,26 @@ impl FluidState {
                 }
                 self.positions[i] += dx;
             }
-            // Solids and the container.
+            // Solids and the container: each particle alone, by ranges on
+            // the lanes from two grains.
             let half = fluid.bounds * 0.5;
-            for p in self.positions.iter_mut() {
-                if let Some((q, _)) = solids.push_out(Vec3::new(p.x, p.y, z), r_particle) {
-                    *p = Vec2::new(q.x, q.y);
-                }
-                if half.x > 0.0 {
-                    p.x = p.x.clamp(centre.x - half.x, centre.x + half.x);
-                }
-                if half.y > 0.0 {
-                    p.y = p.y.clamp(centre.y - half.y, centre.y + half.y);
-                }
-            }
+            crate::lanes::for_each_chunk_of(
+                &mut self.positions,
+                crate::lanes::now().particles_2d,
+                |_, ps| {
+                    for p in ps {
+                        if let Some((q, _)) = solids.push_out(Vec3::new(p.x, p.y, z), r_particle) {
+                            *p = Vec2::new(q.x, q.y);
+                        }
+                        if half.x > 0.0 {
+                            p.x = p.x.clamp(centre.x - half.x, centre.x + half.x);
+                        }
+                        if half.y > 0.0 {
+                            p.y = p.y.clamp(centre.y - half.y, centre.y + half.y);
+                        }
+                    }
+                },
+            );
             // The velocity from the displacement, capped at half the radius
             // per substep (stable, and nothing tunnels through a wall).
             let cap = 0.5 * h / ds;
@@ -485,22 +514,30 @@ pub(crate) fn step_group(
         for (m, w) in mass.iter_mut().zip(&mix) {
             *m = mass_of(w);
         }
-        // Solids and each member's container.
-        for i in 0..n {
-            let m = &members[owner[i] as usize];
-            let r_particle = m.fluid.radius.max(0.01) * 0.25;
-            let p = &mut positions[i];
-            if let Some((q, _)) = solids.push_out(Vec3::new(p.x, p.y, z), r_particle) {
-                *p = Vec2::new(q.x, q.y);
-            }
-            let half = m.fluid.bounds * 0.5;
-            if half.x > 0.0 {
-                p.x = p.x.clamp(m.centre.x - half.x, m.centre.x + half.x);
-            }
-            if half.y > 0.0 {
-                p.y = p.y.clamp(m.centre.y - half.y, m.centre.y + half.y);
-            }
-        }
+        // Solids and each member's container: each particle alone, by
+        // ranges on the lanes from two grains.
+        let shared: &[Member<'_>] = members;
+        let owner = &owner;
+        crate::lanes::for_each_chunk_of(
+            &mut positions,
+            crate::lanes::now().particles_2d,
+            |at, ps| {
+                for (k, p) in ps.iter_mut().enumerate() {
+                    let m = &shared[owner[at + k] as usize];
+                    let r_particle = m.fluid.radius.max(0.01) * 0.25;
+                    if let Some((q, _)) = solids.push_out(Vec3::new(p.x, p.y, z), r_particle) {
+                        *p = Vec2::new(q.x, q.y);
+                    }
+                    let half = m.fluid.bounds * 0.5;
+                    if half.x > 0.0 {
+                        p.x = p.x.clamp(m.centre.x - half.x, m.centre.x + half.x);
+                    }
+                    if half.y > 0.0 {
+                        p.y = p.y.clamp(m.centre.y - half.y, m.centre.y + half.y);
+                    }
+                }
+            },
+        );
         for ((v, p), q) in velocities.iter_mut().zip(&positions).zip(&previous) {
             let u = (*p - *q) / ds;
             let len = u.length();

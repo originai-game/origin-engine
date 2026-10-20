@@ -13,8 +13,9 @@ use crate::schema_ext::{Cloth, PIN_LEFT, PIN_TOP, PIN_TOP_CORNERS, PIN_TOP_RINGS
 use og_core::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
-/// What points collide with: solid colliders near them.
-pub(crate) trait Solids {
+/// What points collide with: solid colliders near them, read only (a
+/// fluid's collision pass asks from several lanes at once).
+pub(crate) trait Solids: Sync {
     /// `p` moved out of every solid it is closer than `radius` to, and the
     /// last surface normal pushed along (`None`: nothing touched).
     fn push_out(&self, p: Vec3, radius: f32) -> Option<(Vec3, Vec3)>;

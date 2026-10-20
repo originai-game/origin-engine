@@ -97,16 +97,16 @@ fn the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world()
 }
 
 /// Lanes change who steps a world, never the world: a pen of the pile's
-/// bodies large enough to go to the lanes pool (a body grain for every
-/// lane thread) stepped there and stepped with lanes switched off ends in
-/// the same world after 300 ticks, and the first run did go to the pool
-/// when this process has one. The switch is the process's; the tests
-/// running meanwhile get the same results on whichever threads it leaves
-/// them.
+/// bodies large enough to go to the lanes pool (`pool_bodies` for this
+/// process's thread count) stepped there and stepped with lanes switched
+/// off ends in the same world after 300 ticks, and the first run did go to
+/// the pool when this process has one. The switch is the process's; the
+/// tests running meanwhile get the same results on whichever threads it
+/// leaves them.
 #[test]
 fn a_pen_on_the_lanes_and_off_them_ends_in_the_same_world() {
     let lanes = og_lanes::report();
-    let bodies = BODY_GRAIN * lanes.threads.max(2) as usize;
+    let bodies = pool_bodies(lanes.threads.max(2));
     let calls = || og_lanes::report().sites[og_lanes::Site::Physics as usize];
     let before = calls();
     let (mut a, _pa) = pile::pen(bodies, 5);

@@ -95,18 +95,18 @@ function pile(lanes: string, bodies: number): Pile {
   return JSON.parse(out.trim().split("\n").pop()!) as Pile;
 }
 
-test("the physics step goes to the lanes from a body grain for every lane thread, with the same world", () => {
-  // Above og-physics's BODY_GRAIN (200) for each of four lanes, and below.
+test("the physics step goes to the lanes from og-physics's threshold for the thread count, with the same world", () => {
+  // Above og-physics's pool_bodies for four lanes (500), and below.
   const off = pile("off", 1000);
   const on = pile("4", 1000);
-  const below = pile("4", 760);
+  const below = pile("4", 480);
   expect([on.lanes.threads, on.lanes.pool]).toEqual([4, "native"]);
   // The steps (241 ticks) went to the pool with their 1,000 bodies (the
   // contact readout splits besides once the pile has 1,024 pairs).
   expect(on.lanes.sites.physics.calls).toBeGreaterThan(200);
   expect(on.lanes.sites.physics.items).toBeGreaterThan(200 * 1000);
   expect(off.lanes.sites.physics.calls).toBe(0);
-  // 760 boxes are under four grains: on the engine thread, the pool never woken.
+  // 480 boxes are under the threshold: on the engine thread, the pool never woken.
   expect(below.lanes.on).toBe(true);
   expect(below.lanes.sites.physics.calls).toBe(0);
   expect(on.hash).toBe(off.hash);

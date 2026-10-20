@@ -283,6 +283,21 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   og-physics's `tests/pile.rs`, lanes.test.ts's 1,000-box pile).
   Native timings: `tests/evidence/P4/physics-lanes/`; the browser timing
   and the lanes wasm's hashes are the coordinator's measurement.
+- **Round two** (2026-10-21, branch `physics-lanes-2`): the step's pool
+  threshold is per thread count (`og_physics::pool_bodies`: 500 bodies on
+  two to four lanes, 1,000 on five or six, 1,500 from seven, through
+  `og_lanes::install_from`), so four lanes no longer leave their 7 to 15 %
+  between 500 and 800 bodies serial; ropes, cloths and fluid sets step side
+  by side and the fluids' neighbour search and collisions split by ranges
+  of particles (`og_physics::Grains`; ragdolls measured and left serial);
+  queries outside the step run through `og_lanes::serial`, and the lanes
+  wasm's engine thread belongs to its one-thread pool from
+  `og_lanes_ready` on, so nothing reaches a rayon pool from the engine
+  thread but the relay with its panic latch (og-physics `tests/lanes.rs`
+  injects a panic in a query). The determinism tool's physics hash does not
+  move (18126409214070009362). `bench/lanes.ts --chrome --pile` times the
+  lanes wasm's step on 1,000 and 2,000 boxes: the coordinator's run.
+  Native measurements: `tests/evidence/P4/physics-lanes-2/`.
 - **Gate**: not completed on this branch (the main gate at 50eb7f7 above
   passed everything). `OG_GATE_JOBS=2 scripts/check.sh
   --all` at 1f56ad7, 2026-10-19, M4 Pro at load 127 to 237: fmt, clippy,

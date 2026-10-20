@@ -19,9 +19,12 @@
 //! - in the single-threaded wasm, nowhere: every helper runs serially.
 //!
 //! A library built on rayon (rapier's `parallel` build, in og-physics) runs
-//! through [`install`]: on the pool when lanes are on and the call has two
-//! grains of items, otherwise on the calling thread inside a one-thread pool,
-//! so the library finds one thread and never reaches rayon's global pool.
+//! through [`install`] (or [`install_from`]): on the pool when lanes are on
+//! and the call has a grain for every thread (or the caller's number of
+//! items), otherwise on the calling thread inside a one-thread pool, so the
+//! library finds one thread and never reaches rayon's global pool. The
+//! same library's work outside those calls (a physics query) runs through
+//! [`serial`], on the calling thread in that one-thread pool.
 //!
 //! The probe's `lanes:<on|off>` switches them at run time ([`set_enabled`])
 //! and `dump_lanes` reports what the engine got ([`report`]), with the
@@ -368,9 +371,19 @@ pub fn report() -> Report {
     }
 }
 
-/// Whether a call of `len` items splits: lanes on, and at least `tasks`
-/// grains of items (`None`: one grain for every pool thread).
-fn parallel(site: Site, len: usize, grain: usize, tasks: Option<usize>) -> bool {
+/// How many items a call needs to split, given the pool's threads.
+#[derive(Clone, Copy)]
+enum Least {
+    /// At least this many grains of items (at least two).
+    Grains(usize, usize),
+    /// A grain for every pool thread.
+    GrainEach(usize),
+    /// At least this many items.
+    Items(usize),
+}
+
+/// Whether a call of `len` items splits: lanes on, and at least `from`.
+fn parallel(site: Site, len: usize, from: Least) -> bool {
     if !SWITCH.load(Ordering::Relaxed) {
         return false;
     }
@@ -378,8 +391,12 @@ fn parallel(site: Site, len: usize, grain: usize, tasks: Option<usize>) -> bool 
     if threads <= 1 || !why.is_empty() {
         return false;
     }
-    let tasks = tasks.unwrap_or(threads as usize).max(2);
-    if len < grain.max(1).saturating_mul(tasks) {
+    let least = match from {
+        Least::Grains(grain, tasks) => grain.max(1).saturating_mul(tasks.max(2)),
+        Least::GrainEach(grain) => grain.max(1).saturating_mul(threads.max(2) as usize),
+        Least::Items(n) => n.max(2),
+    };
+    if len < least {
         return false;
     }
     count(site, len);
@@ -401,7 +418,7 @@ where
         fault(site);
         f(t)
     };
-    if parallel(site, items.len(), grain, Some(2)) {
+    if parallel(site, items.len(), Least::Grains(grain, 2)) {
         imp::map(items, grain.max(1), f)
     } else {
         items.iter().map(f).collect()
@@ -418,7 +435,7 @@ where
         fault(site);
         f(t)
     };
-    if parallel(site, items.len(), grain, Some(2)) {
+    if parallel(site, items.len(), Least::Grains(grain, 2)) {
         imp::for_each_mut(items, grain.max(1), f)
     } else {
         items.iter_mut().for_each(f)
@@ -435,7 +452,7 @@ where
         fault(site);
         f(i, t)
     };
-    if parallel(site, items.len(), grain, Some(2)) {
+    if parallel(site, items.len(), Least::Grains(grain, 2)) {
         imp::for_each_indexed(items, grain.max(1), f)
     } else {
         items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
@@ -459,7 +476,28 @@ pub fn install<R: Send>(
     grain: usize,
     f: impl FnOnce(bool) -> R + Send,
 ) -> R {
-    if parallel(site, items, grain, None) {
+    install_if(site, items, Least::GrainEach(grain), f)
+}
+
+/// [`install`] from `from` items whatever the pool's threads (at least
+/// two): for a caller that measured where its library pays for each
+/// thread count (og-physics's `pool_bodies`, read with [`threads`]).
+pub fn install_from<R: Send>(
+    site: Site,
+    items: usize,
+    from: usize,
+    f: impl FnOnce(bool) -> R + Send,
+) -> R {
+    install_if(site, items, Least::Items(from), f)
+}
+
+fn install_if<R: Send>(
+    site: Site,
+    items: usize,
+    from: Least,
+    f: impl FnOnce(bool) -> R + Send,
+) -> R {
+    if parallel(site, items, from) {
         imp::install(move || {
             fault(site);
             f(true)
@@ -469,6 +507,37 @@ pub fn install<R: Send>(
             fault(site);
             f(false)
         })
+    }
+}
+
+/// Runs `f`, work outside the helpers that may reach rayon (a physics
+/// query: parry splits some of its traversals with `rayon::join`), on the
+/// calling thread inside its one-thread pool, as [`install`] runs a call
+/// below its grain: rayon reached from `f` runs inline, never on rayon's
+/// global pool and never behind a wait on another thread, so on the web a
+/// panic in it traps the engine thread itself (the structured crash of
+/// [`panic_report`]) instead of leaving it asleep on rayon's own latch.
+/// Called from inside a lane, `f` runs there, on that lane's pool. A fault
+/// injected at `site` ([`inject_fault`]) fires here, on the calling thread.
+/// Nothing is counted: the call does not go parallel.
+pub fn serial<R: Send>(site: Site, f: impl FnOnce() -> R + Send) -> R {
+    imp::serial(move || {
+        fault(site);
+        f()
+    })
+}
+
+/// The pool's threads lanes would use now: 1 when lanes are off, switched
+/// off or there is no pool (what [`report`] says, without its counters).
+/// A caller that sizes its grain by the thread count (og-physics's body
+/// grain) reads it before calling [`install`].
+pub fn threads() -> u32 {
+    if !SWITCH.load(Ordering::Relaxed) {
+        return 1;
+    }
+    match imp::pool() {
+        (n, _, "") => n.max(1),
+        _ => 1,
     }
 }
 
@@ -680,6 +749,12 @@ mod imp {
             return;
         }
         RELAY.get_or_init(|| super::relay::Relay::start(rayon::spawn));
+        // From now on the engine thread belongs to its one-thread pool, so
+        // rayon reached from it outside every helper (a library's own
+        // `rayon::join`) runs inline instead of entering the Worker pool
+        // and waiting on rayon's latch, which no panic rings: the only way
+        // from the engine thread onto the pool is the relay and its latch.
+        super::one::serial(|| ());
         READY.store(threads, Ordering::Relaxed);
     }
 
@@ -944,6 +1019,68 @@ mod tests {
         } else {
             assert_eq!((threads, after), (1, before));
         }
+
+        // `install_from`: from that many items exactly, whatever the threads.
+        let at = |items: usize| install_from(Site::Physics, items, 777, |pooled| pooled);
+        assert!(!at(776));
+        assert_eq!(at(777), on);
+        assert_eq!(physics_calls().calls, after.calls + u64::from(on));
+    }
+
+    /// `serial`: work outside the helpers runs on the calling thread, rayon
+    /// inside it included (both halves of a `join` on the caller, one
+    /// thread seen), and leaves the thread in its one-thread pool, so rayon
+    /// reached from it later never finds the global pool; a fault injected
+    /// at the site fires there, on the calling thread, recorded without a
+    /// lane, and a query after it runs normally. On a fresh thread, as the
+    /// engine thread is before its first step.
+    #[test]
+    fn serial_runs_rayon_inline_and_its_fault_is_the_callers() {
+        hooked(17, || {
+            std::thread::spawn(|| {
+                let caller = std::thread::current().id();
+                assert_eq!(rayon::current_thread_index(), None, "a fresh thread");
+                let (a, b, threads) = serial(Site::Physics, || {
+                    let (a, b) = rayon::join(
+                        || std::thread::current().id(),
+                        || std::thread::current().id(),
+                    );
+                    (a, b, rayon::current_num_threads())
+                });
+                assert_eq!((a, b, threads), (caller, caller, 1));
+                assert_eq!(rayon::current_num_threads(), 1, "still in its own pool");
+                assert_eq!(rayon::current_thread_index(), Some(0));
+
+                inject_fault(Site::Physics);
+                let caught = std::panic::catch_unwind(|| serial(Site::Physics, || 1));
+                assert_eq!(
+                    message(caught.expect_err("the query panics")),
+                    "a fault injected at the physics site (og_lanes::inject_fault)"
+                );
+                let report = panic_report().expect("recorded");
+                assert_eq!((report.tick, report.lane), (17, None));
+                assert!(
+                    report.location.contains("og-lanes/src/lib.rs"),
+                    "{report:?}"
+                );
+                assert_eq!(serial(Site::Physics, || 2), 2, "once");
+            })
+            .join()
+            .unwrap();
+        });
+    }
+
+    /// `threads` is the pool's when lanes are on and 1 when switched off.
+    #[test]
+    fn threads_follows_the_switch() {
+        // The switch is the process's: no other test reads it meanwhile.
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        let r = report();
+        assert_eq!(threads(), if r.on { r.threads } else { 1 });
+        set_enabled(false);
+        assert_eq!(threads(), 1);
+        set_enabled(true);
+        assert_eq!(threads(), if r.on { r.threads } else { 1 });
     }
 
     /// The lanes wasm's path onto the pool, on a native pool: a caller that
