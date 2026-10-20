@@ -9,7 +9,8 @@
 //   lines     cross-hatching from the tone, halftone dots on a rotated
 //             grid, ink lines on luminance edges;
 //   quantize  posterised channels and/or the nearest palette colour, mixed
-//             by an ordered (Bayer) or interleaved-gradient dither;
+//             by an ordered (Bayer), blue-noise or interleaved-gradient
+//             dither;
 //   upscale   the logical frame scaled up by a whole number with nearest
 //             filtering, centred in the output with the background round it.
 //
@@ -19,7 +20,7 @@ struct Stylise {
   output: vec4<f32>,          // output w, h, the whole-number upscale, 0
   offset: vec4<f32>,          // xy: where the scaled frame starts in the output, z: 1 with a canvas, w: palette colours
   background: vec4<f32>,      // the display colour round the frame (linear)
-  quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient), z: strength in steps, w: cell size
+  quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient, -2 blue noise), z: strength in steps, w: cell size
   halftone: vec4<f32>,        // x: strength, y: pitch, z: angle (rad)
   halftone_color: vec4<f32>,
   hatching: vec4<f32>,        // x: strength, y: spacing, z: levels, w: angle (rad)
@@ -35,6 +36,7 @@ struct Stylise {
 @group(0) @binding(3) var palette: texture_2d<f32>;   // 256 x 1 sRGB colours, linear when sampled
 @group(0) @binding(4) var canvas: texture_2d<f32>;
 @group(0) @binding(5) var repeat_sampler: sampler;
+@group(0) @binding(6) var blue_noise: texture_2d<f32>;  // 64 x 64 thresholds (blue_noise.rs), R8
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let lo = c * 12.92;
@@ -252,8 +254,15 @@ fn ign(p: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
 }
 
+// The void-and-cluster tile, repeated: byte v is the threshold (v + 0.5) / 256.
+fn blue(cell: vec2<u32>) -> f32 {
+  let v = textureLoad(blue_noise, vec2<i32>(cell % vec2<u32>(64u)), 0).r;
+  return (round(v * 255.0) + 0.5) / 256.0;
+}
+
 fn dither_at(pos: vec2<f32>) -> f32 {
   let cell = vec2<u32>(pos / max(st.quantize.w, 1.0));
+  if (st.quantize.y < -1.5) { return blue(cell); }
   if (st.quantize.y < 0.0) { return ign(vec2<f32>(cell)); }
   if (st.quantize.y >= 2.0) { return bayer(cell, u32(st.quantize.y)); }
   return 0.5;

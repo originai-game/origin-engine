@@ -5019,7 +5019,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion.",
-                variants: &["none", "bayer2", "bayer4", "bayer8", "blueNoise"],
+                variants: &["none", "bayer2", "bayer4", "bayer8", "blueNoise", "interleavedGradient"],
             },
             FieldDecl {
                 name: "ditherStrength",

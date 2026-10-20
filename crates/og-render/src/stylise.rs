@@ -65,7 +65,11 @@ pub enum DitherPattern {
     Bayer2,
     Bayer4,
     Bayer8,
+    /// A 64 × 64 void-and-cluster tile (`blue_noise.rs`), repeated.
     BlueNoise,
+    /// Interleaved gradient noise (Jimenez), computed per pixel: no
+    /// texture, a diagonal structure up close.
+    InterleavedGradient,
 }
 
 /// Fewer tones and a fixed palette, mixed by a dither.

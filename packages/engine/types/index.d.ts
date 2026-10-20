@@ -3767,9 +3767,10 @@ export declare function Palette(value?: Palette, options?: FieldOptions): FieldS
  * - `"bayer2"`: Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds.
  * - `"bayer4"`: Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art.
  * - `"bayer8"`: Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours.
- * - `"blueNoise"`: Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl.
+ * - `"blueNoise"`: Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl.
+ * - `"interleavedGradient"`: Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close.
  */
-export type DitherPattern = "none" | "bayer2" | "bayer4" | "bayer8" | "blueNoise";
+export type DitherPattern = "none" | "bayer2" | "bayer4" | "bayer8" | "blueNoise" | "interleavedGradient";
 
 /**
  * A DitherPattern field: the variant's index.

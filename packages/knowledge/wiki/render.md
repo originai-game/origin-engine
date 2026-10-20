@@ -134,7 +134,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2787</sub>
+<sub>`api.ogt` line 2788</sub>
 
 <a id="fn-sprite"></a>
 
@@ -164,7 +164,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2905</sub>
+<sub>`api.ogt` line 2906</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -194,7 +194,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3069</sub>
+<sub>`api.ogt` line 3070</sub>
 
 <a id="fn-measureText"></a>
 
@@ -224,7 +224,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3076</sub>
+<sub>`api.ogt` line 3077</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -254,7 +254,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3136</sub>
+<sub>`api.ogt` line 3137</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -284,7 +284,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3143</sub>
+<sub>`api.ogt` line 3144</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -314,7 +314,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3150</sub>
+<sub>`api.ogt` line 3151</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -344,7 +344,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3173</sub>
+<sub>`api.ogt` line 3174</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -376,7 +376,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3180</sub>
+<sub>`api.ogt` line 3181</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -408,7 +408,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3190</sub>
+<sub>`api.ogt` line 3191</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -440,7 +440,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3198</sub>
+<sub>`api.ogt` line 3199</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -474,7 +474,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3206</sub>
+<sub>`api.ogt` line 3207</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -504,7 +504,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3215</sub>
+<sub>`api.ogt` line 3216</sub>
 
 <a id="fn-look"></a>
 
@@ -532,7 +532,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3222</sub>
+<sub>`api.ogt` line 3223</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -560,7 +560,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3228</sub>
+<sub>`api.ogt` line 3229</sub>
 
 <a id="fn-text"></a>
 
@@ -590,7 +590,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3234</sub>
+<sub>`api.ogt` line 3235</sub>
 
 ## Components, resources and events
 
@@ -1356,7 +1356,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2346</sub>
+<sub>`api.ogt` line 2347</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -1421,7 +1421,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2510</sub>
+<sub>`api.ogt` line 2511</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1460,7 +1460,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2560</sub>
+<sub>`api.ogt` line 2561</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1511,7 +1511,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2579</sub>
+<sub>`api.ogt` line 2580</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1542,7 +1542,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2609</sub>
+<sub>`api.ogt` line 2610</sub>
 
 <a id="record-Decal"></a>
 
@@ -1597,7 +1597,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2623</sub>
+<sub>`api.ogt` line 2624</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1628,7 +1628,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2655</sub>
+<sub>`api.ogt` line 2656</sub>
 
 <a id="record-Trail"></a>
 
@@ -1704,7 +1704,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2666</sub>
+<sub>`api.ogt` line 2667</sub>
 
 <a id="record-Beam"></a>
 
@@ -1770,7 +1770,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2714</sub>
+<sub>`api.ogt` line 2715</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1883,7 +1883,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2912</sub>
+<sub>`api.ogt` line 2913</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1931,7 +1931,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2984</sub>
+<sub>`api.ogt` line 2985</sub>
 
 ## Types
 
@@ -2607,7 +2607,8 @@ A string: one of the variants below. The zero value is `"none"`.
 | `"bayer2"` | Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds. |
 | `"bayer4"` | Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art. |
 | `"bayer8"` | Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours. |
-| `"blueNoise"` | Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl. |
+| `"blueNoise"` | Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl. |
+| `"interleavedGradient"` | Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close. |
 
 ```ogt
 enum DitherPattern {
@@ -2616,7 +2617,8 @@ enum DitherPattern {
   variant bayer2 "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds."
   variant bayer4 "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art."
   variant bayer8 "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours."
-  variant blueNoise "Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl."
+  variant blueNoise "Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl."
+  variant interleavedGradient "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
 }
 ```
 
@@ -2651,7 +2653,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2549</sub>
+<sub>`api.ogt` line 2550</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2691,7 +2693,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2754</sub>
+<sub>`api.ogt` line 2755</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2722,7 +2724,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2775</sub>
+<sub>`api.ogt` line 2776</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2784,7 +2786,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2794</sub>
+<sub>`api.ogt` line 2795</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2813,7 +2815,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2828</sub>
+<sub>`api.ogt` line 2829</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2836,7 +2838,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2839</sub>
+<sub>`api.ogt` line 2840</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2934,7 +2936,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>`api.ogt` line 2847</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3022,7 +3024,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3011</sub>
+<sub>`api.ogt` line 3012</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3060,7 +3062,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3083</sub>
+<sub>`api.ogt` line 3084</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3092,7 +3094,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3103</sub>
+<sub>`api.ogt` line 3104</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3128,7 +3130,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3118</sub>
+<sub>`api.ogt` line 3119</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3163,7 +3165,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3160</sub>
+<sub>`api.ogt` line 3161</sub>
 
 <a id="type-Shader"></a>
 
@@ -3177,7 +3179,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3188</sub>
+<sub>`api.ogt` line 3189</sub>
 
 ## Column kinds
 
@@ -3340,7 +3342,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2339</sub>
+<sub>`api.ogt` line 2340</sub>
 
 ## Constants
 
@@ -3353,10 +3355,10 @@ column DitherPattern {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3157</sub>
+<sub>`api.ogt` line 3158</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3158</sub>
+<sub>`api.ogt` line 3159</sub>

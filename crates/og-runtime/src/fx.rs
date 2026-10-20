@@ -403,12 +403,20 @@ fn stylise(
         let palette = handle_index(&s["palette"]).and_then(|i| palettes.get(i)?.1);
         let dither = match variant(
             &s["dither"],
-            &["none", "bayer2", "bayer4", "bayer8", "blueNoise"],
+            &[
+                "none",
+                "bayer2",
+                "bayer4",
+                "bayer8",
+                "blueNoise",
+                "interleavedGradient",
+            ],
         ) {
             1 => og_render::DitherPattern::Bayer2,
             2 => og_render::DitherPattern::Bayer4,
             3 => og_render::DitherPattern::Bayer8,
             4 => og_render::DitherPattern::BlueNoise,
+            5 => og_render::DitherPattern::InterleavedGradient,
             _ => og_render::DitherPattern::None,
         };
         if posterize > 0 || palette.is_some() || dither != og_render::DitherPattern::None {

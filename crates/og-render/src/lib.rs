@@ -28,6 +28,7 @@
 //! ```
 
 mod atmosphere;
+mod blue_noise;
 mod capture;
 mod clusters;
 mod cull_gpu;
@@ -5253,7 +5254,8 @@ impl Renderer {
                 Some(DitherPattern::Bayer2) => 2.0,
                 Some(DitherPattern::Bayer4) => 4.0,
                 Some(DitherPattern::Bayer8) => 8.0,
-                Some(DitherPattern::BlueNoise) => -1.0,
+                Some(DitherPattern::InterleavedGradient) => -1.0,
+                Some(DitherPattern::BlueNoise) => -2.0,
                 _ => 0.0,
             };
             let palette_count = q
