@@ -31,6 +31,9 @@ env:
   OG_EVIDENCE_DIR: ${{ github.workspace }}/target/evidence
   # One gate per runner: no machine-wide queue to wait in (scripts/lock.sh).
   OG_GATE_MACHINE_LOCK: "0"
+  # packages/engine's bun tests have the M4 Pro's 5 s default; a render
+  # test on two vCPU of Lavapipe takes 5 to 25 s (docs/ci.md §CI).
+  OG_BUN_TEST_TIMEOUT: "60000"
 
 jobs:
   # The quick lane (docs/ci.md §Lanes): the loop's signal on every PR.
@@ -128,6 +131,10 @@ jobs:
         run: shellcheck -x scripts/*.sh
       - name: Gate
         run: scripts/check.sh
+        env:
+          # One step at a time: on two vCPU, bun-test beside test starved
+          # both, and bun-test's time-bound tests failed.
+          OG_GATE_JOBS: "1"
       - name: Disk
         if: always()
         run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true

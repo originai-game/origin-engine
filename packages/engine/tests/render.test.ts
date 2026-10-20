@@ -91,8 +91,9 @@ test("screen-space sprites are drawn over the finished frame in CSS pixels, unto
     og.render.sprite(world, { screen: true, position: { x: 80, y: 10, z: 0 }, width: 40, height: 40, anchor: { x: 0, y: 0 }, color: { r: 0, g: 0, b: 1 }, clip: [80, 10, 20, 40] });
   });
   const img = frameOf(og.game({ systems: [Hud], start: (w: World) => void wall(w) }));
-  // Exactly the authored colour (sRGB of linear 0.5 is 188) though the scene is ACES tone mapped.
-  expect(pixel(img, 25, 20)).toEqual([255, 188, 0]);
+  // The authored colour (sRGB of linear 0.5 is 188) though the scene is ACES
+  // tone mapped: within one step of the encode's rounding (lavapipe gives 187).
+  expect(diff(pixel(img, 25, 20), [255, 188, 0])).toBeLessThanOrEqual(1);
   expect(isWhite(pixel(img, 25, 20))).toBeFalse();
   // Its top-left corner is (10, 10): the pixel above and left is the scene.
   expect(diff(pixel(img, 9, 20), [255, 188, 0])).toBeGreaterThan(40);
