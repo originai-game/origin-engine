@@ -2021,6 +2021,10 @@ pub fn og_load_lut(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value)))
 }
 
+pub fn og_load_environment(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| super::environment::load(&eng, &path).map(asset_value)))
+}
+
 pub fn og_load_emitter(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| super::fx::load_emitter(&eng, &path).map(asset_value)))
 }

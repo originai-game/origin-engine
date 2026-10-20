@@ -13,6 +13,7 @@
 mod anim;
 mod audio;
 mod e6;
+mod environment;
 mod flipbook;
 mod font;
 mod model;
@@ -407,6 +408,7 @@ enum Kind {
     Strings,
     Rig,
     Terrain,
+    Environment,
 }
 
 impl Kind {
@@ -429,6 +431,7 @@ impl Kind {
             Kind::Strings => "strings",
             Kind::Rig => "rig",
             Kind::Terrain => "terrain",
+            Kind::Environment => "environment",
         }
     }
 }
@@ -464,6 +467,7 @@ enum Work<'a> {
     Strings(&'a Source),
     Rig(&'a Source),
     Terrain(&'a Source),
+    Environment(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -654,12 +658,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
+                    Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -724,10 +729,18 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         }
         s.hash = h.finish();
     }
-    // A terrain's heightmap and control map are part of the terrain.
+    // A terrain's heightmap and control map are part of the terrain, an
+    // environment's image part of the environment.
     for s in &sources {
         if s.kind == Kind::Terrain {
             consumed.extend(terrain::terrain_files(
+                &s.rel,
+                &assets_dir,
+                &String::from_utf8_lossy(&s.bytes),
+            ));
+        }
+        if s.kind == Kind::Environment {
+            consumed.extend(environment::environment_files(
                 &s.rel,
                 &assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
@@ -943,6 +956,16 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
                 let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
+            }
+            Kind::Environment => {
+                let deps = environment::environment_dependencies(s);
+                let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
+                outs.push((
+                    s.rel.clone(),
+                    format::EnvironmentMap::NAME,
+                    st,
+                    Work::Environment(s),
+                ));
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
@@ -1418,6 +1441,7 @@ fn run(
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
+        Work::Environment(s) => environment::cook_environment(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

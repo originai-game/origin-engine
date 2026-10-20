@@ -1780,6 +1780,8 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         compensation: -1.1,
         min_ev: -4.0,
         max_ev: 4.0,
+        adapt_speed_up: 0.0,
+        adapt_speed_down: 0.0,
     };
     tick_all(scene, SHOWCASE_TICK);
 }

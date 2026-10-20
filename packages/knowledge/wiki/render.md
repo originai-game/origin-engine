@@ -14,7 +14,7 @@ module render {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1597</sub>
+<sub>`api.ogt` line 1598</sub>
 
 ## Contents
 
@@ -34,11 +34,16 @@ module render {
 | [`og.DirectionalLight`](#record-DirectionalLight) | component | The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades. |
 | [`og.PointLight`](#record-PointLight) | component | A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance. |
 | [`og.SpotLight`](#record-SpotLight) | component | A cone of light along the entity's local -Z, as three.js SpotLight. |
+| [`ToneMapping`](#type-ToneMapping) | enum | The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen. |
+| [`ToneMapping()`](#column-ToneMapping) | column kind | A ToneMapping field: the variant's index. |
 | [`og.RenderSettings`](#record-RenderSettings) | resource | The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure. |
 | [`Lut`](#type-Lut) | handle | A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file). |
+| [`EnvironmentMap`](#type-EnvironmentMap) | handle | A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`). |
 | [`ParticleEmitter`](#type-ParticleEmitter) | handle | A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`). |
 | [`Texture()`](#column-Texture) | column kind | A Texture handle field (0 is none). |
 | [`Lut()`](#column-Lut) | column kind | A Lut handle field (0 is none). |
+| [`EnvironmentMap()`](#column-EnvironmentMap) | column kind | An EnvironmentMap handle field (0 is none). |
+| [`og.Environment`](#record-Environment) | resource | Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation. |
 | [`ParticleEmitter()`](#column-ParticleEmitter) | column kind | A ParticleEmitter handle field (0 is none). |
 | [`AoMethod`](#type-AoMethod) | enum | Which ambient occlusion algorithm runs. |
 | [`AoMethod()`](#column-AoMethod) | column kind | An AoMethod field: the variant's index. |
@@ -117,7 +122,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2429</sub>
+<sub>`api.ogt` line 2485</sub>
 
 <a id="fn-sprite"></a>
 
@@ -147,7 +152,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2545</sub>
+<sub>`api.ogt` line 2601</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -177,7 +182,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 2709</sub>
+<sub>`api.ogt` line 2765</sub>
 
 <a id="fn-measureText"></a>
 
@@ -207,7 +212,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 2716</sub>
+<sub>`api.ogt` line 2772</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -237,7 +242,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2776</sub>
+<sub>`api.ogt` line 2832</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -267,7 +272,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2783</sub>
+<sub>`api.ogt` line 2839</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -297,7 +302,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2790</sub>
+<sub>`api.ogt` line 2846</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -327,7 +332,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2811</sub>
+<sub>`api.ogt` line 2867</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -359,7 +364,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2818</sub>
+<sub>`api.ogt` line 2874</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -391,7 +396,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2828</sub>
+<sub>`api.ogt` line 2884</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -423,7 +428,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 2836</sub>
+<sub>`api.ogt` line 2892</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -457,7 +462,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 2844</sub>
+<sub>`api.ogt` line 2900</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -485,7 +490,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2853</sub>
+<sub>`api.ogt` line 2909</sub>
 
 <a id="fn-text"></a>
 
@@ -515,7 +520,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2859</sub>
+<sub>`api.ogt` line 2915</sub>
 
 ## Components, resources and events
 
@@ -561,7 +566,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1826</sub>
+<sub>`api.ogt` line 1827</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -603,7 +608,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1846</sub>
+<sub>`api.ogt` line 1847</sub>
 
 <a id="record-PointLight"></a>
 
@@ -644,7 +649,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1867</sub>
+<sub>`api.ogt` line 1868</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -696,7 +701,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1887</sub>
+<sub>`api.ogt` line 1888</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -708,25 +713,28 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `environmentIntensity` | `number` | `0.55` | ≥ 0 | — | tunable | The strength of the image-based ambient light from the procedural sky. |
-| `sky` | `boolean` | `false` | — | — | — | Draw the procedural sky behind the scene instead of Camera.background. |
+| `environmentIntensity` | `number` | `0.55` | ≥ 0 | — | tunable | The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set. |
+| `sky` | `boolean` | `false` | — | — | — | Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). |
 | `bloom` | `boolean` | `false` | — | — | — | Light above the threshold bleeds into its surroundings. |
 | `bloomThreshold` | `number` | `1` | ≥ 0 | — | tunable | Brightness after exposure where bloom starts; 1 is display white. |
 | `bloomKnee` | `number` | `0.5` | ≥ 0 | — | — | Softens the threshold over threshold plus or minus knee; 0 is a hard cut. |
 | `bloomIntensity` | `number` | `0.6` | ≥ 0 | — | tunable | How much of the blurred light is added back. |
-| `autoExposure` | `boolean` | `false` | — | — | — | Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation. |
-| `toneMapped` | `boolean` | `true` | — | — | — | ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1. |
+| `autoExposure` | `boolean` | `false` | — | — | — | Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye. |
+| `adaptSpeedUp` | `number` | `0` | 0 … 100 | `evPerSecond` | tunable | How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure. |
+| `adaptSpeedDown` | `number` | `0` | 0 … 100 | `evPerSecond` | tunable | How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair. |
+| `toneMapped` | `boolean` | `true` | — | — | — | Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. |
+| `toneMapping` | `ToneMapping` | `"aces"` | — | — | — | Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none. |
 | `decalAtlas` | `Texture` | `0` | — | — | — | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
 
 ```ogt
 resource RenderSettings {
   doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
-  field environmentIntensity f32 "The strength of the image-based ambient light from the procedural sky." {
+  field environmentIntensity f32 "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set." {
     default 0.55
     min 0
     tunable true
   }
-  field sky bool "Draw the procedural sky behind the scene instead of Camera.background."
+  field sky bool "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map)."
   field bloom bool "Light above the threshold bleeds into its surroundings."
   field bloomThreshold f32 "Brightness after exposure where bloom starts; 1 is display white." {
     default 1
@@ -742,15 +750,68 @@ resource RenderSettings {
     min 0
     tunable true
   }
-  field autoExposure bool "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation."
-  field toneMapped bool "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
+  field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye."
+  field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
+    min 0
+    max 100
+    unit evPerSecond
+    tunable true
+  }
+  field adaptSpeedDown f32 "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair." {
+    min 0
+    max 100
+    unit evPerSecond
+    tunable true
+  }
+  field toneMapped bool "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
     default true
   }
+  field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none."
   field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
 }
 ```
 
-<sub>`api.ogt` line 1918</sub>
+<sub>`api.ogt` line 1933</sub>
+
+<a id="record-Environment"></a>
+
+### `og.Environment` (resource)
+
+Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
+
+Token `og.Environment`, registered under the schema name `og.Environment`; its value type is `Environment`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `map` | `EnvironmentMap` | `0` | — | — | — | The map from og.load.environment; 0 lights by the sky. |
+| `intensity` | `number` | `1` | ≥ 0 | — | tunable | The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity. |
+| `rotation` | `number` | `0` | — | `deg` | tunable | Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together. |
+| `background` | `boolean` | `false` | — | — | — | Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it. |
+| `backgroundIntensity` | `number` | `1` | ≥ 0 | — | tunable | Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed. |
+
+```ogt
+resource Environment {
+  doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
+  field map EnvironmentMap "The map from og.load.environment; 0 lights by the sky."
+  field intensity f32 "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity." {
+    default 1
+    min 0
+    tunable true
+  }
+  field rotation f32 "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together." {
+    unit deg
+    tunable true
+  }
+  field background bool "Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it."
+  field backgroundIntensity f32 "Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed." {
+    default 1
+    min 0
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 2003</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -987,7 +1048,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2027</sub>
+<sub>`api.ogt` line 2083</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1026,7 +1087,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2202</sub>
+<sub>`api.ogt` line 2258</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1077,7 +1138,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2221</sub>
+<sub>`api.ogt` line 2277</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1108,7 +1169,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2251</sub>
+<sub>`api.ogt` line 2307</sub>
 
 <a id="record-Decal"></a>
 
@@ -1163,7 +1224,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2265</sub>
+<sub>`api.ogt` line 2321</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1194,7 +1255,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2297</sub>
+<sub>`api.ogt` line 2353</sub>
 
 <a id="record-Trail"></a>
 
@@ -1270,7 +1331,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2308</sub>
+<sub>`api.ogt` line 2364</sub>
 
 <a id="record-Beam"></a>
 
@@ -1336,7 +1397,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2356</sub>
+<sub>`api.ogt` line 2412</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1449,7 +1510,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2552</sub>
+<sub>`api.ogt` line 2608</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1497,7 +1558,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2624</sub>
+<sub>`api.ogt` line 2680</sub>
 
 ## Types
 
@@ -1513,7 +1574,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
 ```
 
-<sub>`api.ogt` line 1601</sub>
+<sub>`api.ogt` line 1602</sub>
 
 <a id="type-Material"></a>
 
@@ -1527,7 +1588,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Material "A material instance."
 ```
 
-<sub>`api.ogt` line 1602</sub>
+<sub>`api.ogt` line 1603</sub>
 
 <a id="type-Texture"></a>
 
@@ -1541,7 +1602,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>`api.ogt` line 1603</sub>
+<sub>`api.ogt` line 1604</sub>
 
 <a id="type-Side"></a>
 
@@ -1566,7 +1627,7 @@ enum Side {
 }
 ```
 
-<sub>`api.ogt` line 1619</sub>
+<sub>`api.ogt` line 1620</sub>
 
 <a id="type-RenderTier"></a>
 
@@ -1597,7 +1658,7 @@ enum RenderTier {
 }
 ```
 
-<sub>`api.ogt` line 1626</sub>
+<sub>`api.ogt` line 1627</sub>
 
 <a id="type-Antialias"></a>
 
@@ -1624,7 +1685,7 @@ enum Antialias {
 }
 ```
 
-<sub>`api.ogt` line 1636</sub>
+<sub>`api.ogt` line 1637</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -1652,7 +1713,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 1644</sub>
+<sub>`api.ogt` line 1645</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -1908,7 +1969,32 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 1655</sub>
+<sub>`api.ogt` line 1656</sub>
+
+<a id="type-ToneMapping"></a>
+
+### `ToneMapping` (enum)
+
+The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen.
+
+A string: one of the variants below. The zero value is `"aces"`.
+
+| Variant | Doc |
+|---|---|
+| `"aces"` | ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default. |
+| `"agx"` | AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES. |
+| `"none"` | No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false). |
+
+```ogt
+enum ToneMapping {
+  doc "The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen."
+  variant aces "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default."
+  variant agx "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES."
+  variant none "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
+}
+```
+
+<sub>`api.ogt` line 1919</sub>
 
 <a id="type-Lut"></a>
 
@@ -1922,7 +2008,21 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 1950</sub>
+<sub>`api.ogt` line 1978</sub>
+
+<a id="type-EnvironmentMap"></a>
+
+### `EnvironmentMap` (handle)
+
+A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`).
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`)."
+```
+
+<sub>`api.ogt` line 1979</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -1936,7 +2036,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 1951</sub>
+<sub>`api.ogt` line 1980</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -1961,7 +2061,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1974</sub>
+<sub>`api.ogt` line 2030</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -1984,7 +2084,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1988</sub>
+<sub>`api.ogt` line 2044</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2007,7 +2107,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2001</sub>
+<sub>`api.ogt` line 2057</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2030,7 +2130,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2014</sub>
+<sub>`api.ogt` line 2070</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2070,7 +2170,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2396</sub>
+<sub>`api.ogt` line 2452</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2101,7 +2201,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2417</sub>
+<sub>`api.ogt` line 2473</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2163,7 +2263,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2436</sub>
+<sub>`api.ogt` line 2492</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2192,7 +2292,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2470</sub>
+<sub>`api.ogt` line 2526</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2215,7 +2315,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2481</sub>
+<sub>`api.ogt` line 2537</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2309,7 +2409,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2488</sub>
+<sub>`api.ogt` line 2544</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -2397,7 +2497,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2651</sub>
+<sub>`api.ogt` line 2707</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -2435,7 +2535,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2723</sub>
+<sub>`api.ogt` line 2779</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -2467,7 +2567,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2743</sub>
+<sub>`api.ogt` line 2799</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -2503,7 +2603,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2758</sub>
+<sub>`api.ogt` line 2814</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -2534,7 +2634,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 2800</sub>
+<sub>`api.ogt` line 2856</sub>
 
 <a id="type-Shader"></a>
 
@@ -2548,7 +2648,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 2826</sub>
+<sub>`api.ogt` line 2882</sub>
 
 ## Column kinds
 
@@ -2558,8 +2658,10 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 |---|---|---|---|---|
 | <a id="column-Geometry"></a>`Geometry` | `Geometry` | `Uint32Array` | 2 | A Geometry handle field. |
 | <a id="column-Material"></a>`Material` | `Material` | `Uint32Array` | 2 | A Material handle field. |
+| <a id="column-ToneMapping"></a>`ToneMapping` | `ToneMapping` | `Uint32Array` | 1 | A ToneMapping field: the variant's index. |
 | <a id="column-Texture"></a>`Texture` | `Texture` | `Uint32Array` | 2 | A Texture handle field (0 is none). |
 | <a id="column-Lut"></a>`Lut` | `Lut` | `Uint32Array` | 2 | A Lut handle field (0 is none). |
+| <a id="column-EnvironmentMap"></a>`EnvironmentMap` | `EnvironmentMap` | `Uint32Array` | 2 | An EnvironmentMap handle field (0 is none). |
 | <a id="column-ParticleEmitter"></a>`ParticleEmitter` | `ParticleEmitter` | `Uint32Array` | 2 | A ParticleEmitter handle field (0 is none). |
 | <a id="column-AoMethod"></a>`AoMethod` | `AoMethod` | `Uint32Array` | 1 | An AoMethod field: the variant's index. |
 | <a id="column-DofQuality"></a>`DofQuality` | `DofQuality` | `Uint32Array` | 1 | A DofQuality field: the variant's index. |
@@ -2575,7 +2677,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 1605</sub>
+<sub>`api.ogt` line 1606</sub>
 
 ```ogt
 column Material {
@@ -2586,7 +2688,18 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 1612</sub>
+<sub>`api.ogt` line 1613</sub>
+
+```ogt
+column ToneMapping {
+  doc "A ToneMapping field: the variant's index."
+  array Uint32Array
+  stride 1
+  value ToneMapping
+}
+```
+
+<sub>`api.ogt` line 1926</sub>
 
 ```ogt
 column Texture {
@@ -2597,7 +2710,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 1953</sub>
+<sub>`api.ogt` line 1982</sub>
 
 ```ogt
 column Lut {
@@ -2608,7 +2721,18 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 1960</sub>
+<sub>`api.ogt` line 1989</sub>
+
+```ogt
+column EnvironmentMap {
+  doc "An EnvironmentMap handle field (0 is none)."
+  array Uint32Array
+  stride 2
+  value EnvironmentMap
+}
+```
+
+<sub>`api.ogt` line 1996</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -2619,7 +2743,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 1967</sub>
+<sub>`api.ogt` line 2023</sub>
 
 ```ogt
 column AoMethod {
@@ -2630,7 +2754,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1981</sub>
+<sub>`api.ogt` line 2037</sub>
 
 ```ogt
 column DofQuality {
@@ -2641,7 +2765,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1994</sub>
+<sub>`api.ogt` line 2050</sub>
 
 ```ogt
 column SpriteBlend {
@@ -2652,7 +2776,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2007</sub>
+<sub>`api.ogt` line 2063</sub>
 
 ```ogt
 column StripBlend {
@@ -2663,7 +2787,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2020</sub>
+<sub>`api.ogt` line 2076</sub>
 
 ## Constants
 
@@ -2676,10 +2800,10 @@ column StripBlend {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 2797</sub>
+<sub>`api.ogt` line 2853</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 2798</sub>
+<sub>`api.ogt` line 2854</sub>

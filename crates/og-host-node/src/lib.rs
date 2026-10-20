@@ -416,6 +416,13 @@ impl RenderBackend for OffscreenBackend {
         }
         image
     }
+    fn save_state(&mut self) -> u64 {
+        self.renderer.save_state().id()
+    }
+    fn restore_state(&mut self, state: u64) {
+        self.renderer
+            .restore_state(og_render::RendererState::from_id(state));
+    }
 }
 
 /// `RenderOptions.antialias` as og-render's.

@@ -14,7 +14,7 @@ module game {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 430</sub>
+<sub>`api.ogt` line 431</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 481</sub>
+<sub>`api.ogt` line 482</sub>
 
 ## Interfaces
 
@@ -70,7 +70,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 475</sub>
+<sub>`api.ogt` line 476</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -88,7 +88,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "The fixed tick rate in hertz."
 ```
 
-<sub>`api.ogt` line 477</sub>
+<sub>`api.ogt` line 478</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +106,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 478</sub>
+<sub>`api.ogt` line 479</sub>
 
 ## Types
 
@@ -134,7 +134,7 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 435</sub>
+<sub>`api.ogt` line 436</sub>
 
 <a id="type-StartFn"></a>
 
@@ -159,7 +159,7 @@ callback StartFn {
 }
 ```
 
-<sub>`api.ogt` line 441</sub>
+<sub>`api.ogt` line 442</sub>
 
 <a id="type-GameDesc"></a>
 
@@ -215,4 +215,4 @@ struct GameDesc {
 }
 ```
 
-<sub>`api.ogt` line 446</sub>
+<sub>`api.ogt` line 447</sub>

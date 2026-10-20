@@ -45,6 +45,19 @@ pub trait Capture {
     fn deferred(&self) -> bool {
         false
     }
+    /// Keeps the renderer's state that follows the world's time (the
+    /// adapted auto exposure) with a snapshot the probe takes (`snapshot`,
+    /// a sweep's start); the answer comes back to
+    /// [`Capture::restore_state`] when that snapshot is restored, so the
+    /// frames after it are the snapshot's. 0 keeps nothing.
+    fn save_state(&mut self) -> u64 {
+        0
+    }
+    /// Brings back what [`Capture::save_state`] answered `state` for (0, or
+    /// a state no longer kept: the renderer starts that state afresh).
+    fn restore_state(&mut self, state: u64) {
+        let _ = state;
+    }
     /// What is under a point of the play surface, in CSS pixels. `None` until
     /// the renderer provides picking: the probe answers `pick` with `null`.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick> {

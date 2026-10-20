@@ -862,3 +862,71 @@ fn write_evidence(name: &str, value: &Value) {
     std::fs::write(&path, serde_json::to_string_pretty(value).unwrap() + "\n").unwrap();
     println!("wrote {}", path.display());
 }
+
+/// A renderer with state that follows the world's time (as og-render's
+/// adapted exposure): every frame drawn moves it on, and the probe's
+/// snapshots keep it through `save_state` and bring it back on restore.
+struct StatefulCapture {
+    adapted: u64,
+    saves: Vec<u64>,
+}
+
+impl og_probe::Capture for StatefulCapture {
+    fn tier(&self) -> &str {
+        "vulkan"
+    }
+    fn target_size(&self) -> (u32, u32) {
+        (8, 8)
+    }
+    fn capture(&mut self, world: &og_ecs::World, w: u32, h: u32) -> Option<og_probe::Frame> {
+        self.adapted += 1;
+        Some(og_probe::Frame {
+            width: w.max(8),
+            height: h.max(8),
+            png: format!("tick={} adapted={}", world.time().tick, self.adapted).into_bytes(),
+        })
+    }
+    fn save_state(&mut self) -> u64 {
+        self.saves.push(self.adapted);
+        self.saves.len() as u64
+    }
+    fn restore_state(&mut self, state: u64) {
+        self.adapted = match state {
+            0 => 0,
+            n => self.saves[n as usize - 1],
+        };
+    }
+}
+
+#[test]
+fn snapshots_and_sweeps_carry_the_renderers_state() {
+    let mut h = build(7, false);
+    h.probe.set_capture(Box::new(StatefulCapture {
+        adapted: 0,
+        saves: Vec::new(),
+    }));
+    let png = |v: &Value| String::from_utf8(base64_decode(v["png"].as_str().unwrap())).unwrap();
+    h.result("advance", json!({"steps": 10}));
+    let first = png(&h.result("capture", json!({})));
+    assert_eq!(first, "tick=10 adapted=1");
+    let snap = h.result("snapshot", json!({}));
+    let id = snap["id"].as_str().unwrap().to_string();
+    h.result("advance", json!({"steps": 5}));
+    assert_eq!(png(&h.result("capture", json!({}))), "tick=15 adapted=2");
+    assert_eq!(h.result("restore", json!({ "id": id })), json!(true));
+    h.result("advance", json!({"steps": 5}));
+    assert_eq!(
+        png(&h.result("capture", json!({}))),
+        "tick=15 adapted=2",
+        "after the restore the renderer's state is the snapshot's"
+    );
+    // Every value of a sweep starts from the renderer's state at the call.
+    let sweep = h.result(
+        "sweep",
+        json!({"id": "player", "parameter": "Mover.speed", "values": [1, 2, 3], "steps": 2}),
+    );
+    for f in sweep["frames"].as_array().unwrap() {
+        assert_eq!(png(f), "tick=17 adapted=3");
+    }
+    assert_eq!(png(&h.result("capture", json!({}))), "tick=15 adapted=3");
+}

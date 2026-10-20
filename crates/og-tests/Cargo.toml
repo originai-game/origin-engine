@@ -8,11 +8,12 @@ description = "Origin Engine tests: the gfx reference harness (scenes rendered h
 publish = false
 
 [dependencies]
-og-render = { path = "../og-render", features = ["gltf"] }
+og-render = { path = "../og-render", features = ["gltf", "bake"] }
 og-core = { path = "../og-core" }
 og-tilemap = { path = "../og-tilemap" }
 glam = { workspace = true }
-image = { workspace = true }
+# hdr: the environment-map scene's equirectangular image (assets/env).
+image = { workspace = true, features = ["hdr"] }
 
 [[bin]]
 name = "og-gfx"

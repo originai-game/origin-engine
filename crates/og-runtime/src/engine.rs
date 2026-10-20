@@ -892,6 +892,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             spot: get("og.SpotLight"),
             fx: super::fx::FxLayouts::from(get),
             atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
+            environment: get("og.Environment"),
             terrain: get("og.Terrain"),
             scatter: get("og.TerrainScatter"),
         },
@@ -1094,6 +1095,7 @@ pub fn render_options(id: u32) -> Value {
 fn tick_boundary(eng: &Engine) {
     eng.assets.borrow_mut().poll();
     super::stream::update(eng);
+    super::environment::resolve(eng);
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }

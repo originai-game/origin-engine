@@ -14,6 +14,10 @@ struct Params {
   // brightness), ground (w: stars), disc (outer, inner, intensity, glow),
   // glow power and sun colour. Unset: the built-in sky below.
   look: array<vec4<f32>, 5>,
+  // A cooked environment map (fs_env_*): [0] (cos, sin) of its turn about
+  // +y and the scale of what is copied; [1..8] its 27 irradiance harmonic
+  // floats (coefficient k's channel c at float 3k + c).
+  env: array<vec4<f32>, 8>,
 };
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var source_cube: texture_cube<f32>;
@@ -207,4 +211,52 @@ fn fs_brdf_lut(in: VsOut) -> @location(0) vec4<f32> {
 fn fs_downsample(in: VsOut) -> @location(0) vec4<f32> {
   let d = face_dir(params.face, in.uv);
   return textureSampleLevel(source_cube, cube_sampler, d, params.roughness);
+}
+
+// A cooked environment map turned about +y: the map's direction for world
+// direction `d` (what was at +x is seen at -z after a quarter turn).
+fn env_turned(d: vec3<f32>) -> vec3<f32> {
+  let c = params.env[0].x;
+  let s = params.env[0].y;
+  return vec3<f32>(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
+}
+
+// One level of a cooked environment map (level `roughness`), turned and
+// scaled: the sky cube from level 0, each prefiltered mip from its level.
+@fragment
+fn fs_env_copy(in: VsOut) -> @location(0) vec4<f32> {
+  let d = env_turned(face_dir(params.face, in.uv));
+  let c = textureSampleLevel(source_cube, cube_sampler, d, params.roughness).rgb;
+  return vec4<f32>(c * params.env[0].z, 1.0);
+}
+
+fn env_float(k: u32) -> f32 {
+  let v = params.env[1u + k / 4u];
+  switch k % 4u {
+    case 0u: { return v.x; }
+    case 1u: { return v.y; }
+    case 2u: { return v.z; }
+    default: { return v.w; }
+  }
+}
+
+fn env_sh(k: u32) -> vec3<f32> {
+  return vec3<f32>(env_float(3u * k), env_float(3u * k + 1u), env_float(3u * k + 2u));
+}
+
+// The irradiance over pi of a cooked environment map: its order-2
+// harmonics (already convolved with the cosine lobe) at the turned direction.
+@fragment
+fn fs_env_irradiance(in: VsOut) -> @location(0) vec4<f32> {
+  let d = env_turned(face_dir(params.face, in.uv));
+  var e = env_sh(0u) * 0.282095;
+  e += env_sh(1u) * (0.488603 * d.y);
+  e += env_sh(2u) * (0.488603 * d.z);
+  e += env_sh(3u) * (0.488603 * d.x);
+  e += env_sh(4u) * (1.092548 * d.x * d.y);
+  e += env_sh(5u) * (1.092548 * d.y * d.z);
+  e += env_sh(6u) * (0.315392 * (3.0 * d.z * d.z - 1.0));
+  e += env_sh(7u) * (1.092548 * d.x * d.z);
+  e += env_sh(8u) * (0.546274 * (d.x * d.x - d.y * d.y));
+  return vec4<f32>(max(e, vec3<f32>(0.0)), 1.0);
 }

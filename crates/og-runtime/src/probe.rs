@@ -49,6 +49,22 @@ impl Capture for RuntimeCapture {
             .unwrap_or(false)
     }
 
+    fn save_state(&mut self) -> u64 {
+        self.render
+            .try_borrow_mut()
+            .ok()
+            .and_then(|mut rs| rs.backend.as_mut().map(|b| b.save_state()))
+            .unwrap_or(0)
+    }
+
+    fn restore_state(&mut self, state: u64) {
+        if let Ok(mut rs) = self.render.try_borrow_mut()
+            && let Some(b) = rs.backend.as_mut()
+        {
+            b.restore_state(state);
+        }
+    }
+
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.

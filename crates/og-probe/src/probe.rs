@@ -92,12 +92,14 @@ pub struct SweepDesc {
     pub height: u32,
 }
 
-/// One probe snapshot: the world (its names included).
+/// One probe snapshot: the world (its names included), and the renderer's
+/// state that follows the world's time ([`Capture::save_state`]).
 #[derive(Clone)]
 struct Saved {
     world: Vec<u8>,
     tick: u64,
     hash: u64,
+    render: u64,
 }
 
 /// A `screenshot` step whose frame is in flight: written when it lands,
@@ -1638,17 +1640,21 @@ impl Probe {
         }))
     }
 
-    fn save(&self, world: &World) -> Saved {
+    fn save(&mut self, world: &World) -> Saved {
         let bytes = world.snapshot();
         Saved {
             hash: world.world_hash(),
             world: bytes,
             tick: world.time().tick,
+            render: self.capture.as_mut().map_or(0, |c| c.save_state()),
         }
     }
 
     fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
         world.restore(&saved.world)?;
+        if let Some(c) = self.capture.as_mut() {
+            c.restore_state(saved.render);
+        }
         Ok(())
     }
 

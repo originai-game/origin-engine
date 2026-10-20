@@ -29,6 +29,7 @@
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids) |
+//! | environment map (`og.EnvironmentMap`, an `.ogt` of `type environment`, phase 4) | [`EnvironmentMeta`] | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, face after face, zlib), `irradiance` [`EnvironmentShRow`] (nine order-2 harmonics of the irradiance over pi) |
 //! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
 use og_core::hash::StableHasher;
@@ -1058,6 +1059,49 @@ impl BlobKind for Terrain {
             TerrainTileRow::schema(),
             TerrainLayerRow::schema(),
         ]
+    }
+}
+
+// ── phase 4: environment maps ────────────────────────────────────────────
+
+row!(
+    /// The root of an environment map blob (an `.ogt` of `type environment`):
+    /// og-render's `EnvironmentMapData` and what it was baked from.
+    EnvironmentMeta, "og.EnvironmentMap", 1 {
+        /// Level 0's face size (a power of two) and the level count
+        /// (og-render's `ENVIRONMENT_MAP_LEVELS`; level m is roughness
+        /// m / (levels - 1)).
+        size: u32,
+        levels: u32,
+        /// RGB9E5 texels in `texels` once inflated.
+        texel_count: u32,
+        /// The equirectangular source's size.
+        source_width: u32,
+        source_height: u32,
+        /// The intensity and the turn about +y (degrees) baked in.
+        intensity: f32,
+        rotation: f32,
+        /// GGX samples per texel of each prefiltered level.
+        samples: u32,
+    }
+);
+
+row!(
+    /// One harmonic coefficient of the irradiance over pi (og-render's
+    /// `EnvironmentMapData::irradiance`), nine in order.
+    EnvironmentShRow, "og.EnvironmentMap.sh", 1 {
+        r: f32,
+        g: f32,
+        b: f32,
+    }
+);
+
+/// The environment map blob: `meta`, `texels` (zlib'd RGB9E5) and `irradiance`.
+pub struct EnvironmentMap;
+impl BlobKind for EnvironmentMap {
+    const NAME: &'static str = "og.EnvironmentMap";
+    fn schemas() -> Vec<Schema> {
+        vec![EnvironmentMeta::schema(), EnvironmentShRow::schema()]
     }
 }
 

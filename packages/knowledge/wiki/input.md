@@ -18,7 +18,7 @@ module input {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 685</sub>
+<sub>`api.ogt` line 686</sub>
 
 ## Contents
 
@@ -209,7 +209,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 845</sub>
+<sub>`api.ogt` line 846</sub>
 
 <a id="member-Input-down"></a>
 
@@ -237,7 +237,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 919</sub>
+<sub>`api.ogt` line 920</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -265,7 +265,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 924</sub>
+<sub>`api.ogt` line 925</sub>
 
 <a id="member-Input-released"></a>
 
@@ -293,7 +293,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 929</sub>
+<sub>`api.ogt` line 930</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -323,7 +323,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 934</sub>
+<sub>`api.ogt` line 935</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -357,7 +357,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 940</sub>
+<sub>`api.ogt` line 941</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -385,7 +385,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 948</sub>
+<sub>`api.ogt` line 949</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -413,7 +413,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 953</sub>
+<sub>`api.ogt` line 954</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -441,7 +441,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 958</sub>
+<sub>`api.ogt` line 959</sub>
 
 <a id="record-Pointers"></a>
 
@@ -558,7 +558,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 965</sub>
+<sub>`api.ogt` line 966</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -586,7 +586,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1020</sub>
+<sub>`api.ogt` line 1021</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -614,7 +614,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1025</sub>
+<sub>`api.ogt` line 1026</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -642,7 +642,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1030</sub>
+<sub>`api.ogt` line 1031</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -670,7 +670,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 1035</sub>
+<sub>`api.ogt` line 1036</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -698,7 +698,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 1040</sub>
+<sub>`api.ogt` line 1041</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -721,7 +721,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1045</sub>
+<sub>`api.ogt` line 1046</sub>
 
 <a id="record-Gamepad"></a>
 
@@ -882,7 +882,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 1051</sub>
+<sub>`api.ogt` line 1052</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -912,7 +912,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 1129</sub>
+<sub>`api.ogt` line 1130</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -944,7 +944,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1136</sub>
+<sub>`api.ogt` line 1137</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -976,7 +976,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1144</sub>
+<sub>`api.ogt` line 1145</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -1008,7 +1008,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1152</sub>
+<sub>`api.ogt` line 1153</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -1040,7 +1040,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 1160</sub>
+<sub>`api.ogt` line 1161</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -1068,7 +1068,7 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 1170</sub>
+<sub>`api.ogt` line 1171</sub>
 
 <a id="record-TextInput"></a>
 
@@ -1093,7 +1093,7 @@ event TextInput {
 }
 ```
 
-<sub>`api.ogt` line 1180</sub>
+<sub>`api.ogt` line 1181</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -1119,7 +1119,7 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 1187</sub>
+<sub>`api.ogt` line 1188</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -1151,7 +1151,7 @@ event PointerDown {
 }
 ```
 
-<sub>`api.ogt` line 1196</sub>
+<sub>`api.ogt` line 1197</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -1183,7 +1183,7 @@ event PointerUp {
 }
 ```
 
-<sub>`api.ogt` line 1208</sub>
+<sub>`api.ogt` line 1209</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -1208,7 +1208,7 @@ event PointerMove {
 }
 ```
 
-<sub>`api.ogt` line 1220</sub>
+<sub>`api.ogt` line 1221</sub>
 
 <a id="record-Wheel"></a>
 
@@ -1231,7 +1231,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 1227</sub>
+<sub>`api.ogt` line 1228</sub>
 
 ## Types
 
@@ -1286,7 +1286,7 @@ enum GamepadButton {
 }
 ```
 
-<sub>`api.ogt` line 694</sub>
+<sub>`api.ogt` line 695</sub>
 
 <a id="type-GamepadAxis"></a>
 
@@ -1317,7 +1317,7 @@ enum GamepadAxis {
 }
 ```
 
-<sub>`api.ogt` line 715</sub>
+<sub>`api.ogt` line 716</sub>
 
 <a id="type-KeyAction"></a>
 
@@ -1342,7 +1342,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 725</sub>
+<sub>`api.ogt` line 726</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -1369,7 +1369,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 732</sub>
+<sub>`api.ogt` line 733</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -1396,7 +1396,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 740</sub>
+<sub>`api.ogt` line 741</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -1421,7 +1421,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 748</sub>
+<sub>`api.ogt` line 749</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -1452,7 +1452,7 @@ struct KeyInput {
 }
 ```
 
-<sub>`api.ogt` line 756</sub>
+<sub>`api.ogt` line 757</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -1492,7 +1492,7 @@ struct PointerInput {
 }
 ```
 
-<sub>`api.ogt` line 770</sub>
+<sub>`api.ogt` line 771</sub>
 
 <a id="type-GamepadInput"></a>
 
@@ -1530,7 +1530,7 @@ struct GamepadInput {
 }
 ```
 
-<sub>`api.ogt` line 791</sub>
+<sub>`api.ogt` line 792</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -1563,7 +1563,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 811</sub>
+<sub>`api.ogt` line 812</sub>
 
 <a id="type-TextEntry"></a>
 
@@ -1586,7 +1586,7 @@ struct TextEntry {
 }
 ```
 
-<sub>`api.ogt` line 827</sub>
+<sub>`api.ogt` line 828</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -1616,7 +1616,7 @@ union InjectedInput {
 }
 ```
 
-<sub>`api.ogt` line 835</sub>
+<sub>`api.ogt` line 836</sub>
 
 ## Constants
 
@@ -1629,10 +1629,10 @@ union InjectedInput {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>`api.ogt` line 691</sub>
+<sub>`api.ogt` line 692</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
 ```
 
-<sub>`api.ogt` line 692</sub>
+<sub>`api.ogt` line 693</sub>

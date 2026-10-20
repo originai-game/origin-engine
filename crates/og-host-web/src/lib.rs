@@ -680,6 +680,13 @@ mod canvas {
         fn deferred(&self) -> bool {
             true
         }
+        fn save_state(&mut self) -> u64 {
+            self.renderer.save_state().id()
+        }
+        fn restore_state(&mut self, state: u64) {
+            self.renderer
+                .restore_state(og_render::RendererState::from_id(state));
+        }
     }
 
     fn antialias(name: &str) -> og_render::Antialias {
