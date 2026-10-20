@@ -3,7 +3,8 @@
 //! og-render's StandardMaterial as the arrays' slots, and an og.Mesh's
 //! `materialLayer` becomes its instance's layer (-1, the default, keeps the
 //! material's), so meshes of one material on different layers stay one
-//! material. An array a material samples stays resident while it does.
+//! material. A terrain whose layers name texture arrays (`layers`,
+//! `layerNormals`) draws with both arrays and each layer's layers.
 //!
 //! Ways this could fail: the desc's array fields are dropped (no slot), a
 //! mesh's layer is lost on its way to the instance, or -1 reaches the
@@ -47,6 +48,15 @@ fn project() -> &'static Path {
             "tex/tiles.ogt",
             b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\n",
         );
+        let hill = std::fs::read(
+            repo().join("packages/engine/tests/fixtures/terrain/assets/terrain/hill.png"),
+        )
+        .unwrap();
+        write("terrain/hill.png", &hill);
+        write(
+            "terrain/hill.ogt",
+            b"type terrain\nversion 1\n---\nheightmap \"hill.png\"\nheight 0 10\nsize 64 64\ntile 64\nlayers \"tex/tiles.ogt\"\nlayerNormals \"tex/tiles-n.ogt\"\nlayer {\n  tile 4\n}\nlayer {\n  albedoLayer 0\n  normalLayer 1\n  slope 30 90\n}\n",
+        );
         write(
             "tex/tiles-n.ogt",
             b"type texture-array\nversion 1\n---\nkind normal\nlayer \"a.png\"\nlayer \"b.png\"\n",
@@ -76,6 +86,7 @@ impl Hooks for Disk {
 #[derive(Default)]
 struct Seen {
     instances: Vec<(Option<u32>, StandardMaterial)>,
+    terrains: Vec<og_render::Terrain>,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -98,6 +109,7 @@ impl RenderBackend for Recorder {
                 )
             })
             .collect();
+        self.0.borrow_mut().terrains = scene.terrains.clone();
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -197,5 +209,42 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
             .to_string()
             .contains("mapArray: texture array 77 is not loaded"),
         "{refused}"
+    );
+}
+
+#[test]
+fn a_terrain_samples_its_layer_arrays() {
+    let (engine, seen) = engine();
+    let info = value(og_runtime::og_terrain_load(
+        engine,
+        "terrain/hill.ogt".into(),
+    ));
+    spawn(
+        engine,
+        &[
+            ("og.Transform", json!({})),
+            ("og.Terrain", json!({ "data": info["data"] })),
+        ],
+    );
+    frame(engine);
+    let s = seen.borrow();
+    assert_eq!(s.terrains.len(), 1);
+    let t = &s.terrains[0];
+    let (albedo, normal) = (t.layer_arrays.albedo, t.layer_arrays.normal);
+    assert!(
+        albedo.is_some() && normal.is_some() && albedo != normal,
+        "{:?}",
+        t.layer_arrays
+    );
+    let picked: Vec<_> = t
+        .layers
+        .iter()
+        .map(|l| (l.albedo_layer, l.normal_layer))
+        .collect();
+    assert_eq!(picked, vec![(Some(0), Some(0)), (Some(0), Some(1))]);
+    assert!(
+        t.layers
+            .iter()
+            .all(|l| l.albedo.is_none() && l.normal.is_none())
     );
 }

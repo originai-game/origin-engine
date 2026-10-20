@@ -927,7 +927,15 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
                 .iter()
                 .filter_map(|&m| rs.scene.standard_material(m))
                 .any(|m| m.mapArray == slot || m.normalMapArray == slot);
-            sampled.then_some("a material samples it (mapArray, normalMapArray)")
+            if sampled {
+                return Some("a material samples it (mapArray, normalMapArray)");
+            }
+            let layered = rs
+                .terrain
+                .loaded
+                .iter()
+                .any(|t| t.layer_arrays.contains(&Some(i)));
+            layered.then_some("a terrain's layers sample it (layers, layerNormals)")
         }
         Held::Palette(i) => {
             let h = rs.fx.look.palettes.get(i)?.1?;

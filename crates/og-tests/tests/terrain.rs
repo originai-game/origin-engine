@@ -975,6 +975,32 @@ fn a_terrain_honours_its_transform() {
     }
 }
 
+/// A terrain whose layers take their maps from two texture arrays draws as
+/// the same terrain with each map its own texture: terrain-near (four
+/// albedos, one normal map) with its maps moved into arrays, within the
+/// mip filtering that differs between them (an array's mips are made on
+/// the CPU), and with two layer textures bound instead of eight.
+#[test]
+fn layer_arrays_draw_as_separate_layer_textures() {
+    let separate = ts::island_view("near");
+    let arrayed = ts::with_layer_arrays(ts::island_view("near"));
+    assert!(arrayed.terrains[0].layer_arrays.any());
+    assert!(
+        arrayed.terrains[0]
+            .layers
+            .iter()
+            .all(|l| l.albedo_layer.is_some())
+    );
+    let (a, sa) = render(&separate);
+    let (b, sb) = render(&arrayed);
+    keep("layer-arrays-separate", &a);
+    keep("layer-arrays", &b);
+    assert_eq!(sa.terrain_draws, sb.terrain_draws);
+    let e = rmse(&a, &b);
+    println!("layer arrays vs separate textures: rmse {e:.4}");
+    assert!(e < 0.03, "rmse {e}");
+}
+
 /// The root-mean-square difference of two frames' colours, 0 to 1.
 fn rmse(a: &RgbaImage, b: &RgbaImage) -> f32 {
     let mut sum = 0.0f64;

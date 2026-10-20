@@ -95,6 +95,16 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         crate::terrain::terrain_lit_source(crate::FRAME_WGSL, &tables.wgsl(), crate::LIGHTING_WGSL),
     );
     add("terrain shadow", crate::terrain::terrain_shadow_source());
+    let terrain =
+        crate::terrain::terrain_lit_source(crate::FRAME_WGSL, &tables.wgsl(), crate::LIGHTING_WGSL);
+    add(
+        "terrain (layer arrays)",
+        crate::terrain::terrain_lit_array_source(&terrain),
+    );
+    add(
+        "terrain shadow (layer arrays)",
+        crate::terrain::terrain_shadow_array_source(),
+    );
     add(
         "water",
         crate::water::water_source(crate::FRAME_WGSL, crate::LIGHTING_WGSL),

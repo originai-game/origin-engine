@@ -116,7 +116,8 @@ pub use stylise::{
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
-    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler, TerrainScatter,
+    TerrainControl, TerrainData, TerrainLayer, TerrainLayerArrays, TerrainLod, TerrainSampler,
+    TerrainScatter,
 };
 pub use terrain_tiles::{
     ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
@@ -4680,6 +4681,7 @@ impl Renderer {
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
         let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
         let textures = &self.cache.textures;
+        let arrays = &self.cache.texture_arrays;
         let terrain_draws = self.terrain.prepare(
             &self.device,
             &self.queue,
@@ -4690,6 +4692,13 @@ impl Renderer {
             cam.view_proj,
             prev_view_proj,
             |h| textures.get(h.index()).map(|t| &t.view),
+            |h| {
+                arrays
+                    .get(h.index())
+                    .and_then(Option::as_ref)
+                    .filter(|a| a.generation == h.generation())
+                    .map(|a| &a.texture)
+            },
         )?;
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
         // Scattered copies: the chunks this frame needs built, what to draw.
@@ -6186,9 +6195,9 @@ impl Renderer {
             if let Some(indices) = terrain_indices
                 && terrain_casters
             {
-                pass.set_pipeline(&self.terrain.shadow);
+                let shadow = terrain::TerrainPass::Shadow;
                 let (n, _) =
-                    terrain::draw_levels(&mut pass, &terrain_draws, indices, true, |c, r| {
+                    terrain::draw_levels(&mut pass, &terrain_draws, indices, shadow, |c, r| {
                         frustum.intersects_sphere(c, r)
                     });
                 stats.draw_calls += n;
@@ -6328,11 +6337,14 @@ impl Renderer {
                         None,
                     );
                     if let Some(indices) = terrain_indices {
-                        p.set_pipeline(&self.terrain.prepass);
-                        let (n, _) =
-                            terrain::draw_levels(&mut p, &terrain_draws, indices, false, |c, r| {
-                                view_frustum.intersects_sphere(c, r)
-                            });
+                        let prepass = terrain::TerrainPass::Prepass;
+                        let (n, _) = terrain::draw_levels(
+                            &mut p,
+                            &terrain_draws,
+                            indices,
+                            prepass,
+                            |c, r| view_frustum.intersects_sphere(c, r),
+                        );
                         stats.prepass_draws += n;
                     }
                     let (n, _) = self.scatter.draw(
@@ -6455,13 +6467,12 @@ impl Renderer {
                     stats.draw_calls += n;
                     stats.reflection_draws += n;
                     if let (Some(indices), Some(r)) = (terrain_indices, &reflection) {
-                        pass.set_pipeline(&self.terrain.lit);
                         let frustum = Frustum::from_view_proj(r.3);
                         let (n, _) = terrain::draw_levels(
                             &mut pass,
                             &terrain_draws,
                             indices,
-                            false,
+                            terrain::TerrainPass::Lit,
                             |c, rad| frustum.intersects_sphere(c, rad),
                         );
                         stats.draw_calls += n;
@@ -6577,12 +6588,11 @@ impl Renderer {
                         physical_fx,
                     );
                     if let Some(indices) = terrain_indices {
-                        pass.set_pipeline(&self.terrain.lit);
                         let (n, tris) = terrain::draw_levels(
                             &mut pass,
                             &terrain_draws,
                             indices,
-                            false,
+                            terrain::TerrainPass::Lit,
                             |c, r| view_frustum.intersects_sphere(c, r),
                         );
                         stats.draw_calls += n;

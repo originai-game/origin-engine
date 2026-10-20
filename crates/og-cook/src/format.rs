@@ -30,7 +30,7 @@
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
-//! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids) |
+//! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids, the layer arrays' ids) |
 //! | look (`og.Look`, an `.ogt` of `type look`) | [`LookMeta`] | `text` (the canonical, flattened look: `extends` resolved and listed, colours linear) |
 //! | palette (`og.Palette`, a `.hex` or `.gpl` file) | [`PaletteMeta`] | `rgb` (`count` sRGB colours, 3 bytes each, in file order) |
 //! | environment map (`og.EnvironmentMap`, an `.ogt` of `type environment`, phase 4) | [`EnvironmentMeta`] | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, face after face, zlib), `irradiance` [`EnvironmentShRow`] (nine order-2 harmonics of the irradiance over pi) |
@@ -1098,7 +1098,7 @@ impl BlobKind for Strings {
 
 row!(
     /// The root of a terrain blob (an `.ogt` of `type terrain`).
-    TerrainMeta, "og.Terrain", 2 {
+    TerrainMeta, "og.Terrain", 3 {
         /// Extent along x and z in metres, centred on the terrain's origin.
         size_x: f32,
         size_z: f32,
@@ -1125,6 +1125,13 @@ row!(
         /// 1: casts shadows; 1: the game gets a collider.
         cast_shadows: u32,
         collision: u32,
+        /// The texture arrays the layers' albedos and normal maps come
+        /// from (`layers`, `layerNormals`: asset ids, ranges of `strings`;
+        /// [`NONE`] for none).
+        albedo_array_at: u32,
+        albedo_array_len: u32,
+        normal_array_at: u32,
+        normal_array_len: u32,
     }
 );
 
@@ -1147,9 +1154,10 @@ row!(
 );
 
 row!(
-    /// One layer: its textures (ranges of `strings`; [`NONE`] for none)
-    /// and og-render's `TerrainLayer` fields.
-    TerrainLayerRow, "og.Terrain.layer", 1 {
+    /// One layer: its textures (ranges of `strings`; [`NONE`] for none),
+    /// or with the terrain's arrays its layers of them, and og-render's
+    /// `TerrainLayer` fields.
+    TerrainLayerRow, "og.Terrain.layer", 2 {
         albedo_at: u32,
         albedo_len: u32,
         normal_at: u32,
@@ -1167,6 +1175,9 @@ row!(
         altitude_min: f32,
         altitude_max: f32,
         altitude_fade: f32,
+        /// With the terrain's arrays: this layer's layer of each ([`NONE`]: none).
+        albedo_layer: u32,
+        normal_layer: u32,
     }
 );
 
