@@ -265,6 +265,119 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
     }
 }
 
+/// A piece as drawn: its span, its text (logical), the visual glyphs of a
+/// right-to-left or shaped segment (`None`: drawn as written, kerned by the
+/// renderer) and where it sits.
+pub(crate) struct DrawnPiece {
+    pub span: usize,
+    pub text: String,
+    pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
+    pub rect: Rect,
+    pub baseline: f32,
+}
+
+/// One segment of a line in visual order: a piece, or the part of one in a
+/// single bidi run; its width in CSS px at scale 1.
+struct Segment {
+    span: usize,
+    text: String,
+    glyphs: Option<Vec<crate::text::VisualGlyph>>,
+    width: f32,
+}
+
+/// A rich line's segments in visual order. A line of left-to-right text in
+/// a left-to-right UI is its pieces as laid out; any other line runs the
+/// bidi algorithm over its whole text (icons as U+FFFC) at the UI's
+/// direction and cuts the runs at the pieces' edges.
+fn visual_segments(
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    line: &RichLine,
+    direction: og_i18n::Direction,
+) -> Vec<Segment> {
+    let plain = direction == og_i18n::Direction::Ltr
+        && line
+            .pieces
+            .iter()
+            .all(|p| !crate::text::needs_visual(&p.text));
+    if plain {
+        return line
+            .pieces
+            .iter()
+            .map(|p| Segment {
+                span: p.span,
+                text: p.text.clone(),
+                glyphs: None,
+                width: p.width,
+            })
+            .collect();
+    }
+    // The line's text and where each piece's text lies in it.
+    let mut text = String::new();
+    let mut ranges = Vec::with_capacity(line.pieces.len());
+    for p in &line.pieces {
+        let start = text.len();
+        if rc.spans[p.span].icon.is_some() {
+            text.push('\u{fffc}');
+        } else {
+            text.push_str(&p.text);
+        }
+        ranges.push(start..text.len());
+    }
+    let mut out = Vec::new();
+    for (run, rtl) in crate::text::bidi_runs(&text, direction) {
+        // The pieces this run crosses, in visual order.
+        let mut parts: Vec<(usize, std::ops::Range<usize>)> = ranges
+            .iter()
+            .enumerate()
+            .filter_map(|(k, r)| {
+                let a = r.start.max(run.start);
+                let b = r.end.min(run.end);
+                (a < b).then_some((k, a..b))
+            })
+            .collect();
+        if rtl {
+            parts.reverse();
+        }
+        for (k, r) in parts {
+            let p = &line.pieces[k];
+            let s = &rc.spans[p.span];
+            if s.icon.is_some() {
+                out.push(Segment {
+                    span: p.span,
+                    text: String::new(),
+                    glyphs: None,
+                    width: p.width,
+                });
+                continue;
+            }
+            let piece_text = &text[r.clone()];
+            let m = fonts.metrics_for(s.font, piece_text);
+            let tracking = crate::layout::step_tracking(&s.step, piece_text);
+            let needs = rtl || crate::text::needs_visual(piece_text);
+            if !needs {
+                out.push(Segment {
+                    span: p.span,
+                    text: piece_text.to_string(),
+                    glyphs: None,
+                    width: span_width(s, piece_text, fonts),
+                });
+                continue;
+            }
+            let first = text[ranges[k].start..r.start].chars().count();
+            let glyphs = m.run(piece_text, rtl, tracking, first);
+            let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size;
+            out.push(Segment {
+                span: p.span,
+                text: piece_text.to_string(),
+                glyphs: Some(glyphs),
+                width,
+            });
+        }
+    }
+    out
+}
+
 /// A sine with `+ − × ÷` only (Bhaskara I), for per-glyph motion: the UI
 /// reads no transcendental functions.
 pub(crate) fn sine(x: f32) -> f32 {
@@ -400,9 +513,12 @@ impl Ui {
         out
     }
 
-    /// Where each piece of rich node `i` sits on screen: (span, piece
-    /// rectangle, baseline y), after layout and motion.
-    pub(crate) fn rich_pieces(&self, i: usize) -> Vec<(usize, String, Rect, f32)> {
+    /// Where each piece of rich node `i` sits on screen, after layout and
+    /// motion, in visual order: each line is laid out by the bidirectional
+    /// algorithm over its whole text at the UI's direction (UAX #9), so
+    /// pieces are reordered and so are runs of either direction within one
+    /// piece (a piece split by a direction change is several segments).
+    pub(crate) fn rich_pieces(&self, i: usize) -> Vec<DrawnPiece> {
         let n = &self.nodes[i];
         let Content::Rich(rc) = &n.content else {
             return Vec::new();
@@ -419,25 +535,25 @@ impl Ui {
         let mut out = Vec::new();
         let mut y = inner.y;
         for line in &n.rich_lines {
-            let free = inner.width - line.width * sk;
+            let segments = visual_segments(rc, &self.fonts, line, self.direction);
+            let width: f32 = segments.iter().map(|s| s.width).sum();
+            let free = inner.width - width * sk;
             let x0 = inner.x
                 + match (rc.align, rtl) {
                     (TextAlign::Start, false) | (TextAlign::End, true) => 0.0,
                     (TextAlign::Center, _) => free / 2.0,
                     (TextAlign::End, false) | (TextAlign::Start, true) => free,
                 };
-            for p in &line.pieces {
-                let x = if rtl {
-                    x0 + (line.width - p.x - p.width) * sk
-                } else {
-                    x0 + p.x * sk
-                };
-                out.push((
-                    p.span,
-                    p.text.clone(),
-                    Rect::new(x, y, p.width * sk, line.height * sk),
-                    y + line.baseline * sk,
-                ));
+            let mut x = x0;
+            for seg in segments {
+                out.push(DrawnPiece {
+                    span: seg.span,
+                    text: seg.text,
+                    glyphs: seg.glyphs,
+                    rect: Rect::new(x, y, seg.width * sk, line.height * sk),
+                    baseline: y + line.baseline * sk,
+                });
+                x += seg.width * sk;
             }
             y += line.height * sk;
         }
@@ -456,8 +572,8 @@ impl Ui {
             .filter_map(|l| {
                 let rects: Vec<Rect> = pieces
                     .iter()
-                    .filter(|(s, ..)| rc.spans[*s].link.as_deref() == Some(l.as_str()))
-                    .map(|(_, _, r, _)| *r)
+                    .filter(|p| rc.spans[p.span].link.as_deref() == Some(l.as_str()))
+                    .map(|p| p.rect)
                     .collect();
                 let first = rects.first()?;
                 let (mut x0, mut y0, mut x1, mut y1) =
@@ -512,7 +628,8 @@ impl Ui {
                 }
             }
         }
-        for (k, text, r, baseline) in self.rich_pieces(i) {
+        for piece in self.rich_pieces(i) {
+            let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
             let s = &rc.spans[k];
             let size = s.step.size * n.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
@@ -541,7 +658,12 @@ impl Ui {
             // right, so small text whose field is thin is bold too.
             let weight = if s.bold { (size * 0.045).max(0.4) } else { 0.0 };
             let smear = if s.bold { 1.0 / dpr } else { 0.0 };
-            let glyph = |x: f32, dy: f32, a: f32, text: String, w: f32| DrawCmd::Text {
+            let glyph = |x: f32,
+                         dy: f32,
+                         a: f32,
+                         text: String,
+                         placements: Vec<og_render::GlyphPlacement>,
+                         w: f32| DrawCmd::Text {
                 x: snap(x),
                 baseline: snap(baseline + dy),
                 size,
@@ -553,32 +675,43 @@ impl Ui {
                 tracking,
                 weight,
                 glow: None,
+                placements,
             };
-            let rtl = self.direction == og_i18n::Direction::Rtl;
-            if rtl && !text.chars().any(char::is_alphanumeric) {
-                // Punctuation and spaces alone in a right-to-left line read
-                // right to left too (". " after a bold word: the stop first).
-                let drawn: String = text.chars().rev().collect();
-                cmds.push(glyph(r.x, 0.0, 1.0, drawn, r.width));
-            } else if crate::shape::needs_visual(&text) {
-                // A shaped or right-to-left piece: drawn shaped, in visual
-                // order, whole (its joins would break glyph by glyph).
-                let drawn = m.visual(&text, self.direction);
+            if let Some(glyphs) = piece.glyphs {
+                // A right-to-left or shaped segment: drawn whole in visual
+                // order with its placements (its joins would break glyph by glyph).
+                let (drawn, placements) = crate::text::FontMetrics::drawn(&glyphs);
                 if smear > 0.0 {
-                    cmds.push(glyph(r.x + smear, 0.0, 1.0, drawn.clone(), r.width));
+                    cmds.push(glyph(
+                        r.x + smear,
+                        0.0,
+                        1.0,
+                        drawn.clone(),
+                        placements.clone(),
+                        r.width,
+                    ));
                 }
-                cmds.push(glyph(r.x, 0.0, 1.0, drawn, r.width));
+                cmds.push(glyph(r.x, 0.0, 1.0, drawn, placements, r.width));
             } else if s.fx == SpanFx::None || still {
                 if smear > 0.0 {
-                    cmds.push(glyph(r.x + smear, 0.0, 1.0, text.clone(), r.width));
+                    cmds.push(glyph(
+                        r.x + smear,
+                        0.0,
+                        1.0,
+                        text.clone(),
+                        Vec::new(),
+                        r.width,
+                    ));
                 }
-                cmds.push(glyph(r.x, 0.0, 1.0, text.clone(), r.width));
+                cmds.push(glyph(r.x, 0.0, 1.0, text.clone(), Vec::new(), r.width));
             } else {
                 // Glyph by glyph: each moved by the span's effect at this tick.
                 let mut x = r.x;
-                for (g, c) in text.chars().enumerate() {
+                let chars: Vec<char> = text.chars().collect();
+                for (g, &c) in chars.iter().enumerate() {
                     let cs = c.to_string();
-                    let w = m.measure_tracked(&cs, size, tracking);
+                    let w = m.measure_tracked(&cs, size, tracking)
+                        + chars.get(g + 1).map_or(0.0, |&nx| m.kern(c, nx) * size);
                     let (dy, a) = match s.fx {
                         SpanFx::Wave => (-0.14 * size * sine(tick * 0.16 + g as f32 * 0.7), 1.0),
                         SpanFx::Shake => {
@@ -590,9 +723,9 @@ impl Ui {
                         _ => (0.0, 0.7 + 0.3 * sine(tick * 0.1)),
                     };
                     if smear > 0.0 {
-                        cmds.push(glyph(x + smear, dy, a, cs.clone(), w));
+                        cmds.push(glyph(x + smear, dy, a, cs.clone(), Vec::new(), w));
                     }
-                    cmds.push(glyph(x, dy, a, cs, w));
+                    cmds.push(glyph(x, dy, a, cs, Vec::new(), w));
                     x += w;
                 }
             }

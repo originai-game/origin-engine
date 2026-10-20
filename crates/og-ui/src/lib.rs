@@ -60,7 +60,7 @@ pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, HueName, Hues, Palette, Radius, Scheme,
     Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
-pub use text::{FontMetrics, UiFont};
+pub use text::{FontMetrics, UiFont, VisualGlyph, bidi_runs, needs_visual};
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
     PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame,

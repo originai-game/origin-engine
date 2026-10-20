@@ -1021,7 +1021,7 @@ pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
     let mut font = UiFont::new(first, &msdf);
     font.metrics = font
         .metrics
-        .with_shaper(ttf.and_then(og_ui::shape::Shaper::new));
+        .with_file(ttf.and_then(og_ui::shape::FontFile::new));
     Ok(font)
 }
 

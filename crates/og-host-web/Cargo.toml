@@ -10,13 +10,16 @@ description = "Origin Engine web host: the binding symbols as a wasm-bindgen mod
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = []
+default = ["shaping"]
+# og-ui's run-time shaping (rustybuzz); `--no-default-features` builds a
+# module for games without shaped scripts (crates/og-ui/README.md §Text).
+shaping = ["og-runtime/shaping"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 
 [dependencies]
 og-api = { path = "../og-api" }
-og-runtime = { path = "../og-runtime" }
+og-runtime = { path = "../og-runtime", default-features = false }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", default-features = false }
 og-cook = { path = "../og-cook", default-features = false, features = ["runtime"] }

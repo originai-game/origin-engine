@@ -682,6 +682,15 @@ pub struct Glyph {
     pub atlas_bounds: [f32; 4],
 }
 
+/// A kerning pair of an [`MsdfFont`]: `adjust` em added to `left`'s advance
+/// when `right` follows it (negative pulls the two together).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Kern {
+    pub left: char,
+    pub right: char,
+    pub adjust: f32,
+}
+
 /// A multi-channel signed distance field font: an atlas texture plus its
 /// glyph table. The atlas is produced ahead of time (the cook's job); it must
 /// be an RGB(A) MSDF uploaded with [`ColorSpace::Linear`] and [`Mips::None`].
@@ -693,6 +702,45 @@ pub struct MsdfFont {
     /// Baseline-to-baseline distance in em.
     pub line_height: f32,
     pub glyphs: Vec<Glyph>,
+    /// Pair kerning (the cook's `kerning` table), applied between adjacent
+    /// characters of a line; empty for a font that does not kern.
+    pub kerning: Vec<Kern>,
+}
+
+impl MsdfFont {
+    /// The width of one line of `text` in em as the renderer lays it out
+    /// (advances and kerning; characters the font lacks take no space).
+    pub fn measure(&self, text: &str) -> f32 {
+        let mut w = 0.0f32;
+        let mut prev: Option<char> = None;
+        for ch in text.chars() {
+            let Some(g) = self.glyphs.iter().find(|g| g.codepoint == ch) else {
+                prev = None;
+                continue;
+            };
+            if let Some(k) = prev.and_then(|p| {
+                self.kerning
+                    .iter()
+                    .find(|k| k.left == p && k.right == ch)
+                    .map(|k| k.adjust)
+            }) {
+                w += k;
+            }
+            w += g.advance;
+            prev = Some(ch);
+        }
+        w
+    }
+}
+
+/// Where a shaper put one character of a [`Text`] ([`Text::placements`]),
+/// in em: the pen moves `advance` after it, and its glyph is drawn offset by
+/// `(x, y)` from the pen (y up), as HarfBuzz's positions are.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GlyphPlacement {
+    pub advance: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 /// A run of text drawn with an MSDF font, laid out left to right from the
@@ -728,6 +776,11 @@ pub struct Text {
     /// font's true distance field (MTSDF alpha), drawn under every glyph of
     /// the text. Ignored for world text (it has [`TextOutline`]).
     pub glow: Option<TextGlow>,
+    /// Positions from a shaper, one per character of `text` (`\n` included):
+    /// each replaces its character's advance, kerning and tracking, and
+    /// offsets its glyph (marks over their bases, a right-to-left run's
+    /// visual order). Empty: the font's advances and kerning.
+    pub placements: Vec<GlyphPlacement>,
 }
 
 /// A glow around overlay text ([`Text::glow`]): `color`'s alpha at the
@@ -758,6 +811,7 @@ impl Text {
             tracking: 0.0,
             weight: 0.0,
             glow: None,
+            placements: Vec::new(),
         }
     }
 }
@@ -862,6 +916,8 @@ pub struct RenderScene {
     gltf_materials: Vec<Option<Material>>,
     material_revisions: Vec<u64>,
     fonts: Vec<MsdfFont>,
+    /// Bumped by [`RenderScene::set_font`].
+    font_revisions: Vec<u64>,
     /// Per mesh: its skin, for meshes added with `add_skinned_mesh`.
     skins: Vec<Option<SkinData>>,
     /// Per mesh: its blendshape targets.
@@ -969,6 +1025,7 @@ impl RenderScene {
             gltf_materials: Vec::new(),
             material_revisions: Vec::new(),
             fonts: Vec::new(),
+            font_revisions: Vec::new(),
             instances: Vec::new(),
             camera: Camera::default(),
             light: DirectionalLight::default(),
@@ -1392,7 +1449,25 @@ impl RenderScene {
     /// Adds an MSDF font whose atlas is a texture of this scene.
     pub fn add_font(&mut self, font: MsdfFont) -> FontHandle {
         self.fonts.push(font);
+        self.font_revisions.push(0);
         FontHandle(self.fonts.len() as u32 - 1)
+    }
+
+    /// Replaces a font's glyph table, kerning or atlas (glyphs rendered at
+    /// run time joining a page): the renderer lays text out with the new
+    /// table from the next frame. False for a bad handle.
+    pub fn set_font(&mut self, handle: FontHandle, font: MsdfFont) -> bool {
+        let i = handle.index();
+        if i >= self.fonts.len() {
+            return false;
+        }
+        self.fonts[i] = font;
+        self.font_revisions[i] += 1;
+        true
+    }
+
+    pub(crate) fn font_revisions(&self) -> &[u64] {
+        &self.font_revisions
     }
 
     /// Adds one sprite (the same as pushing onto [`RenderScene::sprites`]).

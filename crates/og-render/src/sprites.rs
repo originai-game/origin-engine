@@ -4,7 +4,9 @@
 
 use crate::RenderError;
 use crate::effects::SpriteBlend;
-use crate::scene::{FontHandle, Glyph, RenderScene, Sprite, TextureHandle, TileLayer};
+use crate::scene::{
+    FontHandle, Glyph, MsdfFont, RenderScene, Sprite, Text, TextureHandle, TileLayer,
+};
 use glam::Vec2;
 use std::collections::HashMap;
 
@@ -62,19 +64,65 @@ pub(crate) struct SpriteRun {
     pub count: u32,
 }
 
-/// The glyph table of one font, by codepoint.
+/// The glyph table of one font, by codepoint, and its kerning pairs.
 pub(crate) struct FontLayout {
     pub glyphs: HashMap<char, Glyph>,
+    pub kerning: HashMap<(char, char), f32>,
     pub line_height: f32,
     pub atlas_size: Vec2,
 }
 
 impl FontLayout {
-    pub fn new(glyphs: &[Glyph], line_height: f32, atlas_size: Vec2) -> FontLayout {
+    pub fn new(font: &MsdfFont, atlas_size: Vec2) -> FontLayout {
         FontLayout {
-            glyphs: glyphs.iter().map(|g| (g.codepoint, *g)).collect(),
-            line_height,
+            glyphs: font.glyphs.iter().map(|g| (g.codepoint, *g)).collect(),
+            kerning: font
+                .kerning
+                .iter()
+                .map(|k| ((k.left, k.right), k.adjust))
+                .collect(),
+            line_height: font.line_height,
             atlas_size,
+        }
+    }
+
+    /// Walks a text's characters with the pen (em; lines step by
+    /// `line_step`, the line height down the overlay or up the world):
+    /// `f(char, glyph or None when the font lacks it, pen, offset)`. The pen
+    /// moves by the text's placements when it has them, else by each glyph's
+    /// advance, the kerning with the character before it and the tracking
+    /// (a missing glyph takes no space and breaks the kerning pair).
+    pub fn walk(
+        &self,
+        text: &Text,
+        line_step: f32,
+        mut f: impl FnMut(char, Option<&Glyph>, Vec2, Vec2),
+    ) {
+        let mut pen = Vec2::ZERO;
+        let mut prev: Option<char> = None;
+        for (i, ch) in text.text.chars().enumerate() {
+            if ch == '\n' {
+                pen = Vec2::new(0.0, pen.y + line_step);
+                prev = None;
+                continue;
+            }
+            let g = self.glyphs.get(&ch);
+            if let Some(p) = text.placements.get(i) {
+                f(ch, g, pen, Vec2::new(p.x, p.y));
+                pen.x += p.advance;
+                continue;
+            }
+            let Some(g) = g else {
+                f(ch, None, pen, Vec2::ZERO);
+                prev = None;
+                continue;
+            };
+            if let Some(k) = prev.and_then(|p| self.kerning.get(&(p, ch))) {
+                pen.x += k;
+            }
+            f(ch, Some(g), pen, Vec2::ZERO);
+            pen.x += g.advance + text.tracking;
+            prev = Some(ch);
         }
     }
 }
@@ -302,21 +350,16 @@ pub(crate) fn build<'a>(
         let (sin, cos) = text.rotation.sin_cos();
         let rotate = |v: Vec2| Vec2::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         let origin = text.position.truncate();
-        let mut pen = Vec2::ZERO;
-        for ch in text.text.chars() {
-            if ch == '\n' {
-                pen = Vec2::new(0.0, pen.y - font.line_height);
-                continue;
-            }
-            let Some(g) = font.glyphs.get(&ch) else {
+        font.walk(text, -font.line_height, |ch, g, pen, offset| {
+            let Some(g) = g else {
                 if !ch.is_whitespace() {
                     missing_glyphs += 1;
                 }
-                continue;
+                return;
             };
             let [l, b, r, t] = g.plane_bounds;
             if r > l && t > b {
-                let corner = (pen + Vec2::new(l, b)) * text.size;
+                let corner = (pen + offset + Vec2::new(l, b)) * text.size;
                 let [al, at, ar, ab] = g.atlas_bounds;
                 keyed.push((
                     text.layer,
@@ -342,8 +385,7 @@ pub(crate) fn build<'a>(
                     },
                 ));
             }
-            pen.x += g.advance + text.tracking;
-        }
+        });
     }
     let glyphs = keyed.len() as u32 - sprites;
     // Stable: within a (layer, key, source) run, submission order is kept.

@@ -648,6 +648,8 @@ fn rgba_texture_bytes(texture: &TextureData) -> u64 {
 struct GpuFont {
     layout: FontLayout,
     bind_group: wgpu::BindGroup,
+    /// The scene's revision of the font this was built from.
+    revision: u64,
 }
 
 /// GPU copies of one scene's resources, indexed like the scene's handles.
@@ -2311,7 +2313,10 @@ impl Renderer {
             }
         }
         let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
-            .filter(|&i| replaced.contains(&scene.fonts()[i].atlas.index()))
+            .filter(|&i| {
+                replaced.contains(&scene.fonts()[i].atlas.index())
+                    || self.cache.fonts[i].revision != scene.font_revisions()[i]
+            })
             .collect();
         self.cache
             .fonts
@@ -2336,8 +2341,9 @@ impl Renderer {
                 [font.distance_range, atlas_size.x, atlas_size.y, 0.0],
             );
             self.cache.fonts.push(GpuFont {
-                layout: FontLayout::new(&font.glyphs, font.line_height, atlas_size),
+                layout: FontLayout::new(font, atlas_size),
                 bind_group,
+                revision: scene.font_revisions()[index],
             });
         }
         Ok(())

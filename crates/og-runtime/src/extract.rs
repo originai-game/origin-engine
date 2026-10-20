@@ -581,6 +581,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 tracking: 0.0,
                 weight: 0.0,
                 glow: None,
+                placements: Vec::new(),
             };
             if t.screen {
                 let o = scene
@@ -614,6 +615,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedFont) -> FontPages {
     let meta = &font.meta;
     let line_height = meta.ascender - meta.descender + meta.line_gap;
+    let kerning: Vec<og_render::Kern> = font
+        .kerning
+        .iter()
+        .filter_map(|k| {
+            Some(og_render::Kern {
+                left: char::from_u32(k.left)?,
+                right: char::from_u32(k.right)?,
+                adjust: k.adjust,
+            })
+        })
+        .collect();
     let mut pages = Vec::with_capacity(font.pages.len());
     for (p, data) in font.pages.iter().enumerate() {
         let atlas = scene.add_texture(og_render::TextureData {
@@ -653,6 +665,7 @@ pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedF
             distance_range: meta.px_range,
             line_height,
             glyphs,
+            kerning: kerning.clone(),
         }));
     }
     FontPages { pages }

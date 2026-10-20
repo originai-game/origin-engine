@@ -1,32 +1,84 @@
-//! Text measurement and line breaking over an MSDF font's glyph table: the
-//! same advances og-render's `Text` lays out with (left to right, no
-//! kerning, missing glyphs take no space), so measured text and drawn text
-//! agree to the pixel.
+//! Text measurement, line breaking and visual order over an MSDF font's
+//! glyph table: the same advances and kerning og-render's `Text` lays out
+//! with (missing glyphs take no space), so measured text and drawn text
+//! agree to the pixel. A line with right-to-left or shaped characters is
+//! laid out by the bidirectional algorithm (UAX #9, unicode-bidi): its runs
+//! in visual order, each right-to-left run reversed or shaped in its
+//! direction (`crate::shape`), and drawn with the resulting placements.
 
-use crate::shape::Shaper;
-use og_render::{FontHandle, MsdfFont};
+use crate::shape::FontFile;
+use og_i18n::Direction;
+use og_render::{FontHandle, GlyphPlacement, MsdfFont};
 use std::sync::Arc;
 
-/// Advances and vertical extents of a font, in em.
+/// Advances, kerning and vertical extents of a font, in em.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontMetrics {
     /// (codepoint, advance) sorted by codepoint.
     advances: Vec<(char, f32)>,
     /// Every character's advance when the table is empty (`fixed`).
     fixed: Option<f32>,
+    /// Kerning pairs (`left << 32 | right`, em), sorted.
+    kerning: Vec<(u64, f32)>,
     /// Baseline to the top of the tallest glyph, in em (positive).
     pub ascender: f32,
     /// Baseline to the bottom of the lowest glyph, in em (negative).
     pub descender: f32,
-    /// The font file, for a font cooked with a shaped script (its words are
-    /// measured and drawn shaped: `crate::shape`).
-    pub shaper: Option<Arc<Shaper>>,
+    /// The font file, for a font cooked with a shaped script or `runtime
+    /// true`: its shaped runs are measured and drawn shaped, and characters
+    /// outside the atlas measured from it (`crate::shape`).
+    pub file: Option<Arc<FontFile>>,
+}
+
+/// One glyph of a line as drawn, left to right.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VisualGlyph {
+    /// The character drawn (U+F0000 + glyph id for a shaped glyph).
+    pub ch: char,
+    /// The pen's advance after it, em (kerning and tracking included).
+    pub advance: f32,
+    /// The glyph's offset from the pen, em (y up).
+    pub x: f32,
+    pub y: f32,
+    /// The logical index (in characters) of the first character it draws.
+    pub index: usize,
+    /// It belongs to a right-to-left run.
+    pub rtl: bool,
+}
+
+fn kern_key(a: char, b: char) -> u64 {
+    (u64::from(a as u32) << 32) | u64::from(b as u32)
+}
+
+/// Brackets a right-to-left run draws mirrored (Unicode's Bidi_Mirrored
+/// pairs the UI's fonts carry).
+fn mirror(c: char) -> char {
+    match c {
+        '(' => ')',
+        ')' => '(',
+        '[' => ']',
+        ']' => '[',
+        '{' => '}',
+        '}' => '{',
+        '<' => '>',
+        '>' => '<',
+        '«' => '»',
+        '»' => '«',
+        '‹' => '›',
+        '›' => '‹',
+        '（' => '）',
+        '）' => '（',
+        '「' => '」',
+        '」' => '「',
+        _ => c,
+    }
 }
 
 impl FontMetrics {
-    /// The metrics of an MSDF font: its advances, and extents measured over
-    /// its printable ASCII glyphs (a cooked font knows its real ascender and
-    /// descender: pass them with [`FontMetrics::with_extents`]).
+    /// The metrics of an MSDF font: its advances and kerning, and extents
+    /// measured over its printable ASCII glyphs (a cooked font knows its
+    /// real ascender and descender: pass them with
+    /// [`FontMetrics::with_extents`]).
     pub fn from_msdf(font: &MsdfFont) -> FontMetrics {
         let mut advances: Vec<(char, f32)> = font
             .glyphs
@@ -35,6 +87,13 @@ impl FontMetrics {
             .collect();
         advances.sort_by_key(|(c, _)| *c);
         advances.dedup_by_key(|(c, _)| *c);
+        let mut kerning: Vec<(u64, f32)> = font
+            .kerning
+            .iter()
+            .map(|k| (kern_key(k.left, k.right), k.adjust))
+            .collect();
+        kerning.sort_by_key(|(k, _)| *k);
+        kerning.dedup_by_key(|(k, _)| *k);
         let (mut top, mut bottom) = (0.0f32, 0.0f32);
         for g in font
             .glyphs
@@ -51,9 +110,10 @@ impl FontMetrics {
         FontMetrics {
             advances,
             fixed: None,
+            kerning,
             ascender: top,
             descender: bottom,
-            shaper: None,
+            file: None,
         }
     }
 
@@ -63,21 +123,23 @@ impl FontMetrics {
         FontMetrics {
             advances: Vec::new(),
             fixed: Some(advance),
+            kerning: Vec::new(),
             ascender: 0.8,
             descender: -0.2,
-            shaper: None,
+            file: None,
         }
     }
 
-    /// Shapes this font's shaped-script words with its font file.
-    pub fn with_shaper(mut self, shaper: Option<Arc<Shaper>>) -> FontMetrics {
-        self.shaper = shaper;
+    /// Shapes this font's shaped runs and measures characters outside its
+    /// atlas with its font file.
+    pub fn with_file(mut self, file: Option<Arc<FontFile>>) -> FontMetrics {
+        self.file = file;
         self
     }
 
-    /// `line` as it is drawn: shaped words, in visual order.
-    pub fn visual(&self, line: &str, default: og_i18n::Direction) -> String {
-        crate::shape::visual(line, default, self.shaper.as_deref(), &|c| self.has(c))
+    /// The font file (an older name for [`FontMetrics::with_file`]).
+    pub fn with_shaper(self, file: Option<Arc<FontFile>>) -> FontMetrics {
+        self.with_file(file)
     }
 
     pub fn with_extents(mut self, ascender: f32, descender: f32) -> FontMetrics {
@@ -86,52 +148,249 @@ impl FontMetrics {
         self
     }
 
+    fn atlas_advance(&self, c: char) -> Option<f32> {
+        self.advances
+            .binary_search_by_key(&c, |(k, _)| *k)
+            .ok()
+            .map(|i| self.advances[i].1)
+    }
+
     /// A character's advance in em; 0 when the font lacks it (as og-render).
+    /// A character outside the atlas that the font file has is measured from
+    /// the file (and rendered at run time).
     pub fn advance(&self, c: char) -> f32 {
         if let Some(a) = self.fixed {
             return a;
         }
-        match self.advances.binary_search_by_key(&c, |(k, _)| *k) {
-            Ok(i) => self.advances[i].1,
+        if let Some(a) = self.atlas_advance(c) {
+            return a;
+        }
+        self.file.as_ref().and_then(|f| f.advance(c)).unwrap_or(0.0)
+    }
+
+    /// Whether the font has a glyph for `c` (fixed metrics have every one;
+    /// a font with its file has every character the file has).
+    pub fn has(&self, c: char) -> bool {
+        self.fixed.is_some()
+            || self.atlas_advance(c).is_some()
+            || self.file.as_ref().is_some_and(|f| f.covers(c))
+    }
+
+    /// Whether the cooked atlas itself has `c`.
+    pub fn in_atlas(&self, c: char) -> bool {
+        self.fixed.is_some() || self.atlas_advance(c).is_some()
+    }
+
+    /// The kerning between `a` and the `b` after it, em (0: none).
+    pub fn kern(&self, a: char, b: char) -> f32 {
+        if self.kerning.is_empty() {
+            return 0.0;
+        }
+        match self
+            .kerning
+            .binary_search_by_key(&kern_key(a, b), |(k, _)| *k)
+        {
+            Ok(i) => self.kerning[i].1,
             Err(_) => 0.0,
         }
     }
 
-    /// Whether the font has a glyph for `c` (fixed metrics have every one).
-    pub fn has(&self, c: char) -> bool {
-        self.fixed.is_some() || self.advances.binary_search_by_key(&c, |(k, _)| *k).is_ok()
+    /// Whether the font kerns at all.
+    pub fn kerns(&self) -> bool {
+        !self.kerning.is_empty()
     }
 
-    /// The width of one line of text at `size` CSS pixels per em (shaped
-    /// words at their shaped width).
+    /// The width of one line of text at `size` CSS pixels per em: the
+    /// advances and the kerning between neighbours, as og-render draws it;
+    /// a line with right-to-left or shaped characters as laid out visually.
     pub fn measure(&self, text: &str, size: f32) -> f32 {
-        if let Some(s) = &self.shaper
-            && text.chars().any(og_i18n::needs_shaping)
-        {
-            let has = |c: char| self.has(c);
-            return text
-                .split_inclusive(' ')
-                .map(|w| {
-                    let (word, space) = w.strip_suffix(' ').map_or((w, false), |x| (x, true));
-                    let drawn = s.word(word, &has).unwrap_or_else(|| word.to_string());
-                    drawn.chars().map(|c| self.advance(c)).sum::<f32>()
-                        + if space { self.advance(' ') } else { 0.0 }
-                })
+        if needs_visual(text) {
+            return self
+                .visual(text, Direction::Ltr, 0.0)
+                .iter()
+                .map(|g| g.advance)
                 .sum::<f32>()
                 * size;
         }
-        text.chars().map(|c| self.advance(c)).sum::<f32>() * size
+        if self.kerning.is_empty() {
+            return text.chars().map(|c| self.advance(c)).sum::<f32>() * size;
+        }
+        let mut prev: Option<char> = None;
+        let mut w = 0.0f32;
+        for c in text.chars() {
+            if c == '\n' || !self.has(c) {
+                prev = None;
+                continue;
+            }
+            if let Some(p) = prev {
+                w += self.kern(p, c);
+            }
+            w += self.advance(c);
+            prev = Some(c);
+        }
+        w * size
     }
 
     /// [`FontMetrics::measure`] with `tracking` em after each character the
     /// font draws (og-render's `Text::tracking`: CSS `letter-spacing`).
     pub fn measure_tracked(&self, text: &str, size: f32, tracking: f32) -> f32 {
+        if tracking != 0.0 && needs_visual(text) {
+            return self
+                .visual(text, Direction::Ltr, tracking)
+                .iter()
+                .map(|g| g.advance)
+                .sum::<f32>()
+                * size;
+        }
         let w = self.measure(text, size);
         if tracking == 0.0 {
             return w;
         }
         w + tracking * size * text.chars().filter(|&c| c != '\n' && self.has(c)).count() as f32
     }
+
+    /// One run of one direction as drawn, left to right: shaped when it has
+    /// a shaped script and the font can, else its characters (reversed and
+    /// mirrored when right to left), kerned when left to right. `first` is
+    /// the logical index of its first character.
+    pub fn run(&self, text: &str, rtl: bool, tracking: f32, first: usize) -> Vec<VisualGlyph> {
+        if text.chars().any(og_i18n::needs_shaping)
+            && let Some(file) = &self.file
+            && let Some(shaped) = file.shape(text, rtl, &|c| self.in_atlas(c))
+        {
+            return shaped
+                .iter()
+                .map(|g| VisualGlyph {
+                    ch: g.ch,
+                    advance: g.advance,
+                    x: g.x,
+                    y: g.y,
+                    index: first + text[..(g.cluster as usize).min(text.len())].chars().count(),
+                    rtl,
+                })
+                .collect();
+        }
+        let n = text.chars().count();
+        let mut out: Vec<VisualGlyph> = Vec::with_capacity(n);
+        let glyph = |k: usize, c: char| VisualGlyph {
+            ch: c,
+            advance: if self.has(c) {
+                self.advance(c) + tracking
+            } else {
+                0.0
+            },
+            x: 0.0,
+            y: 0.0,
+            index: first + k,
+            rtl,
+        };
+        if rtl {
+            for (k, c) in text
+                .chars()
+                .enumerate()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+            {
+                out.push(glyph(k, mirror(c)));
+            }
+        } else {
+            let mut prev: Option<char> = None;
+            for (k, c) in text.chars().enumerate() {
+                let g = glyph(k, c);
+                if let (Some(p), true) = (prev, self.has(c))
+                    && let Some(last) = out.last_mut()
+                {
+                    last.advance += self.kern(p, c);
+                }
+                prev = self.has(c).then_some(c);
+                out.push(g);
+            }
+        }
+        out
+    }
+
+    /// One line as drawn: its bidi runs in visual order (UAX #9 at the
+    /// paragraph direction of its first strong character, `default` with
+    /// none), each laid out by [`FontMetrics::run`].
+    pub fn visual(&self, line: &str, default: Direction, tracking: f32) -> Vec<VisualGlyph> {
+        let base = og_i18n::paragraph_direction(line, default);
+        self.visual_at(line, base, tracking)
+    }
+
+    /// [`FontMetrics::visual`] at a given paragraph direction.
+    pub fn visual_at(&self, line: &str, base: Direction, tracking: f32) -> Vec<VisualGlyph> {
+        if !needs_visual(line) && base == Direction::Ltr {
+            return self.run(line, false, tracking, 0);
+        }
+        let mut out = Vec::new();
+        for (range, rtl) in bidi_runs(line, base) {
+            let first = line[..range.start].chars().count();
+            out.extend(self.run(&line[range], rtl, tracking, first));
+        }
+        out
+    }
+
+    /// The characters and placements a visual line draws with
+    /// (og-render's `Text::placements`).
+    pub fn drawn(glyphs: &[VisualGlyph]) -> (String, Vec<GlyphPlacement>) {
+        (
+            glyphs.iter().map(|g| g.ch).collect(),
+            glyphs
+                .iter()
+                .map(|g| GlyphPlacement {
+                    advance: g.advance,
+                    x: g.x,
+                    y: g.y,
+                })
+                .collect(),
+        )
+    }
+}
+
+/// A line as a text command draws it: as written (og-render kerns it), or
+/// for a line with right-to-left or shaped characters its visual glyphs and
+/// their placements.
+pub(crate) fn drawn_line(
+    m: &FontMetrics,
+    line: &str,
+    default: Direction,
+    tracking: f32,
+) -> (String, Vec<GlyphPlacement>) {
+    if needs_visual(line) {
+        FontMetrics::drawn(&m.visual(line, default, tracking))
+    } else {
+        (line.to_string(), Vec::new())
+    }
+}
+
+/// Whether a line needs the bidi algorithm or shaping to be drawn.
+pub fn needs_visual(line: &str) -> bool {
+    line.chars()
+        .any(|c| og_i18n::needs_shaping(c) || og_i18n::is_rtl_char(c))
+}
+
+/// A line's level runs in visual order: byte ranges and whether each runs
+/// right to left (UAX #9, unicode-bidi, at paragraph direction `base`).
+pub fn bidi_runs(line: &str, base: Direction) -> Vec<(std::ops::Range<usize>, bool)> {
+    use unicode_bidi::{BidiInfo, Level};
+    if line.is_empty() {
+        return Vec::new();
+    }
+    let level = match base {
+        Direction::Rtl => Level::rtl(),
+        Direction::Ltr => Level::ltr(),
+    };
+    let info = BidiInfo::new(line, Some(level));
+    let mut out = Vec::new();
+    for para in &info.paragraphs {
+        let (levels, runs) = info.visual_runs(para, para.range.clone());
+        for r in runs {
+            let rtl = levels[r.start].is_rtl();
+            out.push((r, rtl));
+        }
+    }
+    out
 }
 
 /// A font the UI lays out with and draws with.

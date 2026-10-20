@@ -6,6 +6,14 @@ license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, themed by the platform design tokens, drawn through og-render's sprite and text batches, addressable by the probe."
 
+[features]
+default = ["shaping"]
+# Run-time shaping with rustybuzz: Arabic joining, Indic clusters and
+# conjuncts, marks placed by the font's GPOS. Without it a shaped script is
+# drawn unshaped (its characters in visual order); bidi, kerning and run-time
+# glyphs stay. og-runtime and og-host-web pass it on (`shaping`).
+shaping = ["dep:rustybuzz"]
+
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
@@ -16,7 +24,12 @@ og-probe = { path = "../og-probe", default-features = false }
 og-tween = { path = "../og-tween" }
 # Localization: text direction and shaped scripts (og-i18n), shaping (rustybuzz).
 og-i18n = { path = "../og-i18n" }
-rustybuzz = "0.20.1"
+rustybuzz = { version = "0.20.1", optional = true }
+# The bidirectional algorithm (UAX #9): a line's runs in visual order.
+unicode-bidi = "0.3.18"
+# A cooked font's file (`runtime true`): metrics and outlines of characters
+# outside the atlas, rendered at run time (src/glyphs.rs).
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 serde_json = "1"

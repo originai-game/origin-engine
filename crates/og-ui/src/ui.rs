@@ -2720,12 +2720,9 @@ impl Ui {
                                 (TextAlign::Center, _) => free / 2.0,
                                 (TextAlign::End, false) | (TextAlign::Start, true) => free,
                             };
-                        // Shaped words in visual order (crate::shape).
-                        let drawn = if crate::shape::needs_visual(&line.text) {
-                            m.visual(&line.text, self.direction)
-                        } else {
-                            line.text.clone()
-                        };
+                        // Bidi runs in visual order, shaped runs shaped (crate::text).
+                        let (drawn, placements) =
+                            crate::text::drawn_line(m, &line.text, self.direction, tc.tracking());
                         let baseline =
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
@@ -2753,6 +2750,7 @@ impl Ui {
                             tracking,
                             weight: 0.0,
                             glow,
+                            placements: placements.clone(),
                         };
                         if let Some(sh) = t.skin.text_shadows[role] {
                             let c = sh.color.fade(tc.color.alpha);
@@ -3061,15 +3059,13 @@ impl Ui {
                     let baseline =
                         ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                     let snap = |v: f32| (v * dpr).round() / dpr;
+                    let (drawn, placements) =
+                        crate::text::drawn_line(m, text, self.direction, tracking);
                     cmds.push(DrawCmd::Text {
                         x: snap(x),
                         baseline: snap(baseline),
                         size,
-                        text: if crate::shape::needs_visual(text) {
-                            m.visual(text, self.direction)
-                        } else {
-                            text.clone()
-                        },
+                        text: drawn,
                         color: color.fade(alpha).linear(),
                         font: handle,
                         bounds: Rect::new(x, ly, w, lh),
@@ -3077,6 +3073,7 @@ impl Ui {
                         tracking,
                         weight: 0.0,
                         glow: None,
+                        placements,
                     });
                 }
             }

@@ -639,10 +639,14 @@ impl Bundle {
                 mips: Mips::None,
             });
         }
+        let kerning = blob
+            .table::<KernRow>("kerning", row_hash::<KernRow>())?
+            .into_owned();
         Ok(CookedFont {
             id: asset_id(id).to_string(),
             meta,
             glyphs,
+            kerning,
             pages,
             ttf: blob.raw("ttf").ok().map(<[u8]>::to_vec),
         })
@@ -1411,8 +1415,12 @@ pub struct CookedFont {
     pub id: String,
     pub meta: FontMeta,
     pub glyphs: Vec<GlyphRow>,
+    /// Kerning pairs between cooked characters, sorted by (left, right).
+    pub kerning: Vec<KernRow>,
     pub pages: Vec<TextureData>,
-    /// The font file, for a font cooked with a shaped script (og-ui shapes its words).
+    /// The font file, for a font cooked with a shaped script (og-ui shapes
+    /// its words) or with `runtime true` (characters outside the charset
+    /// are rendered from it when a text needs them).
     pub ttf: Option<Vec<u8>>,
 }
 

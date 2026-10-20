@@ -18,7 +18,7 @@ glam = { workspace = true }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 og-physics = { path = "../og-physics" }
 og-audio = { path = "../og-audio" }
-og-ui = { path = "../og-ui" }
+og-ui = { path = "../og-ui", default-features = false }
 og-input = { path = "../og-input" }
 og-anim = { path = "../og-anim" }
 og-lanes = { path = "../og-lanes" }
@@ -29,6 +29,9 @@ og-ai = { path = "../og-ai" }
 og-i18n = { path = "../og-i18n" }
 
 [features]
-default = []
+default = ["shaping"]
 # A published game: the probe keeps only its player-facing members.
 publish = ["og-probe/publish"]
+# og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
+# scripts). A build for games without them can leave it out.
+shaping = ["og-ui/shaping"]
