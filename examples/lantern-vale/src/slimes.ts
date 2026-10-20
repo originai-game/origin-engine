@@ -56,7 +56,7 @@ export function spawnSlimes(world: World): void {
     must(world.insert(e, Slime, { index: i, ax, az, bx, bz, leg: 1, idleClip: rig.idle as unknown as number, chaseClip: rig.chase as unknown as number }));
     // The bubble: a child sprite in the xy plane, standing over the slime, its shadow cast on the ground.
     const face = must(world.spawn({ name: `slime-${i}-face`, position: { x: ax, y: y + 1.05, z: az } }));
-    must(world.insert(face, og.Sprite, { array: faces.array, arrayLayer: Face.Calm, width: 0.9, height: 0.9, anchor: { x: 0.5, y: 0 }, dropShadow: 0.45, layer: 1, color: { r: 0.62, g: 0.6, b: 0.58 } }));
+    must(world.insert(face, og.Sprite, { array: faces.array, arrayLayer: Face.Calm, width: 0.9, height: 0.9, anchor: { x: 0.5, y: 0 }, dropShadow: 0.45, layer: 1, toneMapped: false }));
   });
 }
 

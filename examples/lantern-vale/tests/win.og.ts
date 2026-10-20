@@ -44,7 +44,7 @@ export default playtest({
     t.ok(over.hour > 6 && over.hour < 7, `at the next dawn (${over.hour.toFixed(2)})`);
     t.ok(over.newBest && over.best > 1000, `a new best (${over.best})`);
     t.equal(value<{ depthBands: number }>(run, "dawn-stylise.json").depthBands, 5, "og.render.applyLook replaced Stylise: five depth bands");
-    t.equal(value<{ toon: boolean }>(run, "dawn-material.json").toon, false, "and MaterialStyle, which the dawn look's preset sets no toon in");
+    t.equal(value<{ toon: boolean }>(run, "dawn-material.json").toon, false, "and MaterialStyle, whose toon the dawn look takes off");
     const words = texts(run, "results.json");
     t.ok(words.includes("The vale is lit"), "the results say the vale is lit");
     t.ok(words.includes("Nameless") && words.includes("4/4"), "with the lamplighter and the lanterns");
