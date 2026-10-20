@@ -136,7 +136,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2824</sub>
+<sub>`api.ogt` line 2830</sub>
 
 <a id="fn-sprite"></a>
 
@@ -166,7 +166,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2949</sub>
+<sub>`api.ogt` line 2955</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -196,7 +196,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3123</sub>
+<sub>`api.ogt` line 3129</sub>
 
 <a id="fn-measureText"></a>
 
@@ -226,7 +226,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3130</sub>
+<sub>`api.ogt` line 3136</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -256,7 +256,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3190</sub>
+<sub>`api.ogt` line 3196</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -286,7 +286,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3197</sub>
+<sub>`api.ogt` line 3203</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -316,7 +316,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3204</sub>
+<sub>`api.ogt` line 3210</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -346,7 +346,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3227</sub>
+<sub>`api.ogt` line 3233</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -378,7 +378,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3234</sub>
+<sub>`api.ogt` line 3240</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -410,7 +410,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3244</sub>
+<sub>`api.ogt` line 3250</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -442,7 +442,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3252</sub>
+<sub>`api.ogt` line 3258</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -476,7 +476,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3260</sub>
+<sub>`api.ogt` line 3266</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -506,7 +506,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3269</sub>
+<sub>`api.ogt` line 3275</sub>
 
 <a id="fn-look"></a>
 
@@ -534,7 +534,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3276</sub>
+<sub>`api.ogt` line 3282</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -562,7 +562,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3282</sub>
+<sub>`api.ogt` line 3288</sub>
 
 <a id="fn-text"></a>
 
@@ -592,7 +592,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3288</sub>
+<sub>`api.ogt` line 3294</sub>
 
 ## Components, resources and events
 
@@ -1173,6 +1173,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `hatchingAngle` | `number` | `45` | — | `deg` | — | The direction of the first stroke set. |
 | `hatchingColor` | `Color` | `{ r: 0.04, g: 0.035, b: 0.03 }` | — | — | — | The stroke colour (linear): graphite, sepia or ink. |
 | `hatchingSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie). |
+| `hatchingDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses. |
 | `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off. |
 | `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara). |
 | `paintEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
@@ -1274,6 +1275,12 @@ resource Stylise {
     default 0.04 0.035 0.03
   }
   field hatchingSpace StyliseSpace "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie)."
+  field hatchingDepth f32 "Hatching from luminance and depth: the depth-normal prepass's silhouettes and creases darken the tone the strokes follow, at this strength, so strokes gather along contours and folds as inkDepth inks them (the edges are inkDepthThreshold's and inkNormalThreshold's, found within one stroke spacing). 0 is the tone alone; above 0 the frame runs the prepass PostEffects.outline uses." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
   field paintRadius f32 "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off." {
     min 0
     max 8
@@ -1453,7 +1460,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2547</sub>
+<sub>`api.ogt` line 2553</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1492,7 +1499,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2597</sub>
+<sub>`api.ogt` line 2603</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1543,7 +1550,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2616</sub>
+<sub>`api.ogt` line 2622</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1574,7 +1581,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2646</sub>
+<sub>`api.ogt` line 2652</sub>
 
 <a id="record-Decal"></a>
 
@@ -1629,7 +1636,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2660</sub>
+<sub>`api.ogt` line 2666</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1660,7 +1667,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2692</sub>
+<sub>`api.ogt` line 2698</sub>
 
 <a id="record-Trail"></a>
 
@@ -1736,7 +1743,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2703</sub>
+<sub>`api.ogt` line 2709</sub>
 
 <a id="record-Beam"></a>
 
@@ -1802,7 +1809,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2751</sub>
+<sub>`api.ogt` line 2757</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1929,7 +1936,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2956</sub>
+<sub>`api.ogt` line 2962</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1977,7 +1984,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3038</sub>
+<sub>`api.ogt` line 3044</sub>
 
 ## Types
 
@@ -2722,7 +2729,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2586</sub>
+<sub>`api.ogt` line 2592</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2762,7 +2769,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2791</sub>
+<sub>`api.ogt` line 2797</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2793,7 +2800,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2812</sub>
+<sub>`api.ogt` line 2818</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2855,7 +2862,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2831</sub>
+<sub>`api.ogt` line 2837</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2884,7 +2891,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2865</sub>
+<sub>`api.ogt` line 2871</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2907,7 +2914,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2876</sub>
+<sub>`api.ogt` line 2882</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -3014,7 +3021,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2883</sub>
+<sub>`api.ogt` line 2889</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3102,7 +3109,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3065</sub>
+<sub>`api.ogt` line 3071</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3140,7 +3147,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3137</sub>
+<sub>`api.ogt` line 3143</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3172,7 +3179,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3157</sub>
+<sub>`api.ogt` line 3163</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3208,7 +3215,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3172</sub>
+<sub>`api.ogt` line 3178</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3243,7 +3250,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3214</sub>
+<sub>`api.ogt` line 3220</sub>
 
 <a id="type-Shader"></a>
 
@@ -3257,7 +3264,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3242</sub>
+<sub>`api.ogt` line 3248</sub>
 
 ## Column kinds
 
@@ -3445,10 +3452,10 @@ column StyliseSpace {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3211</sub>
+<sub>`api.ogt` line 3217</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3212</sub>
+<sub>`api.ogt` line 3218</sub>

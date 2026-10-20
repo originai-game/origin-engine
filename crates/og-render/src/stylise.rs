@@ -129,6 +129,14 @@ pub struct Hatching {
     pub angle_degrees: f32,
     pub color: [f32; 3],
     pub space: StyliseSpace,
+    /// How strongly the depth-normal prepass's silhouettes and creases
+    /// darken the tone the strokes follow, 0 to 1, as [`Ink::depth`] inks
+    /// them: strokes gather along contours and folds that the tone alone
+    /// leaves light. The edges are [`Ink`]'s (`depth_threshold`,
+    /// `normal_threshold`; the outline pass's defaults without ink), found
+    /// within one stroke spacing. 0 is the tone alone; above 0 the frame
+    /// runs the prepass.
+    pub depth: f32,
 }
 
 /// Painterly smoothing, pigment pooling and a canvas.
@@ -284,6 +292,15 @@ impl Stylise {
                 .is_some_and(|h| h.space == StyliseSpace::Surface && h.strength > 0.0)
     }
 
+    /// Whether a pass reads the depth-normal prepass's edges: ink or
+    /// hatching with `depth` above 0.
+    pub fn depth_edges(&self) -> bool {
+        self.ink.is_some_and(|i| i.depth > 0.0)
+            || self
+                .hatching
+                .is_some_and(|h| h.depth > 0.0 && h.strength > 0.0)
+    }
+
     /// Whether any primitive is on.
     pub fn is_active(&self) -> bool {
         self.pixel.is_some()
@@ -385,8 +402,13 @@ mod tests {
             angle_degrees: 45.0,
             color: [0.0; 3],
             space: StyliseSpace::Screen,
+            depth: 0.0,
         });
         assert!(!s.on_surfaces(), "screen hatching");
+        assert!(!s.depth_edges(), "hatching on the tone alone");
+        s.hatching.as_mut().unwrap().depth = 0.5;
+        assert!(s.depth_edges(), "hatching from depth edges reads the prepass");
+        s.hatching.as_mut().unwrap().depth = 0.0;
         s.hatching.as_mut().unwrap().space = StyliseSpace::Surface;
         assert!(s.on_surfaces());
         assert_eq!(

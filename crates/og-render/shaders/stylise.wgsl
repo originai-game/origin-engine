@@ -33,7 +33,7 @@ struct Stylise {
   canvas: vec4<f32>,          // x: strength, y: texels per logical pixel
   ink: vec4<f32>,             // x: 1 on, y: threshold, z: width, w: depth edges' strength (0: luminance only)
   ink_color: vec4<f32>,
-  ink_depth: vec4<f32>,       // x: the camera's far plane (sky), y: relative depth step, z: normal turn (1 - cos)
+  ink_depth: vec4<f32>,       // x: the camera's far plane (sky), y: relative depth step, z: normal turn (1 - cos), w: hatching from depth edges (0: off)
   inv_proj: mat4x4<f32>,      // view space from clip space
   view_rotation: mat4x4<f32>, // world from view space, no translation
   eye: vec4<f32>,             // xyz: the camera from the surface origin (a 1024 m grid point)
@@ -295,10 +295,49 @@ fn stroke(p: vec2<f32>, angle: f32, spacing: f32, width: f32) -> f32 {
 // or one of about the same depth turned past the crease threshold, as the
 // outline pass finds them (fxpost.wgsl fs_outline); 0 on the sky.
 fn depth_edge(px: vec2<i32>) -> f32 {
+  return depth_edge_at(px, max(st.ink.z, 1.0));
+}
+
+// The hatching's contour weight: depth edges within one stroke spacing,
+// nearer ones counting more (1 at the edge, a third a spacing away), so the
+// strokes gather along silhouettes and creases.
+fn depth_band(px: vec2<i32>) -> f32 {
+  let r = max(st.hatching.y, 2.0);
+  return (contour_at(px, 1.0) + contour_at(px, r * 0.5) + contour_at(px, r)) / 3.0;
+}
+
+// 1 on the nearer side of a silhouette or beside a crease `r` pixels away.
+// A silhouette is a break in the inverse depth, which is affine across a
+// plane in screen space: of two opposite neighbours, d0 / d + d0 / d' - 2
+// is 0 on any plane however steeply it recedes (a long floor never counts)
+// and below minus the depth step where one of them lies behind the
+// surface. A crease is a neighbour of about the same depth turned past the
+// crease threshold, as depth_edge finds it.
+fn contour_at(px: vec2<i32>, r: f32) -> f32 {
   let d0 = view_depth(px);
   if (d0 >= st.ink_depth.x * 0.999) { return 0.0; }
   let n0 = normal_at(px);
-  let r = max(st.ink.z, 1.0);
+  for (var i = 0; i < 4; i++) {
+    let a = f32(i) * 0.7853982;
+    let o = vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
+    let dp = view_depth(px + o);
+    let dm = view_depth(px - o);
+    if (d0 / dp + d0 / dm - 2.0 < -st.ink_depth.y) { return 1.0; }
+    if (abs(dp - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(px + o), n0) > st.ink_depth.z) {
+      return 1.0;
+    }
+    if (abs(dm - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(px - o), n0) > st.ink_depth.z) {
+      return 1.0;
+    }
+  }
+  return 0.0;
+}
+
+// depth_edge with the neighbours `r` pixels away.
+fn depth_edge_at(px: vec2<i32>, r: f32) -> f32 {
+  let d0 = view_depth(px);
+  if (d0 >= st.ink_depth.x * 0.999) { return 0.0; }
+  let n0 = normal_at(px);
   for (var i = 0; i < 8; i++) {
     let a = f32(i) * 0.7853982;
     let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
@@ -413,12 +452,17 @@ fn lines(in: VsOut) -> vec3<f32> {
   }
   if (st.hatching.x > 0.0) {
     // Darker tones add stroke sets, each turned a little further, over a
-    // paper-light ground.
+    // paper-light ground; with hatchingDepth silhouettes and creases
+    // darken the tone the strokes follow.
+    var th = t;
+    if (st.ink_depth.w > 0.0) {
+      th = max(t - st.ink_depth.w * depth_band(px), 0.0);
+    }
     var ink = 0.0;
     if (st.surface.z > 0.5 && surf.ok) {
-      ink = hatch_surface(surf, t);
+      ink = hatch_surface(surf, th);
     } else {
-      ink = hatch_screen(p, t);
+      ink = hatch_screen(p, th);
     }
     let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.85);
     c = mix(ground, st.hatching_color.rgb, ink * st.hatching.x);

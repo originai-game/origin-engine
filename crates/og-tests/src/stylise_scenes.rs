@@ -105,6 +105,7 @@ pub fn print_scene() -> RenderScene {
         angle_degrees: 45.0,
         color: [0.04, 0.035, 0.03],
         space: StyliseSpace::Screen,
+        depth: 0.0,
     });
     scene.stylise.ink = Some(Ink {
         threshold: 0.12,
@@ -330,6 +331,7 @@ pub fn surface_scene() -> RenderScene {
         angle_degrees: 30.0,
         color: [0.05, 0.045, 0.04],
         space: StyliseSpace::Surface,
+        depth: 0.0,
     });
     scene.stylise.paint = Some(Paint {
         radius: 0.0,

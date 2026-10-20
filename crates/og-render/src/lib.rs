@@ -4213,9 +4213,10 @@ impl Renderer {
         let god_rays = post_fx.god_rays;
         let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
-        // Ink on depth edges reads the prepass in the lines pass, a canvas,
-        // hatching or halftone on surfaces in the paint or lines pass.
-        let ink_depth = scene.stylise.ink.is_some_and(|i| i.depth > 0.0);
+        // Ink or hatching on depth edges reads the prepass in the lines
+        // pass, a canvas, hatching or halftone on surfaces in the paint or
+        // lines pass.
+        let ink_depth = scene.stylise.depth_edges();
         let prepass = ao.is_some()
             || depth_bands.is_some()
             || ink_depth
@@ -5421,14 +5422,17 @@ impl Renderer {
                     ]
                 }),
                 ink_color: ink.map_or([0.0; 4], |i| [i.color[0], i.color[1], i.color[2], 1.0]),
-                ink_depth: ink.map_or([camera.far, 0.04, 0.4, 0.0], |i| {
-                    [
-                        camera.far,
-                        i.depth_threshold.max(0.0),
-                        i.normal_threshold.max(0.0),
-                        0.0,
-                    ]
-                }),
+                ink_depth: {
+                    let hatching_depth = hc.map_or(0.0, |h| h.depth.clamp(0.0, 1.0));
+                    ink.map_or([camera.far, 0.04, 0.4, hatching_depth], |i| {
+                        [
+                            camera.far,
+                            i.depth_threshold.max(0.0),
+                            i.normal_threshold.max(0.0),
+                            hatching_depth,
+                        ]
+                    })
+                },
                 inv_proj: cam.proj.inverse().to_cols_array_2d(),
                 view_rotation: glam::Mat4::from_mat3(glam::Mat3::from_mat4(cam.view.inverse()))
                     .to_cols_array_2d(),

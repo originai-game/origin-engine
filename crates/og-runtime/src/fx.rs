@@ -474,6 +474,7 @@ fn stylise(
                 angle_degrees: f(&s, "hatchingAngle", 45.0),
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
                 space: space(&s["hatchingSpace"]),
+                depth: f(&s, "hatchingDepth", 0.0),
             });
         }
         let paint = og_render::Paint {

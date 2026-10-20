@@ -141,7 +141,8 @@ pub(crate) struct StyliseUniform {
     pub ink: [f32; 4],
     pub ink_color: [f32; 4],
     /// x: the camera's far plane (the prepass's sky depth), y: the depth
-    /// step that is an edge (relative), z: the normal turn that is a crease.
+    /// step that is an edge (relative), z: the normal turn that is a crease,
+    /// w: how far those edges darken the hatching's tone (`Hatching::depth`).
     pub ink_depth: [f32; 4],
     /// Surface space (`StyliseSpace::Surface`): view space from clip space,
     /// to place a prepass depth.
