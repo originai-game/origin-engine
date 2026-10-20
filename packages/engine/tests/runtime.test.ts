@@ -116,6 +116,39 @@ test("with deferStart, GameDesc.start waits for the first tick boundary; asking 
   expect(starts).toBe(1);
 });
 
+test("a throw in GameDesc.start fails the run: the error with its stack, and no tick on the half-built world", () => {
+  function buildTheVillage(): void {
+    throw new Error("the village has no well");
+  }
+  // Without deferStart start runs inside createEngine, which refuses.
+  const eager = createEngine(og.game({ start: () => buildTheVillage() }) as unknown as GameToken);
+  expect(eager.ok).toBeFalse();
+  if (!eager.ok) {
+    expect(eager.reason).toContain("GameDesc.start threw");
+    expect(eager.reason).toContain("the village has no well");
+    expect(eager.reason).toContain("buildTheVillage");
+  }
+  // With deferStart (og run with a renderer, og dev, the web Worker) at the
+  // first tick boundary, and every advance, frame and probe call after it.
+  const created = createEngine(og.game({ start: () => buildTheVillage() }) as unknown as GameToken, { deferStart: true });
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  const first = engine.advance(0);
+  expect(first.ok).toBeFalse();
+  if (!first.ok) {
+    expect(first.reason).toContain("the village has no well");
+    expect(first.reason).toContain("buildTheVillage");
+  }
+  expect(engine.advance(1).ok).toBeFalse();
+  const frame = engine.frame(1000 / 60);
+  expect(frame.ok).toBeFalse();
+  expect(frame.reason).toContain("GameDesc.start threw");
+  expect(engine.world.tick).toBe(0);
+  const answer = JSON.parse(engine.call(JSON.stringify({ jsonrpc: "2.0", id: 7, method: "state", params: {} }))) as { error?: { message: string } };
+  expect(answer.error?.message).toContain("the village has no well");
+  engine.destroy();
+});
+
 test("after/before order systems regardless of declaration order", () => {
   const engine = start(og.game({ systems: [CopyB, SetA], commands: { spawn: spawnMovers } }) as unknown as GameToken);
   engine.command("spawn", ["1"]);

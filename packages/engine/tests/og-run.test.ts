@@ -12,6 +12,11 @@ const STALE_WASM = process.env.OG_WASM_STALE === "1";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
+const spawn = (cmd: string[], cwd: string) => {
+  const r = Bun.spawnSync(cmd, { cwd });
+  return { exitCode: r.exitCode, stdout: new TextDecoder().decode(r.stdout), stderr: new TextDecoder().decode(r.stderr) };
+};
+
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
 
@@ -32,3 +37,14 @@ test.skipIf(STALE_WASM)("og run --headless prints the hello world's hash after 6
   expect(og.entities).toBe(10000);
   expect(og.hash).toBe(web.hash);
 }, 300_000);
+
+test("a throw in GameDesc.start fails og run, named with its stack, with and without a command script", () => {
+  const game = "packages/engine/tests/fixtures/start-throws/main.ts";
+  for (const args of [["--ticks", "10"], ["--commands", "0.1:quit"], ["--commands", "0.1:quit", "--no-render"]]) {
+    const r = spawn([ogBin(), "run", "--headless", game, ...args], repo);
+    expect(r.exitCode, `${args.join(" ")}: ${r.stderr}`).not.toBe(0);
+    expect(r.stderr).toContain("GameDesc.start threw");
+    expect(r.stderr).toContain("the village has no well");
+    expect(r.stderr).toContain("buildTheVillage");
+  }
+}, 120_000);

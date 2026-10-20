@@ -285,6 +285,9 @@ pub(crate) struct State {
     pub boot_scene: Option<String>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
+    /// What GameDesc.start threw: the world is half-built, so every later
+    /// advance, frame and probe call is refused with it.
+    pub start_failed: Option<String>,
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
     /// The last UiDesc given to og.ui.configure, which applying a look's
@@ -945,6 +948,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         facts: a.game.facts,
         boot_scene: None,
         start: a.game.start,
+        start_failed: None,
         boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
         ui_desc: Value::Null,
         step_ms: 0.0,
@@ -1048,7 +1052,12 @@ fn run_start(eng: &Engine) -> Result<(), String> {
         return Ok(());
     };
     before_structural(eng);
-    call(eng, 1, start, "[]".into()).map_err(|e| format!("GameDesc.start: {e}"))?;
+    if let Err(e) = call(eng, 1, start, "[]".into()) {
+        let text =
+            format!("GameDesc.start threw, so the world is half-built and does not run: {e}");
+        eng.state.borrow_mut().start_failed = Some(text.clone());
+        return Err(text);
+    }
     Ok(())
 }
 
@@ -1176,8 +1185,10 @@ pub fn point_shadows_name(p: og_render::PointShadows) -> &'static str {
 
 // ── the tick ────────────────────────────────────────────────────────────────
 
-/// At a tick boundary: pending bundles, a scene waiting for its bundle.
-fn tick_boundary(eng: &Engine) {
+/// At a tick boundary: pending bundles, a scene waiting for its bundle,
+/// GameDesc.start. `Err` once GameDesc.start has thrown, at this boundary
+/// or an earlier one: no tick runs on the half-built world.
+fn tick_boundary(eng: &Engine) -> Result<(), String> {
     eng.assets.borrow_mut().poll();
     super::stream::update(eng);
     super::stream::sound_chunks(eng);
@@ -1185,17 +1196,16 @@ fn tick_boundary(eng: &Engine) {
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }
-    if let Err(e) = run_start(eng) {
-        let mut st = eng.state.borrow_mut();
-        st.log
-            .push(json!({ "tick": 0, "warning": true, "text": e }));
+    if let Some(e) = &eng.state.borrow().start_failed {
+        return Err(e.clone());
     }
+    run_start(eng)
 }
 
 /// Up to `steps` ticks through the probe (due command steps run on the
 /// way). `Err` names the tick and the failing system.
 fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
-    tick_boundary(eng);
+    tick_boundary(eng)?;
     let t0 = rprobe::now_ms();
     let mut left = steps;
     let tick = loop {
@@ -1253,7 +1263,9 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
             n
         }
     };
-    tick_boundary(&eng);
+    if let Err(e) = tick_boundary(&eng) {
+        return refuse(e);
+    }
     let t0 = rprobe::now_ms();
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
     super::modules::end_of_ticks();
@@ -1764,8 +1776,10 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
     // an engine (packages/engine/src/runtime.ts learnBuild), so with
     // `deferStart` it must not run GameDesc.start before the host has
     // attached its renderer and handed over its textures.
-    if call.method != "hello" {
-        tick_boundary(&eng);
+    if call.method != "hello"
+        && let Err(e) = tick_boundary(&eng)
+    {
+        return json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string();
     }
     let answer = rprobe::with_probe(&eng, true, |p, w| rprobe::answer(p, w, call));
     let swapped = answer.as_ref().is_ok_and(|a| a.1);
