@@ -16,6 +16,10 @@
 //! `og_render::GPU_CULLING_MIN_INSTANCES` instances.
 //! `OG_GFX_PIPELINE_CACHE=DIR` keeps compiled pipelines in DIR across runs
 //! where the backend can (Vulkan; `RenderInfo::pipeline_cache`).
+//! `OG_GFX_SERIAL=1` waits for the GPU after every timed frame and reports
+//! the mean wait as `gpu=`: the GPU's own time per frame (the work starts
+//! at the frame's submit), which a frame time overlapped with the next
+//! frame's CPU work hides when the CPU is the slower side (the dev build).
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
@@ -114,16 +118,19 @@ fn main() {
 }
 
 /// Renders `frames` frames of a built scene (after its warm-up frames) and
-/// returns the mean wall time and CPU-submit time per frame in ms, and the
-/// last frame's statistics (exact, after the timing).
+/// returns the mean wall time and CPU-submit time per frame in ms, the
+/// mean GPU wait per frame (`OG_GFX_SERIAL`; `None` without) and the last
+/// frame's statistics (exact, after the timing).
 fn time_frames(
     renderer: &mut Renderer,
     built: &mut GfxScene,
     first_frame: u32,
     frames: u32,
-) -> Result<(f64, f64, FrameStats), String> {
+) -> Result<(f64, f64, Option<f64>, FrameStats), String> {
+    let serial = std::env::var_os("OG_GFX_SERIAL").is_some();
     let t = Instant::now();
     let mut cpu = 0.0;
+    let mut gpu = 0.0;
     let mut stats = FrameStats::default();
     for f in 0..frames {
         if let Some(update) = built.update {
@@ -134,11 +141,17 @@ fn time_frames(
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
         cpu += c.elapsed().as_secs_f64();
+        if serial {
+            let w = Instant::now();
+            renderer.wait_idle().map_err(|e| e.to_string())?;
+            gpu += w.elapsed().as_secs_f64();
+        }
     }
     renderer.wait_idle().map_err(|e| e.to_string())?;
     let ms = t.elapsed().as_secs_f64() * 1000.0 / frames as f64;
     renderer.finish_stats(&mut stats);
-    Ok((ms, cpu * 1000.0 / frames as f64, stats))
+    let per_frame = |s: f64| s * 1000.0 / frames as f64;
+    Ok((ms, per_frame(cpu), serial.then(|| per_frame(gpu)), stats))
 }
 
 fn run(
@@ -212,8 +225,12 @@ fn run(
             stats.occluded, stats.occluder_draws
         );
     }
-    if let Some((ms, cpu, last)) = &timing {
-        let _ = write!(line, " frame={ms:.3}ms cpu={cpu:.3}ms ({frames} frames)");
+    if let Some((ms, cpu, gpu, last)) = &timing {
+        let _ = write!(line, " frame={ms:.3}ms cpu={cpu:.3}ms");
+        if let Some(gpu) = gpu {
+            let _ = write!(line, " gpu={gpu:.3}ms");
+        }
+        let _ = write!(line, " ({frames} frames)");
         // GPU culling's occlusion uses the frame before's visibility: the
         // last timed frame shows it settled.
         if last.gpu_culling {
