@@ -17,9 +17,18 @@ pub struct Grains {
     /// stages wait for their slowest worker. Below it the step runs on the
     /// calling thread and never wakes the pool. `usize::MAX`: never.
     pub pool_bodies: usize,
-    /// The contact pairs of one task when a step on the pool reads them
-    /// back.
+    /// The contact graph's edges of one task when a step reads its touching
+    /// pairs back, and the pairs of one sorted run when it sorts them; they
+    /// split from two grains.
     pub pairs: usize,
+    /// The bodies of one task when a step brings the rapier world in line
+    /// with them before the step (what each body's change asks for) and
+    /// reads them back after it (the rest rule, the values written back);
+    /// they split from two grains.
+    pub bodies: usize,
+    /// The ragdolls of one task when a step plans their bones' targets
+    /// before the step; they split from two grains.
+    pub ragdolls: usize,
     /// The work of one task when ropes step side by side, in point passes
     /// (points × iterations); they split from two tasks' worth.
     pub rope_work: usize,
@@ -49,6 +58,8 @@ impl Grains {
                 _ => 1500,
             },
             pairs: 512,
+            bodies: usize::MAX,
+            ragdolls: usize::MAX,
             rope_work: if threads <= 4 { 800 } else { 2400 },
             cloth_work: if threads <= 4 { 1100 } else { 2000 },
             fluid_work: 500,
@@ -64,6 +75,8 @@ impl Grains {
         Grains {
             pool_bodies: 1,
             pairs: 1,
+            bodies: 1,
+            ragdolls: 1,
             rope_work: 1,
             cloth_work: 1,
             fluid_work: 1,

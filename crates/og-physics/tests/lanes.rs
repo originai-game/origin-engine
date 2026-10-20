@@ -161,6 +161,74 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
     println!("{calls} parallel calls at the physics site (2D)");
 }
 
+/// Many ragdolls in both profiles, planned by ranges of ragdolls (every
+/// pass split) and alone, each following moving targets, going limp with a
+/// hit at its own tick, recovering, and one rebuilt with a new rig: the
+/// same world either way.
+#[test]
+fn many_ragdolls_split_and_off_the_lanes_end_in_the_same_world() {
+    let _one = one();
+    for profile in [PROFILE_3D, PROFILE_2D] {
+        same_everywhere(160, || {
+            let (mut w, physics) = beyond::new_world(6, profile);
+            floor(&mut w);
+            let rig = if profile == PROFILE_3D {
+                beyond::rig()
+            } else {
+                beyond::rig_2d()
+            };
+            let mut ragdolls = Vec::new();
+            for i in 0..24 {
+                let (x, z) = (-12.0 + (i % 12) as f32 * 2.0, (i / 12) as f32 * 2.0);
+                let e = w
+                    .spawn((
+                        at(x, 0.0, z),
+                        Ragdoll {
+                            blend_time: 0.1 + 0.05 * (i % 3) as f32,
+                            ..Ragdoll::default()
+                        },
+                    ))
+                    .unwrap();
+                physics.set_ragdoll_rig(e, rig.clone()).unwrap();
+                ragdolls.push((e, x, z));
+            }
+            let drive = move |w: &mut World, tick: u64| {
+                for (k, &(e, x, z)) in ragdolls.iter().enumerate() {
+                    let mut r = w.get::<Ragdoll>(e).unwrap();
+                    let from = 20 + 5 * k as u64;
+                    r.weight = if (from..from + 60).contains(&tick) {
+                        1.0
+                    } else {
+                        0.0
+                    };
+                    r.impulse = Vec3::new(10.0 + k as f32, 6.0, 0.0);
+                    w.insert(e, r).unwrap();
+                    let s = tick as f32 * 0.05 + k as f32;
+                    let targets = rig
+                        .bones
+                        .iter()
+                        .map(|b| {
+                            let y = b.rest.0.y;
+                            (
+                                Vec3::new(x + og_core::math::sin(s) * 0.2 * y, y, z),
+                                b.rest.1,
+                            )
+                        })
+                        .collect();
+                    physics.set_ragdoll_targets(e, targets);
+                }
+                if tick == 90 {
+                    // A new rig rebuilds that ragdoll.
+                    let mut longer = rig.clone();
+                    longer.bones[0].length *= 1.5;
+                    physics.set_ragdoll_rig(ragdolls[3].0, longer).unwrap();
+                }
+            };
+            (w, Box::new(drive))
+        });
+    }
+}
+
 /// The step's pool threshold follows the thread count, never one thread,
 /// and the pen at it goes to the pool on every step with its bodies when
 /// this process has a pool, one below it never.
@@ -183,16 +251,76 @@ fn the_step_goes_to_the_pool_from_the_threshold_of_its_thread_count() {
     let from = pool_bodies(lanes.threads);
     for (bodies, pooled) in [(from - 1, false), (from, true)] {
         let before = physics_calls();
-        let (mut w, _p) = pile::pen(bodies, 5);
+        let (mut w, physics) = pile::pen(bodies, 5);
         pile::run(&mut w, 10);
         let after = physics_calls();
+        let stats = physics.stats();
+        assert_eq!(stats.pool, pooled, "{bodies} bodies");
+        assert_eq!(stats.phase(Phase::Rapier).split, pooled);
         if pooled {
             assert!(after.calls - before.calls >= 10, "{bodies} bodies");
             assert!(after.items - before.items >= 10 * bodies as u64);
-        } else {
-            assert_eq!(after, before, "{bodies} bodies stepped on the pool");
         }
     }
+}
+
+/// `PhysicsSystem::stats` names every phase in step order, times them
+/// within the whole system's time, and says which went to the pool: none
+/// with lanes off, the step and the passes that split with every pass
+/// forced to (`Grains::always`) when this process has a pool.
+#[test]
+fn stats_say_what_each_phase_cost_and_where_it_ran() {
+    let _one = one();
+    let (mut w, physics) = pile::pen(64, 3);
+    assert_eq!(
+        physics.stats(),
+        PhysicsStats::default(),
+        "before the first step"
+    );
+    let names: Vec<&str> = Phase::ALL.iter().map(|p| p.name()).collect();
+    assert_eq!(
+        names,
+        [
+            "gather",
+            "sync",
+            "joints",
+            "ragdolls",
+            "water",
+            "rapier",
+            "readout",
+            "controllers",
+            "soft",
+            "fluids",
+            "fluids3d",
+            "writeBack"
+        ]
+    );
+    og_lanes::set_enabled(false);
+    pile::run(&mut w, 5);
+    og_lanes::set_enabled(true);
+    let off = physics.stats();
+    assert_eq!(off.tick, 4, "the last step's tick");
+    assert_eq!(off.threads, 1);
+    assert!(!off.pool);
+    assert!(off.bodies >= 64, "{} bodies", off.bodies);
+    assert_eq!(off.phases.iter().map(|p| p.name).collect::<Vec<_>>(), names);
+    assert!(off.phases.iter().all(|p| !p.split && p.ms >= 0.0));
+    assert!(off.phase(Phase::Rapier).ms > 0.0, "{off:?}");
+    let sum: f64 = off.phases.iter().map(|p| p.ms).sum();
+    assert!(sum <= off.ms + 1e-6, "{sum} ms of phases in {} ms", off.ms);
+    set_grains(Some(Grains::always()));
+    pile::run(&mut w, 1);
+    set_grains(None);
+    let split = physics.stats();
+    let on = og_lanes::report().on;
+    assert_eq!(split.pool, on);
+    for phase in [Phase::Rapier, Phase::Sync, Phase::Readout] {
+        assert_eq!(split.phase(phase).split, on, "{phase:?}: {split:?}");
+    }
+    assert!(
+        !split.phase(Phase::Fluids3d).split,
+        "no fluid to split: {split:?}"
+    );
 }
 
 /// A pen of `n` of the pile's bodies under a 48 × 48 triangle-mesh

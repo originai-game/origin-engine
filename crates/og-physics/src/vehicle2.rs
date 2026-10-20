@@ -15,7 +15,7 @@ use og_core::Result;
 use og_core::glam::Vec3;
 use og_ecs::Entity;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct VehicleState {
@@ -103,7 +103,7 @@ pub(crate) fn vehicles(
     scene: &Scene,
     _dt: f32,
     sim: &mut Sim,
-    handles: &BTreeMap<u64, rp::RigidBodyHandle>,
+    handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
     let live: BTreeSet<u64> = scene.vehicles.iter().map(|v| v.0.to_bits()).collect();
