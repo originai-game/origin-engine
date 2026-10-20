@@ -246,9 +246,16 @@ fn the_grammar_is_strict_about_times_and_names() {
     );
     assert_eq!(
         steps[1].args,
-        vec!["a:b;c".to_owned(), " d".to_owned()],
-        "escapes, and leading spaces of arguments kept"
+        vec!["a:b;c".to_owned(), " d ".to_owned()],
+        "escapes, and the spaces of typed text kept to the `;` (lantern-vale FINDINGS #21: `type:` lost a trailing space)"
     );
+    // Other actions' arguments end where their text does; typed text keeps
+    // its spaces, but not trailing white space that holds a line break
+    // (a script's layout).
+    let typed = parse("1:dump_ui:a.json  ;2:commit:小灯 \n  ;3:compose:x ").unwrap();
+    assert_eq!(typed[0].args, vec!["a.json".to_owned()]);
+    assert_eq!(typed[1].args, vec!["小灯".to_owned()]);
+    assert_eq!(typed[2].args, vec!["x ".to_owned()]);
     assert_eq!(
         (steps[2].action.as_str(), steps[2].args.clone()),
         ("set", vec!["player.Mover.speed=3".to_owned()])
@@ -582,6 +589,72 @@ fn set_and_get_reach_resources_entities_components_and_fields() {
         "{log:?}"
     );
     assert_eq!(h.world.resource::<Stats>().unwrap().draws, 7);
+}
+
+#[test]
+fn get_answers_og_time_whole_and_unnamed_gets_on_one_tick_keep_their_files() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(
+            &h.world,
+            "0:get:og.Time;0:get:og.Time.scaledDt;0:get:og.Time.rate;0:get:Stats.draws:named.json;0:get:og.TimeScale",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    assert!(log.iter().all(|l| !l.warning), "{log:?}");
+    let outputs: Vec<(String, Value)> = h
+        .probe
+        .take_outputs()
+        .into_iter()
+        .filter_map(|o| match &o.payload {
+            Payload::Json(v) => Some((o.file_name(), v["value"].clone())),
+            _ => None,
+        })
+        .collect();
+    let names: Vec<&str> = outputs.iter().map(|(n, _)| n.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "get-000000.json",
+            "get-000000-2.json",
+            "get-000000-3.json",
+            "named.json",
+            "get-000000-4.json"
+        ]
+    );
+    // og.Time as game code reads it: the clock, its rate and the time scale.
+    let time = &outputs[0].1;
+    for key in [
+        "tick",
+        "dt",
+        "elapsed",
+        "rate",
+        "scale",
+        "hitStop",
+        "scaledDt",
+        "scaledElapsed",
+    ] {
+        assert!(time.get(key).is_some(), "og.Time has no {key}: {time}");
+    }
+    assert_eq!(time["scale"], json!(1.0));
+    assert_eq!(outputs[1].1, time["dt"]);
+    assert_eq!(outputs[2].1, json!(60));
+    // og.TimeScale, where the world keeps scale and hit stop, answers too.
+    assert_eq!(outputs[4].1["scale"], json!(1.0));
+
+    // A write outside a field's range is refused, naming the range and the fix.
+    h.probe
+        .schedule(&h.world, "0:set:player.Health.hp=2000")
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    assert!(
+        log.iter().any(|l| l.warning
+            && l.text.contains("above the maximum 1000")
+            && l.text.contains("FieldOptions")),
+        "{log:?}"
+    );
 }
 
 #[test]

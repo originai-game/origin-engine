@@ -149,6 +149,15 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.naga]
 opt-level = 3
+# Every probe screenshot and reference frame is deflated by miniz_oxide: at
+# -O0 one 1280x720 PNG took 0.95 s of the tick that captured it (lantern-vale
+# FINDINGS #32 read it as a stall), optimised about 40 ms.
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.adler2]
+opt-level = 3
+[profile.dev.package.simd-adler32]
+opt-level = 3
 
 # The workspace crates in 16 codegen units instead of incremental's 256:
 # an edit recompiles and links fewer, larger units (an og-core edit's test

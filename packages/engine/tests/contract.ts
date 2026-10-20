@@ -69,6 +69,18 @@ function world(w: World): void {
   void [view, value];
 }
 
+// og.anim.clip finds a flipbook's clip (an index) and a model's (a ClipAsset).
+function clips(w: World, e: Entity): void {
+  const sheet = w.spawn({});
+  const anim = og.load.animation(w, "models/slime.vox");
+  const book = og.load.flipbook(w, "sprites/hero.ogt");
+  if (!anim.ok || !book.ok || !sheet.ok) return;
+  w.insert(e, og.AnimationPlayer, { clip: og.anim.clip(anim.value, "chase") });
+  w.insert(sheet.value, og.Flipbook, { sheet: book.value.sheet, clip: og.anim.clip(book.value, "walk") });
+  // @ts-expect-error a flipbook's clip index is not a ClipAsset
+  w.insert(e, og.AnimationPlayer, { clip: og.anim.clip(book.value, "walk") });
+}
+
 // The probe: the engine's probe is a protocol-5 RuntimeProbe with its extensions.
 function probe(p: EngineProbe): void {
   const asRuntime: RuntimeProbe = p;
@@ -86,4 +98,5 @@ function probe(p: EngineProbe): void {
 }
 
 void world;
+void clips;
 void probe;

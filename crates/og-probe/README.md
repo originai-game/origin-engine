@@ -81,8 +81,8 @@ and when it runs still unknown, warns and the script continues. `type` and
 | `teleport:<entity>:x,y[,z]` | write `og.Transform.position` (two numbers keep z) | — |
 | `frame_entity:<entity>` | turn `og.Camera.quaternion` so its -Z looks at the entity | warns without `og.Camera` |
 | `dump_world[:path]` / `dump_entity:<entity>[:path]` / `dump_ui[:path]` | JSON outputs, as `dump` returns them | `dump_ui` is empty |
-| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `1,2,3`); range-checked, never clamped | — |
-| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema: a log line `get <target> = <value>` and a JSON output | `get-<tick>.json` |
+| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `true`/`false` for a bool, `1,2,3`); refused outside the field's `min`/`max` (as a look's cook is; game code's own writes are stored as given), never clamped | — |
+| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema as game code sees it (`og.Time` with its rate and time scale; a light `og.DayNight` drives with the colour and intensity it is drawn with, through the host's `set_derive`): a log line `get <target> = <value>` and a JSON output | `get-<tick>.json`, then `get-<tick>-2.json`, ... for more unnamed ones on one tick |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` / `quit` | reseed the world's `Rng`, hold and release the clock, take ≤ 3600 ticks now, end the run | — |
 | `listen[:path][:seconds]` | a `Wav` output: the last seconds (default 1, at most 2) of what the mixer rendered | warns without a listen hook |
 | `help` | a `Text` output listing every action, core and registered | — |

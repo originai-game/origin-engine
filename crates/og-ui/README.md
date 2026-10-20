@@ -168,8 +168,12 @@ takes input on, so it cannot drift from the screen. Each element has a
 `meter`, `timer`, `status`, `dialog`, `tooltip`, `separator`, `group`; none
 for layout containers, spacers and unnamed pictures), a **name** (its text;
 or what the widget gives it: an icon's name, a dialog's title, Decrease and
-Increase for a stepper's buttons, a field's placeholder; a control showing
-no text of its own is named by the text inside it, then by its id), a
+Increase for a stepper's buttons; a control showing no text of its own is
+named by the text inside it, then by the label just before it in its row,
+then by its id; a text field or area, whose text is its value, by that
+label, else its placeholder, else its id), a **description** read after
+the name (a labelled field's placeholder; the mirror's
+`aria-placeholder`), a
 **value** (a slider's or stepper's number, a progress's percent, a meter's
 amount, a field's text, a select's choice, a cooldown's remaining share)
 and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,
@@ -308,7 +312,7 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 | Part | What it does |
 |---|---|
 | `base`, `palette`, `radius`, `ramp`, `durations` | the token scheme it starts from and the ThemeColor, radius, TypeStepName and duration values it changes: these go into the `Theme` itself, so every widget follows |
-| `atlas "<id>" <w> <h>`, `scale` | the texture every frame, ornament and tile is cut from |
+| `atlas "<id>" <w> <h>`, `scale` | the texture every frame, ornament and tile is cut from. Every id a skin names (atlas, fonts, icons, sounds) is read relative to the skin file first (`atlas.png` beside it, `../shared/rope.png`), then from `assets/` (`SkinFile::resolve`, the same in the cook and at load), so a pack copied to another directory works unchanged; the six packs name their own files relatively and their CJK `fallback` from `assets/` |
 | `slice <part> x y w h <inset…> [tint\|authored] [stretch\|repeat\|round]` | a nine-slice frame per element class (`SkinPart`): `panel` (dialogs, anchored screen panels), `card` (`Ui::panel`), `button`, `buttonHover`, `buttonPressed`, `buttonDisabled`, `field`, `slot` (grid cells), `tooltip`, `capsule` (HUD capsules, toasts), `track` and `fill` (progress). `tint` frames are white art multiplied by the element's colour (so primary and secondary buttons keep their palette); `authored` ones keep their own colours. Edges and centre `stretch` (the default), `repeat` (tiled at the art's own size from the corner, the last tile cut) or `round` (a whole number of tiles resized to fit, CSS `round`): patterned borders tile, plain ones stretch |
 | `soft` | a blurred white rectangle: soft shadows and glows |
 | `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |

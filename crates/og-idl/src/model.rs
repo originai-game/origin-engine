@@ -399,6 +399,9 @@ pub struct Column {
     pub doc: Vec<String>,
     pub array: String,
     pub stride: u32,
+    /// The factory takes a byte capacity first, and the stride is that
+    /// capacity (`str(32)`: a `Uint8Array` of stride 32 holding text).
+    pub capacity: bool,
     pub value: TypeRef,
     pub line: usize,
 }

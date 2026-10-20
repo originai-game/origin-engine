@@ -27,6 +27,8 @@ export interface FieldSpec<K extends ColumnKind = ColumnKind> {
   readonly kind: K;
   readonly default: ColumnKinds[K]["value"];
   readonly options: FieldOptions;
+  /** A `str` field's capacity in bytes; absent for every other kind. */
+  readonly capacity?: number;
 }
 
 /** A reflected layout: field names to field specs. */
@@ -102,6 +104,11 @@ export interface ColumnKinds {
   Matrix4: { readonly array: Float32Array; readonly stride: 16; readonly value: Matrix4 };
   /** A Color field: r, g, b interleaved. */
   Color: { readonly array: Float32Array; readonly stride: 3; readonly value: Color };
+  /**
+   * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+   * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
+   */
+  str: { readonly array: Uint8Array; readonly stride: number; readonly value: string };
   /** An Entity field: (index, generation) pairs. */
   Entity: { readonly array: Uint32Array; readonly stride: 2; readonly value: Entity };
   /** A Geometry handle field. */
@@ -242,7 +249,7 @@ export interface Ray {
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 
 /**
- * Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.
+ * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -380,6 +387,17 @@ export declare function Matrix4(value?: Matrix4, options?: FieldOptions): FieldS
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function Color(value?: Color, options?: FieldOptions): FieldSpec<"Color">;
+
+/**
+ * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+ * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
+ *
+ * A `str` field: stored in a `Uint8Array` whose stride is its capacity.
+ * @param capacity The most bytes of UTF-8 it holds, 1 to 4096: four per character covers any script.
+ * @param value The field's default; omitted, the empty string.
+ * @param options Label and docs (a string has no range and is not tunable).
+ */
+export declare function str(capacity: number, value?: string, options?: FieldOptions): FieldSpec<"str">;
 
 /**
  * Declare a component: plain data stored per entity in engine memory, one column per field.
@@ -737,7 +755,7 @@ export type StartFn = (world: World) => void;
  */
 export interface GameDesc {
   /**
-   * The fixed tick rate.
+   * The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both.
    *
    * @default 60
    * @range 1..240
@@ -745,19 +763,19 @@ export interface GameDesc {
    */
   readonly tick?: number;
   /**
-   * The project seed every Rng stream derives from. A replay overrides it.
+   * The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it.
    *
    * @default 0
    */
   readonly seed?: number;
   /**
-   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`.
+   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block.
    *
    * @default {}
    */
   readonly scenes?: Readonly<Record<string, string>>;
   /**
-   * The scene loaded first.
+   * The scene loaded first; left unset, project.ogt's `scene` (else main).
    *
    * @default "main"
    */
@@ -801,7 +819,7 @@ export interface GameDesc {
    */
   readonly facts?: FactsFn | null;
   /**
-   * Called once before the first tick, after the first scene spawned.
+   * Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it.
    *
    * @default null
    */
@@ -822,7 +840,9 @@ export interface GameDesc {
 
 /** A declared game, the bundle's default export. */
 export interface Game {
-  /** The fixed tick rate in hertz. */
+  /**
+   * GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
+   */
   readonly tick: number;
   /** The systems in declaration order. */
   readonly systems: readonly System[];
@@ -886,7 +906,7 @@ export interface MatrixWorld {
 // Simulation time. Game code never reads the wall clock; it reads Time.
 
 /**
- * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+ * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
  *
  * The `Time` resource (token `og.Time`).
  */
@@ -5536,7 +5556,7 @@ export interface GltfInfo {
   /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
   /**
-   * Its animation clip names (the cook counts clips and does not cook them yet, so this is empty).
+   * Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name.
    */
   readonly animations: readonly string[];
 }
@@ -8262,7 +8282,7 @@ export interface Sky {
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
  *
  * The `DayNight` resource (token `og.DayNight`).
  */
@@ -9362,6 +9382,7 @@ export interface FlipbookInfo {
   /** The first frame's height in pixels. */
   readonly frameHeight: number;
 }
+
 
 
 // ── tween ───────────────────────────────────────────────────────
@@ -12373,7 +12394,7 @@ export interface Viewport {
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -13824,8 +13845,14 @@ export interface A11yNode {
    * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
    */
   readonly role: string;
-  /** Its accessible name: what a screen reader says it is. */
+  /**
+   * Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value).
+   */
   readonly name: string;
+  /**
+   * Read after the name (aria-description): a text field's placeholder when a label names it; empty for none.
+   */
+  readonly description: string;
   /**
    * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
    */
@@ -15303,6 +15330,24 @@ export interface ResultsDesc {
    * @default null
    */
   readonly onShare?: UiAction | null;
+  /**
+   * The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it.
+   *
+   * @default "Best {best}"
+   */
+  readonly bestLabel?: string;
+  /**
+   * The badge a new best shows.
+   *
+   * @default "New best"
+   */
+  readonly newBestLabel?: string;
+  /**
+   * The Share button's label.
+   *
+   * @default "Share"
+   */
+  readonly shareLabel?: string;
 }
 
 /**
@@ -15610,7 +15655,7 @@ export interface AlertDesc {
  * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
  * - `"key_down"`: `key_down:[Mod+]<Key>`: hold a key by its code, with the modifiers named before it (`Shift+ArrowLeft`, `Meta+ArrowLeft` for Command, apart from Ctrl).
  * - `"key_up"`: `key_up:[Mod+]<Key>`: release a key, then the modifiers named before it.
- * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone.
+ * - `"type"`: `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. The text runs to the `;` exactly, a trailing space included; after it a text field takes typed text only, so a bare key_down types nothing.
  * - `"compose"`: `compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it.
  * - `"commit"`: `commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends.
  * - `"move_to_text"`: `move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`).
@@ -15619,8 +15664,8 @@ export interface AlertDesc {
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
  * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds.
- * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema.
- * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON.
+ * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped.
+ * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.
  * - `"pause"`: `pause`: hold the clock; advance still steps.
  * - `"resume"`: `resume`: release the clock.
@@ -16956,7 +17001,7 @@ export declare namespace og {
     function fromAxisAngle(axis: Vector3, angle: number): Quaternion;
   }
   /**
-   * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+   * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
    */
   const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
   /** Simulation time. Game code never reads the wall clock; it reads Time. */
@@ -17317,6 +17362,7 @@ export declare namespace og {
     function defaultBundle(world: World): Result<Asset>;
     /**
      * Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+     * A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame).
      *
      * @param world The world that owns the asset.
      * @param path The asset id, such as `models/ship.glb`.
@@ -17711,7 +17757,7 @@ export declare namespace og {
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
@@ -17808,6 +17854,13 @@ export declare namespace og {
      * @param name The clip's name.
      */
     function clip(info: FlipbookInfo, name: string): number;
+    /**
+     * A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, "models/slime.glb").value, "chase")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name). A skinned glTF's clips are its animations' names; an animated `.vox`'s are `frames` or its `voxClip` names. 0 (plays nothing) when the model has no such clip.
+     *
+     * @param info What og.load.animation answered.
+     * @param name The clip's name.
+     */
+    function clip(info: Animation, name: string): ClipAsset;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;
@@ -18335,11 +18388,11 @@ export declare namespace og {
    */
   namespace ui {
     /**
-     * Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick.
+     * Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
-     * @param desc The scheme, density and fonts.
-     * @returns Refused for a dead font.
+     * @param desc The fields to change; the others keep their values.
+     * @returns Refused for a dead font or skin, or a desc that is not an object.
      */
     function configure(world: World, desc?: UiDesc): Result<void>;
     /**
@@ -18478,7 +18531,7 @@ export declare namespace og {
      */
     function toggle(id: string, on: boolean, label: string): ToggleResult;
     /**
-     * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events, else the keys) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
+     * One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
      *
      * @param id Its id.
      * @param value The text from game state.

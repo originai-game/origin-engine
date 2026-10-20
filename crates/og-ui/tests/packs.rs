@@ -90,13 +90,17 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
         let dir = root().join("skins").join(name);
         let text = std::fs::read_to_string(dir.join("skin.ogt"))
             .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
-        let file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let mut file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(file.name, name);
+        // Its ids resolve beside the skin file first, as the cook reads them.
+        file.resolve(&format!("skins/{name}/skin.ogt"), |id| {
+            root().join(id.trim_start_matches("assets/")).exists()
+        });
         for r in file.references() {
             let id = r.trim_start_matches("assets/");
             assert!(
                 root().join(id).exists(),
-                "{name} names {r}, which is not under templates/ui-kit/assets"
+                "{name} names {r}, which is neither beside its skin file nor under templates/ui-kit/assets"
             );
         }
         let atlas = image::open(dir.join("atlas.png"))

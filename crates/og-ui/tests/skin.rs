@@ -202,6 +202,49 @@ fn a_skin_file_names_the_line_that_is_wrong() {
     assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
 }
 
+/// Ids in a skin file resolve relative to the file first, then from
+/// assets/ (lantern-vale FINDINGS #6: a copied pack named
+/// `skins/fantasy/...` and had to be rewritten). Fails if a relative id is
+/// read from the root, an absolute one is rewritten, `..` escapes the
+/// assets, or the cook and the runtime could disagree (one function).
+#[test]
+fn a_skin_resolves_its_ids_beside_itself_then_from_assets() {
+    let assets = [
+        "skins/mine/atlas.png",
+        "skins/mine/Body.ttf",
+        "skins/shared/rope.png",
+        "fonts/Noto.ttf",
+        "skins/fantasy/atlas.png",
+    ];
+    let exists = |id: &str| assets.contains(&id);
+    let r = |skin: &str, id: &str| og_ui::skin::resolve_reference(skin, id, exists);
+    assert_eq!(
+        r("skins/mine/skin.ogt", "atlas.png"),
+        "skins/mine/atlas.png"
+    );
+    assert_eq!(
+        r("skins/mine/skin.ogt", "./Body.ttf"),
+        "skins/mine/Body.ttf"
+    );
+    assert_eq!(
+        r("skins/mine/skin.ogt", "../shared/rope.png"),
+        "skins/shared/rope.png"
+    );
+    // Absolute ids still work, also from a copy whose own directory lacks them.
+    assert_eq!(r("skins/mine/skin.ogt", "fonts/Noto.ttf"), "fonts/Noto.ttf");
+    assert_eq!(
+        r("skins/mine/skin.ogt", "skins/fantasy/atlas.png"),
+        "skins/fantasy/atlas.png"
+    );
+    // Nothing there: left as written, for the cook to name as missing.
+    assert_eq!(r("skins/mine/skin.ogt", "nope.png"), "nope.png");
+    assert_eq!(r("skins/mine/skin.ogt", "../../../x.png"), "../../../x.png");
+    let text = SKIN.replace("\"skins/test/atlas.png\"", "\"atlas.png\"");
+    let mut file = parse_skin(&text).unwrap();
+    file.resolve("skins/test/skin.ogt", |id| id == "skins/test/atlas.png");
+    assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
+}
+
 /// Builds the screen the transition answers; returns (shown, cover pieces).
 fn transition_step(ui: &mut Ui, wanted: &str, desc: &ScreenTransitionDesc) -> (String, usize) {
     ui.begin(InputFrame::default(), Viewport::new(320.0, 200.0));

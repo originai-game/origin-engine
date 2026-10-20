@@ -98,9 +98,13 @@ interface RunRecord {
 
 const INPUT = /^(key_down|touch_start|touch|gamepad|type|scroll)$/;
 
-function projectProfile(dir: string): "2d" | "3d" | undefined {
-  if (!existsSync(join(dir, "project.ogt"))) return undefined;
-  const m = /^\s*profile\s+"(2d|3d)"/m.exec(readFileSync(join(dir, "project.ogt"), "utf8"));
+/** project.ogt's text, which the engine reads tick, seed, scenes and scene from (CreateOptions.project). */
+function projectText(dir: string): string | undefined {
+  return existsSync(join(dir, "project.ogt")) ? readFileSync(join(dir, "project.ogt"), "utf8") : undefined;
+}
+
+function projectProfile(text: string | undefined): "2d" | "3d" | undefined {
+  const m = text === undefined ? null : /^\s*profile\s+"(2d|3d)"/m.exec(text);
   return m ? (m[1] as "2d" | "3d") : undefined;
 }
 
@@ -144,9 +148,10 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   const extras = native();
   const game = ((await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken }).default;
   if (!game) fail(`${entry} has no default export`);
-  const profile = projectProfile(root);
+  const project = projectText(root);
+  const profile = projectProfile(project);
   // GameDesc.start runs once the renderer is attached (as og run and the web Worker do).
-  const created = createEngine(game!, { root, deferStart: true, ...(profile ? { profile } : {}), ...(desc!.seed === undefined ? {} : { seed: desc!.seed }) });
+  const created = createEngine(game!, { root, deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(desc!.seed === undefined ? {} : { seed: desc!.seed }) });
   if (!created.ok) fail(`${entry}: ${created.reason}`);
   const engine: Engine = created.value;
   engine.attachPlatform(nativePlatform());
@@ -188,7 +193,7 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   drain();
   // A dump_pulse at the start of every tick through the script's last step
   // (the state the previous tick left), each its own output.
-  const rate = engine.game.tick;
+  const rate = engine.rate;
   const last = Math.max(0, ...steps.map((st) => Number(st.split(":")[0]) || 0));
   // Steps ascend in time: the pulses go in order, before a step of the same tick.
   const timed = script.map((st, i) => ({ at: Number(st.split(":")[0]) || 0, order: 1, i, st }));
@@ -328,12 +333,27 @@ function behindScrim(ui: UiDump): Set<number> {
   return out;
 }
 
-function textBoxes(img: Image, ui: UiDump): TextBox[] {
+/**
+ * What is mid-transition in a shot: an element whose bounds (CSS px) are not
+ * the same in the pulses of the ticks before and after it, such as a toast
+ * sliding and fading out over a dialog or a panel popping in. Its pixels are
+ * a moment of a fade, not its colours. Matched by id and bounds (ids repeat:
+ * every toast holds a `Text`).
+ */
+function inMotion(ui: UiDump, before: Pulse | undefined, after: Pulse | undefined): Set<number> {
+  const out = new Set<number>();
+  const still = (p: Pulse | undefined, e: UiDump["elements"][number]) =>
+    !p || p.ui.some((u) => u[0] === e.id && Math.abs(u[1] - e.x) < 0.5 && Math.abs(u[2] - e.y) < 0.5 && Math.abs(u[3] - e.width) < 0.5 && Math.abs(u[4] - e.height) < 0.5);
+  for (const [n, e] of ui.elements.entries()) if (!still(before, e) || !still(after, e)) out.add(n);
+  return out;
+}
+
+function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set()): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
   for (const [n, e] of ui.elements.entries()) {
-    if (dimmed.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
+    if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
     const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
@@ -591,7 +611,9 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     // The bounds are CSS pixels of the UI's surface; the frame is device pixels, maybe halved.
     const scale = img.width / (ui.surface?.width ?? rec.size.width);
     const scaled: UiDump = { ...ui, elements: ui.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
-    const boxes = textBoxes(img, scaled).map((b) => ({ ...b, ink: r2(b.ink / scale) }));
+    const at = tickIndex.get(shot.tick);
+    const moving = at === undefined ? new Set<number>() : inMotion(ui, s[at - 1], s[at + 1]);
+    const boxes = textBoxes(img, scaled, moving).map((b) => ({ ...b, ink: r2(b.ink / scale) }));
     const occ = occupancy(ui, ui.surface ? { width: ui.surface.width, height: ui.surface.height } : rec.size);
     let frame: string | null = null;
     if (written < frames) {

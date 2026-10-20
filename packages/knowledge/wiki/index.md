@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-885 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+887 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -396,6 +396,7 @@ Field units the docs and Tune use.
 | [`og.ai.set`](ai.md#fn-set) | function | ai | `og_ai_set` |
 | [`og.AiAgent`](ai.md#record-AiAgent) | component | ai | — |
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
+| [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
@@ -889,6 +890,7 @@ Field units the docs and Tune use.
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
+| [`str()`](reflect.md#column-str) | column kind | reflect | — |
 | [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
 | [`STREAM_LOADING`](stream.md#const-STREAM_LOADING) | constant | stream | — |
 | [`STREAM_QUEUED`](stream.md#const-STREAM_QUEUED) | constant | stream | — |

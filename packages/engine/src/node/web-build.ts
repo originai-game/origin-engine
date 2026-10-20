@@ -568,6 +568,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
     build: publish ? "publish" : "dev",
     name: settings.name,
     profile: settings.profile,
+    // project.ogt's text: the engine takes its tick, seed, scenes and scene
+    // for what GameDesc leaves unset (CreateOptions.project).
+    ...(existsSync(join(project, "project.ogt")) ? { project: readFileSync(join(project, "project.ogt"), "utf8") } : {}),
     isolation: p.isolation,
     fit: p.fit,
     aspect: aspectRatio(p.aspect),

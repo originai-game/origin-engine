@@ -22,7 +22,7 @@ module reflect {
 
 | Name | Kind | Summary |
 |---|---|---|
-| [`FieldOptions`](#type-FieldOptions) | desc struct | Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes. |
+| [`FieldOptions`](#type-FieldOptions) | desc struct | Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named. |
 | [`f32()`](#column-f32) | column kind | A 32-bit float, the default numeric field. |
 | [`f64()`](#column-f64) | column kind | A 64-bit float, for accumulated values that must not drift, such as elapsed time. |
 | [`u32()`](#column-u32) | column kind | A 32-bit unsigned integer: counters, flags, indices. |
@@ -33,6 +33,7 @@ module reflect {
 | [`Quaternion()`](#column-Quaternion) | column kind | A Quaternion field: x, y, z, w interleaved. |
 | [`Matrix4()`](#column-Matrix4) | column kind | A Matrix4 field: sixteen column-major elements per entity. |
 | [`Color()`](#column-Color) | column kind | A Color field: r, g, b interleaved. |
+| [`str()`](#column-str) | column kind | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). |
 | [`defineComponent`](#fn-defineComponent) | function | Declare a component: plain data stored per entity in engine memory, one column per field. |
 | [`defineResource`](#fn-defineResource) | function | Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults. |
 
@@ -70,7 +71,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 174</sub>
+<sub>`api.ogt` line 182</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -101,7 +102,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 183</sub>
+<sub>`api.ogt` line 191</sub>
 
 ## Types
 
@@ -109,7 +110,7 @@ fn defineResource {
 
 ### `FieldOptions` (desc struct)
 
-Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.
+Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -125,7 +126,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct FieldOptions {
-  doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes."
+  doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named."
   desc true
   field min Option.f32 "The smallest meaningful value."
   field max Option.f32 "The largest meaningful value."
@@ -141,7 +142,7 @@ struct FieldOptions {
 
 ## Column kinds
 
-Each is a factory, `f32(value?, options?)`, that makes one field of a component or resource layout.
+Each is a factory, `f32(value?, options?)`, that makes one field of a component or resource layout; `str(capacity, value?, options?)` takes its capacity in bytes first.
 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
@@ -155,6 +156,7 @@ Each is a factory, `f32(value?, options?)`, that makes one field of a component 
 | <a id="column-Quaternion"></a>`Quaternion` | `Quaternion` | `Float32Array` | 4 | A Quaternion field: x, y, z, w interleaved. |
 | <a id="column-Matrix4"></a>`Matrix4` | `Matrix4` | `Float32Array` | 16 | A Matrix4 field: sixteen column-major elements per entity. |
 | <a id="column-Color"></a>`Color` | `Color` | `Float32Array` | 3 | A Color field: r, g, b interleaved. |
+| <a id="column-str"></a>`str` | `string` | `Uint8Array` | the capacity | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes. |
 
 ```ogt
 column f32 {
@@ -265,3 +267,15 @@ column Color {
 ```
 
 <sub>`api.ogt` line 167</sub>
+
+```ogt
+column str {
+  doc "Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script)."
+  doc "Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes."
+  array Uint8Array
+  capacity true
+  value String
+}
+```
+
+<sub>`api.ogt` line 174</sub>

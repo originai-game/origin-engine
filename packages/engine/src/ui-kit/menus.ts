@@ -141,8 +141,9 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
     kit.column("ScoreBlock", { width: grow(), cross: "center", gap: t.xxs }, () => {
       kit.counter("Score", score, { from: 0, durationMs: 900, step: "displayLg", font: "display", align: "center", width: grow() });
       kit.row("BestRow", { gap: t.sm, cross: "center" }, () => {
-        kit.label("Best", `Best ${fmt(Math.max(desc.best ?? 0, desc.newBest ? score : 0))}`, { step: "meta", color: token("fgMuted"), nowrap: true });
-        if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", "New best", "accent"));
+        const best = fmt(Math.max(desc.best ?? 0, desc.newBest ? score : 0));
+        kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", best), { step: "meta", color: token("fgMuted"), nowrap: true });
+        if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", desc.newBestLabel ?? "New best", "accent"));
       });
     });
     const stats = desc.stats ?? [];
@@ -158,7 +159,7 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
       }
     });
     if (desc.shareText) {
-      if ((kit.button("Share", "Share", { variant: "quiet", width: grow() }) as Api.Response).clicked) {
+      if ((kit.button("Share", desc.shareLabel ?? "Share", { variant: "quiet", width: grow() }) as Api.Response).clicked) {
         chosen = "share";
         desc.onShare?.(desc.shareText);
       }

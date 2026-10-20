@@ -108,8 +108,9 @@ fn pack(args: &[&str]) -> Result<(), String> {
         .and_then(|n| n.to_str())
         .unwrap_or("skin")
         .to_string();
-    let atlas_id = atlas_id(&out);
-    let text = skin_text(old.as_deref(), &name, &atlas_id, &pieces, (w, h));
+    // Beside the skin file: ids in a skin resolve relative to it first, so
+    // the pack stays whole when its directory is copied or renamed.
+    let text = skin_text(old.as_deref(), &name, "atlas.png", &pieces, (w, h));
     std::fs::write(&skin_path, text).map_err(|e| format!("{}: {e}", skin_path.display()))?;
     let slices = pieces.iter().filter(|p| p.insets.is_some()).count();
     println!(
@@ -120,24 +121,6 @@ fn pack(args: &[&str]) -> Result<(), String> {
         if old.is_some() { "updated" } else { "written" }
     );
     Ok(())
-}
-
-/// The asset id the skin file names its atlas by: the path under the
-/// project's `assets/` when there is one, else the file name.
-fn atlas_id(out: &Path) -> String {
-    let full = std::fs::canonicalize(out).unwrap_or_else(|_| out.to_path_buf());
-    let parts: Vec<String> = full
-        .components()
-        .map(|c| c.as_os_str().to_string_lossy().into_owned())
-        .collect();
-    match parts.iter().rposition(|p| p == "assets") {
-        Some(i) => {
-            let mut id = parts[i + 1..].join("/");
-            id.push_str("/atlas.png");
-            id
-        }
-        None => "atlas.png".into(),
-    }
 }
 
 fn read_pieces(dir: &Path) -> Result<Vec<Piece>, String> {

@@ -174,6 +174,130 @@ pub(crate) struct GameDecl {
     pub start: Option<u32>,
     /// GameDesc.look: applied before start runs; empty is none.
     pub look: String,
+    /// Which of tick, seed, scenes and scene GameDesc set: the others take
+    /// project.ogt's ([`with_project`]), else their defaults.
+    pub given: Given,
+}
+
+/// Which of GameDesc's tick, seed, scenes and scene the game set.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Given {
+    pub tick: bool,
+    pub seed: bool,
+    pub scenes: bool,
+    pub scene: bool,
+}
+
+/// project.ogt's `tick`, `seed`, `scenes` and `scene`, as the host read
+/// them (CreateOptions.project): the defaults of the GameDesc fields a game
+/// leaves unset.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct ProjectGame {
+    pub tick: Option<u32>,
+    pub seed: Option<u32>,
+    pub scenes: Option<BTreeMap<String, String>>,
+    pub scene: Option<String>,
+}
+
+/// Reads `tick`, `seed`, `scenes` and `scene` from project.ogt's text; a
+/// value of the wrong kind is refused naming its line. Other keys are og's
+/// (`name`, `entry`, `profile`, `publish`, ...) and are not read here.
+pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
+    let doc = og_core::ogt::parse(text).map_err(|e| format!("project.ogt: {}", e.reason()))?;
+    let b = &doc.body;
+    let whole = |key: &str, lo: u64, hi: u64, what: &str| -> Result<Option<u32>, String> {
+        let Some(e) = b.get(key) else {
+            return Ok(None);
+        };
+        e.number(0)
+            .ok()
+            .and_then(|n| n.as_u64().ok())
+            .filter(|n| (lo..=hi).contains(n))
+            .map(|n| Some(n as u32))
+            .ok_or_else(|| format!("project.ogt:{}: `{key}` takes {what}", e.line))
+    };
+    let tick = whole(
+        "tick",
+        1,
+        240,
+        "a whole number of ticks per second, 1 to 240",
+    )?;
+    let seed = whole(
+        "seed",
+        0,
+        u64::from(u32::MAX),
+        "a whole number from 0 to 4294967295",
+    )?;
+    let scene = match b.get("scene") {
+        None => None,
+        Some(e) => Some(
+            e.values
+                .first()
+                .and_then(|v| v.as_word().or_else(|| v.as_str()))
+                .ok_or_else(|| {
+                    format!(
+                        "project.ogt:{}: `scene` names a scene of `scenes`, such as `scene main`",
+                        e.line
+                    )
+                })?
+                .to_string(),
+        ),
+    };
+    let scenes = match b.get("scenes") {
+        None => None,
+        Some(e) => {
+            let block = e.block.as_ref().ok_or_else(|| {
+                format!(
+                    "project.ogt:{}: `scenes` is a block of `<name> \"<path>\"` lines",
+                    e.line
+                )
+            })?;
+            let mut out = BTreeMap::new();
+            for s in &block.entries {
+                let path = s.string(0).map_err(|_| {
+                    format!("project.ogt:{}: scenes.{} takes the scene's quoted path, such as \"scenes/main.ogt\"", s.line, s.key)
+                })?;
+                out.insert(s.key.clone(), path.to_string());
+            }
+            Some(out)
+        }
+    };
+    Ok(ProjectGame {
+        tick,
+        seed,
+        scenes,
+        scene,
+    })
+}
+
+/// GameDesc with project.ogt's values for the fields it left unset. A field
+/// set in both places to different values is refused: one value has one
+/// home, and the two would drift apart silently.
+pub(crate) fn with_project(mut game: GameDecl, p: &ProjectGame) -> Result<GameDecl, String> {
+    fn both<T: PartialEq + Clone + std::fmt::Debug>(
+        field: &str,
+        given: bool,
+        ours: &mut T,
+        theirs: &Option<T>,
+    ) -> Result<(), String> {
+        match theirs {
+            None => Ok(()),
+            Some(v) if !given => {
+                *ours = v.clone();
+                Ok(())
+            }
+            Some(v) if v == ours => Ok(()),
+            Some(v) => Err(format!(
+                "GameDesc.{field} is {ours:?} but project.ogt's `{field}` is {v:?}: one value set in two places; keep one (delete the line from project.ogt, or the field from GameDesc)"
+            )),
+        }
+    }
+    let g = game.given;
+    both("tick", g.tick, &mut game.tick, &p.tick)?;
+    both("seed", g.seed, &mut game.seed, &p.seed)?;
+    both("scenes", g.scenes, &mut game.scenes, &p.scenes)?;
+    both("scene", g.scene, &mut game.scene, &p.scene)?;
+    Ok(game)
 }
 
 #[derive(Clone, Debug)]
@@ -285,6 +409,12 @@ pub(crate) struct State {
     pub boot_scene: Option<String>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
+    /// What GameDesc.start threw: the world is half-built, so every later
+    /// advance, frame and probe call is refused with it.
+    pub start_failed: Option<String>,
+    /// project.ogt's game values (CreateOptions.project), for a reload's
+    /// assembly.
+    pub project: Option<ProjectGame>,
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
     /// The last UiDesc given to og.ui.configure, which applying a look's
@@ -536,6 +666,12 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
         render: desc["render"].clone(),
         start: desc["start"].as_u64().map(|n| n as u32),
         look: desc["look"].as_str().unwrap_or_default().to_string(),
+        given: Given {
+            tick: desc["tick"].is_u64(),
+            seed: desc["seed"].is_u64(),
+            scenes: desc["scenes"].is_object(),
+            scene: desc["scene"].is_string(),
+        },
     };
     DECL.with(|d| {
         let mut d = d.borrow_mut();
@@ -649,6 +785,7 @@ pub(crate) fn assemble(
     seed: Option<u32>,
     engine_id: u32,
     profile: u32,
+    project: Option<&ProjectGame>,
     previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
 ) -> Result<Assembled, String> {
     let (decl, records, errors, all_systems, commands) = DECL.with(|d| {
@@ -662,6 +799,10 @@ pub(crate) fn assemble(
         )
     });
     let game = decl.ok_or_else(|| format!("no game {game}: declare it with og.game first"))?;
+    let game = match project {
+        Some(p) => with_project(game, p)?,
+        None => game,
+    };
     if !errors.is_empty() {
         return Err(format!(
             "the bundle has refused declarations: {}",
@@ -928,7 +1069,12 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
             ));
         }
     };
-    let mut a = assemble(game, seed, engine_id, profile, None)?;
+    // project.ogt's tick, seed, scenes and scene: what GameDesc leaves unset.
+    let project = match options["project"].as_str() {
+        Some(text) => Some(project_game(text)?),
+        None => None,
+    };
+    let mut a = assemble(game, seed, engine_id, profile, project.as_ref(), None)?;
     let probe = a.probe.take().expect("assemble makes a probe");
     let state = State {
         layouts: a.layouts,
@@ -945,6 +1091,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         facts: a.game.facts,
         boot_scene: None,
         start: a.game.start,
+        start_failed: None,
+        project,
         boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
         ui_desc: Value::Null,
         step_ms: 0.0,
@@ -1048,7 +1196,12 @@ fn run_start(eng: &Engine) -> Result<(), String> {
         return Ok(());
     };
     before_structural(eng);
-    call(eng, 1, start, "[]".into()).map_err(|e| format!("GameDesc.start: {e}"))?;
+    if let Err(e) = call(eng, 1, start, "[]".into()) {
+        let text =
+            format!("GameDesc.start threw, so the world is half-built and does not run: {e}");
+        eng.state.borrow_mut().start_failed = Some(text.clone());
+        return Err(text);
+    }
     Ok(())
 }
 
@@ -1176,8 +1329,10 @@ pub fn point_shadows_name(p: og_render::PointShadows) -> &'static str {
 
 // ── the tick ────────────────────────────────────────────────────────────────
 
-/// At a tick boundary: pending bundles, a scene waiting for its bundle.
-fn tick_boundary(eng: &Engine) {
+/// At a tick boundary: pending bundles, a scene waiting for its bundle,
+/// GameDesc.start. `Err` once GameDesc.start has thrown, at this boundary
+/// or an earlier one: no tick runs on the half-built world.
+fn tick_boundary(eng: &Engine) -> Result<(), String> {
     eng.assets.borrow_mut().poll();
     super::stream::update(eng);
     super::stream::sound_chunks(eng);
@@ -1185,17 +1340,24 @@ fn tick_boundary(eng: &Engine) {
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }
-    if let Err(e) = run_start(eng) {
-        let mut st = eng.state.borrow_mut();
-        st.log
-            .push(json!({ "tick": 0, "warning": true, "text": e }));
+    if let Some(e) = &eng.state.borrow().start_failed {
+        return Err(e.clone());
     }
+    run_start(eng)
+}
+
+/// The wall time since `t0` the ticks took, less the probe's screenshots
+/// taken on the way (a 1280x720 PNG is a fifth of a second in a dev build:
+/// a step time that counted it read as a stall on every screenshot tick).
+fn step_ms(eng: &Engine, t0: f64) -> f64 {
+    (rprobe::now_ms() - t0 - eng.render.borrow().capture_ms).max(0.0)
 }
 
 /// Up to `steps` ticks through the probe (due command steps run on the
 /// way). `Err` names the tick and the failing system.
 fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
-    tick_boundary(eng);
+    tick_boundary(eng)?;
+    eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
     let mut left = steps;
     let tick = loop {
@@ -1210,7 +1372,7 @@ fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
         }
     };
     if steps > 0 {
-        eng.state.borrow_mut().step_ms = (rprobe::now_ms() - t0) / steps as f64;
+        eng.state.borrow_mut().step_ms = step_ms(eng, t0) / steps as f64;
     }
     Ok(tick)
 }
@@ -1253,7 +1415,10 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
             n
         }
     };
-    tick_boundary(&eng);
+    if let Err(e) = tick_boundary(&eng) {
+        return refuse(e);
+    }
+    eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
     super::modules::end_of_ticks();
@@ -1264,7 +1429,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     if ticks > 0 {
-        eng.state.borrow_mut().step_ms = (rprobe::now_ms() - t0) / f64::from(ticks);
+        eng.state.borrow_mut().step_ms = step_ms(&eng, t0) / f64::from(ticks);
     }
     let rendered = match render(&eng) {
         Ok(r) => r,
@@ -1764,8 +1929,10 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
     // an engine (packages/engine/src/runtime.ts learnBuild), so with
     // `deferStart` it must not run GameDesc.start before the host has
     // attached its renderer and handed over its textures.
-    if call.method != "hello" {
-        tick_boundary(&eng);
+    if call.method != "hello"
+        && let Err(e) = tick_boundary(&eng)
+    {
+        return json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string();
     }
     let answer = rprobe::with_probe(&eng, true, |p, w| rprobe::answer(p, w, call));
     let swapped = answer.as_ref().is_ok_and(|a| a.1);
@@ -1774,5 +1941,51 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
     match answer {
         Ok(a) => a.0,
         Err(e) => json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PROJECT: &str = "type project\nversion 1\n---\nname \"P\"\nentry \"src/main.ts\"\nprofile \"3d\"\ntick 30\nseed 7\nscenes {\n  main \"scenes/main.ogt\"\n  boss \"scenes/boss.ogt\"\n}\nscene boss\n";
+
+    fn game(desc: Value) -> GameDecl {
+        let i = declare_game(&desc);
+        DECL.with(|d| d.borrow().games[i as usize].clone())
+    }
+
+    #[test]
+    fn project_ogt_fills_what_gamedesc_leaves_unset() {
+        let p = project_game(PROJECT).unwrap();
+        let g = with_project(game(json!({})), &p).unwrap();
+        assert_eq!((g.tick, g.seed, g.scene.as_str()), (30, 7, "boss"));
+        assert_eq!(
+            g.scenes.get("main").map(String::as_str),
+            Some("scenes/main.ogt")
+        );
+        // Unset in both: the defaults.
+        let none = project_game("type project\nversion 1\n---\nname \"P\"\n").unwrap();
+        let g = with_project(game(json!({})), &none).unwrap();
+        assert_eq!((g.tick, g.seed, g.scene.as_str()), (60, 0, "main"));
+        // Set in both, alike: fine.
+        let g = with_project(game(json!({ "tick": 30, "seed": 7 })), &p).unwrap();
+        assert_eq!((g.tick, g.seed), (30, 7));
+    }
+
+    #[test]
+    fn a_value_set_in_both_places_differently_is_refused() {
+        let p = project_game(PROJECT).unwrap();
+        let e = with_project(game(json!({ "seed": 1 })), &p).unwrap_err();
+        assert!(
+            e.contains("GameDesc.seed is 1 but project.ogt's `seed` is 7"),
+            "{e}"
+        );
+        let e = with_project(game(json!({ "scene": "main" })), &p).unwrap_err();
+        assert!(e.contains("GameDesc.scene"), "{e}");
+        let e = project_game("type project\nversion 1\n---\ntick 0\n").unwrap_err();
+        assert!(e.contains("project.ogt:4: `tick` takes"), "{e}");
+        let e = project_game("type project\nversion 1\n---\nscenes {\n  main 3\n}\n").unwrap_err();
+        assert!(e.contains("scenes.main takes"), "{e}");
     }
 }

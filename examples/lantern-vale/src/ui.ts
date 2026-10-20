@@ -40,21 +40,9 @@ export function say(world: World, key: string, args?: Record<string, string | nu
   return og.i18n.t(world, key, args);
 }
 
-// The player's name lives in Prefs as code points: resources hold numbers only.
-const NAME_FIELDS = ["n0", "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11"] as const;
-
-export function nameOf(p: PrefsV): string {
-  let s = "";
-  for (let i = 0; i < Math.min(p.nameLength, NAME_CHARS); i++) s += String.fromCodePoint(p[NAME_FIELDS[i]!]);
-  return s;
-}
-
-export function setName(p: PrefsV, name: string): void {
-  const cps = [...name].slice(0, NAME_CHARS).map((c) => c.codePointAt(0)!);
-  p.nameLength = cps.length;
-  NAME_FIELDS.forEach((f, i) => {
-    p[f] = cps[i] ?? 0;
-  });
+/** A name as Prefs keeps it: at most NAME_CHARS characters (a saved one from elsewhere may be longer). */
+function setName(p: PrefsV, name: string): void {
+  p.name = [...name].slice(0, NAME_CHARS).join("");
 }
 
 /** A new run: the hero at the start, hearts full, the lanterns dark, the clock at sunset. */
@@ -88,15 +76,12 @@ export function toTitle(world: World, g: GameV): void {
 }
 
 /**
- * The UI's desc, whole: og.ui.configure replaces every field it is not
- * given, so the look's skin (og.render.look's) and the sounds go in with
- * the reduced-motion setting every time (FINDINGS.md).
+ * The UI's sounds and reduced motion: og.ui.configure keeps every field it
+ * is not given, so the skin the look applied stays.
  */
 export function configureUi(world: World, reducedMotion: boolean): void {
   const sound = (path: string) => must(og.load.sound(world, path));
-  const skin = og.render.look(world)?.skin ?? null;
   must(og.ui.configure(world, {
-    skin,
     reducedMotion,
     sounds: { press: sound("audio/ui-click.ogt"), success: sound("audio/ui-select.ogt"), open: sound("audio/ui-select.ogt"), close: sound("audio/ui-back.ogt"), error: sound("audio/ui-error.ogt") },
   }));
@@ -116,7 +101,7 @@ function setLanguage(world: World, p: PrefsV, index: number): void {
 }
 
 function prefsValue(p: PrefsV) {
-  return { musicVolume: p.music, sfxVolume: p.effects, language: LANGUAGES[p.language]!.code, reducedMotion: p.reducedMotion, name: nameOf(p) };
+  return { musicVolume: p.music, sfxVolume: p.effects, language: LANGUAGES[p.language]!.code, reducedMotion: p.reducedMotion, name: p.name };
 }
 
 /** og.platform: the settings asked for on tick 0 and applied when they answer. */
@@ -268,8 +253,8 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     p.effects = slider("Effects", "settings.effects", p.effects);
     og.ui.row("NameRow", { width: grow, gap: S.md, cross: "center" }, () => {
       og.ui.label("Label", say(world, "settings.name"), { width: px(110), nowrap: true });
-      const f = og.ui.textField("Name", nameOf(p), { placeholder: say(world, "settings.namePlaceholder"), maxChars: NAME_CHARS });
-      if (f.value !== nameOf(p)) setName(p, f.value);
+      const f = og.ui.textField("Name", p.name, { placeholder: say(world, "settings.namePlaceholder"), maxChars: NAME_CHARS });
+      if (f.value !== p.name) setName(p, f.value);
     });
     og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
@@ -303,13 +288,16 @@ export function score(world: World, g: GameV): number {
 function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
   const won = g.ending === Ending.Lit;
   const stars = won ? Math.max(1, 3 - g.hurts) : 0;
-  const name = nameOf(p);
+  const name = p.name;
   const r = og.ui.resultsScreen("Results", {
     open: g.phase === Phase.Over,
     title: say(world, won ? "results.won" : g.ending === Ending.Caught ? "results.caught" : "results.night"),
     score: score(world, g),
     best: g.best,
     newBest: g.newBest,
+    // og.ui's own words, from the tables too: "{best}" is the kit's to fill.
+    bestLabel: say(world, "results.best"),
+    newBestLabel: say(world, "results.newBest"),
     stars,
     maxStars: 3,
     stats: [

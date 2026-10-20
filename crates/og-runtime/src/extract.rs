@@ -125,6 +125,9 @@ pub(crate) struct RenderState {
     /// Text queued during the current tick, and that tick.
     pub texts: Vec<QueuedText>,
     pub texts_tick: u64,
+    /// Wall time the probe's screenshots took (render, read back, PNG)
+    /// since the step began: not the game's step time.
+    pub capture_ms: f64,
     /// The effects games declare as data (`super::fx`), with the sprites
     /// and ribbons queued during the current tick.
     pub fx: super::fx::FxState,
@@ -176,6 +179,7 @@ impl RenderState {
             fonts: Vec::new(),
             texts: Vec::new(),
             texts_tick: 0,
+            capture_ms: 0.0,
             fx: super::fx::FxState::default(),
             textures: Vec::new(),
             texture_arrays: Vec::new(),

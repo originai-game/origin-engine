@@ -64,6 +64,13 @@
       "value": "Color"
     },
     {
+      "name": "str",
+      "array": "Uint8Array",
+      "stride": 0,
+      "value": "String",
+      "capacity": true
+    },
+    {
       "name": "Entity",
       "array": "Uint32Array",
       "stride": 2,

@@ -56,8 +56,9 @@ export default playtest({
     t.ok(a11y.a11yNodes > 10 && a11y.a11yUnnamed === 0, `every focusable node of og.ui.a11y has a name (${a11y.a11yNodes} nodes)`);
     const zh = texts(run, "chinese.json");
     t.ok(zh.includes("设置") && zh.includes("音乐") && zh.includes("完成"), "Chinese turned the dialog into Chinese");
-    const saved = value<{ saves: number; language: number; nameLength: number }>(run, "saved.json");
-    t.ok(saved.saves === 1 && saved.language === 1 && saved.nameLength === 5, "Done saved the settings: Chinese, the five-character name");
+    const saved = value<{ saves: number; language: number; name: string }>(run, "saved.json");
+    t.ok(saved.saves === 1 && saved.language === 1, "Done saved the settings: Chinese");
+    t.equal(saved.name, "Mei小灯", "the name is world state: Prefs.name, a str field");
     const calls = run.json<{ calls: Array<{ method: string; args: Record<string, unknown> }> }>("platform.json").calls;
     const save = calls.find((c) => c.method === "store.set" && c.args["key"] === "og.settings");
     t.ok(save !== undefined && JSON.stringify(save.args).includes("Mei小灯"), "through og.platform, the name with them");

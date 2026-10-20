@@ -358,9 +358,6 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
         let Ok(schema) = world.schema(id) else {
             continue;
         };
-        if schema.has_strings() {
-            continue;
-        }
         let component = !world.has_resource_id(id);
         let mut offset = 0;
         let mut fields = BTreeMap::new();

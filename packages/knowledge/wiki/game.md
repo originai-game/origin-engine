@@ -14,7 +14,7 @@ module game {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 431</sub>
+<sub>`api.ogt` line 439</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 483</sub>
+<sub>`api.ogt` line 491</sub>
 
 ## Interfaces
 
@@ -70,13 +70,13 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 477</sub>
+<sub>`api.ogt` line 485</sub>
 
 <a id="member-Game-tick"></a>
 
 #### `Game.tick` (property)
 
-The fixed tick rate in hertz.
+GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
 
 ```ts
 readonly tick: number
@@ -85,10 +85,10 @@ readonly tick: number
 Binding symbol `og_game_get_tick` · publish builds: kept
 
 ```ogt
-prop tick u32 "The fixed tick rate in hertz."
+prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
-<sub>`api.ogt` line 479</sub>
+<sub>`api.ogt` line 487</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +106,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 480</sub>
+<sub>`api.ogt` line 488</sub>
 
 ## Types
 
@@ -134,7 +134,7 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 436</sub>
+<sub>`api.ogt` line 444</sub>
 
 <a id="type-StartFn"></a>
 
@@ -159,7 +159,7 @@ callback StartFn {
 }
 ```
 
-<sub>`api.ogt` line 442</sub>
+<sub>`api.ogt` line 450</sub>
 
 <a id="type-GameDesc"></a>
 
@@ -171,17 +171,17 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `tick` | `number` | `60` | 1 … 240 | `hz` | — | The fixed tick rate. |
-| `seed` | `number` | `0` | — | — | — | The project seed every Rng stream derives from. A replay overrides it. |
-| `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`. |
-| `scene` | `string` | `"main"` | — | — | — | The scene loaded first. |
+| `tick` | `number` | `60` | 1 … 240 | `hz` | — | The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both. |
+| `seed` | `number` | `0` | — | — | — | The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it. |
+| `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block. |
+| `scene` | `string` | `"main"` | — | — | — | The scene loaded first; left unset, project.ogt's `scene` (else main). |
 | `systems` | `readonly System[]` | `[]` | — | — | — | The systems, in declaration order before `after`/`before` constraints apply. |
 | `resources` | `readonly AnyResource[]` | `[]` | — | — | — | The game's own resources, created at their defaults. |
 | `commands` | `Readonly<Record<string, CommandHandler>>` | `{}` | — | — | — | Game actions registered into the command channel, by action name. |
 | `commandHelp` | `Readonly<Record<string, CommandDesc>>` | `{}` | — | — | — | Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: "<x>:<y>", doc: "Move the hero there." } }`. An action without an entry is listed by name alone. |
 | `maxCatchUp` | `number` | `4` | 1 … 60 | `ticks` | — | The most ticks one frame may run to catch up with the clock; the accumulator drops the rest. |
 | `facts` | `FactsFn \| null` | `null` | — | — | — | The game's own facts for the probe's state(). |
-| `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. |
+| `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it. |
 | `render` | `RenderOptions` | `{}` | — | — | — | How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer. |
 | `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none. |
 
@@ -189,15 +189,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct GameDesc {
   doc "A game: its tick, scenes, systems and commands."
   desc true
-  field tick u32 "The fixed tick rate." {
+  field tick u32 "The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both." {
     default 60
     min 1
     max 240
     unit hz
   }
-  field seed u32 "The project seed every Rng stream derives from. A replay overrides it."
-  field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`."
-  field scene String "The scene loaded first." {
+  field seed u32 "The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it."
+  field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`; left unset, project.ogt's `scenes` block."
+  field scene String "The scene loaded first; left unset, project.ogt's `scene` (else main)." {
     default "main"
   }
   field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
@@ -211,10 +211,10 @@ struct GameDesc {
     unit ticks
   }
   field facts Option.FactsFn "The game's own facts for the probe's state()."
-  field start Option.StartFn "Called once before the first tick, after the first scene spawned."
+  field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
   field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
   field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none."
 }
 ```
 
-<sub>`api.ogt` line 447</sub>
+<sub>`api.ogt` line 455</sub>
