@@ -213,6 +213,14 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }
+    // `get` answers what og.DayNight makes of the sun, as drawn.
+    probe.set_derive(Box::new(move |world, entity, name, fields| {
+        if let Ok(eng) = engine(id)
+            && let Ok(st) = eng.state.try_borrow()
+        {
+            super::atmosphere::derive(world, &st.layouts, entity, name, fields);
+        }
+    }));
     if facts.is_some() {
         probe.set_facts(move |_world| {
             let Ok(eng) = engine(id) else {

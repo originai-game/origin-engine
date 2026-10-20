@@ -32,10 +32,16 @@ needs a browser or a Rust toolchain. The command channel is
    `teleport:<entity>:x,y,z`, `frame_entity:<entity>`, `dump_world[:path]`,
    `dump_entity:<entity>[:path]`, `dump_ui[:path]`,
    `get:<Resource>[.<field>]` or `get:<entity>[.<Component>[.<field>]]`
-   (logs the value and writes `get-<tick>.json`),
+   (logs the value as game code sees it, og.Time whole and a light og.DayNight
+   drives as it is drawn, and writes `get-<tick>.json`, then
+   `get-<tick>-2.json`, ... for more on one tick; a world dump lists
+   resources by name only, so `get:` is how to read one),
    `set:<entity>.<Component>.<field>=<value>` or
    `set:<Resource>.<field>=<value>` (`set:og.Camera.trauma=0.5`,
-   `set:Game.coins=10`), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
+   `set:Game.coins=10`, `set:og.Stylise.ink=false`: a number, `true` or
+   `false`, or `x,y,z`; a value outside the field's `min`/`max` is refused
+   naming the range, never clamped, while game code's own writes are stored
+   as given: widen the range in the field's options to try one), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
    `quit`, and `help` for the list. Modules add their own: `dump_ai` and
    `dump_nav` (og-ai §5), `dump_platform` (og-platform-sdk §4), `locale:<tag>`
    (og-i18n §6), `dump_stream` and `terrain_stream:<stream|resident>[:<MiB>]`

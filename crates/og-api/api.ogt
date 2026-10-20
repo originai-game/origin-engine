@@ -90,7 +90,7 @@ module reflect {
   place top
 
   struct FieldOptions {
-    doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes."
+    doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named."
     desc true
     field min Option.f32 "The smallest meaningful value."
     field max Option.f32 "The largest meaningful value."
@@ -469,7 +469,7 @@ module game {
       unit ticks
     }
     field facts Option.FactsFn "The game's own facts for the probe's state()."
-    field start Option.StartFn "Called once before the first tick, after the first scene spawned."
+    field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
     field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
     field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none."
   }
@@ -555,7 +555,7 @@ module time {
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
 
   resource Time {
-    doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers."
+    doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script."
     field tick u32 "Fixed steps taken since load." {
       readonly true
       unit ticks
@@ -5226,7 +5226,7 @@ module atmosphere {
   }
 
   resource DayNight {
-    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
+    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`."
     field enabled bool "Run the cycle."
     field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
       default 9
@@ -9969,8 +9969,8 @@ module commands {
     variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
     variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
     variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
-    variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema."
-    variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON."
+    variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped."
+    variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...)."
     variant seed "`seed:<n>`: reseed the Rng resource."
     variant pause "`pause`: hold the clock; advance still steps."
     variant resume "`resume`: release the clock."

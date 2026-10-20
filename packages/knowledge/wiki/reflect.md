@@ -22,7 +22,7 @@ module reflect {
 
 | Name | Kind | Summary |
 |---|---|---|
-| [`FieldOptions`](#type-FieldOptions) | desc struct | Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes. |
+| [`FieldOptions`](#type-FieldOptions) | desc struct | Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named. |
 | [`f32()`](#column-f32) | column kind | A 32-bit float, the default numeric field. |
 | [`f64()`](#column-f64) | column kind | A 64-bit float, for accumulated values that must not drift, such as elapsed time. |
 | [`u32()`](#column-u32) | column kind | A 32-bit unsigned integer: counters, flags, indices. |
@@ -109,7 +109,7 @@ fn defineResource {
 
 ### `FieldOptions` (desc struct)
 
-Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.
+Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -125,7 +125,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct FieldOptions {
-  doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes."
+  doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named."
   desc true
   field min Option.f32 "The smallest meaningful value."
   field max Option.f32 "The largest meaningful value."
