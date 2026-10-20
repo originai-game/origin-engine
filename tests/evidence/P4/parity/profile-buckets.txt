@@ -1,0 +1,59 @@
+base-spheres-20k: 2625 samples under render
+   36.2%  batches: spheres, GPU transforms, cascade bounds
+   30.2%  objc2 message verification (dev)
+   11.8%  encode (wgpu, Metal)
+    9.0%  sort
+    5.8%  other
+    4.2%  instance upload (compare, copy, staging)
+    2.6%  submit
+base-spheres-20k-moving: 2406 samples under render
+   35.5%  batches: spheres, GPU transforms, cascade bounds
+   30.8%  objc2 message verification (dev)
+   10.3%  encode (wgpu, Metal)
+    8.3%  sort
+    7.0%  instance upload (compare, copy, staging)
+    5.4%  other
+    2.7%  submit
+head-spheres-20k: 2213 samples under render
+   52.6%  GPU back-pressure wait
+   15.5%  batches: spheres, GPU transforms, cascade bounds
+   13.1%  encode (wgpu, Metal)
+    8.3%  other
+    7.1%  instance upload (compare, copy, staging)
+    3.4%  submit
+    0.1%  sort
+head-spheres-20k-moving: 2170 samples under render
+   65.9%  batches: spheres, GPU transforms, cascade bounds
+   11.5%  instance upload (compare, copy, staging)
+   11.2%  encode (wgpu, Metal)
+    8.2%  other
+    3.2%  submit
+    0.1%  sort
+base-rel-spheres-20k: 2262 samples under render
+   72.5%  GPU back-pressure wait
+   14.4%  encode (wgpu, Metal)
+    4.7%  other
+    4.5%  instance upload (compare, copy, staging)
+    2.7%  submit
+    0.7%  batches: spheres, GPU transforms, cascade bounds
+    0.5%  sort
+base-rel-spheres-20k-moving: 1893 samples under render
+   50.7%  GPU back-pressure wait
+   21.8%  encode (wgpu, Metal)
+   14.7%  instance upload (compare, copy, staging)
+    7.9%  other
+    3.6%  submit
+    0.8%  sort
+    0.5%  batches: spheres, GPU transforms, cascade bounds
+head-rel-spheres-20k: 2525 samples under render
+   86.5%  GPU back-pressure wait
+    6.5%  encode (wgpu, Metal)
+    2.7%  instance upload (compare, copy, staging)
+    2.2%  other
+    2.1%  submit
+head-rel-spheres-20k-moving: 1938 samples under render
+   61.7%  GPU back-pressure wait
+   13.5%  encode (wgpu, Metal)
+   13.4%  instance upload (compare, copy, staging)
+    7.4%  other
+    4.0%  submit

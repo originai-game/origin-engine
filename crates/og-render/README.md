@@ -21,8 +21,9 @@ the world → scene extraction belongs to the layer above.
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
 | `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette`, `add_lut` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile; `remove_mesh`, `remove_texture`, `remove_material`, `remove_font`, `remove_environment_map`, `remove_texture_array`, `remove_palette`, `remove_lut` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `particle_colliders` (`ParticleCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). The renderer uploads what is new or changed and frees what was removed before the next frame. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
+| `VertexEncoding` | How a mesh's vertices are held on the GPU: `Full` (default, `Vertex` as given, 64 bytes) or `Compact` (16 bytes where a plain material draws it; quantised): `RenderScene::set_vertex_encoding(mesh, encoding)`, `vertex_encoding(mesh)`. [Instance and vertex encodings](#instance-and-vertex-encodings). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. |
-| `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
+| `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). The transform is affine: the GPU holds its first three rows ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
@@ -88,7 +89,12 @@ object; see below). Passes whose feature is off are not recorded.
    BRDF LUT; render passes only, so WebGL2 runs them); with an environment
    map they copy the cooked map into the same cubes instead.
 2. **Batch and cull** (CPU). Instances stably sorted by (mesh, material);
-   each sorted instance gets a world bounding sphere. Every pass gets a draw
+   each sorted instance gets a world bounding sphere. Both are kept across
+   frames (`instances.rs`): the sort is redone only when the submission's
+   (mesh, material) sequence or a drawn mesh's bounds changed, and an
+   instance's sphere and GPU transform only when its transform changed
+   (bit for bit), so a still field costs one pass over the submission and
+   no sort. Every pass gets a draw
    list per batch: the instances whose sphere touches the pass's volume. A
    batch that loses less than a tenth of its instances is drawn whole (no
    copy); otherwise its visible transforms are appended to the instance
@@ -559,6 +565,55 @@ their position alone whatever their material (`shadow.wgsl` `vs_lean` /
 spheres-20k on an M4 Pro (dev og-gfx): 7.1 to 4.6 ms a frame, every
 Metal `--all` frame byte-identical to the full path's
 (`tests/evidence/P4/lean/`).
+
+### Instance and vertex encodings
+
+**Instances: 48 bytes.** Every instance buffer (the CPU path's, GPU
+culling's regions, the previous transforms of object motion, the skinned
+instances, the scattered copies) holds an instance's transform as the x,
+y and z of its four columns (`instances::GpuTransform`, `Float32x3`
+attributes, 12 floats a slot in `cull.wgsl`); `instance.wgsl`'s
+`instance_matrix` rebuilds the 4x4 with the fourth row (0, 0, 0, 1), so
+an `Instance::transform` is affine. The points such a matrix moves have a
+w of 1 the shader compiler can see, and Metal then reorders the sum of the
+projection that follows (the w term first), which moved vertices by an ulp
+and flipped edge pixels in 45 of the 68 `og-gfx --all` frames. Those
+projections (the view, the cascades and spots, last frame's view, the
+occluders', GPU culling's screen boxes) go through `mul_point`, the column
+order fused chain the compiler used when w came from the buffer, and a
+point moved by a material's `vertex_offset` keeps the plain product
+(`hooks.rs` `moved_clip`): every Metal frame is the 64-byte encoding's,
+byte for byte. The GL and SPIR-V tiers compile the same arithmetic (naga
+writes `fma` as `a * b + c` for GLSL ES 3.0); their references are
+compared under the gate's tolerance.
+
+**Vertices: 16 bytes, opt-in.** `VertexEncoding::Compact`
+(`RenderScene::set_vertex_encoding`; `compact.rs`) uploads a mesh as the
+position in `Unorm16x4` over its bounds, the normal octahedral in
+`Snorm16x2` and the colour in `Unorm8x4`; no uv and no tangent, which no
+plain material reads. The bounds' corner and size are not a shader input:
+a (mesh, material) run that draws the compact vertices folds them into
+its instances' GPU transforms (`Run::dequant`), so the vertex stage reads
+a point in the unit box; the normal is stored through the bounds' scale,
+so the normal matrix of (instance x dequantisation) turns it back. The
+lean lit, lean prepass, lean shadow caster and occluder-depth pipelines
+have compact variants (`vs_lean_compact`, `vs_prepass_lean_compact`,
+shadow `vs_lean_compact`, `cull_depth.wgsl` `vs_compact`), GPU culling
+reads the unit box's bounds with a radius that never shrinks the
+sphere, and CPU culling keeps the mesh's own. The f32 vertices of a
+compact mesh are uploaded only when something else draws it (a material
+that is not plain, a scatter, a skinned instance: `Renderer::ensure_full`),
+so a mesh that only plain materials draw never holds them on the GPU.
+Skinned and morphed meshes ignore it. It is quantised (the position to
+1/65535 of the bounds, the normal to about 1e-4 rad, the colour to 8
+bits), so its pixels are near `Full`'s, not equal: the default stays
+`Full` and every reference frame with it. `og-gfx` takes
+`OG_GFX_COMPACT=1` (every mesh compact): all 68 `--all` scenes draw, the
+largest difference against the `Full` frames rmse 0.011 (`showcase`).
+Natively the sphere field's GPU time does not move with it
+(`tests/evidence/P4/parity/`): its 221 vertices sit in cache, and the
+pass is bound by its 7.3 million triangles (its time follows the
+instance count, not the pixels, the varyings or the vertex fetch).
 
 ## The 2D batch (E4)
 
@@ -1338,7 +1393,12 @@ with their mips, chosen per tier and reported in
     discard where no derivative is taken. spheres-20k natively 7.1 to
     4.6 ms (GPU-bound to about CPU-bound in the dev build), the §7
     reference scene unchanged, every Metal `og-gfx --all` frame
-    byte-identical to main's (`tests/evidence/P4/lean/`). The instance
-    transform stays 64 bytes: a 3x4 would save a quarter of an upload that
-    costs 0.04 ms natively. The browser comparison with three.js
-    (`tools/bench/threejs-compare.ts`) has not been run again.
+    byte-identical to main's (`tests/evidence/P4/lean/`). Then (branch
+    `render-parity`, `tests/evidence/P4/parity/`): instances are 48 bytes
+    on the GPU, plain meshes can be 16-byte vertices (opt-in), the sort and
+    the bounding spheres are kept across frames, wgpu's indirect-call
+    validation is off natively and objc2 has no debug assertions in the
+    dev profile; every Metal `og-gfx --all` frame byte-identical. The
+    field is GPU-bound natively, on its 7.3 million triangles a pass. The
+    browser comparison with three.js (`tools/bench/threejs-compare.ts`)
+    has not been run again.
