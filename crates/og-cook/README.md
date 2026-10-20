@@ -42,8 +42,12 @@ change as it is saved: §Cook times).
    settings. Files a `.gltf` references are part of that model. Anything else
    (licences, notes) is listed as ignored.
 2. **Plan**: every output gets a cook stamp (below). An output whose stamp the
-   manifest already holds, with its file present and its bytes' hash
-   unchanged, is up to date and not cooked.
+   manifest already holds, with its file present, its bytes' hash unchanged
+   and its header holding the type hash and schema version the loader
+   expects today (`format::expected_header`), is up to date and not cooked.
+   The header check catches a schema that changed without a
+   `COOKER_VERSION` bump: the manifest and the file agree, but the loader
+   would refuse the blob ("holds type ..., expected ...").
 3. **Cook** the stale outputs on a thread pool (`CookOptions::threads`, 0 =
    all cores); results are collected by plan index, so scheduling never
    changes the bytes.

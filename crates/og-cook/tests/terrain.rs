@@ -268,6 +268,50 @@ fn the_terrain_cook_is_deterministic_and_incremental() {
 }
 
 #[test]
+fn a_kept_blob_whose_type_moved_is_cooked_again() {
+    // What a schema change without a cooker bump leaves behind: the manifest
+    // and the file agree (stamp, size, hash), but the file's header names
+    // another type than the loader expects today. Keeping it would hand the
+    // loader a blob it refuses ("holds type ..., expected ...; re-run og
+    // cook"), and og cook, run again, would find nothing to do.
+    use og_cook::format::{BlobKind, Terrain};
+    let files = island_files();
+    let refs: Vec<(&str, &[u8])> = files.iter().map(|(p, b)| (*p, b.as_slice())).collect();
+    let root = project("moved-type", &refs);
+    cook(&root);
+    let blob = root.join("cooked/terrain/island.ogt.ogb");
+    let before = std::fs::read(&blob).unwrap();
+    let mut patched = before.clone();
+    // Bytes 16..24 of the header: the type hash (og-blob README).
+    patched[16..24].copy_from_slice(&0x0123_4567_89ab_cdefu64.to_le_bytes());
+    std::fs::write(&blob, &patched).unwrap();
+    // The manifest agrees with the patched file, as it would had the cook
+    // written it that way.
+    let manifest = root.join("cooked/.cook.ogt");
+    let text = std::fs::read_to_string(&manifest).unwrap();
+    let old = format!("hash \"{:016x}\"", og_core::hash::hash_bytes(&before));
+    let new = format!("hash \"{:016x}\"", og_core::hash::hash_bytes(&patched));
+    assert!(text.contains(&old), "the manifest records the blob's hash");
+    std::fs::write(&manifest, text.replace(&old, &new)).unwrap();
+    let again = cook(&root);
+    let cooked: Vec<String> = again
+        .cooked_outputs()
+        .iter()
+        .filter(|o| o.cooked)
+        .map(|o| o.id.clone())
+        .collect();
+    assert_eq!(cooked, vec!["terrain/island.ogt".to_string()]);
+    let after = std::fs::read(&blob).unwrap();
+    assert_eq!(after, before, "the blob is written as it was");
+    let parsed = og_blob::Blob::parse(&after, "island").unwrap();
+    let header = parsed.header();
+    assert_eq!(
+        (header.type_hash, header.schema_version),
+        (Terrain::type_hash(), Terrain::schema_version())
+    );
+}
+
+#[test]
 fn an_exr_heightmap_is_metres_as_stored() {
     let img = image::Rgb32FImage::from_fn(33, 17, |x, y| {
         let h = x as f32 * 0.75 - y as f32 * 2.5 + 0.125;

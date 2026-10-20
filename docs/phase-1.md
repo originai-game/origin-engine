@@ -14,47 +14,64 @@ below, newest first). From be179fc a merge passes `scripts/check.sh
 functional` (fmt, clippy, every test with the GPU reference frames, drift,
 the packages' tests on the native host), and the wasm build, its size,
 determinism and the browser tiers are measured once at a wave's end
-(AGENTS.md §Build and gate discipline, docs/ci.md §When to run what). What
-the repository records of this wave's end at fe00f56 (scratch logs are not
-in it; what no commit or evidence file records is said so). Cook round four
-and stylisation round four merged after it (1cdc3da); nothing of a gate
-after them is recorded either.
+(AGENTS.md §Build and gate discipline, docs/ci.md §When to run what). The
+wave's end was measured in the `origin-engine-measure` worktree at efb3bdc
+(AGENTS.md's lane pool; the figures below are from that run's logs, which
+the repository does not hold, so they are stated here once). Cook round
+four and stylisation round four merged after it (1cdc3da) and took the
+functional lane each; the full lane has not run on a tree with them.
 
-- **`scripts/check.sh --all` on main: not recorded.** No `--all` summary
-  was committed after 50eb7f7. The last whole full lanes on record are the
-  rounds' own, path-aware, on their merged branches: the web host and tools
-  round 9 of 9 at 4e121cd, ibl-post 9 of 9 in 899 s at 3a19da8, cook-anim 9
-  of 9 in 207 s (nextest 624 passed, 9 skipped); physical materials,
-  ui-text, shadows-aa and ui-shell passed every step but bun-test, which
-  failed on load timeouts or a stale cook (materials', ui-text's and
-  shadows-aa's then passed alone or after `og cook`; ui-shell's was not
-  rerun). Their sections have the figures.
-- **`scripts/check.sh functional` on main: not recorded** (docs/ci.md gives
-  90–160 s warm). Since c736dea and 222ae43 it skips the tests that compare
-  the two hosts' world hashes when the web module predates a crate change
-  (`OG_WASM_STALE`); the full lane runs them.
-- **`scripts/check.sh web-reference`: no whole run recorded after
-  50eb7f7.** On record: ibl-post's on its branch passed (427 s);
-  ui-shell's at a71c66b failed 36 fx-showcase frames (18 per tier, RMSE
-  0.0101 to 0.0149 against their own references, stale since the UI text
-  round kerned the HUD) and passed everything else (og-tests gfx 56 scenes
-  per tier, og-ui kit frames 16 of 16 playtests per tier, Ember Vale on
-  both tiers with the WebGL2 beacon at RMSE 0.0038 against its own, lane
-  panic, a11y 23 of 23 per tier), after which 47 fx-showcase and 8 topdown
-  browser frames within tolerance of `metal` were deleted (74e291c); the
+- **`scripts/check.sh --all`**: 9 of 9 in 886 s, in the `origin-engine-measure`
+  worktree at efb3bdc (the main of the wave's end, before cook round four
+  and stylisation round four merged): fmt 2 s, clippy 2 s, wasm-build 407 s
+  (the shipping `wasm` profile), test 251 s, wasm-opt 237 s, size-gate 72 s,
+  drift 2 s, bun-test 222 s, determinism 235 s. The last whole full lanes
+  before it are the rounds' own, path-aware, on their merged branches: the
+  web host and tools round 9 of 9 at 4e121cd, ibl-post 9 of 9 in 899 s at
+  3a19da8, cook-anim 9 of 9 in 207 s (nextest 624 passed, 9 skipped);
+  physical materials, ui-text, shadows-aa and ui-shell passed every step
+  but bun-test, which failed on load timeouts or a stale cook (materials',
+  ui-text's and shadows-aa's then passed alone or after `og cook`;
+  ui-shell's was not rerun). Their sections have the figures.
+- **`scripts/check.sh functional` on main**: 5 of 5 in 117 s on the cook fix below
+  (fmt 2 s, clippy 5 s, test 115 s, bun-functional 110 s, drift skipped
+  unchanged).
+  Since c736dea and 222ae43 it skips the tests that compare the two hosts'
+  world hashes when the web module predates a crate change
+  (`OG_WASM_STALE`); the full lane runs them. The lane at 4358c7f failed
+  its bun step on a stale cook of the engine package's terrain fixture:
+  cook round four changed `og.Terrain` (layers from texture arrays,
+  e8de98d) without a `COOKER_VERSION` bump, and the incremental cook kept
+  the old blob (stamp, size and hash agreed), which the loader refused
+  ("holds type f447c7a2bbf6fee6, expected c0bc83477a1bc3ed"). The cook now
+  reads a kept output's header against the type hash and schema version of
+  its kind (`format::expected_header`) and cooks it again when they moved
+  (og-cook's `a_kept_blob_whose_type_moved_is_cooked_again`).
+- **`scripts/check.sh web-reference`**: passed in 372 s at efb3bdc (the
+  measure worktree): og-tests gfx 73 scenes per tier (WebGPU 37 s, WebGL2
+  51 s), fx-showcase's stations and the looks station's 37 frames per tier,
+  og-ui kit frames (frames-desktop 22, frames-phone 22, players 1, locales
+  15, six skins at 21 desktop and 21 phone each) per tier, third-person 3
+  per tier, Ember Vale on both tiers, a11y 23 of 23 per tier. Earlier runs
+  on record: ibl-post's on its branch passed (427 s); ui-shell's at a71c66b
+  failed 36 fx-showcase frames (18 per tier, RMSE 0.0101 to 0.0149 against
+  their own references, stale since the UI text round kerned the HUD) and
+  passed everything else, after which 47 fx-showcase and 8 topdown browser
+  frames within tolerance of `metal` were deleted (74e291c); the
   stylisation round's, after phase B, passed once the runner asked again
   for a deferred capture answered null (d08fdc9), the eight stylise scenes
-  within RMSE 0.00016 of `metal` on both tiers. The looks station's 37
-  frames per tier joined web-reference in stylisation round three
-  (70b1187); their run is not recorded.
-- **Wasm** (brotli -q 11, per download): the shipping `wasm` profile,
-  measured cold on 2026-10-21 and recorded in docs/ci.md by 5e9cbcf, on a
-  tree before stylisation phase B: 3D publish 2,947,818 B (70.3 % of
-  4 MiB), 2D publish 2,783,920 B (66.4 %), lanes 3,320,578 B (79.2 %, the
-  largest download; 3,198,197 B, 76 %, at 50eb7f7). The path-aware lane's
-  `wasm-gate` profile builds modules 5.3 to 5.9 % larger. After phase B and
-  every round since: not recorded.
-- **Determinism**: no run on main recorded. The physics lanes rounds ran
+  within RMSE 0.00016 of `metal` on both tiers.
+- **Wasm** (brotli -q 11, per download), the shipping `wasm` profile at
+  efb3bdc (the `--all` above, `target/evidence/size-gate.json`): lanes
+  3,403,984 B (81.2 % of 4 MiB, the largest download), 3D publish
+  2,987,050 B (71.2 %), 2D publish 2,821,474 B (67.3 %). Before
+  stylisation phase B (docs/ci.md, 5e9cbcf): lanes 3,320,578 B (79.2 %;
+  3,198,197 B, 76 %, at 50eb7f7), 3D publish 2,947,818 B (70.3 %), 2D
+  publish 2,783,920 B (66.4 %); phase B and the rounds since cost the lanes
+  module 83 kB. The path-aware lane's `wasm-gate` profile builds modules
+  5.3 to 5.9 % larger. Cook round four and stylisation round four, merged
+  after efb3bdc: not measured.
+- **Determinism**: passed in the `--all` above (235 s at efb3bdc). The physics lanes rounds ran
   the determinism tool (host debug, host release with lanes off and on four
   threads, wasm32 scalar and simd128) and its physics scenarios natively
   with every pass split on four and eight lanes: every build agrees,

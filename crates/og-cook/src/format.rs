@@ -73,6 +73,49 @@ pub trait BlobKind {
     }
 }
 
+/// The type hash and schema version a cooked file of manifest type `name`
+/// must hold today, for every kind the cook writes. The incremental cook
+/// reads a kept output's header against this, so a schema that changed
+/// without a [`COOKER_VERSION`] bump still re-cooks its blobs instead of
+/// leaving files the loader refuses. `None`: not a kind the cook writes
+/// (such an output is never fresh, which the first cook test shows).
+pub fn expected_header(name: &str) -> Option<(u64, u32)> {
+    macro_rules! kinds {
+        ($($k:ident),* $(,)?) => {{
+            $(if name == <$k as BlobKind>::NAME {
+                return Some((<$k as BlobKind>::type_hash(), <$k as BlobKind>::schema_version()));
+            })*
+            None
+        }};
+    }
+    kinds!(
+        Model,
+        TextureArray,
+        Texture,
+        Sound,
+        SoundChunk,
+        Font,
+        Scene,
+        Animation,
+        Lut,
+        Skin,
+        Shader,
+        Emitter,
+        Tileset,
+        Tilemap,
+        Flipbook,
+        Behaviour,
+        Rig,
+        Look,
+        Palette,
+        NavMesh,
+        Strings,
+        Terrain,
+        EnvironmentMap,
+        StreamPack,
+    )
+}
+
 macro_rules! row {
     ($(#[$doc:meta])* $name:ident, $schema:literal, $version:literal { $($(#[$fdoc:meta])* $field:ident : $ty:ty),* $(,)? }) => {
         $(#[$doc])*
