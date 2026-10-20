@@ -49,6 +49,7 @@ step.
 
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
+| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host with the last full lane's wasm); no wasm build, size, determinism or browser tiers | about the full lane's test step |
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
 | `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` on every PR and push to main | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 
@@ -287,10 +288,14 @@ the load average past 100 and every step past its timeouts):
   no `og test`, no reference capture. `scripts/check.sh quick` (under half
   a minute warm) is the most a worktree runs, and only when no gate runs
   elsewhere.
-- **After a batch of merges on main**: `scripts/check.sh` (no flag), the
-  path-aware full lane, by the one session that merges. It reruns only what
-  the batch can reach and takes about 30 s when nothing a step reads
-  changed. Merge several streams, then gate once; never gate per merge.
+- **After a batch of merges on main**: `scripts/check.sh functional`, by
+  the one session that merges: the tests, the GPU reference frames, the
+  generated API and the packages' tests, path-aware. Merge several
+  streams, then gate once; never gate per merge. The wasm build and its
+  size, determinism and the browser tiers are not in it: they measure,
+  and a measurement is pursued at a wave's end, not held against a merge.
+- **At a wave's end**: `scripts/check.sh` (the full lane, path-aware) or
+  `--all`, and `scripts/check.sh web-reference`.
 - **Once at the end of a round**: `scripts/check.sh --all`, before the
   final commit, with its summary in the report. Never `--all` after every
   edit; never touch files or delete `target/og-gate/` to force a step.

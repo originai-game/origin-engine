@@ -52,7 +52,13 @@ cd "$OG_ROOT" || exit 1
 
 STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
-STEPS="$STEPS_FULL test-quick bun-quick web-reference"
+# The functional lane: what a merge must not break (every test, the GPU
+# reference frames, the generated API, the packages' tests on the native
+# host), without the wasm build, its size, determinism and the browser
+# tiers, which are a wave's end measurements (docs/ci.md §Lanes).
+STEPS_FUNCTIONAL="fmt clippy test drift bun-functional"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional web-reference"
+FUNCTIONAL=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
 WASM_TRIPLE=wasm32-unknown-unknown
 SKIP=3   # a step returns this to report SKIPPED instead of PASS
@@ -146,9 +152,14 @@ run_tests() {
     og_green_clear "$key.gpu"
   fi
   if command -v cargo-nextest >/dev/null 2>&1; then
-    local args=(--workspace)
+    local args=(--workspace) filters=() expr=""
     for pk in ${exclude[@]+"${exclude[@]}"}; do args+=(--exclude "$pk"); done
-    [ "$gpu" = 1 ] || args+=(-E "not ($GPU_FILTER)")
+    [ "$gpu" = 1 ] || filters+=("not ($GPU_FILTER)")
+    # The functional lane builds no wasm: og-tests' check of the gate's
+    # wasm32 build of og-render is the full lane's.
+    [ "$FUNCTIONAL" = 1 ] && filters+=("not test(og_render_checks_for_wasm32)")
+    for f in ${filters[@]+"${filters[@]}"}; do expr="${expr:+$expr & }$f"; done
+    [ -z "$expr" ] || args+=(-E "$expr")
     cargo nextest run "${args[@]}"; rc=$?
     if [ "$rc" -eq 0 ] && [ "$doc" = 1 ]; then cargo test --workspace --doc; rc=$?; fi
   else
@@ -435,6 +446,21 @@ bun_test_packages() {
 # Every package. OG_GATE=1 makes packages/engine's build.sh take the dev
 # addon and `og` the test step built and the wasm wasm-opt produced
 # instead of compiling release and wasm again.
+# The packages' tests on what is here: the dev addon and og (built by
+# build.sh under OG_GATE=1) and the last full lane's wasm when one exists,
+# else only the packages that need no native build. A merge's functional
+# signal; the web module's own tests are the full lane's.
+step_bun_functional() {
+  if [ -s "$OG_WASM_OUT/opt-all.txt" ]; then
+    og_say "bun-functional: the web module is the last full lane's ($OG_WASM_OUT/opt-all.txt); wasm-build refreshes it"
+    OG_GATE=1 bun_test_packages packages/*/
+  else
+    og_say "bun-functional: no wasm built here yet; the packages that need none"
+    # shellcheck disable=SC2086
+    bun_test_packages $BUN_QUICK_PACKAGES
+  fi
+}
+
 step_bun_test() {
   if [ ! -s "$OG_WASM_OUT/opt-all.txt" ]; then
     og_err "no $OG_WASM_OUT/opt-all.txt: run wasm-build and wasm-opt before bun-test (or 'bun run test' in packages/engine standalone)"
@@ -504,7 +530,7 @@ step_web_reference() {
 # and beside test it measured stable (tests/evidence/gate-speed/).
 step_needs() {
   case "$1" in
-    test) echo wasm-build ;;
+    test) [ "$FUNCTIONAL" = 1 ] || echo wasm-build ;;
     wasm-opt) echo wasm-build ;;
     size-gate) echo wasm-opt ;;
     bun-test) echo wasm-opt ;;
@@ -629,11 +655,12 @@ if [ "$FORCE_ALL" = 1 ]; then WASM_PROFILE_DEFAULT=wasm; else WASM_PROFILE_DEFAU
 
 if [ "$ONLY" = 1 ]; then
   [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }
-  case "$1" in quick) og_err "--only takes steps, not a lane"; exit 2 ;; esac
+  case "$1" in quick|functional) og_err "--only takes steps, not a lane"; exit 2 ;; esac
 fi
 case "${1:-}" in
   "") selected="$STEPS_FULL" ;;
   quick) shift; selected="$STEPS_QUICK${*:+ $*}" ;;
+  functional) shift; FUNCTIONAL=1; selected="$STEPS_FUNCTIONAL${*:+ $*}" ;;
   *) selected="$*" ;;
 esac
 for s in $selected; do

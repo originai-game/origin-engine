@@ -108,12 +108,16 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
-- **When to run the gate.** During a round, the path-aware full lane
-  (`scripts/check.sh`, no flag) runs once per batch of merges on main, by
-  the one session that merges; it reruns only what the batch reaches. Run
-  `scripts/check.sh --all` once, at the end of the round, before the final
-  commit, and put its summary in the report. Never run `--all` after every
-  edit, and never a gate per merge. When a reference frame changes, re-record
+- **When to run the gate.** Function first, measurement later. After a
+  batch of merges on main, the one session that merges runs the
+  functional lane (`scripts/check.sh functional`: fmt, clippy, every
+  test with the GPU reference frames, drift, the packages' tests on the
+  native host) and that is what a merge must pass. The wasm build and its
+  size, determinism and the browser tiers are measurements of a wave's
+  end: `scripts/check.sh --all` and `scripts/check.sh web-reference` once
+  per wave, with their summary in the report, never per merge. A size or
+  frame-time number is a target to pursue there, not a reason to hold a
+  functional merge. Never run `--all` after every edit. When a reference frame changes, re-record
   it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx
   references), `--only bun-test` (a template's playtest frames),
   `scripts/check.sh web-reference` (the browser tiers); `--only` adds the
