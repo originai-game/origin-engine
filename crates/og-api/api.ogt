@@ -7872,11 +7872,14 @@ module ui {
     field highContrast bool "The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false." {
       optional true
     }
+    field reducedTransparency bool "The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false." {
+      optional true
+    }
     field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
   }
 
   struct UiDesc {
-    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas."
+    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas."
     desc true
     field scheme Scheme "The palette."
     field density DensityMode "The control sizes."
@@ -7884,11 +7887,12 @@ module ui {
     field displayFont Option.Font "The display font; null uses the body font."
     field monoFont Option.Font "The monospaced font; null uses the body font."
     field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
-    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole."
+    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts."
     field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
     field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
     field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
     field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
+    field reducedTransparency bool "Glass parts (a skin's glass line) are opaque surfaces: no blur of the frame under them, their frame whole. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency)."
     field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the skin's."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
     field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens."

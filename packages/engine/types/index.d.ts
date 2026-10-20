@@ -12194,12 +12194,16 @@ export interface Viewport {
    * The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false.
    */
   readonly highContrast?: boolean;
+  /**
+   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces, whatever UiDesc.reducedTransparency says. Omitted is false.
+   */
+  readonly reducedTransparency?: boolean;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency and the icon atlas.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -12241,7 +12245,7 @@ export interface UiDesc {
    */
   readonly roundedFont?: Font | null;
   /**
-   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole.
+   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts.
    *
    * @default []
    */
@@ -12270,6 +12274,12 @@ export interface UiDesc {
    * @default false
    */
   readonly reducedMotion?: boolean;
+  /**
+   * Glass parts (a skin's glass line) are opaque surfaces: no blur of the frame under them, their frame whole. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency).
+   *
+   * @default false
+   */
+  readonly reducedTransparency?: boolean;
   /**
    * The icon atlas og.ui.icon draws from; null takes the skin's.
    *

@@ -34,6 +34,10 @@ pub struct Viewport {
     /// The page prefers more contrast (`prefers-contrast: more`): the
     /// theme is its high-contrast variant whatever the game configured.
     pub high_contrast: bool,
+    /// The page prefers less transparency (`prefers-reduced-transparency:
+    /// reduce`): the theme's `reduced_transparency` is on whatever the game
+    /// configured (glass parts draw as opaque surfaces).
+    pub reduced_transparency: bool,
 }
 
 impl Default for Viewport {
@@ -46,6 +50,7 @@ impl Default for Viewport {
             coarse_pointer: false,
             reduced_motion: false,
             high_contrast: false,
+            reduced_transparency: false,
         }
     }
 }
@@ -723,15 +728,17 @@ impl Default for Ui {
 
 const STATE_VERSION: u32 = 8;
 
-/// `theme` with a viewport's preferences: the page's reduced motion turns
-/// the flag on, its contrast preference takes the high-contrast variant
-/// (a game's own settings can only add to what the page asks).
+/// `theme` with a viewport's preferences: the page's reduced motion and
+/// reduced transparency turn their flags on, its contrast preference takes
+/// the high-contrast variant (a game's own settings can only add to what
+/// the page asks).
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
     if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
         t = t.to_high_contrast();
     }
     t.reduced_motion |= viewport.reduced_motion;
+    t.reduced_transparency |= viewport.reduced_transparency;
     t
 }
 
@@ -3541,8 +3548,15 @@ impl Ui {
             nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
         // Glass: the blurred frame under the part, then its own frame
-        // thinned to the glass's fill.
-        let glass = skin.glass(part);
+        // thinned to the glass's fill; under reduced transparency an opaque
+        // surface instead, its frame whole.
+        let solid = self.theme.reduced_transparency && skin.glass(part).is_some();
+        let glass = skin.glass(part).filter(|_| !solid);
+        let (bg, fade) = if solid {
+            (Srgba { alpha: 1.0, ..bg }, alpha)
+        } else {
+            (bg, fade)
+        };
         if let Some(g) = glass {
             let mut tint = bg.linear();
             tint[3] = g.tint;

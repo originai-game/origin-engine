@@ -13,9 +13,10 @@
 // and, for games that only read keys, as the keys of their standard mapping.
 //
 // Accessibility: the UI's accessibility tree is mirrored into the page over
-// the canvas (a11y.ts), and the page's `prefers-reduced-motion: reduce` and
-// `prefers-contrast: more` reach the UI with the viewport (og-ui's theme
-// takes them over the game's settings), followed as they change.
+// the canvas (a11y.ts), and the page's `prefers-reduced-motion: reduce`,
+// `prefers-contrast: more` and `prefers-reduced-transparency: reduce` reach
+// the UI with the viewport (og-ui's theme takes them over the game's
+// settings; glass becomes an opaque surface), followed as they change.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
@@ -77,10 +78,18 @@ export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio:
   return { width: Math.max(1, Math.round(cssWidth * dpr)), height: Math.max(1, Math.round(cssHeight * dpr)), dpr };
 }
 
-/** The page's motion and contrast preferences, as the viewport carries them to og-ui. */
-export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean } {
+/** The page's preferences og-ui follows, each with the viewport field it sets. */
+export const PAGE_PREFERENCES = [
+  ["reducedMotion", "(prefers-reduced-motion: reduce)"],
+  ["highContrast", "(prefers-contrast: more)"],
+  ["reducedTransparency", "(prefers-reduced-transparency: reduce)"],
+] as const;
+
+/** The page's motion, contrast and transparency preferences, as the viewport carries them to og-ui. */
+export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean } {
   const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
-  return { reducedMotion: query("(prefers-reduced-motion: reduce)"), highContrast: query("(prefers-contrast: more)") };
+  const [motion, contrast, transparency] = PAGE_PREFERENCES.map(([, q]) => query(q));
+  return { reducedMotion: motion!, highContrast: contrast!, reducedTransparency: transparency! };
 }
 
 /** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
@@ -498,8 +507,8 @@ export class Shell {
     const mirror = new A11yMirror(canvas, (e) => this.#send(ring, e));
     this.#a11y = mirror;
     this.#listeners.push(() => mirror.dispose());
-    // The page's motion and contrast preferences, followed as the reader changes them.
-    for (const q of ["(prefers-reduced-motion: reduce)", "(prefers-contrast: more)"]) {
+    // The page's motion, contrast and transparency preferences, followed as the reader changes them.
+    for (const [, q] of PAGE_PREFERENCES) {
       const media = globalThis.matchMedia?.(q);
       if (!media?.addEventListener) continue;
       const changed = () => this.worker.postMessage({ type: "viewport", viewport: { ...this.#viewport, ...pagePreferences() } });
@@ -508,6 +517,8 @@ export class Shell {
     }
     const typing = (e: KeyboardEvent) => {
       if (text.owns(e.target)) return e.isComposing || text.composing || e.keyCode === 229;
+      // The mirror's elements (a slider's native range among them) pass their keys to the game.
+      if (mirror.owns(e.target)) return false;
       const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
       return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
     };
