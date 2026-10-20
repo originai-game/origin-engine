@@ -57,3 +57,34 @@ og-render's `bake` of the same image and settings exactly.
 The publish module is 76.7 % of the 4 MiB budget. The HDR/EXR decoders and
 the prefilter (`og-render` feature `bake`) are native only; the wasm gains
 the copy and adapt passes, the AgX shader, the blob loader and the API.
+
+## After merging main (9b7f45c physical materials, then 5dc3aa0 web-host-tools)
+
+- The path-aware gate passed at 3a19da8: 9/9 steps, 899 s.
+- Per download (brotli), against main 5dc3aa0's own measurements
+  (docs/phase-1.md row 44):
+
+| Download | main 5dc3aa0 | r-ibl-post 3a19da8 | Delta |
+|---|---|---|---|
+| 3D publish | 2,853,865 B | 2,863,821 B (68.3 %) | +9,956 B |
+| 2D publish | 2,688,261 B | 2,697,036 B (64.3 %) | +8,775 B |
+| lanes | 3,230,782 B | 3,237,472 B (77.2 %) | +6,690 B |
+
+- Merged frames:
+  - og-gfx over all 51 og-tests scenes (main's 49 plus post-agx and
+    environment-map): every scene, `materials-physical` included, matches
+    metal at max channel difference 0.
+  - The exceptions are those whose difference main has too, measured on
+    main 9b7f45c with the same numbers: `fx-2d`, `sprites-20k`,
+    `point-spot-lights` and `lights-256` at max 1, and the terrain and
+    water scenes at RMSE 0.0004–0.0066, all within the rule.
+  - All 21 fx-showcase suites pass on metal. `physical` and `environment`
+    are at RMSE 0.00000 against their references.
+- The split shaders needed nothing: `pbr_fs.wgsl` and `physical.wgsl` read
+  the frame group's irradiance and prefiltered cubes, which an environment
+  map fills in the sky's place.
+- A stale `crates/og-tests/reference-scene/cooked/` (cooked before main's
+  `COOKER_VERSION` r3) failed `lanes.test.ts` once ("walker.glb.ogb: holds
+  type 3ddf…, expected e792…"). That test cooks the scene only when
+  `cooked/.cook.ogt` is missing; `og cook crates/og-tests/reference-scene`
+  fixed it.
