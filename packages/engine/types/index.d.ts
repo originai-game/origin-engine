@@ -4859,6 +4859,10 @@ export interface SoundInfo {
    * @unit s (seconds of simulation time)
    */
   readonly seconds: number;
+  /**
+   * The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest.
+   */
+  readonly chunks: number;
 }
 
 /**
@@ -16303,6 +16307,7 @@ export declare namespace og {
     function fontInfo(world: World, font: Font): Result<FontInfo>;
     /**
      * Load a cooked sound for the audio module.
+     * A long sound (music, ambience) can be cooked in chunks of whole QOA frames: `sound { stream true chunk 4 }` in its `.wav.ogt` import settings (chunk in seconds, 1 to 60, default 4), and every sound whose QOA file would pass 1 MiB unless `stream false`. Its first chunk loads with it and the others follow the playheads (SoundInfo.chunks), so music is never resident whole; it plays sample for sample as the whole file would, loops and crossfades included. A sound cooked in chunks cannot join a streaming group.
      *
      * @param world The world that owns the sound.
      * @param path The sound's asset id, such as `audio/blip.wav`.
@@ -16388,6 +16393,7 @@ export declare namespace og {
     function gltfInfo(world: World, asset: Asset): Result<GltfInfo>;
     /**
      * Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+     * Clips are cooked as f32 samples, or with `animation { compress true tolerance 0.0001 }` in the model's import settings as quantised keys (rotations as 48-bit smallest-three, translations, scales and weights as 16 bits over each channel's range) with every frame dropped that interpolation rebuilds within the tolerance; either way every frame is rebuilt here and the clip plays as f32. Morph targets are cooked sparse (the vertices each moves).
      *
      * @param world The world whose animation owns the assets.
      * @param path The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted).

@@ -92,7 +92,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2992</sub>
+<sub>`api.ogt` line 2993</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -122,7 +122,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2999</sub>
+<sub>`api.ogt` line 3000</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -150,7 +150,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3006</sub>
+<sub>`api.ogt` line 3007</sub>
 
 <a id="fn-gltf"></a>
 
@@ -182,7 +182,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3012</sub>
+<sub>`api.ogt` line 3013</sub>
 
 <a id="fn-scene"></a>
 
@@ -212,7 +212,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3020</sub>
+<sub>`api.ogt` line 3021</sub>
 
 <a id="fn-font"></a>
 
@@ -242,7 +242,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3027</sub>
+<sub>`api.ogt` line 3028</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -272,13 +272,15 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3034</sub>
+<sub>`api.ogt` line 3035</sub>
 
 <a id="fn-sound"></a>
 
 ### `og.load.sound`
 
 Load a cooked sound for the audio module.
+
+A long sound (music, ambience) can be cooked in chunks of whole QOA frames: `sound { stream true chunk 4 }` in its `.wav.ogt` import settings (chunk in seconds, 1 to 60, default 4), and every sound whose QOA file would pass 1 MiB unless `stream false`. Its first chunk loads with it and the others follow the playheads (SoundInfo.chunks), so music is never resident whole; it plays sample for sample as the whole file would, loops and crossfades included. A sound cooked in chunks cannot join a streaming group.
 
 ```ts
 og.load.sound(world: World, path: string): Result<Sound>
@@ -296,13 +298,14 @@ Binding symbol `og_load_sound` · publish builds: kept
 ```ogt
 fn sound {
   doc "Load a cooked sound for the audio module."
+  doc "A long sound (music, ambience) can be cooked in chunks of whole QOA frames: `sound { stream true chunk 4 }` in its `.wav.ogt` import settings (chunk in seconds, 1 to 60, default 4), and every sound whose QOA file would pass 1 MiB unless `stream false`. Its first chunk loads with it and the others follow the playheads (SoundInfo.chunks), so music is never resident whole; it plays sample for sample as the whole file would, loops and crossfades included. A sound cooked in chunks cannot join a streaming group."
   param world World "The world that owns the sound."
   param path String "The sound's asset id, such as `audio/blip.wav`."
   returns Result.Sound
 }
 ```
 
-<sub>`api.ogt` line 3041</sub>
+<sub>`api.ogt` line 3042</sub>
 
 <a id="fn-lut"></a>
 
@@ -332,7 +335,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3048</sub>
+<sub>`api.ogt` line 3050</sub>
 
 <a id="fn-environment"></a>
 
@@ -362,7 +365,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3055</sub>
+<sub>`api.ogt` line 3057</sub>
 
 <a id="fn-emitter"></a>
 
@@ -392,7 +395,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3062</sub>
+<sub>`api.ogt` line 3064</sub>
 
 <a id="fn-shader"></a>
 
@@ -422,7 +425,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3069</sub>
+<sub>`api.ogt` line 3071</sub>
 
 <a id="fn-texture"></a>
 
@@ -452,7 +455,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3076</sub>
+<sub>`api.ogt` line 3078</sub>
 
 <a id="fn-skin"></a>
 
@@ -482,7 +485,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3083</sub>
+<sub>`api.ogt` line 3085</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -512,7 +515,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3090</sub>
+<sub>`api.ogt` line 3092</sub>
 
 <a id="fn-status"></a>
 
@@ -542,7 +545,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3097</sub>
+<sub>`api.ogt` line 3099</sub>
 
 <a id="fn-error"></a>
 
@@ -572,7 +575,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3104</sub>
+<sub>`api.ogt` line 3106</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -602,13 +605,15 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3111</sub>
+<sub>`api.ogt` line 3113</sub>
 
 <a id="fn-animation"></a>
 
 ### `og.load.animation`
 
 Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+
+Clips are cooked as f32 samples, or with `animation { compress true tolerance 0.0001 }` in the model's import settings as quantised keys (rotations as 48-bit smallest-three, translations, scales and weights as 16 bits over each channel's range) with every frame dropped that interpolation rebuilds within the tolerance; either way every frame is rebuilt here and the clip plays as f32. Morph targets are cooked sparse (the vertices each moves).
 
 ```ts
 og.load.animation(world: World, path: string): Result<Animation>
@@ -626,13 +631,14 @@ Binding symbol `og_load_animation` · publish builds: kept
 ```ogt
 fn animation {
   doc "Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles."
+  doc "Clips are cooked as f32 samples, or with `animation { compress true tolerance 0.0001 }` in the model's import settings as quantised keys (rotations as 48-bit smallest-three, translations, scales and weights as 16 bits over each channel's range) with every frame dropped that interpolation rebuilds within the tolerance; either way every frame is rebuilt here and the clip plays as f32. Morph targets are cooked sparse (the vertices each moves)."
   param world World "The world whose animation owns the assets."
   param path String "The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted)."
   returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
 }
 ```
 
-<sub>`api.ogt` line 3118</sub>
+<sub>`api.ogt` line 3120</sub>
 
 <a id="fn-rig"></a>
 
@@ -662,7 +668,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3125</sub>
+<sub>`api.ogt` line 3128</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -692,7 +698,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3132</sub>
+<sub>`api.ogt` line 3135</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -722,7 +728,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3139</sub>
+<sub>`api.ogt` line 3142</sub>
 
 ## Components, resources and events
 
@@ -745,7 +751,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2987</sub>
+<sub>`api.ogt` line 2988</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -768,7 +774,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3146</sub>
+<sub>`api.ogt` line 3149</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -793,7 +799,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3152</sub>
+<sub>`api.ogt` line 3155</sub>
 
 ## Types
 
@@ -995,6 +1001,7 @@ A loaded sound.
 | `channels` | `number` | `0` | — | — | — | Interleaved channels. |
 | `frames` | `number` | `0` | — | — | — | Samples per channel. |
 | `seconds` | `number` | `0` | — | `s` | — | Its length. |
+| `chunks` | `number` | `0` | — | — | — | The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest. |
 
 ```ogt
 struct SoundInfo {
@@ -1007,6 +1014,7 @@ struct SoundInfo {
   field seconds f32 "Its length." {
     unit s
   }
+  field chunks u32 "The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest."
 }
 ```
 

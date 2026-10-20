@@ -169,7 +169,7 @@ impl Assets {
     }
 
     /// The ready bundle holding `id` (the default bundle first).
-    fn bundle_for(&self, id: &str) -> Result<(&Bundle, &str), String> {
+    pub(crate) fn bundle_for(&self, id: &str) -> Result<(&Bundle, &str), String> {
         let order = self.default_bundle.into_iter().chain(0..self.entries.len());
         let mut open = 0;
         for i in order {
@@ -600,16 +600,57 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
     // The engine's audio bank holds the sound the mixer plays; its handle is
     // the one AudioSource.sound names.
     let handle = match og_audio::link(eng.id) {
+        // Cooked in chunks: the first is here, the others are read as the
+        // playheads near them (stream::sound_chunks).
+        Some(link) if sound.chunked() => link
+            .bank()
+            .insert_chunked(
+                &sound.id,
+                &sound.qoa,
+                sound.meta.chunk_frames,
+                sound.meta.chunk_count,
+            )
+            .map_err(|e| e.reason().to_string())?,
         Some(link) => link
             .bank()
             .insert_qoa(&sound.id, &sound.qoa)
             .map_err(|e| e.reason().to_string())?,
         None => return Err(format!("{id}: this engine has no audio")),
     };
+    #[cfg(not(target_arch = "wasm32"))]
+    if sound.chunked()
+        && let Some(link) = og_audio::link(eng.id)
+    {
+        link.bank()
+            .set_chunk_loader(handle, chunk_loader(&eng.assets.borrow(), &sound));
+    }
     let mut assets = eng.assets.borrow_mut();
     assets.sounds.push(sound);
     assets.sound_handles.push(handle);
     Ok(assets.sounds.len() - 1)
+}
+
+/// Natively, a chunk a voice reaches before stream::sound_chunks put it in
+/// the bank (a long advance mixed at once) is read from its file there
+/// and then, on whichever thread mixes, its type and cook stamp checked.
+#[cfg(not(target_arch = "wasm32"))]
+fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
+    let files: Vec<Option<(String, u64)>> = (0..sound.meta.chunk_count)
+        .map(|n| {
+            let id = og_cook::runtime::chunk_id(&sound.id, n);
+            let (bundle, dir) = assets.bundle_for(&id).ok()?;
+            let out = bundle.output(&id).ok()?;
+            Some((format!("{dir}/{}", out.file), out.stamp))
+        })
+        .collect();
+    std::sync::Arc::new(move |n| {
+        let (path, stamp) = files.get(n as usize)?.as_ref()?;
+        let bytes = std::fs::read(path).ok()?;
+        match og_cook::runtime::sound_chunk_of(&bytes, path, *stamp) {
+            Ok((k, qoa)) if k == n => Some(qoa),
+            _ => None,
+        }
+    })
 }
 
 /// The `sounds` index of a sound handle.

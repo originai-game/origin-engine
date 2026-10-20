@@ -13,7 +13,8 @@
 //! |---|---|---|
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices` |
 //! | texture (`og.Texture`) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
-//! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file) |
+//! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
+//! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `atlas.<n>` (KTX2 RGBA8, zlib) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
@@ -327,12 +328,19 @@ impl BlobKind for Texture {
 // ── sound ────────────────────────────────────────────────────────────────
 
 row!(
-    /// The root of a sound blob; the `qoa` section is a QOA file.
-    SoundMeta, "og.Sound", 1 {
+    /// The root of a sound blob; the `qoa` section is a QOA file. A sound
+    /// cooked in chunks (`chunk_count` > 0) holds the file's header (the
+    /// whole length) and its first `chunk_frames` QOA frames only; chunk
+    /// `n` (1..chunk_count) is the blob `<id>#chunk<n>` ([`SoundChunkMeta`]).
+    SoundMeta, "og.Sound", 2 {
         sample_rate: u32,
         channels: u32,
         /// Samples per channel.
         frames: u32,
+        /// QOA frames (5120 samples per channel) per chunk; 0: not chunked.
+        chunk_frames: u32,
+        /// Chunks, the first included; 0: not chunked.
+        chunk_count: u32,
     }
 );
 
@@ -342,6 +350,27 @@ impl BlobKind for Sound {
     const NAME: &'static str = "og.Sound";
     fn schemas() -> Vec<Schema> {
         vec![SoundMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a chunk of a sound cooked in chunks (`<id>#chunk<n>`);
+    /// its `qoa` section is the chunk's QOA frames, without a file header.
+    SoundChunkMeta, "og.SoundChunk", 1 {
+        /// The chunk's index (1 and up: the first is in the sound's blob).
+        chunk: u32,
+        /// Its first QOA frame in the whole file, and how many it holds.
+        first_frame: u32,
+        frame_count: u32,
+    }
+);
+
+/// A chunk of a sound cooked in chunks.
+pub struct SoundChunk;
+impl BlobKind for SoundChunk {
+    const NAME: &'static str = "og.SoundChunk";
+    fn schemas() -> Vec<Schema> {
+        vec![SoundChunkMeta::schema()]
     }
 }
 

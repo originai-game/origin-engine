@@ -11,7 +11,7 @@
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
 pub mod anim;
-mod audio;
+pub mod audio;
 mod e6;
 mod environment;
 mod flipbook;
@@ -439,6 +439,18 @@ struct Source {
     hash: u64,
     gltf: Option<model::GltfSource>,
     error: Option<String>,
+    /// A WAV's QOA encoding, made once by the first of its outputs to cook
+    /// (a sound cooked in chunks has one output per chunk).
+    encoded: std::sync::OnceLock<Result<std::sync::Arc<audio::Encoded>, String>>,
+}
+
+impl Source {
+    fn encoded(&self, per_chunk: Option<u32>) -> Result<std::sync::Arc<audio::Encoded>, CookError> {
+        self.encoded
+            .get_or_init(|| audio::encode(&self.bytes, per_chunk).map(std::sync::Arc::new))
+            .clone()
+            .map_err(CookError)
+    }
 }
 
 enum Work<'a> {
@@ -448,7 +460,10 @@ enum Work<'a> {
     Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32),
     Texture(&'a Source, u32),
-    Sound(&'a Source),
+    /// A sound, whole or (QOA frames per chunk, chunks) the first of its chunks.
+    Sound(&'a Source, Option<(u32, u32)>),
+    /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
+    SoundChunk(&'a Source, u32, u32),
     Lut(&'a Source),
     Emitter(&'a Source),
     Skin(&'a Source),
@@ -680,6 +695,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             hash: 0,
             gltf: None,
             error: None,
+            encoded: std::sync::OnceLock::new(),
         });
     }
     let mut consumed: BTreeSet<String> = BTreeSet::new();
@@ -850,14 +866,57 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
             },
-            Kind::Sound => {
+            Kind::Sound if s.rel.ends_with(".ogt") => {
                 // A preset's stamp moves with the synthesiser.
-                let st = if s.rel.ends_with(".ogt") {
-                    stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash])
-                } else {
-                    stamp(&[b"sound", &hash])
+                let st = stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash]);
+                outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s, None)));
+            }
+            Kind::Sound => {
+                let settings = match audio::SoundSettings::parse(settings_block(s, "sound")) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        early_errors.push((s.rel.clone(), "sound", e));
+                        continue;
+                    }
                 };
-                outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s)));
+                // An unreadable header fails in the cook, with its reason.
+                let chunking = audio::shape(&s.bytes)
+                    .ok()
+                    .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
+                if chunking.is_some() && group_of.contains_key(&s.rel) {
+                    early_errors.push((
+                        s.rel.clone(),
+                        "sound",
+                        "a sound cooked in chunks streams by itself: leave it out of stream groups, or give it `sound { stream false }`".into(),
+                    ));
+                    continue;
+                }
+                let shape =
+                    chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
+                let st = stamp(&[
+                    b"sound",
+                    &hash,
+                    settings.describe().as_bytes(),
+                    shape.as_bytes(),
+                ]);
+                outs.push((
+                    s.rel.clone(),
+                    format::Sound::NAME,
+                    st,
+                    Work::Sound(s, chunking),
+                ));
+                if let Some((per, count)) = chunking {
+                    for n in 1..count {
+                        let st =
+                            stamp(&[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()]);
+                        outs.push((
+                            format!("{}#chunk{n}", s.rel),
+                            format::SoundChunk::NAME,
+                            st,
+                            Work::SoundChunk(s, per, n),
+                        ));
+                    }
+                }
             }
             Kind::Lut => {
                 let st = stamp(&[b"lut", &hash]);
@@ -1290,10 +1349,17 @@ fn run(
             );
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
-        Work::Sound(s) if s.rel.ends_with(".ogt") => {
+        Work::Sound(s, _) if s.rel.ends_with(".ogt") => {
             sfx::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
         }
-        Work::Sound(s) => audio::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n])),
+        Work::Sound(s, chunking) => {
+            let e = s.encoded(chunking.map(|c| c.0))?;
+            audio::cook(&e, *chunking, p.stamp).map(|(b, n)| (b, vec![n]))
+        }
+        Work::SoundChunk(s, per, n) => {
+            let e = s.encoded(Some(*per))?;
+            audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
+        }
         Work::Lut(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a .cube LUT is text (UTF-8)".into()))?;

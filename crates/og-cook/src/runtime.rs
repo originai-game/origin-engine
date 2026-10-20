@@ -619,6 +619,14 @@ impl Bundle {
         })
     }
 
+    /// Reads a chunk of a sound cooked in chunks (`<id>#chunk<n>`,
+    /// [`chunk_id`]): its index and its QOA frames.
+    pub fn sound_chunk(&self, id: &str, bytes: &[u8]) -> Result<(u32, Vec<u8>), LoadError> {
+        let blob = self.blob::<format::SoundChunk>(id, bytes)?;
+        let meta = one::<format::SoundChunkMeta>(&blob)?;
+        Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+    }
+
     /// Decodes a font blob, inflating its atlas pages.
     pub fn font(&self, id: &str, bytes: &[u8]) -> Result<CookedFont, LoadError> {
         let blob = self.blob::<format::Font>(id, bytes)?;
@@ -1438,12 +1446,46 @@ impl CookedTexture {
 pub struct CookedSound {
     pub id: String,
     pub meta: SoundMeta,
+    /// The QOA file; of a sound cooked in chunks (`meta.chunk_count` > 0),
+    /// its header and first chunk only.
     pub qoa: Vec<u8>,
 }
 
+/// A sound chunk blob's index and QOA frames, read from its file's bytes
+/// without a bundle (a mixer thread reading a chunk the moment a voice
+/// needs it), its type and cook `stamp` checked.
+pub fn sound_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<(u32, Vec<u8>), LoadError> {
+    let aligned = og_blob::AlignedBytes::from_slice(bytes);
+    let expect = Expect {
+        type_hash: format::SoundChunk::type_hash(),
+        schema_version: format::SoundChunk::schema_version(),
+        stamp: Some(stamp),
+    };
+    let blob = Blob::open(aligned.as_slice(), path, &expect)?;
+    let meta = one::<format::SoundChunkMeta>(&blob)?;
+    Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+}
+
+/// The id of chunk `n` of a sound cooked in chunks (`audio/theme.wav#chunk3`).
+pub fn chunk_id(id: &str, n: u32) -> String {
+    format!("{}#chunk{n}", asset_id(id))
+}
+
 impl CookedSound {
-    /// Interleaved 16-bit PCM.
+    /// Whether it was cooked in chunks (the others are blobs of their own).
+    pub fn chunked(&self) -> bool {
+        self.meta.chunk_count > 0
+    }
+
+    /// Interleaved 16-bit PCM (of a sound cooked in chunks: refused, its
+    /// samples are not all here).
     pub fn decode(&self) -> Result<qoa::Decoded, LoadError> {
+        if self.chunked() {
+            return Err(LoadError::Invalid {
+                path: self.id.clone(),
+                reason: "cooked in chunks: decode it chunk by chunk".into(),
+            });
+        }
         qoa::decode(&self.qoa).map_err(|reason| LoadError::Invalid {
             path: self.id.clone(),
             reason,
