@@ -136,3 +136,22 @@ partial pixels); `tests/effects.rs`
 `cpu_particles_bounce_off_the_scene_colliders` (plane, flat height field
 and box: lowest particle 0.016 m, 32 rising again; none: below -1 m and
 counted as skipped).
+
+## The gate (path-aware `scripts/check.sh`, never `--all`)
+
+- At 6fb84fd (before the second and third merges): fmt, clippy, drift,
+  determinism, wasm-build, wasm-opt, test, size-gate PASS; bun-test failed
+  once on a 5 s timeout under load (feel.test.ts) and passed on its rerun
+  (`scripts/check.sh bun-test`, 53 s).
+- At b6b447d (main 376f3cd merged): fmt, clippy, drift, determinism,
+  wasm-build, wasm-opt PASS; test failed once on og-audio's wall-clock
+  bound (load), then test and size-gate PASS; bun-test failed on stale
+  template cooks (cooker r4), passed after `og cook` of templates/game.
+- At 2651887 (main e795264 merged): fmt, clippy, drift, determinism,
+  wasm-build, wasm-opt, test, size-gate PASS. bun-test first failed in
+  packages/engine's typecheck (main's tests/look.test.ts calls
+  `toBeDefined`, undeclared in src/env.d.ts; fixed in 2651887), then on
+  load timeouts that moved between runs (web-export and asset-stream at
+  120 s, two 5 s tests, og dev's probe capture in reload-asset); the same
+  119 tests pass run directly (`bun test --parallel tests/`, 94.8 s, load
+  average 45). The coordinator stopped further gate runs here.
