@@ -301,6 +301,16 @@ lanes files. In the gate's mode (`OG_GATE=1`) build.sh exits 1 when
 `scripts/wasm-crates.txt` marks og-host-web `lanes` and the gate left no
 `og_host_web-lanes.wasm`.
 
+A Rust panic inside a lane aborts the pool Worker it runs on. The lanes
+wasm's engine thread waits for a parallel call on og-lanes' own latch, not
+on rayon's, and a recorded panic rings it: the engine thread then panics
+with the lane's message, the Worker traps and the page gets a structured
+`panic` error naming the tick and the lane's site, instead of a Worker
+asleep in `Atomics.wait` (docs/web-export.md §Errors). The browser check is
+`bun tests/web/lane-panic.ts` (in `web-reference`): it injects a panic into
+a lane (`og_web_lanes_fault`, the Worker's `fault` call) and needs the
+crash on the page within 5 s, then the same fault single-threaded.
+
 ## `packages/engine/scripts/build.sh` outside the gate
 
 Standalone (`bun run build`, `bun run test` in `packages/engine`), build.sh
@@ -329,6 +339,16 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   being ported; the step prints a `NOTE` once it builds). A crate builds a
   `.wasm` only with `crate-type = ["cdylib", …]`; until one does, the wasm
   steps report "no wasm artifact" and pass.
+- A line `variant NAME CRATE FEATURES` builds CRATE's publish variant once
+  per line instead of once: `--no-default-features --features FEATURES`
+  into `<target>/wasm-NAME`, raw name `<crate>-NAME.wasm`, bindgen'd as
+  `origin-engine` and measured by the size gate as its own download.
+  og-host-web has two, one per game profile (docs/web-export.md
+  §Variants): `publish` (`publish,physics3d`, the 3D module in
+  `dist/web-publish`) and `publish2d` (`publish,physics2d`, the 2D module
+  in `dist/web-publish-2d`); `build.sh` under the gate stops when a declared
+  variant's wasm is missing. The lanes variant keeps `--features publish`
+  (both profiles).
 - `wasm_artifacts optional|required`: flip to `required` when `og-host-web`
   becomes a cdylib, so the size gate can no longer pass by measuring nothing.
 - `drift_check optional|required`: `og api check` counts as available when
@@ -531,6 +551,13 @@ a subset.
 ## Updating a budget
 
 Budgets come from `docs/design.md` §7 and live in `scripts/budgets.txt`.
+`wasm_core_brotli_bytes` is per download: a page downloads one engine
+module (the 3D or the 2D publish variant by the game's profile, or the
+lanes variant on an isolated page; docs/web-export.md §Variants), so each
+is held to it and the size gate's figure is the largest of them
+(`max_brotli_bytes` in `size-gate.json`, the `max` line of its table),
+never the sum of every wasm the gate builds. The table prints each
+variant's brotli size with its download and its share of the budget.
 Change the number in its own commit, with the measured value from
 `target/evidence/size-gate.json` and the reason in the message; a raise above
 a design §7 target also changes design §7 in the same commit. The core budget

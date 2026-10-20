@@ -52,6 +52,38 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand).
 
+## Phase 4, web host and tools round (2026-10-20)
+
+Branch `web-host-tools` from main at b62dd65. Evidence:
+`tests/evidence/P4/web-host-tools/`.
+
+- **A panic inside a lane** (a4f0231): the lanes wasm's engine thread no
+  longer waits on rayon's latch; og-lanes hands each parallel call to the
+  pool and waits on a latch of its own that a recorded panic also rings,
+  then panics with the lane's line, so the Worker traps instead of
+  sleeping in `Atomics.wait` (the lanes round's "Left"). Every panic is
+  recorded with its message, location, tick and lane site and reaches the
+  page as a structured host error (`{ kind, message, tick, lane,
+  location }`: the Worker's crash, `Shell.error`, `onCrash`,
+  `__runtime_probe__.error`, the error card); the shell adds a 15 s frame
+  deadline (`hang`). `tests/web/lane-panic.ts` (in web-reference): the
+  crash is on the page 9 ms after an injected fault (lanes, `lane:
+  "extract"`) and 6 ms single-threaded; with rayon's wait put back the
+  page hangs until the deadline. docs/web-export.md §Errors.
+- **`og dev` and signals** (6a44eaf): SIGINT, SIGTERM and SIGHUP stop the
+  game's whole process group, then og ends by the signal
+  (`crates/og-cli/README.md`; the tooling round's "Left out").
+- **A publish wasm per profile** (53a36fd, row 44): sizes in the owed
+  table; `og build --publish` ships the variant of the profile and records
+  og-build.json `variant`.
+- **Fantasy pack and Ember Vale's HUD** (718fb43, row 48); **og.IkChain's
+  world space** in the IDL (868d1b2, row 49).
+- **GPU culling threshold** (5b0bff4): measured again on Metal with the
+  cull serial, the crossover is still about 16,000 instances (GPU/CPU
+  0.98 street, 1.06 aerial at 16,384), so `GPU_CULLING_MIN_INSTANCES`
+  stays (`culling-threshold.md`; the culling round's "Not done").
+- **three.js comparison**: `threejs-comparison.md` (see its commit).
+
 ## Phase 3, lanes round (2026-10-19)
 
 Branch `p3-lanes`, 211fc40..HEAD. Parallel systems (docs/design.md §2.2)
@@ -1369,6 +1401,9 @@ After the phase 2 3D SPH round: row 29 done too.
 After the phase 2 showcase round: three new rows open (47–49), row 12 now
 covers the archetypes' typecheck too.
 
+After the web host and tools round (P4 below): rows 44 (the engine's
+part), 48 and 49 done.
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -1421,12 +1456,12 @@ resource only the owner can give.
 | 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, P2 UI | done, ca81fb8 |
 | 42 | The kit's small type: the shop cards' item names (`caption`, 7 CSS px of ink), the idle HUD's generator names and the `meta` units, under og polish's 9 px | E7 | S | engine, P2 UI | done, f9bad51 |
 | 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | done: the platform's tokens of b71ae8fac, og-ui synced with the danger tint in cf932f8 (every role 4.5:1 or more, `crates/og-ui/tests/button_contrast.rs`) |
-| 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
+| 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | done (the engine's part), 53a36fd: 3D publish 2,835,470 B (67 %), 2D publish 2,672,388 B (63 %), lanes (both profiles, as before) 3,211,102 B (76 %, the largest download); the budget per download in design §7, docs/ci.md §Updating a budget, docs/web-export.md §Variants |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, P2 UI | done, d00f20c |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, P2 UI | done, 54b59df |
 | 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, which keeps its own reference by design: compute-only particle collision, MSAA against TAA) | P2 showcase | S | engine, phase 2 | open |
-| 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | open |
-| 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | open |
+| 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | done, 718fb43 (polish contrast 100, lowest 4.65:1; UI sounds 3 of 3 on the phone; `crates/og-ui/tests/pack_contrast.rs`) |
+| 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | done, 868d1b2 |
 
 ## 0. Rules that shape the plan
 
