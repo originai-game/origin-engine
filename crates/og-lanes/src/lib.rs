@@ -472,6 +472,37 @@ pub fn install<R: Send>(
     }
 }
 
+/// Runs `f`, work outside the helpers that may reach rayon (a physics
+/// query: parry splits some of its traversals with `rayon::join`), on the
+/// calling thread inside its one-thread pool, as [`install`] runs a call
+/// below its grain: rayon reached from `f` runs inline, never on rayon's
+/// global pool and never behind a wait on another thread, so on the web a
+/// panic in it traps the engine thread itself (the structured crash of
+/// [`panic_report`]) instead of leaving it asleep on rayon's own latch.
+/// Called from inside a lane, `f` runs there, on that lane's pool. A fault
+/// injected at `site` ([`inject_fault`]) fires here, on the calling thread.
+/// Nothing is counted: the call does not go parallel.
+pub fn serial<R: Send>(site: Site, f: impl FnOnce() -> R + Send) -> R {
+    imp::serial(move || {
+        fault(site);
+        f()
+    })
+}
+
+/// The pool's threads lanes would use now: 1 when lanes are off, switched
+/// off or there is no pool (what [`report`] says, without its counters).
+/// A caller that sizes its grain by the thread count (og-physics's body
+/// grain) reads it before calling [`install`].
+pub fn threads() -> u32 {
+    if !SWITCH.load(Ordering::Relaxed) {
+        return 1;
+    }
+    match imp::pool() {
+        (n, _, "") => n.max(1),
+        _ => 1,
+    }
+}
+
 /// The calling thread is running a lane's item: it is a pool thread, and
 /// rayon called from it reaches the pool.
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
@@ -680,6 +711,12 @@ mod imp {
             return;
         }
         RELAY.get_or_init(|| super::relay::Relay::start(rayon::spawn));
+        // From now on the engine thread belongs to its one-thread pool, so
+        // rayon reached from it outside every helper (a library's own
+        // `rayon::join`) runs inline instead of entering the Worker pool
+        // and waiting on rayon's latch, which no panic rings: the only way
+        // from the engine thread onto the pool is the relay and its latch.
+        super::one::serial(|| ());
         READY.store(threads, Ordering::Relaxed);
     }
 
@@ -944,6 +981,62 @@ mod tests {
         } else {
             assert_eq!((threads, after), (1, before));
         }
+    }
+
+    /// `serial`: work outside the helpers runs on the calling thread, rayon
+    /// inside it included (both halves of a `join` on the caller, one
+    /// thread seen), and leaves the thread in its one-thread pool, so rayon
+    /// reached from it later never finds the global pool; a fault injected
+    /// at the site fires there, on the calling thread, recorded without a
+    /// lane, and a query after it runs normally. On a fresh thread, as the
+    /// engine thread is before its first step.
+    #[test]
+    fn serial_runs_rayon_inline_and_its_fault_is_the_callers() {
+        hooked(17, || {
+            std::thread::spawn(|| {
+                let caller = std::thread::current().id();
+                assert_eq!(rayon::current_thread_index(), None, "a fresh thread");
+                let (a, b, threads) = serial(Site::Physics, || {
+                    let (a, b) = rayon::join(
+                        || std::thread::current().id(),
+                        || std::thread::current().id(),
+                    );
+                    (a, b, rayon::current_num_threads())
+                });
+                assert_eq!((a, b, threads), (caller, caller, 1));
+                assert_eq!(rayon::current_num_threads(), 1, "still in its own pool");
+                assert_eq!(rayon::current_thread_index(), Some(0));
+
+                inject_fault(Site::Physics);
+                let caught = std::panic::catch_unwind(|| serial(Site::Physics, || 1));
+                assert_eq!(
+                    message(caught.expect_err("the query panics")),
+                    "a fault injected at the physics site (og_lanes::inject_fault)"
+                );
+                let report = panic_report().expect("recorded");
+                assert_eq!((report.tick, report.lane), (17, None));
+                assert!(
+                    report.location.contains("og-lanes/src/lib.rs"),
+                    "{report:?}"
+                );
+                assert_eq!(serial(Site::Physics, || 2), 2, "once");
+            })
+            .join()
+            .unwrap();
+        });
+    }
+
+    /// `threads` is the pool's when lanes are on and 1 when switched off.
+    #[test]
+    fn threads_follows_the_switch() {
+        // The switch is the process's: no other test reads it meanwhile.
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        let r = report();
+        assert_eq!(threads(), if r.on { r.threads } else { 1 });
+        set_enabled(false);
+        assert_eq!(threads(), 1);
+        set_enabled(true);
+        assert_eq!(threads(), if r.on { r.threads } else { 1 });
     }
 
     /// The lanes wasm's path onto the pool, on a native pool: a caller that
