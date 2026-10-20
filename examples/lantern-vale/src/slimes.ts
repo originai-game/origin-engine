@@ -46,10 +46,8 @@ export function spawnSlimes(world: World): void {
   const g = must(world.resource(Game));
   const model = must(og.load.gltf(world, "models/slime.glb"));
   const rig = clips(world);
-  // The bubbles' texture array. og.load.textureArray("sprites/faces.ogt") is
-  // missing from the runtime (FINDINGS.md), so the same layers come from an
-  // `array true` flipbook sheet, whose FlipbookInfo.array is the array.
-  const faces = must(og.load.flipbook(world, "sprites/faces-sheet.ogt"));
+  // The bubbles' texture array: one layer per expression (Face).
+  const faces = must(og.load.textureArray(world, "sprites/faces.ogt"));
   ROUNDS.forEach(([ax, az, bx, bz], i) => {
     const y = groundY(world, g, ax, az);
     const e = must(world.instantiate(model, { name: `slime-${i}`, position: { x: ax, y, z: az } }));

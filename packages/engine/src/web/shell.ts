@@ -57,6 +57,8 @@ export interface ShellOptions {
   readonly basis?: { readonly js: string; readonly wasm: string };
   /** The project's physics profile (project.ogt `profile`); omitted is 3d. */
   readonly profile?: "2d" | "3d";
+  /** project.ogt's text: its tick, seed, scenes and scene fill what GameDesc leaves unset (CreateOptions.project). */
+  readonly project?: string;
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
   readonly onProgress?: (value: number, stage: string) => void;
   /** The highest device pixel ratio the canvas is drawn at (default 2). */
@@ -336,6 +338,7 @@ export class Shell {
         root: options.root,
         basis: options.basis,
         profile: options.profile,
+        ...(options.project === undefined ? {} : { project: options.project }),
         locale: options.locale ?? globalThis.navigator?.language,
         ...(options.expect ? { expect: options.expect } : {}),
         ...(options.prime ? { prime: true } : {}),

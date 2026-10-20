@@ -58,12 +58,16 @@ pub(crate) fn component_json(schema: &Schema, bytes: &[u8]) -> Map<String, Value
         .collect()
 }
 
+/// The probe's writes (`set`, `patch`, a sweep, Tune) are refused outside
+/// the field's declared range, as scene text is when cooked; game code's
+/// own writes are stored as given (FieldOptions: nothing clamps writes).
 fn in_range(field: &FieldSchema, v: f64) -> Result<(), String> {
+    let widen = "the probe writes only inside a field's declared range; widen min/max in its FieldOptions to try it";
     if let Some(min) = field.min.filter(|min| v < *min) {
-        return Err(format!("{v} is below the minimum {min}"));
+        return Err(format!("{v} is below the minimum {min} ({widen})"));
     }
     if let Some(max) = field.max.filter(|max| v > *max) {
-        return Err(format!("{v} is above the maximum {max}"));
+        return Err(format!("{v} is above the maximum {max} ({widen})"));
     }
     Ok(())
 }
@@ -176,8 +180,14 @@ pub(crate) fn command_value(field: &FieldSchema, text: &str) -> Result<Value, St
     Ok(Value::String(text.to_owned()))
 }
 
-/// Command text as JSON for [`json_field`]: `1.5`, or `1,2,3` for a vector.
+/// Command text as JSON for [`json_field`]: `1.5`, `true` or `false` for a
+/// bool, or `1,2,3` for a vector.
 pub(crate) fn text_json(text: &str) -> Result<Value, String> {
+    match text.trim() {
+        "true" => return Ok(Value::Bool(true)),
+        "false" => return Ok(Value::Bool(false)),
+        _ => {}
+    }
     let numbers = text
         .split(',')
         .map(|t| {
@@ -185,7 +195,7 @@ pub(crate) fn text_json(text: &str) -> Result<Value, String> {
             serde_json::from_str::<Value>(t)
                 .ok()
                 .filter(Value::is_number)
-                .ok_or_else(|| format!("'{t}' is not a number"))
+                .ok_or_else(|| format!("'{t}' is not a number (or true or false)"))
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(if numbers.len() == 1 {
@@ -193,4 +203,37 @@ pub(crate) fn text_json(text: &str) -> Result<Value, String> {
     } else {
         Value::Array(numbers)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn command_text_takes_true_and_false_for_a_bool() {
+        let field = FieldSchema::new("ink", FieldType::Bool);
+        for (text, byte) in [("true", 1), ("false", 0), (" true ", 1), ("1", 1), ("0", 0)] {
+            let v = text_json(text).unwrap();
+            assert_eq!(json_field(&field, &v).unwrap(), vec![byte], "{text}");
+        }
+        assert!(text_json("yes").is_err());
+        assert!(json_field(&field, &text_json("2").unwrap()).is_err());
+    }
+
+    #[test]
+    fn a_write_outside_the_range_is_refused_naming_the_range_and_the_fix() {
+        let mut field = FieldSchema::new("cameraHeight", FieldType::F32);
+        field.min = Some(4.0);
+        field.max = Some(20.0);
+        let low = json_field(&field, &json!(3.0)).unwrap_err();
+        assert!(low.contains("below the minimum 4"), "{low}");
+        assert!(low.contains("FieldOptions"), "{low}");
+        let high = json_field(&field, &json!(21.0)).unwrap_err();
+        assert!(high.contains("above the maximum 20"), "{high}");
+        assert_eq!(
+            json_field(&field, &json!(4.0)).unwrap(),
+            4.0f32.to_le_bytes()
+        );
+    }
 }

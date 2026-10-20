@@ -187,7 +187,18 @@ pub struct Probe {
     /// A screenshot waiting on its frame: it holds the clock and later steps.
     shot: Option<Shot>,
     sweeping: Option<SweepJob>,
+    derive: Option<DeriveFn>,
+    /// The tick of the last unnamed `get` and how many it has had, so a
+    /// second one on the same tick writes `get-<tick>-2.json`.
+    gets: (u64, u32),
 }
+
+/// The host's `derive` hook: what `get` answers for a record whose value the
+/// engine derives each frame from other state (a light og.DayNight drives).
+/// It is called with the entity (`None` for a resource), the record's name
+/// and the stored fields, and may replace or add fields. It reads the world
+/// only, as a pure function of it.
+pub type DeriveFn = Box<dyn Fn(&World, Option<Entity>, &str, &mut Map<String, Value>)>;
 
 /// What the host's mixer rendered last, for `listen`: the last `seconds`
 /// as a 16-bit stereo WAV and its rate, frames, peak and RMS.
@@ -230,6 +241,27 @@ pub fn stamp_of(event: &Value) -> f32 {
         .and_then(Value::as_f64)
         .filter(|a| a.is_finite())
         .map_or(0.0, |a| a.clamp(-1.0, 1.0) as f32)
+}
+
+/// og.Time as game code reads it (`world.resource(og.Time)`, a system's
+/// `time`): the clock, its rate, and the time scale the world keeps in
+/// og.TimeScale (scale, hitStop, scaledDt, scaledElapsed).
+pub fn time_json(world: &World) -> Map<String, Value> {
+    let t = world.time();
+    let s = world.time_scale();
+    let Value::Object(fields) = json!({
+        "tick": t.tick,
+        "dt": f64::from(t.dt),
+        "elapsed": t.elapsed,
+        "rate": tick_rate(world),
+        "scale": s.scale,
+        "hitStop": s.hit_stop,
+        "scaledDt": s.dt(&t),
+        "scaledElapsed": s.elapsed,
+    }) else {
+        unreachable!("an object")
+    };
+    fields
 }
 
 fn tick_rate(world: &World) -> u32 {
@@ -314,6 +346,8 @@ impl Probe {
             inbox: Inbox::default(),
             shot: None,
             sweeping: None,
+            derive: None,
+            gets: (u64::MAX, 0),
         })
     }
 
@@ -337,6 +371,12 @@ impl Probe {
     /// The bundle swap for `reload`.
     pub fn set_reloader(&mut self, reloader: Box<dyn Reloader>) {
         self.reloader = Some(reloader);
+    }
+
+    /// What `get` answers for records the engine derives from other state
+    /// ([`DeriveFn`]).
+    pub fn set_derive(&mut self, derive: DeriveFn) {
+        self.derive = Some(derive);
     }
 
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
@@ -1176,10 +1216,22 @@ impl Probe {
                     shown.push_str("...");
                 }
                 self.note(tick, false, format!("get {target} = {shown}"));
+                // Unnamed gets on one tick: get-<tick>.json, then -2, -3, ...
+                let mut path = output_path(args.get(1))?;
+                if path.is_none() {
+                    self.gets = if self.gets.0 == tick {
+                        (tick, self.gets.1 + 1)
+                    } else {
+                        (tick, 1)
+                    };
+                    if self.gets.1 > 1 {
+                        path = Some(format!("get-{tick:06}-{}.json", self.gets.1));
+                    }
+                }
                 self.outputs.push(Output {
                     tick,
                     action: "get".into(),
-                    path: output_path(args.get(1))?,
+                    path,
                     payload: Payload::Json(json!({
                         "kind": "get",
                         "target": target,
@@ -1380,21 +1432,28 @@ impl Probe {
                 .ok()
                 .filter(|&id| world.has_resource_id(id))
         };
-        if let Some(id) = resource(target) {
+        let resource_json = |id: SchemaId| -> Result<(String, Map<String, Value>), String> {
             let schema = world.schema(id).map_err(|e| e.reason().to_owned())?;
             let bytes = world
                 .resource_bytes(id)
                 .map_err(|e| e.reason().to_owned())?;
-            return Ok(Value::Object(value::component_json(schema, &bytes)));
+            let mut fields = value::component_json(schema, &bytes);
+            if schema.name == <og_core::Time as og_core::Reflect>::NAME {
+                fields = time_json(world);
+            }
+            if let Some(derive) = &self.derive {
+                derive(world, None, &schema.name, &mut fields);
+            }
+            Ok((schema.name.clone(), fields))
+        };
+        if let Some(id) = resource(target) {
+            return Ok(Value::Object(resource_json(id)?.1));
         }
         if let Some((id, field)) = Self::resource_target(world, target) {
-            let schema = world.schema(id).map_err(|e| e.reason().to_owned())?;
-            let bytes = world
-                .resource_bytes(id)
-                .map_err(|e| e.reason().to_owned())?;
-            return value::component_json(schema, &bytes)
+            let (name, mut fields) = resource_json(id)?;
+            return fields
                 .remove(&field)
-                .ok_or_else(|| format!("'{}' has no field '{field}'", schema.name));
+                .ok_or_else(|| format!("'{name}' has no field '{field}'"));
         }
         // An entity: `#i.g` or a name, then `.Component[.field]`, where a
         // component's name may hold dots (`og.Transform`).
@@ -1421,7 +1480,11 @@ impl Probe {
             let id = world.id_by_name(name).ok()?;
             let schema = world.schema(id).ok()?;
             let bytes = world.get_bytes(e, id).ok()?;
-            Some(value::component_json(schema, &bytes))
+            let mut fields = value::component_json(schema, &bytes);
+            if let Some(derive) = &self.derive {
+                derive(world, Some(e), &schema.name, &mut fields);
+            }
+            Some(fields)
         };
         if let Some(fields) = read(rest) {
             return Ok(Value::Object(fields));

@@ -1,0 +1,3 @@
+# og run output (tests/og-run.test.ts writes to a temporary directory).
+og-out/
+.og/

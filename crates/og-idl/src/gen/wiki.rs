@@ -576,10 +576,16 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
         .collect();
     if !fns.is_empty() {
         out.push_str("## Functions\n\n");
-        for f in fns {
+        for (i, f) in fns.iter().enumerate() {
             let bind = find(binds, &m.name, None, &f.name);
             let path = bind.map_or_else(|| value_path(m, &f.name), |b| b.path.clone());
-            callable(&mut out, ix, f, &path, bind, &anchor_fn(&f.name), "###");
+            // An overload's anchor counts its place: `fn-clip`, `fn-clip-2`.
+            let nth = fns[..i].iter().filter(|g| g.name == f.name).count();
+            let anchor = match nth {
+                0 => anchor_fn(&f.name),
+                n => format!("{}-{}", anchor_fn(&f.name), n + 1),
+            };
+            callable(&mut out, ix, f, &path, bind, &anchor, "###");
         }
     }
 

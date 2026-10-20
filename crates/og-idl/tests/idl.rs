@@ -136,7 +136,11 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "tilemap"
         ]
     );
-    assert_eq!(fns("anim"), ["graph", "humanoid", "retarget", "clip"]);
+    // og.anim.clip twice: a flipbook's clip and a model's (TypeScript overloads).
+    assert_eq!(
+        fns("anim"),
+        ["graph", "humanoid", "retarget", "clip", "clip"]
+    );
     // E4: time scale, camera feel, tweens, tilemaps, floating text.
     assert_eq!(fns("time"), ["setScale", "hitStop"]);
     assert_eq!(fns("camera"), ["shake", "punch", "kick"]);

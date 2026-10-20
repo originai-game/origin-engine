@@ -160,20 +160,34 @@ impl<'a> Validator<'a, '_> {
                 self.error(module.line, format!("duplicate name `og.{}`", module.name));
             }
             let mut fns = BTreeSet::new();
+            let mut previous: Option<&Function> = None;
             for item in &module.items {
+                // An overload: a `host false` fn right after a `host false`
+                // fn of the same name (TypeScript overloads over one
+                // runtime implementation).
+                let overload = matches!(item, Item::Fn(f) if !f.host
+                    && previous.is_some_and(|p| p.name == f.name && !p.host));
+                previous = match item {
+                    Item::Fn(f) => Some(f),
+                    _ => None,
+                };
                 match item {
                     Item::Fn(f) => {
-                        if !fns.insert(f.name.as_str()) {
+                        if !fns.insert(f.name.as_str()) && !overload {
                             self.error(
                                 f.line,
-                                format!("duplicate fn `{}` in module `{}`", f.name, module.name),
+                                format!(
+                                    "duplicate fn `{}` in module `{}` (only `host false` fns overload, declared one after the other)",
+                                    f.name, module.name
+                                ),
                             );
                         }
-                        let clash = match module.place {
-                            Place::Top => !top_values.insert(f.name.clone()),
-                            Place::Root => !og_members.insert(f.name.clone()),
-                            Place::Namespace => false,
-                        };
+                        let clash = !overload
+                            && match module.place {
+                                Place::Top => !top_values.insert(f.name.clone()),
+                                Place::Root => !og_members.insert(f.name.clone()),
+                                Place::Namespace => false,
+                            };
                         if clash {
                             self.error(
                                 f.line,

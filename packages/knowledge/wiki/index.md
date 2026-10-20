@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-886 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+887 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -396,6 +396,7 @@ Field units the docs and Tune use.
 | [`og.ai.set`](ai.md#fn-set) | function | ai | `og_ai_set` |
 | [`og.AiAgent`](ai.md#record-AiAgent) | component | ai | — |
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
+| [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |

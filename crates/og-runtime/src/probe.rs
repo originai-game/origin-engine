@@ -213,6 +213,14 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }
+    // `get` answers what og.DayNight makes of the sun, as drawn.
+    probe.set_derive(Box::new(move |world, entity, name, fields| {
+        if let Ok(eng) = engine(id)
+            && let Ok(st) = eng.state.try_borrow()
+        {
+            super::atmosphere::derive(world, &st.layouts, entity, name, fields);
+        }
+    }));
     if facts.is_some() {
         probe.set_facts(move |_world| {
             let Ok(eng) = engine(id) else {
@@ -246,16 +254,23 @@ impl Reloader for RuntimeReloader {
             .ok_or("no game was declared; the bundle must export og.game(...)")?;
         let seed = current.resource::<og_core::Rng>().map(|r| r.seed()).ok();
         let eng = engine(self.engine)?;
-        let (profile, ui) = {
+        let (profile, ui, project) = {
             let st = eng.state.borrow();
-            (st.profile, st.ui.clone())
+            (st.profile, st.ui.clone(), st.project.clone())
         };
         let link = og_audio::link(self.engine);
         let previous = match (&ui, link) {
             (Some(u), Some(l)) => Some((u, l)),
             _ => None,
         };
-        let mut a = assemble(game as u32, seed, self.engine, profile, previous)?;
+        let mut a = assemble(
+            game as u32,
+            seed,
+            self.engine,
+            profile,
+            project.as_ref(),
+            previous,
+        )?;
         a.probe = None;
         let world = std::mem::replace(
             &mut a.world,

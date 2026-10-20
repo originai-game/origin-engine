@@ -249,7 +249,7 @@ export interface Ray {
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 
 /**
- * Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.
+ * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -755,7 +755,7 @@ export type StartFn = (world: World) => void;
  */
 export interface GameDesc {
   /**
-   * The fixed tick rate.
+   * The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both.
    *
    * @default 60
    * @range 1..240
@@ -763,19 +763,19 @@ export interface GameDesc {
    */
   readonly tick?: number;
   /**
-   * The project seed every Rng stream derives from. A replay overrides it.
+   * The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it.
    *
    * @default 0
    */
   readonly seed?: number;
   /**
-   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`.
+   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block.
    *
    * @default {}
    */
   readonly scenes?: Readonly<Record<string, string>>;
   /**
-   * The scene loaded first.
+   * The scene loaded first; left unset, project.ogt's `scene` (else main).
    *
    * @default "main"
    */
@@ -819,7 +819,7 @@ export interface GameDesc {
    */
   readonly facts?: FactsFn | null;
   /**
-   * Called once before the first tick, after the first scene spawned.
+   * Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it.
    *
    * @default null
    */
@@ -840,7 +840,9 @@ export interface GameDesc {
 
 /** A declared game, the bundle's default export. */
 export interface Game {
-  /** The fixed tick rate in hertz. */
+  /**
+   * GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
+   */
   readonly tick: number;
   /** The systems in declaration order. */
   readonly systems: readonly System[];
@@ -904,7 +906,7 @@ export interface MatrixWorld {
 // Simulation time. Game code never reads the wall clock; it reads Time.
 
 /**
- * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+ * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
  *
  * The `Time` resource (token `og.Time`).
  */
@@ -5536,7 +5538,7 @@ export interface GltfInfo {
   /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
   /**
-   * Its animation clip names (the cook counts clips and does not cook them yet, so this is empty).
+   * Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name.
    */
   readonly animations: readonly string[];
 }
@@ -8262,7 +8264,7 @@ export interface Sky {
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
  *
  * The `DayNight` resource (token `og.DayNight`).
  */
@@ -9362,6 +9364,7 @@ export interface FlipbookInfo {
   /** The first frame's height in pixels. */
   readonly frameHeight: number;
 }
+
 
 
 // ── tween ───────────────────────────────────────────────────────
@@ -15619,8 +15622,8 @@ export interface AlertDesc {
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
  * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds.
- * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema.
- * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON.
+ * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped.
+ * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.
  * - `"pause"`: `pause`: hold the clock; advance still steps.
  * - `"resume"`: `resume`: release the clock.
@@ -16956,7 +16959,7 @@ export declare namespace og {
     function fromAxisAngle(axis: Vector3, angle: number): Quaternion;
   }
   /**
-   * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
+   * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
    */
   const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
   /** Simulation time. Game code never reads the wall clock; it reads Time. */
@@ -17317,6 +17320,7 @@ export declare namespace og {
     function defaultBundle(world: World): Result<Asset>;
     /**
      * Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+     * A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame).
      *
      * @param world The world that owns the asset.
      * @param path The asset id, such as `models/ship.glb`.
@@ -17711,7 +17715,7 @@ export declare namespace og {
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
@@ -17808,6 +17812,13 @@ export declare namespace og {
      * @param name The clip's name.
      */
     function clip(info: FlipbookInfo, name: string): number;
+    /**
+     * A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, "models/slime.glb").value, "chase")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name). A skinned glTF's clips are its animations' names; an animated `.vox`'s are `frames` or its `voxClip` names. 0 (plays nothing) when the model has no such clip.
+     *
+     * @param info What og.load.animation answered.
+     * @param name The clip's name.
+     */
+    function clip(info: Animation, name: string): ClipAsset;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;
