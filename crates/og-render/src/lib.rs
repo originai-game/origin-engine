@@ -1510,6 +1510,18 @@ pub(crate) const UNTONEMAPPED_BLEND: wgpu::BlendState = wgpu::BlendState {
     },
 };
 
+/// Whether TAA's history was drawn from where the camera is now: the two
+/// view-projections equal to a millionth of each entry, below what any
+/// pixel could show. TAA then reads every pixel's own history texel
+/// (taa.wgsl `still`), decided here rather than from the reprojection's
+/// arithmetic on the GPU.
+fn still_camera(prev: &Mat4, cur: &Mat4) -> bool {
+    prev.to_cols_array()
+        .iter()
+        .zip(cur.to_cols_array())
+        .all(|(p, c)| (p - c).abs() <= 1e-6 * c.abs().max(1.0))
+}
+
 pub(crate) fn hdr_pipeline(device: &wgpu::Device, p: HdrPipeline) -> wgpu::RenderPipeline {
     hdr_pipeline_with(device, &[], p)
 }
@@ -5561,6 +5573,12 @@ impl Renderer {
                     self.width as f32,
                     self.height as f32,
                     self.post.taa_sharpen,
+                ],
+                still: [
+                    still_camera(&prev, &cam.view_proj) as u32 as f32,
+                    0.0,
+                    0.0,
+                    0.0,
                 ],
             };
             self.queue

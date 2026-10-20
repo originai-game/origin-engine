@@ -17,6 +17,7 @@ struct Taa {
   cur_view_proj: mat4x4<f32>,
   prev_view_proj: mat4x4<f32>,
   params: vec4<f32>,  // x: current frame weight (1 = no history), yz: target size, w: sharpening (0..1)
+  still: vec4<f32>,   // x: 1 when the camera is where the history's frame had it (decided on the CPU)
 };
 @group(0) @binding(0) var current: texture_2d<f32>;
 @group(0) @binding(1) var history: texture_2d<f32>;
@@ -25,6 +26,17 @@ struct Taa {
 @group(0) @binding(2) var depth: texture_2d<f32>;
 @group(0) @binding(3) var linear_sampler: sampler;
 @group(0) @binding(4) var<uniform> taa: Taa;
+// The depth is read through this nearest sampler at the pixel's centre,
+// not with textureLoad: wgpu's GL backend (WebGL2) binds no sampler object
+// to a texture only texelFetch reads, so a depth texture keeps GL's default
+// linear filtering, which makes a DEPTH_COMPONENT32F texture incomplete
+// under GLSL ES 3.0, and texelFetch of an incomplete texture returns 0.
+// Every pixel then reprojected from the near plane (row 68): a wrong motion
+// for a moving camera, and for a still one a motion of the near plane's
+// rounding (up to 0.025 px at fx-showcase's 2800 m station on ANGLE) above
+// the own-texel test below, so the history was resampled every frame. At
+// the texel's centre nearest reads the texel textureLoad reads.
+@group(0) @binding(5) var depth_sampler: sampler;
 
 fn to_ycocg(c: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(
@@ -100,33 +112,36 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
     }
   }
 
-  // Reproject: this pixel's world point, seen by the previous frame. The
-  // pixel's centre in uv comes from its window position, exact on every
-  // backend, not from the interpolated `in.uv`: on WebGL2 (Chrome, ANGLE)
-  // that arrives a fraction of a pixel off, growing across the frame, and
-  // the history sampled there every frame drifted the converged image by
-  // a pixel or two sideways (the looks station's ink and outline frames).
-  let here = in.pos.xy / vec2<f32>(size);
-  let d = textureLoad(depth, px, 0).r;
-  let ndc = vec2<f32>(here.x * 2.0 - 1.0, 1.0 - here.y * 2.0);
-  let w = taa.inv_view_proj * vec4<f32>(ndc, d, 1.0);
-  let world = w.xyz / w.w;
-  let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
-  let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
-  let motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
-  let prev_uv = here - motion;
-  if (any(prev_uv < vec2<f32>(0.0)) || any(prev_uv > vec2<f32>(1.0))) {
-    return cur4;
-  }
   var hist4: vec4<f32>;
-  if (all(abs(motion) * vec2<f32>(size) < vec2<f32>(1e-3))) {
-    // Nothing moved under this pixel: its own history texel, unfiltered,
-    // so no sampler's coordinate precision can shift it.
+  if (taa.still.x > 0.5) {
+    // A still camera (the CPU compared the view-projections): every pixel
+    // reads its own history texel, unfiltered, and nothing about the
+    // reprojection's arithmetic, the sampler or the history texture's
+    // coordinates on a backend can move the history from frame to frame.
     hist4 = textureLoad(history, px, 0);
-  } else if (catmull_rom) {
-    hist4 = vec4<f32>(history_catmull_rom(prev_uv), textureSampleLevel(history, linear_sampler, prev_uv, 0.0).a);
   } else {
-    hist4 = textureSampleLevel(history, linear_sampler, prev_uv, 0.0);
+    // Reproject: this pixel's world point, seen by the previous frame,
+    // from its window position (exact on every backend).
+    let here = in.pos.xy / vec2<f32>(size);
+    let d = textureSampleLevel(depth, depth_sampler, (vec2<f32>(px) + 0.5) / vec2<f32>(size), 0.0).r;
+    let ndc = vec2<f32>(here.x * 2.0 - 1.0, 1.0 - here.y * 2.0);
+    let w = taa.inv_view_proj * vec4<f32>(ndc, d, 1.0);
+    let world = w.xyz / w.w;
+    let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
+    let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
+    let motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
+    let prev_uv = here - motion;
+    if (any(prev_uv < vec2<f32>(0.0)) || any(prev_uv > vec2<f32>(1.0))) {
+      return cur4;
+    }
+    if (all(abs(motion) * vec2<f32>(size) < vec2<f32>(1e-3))) {
+      // Nothing moved under this pixel: its own history texel.
+      hist4 = textureLoad(history, px, 0);
+    } else if (catmull_rom) {
+      hist4 = vec4<f32>(history_catmull_rom(prev_uv), textureSampleLevel(history, linear_sampler, prev_uv, 0.0).a);
+    } else {
+      hist4 = textureSampleLevel(history, linear_sampler, prev_uv, 0.0);
+    }
   }
   let hist = from_ycocg(clamp(to_ycocg(hist4.rgb), lo, hi));
   let hist_a = clamp(hist4.a, a_lo, a_hi);

@@ -324,10 +324,7 @@ fn fxaa_matches_its_reference() {
 }
 
 #[test]
-fn taa_sharp_matches_its_reference_on_the_full_tier() {
-    if tier() != Tier::Full {
-        return;
-    }
+fn taa_sharp_matches_its_reference() {
     let report = check("taa-sharp");
     assert_eq!(report.info.antialias, Antialias::Taa);
 }

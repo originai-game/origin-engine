@@ -27,7 +27,7 @@ palette {
   accentHover "#a94414"
   accentActive "#8c370e"
   accentFg "#fff4dc"
-  accentInk "#b4430a"
+  accentInk "#9b3a09"
   accentSoft "#a2411240"
   focus "#3fa7ff"
   thumb "#ffffff"

@@ -24,8 +24,12 @@ const USAGE: &str = "usage: og cook [project] [--threads N] [--report [out.md]] 
 /// (`Transform`, `Model`, the lights), by the names scenes use.
 pub fn engine_schemas() -> Vec<og_core::Schema> {
     use og_core::reflect::{FieldSchema, FieldType};
-    let ty = |column: &str| -> Option<FieldType> {
-        Some(match column {
+    let ty = |f: &og_api::host::FieldDecl| -> Option<FieldType> {
+        if f.capacity > 0 {
+            // A text field (`str.48` in the IDL).
+            return FieldType::string(f.capacity as usize).ok();
+        }
+        Some(match f.column {
             "f32" => FieldType::F32,
             "f64" => FieldType::F64,
             "u32" => FieldType::U32,
@@ -55,7 +59,7 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
                 .fields
                 .iter()
                 .map(|f| {
-                    ty(f.column).map(|t| {
+                    ty(f).map(|t| {
                         let mut fs = FieldSchema::new(f.name.to_string(), t);
                         fs.default = default_lanes(f, t.lanes());
                         fs

@@ -192,7 +192,20 @@ impl<'a> Index<'a> {
     /// Whether an omitted value of this type has an obvious meaning:
     /// `0`, `false`, `""`, `null`, an empty list or map, the first enum
     /// variant, the null handle, or a struct whose fields all have one.
+    /// The byte capacity of a text column's type (`str.48`, shown
+    /// `str<48>`): `Some(48)`; `None` for any other type.
+    pub fn capacity(&self, ty: &TypeRef) -> Option<u32> {
+        match (self.columns.get(ty.name()), ty.args()) {
+            (Some(c), [TypeRef::Int(n)]) if c.capacity => Some(*n),
+            _ => None,
+        }
+    }
+
     pub fn has_zero(&self, ty: &TypeRef) -> bool {
+        if self.columns.get(ty.name()).is_some_and(|c| c.capacity) {
+            // The empty text (a missing capacity is reported on its own).
+            return true;
+        }
         let name = ty.name();
         if PRIMITIVES.contains(&name) {
             return name != "Void";

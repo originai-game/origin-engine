@@ -274,8 +274,10 @@ impl Layout {
             } else {
                 Kind::Enum
             };
+            // A text field's capacity is the IDL's (`str.48`).
+            let capacity = (f.capacity > 0).then_some(f.capacity as usize);
             let ty = k
-                .field_type(kind == RecordKind::Component, None)
+                .field_type(kind == RecordKind::Component, capacity)
                 .map_err(|e| format!("'{}.{}': {e}", decl.schema, f.name))?;
             fields.push(FieldLayout {
                 name: f.name.to_string(),
@@ -534,5 +536,57 @@ fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
         Kind::Matrix4 => {
             json!({ "elements": (0..16).map(|i| f32_at(b, i) as f64).collect::<Vec<_>>() })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use og_api::host::{FieldDecl, RecordDecl};
+
+    fn field(
+        name: &'static str,
+        column: &'static str,
+        default: &'static str,
+        capacity: u32,
+    ) -> FieldDecl {
+        FieldDecl {
+            name,
+            column,
+            default,
+            readonly: false,
+            tunable: false,
+            min: None,
+            max: None,
+            step: None,
+            unit: "",
+            label: "",
+            doc: "",
+            variants: &[],
+            capacity,
+        }
+    }
+
+    /// An engine record's text field (`str.24` in the IDL) is stored at the
+    /// IDL's capacity, and its default encodes and decodes as the text.
+    #[test]
+    fn an_engine_record_text_field_takes_the_idl_capacity() {
+        let fields: &'static [FieldDecl] = Box::leak(Box::new([
+            field("label", "str", "\"Ada\"", 24),
+            field("size", "f32", "1", 0),
+        ]));
+        let decl = RecordDecl {
+            kind: "component",
+            name: "Tag",
+            schema: "og.Tag",
+            fields,
+        };
+        let layout = Layout::from_decl(&decl).unwrap();
+        assert_eq!(layout.fields[0].ty, FieldType::Str(24));
+        assert_eq!(layout.fields[1].ty, FieldType::F32);
+        let bytes = layout.encode(None, None).unwrap();
+        assert_eq!(bytes.len(), 24 + 4);
+        assert_eq!(&bytes[..3], b"Ada");
+        assert!(bytes[3..24].iter().all(|b| *b == 0));
     }
 }

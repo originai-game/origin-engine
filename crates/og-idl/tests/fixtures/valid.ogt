@@ -19,4 +19,26 @@ module reflect {
     stride 1
     value f32
   }
+  column str {
+    doc "Text of at most a capacity of bytes."
+    array Uint8Array
+    capacity true
+    value String
+  }
+}
+
+module game {
+  skill og-core
+  doc "The game: records with text fields (`str.N`), which tests/idl.rs follows into every generated output."
+  component Label {
+    doc "A label."
+    field text str.48 "The text." {
+      default "Ada"
+    }
+    field size f32 "Its size."
+  }
+  resource Profile {
+    doc "The player's profile."
+    field name str.16 "The player's name."
+  }
 }
