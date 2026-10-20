@@ -661,8 +661,5 @@ pub(crate) fn water_2d_strips(waters: &[Water2d], frame: &mut crate::ribbons::Ri
 
 /// The water module after the frame group and the lighting.
 pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
-    format!(
-        "{frame_wgsl}{lighting_wgsl}{}",
-        include_str!("../shaders/water.wgsl")
-    )
+    format!("{frame_wgsl}{lighting_wgsl}{}", wgsl!("water.wgsl"))
 }

@@ -472,7 +472,7 @@ impl PhysicalPipelines {
 }
 
 /// The texture pack pass's module (`crate::shaders` validates it).
-pub(crate) const PACK_WGSL: &str = include_str!("../shaders/pack.wgsl");
+pub(crate) const PACK_WGSL: &str = wgsl!("pack.wgsl");
 
 #[cfg(test)]
 mod tests {

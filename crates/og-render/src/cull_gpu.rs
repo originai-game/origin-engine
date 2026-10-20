@@ -38,15 +38,9 @@ use glam::{Mat4, Vec4};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub(crate) const CULL_WGSL: &str = concat!(
-    include_str!("../shaders/instance.wgsl"),
-    include_str!("../shaders/cull.wgsl")
-);
-const HIZ_WGSL: &str = include_str!("../shaders/hiz.wgsl");
-pub(crate) const DEPTH_WGSL: &str = concat!(
-    include_str!("../shaders/instance.wgsl"),
-    include_str!("../shaders/cull_depth.wgsl")
-);
+pub(crate) const CULL_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull.wgsl"));
+const HIZ_WGSL: &str = wgsl!("hiz.wgsl");
+pub(crate) const DEPTH_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull_depth.wgsl"));
 
 /// Passes one frame may cull: three cascades, twelve local light faces,
 /// the planar reflection, the occluders and the camera (the size of

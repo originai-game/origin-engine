@@ -164,4 +164,4 @@ impl MipGenerator {
 }
 
 /// The mip generator's module (`crate::shaders` validates it).
-pub(crate) const MIPMAP_WGSL: &str = include_str!("../shaders/mipmap.wgsl");
+pub(crate) const MIPMAP_WGSL: &str = wgsl!("mipmap.wgsl");
