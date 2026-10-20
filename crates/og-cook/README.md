@@ -224,6 +224,22 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Terrain` | `TerrainMeta` (size, samples, tile size and count, height range, layer count, control map size, height blend, lod, cast shadows, collision) | `tiles` `TerrainTileRow` (first sample, size, range, byte range in `heights`), `heights` (per tile u16 LE, zlib), `layers` `TerrainLayerRow` (texture names as ranges of `strings`, og-render's layer fields), `strings`, `control` (RGBA8, zlib) |
 | `og.Look` | `LookMeta` (text bytes) | `text` (the canonical, flattened look) |
 | `og.Palette` | `PaletteMeta` (colour count) | `rgb` (3 bytes per colour, sRGB) |
+| `og.Lut` | `LutMeta` (side, 32) | `rgba` (size³ RGBA8, red fastest) |
+| `og.Flipbook` | `FlipbookMeta` (text bytes) | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size, `array`) |
+| `og.Rig` | `RigMeta` (text bytes) | `text` (the canonical humanoid map: its scheme and the bones it names) |
+| `og.ParticleEmitter` | `EmitterMeta` (text bytes) | `text` (the validated emitter file) |
+| `og.UiSkin` | `SkinMeta` (text bytes) | `text` (the validated skin file) |
+| `og.MaterialShader` | `ShaderMeta` (text bytes) | `text` (the canonical shader file, its code inlined) |
+| `og.Behaviour` | `BehaviourMeta` (text bytes) | `text` (the validated behaviour file) |
+| `og.Strings` | `StringsMeta` (text bytes) | `text` (the validated string table) |
+| `og.NavMesh` | `NavMeshMeta` (cell size and height, the agent's height, radius, climb and slope, tile size, max error, origin, grid width and depth, tile count) | `columns` `NavColumnRow`, `spans` `NavSpanRow` (the walkable heightfield), `tiles` `NavTileRow`, `verts` `NavVertRow`, `polys` `NavPolyRow`, `poly_verts` (u32) |
+| `og.StreamPack` (`cooked/stream/<group>.ogb`) | `StreamPackMeta` (file count) | `files` `StreamFileRow` (name and data ranges), `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
+
+Besides the blobs, `cooked/` holds the manifest `.cook.ogt` (§Asset ids)
+and the cook times `.cook-times.ogt` (§Cook times), both `.ogt` text. A
+cube map an environment reads is not a blob of its own: it is decoded at
+cook time (§Importers), so the runtime never sees KTX2 cubes, BC6H or
+half floats, only the `og.EnvironmentMap`'s RGB9E5 levels.
 
 KTX2 files are standard: ETC1S as BasisLZ with basisu's DFD and global-data
 layout, UASTC with Zstandard (scheme 2), lossless RGBA8 with zlib (scheme 3).
@@ -450,15 +466,17 @@ without base colour textures), then restored.
   characters outside the charset and msdfgen's error correction landed in
   the phase 4 UI text round; `tests/template.rs` checks the template
   font's pairs and bounds its corner clashes.)
-- **Texture arrays**: nothing samples a `TextureArray` yet (a sprite
-  layer, a material or terrain binding is renderer work); environment
-  cube maps from KTX2 cube sources (environment maps take equirectangular
-  HDR images, `type environment`).
+- **Texture arrays**: sprites, overlay sprites, flipbooks and 2D particle
+  emitters sample them; a material or a terrain layer binding one is
+  renderer work still owed.
 - **Animation**: compressed clips are rebuilt to f32 at load, so a
   resident clip is not smaller in memory; sampling quantised keys in
   og-anim would be.
-- **Audio**: chunks are fetched by distance to the playhead only, not
-  prioritised against other fetches.
+- **Environment cube maps** are read at level 0 only: a KTX2 whose own
+  mip chain is already prefiltered (cmgen's, IBLBaker's) is filtered
+  again from its radiance, never taken as is; and `.vox` rotations keep
+  the editor's integer pivot, unverified against MagicaVoxel for odd-sized
+  models turned or mirrored on an axis.
 
 Done since phase 1 (kept here for the record): the measured M4 "glTF edit
 → reload ≤ 300 ms" run is filed (`tests/evidence/P2/tooling/m4-m5-tooling.md`:
@@ -469,4 +487,14 @@ the `runner` and `match3` archetypes exist (`templates/archetypes/`);
 animation sample compression and sparse morph targets, audio streaming
 chunks, KTX2 orientation and swizzle, texture arrays and the `toktx`
 fallback's test landed in P4 (§Animation samples, the importers above,
-`tests/evidence/P4/cook/`).
+`tests/evidence/P4/cook/`). The cook's third round: environments from KTX2
+cube maps (RGBA16F, RGB9E5, BC6H decoded at cook time and the other HDR
+formats) and from six faces, baked like the equirectangular path
+(`tests/environment.rs`); sound chunks fetched nearest the playhead first,
+ahead of streaming packs by priority, four reads in flight (og-audio's
+§Chunked sounds, og-runtime's `tests/stream_fetch.rs`); flipbooks and
+their arrays in streaming groups (§Streaming groups); each asset's cook
+time recorded, `og cook --report` printing the slowest ten and `og cook
+--watch` timing each change against the 300 ms reload budget (§Cook
+times); `.vox` mirrors flipping their winding and `model { voxScale
+voxOrigin }`.
