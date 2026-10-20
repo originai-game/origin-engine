@@ -104,12 +104,13 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
     attributes: &wgpu::vertex_attr_array![9 => Uint16x4, 10 => Float32x4],
 };
 
-/// `SkinnedInstanceIn`: the transform, (first joint, joint count, first
+/// `SkinnedInstanceIn`: the transform (its columns' xyz, as
+/// [`crate::instances::GpuTransform`]), (first joint, joint count, first
 /// morph element, morph targets) and the eight morph weights.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct SkinnedInstanceGpu {
-    pub transform: [[f32; 4]; 4],
+    pub transform: crate::instances::GpuTransform,
     pub palette: [f32; 4],
     pub morph0: [f32; 4],
     pub morph1: [f32; 4],
@@ -121,7 +122,7 @@ pub(crate) const SKINNED_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> =
     wgpu::VertexBufferLayout {
         array_stride: SKINNED_INSTANCE_STRIDE,
         step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &wgpu::vertex_attr_array![4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4, 11 => Float32x4, 12 => Float32x4],
+        attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4, 11 => Float32x4, 12 => Float32x4],
     };
 
 /// Joints per row of the palette texture (four texels each).

@@ -22,18 +22,18 @@ struct ScatterOut {
 
 @vertex
 fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
-  let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
   var o: ScatterOut;
-  o.fade = scatter_fade(i.m3.xyz);
+  o.fade = scatter_fade(i.m3);
   let world = model * vec4<f32>(v.position, 1.0);
-  o.clip = select(SCATTER_GONE, frame.view_proj * world, o.fade > 0.0);
+  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), o.fade > 0.0);
   o.world = world.xyz;
   o.normal = normalize((model * vec4<f32>(v.normal, 0.0)).xyz);
   o.uv = v.uv;
   o.color = v.color;
   // The copies stand still: only the camera moves them on screen.
-  o.cur_clip = scatter.view_proj * world;
-  o.prev_clip = scatter.prev_view_proj * world;
+  o.cur_clip = mul_point(scatter.view_proj, world);
+  o.prev_clip = mul_point(scatter.prev_view_proj, world);
   return o;
 }
 

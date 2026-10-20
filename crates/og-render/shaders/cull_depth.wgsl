@@ -10,10 +10,10 @@ struct View {
 
 @vertex
 fn vs(@location(0) position: vec3<f32>,
-      @location(4) m0: vec4<f32>,
-      @location(5) m1: vec4<f32>,
-      @location(6) m2: vec4<f32>,
-      @location(7) m3: vec4<f32>) -> @builtin(position) vec4<f32> {
-  let world = mat4x4<f32>(m0, m1, m2, m3) * vec4<f32>(position, 1.0);
-  return view.view_proj * world;
+      @location(4) m0: vec3<f32>,
+      @location(5) m1: vec3<f32>,
+      @location(6) m2: vec3<f32>,
+      @location(7) m3: vec3<f32>) -> @builtin(position) vec4<f32> {
+  let world = instance_matrix(m0, m1, m2, m3) * vec4<f32>(position, 1.0);
+  return mul_point(view.view_proj, world);
 }

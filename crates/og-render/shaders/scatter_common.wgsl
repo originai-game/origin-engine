@@ -17,11 +17,12 @@ struct ScatterVertex {
   @location(3) color: vec4<f32>,
 };
 
+// A copy's transform: its columns' xyz (instance.wgsl).
 struct ScatterInstance {
-  @location(4) m0: vec4<f32>,
-  @location(5) m1: vec4<f32>,
-  @location(6) m2: vec4<f32>,
-  @location(7) m3: vec4<f32>,
+  @location(4) m0: vec3<f32>,
+  @location(5) m1: vec3<f32>,
+  @location(6) m2: vec3<f32>,
+  @location(7) m3: vec3<f32>,
 };
 
 // How much of a copy standing at `at` shows: 1 inside the fade, 0 past the distance.

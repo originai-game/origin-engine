@@ -167,6 +167,10 @@ const PBR_PREPASS_WGSL: &str = include_str!("../shaders/pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
 const PBR_LEAN_WGSL: &str = include_str!("../shaders/pbr_lean.wgsl");
 const PHYSICAL_WGSL: &str = include_str!("../shaders/physical.wgsl");
+/// `instance_matrix`: an instance's transform from its columns in the
+/// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
+/// points it moves are projected.
+pub(crate) const INSTANCE_WGSL: &str = include_str!("../shaders/instance.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
 
@@ -178,7 +182,7 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
@@ -193,7 +197,7 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
@@ -242,7 +246,7 @@ pub(crate) const SHADOW_PASS_WGSL: &str = include_str!("../shaders/shadow_pass.w
 /// built-in identities) and the joint palette read as `palette`.
 pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_PASS_WGSL}{SHADOW_WGSL}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
@@ -250,7 +254,7 @@ pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
 /// The scattered copies' lit module with the light tables `tables`.
 fn scatter_lit_source(tables: clusters::LightTables) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         include_str!("../shaders/scatter_common.wgsl"),
@@ -261,7 +265,7 @@ fn scatter_lit_source(tables: clusters::LightTables) -> String {
 /// The scattered copies' shadow module.
 fn scatter_shadow_source() -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}",
         particles_gpu::NOISE_WGSL,
         include_str!("../shaders/scatter_common.wgsl"),
         include_str!("../shaders/scatter_shadow.wgsl")
@@ -747,7 +751,9 @@ struct ShadowPassUniform {
     pad: [f32; 36],
 }
 
-const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
+/// An instance in the instance buffers: its columns' xyz
+/// ([`instances::GpuTransform`]).
+const INSTANCE_STRIDE: u64 = std::mem::size_of::<instances::GpuTransform>() as u64;
 
 const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<Vertex>() as u64,
@@ -758,7 +764,7 @@ const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayou
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: INSTANCE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3],
 };
 
 /// One attribute of [`Vertex`] at its offset in the shared vertex buffer.
@@ -1579,7 +1585,7 @@ fn lean_pipeline(
 const PREV_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: INSTANCE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![11 => Float32x4, 12 => Float32x4, 13 => Float32x4, 14 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![11 => Float32x3, 12 => Float32x3, 13 => Float32x3, 14 => Float32x3],
 };
 
 /// The depth-normal prepass pipeline for (side, skinned); `lean`: a plain
@@ -3621,7 +3627,7 @@ impl Renderer {
         &self,
         batches: &[Batch],
         spheres: &[(Vec3, f32)],
-        transforms: &mut Vec<[[f32; 4]; 4]>,
+        transforms: &mut Vec<instances::GpuTransform>,
         origins: &mut Vec<u32>,
         inside: &mut Vec<bool>,
         frustum: &Frustum,
@@ -3683,7 +3689,7 @@ impl Renderer {
         batches: &[Batch],
         spheres: &[(Vec3, f32)],
         submission: &[u32],
-        transforms: &mut Vec<[[f32; 4]; 4]>,
+        transforms: &mut Vec<instances::GpuTransform>,
         origins: &mut Vec<u32>,
         frustum: &Frustum,
         eye: Vec3,
@@ -4017,7 +4023,7 @@ impl Renderer {
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
             let w = s.morph_weights;
             data.push(skin::SkinnedInstanceGpu {
-                transform: s.transform.to_cols_array_2d(),
+                transform: instances::gpu_transform(&s.transform),
                 palette: [
                     first as f32,
                     count as f32,
@@ -4773,9 +4779,9 @@ impl Renderer {
             instance_upload_bytes += gc.uploaded;
         }
         if object_motion {
-            let prev: Vec<[[f32; 4]; 4]> = origins
+            let prev: Vec<instances::GpuTransform> = origins
                 .iter()
-                .map(|&i| scene.previous_transforms[i as usize].to_cols_array_2d())
+                .map(|&i| instances::gpu_transform(&scene.previous_transforms[i as usize]))
                 .collect();
             grow_and_write(
                 &self.device,

@@ -56,7 +56,8 @@ struct BatchGpu {
 
 @group(0) @binding(0) var<uniform> params: Params;
 // Region 0: the sorted transforms; region g + 1: pass g's visible ones.
-@group(0) @binding(1) var<storage, read_write> instances: array<mat4x4<f32>>;
+// An instance is 12 floats: its columns' xyz (instance.wgsl).
+@group(0) @binding(1) var<storage, read_write> instances: array<f32>;
 @group(0) @binding(2) var<storage, read> batches: array<BatchGpu>;
 // [0, N): last frame's main visibility; then per pass N + 1 prefix
 // entries; then per pass `blocks` workgroup sums.
@@ -78,6 +79,16 @@ fn n_instances() -> u32 { return params.counts.x; }
 fn prefix_at(g: u32) -> u32 { return n_instances() + g * (n_instances() + 1u); }
 fn blocks_at(g: u32) -> u32 { return n_instances() + params.counts.w * (n_instances() + 1u) + g * params.sizes.x; }
 fn hidden_at(bi: u32) -> u32 { return params.counts.w * params.counts.y * 5u + params.counts.w + bi; }
+
+// Sorted instance k's transform.
+fn instance_at(k: u32) -> mat4x4<f32> {
+  let a = k * 12u;
+  return instance_matrix(
+    vec3<f32>(instances[a], instances[a + 1u], instances[a + 2u]),
+    vec3<f32>(instances[a + 3u], instances[a + 4u], instances[a + 5u]),
+    vec3<f32>(instances[a + 6u], instances[a + 7u], instances[a + 8u]),
+    vec3<f32>(instances[a + 9u], instances[a + 10u], instances[a + 11u]));
+}
 
 // The batch holding sorted instance k (batches cover 0..N in order).
 fn batch_of(k: u32) -> u32 {
@@ -109,7 +120,7 @@ fn screen_box(m: mat4x4<f32>, center: vec3<f32>, extent: vec3<f32>) -> ScreenBox
       select(-1.0, 1.0, (i & 1u) != 0u),
       select(-1.0, 1.0, (i & 2u) != 0u),
       select(-1.0, 1.0, (i & 4u) != 0u));
-    let clip = params.view_proj * (m * vec4<f32>(corner, 1.0));
+    let clip = mul_point(params.view_proj, m * vec4<f32>(corner, 1.0));
     if (clip.w <= 1e-6) { r.ok = false; return r; }
     let ndc = clip.xyz / clip.w;
     let px = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * size;
@@ -188,7 +199,7 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
   if (k < n_instances()) {
     let bi = batch_of(k);
     let b = batches[bi];
-    let m = instances[k];
+    let m = instance_at(k);
     let center = (m * vec4<f32>(b.bounds.xyz, 1.0)).xyz;
     let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
     // The CPU path's sphere, widened by its rounding.
@@ -306,7 +317,8 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   let at = prefix_at(g);
   let start = scan[at + b.first];
   if (scan[at + k + 1u] != scan[at + k]) {
-    instances[(g + 1u) * n + b.first + scan[at + k] - start] = instances[k];
+    let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 12u;
+    for (var j = 0u; j < 12u; j++) { instances[to + j] = instances[k * 12u + j]; }
   }
   if (k == b.first) {
     let draw = (g * params.counts.y + bi) * 5u;

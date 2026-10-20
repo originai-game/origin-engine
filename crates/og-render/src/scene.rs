@@ -388,7 +388,9 @@ pub struct SpriteArray {
 pub struct Instance {
     pub mesh: MeshHandle,
     pub material: MaterialHandle,
-    /// Local to world. Normals use the upper 3x3 directly, so keep scale uniform.
+    /// Local to world. Normals use the upper 3x3 directly, so keep scale
+    /// uniform. Affine: the GPU reads the first three rows (48 bytes), the
+    /// last is taken as (0, 0, 0, 1).
     pub transform: Mat4,
 }
 

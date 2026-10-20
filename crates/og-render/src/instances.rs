@@ -13,6 +13,16 @@
 use crate::{RenderError, RenderScene};
 use glam::{Mat4, Vec3};
 
+/// An instance's transform as the GPU reads it: the x, y and z of its four
+/// columns (`instance.wgsl` `instance_matrix`), 48 bytes. Their w is taken
+/// as (0, 0, 0, 1): an instance's transform is affine.
+pub(crate) type GpuTransform = [[f32; 3]; 4];
+
+/// `m` as the GPU reads it ([`GpuTransform`]).
+pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
+    [m.x_axis, m.y_axis, m.z_axis, m.w_axis].map(|c| c.truncate().to_array())
+}
+
 /// One (mesh, material) run of the sorted instances.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Run {
@@ -41,7 +51,7 @@ pub(crate) struct SortedInstances {
     order: Vec<u32>,
     matrices: Vec<Mat4>,
     spheres: Vec<(Vec3, f32)>,
-    transforms: Vec<[[f32; 4]; 4]>,
+    transforms: Vec<GpuTransform>,
     /// The spheres' box (min and max), `None` when there are none.
     sphere_box: Option<(Vec3, Vec3)>,
 }
@@ -50,7 +60,7 @@ pub(crate) struct SortedInstances {
 pub(crate) struct Sorted {
     pub runs: Vec<Run>,
     /// Per sorted instance (only those of non-empty meshes).
-    pub transforms: Vec<[[f32; 4]; 4]>,
+    pub transforms: Vec<GpuTransform>,
     pub spheres: Vec<(Vec3, f32)>,
     /// Per sorted instance, its index in the submission.
     pub submission: Vec<u32>,
@@ -154,7 +164,7 @@ impl SortedInstances {
 
     /// Gives back what [`SortedInstances::update`] lent: `transforms` cut to
     /// the sorted instances (a frame appends culled copies after them).
-    pub fn restore(&mut self, mut transforms: Vec<[[f32; 4]; 4]>, spheres: Vec<(Vec3, f32)>) {
+    pub fn restore(&mut self, mut transforms: Vec<GpuTransform>, spheres: Vec<(Vec3, f32)>) {
         transforms.truncate(self.order.len());
         self.transforms = transforms;
         self.spheres = spheres;
@@ -195,7 +205,7 @@ impl SortedInstances {
             }
             let m = inst.transform;
             self.spheres.push(world_sphere(&m, bounds));
-            self.transforms.push(m.to_cols_array_2d());
+            self.transforms.push(gpu_transform(&m));
             self.matrices.push(m);
             self.order.push(i as u32);
         }
@@ -216,7 +226,7 @@ impl SortedInstances {
                     continue;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
-                self.transforms[k] = m.to_cols_array_2d();
+                self.transforms[k] = gpu_transform(m);
                 self.matrices[k] = *m;
                 changed += 1;
             }
@@ -301,7 +311,7 @@ mod tests {
         let still = kept.update(&scene, 3, info, 2).unwrap();
         assert_same(&still, &fresh(&scene));
         let mut culled = still.transforms;
-        culled.push([[9.0; 4]; 4]);
+        culled.push([[9.0; 3]; 4]);
         kept.restore(culled, still.spheres);
         // Three moved (one of them by a sign of zero only).
         scene.instances[3].transform.w_axis.x += 2.0;

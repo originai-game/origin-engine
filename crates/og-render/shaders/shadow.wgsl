@@ -16,17 +16,18 @@ struct VertexIn {
   @location(2) uv: vec2<f32>,
   @location(3) color: vec4<f32>,
 };
+// The instance's transform: its columns' xyz (instance.wgsl).
 struct InstanceIn {
-  @location(4) m0: vec4<f32>,
-  @location(5) m1: vec4<f32>,
-  @location(6) m2: vec4<f32>,
-  @location(7) m3: vec4<f32>,
+  @location(4) m0: vec3<f32>,
+  @location(5) m1: vec3<f32>,
+  @location(6) m2: vec3<f32>,
+  @location(7) m3: vec3<f32>,
 };
 struct SkinnedInstanceIn {
-  @location(4) m0: vec4<f32>,
-  @location(5) m1: vec4<f32>,
-  @location(6) m2: vec4<f32>,
-  @location(7) m3: vec4<f32>,
+  @location(4) m0: vec3<f32>,
+  @location(5) m1: vec3<f32>,
+  @location(6) m2: vec3<f32>,
+  @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,
   @location(11) morph0: vec4<f32>,
   @location(12) morph1: vec4<f32>,
@@ -56,7 +57,7 @@ fn shadow_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
 fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {
   let world = model * vec4<f32>(v.position, 1.0);
   var o: VsOut;
-  o.clip = shadow_clip(world);
+  o.clip = shadow_project(world, mul_point(shadow_pass.view_proj, world));
   o.world = world.xyz;
   o.uv = v.uv;
   o.local_pos = v.position;
@@ -67,7 +68,7 @@ fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {
 
 @vertex
 fn vs(v: VertexIn, i: InstanceIn) -> VsOut {
-  return shadow_vertex(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), v);
+  return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
 }
 
 // Casters whose shadow needs nothing of their material (not skinned, no
@@ -81,9 +82,9 @@ struct LeanVsOut {
 
 @vertex
 fn vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {
-  let world = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * vec4<f32>(position, 1.0);
+  let world = instance_matrix(i.m0, i.m1, i.m2, i.m3) * vec4<f32>(position, 1.0);
   var o: LeanVsOut;
-  o.clip = shadow_clip(world);
+  o.clip = shadow_project(world, mul_point(shadow_pass.view_proj, world));
   o.world = world.xyz;
   return o;
 }
@@ -110,7 +111,7 @@ fn shadow_vertex_hooked(model: mat4x4<f32>, v: VertexIn) -> VsOut {
 
 @vertex
 fn vs_hooked(v: VertexIn, i: InstanceIn) -> VsOut {
-  return shadow_vertex_hooked(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), v);
+  return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
 }
 
 fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
@@ -157,7 +158,7 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn,
   let m = morphed(v.position, v.normal, vi, i.palette, i.morph0, i.morph1);
   var mv = v;
   mv.position = m.position;
-  return shadow_vertex(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
+  return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
 }
 
 @vertex
@@ -166,7 +167,7 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInst
   var mv = v;
   mv.position = m.position;
   mv.normal = m.normal;
-  return shadow_vertex_hooked(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
+  return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
 }
 
 // `dx`, `dy`: the world position's derivatives, taken first (before any

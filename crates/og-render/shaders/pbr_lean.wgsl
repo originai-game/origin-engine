@@ -31,7 +31,7 @@ struct LeanOut {
 
 @vertex
 fn vs_lean(v: LeanVertexIn, i: InstanceIn) -> LeanOut {
-  let p = lit_place(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), v.position, v.normal, vec2<f32>(0.0), v.color);
+  let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position, v.normal, vec2<f32>(0.0), v.color);
   var o: LeanOut;
   o.clip = p.clip;
   o.world_pos = p.world;
@@ -64,13 +64,13 @@ struct LeanPrepassOut {
 
 @vertex
 fn vs_prepass_lean(@location(0) position: vec3<f32>, @location(1) normal: vec3<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
-  let p = lit_place(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), position, normal, vec2<f32>(0.0), vec4<f32>(1.0));
+  let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), position, normal, vec2<f32>(0.0), vec4<f32>(1.0));
   var o: LeanPrepassOut;
   o.clip = p.clip;
   o.world_pos = p.world;
   o.normal = p.normal;
   o.cur_clip = fx.view_proj_unjittered * vec4<f32>(p.world, 1.0);
-  o.prev_clip = fx.prev_view_proj * (mat4x4<f32>(prev.p0, prev.p1, prev.p2, prev.p3) * vec4<f32>(position, 1.0));
+  o.prev_clip = mul_point(fx.prev_view_proj, instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3) * vec4<f32>(position, 1.0));
   return o;
 }
 
