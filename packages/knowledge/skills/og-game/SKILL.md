@@ -157,7 +157,9 @@ registered schema and refuses a model path that does not exist.
   A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap
   the frames' models: play them as skinned clips (§9). `voxFps 8` sets the
   rate (default 10), `voxClip walk 0 3` names frames 0 to 3 (repeatable;
-  without it one clip `frames` holds every frame).
+  without it one clip `frames` holds every frame). Each frame is centred on
+  its own pivot, as in the editor: give the frames one height (or pad them)
+  for a character whose feet stay on the ground.
 - Reusable production assets come through the platform's asset catalog into
   `assets/`; record each file's licence next to it.
 
