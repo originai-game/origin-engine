@@ -289,6 +289,16 @@ woven canvas, and `watercolor`, cold-pressed paper) and `Stylise.palette
 cook puts the ones a look names into the bundle; a palette or canvas of
 the game's own is a path under `assets/` as before.
 
+With a moving 3D camera, lay the paper and the strokes on the scene
+rather than over the screen: `Stylise.paintCanvasSpace surface` (grain
+per metre by `paintCanvasWorldScale`), `hatchingSpace surface` and
+`halftoneSpace surface` stick to the surfaces and wrap round forms, so
+nothing slides over the world as the camera moves; `screen` (the
+default) suits 2D, fixed cameras and a deliberate printed-sheet feel.
+Pixel sprites standing in a 3D set take `Sprite.dropShadow`; on a deck or
+a step give them `dropShadowHeight`, and over an og.Terrain their
+shadows follow the slope by themselves.
+
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
 is applied before `start` runs; switch looks at a tick with
 `og.load.look` and `og.render.applyLook` (a flashback, a photo mode, an
