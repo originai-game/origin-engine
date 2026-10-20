@@ -109,7 +109,8 @@ enum Slot {
         /// Per material, the proxy's handle and material (as drawn: a
         /// physical material has no glTF shape).
         materials: Vec<(MaterialHandle, StandardMaterial)>,
-        /// The full model's textures, made the first time it loads.
+        /// The full model's textures, made each time it loads and removed
+        /// when it unloads.
         textures: Vec<TextureHandle>,
     },
     Texture {
@@ -723,8 +724,11 @@ fn downgrade(eng: &Engine, group: &str) {
                 for (h, m) in materials.iter() {
                     rs.scene.set_standard_material(*h, *m);
                 }
-                for h in textures.iter() {
-                    rs.scene.set_texture(*h, placeholder());
+                // The full model's own textures go (its materials are the
+                // proxy's again, untextured): the renderer frees them and
+                // the next load fills the same slots under new generations.
+                for h in textures.drain(..) {
+                    rs.scene.remove_texture(h);
                 }
             }
             Slot::Texture { handle, .. } => {

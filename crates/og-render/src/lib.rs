@@ -3568,6 +3568,9 @@ impl Renderer {
         scene: &RenderScene,
         target: &RenderTarget,
     ) -> Result<FrameStats, RenderError> {
+        if let Some(stale) = scene.stale_handle() {
+            return Err(RenderError::InvalidHandle(stale));
+        }
         self.sync(scene)?;
         self.ensure_environment(scene);
         let (mut batches, mut transforms, spheres, submission) = self.build_batches(scene)?;
