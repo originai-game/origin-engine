@@ -144,6 +144,16 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                 kind::LINEAR,
             ),
         ];
+        // The physical extensions' textures (`KHR_materials_*`).
+        og_render::gltf::physical_extensions(&doc, &m, |t, k| {
+            let u = TextureUse {
+                image: t.source().index(),
+                kind: texture_kind(k),
+            };
+            if !textures.contains(&u) {
+                textures.push(u);
+            }
+        });
         for (slot, k) in slots {
             if let Some((t, coord)) = slot {
                 if coord != 0 {
@@ -690,6 +700,15 @@ impl Strings {
     }
 }
 
+/// The cooked texture kind of what a glTF material's texture holds.
+fn texture_kind(k: og_render::gltf::TextureKind) -> u32 {
+    match k {
+        og_render::gltf::TextureKind::Color => kind::COLOR,
+        og_render::gltf::TextureKind::Normal => kind::NORMAL,
+        og_render::gltf::TextureKind::Linear => kind::LINEAR,
+    }
+}
+
 /// What a model cook reports besides the blob.
 pub struct ModelNotes {
     pub notes: Vec<String>,
@@ -724,7 +743,41 @@ pub fn cook(
         let strength = m.emissive_strength().unwrap_or(1.0);
         let (name_offset, name_len) = strings.add(m.name().unwrap_or(""));
         let b = pbr.base_color_factor();
+        let p =
+            og_render::gltf::physical_extensions(doc, &m, |t, k| tex_of(Some(t), texture_kind(k)));
+        let t = |x: Option<u32>| x.unwrap_or(NONE);
         materials.push(MaterialRow {
+            physical: p.present,
+            clearcoat: p.clearcoat,
+            clearcoat_roughness: p.clearcoat_roughness,
+            clearcoat_normal_scale: p.clearcoat_normal_scale,
+            sheen_r: p.sheen_color[0],
+            sheen_g: p.sheen_color[1],
+            sheen_b: p.sheen_color[2],
+            sheen_roughness: p.sheen_roughness,
+            transmission: p.transmission,
+            thickness: p.thickness,
+            attenuation_distance: p.attenuation_distance,
+            attenuation_r: p.attenuation_color[0],
+            attenuation_g: p.attenuation_color[1],
+            attenuation_b: p.attenuation_color[2],
+            ior: p.ior,
+            iridescence: p.iridescence,
+            iridescence_ior: p.iridescence_ior,
+            iridescence_min: p.iridescence_thickness[0],
+            iridescence_max: p.iridescence_thickness[1],
+            anisotropy: p.anisotropy,
+            anisotropy_rotation: p.anisotropy_rotation,
+            clearcoat_texture: t(p.clearcoat_texture),
+            clearcoat_roughness_texture: t(p.clearcoat_roughness_texture),
+            clearcoat_normal_texture: t(p.clearcoat_normal_texture),
+            sheen_color_texture: t(p.sheen_color_texture),
+            sheen_roughness_texture: t(p.sheen_roughness_texture),
+            transmission_texture: t(p.transmission_texture),
+            thickness_texture: t(p.thickness_texture),
+            iridescence_texture: t(p.iridescence_texture),
+            iridescence_thickness_texture: t(p.iridescence_thickness_texture),
+            anisotropy_texture: t(p.anisotropy_texture),
             base_r: b[0],
             base_g: b[1],
             base_b: b[2],
@@ -772,6 +825,16 @@ pub fn cook(
         normal_texture: NONE,
         emissive_texture: NONE,
         occlusion_texture: NONE,
+        clearcoat_texture: NONE,
+        clearcoat_roughness_texture: NONE,
+        clearcoat_normal_texture: NONE,
+        sheen_color_texture: NONE,
+        sheen_roughness_texture: NONE,
+        transmission_texture: NONE,
+        thickness_texture: NONE,
+        iridescence_texture: NONE,
+        iridescence_thickness_texture: NONE,
+        anisotropy_texture: NONE,
         name_offset,
         name_len,
         ..Default::default()

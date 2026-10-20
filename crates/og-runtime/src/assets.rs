@@ -321,7 +321,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             .material_handles()
             .skip(material_base)
             .take(model.materials.len())
-            .filter_map(|h| Some((h, rs.scene.material(h)?.clone())))
+            .filter_map(|h| Some((h, *rs.scene.standard_material(h)?)))
             .collect();
         (meshes, materials)
     });
