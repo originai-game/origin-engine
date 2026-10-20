@@ -204,7 +204,7 @@ wasm_build() {
   # profile with codegen units, minutes faster, modules slightly larger, so
   # the size gate holds an upper bound); OG_WASM_PROFILE=wasm measures the
   # shipping profile itself.
-  "${cargo[@]}" --profile "${OG_WASM_PROFILE:-wasm-gate}" "${args[@]}" --lib \
+  "${cargo[@]}" --profile "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" "${args[@]}" --lib \
       --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
   mkdir -p "$OG_WASM_OUT/raw"
   for f in $(grep '"reason":"compiler-artifact"' "$OG_WASM_OUT/cargo${variant:+-$variant}.json" \
@@ -620,6 +620,12 @@ set -- ${args[@]+"${args[@]}"}
 # export, two minutes of og processes) run under --all and in CI; the
 # path-aware lane skips them (OG_GATE_ALL, read by the tests).
 [ "$FORCE_ALL" != 1 ] || export OG_GATE_ALL=1
+# The wasm profile: the shipping `wasm` under --all and in CI (the size the
+# gate records is the one that ships), `wasm-gate` (codegen units, a third
+# faster, modules 5-6 % larger: an upper bound) in the path-aware lane.
+# Each profile keeps its own target subdirectory, so alternating costs no
+# rebuild. OG_WASM_PROFILE overrides.
+if [ "$FORCE_ALL" = 1 ]; then WASM_PROFILE_DEFAULT=wasm; else WASM_PROFILE_DEFAULT=wasm-gate; fi
 
 if [ "$ONLY" = 1 ]; then
   [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }

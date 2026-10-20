@@ -79,6 +79,16 @@ integration tests (packages/engine's `reload`, `reload-asset` and
 `web-export`: og processes for minutes) run only under `--all` and in CI
 (`OG_GATE_ALL`); a plain `bun run test` in the package runs them too.
 
+The wasm profile depends on the lane: `--all` and CI build the shipping
+`wasm` profile (`Cargo.toml`), so the size they record is the module that
+ships; the path-aware lane builds `wasm-gate`, the same profile with 16
+codegen units, which measured (2026-10-21, cold, Apple M4 Pro) wasm-build
+293 → 205 s and wasm-opt 113 → 85 s with modules 5.3–5.9 % larger
+(publish 2,947,818 → 3,106,805 B brotli, 2D 2,783,920 → 2,932,177, lanes
+3,320,578 → 3,516,299), so a size gate the path-aware lane passes, the
+shipping build passes by that margin. `OG_WASM_PROFILE=wasm|wasm-gate`
+overrides; each profile has its own target subdirectory.
+
 wasm-opt and size-gate also keep results by content in
 `target/og-wasm-cache`: a raw module byte-identical to one already
 optimised (keyed by its SHA-256, the wasm-bindgen and wasm-opt versions and
