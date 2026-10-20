@@ -17,9 +17,10 @@
 //! `OG_GFX_PIPELINE_CACHE=DIR` keeps compiled pipelines in DIR across runs
 //! where the backend can (Vulkan; `RenderInfo::pipeline_cache`).
 //! `OG_GFX_SERIAL=1` waits for the GPU after every timed frame and reports
-//! the mean wait as `gpu=`: the GPU's own time per frame (the work starts
-//! at the frame's submit), which a frame time overlapped with the next
+//! the mean wait as `gpu=`: the GPU's time per frame (its work starts at
+//! the frame's submit), which a frame time overlapped with the next
 //! frame's CPU work hides when the CPU is the slower side (the dev build).
+//! An upper bound: the GPU idles between frames and may clock down.
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
