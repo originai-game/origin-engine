@@ -44,19 +44,20 @@ struct VertexIn {
   @location(15) tangent: vec4<f32>,
 };
 
+// The instance's transform: its columns' xyz (instance.wgsl).
 struct InstanceIn {
-  @location(4) m0: vec4<f32>,
-  @location(5) m1: vec4<f32>,
-  @location(6) m2: vec4<f32>,
-  @location(7) m3: vec4<f32>,
+  @location(4) m0: vec3<f32>,
+  @location(5) m1: vec3<f32>,
+  @location(6) m2: vec3<f32>,
+  @location(7) m3: vec3<f32>,
 };
 
 // A skinned instance: its transform and where its joints start in the palette.
 struct SkinnedInstanceIn {
-  @location(4) m0: vec4<f32>,
-  @location(5) m1: vec4<f32>,
-  @location(6) m2: vec4<f32>,
-  @location(7) m3: vec4<f32>,
+  @location(4) m0: vec3<f32>,
+  @location(5) m1: vec3<f32>,
+  @location(6) m2: vec3<f32>,
+  @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,  // x: first joint, y: joints, z: first morph delta, w: morph targets
   @location(11) morph0: vec4<f32>,  // morph weights 0..3
   @location(12) morph1: vec4<f32>,  // morph weights 4..7
@@ -67,12 +68,13 @@ struct SkinIn {
   @location(10) weights: vec4<f32>,
 };
 
-// The previous frame's transform of the instance (motion vectors).
+// The previous frame's transform of the instance (motion vectors), as
+// InstanceIn's.
 struct PrevIn {
-  @location(11) p0: vec4<f32>,
-  @location(12) p1: vec4<f32>,
-  @location(13) p2: vec4<f32>,
-  @location(14) p3: vec4<f32>,
+  @location(11) p0: vec3<f32>,
+  @location(12) p1: vec3<f32>,
+  @location(13) p2: vec3<f32>,
+  @location(14) p3: vec3<f32>,
 };
 
 struct VertexOut {
@@ -160,7 +162,7 @@ fn lit_place(model: mat4x4<f32>, position: vec3<f32>, normal: vec3<f32>, uv: vec
   h.time = frame.time.x;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   var p: LitPlace;
-  p.clip = retro_clip(frame.view_proj * world);
+  p.clip = retro_clip(moved_clip(frame.view_proj, world));
   p.world = world.xyz;
   p.normal = n;
   return p;
@@ -199,7 +201,7 @@ fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
 
 @vertex
 fn vs(v: VertexIn, i: InstanceIn) -> VertexOut {
-  return lit_vertex(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), v);
+  return lit_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
 }
 
 
@@ -237,7 +239,7 @@ fn morph_vertex(v: VertexIn, vi: u32, i: SkinnedInstanceIn) -> VertexIn {
 
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VertexOut {
-  let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
   return lit_vertex(model, morph_vertex(v, vi, i));
 }
 
@@ -251,18 +253,18 @@ fn prepass_vertex(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn) -> Prepass
   p.color = o.color;
   p.local_pos = o.local_pos;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(o.world_pos, 1.0);
-  p.prev_clip = fx.prev_view_proj * (prev * vec4<f32>(v.position, 1.0));
+  p.prev_clip = mul_point(fx.prev_view_proj, prev * vec4<f32>(v.position, 1.0));
   return p;
 }
 
 @vertex
 fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {
-  return prepass_vertex(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), mat4x4<f32>(prev.p0, prev.p1, prev.p2, prev.p3), v);
+  return prepass_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3), v);
 }
 
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PrepassOut {
-  let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
   return prepass_vertex(model, model, morph_vertex(v, vi, i));
 }
 

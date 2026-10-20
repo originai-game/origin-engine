@@ -217,7 +217,7 @@ impl Rows {
         Ok(Rows { fields, layout })
     }
 
-    fn read<T: Reflect>(&self, a: &ArchetypeView<'_>) -> Result<Vec<T>> {
+    fn read<T: Reflect + Send>(&self, a: &ArchetypeView<'_>) -> Result<Vec<T>> {
         read_rows(a, &self.fields, &self.layout)
     }
 }
@@ -355,8 +355,10 @@ pub(crate) struct Scene {
     pub fluids3: Vec<(Entity, Vec3, Fluid3D)>,
 }
 
-/// Every row of component `T` in `a`, decoded from its columns.
-fn read_rows<T: Reflect>(
+/// Every row of component `T` in `a`, decoded from its columns, by ranges
+/// of rows on the lanes from two grains of them (`Grains::rows`), the
+/// ranges' rows joined in row order.
+fn read_rows<T: Reflect + Send>(
     a: &ArchetypeView<'_>,
     fields: &[FieldRef],
     layout: &Layout,
@@ -365,15 +367,27 @@ fn read_rows<T: Reflect>(
         .iter()
         .map(|f| a.read_bytes(*f))
         .collect::<Result<Vec<_>>>()?;
-    let mut packed = vec![0u8; layout.size()];
-    let mut out = Vec::with_capacity(a.len());
-    for row in 0..a.len() {
-        for (i, column) in columns.iter().enumerate() {
-            let range = layout.range(i);
-            let n = range.len();
-            packed[range].copy_from_slice(&column[row * n..(row + 1) * n]);
+    let columns: Vec<&[u8]> = columns.iter().map(|c| &**c).collect();
+    let decode = |rows: std::ops::Range<usize>| -> Result<Vec<T>> {
+        let mut packed = vec![0u8; layout.size()];
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            for (i, column) in columns.iter().enumerate() {
+                let range = layout.range(i);
+                let n = range.len();
+                packed[range].copy_from_slice(&column[row * n..(row + 1) * n]);
+            }
+            out.push(layout.decode::<T>(&packed)?);
         }
-        out.push(layout.decode::<T>(&packed)?);
+        Ok(out)
+    };
+    let mut parts = crate::lanes::map_ranges(a.len(), crate::lanes::now().rows, decode);
+    if parts.len() == 1 {
+        return parts.pop().unwrap_or_else(|| Ok(Vec::new()));
+    }
+    let mut out = Vec::with_capacity(a.len());
+    for part in parts {
+        out.extend(part?);
     }
     Ok(out)
 }
@@ -437,6 +451,7 @@ pub(crate) fn gather<'w>(q: &dyn Fn(usize) -> Result<QueryIter<'w>>, ids: &Ids) 
     }
     let mut scene = Scene::default();
     for a in q(Q_BODIES)? {
+        scene.bodies.reserve(a.len());
         let position = a.read::<Vec3>(ids.t_position)?;
         let quaternion = a.read::<Quat>(ids.t_quaternion)?;
         let scale = a.read::<Vec3>(ids.t_scale)?;

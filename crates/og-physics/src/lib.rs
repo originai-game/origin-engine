@@ -53,6 +53,7 @@ mod gather;
 mod lanes;
 mod schema;
 mod schema_ext;
+mod stats;
 mod verlet;
 mod water;
 
@@ -64,6 +65,7 @@ mod dim3;
 pub use lanes::{Grains, grains, pool_bodies, set_grains};
 pub use schema::*;
 pub use schema_ext::*;
+pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
 
 use gather::{Ids, QUERIES, Scene};
 use og_core::glam::{Quat, Vec2, Vec3};
@@ -239,6 +241,8 @@ pub(crate) struct Shared {
     /// bone poses the host gave for this tick.
     pub rigs: BTreeMap<u64, Arc<RagdollRig>>,
     pub ragdoll_targets: BTreeMap<u64, Vec<(Vec3, Quat)>>,
+    /// What the last step cost ([`PhysicsSystem::stats`]; not world state).
+    pub stats: PhysicsStats,
 }
 
 /// One bone of a ragdoll rig, in the entity's space at the rest pose.
@@ -809,6 +813,13 @@ impl PhysicsSystem {
         None
     }
 
+    /// What the last step cost, phase by phase, and which phases ran on the
+    /// lanes pool ([`PhysicsStats`]); the default before the first step.
+    /// Timings are wall clock, never world state.
+    pub fn stats(&self) -> PhysicsStats {
+        lock(&self.shared).stats.clone()
+    }
+
     /// The bones of the og.Ragdoll on `entity` as the bodies hold them
     /// (rig order, world space; in 2D at their targets' z); `None` before
     /// its first step.
@@ -1022,6 +1033,8 @@ pub(crate) struct StepOut {
     pub ragdolls: Vec<(Entity, Ragdoll)>,
     pub events: Vec<CharacterEvent>,
     pub splashes: Vec<Splash>,
+    /// The step's phases, timed on the thread it ran on.
+    pub laps: Option<stats::Laps>,
 }
 
 fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result<()> {
@@ -1036,8 +1049,12 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
         }
         return Ok(());
     }
+    let started = stats::now_ms();
+    let mut laps = stats::Laps::start();
     let scene: Scene = gather::gather(&|i| ctx.query(i), ids)?;
+    laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
+    let threads = og_lanes::threads();
     // The simulation is taken out for the step and put back only when it
     // succeeds: a failed tick leaves none, and the next one rebuilds it.
     let out = {
@@ -1068,6 +1085,7 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
             other => return Err(check_profile(other).unwrap_err()),
         }
     };
+    laps.skip();
     gather::write_back(ctx, ids, &scene, &out)?;
     for (e, c) in &out.controls {
         match c {
@@ -1138,6 +1156,27 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     for c in current {
         ctx.send(c)?;
     }
+    laps.lap(stats::Phase::WriteBack);
+    if let Some(step) = &out.laps {
+        laps.merge(step);
+    }
+    let pool = laps.phases[stats::Phase::Rapier as usize].split;
+    let mut shared = lock(shared);
+    let bodies = match () {
+        #[cfg(feature = "physics3d")]
+        _ if shared.sim3.is_some() => shared.sim3.as_deref().map_or(0, |s| s.world.bodies.len()),
+        #[cfg(feature = "physics2d")]
+        _ if shared.sim2.is_some() => shared.sim2.as_deref().map_or(0, |s| s.world.bodies.len()),
+        _ => 0,
+    };
+    shared.stats = PhysicsStats {
+        tick,
+        bodies: bodies as u32,
+        threads,
+        pool,
+        ms: (stats::now_ms() - started).max(0.0),
+        phases: laps.phases.to_vec(),
+    };
     Ok(())
 }
 

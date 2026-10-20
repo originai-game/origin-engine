@@ -11,7 +11,11 @@
 //! `--split` splits ropes, cloths and fluid sets side by side from two of
 //! them and the fluids' per-particle passes from two grains of
 //! `--particles` (default the measured grain); without it, the measured
-//! grains decide. Each scene's world hash must be the same in every mode.
+//! grains decide. `--ragdolls N`, `--rope-work N`, `--cloth-work N` and
+//! `--fluid-work N` set those grains; `--only ropes,cloths,fluids3,fluid3,
+//! fluids2,fluid2,ragdolls` picks the scenes. Each row also gives the mean
+//! of the scene's own phase (`PhysicsSystem::stats`). Each scene's world
+//! hash must be the same in every mode.
 
 #[path = "../tests/support/mod.rs"]
 mod support;
@@ -25,33 +29,38 @@ use support::{at, beyond, floor, spawn_static};
 const WARM: u32 = 120;
 const TIMED: u32 = 300;
 
-fn time(mut w: World) -> (f64, u64) {
+/// Milliseconds per tick, the hash, and the mean ms of `phase` (the
+/// scene's own, from `PhysicsSystem::stats`).
+fn time((mut w, physics): (World, PhysicsSystem), phase: Phase) -> (f64, u64, f64) {
     for _ in 0..WARM {
         w.step().unwrap();
     }
+    let mut own = 0.0;
     let t = Instant::now();
     for _ in 0..TIMED {
         w.step().unwrap();
+        own += physics.stats().phase(phase).ms;
     }
     (
         t.elapsed().as_secs_f64() * 1000.0 / TIMED as f64,
         w.world_hash(),
+        own / TIMED as f64,
     )
 }
 
-fn world3() -> World {
-    let (mut w, _p) = beyond::new_world(5, PROFILE_3D);
+fn world3() -> (World, PhysicsSystem) {
+    let (mut w, p) = beyond::new_world(5, PROFILE_3D);
     floor(&mut w);
     spawn_static(
         &mut w,
         at(0.0, 1.0, 0.0),
         Collider::cuboid(Vec3::new(30.0, 0.4, 0.6)),
     );
-    w
+    (w, p)
 }
 
-fn ropes(n: usize) -> World {
-    let mut w = world3();
+fn ropes(n: usize) -> (World, PhysicsSystem) {
+    let (mut w, p) = world3();
     for i in 0..n {
         let (x, z) = (-15.0 + (i % 30) as f32, -3.0 + (i / 30) as f32);
         w.spawn((
@@ -63,11 +72,11 @@ fn ropes(n: usize) -> World {
         ))
         .unwrap();
     }
-    w
+    (w, p)
 }
 
-fn cloths(n: usize) -> World {
-    let mut w = world3();
+fn cloths(n: usize) -> (World, PhysicsSystem) {
+    let (mut w, p) = world3();
     for i in 0..n {
         let (x, z) = (-15.0 + 2.0 * (i % 15) as f32, -3.0 + 2.0 * (i / 15) as f32);
         w.spawn((
@@ -80,11 +89,11 @@ fn cloths(n: usize) -> World {
         ))
         .unwrap();
     }
-    w
+    (w, p)
 }
 
-fn fluids3(n: usize, count: u32) -> World {
-    let mut w = world3();
+fn fluids3(n: usize, count: u32) -> (World, PhysicsSystem) {
+    let (mut w, p) = world3();
     for i in 0..n {
         let s = 1.0 + og_core::math::pow(count as f32 / 2000.0, 1.0 / 3.0);
         w.spawn((
@@ -102,11 +111,11 @@ fn fluids3(n: usize, count: u32) -> World {
         ))
         .unwrap();
     }
-    w
+    (w, p)
 }
 
-fn fluids2(n: usize, count: u32) -> World {
-    let (mut w, _p) = beyond::new_world(6, PROFILE_2D);
+fn fluids2(n: usize, count: u32) -> (World, PhysicsSystem) {
+    let (mut w, p) = beyond::new_world(6, PROFILE_2D);
     floor(&mut w);
     for i in 0..n {
         let s = 2.0 * (count as f32 / 1000.0).sqrt();
@@ -121,14 +130,19 @@ fn fluids2(n: usize, count: u32) -> World {
         ))
         .unwrap();
     }
-    w
+    (w, p)
 }
 
-fn ragdolls(n: usize) -> World {
+fn ragdolls(n: usize) -> (World, PhysicsSystem) {
     let (mut w, physics) = beyond::new_world(8, PROFILE_3D);
     floor(&mut w);
     for i in 0..n {
-        let (x, z) = (-20.0 + 2.0 * (i % 20) as f32, -20.0 + 2.0 * (i / 20) as f32);
+        // Past 256, closer together, so a thousand stand on the floor.
+        let (x, z) = if n <= 256 {
+            (-20.0 + 2.0 * (i % 20) as f32, -20.0 + 2.0 * (i / 20) as f32)
+        } else {
+            (-19.0 + 1.2 * (i % 32) as f32, -19.0 + 1.2 * (i / 32) as f32)
+        };
         let e = w
             .spawn((
                 at(x, 0.0, z),
@@ -140,7 +154,7 @@ fn ragdolls(n: usize) -> World {
             .unwrap();
         physics.set_ragdoll_rig(e, beyond::rig()).unwrap();
     }
-    w
+    (w, physics)
 }
 
 fn main() {
@@ -158,6 +172,28 @@ fn main() {
         grains.cloth_work = 1;
         grains.fluid_work = 1;
     }
+    let value = |name: &str| {
+        args.iter()
+            .position(|a| a == name)
+            .map(|k| args[k + 1].parse::<usize>().expect("a number"))
+    };
+    if let Some(n) = value("--ragdolls") {
+        grains.ragdolls = n;
+    }
+    if let Some(n) = value("--rope-work") {
+        grains.rope_work = n;
+    }
+    if let Some(n) = value("--cloth-work") {
+        grains.cloth_work = n;
+    }
+    if let Some(n) = value("--fluid-work") {
+        grains.fluid_work = n;
+    }
+    let only: Option<&str> = args
+        .iter()
+        .position(|a| a == "--only")
+        .map(|k| args[k + 1].as_str());
+    let wanted = |kind: &str| only.is_none_or(|o| o.split(',').any(|o| o == kind));
     set_grains(Some(grains));
     let mode = if lanes.on {
         format!("on, {} threads", lanes.threads)
@@ -174,28 +210,31 @@ fn main() {
         grains.particles_2d,
         grains.particles_3d
     );
-    println!("| scene | work | ms per tick | world hash | physics calls |");
-    println!("|---|---|---|---|---|");
+    println!("| scene | work | ms per tick | its phase, ms | world hash | physics calls |");
+    println!("|---|---|---|---|---|---|");
     let calls = || og_lanes::report().sites[og_lanes::Site::Physics as usize].calls;
-    let row = |label: String, work: usize, w: World| {
+    let row = |label: String, work: usize, phase: Phase, w: (World, PhysicsSystem)| {
         let before = calls();
-        let (ms, hash) = time(w);
+        let (ms, hash, own) = time(w, phase);
         println!(
-            "| {label} | {work} | {ms:.3} | {hash:016x} | {} |",
+            "| {label} | {work} | {ms:.3} | {} {own:.3} | {hash:016x} | {} |",
+            phase.name(),
             calls() - before
         );
     };
-    for n in [8, 16, 32, 64, 128] {
+    for n in [8, 16, 32, 64, 128].into_iter().filter(|_| wanted("ropes")) {
         row(
             format!("{n} ropes (17 points, 12 iterations)"),
             n * 17 * 12,
+            Phase::Soft,
             ropes(n),
         );
     }
-    for n in [2, 4, 8, 16, 32] {
+    for n in [2, 4, 8, 16, 32].into_iter().filter(|_| wanted("cloths")) {
         row(
             format!("{n} cloths (12 × 12, 8 iterations)"),
             n * 144 * 8,
+            Phase::Soft,
             cloths(n),
         );
     }
@@ -206,38 +245,58 @@ fn main() {
         (2, 1000),
         (4, 1000),
         (8, 1000),
-    ] {
+    ]
+    .into_iter()
+    .filter(|_| wanted("fluids3"))
+    {
         row(
             format!("{n} 3D fluids of {count} (2 substeps)"),
             n * count * 2,
+            Phase::Fluids3d,
             fluids3(n, count as u32),
         );
     }
-    for count in [1000, 2000, 4000, 8000] {
+    for count in [1000, 2000, 4000, 8000]
+        .into_iter()
+        .filter(|_| wanted("fluid3"))
+    {
         row(
             format!("a 3D fluid of {count} (2 substeps)"),
             count * 2,
+            Phase::Fluids3d,
             fluids3(1, count as u32),
         );
     }
-    for (n, count) in [(2, 250), (2, 500), (4, 500), (4, 1000)] {
+    for (n, count) in [(2, 250), (2, 500), (4, 500), (4, 1000)]
+        .into_iter()
+        .filter(|_| wanted("fluids2"))
+    {
         row(
             format!("{n} 2D fluids of {count} (2 substeps)"),
             n * count * 2,
+            Phase::Fluids,
             fluids2(n, count as u32),
         );
     }
-    for count in [1000, 2000, 4000, 8000] {
+    for count in [1000, 2000, 4000, 8000]
+        .into_iter()
+        .filter(|_| wanted("fluid2"))
+    {
         row(
             format!("a 2D fluid of {count} (2 substeps)"),
             count * 2,
+            Phase::Fluids,
             fluids2(1, count as u32),
         );
     }
-    for n in [16, 64, 256] {
+    for n in [16, 64, 256, 1024]
+        .into_iter()
+        .filter(|_| wanted("ragdolls"))
+    {
         row(
             format!("{n} ragdolls (3 bones, half limp)"),
             n * 3,
+            Phase::Ragdolls,
             ragdolls(n),
         );
     }

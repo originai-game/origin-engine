@@ -31,6 +31,7 @@ mod atmosphere;
 mod blue_noise;
 mod capture;
 mod clusters;
+mod compact;
 mod cull_gpu;
 mod effects;
 mod environment;
@@ -41,6 +42,7 @@ mod glass;
 pub mod graph;
 mod hooks;
 mod ibl;
+mod instances;
 mod light2d;
 mod material;
 mod metaballs;
@@ -117,7 +119,8 @@ pub use stylise::{
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
-    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler, TerrainScatter,
+    TerrainControl, TerrainData, TerrainLayer, TerrainLayerArrays, TerrainLod, TerrainSampler,
+    TerrainScatter,
 };
 pub use terrain_tiles::{
     ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
@@ -168,6 +171,10 @@ const PBR_PREPASS_WGSL: &str = include_str!("../shaders/pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
 const PBR_LEAN_WGSL: &str = include_str!("../shaders/pbr_lean.wgsl");
 const PHYSICAL_WGSL: &str = include_str!("../shaders/physical.wgsl");
+/// `instance_matrix`: an instance's transform from its columns in the
+/// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
+/// points it moves are projected.
+pub(crate) const INSTANCE_WGSL: &str = include_str!("../shaders/instance.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
 
@@ -179,7 +186,7 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
@@ -194,7 +201,7 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
@@ -243,7 +250,7 @@ pub(crate) const SHADOW_PASS_WGSL: &str = include_str!("../shaders/shadow_pass.w
 /// built-in identities) and the joint palette read as `palette`.
 pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_PASS_WGSL}{SHADOW_WGSL}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
@@ -251,7 +258,7 @@ pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
 /// The scattered copies' lit module with the light tables `tables`.
 fn scatter_lit_source(tables: clusters::LightTables) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         include_str!("../shaders/scatter_common.wgsl"),
@@ -262,7 +269,7 @@ fn scatter_lit_source(tables: clusters::LightTables) -> String {
 /// The scattered copies' shadow module.
 fn scatter_shadow_source() -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}",
         particles_gpu::NOISE_WGSL,
         include_str!("../shaders/scatter_common.wgsl"),
         include_str!("../shaders/scatter_shadow.wgsl")
@@ -355,9 +362,21 @@ impl Backend {
 
     /// A wgpu instance for this backend, for hosts that create their own surface
     /// before calling [`Renderer::with_surface`].
+    ///
+    /// Without wgpu's validation of indirect draws (`VALIDATION_INDIRECT_CALL`,
+    /// on by default natively): it re-checks every indirect draw's
+    /// arguments in a compute pass of its own each frame, and the only
+    /// indirect draws are GPU culling's (`cull_gpu.rs`), whose arguments
+    /// cull.wgsl writes in range by construction (a batch's index count,
+    /// at most its instances, zero offsets) over buffers sized for them.
+    /// About 0.4 ms of CPU a frame on spheres-20k natively (release); the
+    /// browsers validate WebGPU's indirect draws themselves.
     pub fn instance(self) -> wgpu::Instance {
+        let mut flags = wgpu::InstanceFlags::from_build_config();
+        flags.remove(wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL);
         wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: self.backends(),
+            flags,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
         })
     }
@@ -748,7 +767,9 @@ struct ShadowPassUniform {
     pad: [f32; 36],
 }
 
-const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
+/// An instance in the instance buffers: its columns' xyz and its
+/// texture-array layer ([`instances::GpuTransform`]).
+const INSTANCE_STRIDE: u64 = std::mem::size_of::<instances::GpuTransform>() as u64;
 
 const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<Vertex>() as u64,
@@ -759,7 +780,7 @@ const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayou
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: INSTANCE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32],
 };
 
 /// One attribute of [`Vertex`] at its offset in the shared vertex buffer.
@@ -814,7 +835,15 @@ const POSITION_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLay
 };
 
 struct GpuMesh {
+    /// The f32 vertices ([`Vertex`]); a 16-byte placeholder while `full`
+    /// is false.
     vertices: wgpu::Buffer,
+    /// Whether `vertices` holds the mesh: false for a compact mesh no
+    /// pipeline that reads [`Vertex`] has drawn yet ([`Renderer::ensure_full`]).
+    full: bool,
+    /// The compact vertices ([`VertexEncoding::Compact`], `compact.rs`)
+    /// and how to undo their positions' quantisation.
+    compact: Option<(wgpu::Buffer, compact::Dequant)>,
     indices: wgpu::Buffer,
     index_count: u32,
     /// The scene's revision of the mesh this holds (`RenderScene::set_mesh`).
@@ -823,12 +852,29 @@ struct GpuMesh {
     bounds: Option<(Vec3, Vec3)>,
 }
 
+impl GpuMesh {
+    /// What a draw binds: the compact vertices for a [`Batch::compact`]
+    /// draw, else the f32 ones.
+    fn vertex_buffer(&self, compact: bool) -> &wgpu::Buffer {
+        match &self.compact {
+            Some((buffer, _)) if compact => buffer,
+            _ => {
+                debug_assert!(self.full, "a compact mesh's f32 vertices were not uploaded");
+                &self.vertices
+            }
+        }
+    }
+}
+
 struct GpuMaterial {
     revision: u64,
     /// The standard group: every pass but a physical material's lit one.
     bind_group: wgpu::BindGroup,
     /// A physical material's group for its lit pass (`physical.rs`).
     physical: Option<wgpu::BindGroup>,
+    /// An array-map material's group for its lit and prepass passes
+    /// ([`material::ArrayMaps`]); its shadows bind the standard group.
+    array: Option<wgpu::BindGroup>,
     side: Side,
     /// Drawn in the sorted pass, back to front: blended or transmissive.
     transparent: bool,
@@ -998,6 +1044,13 @@ struct Batch {
     /// decals): its lean pipelines keep the discard (`DISCARD` in
     /// pbr_fs.wgsl), so the derivatives are the full pipeline's.
     derivatives: bool,
+    /// Drawn from its mesh's compact vertices (lean, the mesh
+    /// [`VertexEncoding::Compact`]): the instance transforms include the
+    /// dequantisation (`compact.rs`).
+    compact: bool,
+    /// Drawn with the array-map pipelines ([`GpuMaterial::array`]): its
+    /// instances carry their layer in the transform.
+    array: bool,
 }
 
 /// The effect bind groups and what they were made from.
@@ -1025,12 +1078,23 @@ type PbrKey = (Side, bool, bool, bool);
 /// The shadow pipelines: (side, skinned, dissolving).
 type ShadowKey = (Side, bool, bool);
 /// What a lit pass's draws switch pipelines on: (side, blended, effects,
-/// material shader, physical, lean, derivatives).
-type LitDrawKey = (Side, bool, bool, Option<usize>, bool, bool, bool);
-/// The lean lit pipelines: (side, effects, derivatives); `effects` as in
-/// [`PbrKey`] (a plain material has none of its own: the frame's decals
-/// or AO), `derivatives` as [`Batch::derivatives`].
-type LeanKey = (Side, bool, bool);
+/// material shader, physical, lean, derivatives, compact, array).
+type LitDrawKey = (
+    Side,
+    bool,
+    bool,
+    Option<usize>,
+    bool,
+    bool,
+    bool,
+    bool,
+    bool,
+);
+/// The lean lit pipelines: (side, effects, derivatives, compact); `effects`
+/// as in [`PbrKey`] (a plain material has none of its own: the frame's
+/// decals or AO), `derivatives` as [`Batch::derivatives`], `compact`: the
+/// vertices are [`VertexEncoding::Compact`]'s.
+type LeanKey = (Side, bool, bool, bool);
 
 /// What one pass draws: (batch, first instance, count) ranges in the instance buffer.
 #[derive(Default)]
@@ -1157,6 +1221,8 @@ pub struct Renderer {
     graph: post::FrameGraph,
     /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
     /// between frames so no pass allocates it.
+    /// The sorted instances, kept across frames (`instances.rs`).
+    sorted: instances::SortedInstances,
     cull_inside: Vec<bool>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
@@ -1195,8 +1261,11 @@ pub struct Renderer {
     prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
     /// The lean lit pipelines of plain materials, made at first use.
     lean_pipelines: HashMap<LeanKey, wgpu::RenderPipeline>,
-    /// Their prepass pipelines by (side, derivatives).
-    lean_prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    /// Their prepass pipelines by (side, derivatives, compact).
+    lean_prepass_pipelines: HashMap<(Side, bool, bool), wgpu::RenderPipeline>,
+    /// The shadow pipelines of compact casters (lean, from the compact
+    /// vertices) by side.
+    compact_shadow_pipelines: HashMap<Side, wgpu::RenderPipeline>,
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,
@@ -1235,6 +1304,9 @@ pub struct Renderer {
     /// The physical lit pipelines, made when a scene first draws a physical
     /// material (`physical.rs`).
     physical: Option<physical::PhysicalPipelines>,
+    /// The array-map variant of the lit, prepass and shadow pipelines, made
+    /// when a scene first draws a material with array maps (`material.rs`).
+    array_maps: Option<material::ArrayMaps>,
     /// The copy of the opaque scene transmission refracts, with its mip
     /// chain, at the renderer's size (made when a frame first needs it).
     transmission: Option<wgpu::Texture>,
@@ -1547,14 +1619,15 @@ fn lit_pipeline(
 }
 
 /// The lean lit pipeline of a plain material ([`GpuMaterial::lean`]) for
-/// (side, effects, derivatives): opaque and unskinned by construction,
-/// `pbr_lean.wgsl`'s entry points with `EFFECTS` as [`lit_pipeline`]'s and
-/// without the discard unless the fragments take derivatives.
+/// (side, effects, derivatives, compact): opaque and unskinned by
+/// construction, `pbr_lean.wgsl`'s entry points with `EFFECTS` as
+/// [`lit_pipeline`]'s and without the discard unless the fragments take
+/// derivatives, reading [`Vertex`] or the compact vertices.
 fn lean_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     module: &wgpu::ShaderModule,
-    (side, effects, derivatives): LeanKey,
+    (side, effects, derivatives, compact): LeanKey,
     samples: u32,
 ) -> wgpu::RenderPipeline {
     let constants = [("EFFECTS", effects as u32 as f64), ("DISCARD", 0.0)];
@@ -1562,12 +1635,27 @@ fn lean_pipeline(
         device,
         &constants[..if derivatives { 1 } else { 2 }],
         HdrPipeline {
-            label: "pbr lean",
+            label: if compact {
+                "pbr lean compact"
+            } else {
+                "pbr lean"
+            },
             layout,
             module,
-            vs: "vs_lean",
+            vs: if compact {
+                "vs_lean_compact"
+            } else {
+                "vs_lean"
+            },
             fs: "fs_lean",
-            buffers: &[Some(LEAN_VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)],
+            buffers: &[
+                Some(if compact {
+                    compact::LEAN_LAYOUT
+                } else {
+                    LEAN_VERTEX_LAYOUT
+                }),
+                Some(INSTANCE_LAYOUT),
+            ],
             cull: cull_mode(side),
             depth_write: true,
             depth_compare: wgpu::CompareFunction::Less,
@@ -1581,26 +1669,28 @@ fn lean_pipeline(
 const PREV_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: INSTANCE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![11 => Float32x4, 12 => Float32x4, 13 => Float32x4, 14 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![11 => Float32x3, 12 => Float32x3, 13 => Float32x3, 14 => Float32x3],
 };
 
 /// The depth-normal prepass pipeline for (side, skinned); `lean`: a plain
 /// material's (unskinned, `pbr_lean.wgsl`'s entry points), as
-/// `Some(derivatives)` ([`Batch::derivatives`]: with them the discard stays).
+/// `Some((derivatives, compact))` ([`Batch::derivatives`]: with them the
+/// discard stays; `compact`: from the compact vertices).
 fn prepass_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
     side: Side,
     skinned: bool,
-    lean: Option<bool>,
+    lean: Option<(bool, bool)>,
 ) -> wgpu::RenderPipeline {
-    let (lean, derivatives) = (lean.is_some(), lean == Some(true));
+    let (derivatives, compact) = lean.unwrap_or_default();
+    let lean = lean.is_some();
     let plain = [
-        Some(if lean {
-            POSITION_NORMAL_LAYOUT
-        } else {
-            VERTEX_LAYOUT
+        Some(match (lean, compact) {
+            (true, true) => compact::POSITION_NORMAL_LAYOUT,
+            (true, false) => POSITION_NORMAL_LAYOUT,
+            (false, _) => VERTEX_LAYOUT,
         }),
         Some(INSTANCE_LAYOUT),
         Some(PREV_INSTANCE_LAYOUT),
@@ -1633,6 +1723,7 @@ fn prepass_pipeline(
             module,
             entry_point: Some(match (skinned, lean) {
                 (true, _) => "vs_prepass_skinned",
+                (false, true) if compact => "vs_prepass_lean_compact",
                 (false, true) => "vs_prepass_lean",
                 (false, false) => "vs_prepass",
             }),
@@ -1674,17 +1765,24 @@ fn prepass_pipeline(
 /// `hooked`: with the module's material shader (its vertex offset and
 /// surface colour, the material bound). Casters that are neither skinned,
 /// dissolving nor hooked need only their positions: `shadow.wgsl`'s lean
-/// entry points (the same depths).
+/// entry points (the same depths), from the compact vertices when
+/// `compact`.
 fn shadow_pipeline(
     device: &wgpu::Device,
     layouts: &[wgpu::PipelineLayout; 3],
     module: &wgpu::ShaderModule,
     (side, skinned, dissolve): ShadowKey,
     hooked: bool,
+    compact: bool,
 ) -> wgpu::RenderPipeline {
     let lean = !skinned && !dissolve && !hooked;
+    let compact = lean && compact;
     let plain = [
-        Some(if lean { POSITION_LAYOUT } else { VERTEX_LAYOUT }),
+        Some(match (lean, compact) {
+            (_, true) => compact::POSITION_LAYOUT,
+            (true, false) => POSITION_LAYOUT,
+            (false, false) => VERTEX_LAYOUT,
+        }),
         Some(INSTANCE_LAYOUT),
     ];
     let skin = [
@@ -1706,6 +1804,7 @@ fn shadow_pipeline(
                 (true, true) => "vs_skinned_hooked",
                 (true, false) => "vs_skinned",
                 (false, true) => "vs_hooked",
+                (false, false) if compact => "vs_lean_compact",
                 (false, false) if lean => "vs_lean",
                 (false, false) => "vs",
             }),
@@ -2178,7 +2277,7 @@ impl Renderer {
         let key = (Side::Front, false, false);
         shadow_pipelines.insert(
             key,
-            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false),
+            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false, false),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
         let sky_state = |fs| HdrPipeline {
@@ -2415,6 +2514,7 @@ impl Renderer {
             persistent,
             graph: post::FrameGraph::default(),
             cull_inside: Vec::new(),
+            sorted: instances::SortedInstances::default(),
             post,
             cascade_map,
             local_map,
@@ -2445,6 +2545,7 @@ impl Renderer {
             prepass_pipelines: HashMap::new(),
             lean_pipelines: HashMap::new(),
             lean_prepass_pipelines: HashMap::new(),
+            compact_shadow_pipelines: HashMap::new(),
             stylise_object: None,
             sky_pipeline,
             sky_look_pipeline,
@@ -2476,6 +2577,7 @@ impl Renderer {
             fx_groups: None,
             mips,
             physical: None,
+            array_maps: None,
             transmission: None,
             environment: None,
             default_white,
@@ -2818,7 +2920,10 @@ impl Renderer {
                     skin.weights.len()
                 )));
             }
-            let mut gpu = self.upload_mesh(mesh);
+            let compact = scene.mesh_encodings()[index] == VertexEncoding::Compact
+                && source.is_none()
+                && morph.is_none();
+            let mut gpu = self.upload_mesh(mesh, compact);
             gpu.revision = scene.mesh_revisions()[index];
             self.cache.meshes.push(gpu);
             let mut range = (0u32, 0u32);
@@ -2966,7 +3071,20 @@ impl Renderer {
             let styled = material::styled(material, &scene.stylise.material);
             let material = &styled;
             let hooked = scene.material_shader(MaterialHandle::from_index(i));
-            let (bind_group, factors) =
+            if material.draws_array_maps() && hooked.is_none() && self.array_maps.is_none() {
+                self.array_maps = Some(material::ArrayMaps::new(
+                    &self.device,
+                    &self.queue,
+                    [&self.frame_layout, &self.fx_layout, &self.palette_layout],
+                    lit_source_with(
+                        &hooks::default_hooks(),
+                        self.palette.mode(),
+                        self.light_tables,
+                    ),
+                    shadow_source(&hooks::default_hooks(), self.palette.mode()),
+                ));
+            }
+            let (bind_group, array, factors) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1))?;
             let physical = if material.is_physical() {
                 if let Some((sh, _)) = hooked
@@ -2989,6 +3107,7 @@ impl Renderer {
                 revision,
                 bind_group,
                 physical,
+                array,
                 side: material.side(),
                 transparent: material.is_transparent() || transmissive,
                 blend: material.is_transparent(),
@@ -3000,11 +3119,14 @@ impl Renderer {
                     || material.dissolves(),
                 outline: material.outlineWidth > 0.0,
                 shader: hooked.map(|h| h.0.index()),
+                // An array-map instance's transform carries its layer: the
+                // occluder depth pass reads transforms as they are.
                 occluder: !material.is_transparent()
                     && !transmissive
                     && !material.dissolves()
                     && material.alphaTest <= 0.0
-                    && hooked.is_none(),
+                    && hooked.is_none()
+                    && !material.draws_array_maps(),
                 lean: false,
                 flat: material.flatShading != 0,
             };
@@ -3060,7 +3182,9 @@ impl Renderer {
         Ok(())
     }
 
-    fn upload_mesh(&self, mesh: &MeshData) -> GpuMesh {
+    /// The f32 vertices of `mesh` on the GPU (its tangents generated where
+    /// it lacks them); a 16-byte placeholder for a mesh without vertices.
+    fn upload_vertices(&self, mesh: &MeshData) -> wgpu::Buffer {
         let tangents;
         let mesh = if mesh.lacks_tangents() {
             let mut m = mesh.clone();
@@ -3070,6 +3194,18 @@ impl Renderer {
         } else {
             mesh
         };
+        let bytes: &[u8] = bytemuck::cast_slice(&mesh.vertices);
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("vertices"),
+                contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            })
+    }
+
+    /// `mesh` on the GPU; `compact`: as [`VertexEncoding::Compact`], whose
+    /// f32 vertices wait for a pipeline that reads them.
+    fn upload_mesh(&self, mesh: &MeshData, compact: bool) -> GpuMesh {
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
         let bytes = |b: &[u8]| {
             if b.is_empty() {
@@ -3078,13 +3214,25 @@ impl Renderer {
                 b.to_vec()
             }
         };
-        let vertices = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("vertices"),
-                contents: &bytes(bytemuck::cast_slice(&mesh.vertices)),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        let compact = compact
+            .then(|| compact::encode(mesh))
+            .flatten()
+            .map(|(v, dq)| {
+                let buffer = self
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("compact vertices"),
+                        contents: bytemuck::cast_slice(&v),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    });
+                (buffer, dq)
             });
+        let full = compact.is_none();
+        let vertices = if full {
+            self.upload_vertices(mesh)
+        } else {
+            self.upload_vertices(&MeshData::default())
+        };
         let indices = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -3097,6 +3245,8 @@ impl Renderer {
             .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));
         GpuMesh {
             vertices,
+            full,
+            compact,
             indices,
             index_count: if mesh.vertices.is_empty() {
                 0
@@ -3119,6 +3269,15 @@ impl Renderer {
                 continue;
             }
             let source = &scene.meshes()[i];
+            let compact = scene.mesh_encodings()[i] == VertexEncoding::Compact
+                && scene.skins()[i].is_none()
+                && scene.morphs()[i].is_none();
+            if compact || gpu.compact.is_some() {
+                let mut fresh = self.upload_mesh(source, compact);
+                fresh.revision = revision;
+                self.cache.meshes[i] = fresh;
+                continue;
+            }
             let tangents;
             let mesh = if source.lacks_tangents() {
                 let mut m = source.clone();
@@ -3143,11 +3302,24 @@ impl Renderer {
                 gpu.bounds = bounds;
                 gpu.revision = revision;
             } else {
-                let mut fresh = self.upload_mesh(mesh);
+                let mut fresh = self.upload_mesh(mesh, false);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
             }
         }
+    }
+
+    /// Uploads a compact mesh's f32 vertices, for a pipeline that reads
+    /// [`Vertex`] (a material that is not plain, a scatter, a skinned
+    /// instance); nothing for a mesh that has them.
+    fn ensure_full(&mut self, scene: &RenderScene, mesh: usize) {
+        if self.cache.meshes.get(mesh).is_none_or(|m| m.full) {
+            return;
+        }
+        let vertices = self.upload_vertices(&scene.meshes()[mesh]);
+        let gpu = &mut self.cache.meshes[mesh];
+        gpu.vertices = vertices;
+        gpu.full = true;
     }
 
     /// Checks a texture before it is uploaded: its data, its format on this
@@ -3289,13 +3461,16 @@ impl Renderer {
         }
     }
 
-    /// A material's standard group and its uniform buffer.
+    /// A material's standard group, its array-map group when it draws with
+    /// array maps (made by the caller's [`material::ArrayMaps`]), and its
+    /// uniform buffer.
+    #[allow(clippy::type_complexity)]
     fn material_bind_group(
         &self,
         index: usize,
         m: &StandardMaterial,
         custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
-    ) -> Result<(wgpu::BindGroup, wgpu::Buffer), RenderError> {
+    ) -> Result<(wgpu::BindGroup, Option<wgpu::BindGroup>, wgpu::Buffer), RenderError> {
         let [
             map,
             metalness,
@@ -3336,6 +3511,52 @@ impl Renderer {
         if let Some(c) = custom {
             uniform.custom = c;
         }
+        // The array maps' views (a material shader keeps the standard path).
+        let arrays = match self.array_maps.as_ref() {
+            Some(a) if custom.is_none() && m.draws_array_maps() => {
+                let [map_array, normal_array] = m.array_maps().map(|h| {
+                    h.map(|h| {
+                        self.cache
+                            .texture_arrays
+                            .get(h.index())
+                            .and_then(Option::as_ref)
+                            .filter(|g| g.generation == h.generation())
+                            .ok_or_else(|| {
+                                RenderError::InvalidHandle(format!(
+                                    "material {index} uses texture array {} (slot {})",
+                                    h.index(),
+                                    h.slot()
+                                ))
+                            })
+                    })
+                    .transpose()
+                });
+                let (map_array, normal_array) = (map_array?, normal_array?);
+                let view = |g: Option<&texture_array::GpuTextureArray>,
+                            fallback: &wgpu::TextureView| {
+                    g.map_or_else(
+                        || fallback.clone(),
+                        |g| {
+                            g.texture.create_view(&wgpu::TextureViewDescriptor {
+                                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                                ..Default::default()
+                            })
+                        },
+                    )
+                };
+                material::array_uniform(
+                    &mut uniform,
+                    m,
+                    normal_array.is_some_and(|g| g.info.format.two_channel()),
+                );
+                Some((
+                    a,
+                    view(map_array, &a.white),
+                    view(normal_array, &a.flat_normal),
+                ))
+            }
+            _ => None,
+        };
         let factors = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -3356,7 +3577,13 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&dissolve),
         ];
         let group = bind_group(&self.device, "material", &self.material_layout, &entries);
-        Ok((group, factors))
+        let array = arrays.map(|(a, base, normal)| {
+            let mut entries = entries.clone();
+            entries[1] = wgpu::BindingResource::TextureView(&base);
+            entries[4] = wgpu::BindingResource::TextureView(&normal);
+            bind_group(&self.device, "material (array maps)", &a.layout, &entries)
+        });
+        Ok((group, array, factors))
     }
 
     /// A physical material's group for its lit pass (`physical.rs`): its
@@ -3574,81 +3801,65 @@ impl Renderer {
         self.environment = Some((key, group, sky_group, reflection_group));
     }
 
-    /// Sorts the instances into (mesh, material) batches; returns the batches,
-    /// the sorted transforms, each sorted instance's world bounding sphere and
-    /// its submission index.
-    #[allow(clippy::type_complexity)]
+    /// Sorts the instances into (mesh, material) batches
+    /// ([`instances::SortedInstances`]: from the last frame's sort while the
+    /// submission's keys hold); returns the batches and the sorted
+    /// instances (transforms, world bounding spheres, submission indices),
+    /// lent to the frame until [`Renderer::restore_sorted`].
     fn build_batches(
-        &self,
+        &mut self,
         scene: &RenderScene,
-    ) -> Result<(Vec<Batch>, Vec<[[f32; 4]; 4]>, Vec<(Vec3, f32)>, Vec<u32>), RenderError> {
-        for (i, inst) in scene.instances.iter().enumerate() {
-            if inst.mesh.index() >= self.cache.meshes.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "instance {i}: mesh {}",
-                    inst.mesh.index()
-                )));
-            }
-            if inst.material.index() >= self.cache.materials.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "instance {i}: material {}",
-                    inst.material.index()
-                )));
-            }
-        }
-        let mut order: Vec<usize> = (0..scene.instances.len()).collect();
-        // Stable: instances of one batch keep their submission order.
-        order.sort_by_key(|&i| (scene.instances[i].mesh, scene.instances[i].material));
-        let mut transforms = Vec::with_capacity(order.len());
-        let mut spheres = Vec::with_capacity(order.len());
-        let mut submission = Vec::with_capacity(order.len());
-        let mut batches: Vec<Batch> = Vec::new();
-        for &i in &order {
-            let inst = &scene.instances[i];
-            let (mesh, material) = (inst.mesh.index(), inst.material.index());
-            let gpu = &self.cache.meshes[mesh];
-            if gpu.index_count == 0 {
-                continue;
-            }
-            match batches.last_mut() {
-                Some(b) if b.mesh == mesh && b.material == material => b.count += 1,
-                _ => {
-                    let m = &self.cache.materials[material];
-                    batches.push(Batch {
-                        mesh,
-                        material,
-                        first: transforms.len() as u32,
-                        count: 1,
-                        side: m.side,
-                        transparent: m.transparent,
-                        blend: m.blend,
-                        physical: m.physical.is_some(),
-                        transmissive: m.transmissive,
-                        dissolve: m.dissolve,
-                        effects: m.effects,
-                        shader: m.shader,
-                        lean: m.lean,
-                        derivatives: m.flat,
-                    })
+    ) -> Result<(Vec<Batch>, instances::Sorted), RenderError> {
+        let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+        let sorted = self.sorted.update(
+            scene,
+            meshes.len(),
+            |m| (meshes[m].bounds, meshes[m].index_count == 0),
+            materials.len(),
+            |mesh, material| Self::dequant(meshes, materials, mesh, material),
+            |material| materials[material].array.is_some(),
+        )?;
+        let batches = sorted
+            .runs
+            .iter()
+            .map(|r| {
+                let m = &self.cache.materials[r.material];
+                Batch {
+                    mesh: r.mesh,
+                    material: r.material,
+                    first: r.first,
+                    count: r.count,
+                    side: m.side,
+                    transparent: m.transparent,
+                    blend: m.blend,
+                    physical: m.physical.is_some(),
+                    transmissive: m.transmissive,
+                    dissolve: m.dissolve,
+                    effects: m.effects,
+                    shader: m.shader,
+                    lean: m.lean,
+                    derivatives: m.flat,
+                    compact: r.dequant.is_some(),
+                    array: r.array,
                 }
-            }
-            let m = inst.transform;
-            spheres.push(match gpu.bounds {
-                Some((c, e)) => {
-                    let scale = m
-                        .x_axis
-                        .truncate()
-                        .length()
-                        .max(m.y_axis.truncate().length())
-                        .max(m.z_axis.truncate().length());
-                    (m.transform_point3(c), e.length() * scale)
-                }
-                None => (m.w_axis.truncate(), 0.0),
-            });
-            transforms.push(m.to_cols_array_2d());
-            submission.push(i as u32);
-        }
-        Ok((batches, transforms, spheres, submission))
+            })
+            .collect();
+        Ok((batches, sorted))
+    }
+
+    /// How a (mesh, material) run undoes its vertices' quantisation
+    /// ([`instances::Run::dequant`]): a plain material drawing a compact
+    /// mesh draws its compact vertices; anything else the f32 ones.
+    fn dequant(
+        meshes: &[GpuMesh],
+        materials: &[GpuMaterial],
+        mesh: usize,
+        material: usize,
+    ) -> Option<Mat4> {
+        materials[material]
+            .lean
+            .then(|| meshes[mesh].compact.as_ref().map(|(_, dq)| dq.matrix()))
+            .flatten()
     }
 
     /// The draw ranges of one pass: per batch (`include`d), every instance
@@ -3662,7 +3873,7 @@ impl Renderer {
         &self,
         batches: &[Batch],
         spheres: &[(Vec3, f32)],
-        transforms: &mut Vec<[[f32; 4]; 4]>,
+        transforms: &mut Vec<instances::GpuTransform>,
         origins: &mut Vec<u32>,
         inside: &mut Vec<bool>,
         frustum: &Frustum,
@@ -3724,7 +3935,7 @@ impl Renderer {
         batches: &[Batch],
         spheres: &[(Vec3, f32)],
         submission: &[u32],
-        transforms: &mut Vec<[[f32; 4]; 4]>,
+        transforms: &mut Vec<instances::GpuTransform>,
         origins: &mut Vec<u32>,
         frustum: &Frustum,
         eye: Vec3,
@@ -3758,17 +3969,12 @@ impl Renderer {
         (list, culled)
     }
 
-    /// World bounds of every instance as (center, radius).
-    fn instance_bounds(spheres: &[(Vec3, f32)]) -> (Vec3, f32) {
-        let mut lo = Vec3::splat(f32::MAX);
-        let mut hi = Vec3::splat(f32::MIN);
-        for &(c, r) in spheres {
-            lo = lo.min(c - Vec3::splat(r));
-            hi = hi.max(c + Vec3::splat(r));
-        }
-        if lo.x > hi.x {
+    /// World bounds of every instance as (center, radius), from their box
+    /// ([`instances::fold_box`]; `None`: no instance).
+    fn instance_bounds(bounds: Option<(Vec3, Vec3)>) -> (Vec3, f32) {
+        let Some((lo, hi)) = bounds else {
             return (Vec3::ZERO, 1.0);
-        }
+        };
         ((lo + hi) * 0.5, ((hi - lo).length() * 0.5).max(1e-3))
     }
 
@@ -3798,9 +4004,12 @@ impl Renderer {
     /// its material shader's or the built-in one, physical or standard.
     fn lit_pipeline_of(&self, b: &Batch, skinned: bool, physical: bool) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
-            return &self.lean_pipelines[&(b.side, b.effects, b.derivatives)];
+            return &self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)];
         }
         let key = (b.side, b.blend, skinned, b.effects);
+        if b.array && !physical {
+            return &self.array_maps.as_ref().expect("an array batch").lit[&key];
+        }
         match (physical, b.shader) {
             (true, None) => &self.physical.as_ref().expect("a physical batch").pipelines[&key],
             (true, Some(sh)) => &self.cache.physical_hook_pipelines[&(sh, key)],
@@ -3818,6 +4027,41 @@ impl Renderer {
             .map(|b| (b, false))
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
+            if b.array {
+                // The array-map variant: the standard builders over its
+                // module and layouts (`material::ArrayMaps`).
+                let a = self.array_maps.as_mut().expect("made with the material");
+                let layouts = (&a.layouts.0, &a.layouts.1);
+                let key = (b.side, b.blend, is_skinned, b.effects);
+                if !a.lit.contains_key(&key) {
+                    let p = pbr_pipeline(&self.device, layouts, &a.module, key, self.samples);
+                    a.lit.insert(key, p);
+                }
+                let key = (b.side, is_skinned);
+                if prepass && !b.transparent && !a.prepass.contains_key(&key) {
+                    let p = prepass_pipeline(
+                        &self.device,
+                        layouts,
+                        &a.module,
+                        b.side,
+                        is_skinned,
+                        None,
+                    );
+                    a.prepass.insert(key, p);
+                }
+                let key = (b.side, b.dissolve);
+                if !is_skinned && !a.shadow.contains_key(&key) {
+                    let p = shadow_pipeline(
+                        &self.device,
+                        &self.shadow_layouts,
+                        &a.shadow_module,
+                        (b.side, false, b.dissolve),
+                        false,
+                        false,
+                    );
+                    a.shadow.insert(key, p);
+                }
+            }
             if b.physical {
                 // The physical lit pipeline (the standard ones below draw the
                 // material's reflection).
@@ -3871,6 +4115,7 @@ impl Renderer {
                         &self.cache.shadow_shaders[sh],
                         (b.side, is_skinned, b.dissolve),
                         true,
+                        false,
                     );
                     self.cache.hook_shadow_pipelines.insert(key, p);
                 }
@@ -3892,7 +4137,7 @@ impl Renderer {
             if b.lean && !is_skinned {
                 // A plain material: the lean lit and prepass pipelines (its
                 // shadows take the shadow pipeline below, lean as well).
-                let key = (b.side, b.effects, b.derivatives);
+                let key = (b.side, b.effects, b.derivatives, b.compact);
                 if !self.lean_pipelines.contains_key(&key) {
                     let p = lean_pipeline(
                         &self.device,
@@ -3903,7 +4148,7 @@ impl Renderer {
                     );
                     self.lean_pipelines.insert(key, p);
                 }
-                let key = (b.side, b.derivatives);
+                let key = (b.side, b.derivatives, b.compact);
                 if prepass && !self.lean_prepass_pipelines.contains_key(&key) {
                     let p = prepass_pipeline(
                         &self.device,
@@ -3911,9 +4156,20 @@ impl Renderer {
                         &self.pbr_shader,
                         b.side,
                         false,
-                        Some(b.derivatives),
+                        Some((b.derivatives, b.compact)),
                     );
                     self.lean_prepass_pipelines.insert(key, p);
+                }
+                if b.compact && !self.compact_shadow_pipelines.contains_key(&b.side) {
+                    let p = shadow_pipeline(
+                        &self.device,
+                        &self.shadow_layouts,
+                        &self.shadow_shader,
+                        (b.side, false, false),
+                        false,
+                        true,
+                    );
+                    self.compact_shadow_pipelines.insert(b.side, p);
                 }
             }
             let key = (b.side, b.blend, is_skinned, b.effects);
@@ -3934,6 +4190,7 @@ impl Renderer {
                     &self.shadow_layouts,
                     &self.shadow_shader,
                     key,
+                    false,
                     false,
                 );
                 self.shadow_pipelines.insert(key, p);
@@ -4041,6 +4298,8 @@ impl Renderer {
                         shader: m.shader,
                         lean: false,
                         derivatives: m.flat,
+                        compact: false,
+                        array: m.array.is_some(),
                     });
                 }
             }
@@ -4063,7 +4322,7 @@ impl Renderer {
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
             let w = s.morph_weights;
             data.push(skin::SkinnedInstanceGpu {
-                transform: s.transform.to_cols_array_2d(),
+                transform: instances::gpu_columns(&s.transform),
                 palette: [
                     first as f32,
                     count as f32,
@@ -4143,8 +4402,27 @@ impl Renderer {
         self.scene_size(grid.0, grid.1);
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
-        let (mut batches, mut transforms, spheres, submission) = self.build_batches(scene)?;
+        let (mut batches, sorted_instances) = self.build_batches(scene)?;
+        let instances::Sorted {
+            mut transforms,
+            spheres,
+            submission,
+            sphere_box,
+            ..
+        } = sorted_instances;
         let mut origins = submission.clone();
+        // The f32 vertices of compact meshes drawn without their compact
+        // ones: by a material that is not plain, skinned or scattered.
+        let full: Vec<usize> = batches
+            .iter()
+            .filter(|b| !b.compact)
+            .map(|b| b.mesh)
+            .chain(scene.skinned_instances.iter().map(|s| s.mesh.index()))
+            .chain(scene.scatters.iter().map(|s| s.mesh.index()))
+            .collect();
+        for mesh in full {
+            self.ensure_full(scene, mesh);
+        }
         let mut skinned = self.build_skinned(scene)?;
 
         // Camera (with the shake), jitter, culling.
@@ -4582,6 +4860,7 @@ impl Renderer {
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
         let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
         let textures = &self.cache.textures;
+        let arrays = &self.cache.texture_arrays;
         let terrain_draws = self.terrain.prepare(
             &self.device,
             &self.queue,
@@ -4592,6 +4871,13 @@ impl Renderer {
             cam.view_proj,
             prev_view_proj,
             |h| textures.get(h.index()).map(|t| &t.view),
+            |h| {
+                arrays
+                    .get(h.index())
+                    .and_then(Option::as_ref)
+                    .filter(|a| a.generation == h.generation())
+                    .map(|a| &a.texture)
+            },
         )?;
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
         // Scattered copies: the chunks this frame needs built, what to draw.
@@ -4631,15 +4917,16 @@ impl Renderer {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
                 ShadowBounds::Auto => {
-                    let mut all = spheres.clone();
-                    all.extend(scene.skinned_instances.iter().map(|s| {
+                    // The instances' box (kept while they stand still), then
+                    // the skinned instances and the terrains.
+                    let skinned = scene.skinned_instances.iter().map(|s| {
                         let r = self.cache.meshes[s.mesh.index()]
                             .bounds
                             .map_or(1.0, |(_, e)| e.length() * 2.0);
                         (s.transform.w_axis.truncate(), r)
-                    }));
-                    all.extend(self.terrain.bounds(scene));
-                    Self::instance_bounds(&all)
+                    });
+                    let all = instances::fold_box(sphere_box, skinned);
+                    Self::instance_bounds(instances::fold_box(all, self.terrain.bounds(scene)))
                 }
             };
             frame::fit_cascades(
@@ -4837,9 +5124,19 @@ impl Renderer {
             instance_upload_bytes += gc.uploaded;
         }
         if object_motion {
-            let prev: Vec<[[f32; 4]; 4]> = origins
+            // As the instances' own: with a compact run's dequantisation.
+            let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+            let prev: Vec<instances::GpuTransform> = origins
                 .iter()
-                .map(|&i| scene.previous_transforms[i as usize].to_cols_array_2d())
+                .map(|&i| {
+                    let (inst, p) = (
+                        &scene.instances[i as usize],
+                        scene.previous_transforms[i as usize],
+                    );
+                    let d =
+                        Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
+                    instances::gpu_transform(&d.map_or(p, |d| p * d))
+                })
                 .collect();
             grow_and_write(
                 &self.device,
@@ -4849,6 +5146,7 @@ impl Renderer {
                 bytemuck::cast_slice(&prev),
             );
         }
+        self.sorted.restore(transforms, spheres);
         if !skinned_data.is_empty() {
             grow_and_write(
                 &self.device,
@@ -5847,7 +6145,13 @@ impl Renderer {
                     let hooked = b
                         .shader
                         .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
+                    let array = self
+                        .array_maps
+                        .as_ref()
+                        .filter(|_| b.array)
+                        .and_then(|a| a.prepass.get(&(b.side, true)));
                     hooked
+                        .or(array)
                         .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
                         .unwrap_or(lit_skinned[0])
                 })
@@ -5870,7 +6174,7 @@ impl Renderer {
              lit: bool,
              current: &mut Option<LitDrawKey>,
              physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>| {
-                let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
+                let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
                 let mut physical_bound = false;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
@@ -5884,6 +6188,8 @@ impl Renderer {
                             physical,
                             batch.lean,
                             batch.derivatives,
+                            batch.compact,
+                            batch.array,
                         );
                         if *current != Some(key) {
                             pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
@@ -5898,18 +6204,31 @@ impl Renderer {
                         let m = &self.cache.materials[batch.material];
                         pass.set_bind_group(
                             1,
-                            match &m.physical {
-                                Some(g) if physical => g,
+                            match (&m.physical, &m.array) {
+                                (Some(g), _) if physical => g,
+                                (_, Some(g)) => g,
                                 _ => &m.bind_group,
                             },
                             &[],
                         );
                     } else {
-                        let key = ((batch.side, false, batch.dissolve), batch.shader);
+                        let key = (
+                            (batch.side, false, batch.dissolve),
+                            batch.shader,
+                            batch.compact,
+                            batch.array,
+                        );
                         if shadow_key != Some(key) {
                             pass.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)]
+                                }
+                                None if batch.array => {
+                                    &self.array_maps.as_ref().expect("an array batch").shadow
+                                        [&(batch.side, batch.dissolve)]
+                                }
+                                None if batch.compact => {
+                                    &self.compact_shadow_pipelines[&batch.side]
                                 }
                                 None => &self.shadow_pipelines[&key.0],
                             });
@@ -5924,7 +6243,7 @@ impl Renderer {
                         }
                     }
                     let mesh = &self.cache.meshes[batch.mesh];
-                    pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+                    pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
                     // A buffer slice, not first_instance: WebGL2 has no base instance.
                     let start = first as u64 * INSTANCE_STRIDE;
                     let instances = match (list.indirect, culled_gpu) {
@@ -5979,10 +6298,14 @@ impl Renderer {
                     physical_bound = physical;
                 }
                 let m = &self.cache.materials[batch.material];
+                // The shadow layouts put the palette at 2: shadows draw an
+                // array-map material with its standard group.
+                let shadow = palette_at == 2;
                 pass.set_bind_group(
                     material_group,
-                    match &m.physical {
-                        Some(g) if physical => g,
+                    match (&m.physical, &m.array) {
+                        (Some(g), _) if physical => g,
+                        (_, Some(g)) if !shadow => g,
                         _ => &m.bind_group,
                     },
                     &[],
@@ -6074,9 +6397,9 @@ impl Renderer {
             if let Some(indices) = terrain_indices
                 && terrain_casters
             {
-                pass.set_pipeline(&self.terrain.shadow);
+                let shadow = terrain::TerrainPass::Shadow;
                 let (n, _) =
-                    terrain::draw_levels(&mut pass, &terrain_draws, indices, true, |c, r| {
+                    terrain::draw_levels(&mut pass, &terrain_draws, indices, shadow, |c, r| {
                         frustum.intersects_sphere(c, r)
                     });
                 stats.draw_calls += n;
@@ -6171,24 +6494,37 @@ impl Renderer {
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
                         let batch = &batches[b as usize];
-                        let key = (batch.side, batch.shader, batch.lean, batch.derivatives);
+                        let key = (
+                            batch.side,
+                            batch.shader,
+                            batch.lean,
+                            batch.derivatives,
+                            batch.compact,
+                            batch.array,
+                        );
                         if current != Some(key) {
                             p.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_prepass_pipelines[&(sh, batch.side, false)]
                                 }
                                 None if batch.lean => {
-                                    &self.lean_prepass_pipelines[&(batch.side, batch.derivatives)]
+                                    &self.lean_prepass_pipelines
+                                        [&(batch.side, batch.derivatives, batch.compact)]
+                                }
+                                None if batch.array => {
+                                    &self.array_maps.as_ref().expect("an array batch").prepass
+                                        [&(batch.side, false)]
                                 }
                                 None => &self.prepass_pipelines[&(batch.side, false)],
                             });
                             current = Some(key);
                         }
-                        p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
+                        let m = &self.cache.materials[batch.material];
+                        p.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
                         let mesh = &self.cache.meshes[batch.mesh];
                         let start = first as u64 * INSTANCE_STRIDE;
                         let end = start + count as u64 * INSTANCE_STRIDE;
-                        p.set_vertex_buffer(0, mesh.vertices.slice(..));
+                        p.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
                         p.set_vertex_buffer(1, instances.slice(start..end));
                         p.set_vertex_buffer(2, prev.slice(start..end));
                         p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
@@ -6210,11 +6546,14 @@ impl Renderer {
                         None,
                     );
                     if let Some(indices) = terrain_indices {
-                        p.set_pipeline(&self.terrain.prepass);
-                        let (n, _) =
-                            terrain::draw_levels(&mut p, &terrain_draws, indices, false, |c, r| {
-                                view_frustum.intersects_sphere(c, r)
-                            });
+                        let prepass = terrain::TerrainPass::Prepass;
+                        let (n, _) = terrain::draw_levels(
+                            &mut p,
+                            &terrain_draws,
+                            indices,
+                            prepass,
+                            |c, r| view_frustum.intersects_sphere(c, r),
+                        );
                         stats.prepass_draws += n;
                     }
                     let (n, _) = self.scatter.draw(
@@ -6376,7 +6715,17 @@ impl Renderer {
                         &mut pass,
                         list,
                         true,
-                        &mut Some((Side::Front, false, false, None, false, false, false)),
+                        &mut Some((
+                            Side::Front,
+                            false,
+                            false,
+                            None,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                        )),
                         None,
                     );
                     stats.draw_calls += list.ranges.len() as u32;
@@ -6393,13 +6742,12 @@ impl Renderer {
                     stats.draw_calls += n;
                     stats.reflection_draws += n;
                     if let (Some(indices), Some(r)) = (terrain_indices, &reflection) {
-                        pass.set_pipeline(&self.terrain.lit);
                         let frustum = Frustum::from_view_proj(r.3);
                         let (n, _) = terrain::draw_levels(
                             &mut pass,
                             &terrain_draws,
                             indices,
-                            false,
+                            terrain::TerrainPass::Lit,
                             |c, rad| frustum.intersects_sphere(c, rad),
                         );
                         stats.draw_calls += n;
@@ -6501,7 +6849,17 @@ impl Renderer {
                         &mut pass,
                         &main_list,
                         true,
-                        &mut Some((Side::Front, false, false, None, false, false, false)),
+                        &mut Some((
+                            Side::Front,
+                            false,
+                            false,
+                            None,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                        )),
                         physical_fx,
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;
@@ -6515,12 +6873,11 @@ impl Renderer {
                         physical_fx,
                     );
                     if let Some(indices) = terrain_indices {
-                        pass.set_pipeline(&self.terrain.lit);
                         let (n, tris) = terrain::draw_levels(
                             &mut pass,
                             &terrain_draws,
                             indices,
-                            false,
+                            terrain::TerrainPass::Lit,
                             |c, r| view_frustum.intersects_sphere(c, r),
                         );
                         stats.draw_calls += n;

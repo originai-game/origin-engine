@@ -41,12 +41,12 @@ fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
 
 @vertex
 fn vs_physical(v: VertexIn, i: InstanceIn) -> PhysicalOut {
-  return physical_vertex(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3), v);
+  return physical_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
 }
 
 @vertex
 fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PhysicalOut {
-  let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
   return physical_vertex(model, morph_vertex(v, vi, i));
 }
 

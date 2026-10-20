@@ -264,7 +264,7 @@ fn joint_data(j: &Joint, other: &rp::Pose, this: &rp::Pose) -> Result<rp::Generi
 pub(crate) fn sync_joints(
     scene: &Scene,
     sim: &mut Sim,
-    handles: &BTreeMap<u64, rp::RigidBodyHandle>,
+    handles: &super::sim::Handles<'_>,
 ) -> Result<()> {
     let live: BTreeSet<u64> = scene.joints.iter().map(|(e, _)| e.to_bits()).collect();
     let gone: Vec<u64> = sim
@@ -690,8 +690,10 @@ pub(crate) fn soft(
     tick: u64,
     sim: &mut Sim,
     out: &mut StepOut,
+    laps: &mut crate::stats::Laps,
 ) -> Result<()> {
     use crate::lanes::soft_grain;
+    use crate::stats::Phase;
     let site = og_lanes::Site::Physics;
     let grains = crate::lanes::now();
     let flat2 = DIM == 2;
@@ -774,6 +776,7 @@ pub(crate) fn soft(
         let near = Near::around(colliders, min, max, cloth.radius * 2.0 + 0.1);
         state.step(cloth, dt, tick, gravity, position, rotation, flat2, &near);
     });
+    laps.lap(Phase::Soft);
     // Fluids: each alone, or with the others of its group (the first four
     // in entity order); each set steps from its own particles.
     let live: BTreeSet<u64> = scene.fluids.iter().map(|f| f.0.to_bits()).collect();
@@ -844,7 +847,9 @@ pub(crate) fn soft(
     for (_, taken) in jobs {
         sim.fluids.extend(taken);
     }
+    laps.lap(Phase::Fluids);
     fluids3(scene, settings, dt, sim);
+    laps.lap(Phase::Fluids3d);
     Ok(())
 }
 
@@ -1056,11 +1061,7 @@ fn bounds(points: &[Vec3], slack: f32) -> (Vec3, Vec3) {
 
 /// The bodies water acts on, from the rapier world: every dynamic body (it
 /// floats) and every controller (it splashes), with its colliders' box.
-fn floaters(
-    scene: &Scene,
-    sim: &Sim,
-    handles: &BTreeMap<u64, rp::RigidBodyHandle>,
-) -> Vec<Floater> {
+fn floaters(scene: &Scene, sim: &Sim, handles: &super::sim::Handles<'_>) -> Vec<Floater> {
     let mut list = Vec::new();
     for b in &scene.bodies {
         let dynamic = b.body.kind == BODY_DYNAMIC && b.control.is_none();
@@ -1110,7 +1111,7 @@ pub(crate) fn water(
     settings: &Physics,
     dt: f32,
     sim: &mut Sim,
-    handles: &BTreeMap<u64, rp::RigidBodyHandle>,
+    handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
     if scene.surfaces.is_empty() && scene.lines.is_empty() {

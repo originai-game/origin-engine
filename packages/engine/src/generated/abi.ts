@@ -295,6 +295,8 @@ export interface HostAbi<A, V> {
   og_physics_set_ragdoll_rig(world: number, entity: number, desc: string | undefined): string;
   /** `og.physics.ragdollPose` */
   og_physics_ragdoll_pose(world: number, entity: number): string;
+  /** `og.physics.stats` */
+  og_physics_stats(world: number): string;
   /** `og.atmosphere.timeOfDay` */
   og_atmosphere_time_of_day(world: number): number;
   /** `og.anim.graph` */
@@ -757,6 +759,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_ragdoll_rig_from_skeleton",
   "og_physics_set_ragdoll_rig",
   "og_physics_ragdoll_pose",
+  "og_physics_stats",
   "og_atmosphere_time_of_day",
   "og_anim_graph",
   "og_anim_humanoid",

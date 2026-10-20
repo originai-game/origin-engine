@@ -102,6 +102,16 @@ pub struct SiteCount {
 fn count(site: Site, items: usize) {
     CALLS[site as usize].fetch_add(1, Ordering::Relaxed);
     ITEMS[site as usize].fetch_add(items as u64, Ordering::Relaxed);
+    let _ = HERE.try_with(|n| n.set(n.get() + 1));
+}
+
+/// The helper calls that went parallel and were started on the calling
+/// thread, since it started (every site). A caller that reads it before
+/// and after a stretch of its own work learns whether any of that work
+/// split, whatever other threads did meanwhile (og-physics's per-phase
+/// stats).
+pub fn calls_here() -> u64 {
+    HERE.try_with(|n| n.get()).unwrap_or(0)
 }
 
 /// What the engine got: whether lanes run, on how many threads, and why
@@ -141,6 +151,8 @@ thread_local! {
     /// How many lane items this thread is inside (a pool thread running a
     /// helper's items).
     static IN_LANE: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// The parallel calls this thread started ([`calls_here`]).
+    static HERE: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// A Rust panic the engine recorded ([`record_panic`]): what it said, where,
@@ -456,6 +468,62 @@ where
         imp::for_each_indexed(items, grain.max(1), f)
     } else {
         items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
+    }
+}
+
+/// Sorts `items` by their own order, as `items.sort_unstable()` does. Items
+/// that compare equal must be interchangeable (equal in every bit, as a
+/// key with its index is), so there is one sorted sequence and every
+/// thread count leaves it. From two `grain`s of items, with lanes on, a
+/// sample sort: a regular sample of the items picks splitters, ranges of
+/// at least a grain deal their items into the buckets between them side
+/// by side, and the buckets are sorted side by side and laid end to end;
+/// serially otherwise.
+pub fn sort<T>(site: Site, items: &mut [T], grain: usize)
+where
+    T: Ord + Copy + Send + Sync,
+{
+    if !parallel(site, items.len(), Least::Grains(grain, 2)) {
+        items.sort_unstable();
+        return;
+    }
+    let n = items.len();
+    let threads = imp::pool().0.max(2) as usize;
+    let grain = grain.max(1);
+    let buckets = (n / grain).clamp(2, 2 * threads);
+    let samples = 16 * buckets;
+    let mut sample: Vec<T> = (0..samples).map(|k| items[k * n / samples]).collect();
+    sample.sort_unstable();
+    let splitters: Vec<T> = (1..buckets)
+        .map(|k| sample[k * samples / buckets])
+        .collect();
+    let ranges: Vec<std::ops::Range<usize>> = (0..n)
+        .step_by(grain.max(n.div_ceil(2 * threads)))
+        .map(|a| a..(a + grain.max(n.div_ceil(2 * threads))).min(n))
+        .collect();
+    let shared: &[T] = items;
+    let dealt: Vec<Vec<Vec<T>>> = imp::map(&ranges, 1, |r| {
+        fault(site);
+        let mut out = vec![Vec::new(); buckets];
+        for t in &shared[r.clone()] {
+            out[splitters.partition_point(|s| s <= t)].push(*t);
+        }
+        out
+    });
+    let ids: Vec<usize> = (0..buckets).collect();
+    let sorted: Vec<Vec<T>> = imp::map(&ids, 1, |&b| {
+        fault(site);
+        let mut bucket = Vec::with_capacity(dealt.iter().map(|d| d[b].len()).sum());
+        for d in &dealt {
+            bucket.extend_from_slice(&d[b]);
+        }
+        bucket.sort_unstable();
+        bucket
+    });
+    let mut at = 0;
+    for bucket in sorted {
+        items[at..at + bucket.len()].copy_from_slice(&bucket);
+        at += bucket.len();
     }
 }
 
@@ -1068,6 +1136,68 @@ mod tests {
             .join()
             .unwrap();
         });
+    }
+
+    /// `calls_here` counts the parallel calls the calling thread started,
+    /// and none of another thread's.
+    #[test]
+    fn calls_here_counts_this_threads_parallel_calls() {
+        // The switch is the process's: no other test flips it meanwhile.
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        std::thread::spawn(|| {
+            let items: Vec<u32> = (0..4096).collect();
+            let before = calls_here();
+            let _ = map(Site::Anim, &items[..1], 512, |&i| i);
+            assert_eq!(calls_here(), before, "one item never splits");
+            let _ = map(Site::Anim, &items, 512, |&i| i);
+            let on = threads() > 1;
+            assert_eq!(calls_here(), before + u64::from(on), "lanes on: {on}");
+            let mine = calls_here();
+            std::thread::spawn(move || {
+                let items: Vec<u32> = (0..4096).collect();
+                let _ = map(Site::Anim, &items, 512, |&i| i);
+            })
+            .join()
+            .unwrap();
+            assert_eq!(
+                calls_here(),
+                mine,
+                "another thread's call is not this one's"
+            );
+        })
+        .join()
+        .unwrap();
+    }
+
+    /// `sort` leaves exactly what the slice's sort leaves, split or not,
+    /// for lengths around every grain and bucket boundary, with many equal
+    /// items (equal in every bit) and with items already in order.
+    #[test]
+    fn sort_is_the_slices_sort() {
+        // Its parallel calls name their site, which a lane's panic reports.
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut seed = 0x9e37_79b9u32;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            seed
+        };
+        for n in [0usize, 1, 2, 7, 63, 64, 65, 129, 1000, 4097, 10_000] {
+            for spread in [3u32, 1_000_000] {
+                let items: Vec<(u32, u32)> =
+                    (0..n).map(|_| (next() % spread, next() % 5)).collect();
+                let mut expected = items.clone();
+                expected.sort();
+                for grain in [1, 16, 64, 5000] {
+                    let mut got = items.clone();
+                    sort(Site::Anim, &mut got, grain);
+                    assert_eq!(got, expected, "{n} items of {spread}, grain {grain}");
+                    sort(Site::Anim, &mut got, grain);
+                    assert_eq!(got, expected, "{n} items in order, grain {grain}");
+                }
+            }
+        }
     }
 
     /// `threads` is the pool's when lanes are on and 1 when switched off.

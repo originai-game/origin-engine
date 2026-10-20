@@ -416,6 +416,17 @@ fn sprites_array_match_their_reference_in_one_draw_per_array() {
     );
 }
 
+/// Materials sampling texture arrays: eight cubes of one tile material on
+/// four layers (and the material's own) are one batch; the blended panes
+/// of another array material one more; with the ground, the plain cube and
+/// the normal-array sphere, five (mesh, material) pairs for 13 instances.
+#[test]
+fn materials_array_match_their_reference_in_one_batch_per_material() {
+    let report = check("materials-array");
+    let s = report.stats;
+    assert_eq!((s.batches, s.instances), (5, 13));
+}
+
 /// A sprite drawn from an array shows the layer it names, sampled with the
 /// array's filter; a layer past the array's count, or an array that was
 /// removed, is refused.

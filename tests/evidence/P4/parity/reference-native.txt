@@ -1,0 +1,8 @@
+1 base p50=4.886 mean=6.069 cpu_p50=0.967 cpu_mean=1.002 hash=37fb8900fad8462f
+1 head p50=4.570 mean=5.857 cpu_p50=0.962 cpu_mean=1.002 hash=37fb8900fad8462f
+2 base p50=4.780 mean=6.002 cpu_p50=0.948 cpu_mean=0.998 hash=37fb8900fad8462f
+2 head p50=5.062 mean=6.223 cpu_p50=0.963 cpu_mean=1.007 hash=37fb8900fad8462f
+3 base p50=4.706 mean=5.911 cpu_p50=0.956 cpu_mean=0.990 hash=37fb8900fad8462f
+3 head p50=4.779 mean=5.986 cpu_p50=0.939 cpu_mean=0.972 hash=37fb8900fad8462f
+4 base p50=4.819 mean=6.025 cpu_p50=0.955 cpu_mean=0.985 hash=37fb8900fad8462f
+4 head p50=4.709 mean=5.898 cpu_p50=0.931 cpu_mean=0.973 hash=37fb8900fad8462f

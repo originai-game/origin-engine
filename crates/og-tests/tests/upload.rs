@@ -25,7 +25,8 @@ fn check(culling: Culling) {
     let n = built.scene.instances.len() as u64;
     let first = frame(&mut renderer, &built.scene);
     assert!(
-        first.instance_upload_bytes >= n * 64,
+        // An instance is 52 bytes on the GPU (instances::GpuTransform).
+        first.instance_upload_bytes >= n * 52,
         "{culling:?}: the first frame writes every transform ({} bytes for {n})",
         first.instance_upload_bytes
     );

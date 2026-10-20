@@ -1,0 +1,425 @@
+== round 1 lanes off soft_old load 8.07 9.50 12.75
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.302 | fluids3d 0.297 | 440c4bf24713bea3 | 0 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.651 | fluids3d 0.645 | d1f9ecfc37601109 | 0 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 1.296 | fluids3d 1.287 | 1235328b60395556 | 0 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.572 | fluids3d 1.560 | c3399bec3f9d657b | 0 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 3.216 | fluids3d 3.193 | 656c30afa4119a76 | 0 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 7.056 | fluids3d 7.021 | a9353309da8d37e3 | 0 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.736 | fluids3d 0.729 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.931 | fluids3d 1.921 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.711 | fluids3d 5.688 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 12.414 | fluids3d 12.382 | 08ee29fc9fc9e8af | 0 |
+== round 1 lanes off soft load 7.85 9.39 12.65
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.299 | fluids3d 0.293 | 440c4bf24713bea3 | 0 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.671 | fluids3d 0.664 | d1f9ecfc37601109 | 0 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 1.375 | fluids3d 1.363 | 1235328b60395556 | 0 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.530 | fluids3d 1.521 | c3399bec3f9d657b | 0 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 3.174 | fluids3d 3.159 | 656c30afa4119a76 | 0 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 6.750 | fluids3d 6.727 | a9353309da8d37e3 | 0 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.712 | fluids3d 0.706 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.185 | fluids3d 2.173 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.818 | fluids3d 5.801 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 14.369 | fluids3d 14.334 | 08ee29fc9fc9e8af | 0 |
+== round 1 lanes 4 soft_old load 7.37 9.21 12.53
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.231 | fluids3d 0.223 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.440 | fluids3d 0.431 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.540 | fluids3d 0.530 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.959 | fluids3d 0.946 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.150 | fluids3d 1.134 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 2.182 | fluids3d 2.161 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.770 | fluids3d 0.762 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.742 | fluids3d 1.722 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.995 | fluids3d 3.967 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.864 | fluids3d 8.817 | 08ee29fc9fc9e8af | 1680 |
+== round 1 lanes 4 soft load 8.17 9.32 12.53
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.250 | fluids3d 0.241 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.463 | fluids3d 0.452 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.558 | fluids3d 0.548 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.009 | fluids3d 0.994 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.258 | fluids3d 1.239 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 2.446 | fluids3d 2.416 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.763 | fluids3d 0.755 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.358 | fluids3d 2.330 | 06a1040579f9cb51 | 7560 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.096 | fluids3d 5.054 | bb26dd98da5e5880 | 7560 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 10.869 | fluids3d 10.825 | 08ee29fc9fc9e8af | 7560 |
+== round 1 lanes 8 soft_old load 8.45 9.34 12.46
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.230 | fluids3d 0.222 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.454 | fluids3d 0.445 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.516 | fluids3d 0.507 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.944 | fluids3d 0.934 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.077 | fluids3d 1.064 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.490 | fluids3d 1.474 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.728 | fluids3d 0.722 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.734 | fluids3d 1.714 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.629 | fluids3d 3.602 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.145 | fluids3d 8.095 | 08ee29fc9fc9e8af | 1680 |
+== round 1 lanes 8 soft load 8.00 9.21 12.38
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.257 | fluids3d 0.246 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.515 | fluids3d 0.503 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.781 | fluids3d 0.759 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.086 | fluids3d 1.065 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.288 | fluids3d 1.265 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.608 | fluids3d 1.586 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.749 | fluids3d 0.742 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.456 | fluids3d 2.432 | 06a1040579f9cb51 | 7560 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.892 | fluids3d 4.860 | bb26dd98da5e5880 | 7560 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 10.183 | fluids3d 10.141 | 08ee29fc9fc9e8af | 7560 |
+== round 2 lanes off soft_old load 7.98 9.17 12.33
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.291 | fluids3d 0.285 | 440c4bf24713bea3 | 0 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.692 | fluids3d 0.685 | d1f9ecfc37601109 | 0 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 1.292 | fluids3d 1.284 | 1235328b60395556 | 0 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.513 | fluids3d 1.505 | c3399bec3f9d657b | 0 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 3.374 | fluids3d 3.360 | 656c30afa4119a76 | 0 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 6.731 | fluids3d 6.712 | a9353309da8d37e3 | 0 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.756 | fluids3d 0.750 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.045 | fluids3d 2.035 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.362 | fluids3d 5.343 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 12.376 | fluids3d 12.347 | 08ee29fc9fc9e8af | 0 |
+== round 2 lanes off soft load 7.70 9.05 12.23
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.274 | fluids3d 0.269 | 440c4bf24713bea3 | 0 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.634 | fluids3d 0.628 | d1f9ecfc37601109 | 0 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 1.311 | fluids3d 1.303 | 1235328b60395556 | 0 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 1.688 | fluids3d 1.679 | c3399bec3f9d657b | 0 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 3.310 | fluids3d 3.297 | 656c30afa4119a76 | 0 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 6.797 | fluids3d 6.771 | a9353309da8d37e3 | 0 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.770 | fluids3d 0.761 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.079 | fluids3d 2.069 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 6.090 | fluids3d 6.062 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 14.807 | fluids3d 14.769 | 08ee29fc9fc9e8af | 0 |
+== round 2 lanes 4 soft_old load 7.85 9.01 12.16
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.215 | fluids3d 0.207 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.443 | fluids3d 0.435 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.514 | fluids3d 0.505 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.917 | fluids3d 0.907 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.025 | fluids3d 1.013 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.928 | fluids3d 1.913 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.717 | fluids3d 0.711 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.649 | fluids3d 1.635 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.782 | fluids3d 3.757 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.448 | fluids3d 8.410 | 08ee29fc9fc9e8af | 1680 |
+== round 2 lanes 4 soft load 7.74 8.95 12.10
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.234 | fluids3d 0.226 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.430 | fluids3d 0.422 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.497 | fluids3d 0.489 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.892 | fluids3d 0.882 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.000 | fluids3d 0.989 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 2.106 | fluids3d 2.087 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.726 | fluids3d 0.721 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.010 | fluids3d 1.995 | 06a1040579f9cb51 | 7560 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.590 | fluids3d 4.563 | bb26dd98da5e5880 | 7560 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 10.291 | fluids3d 10.251 | 08ee29fc9fc9e8af | 7560 |
+== round 2 lanes 8 soft_old load 8.00 8.98 12.09
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.231 | fluids3d 0.223 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.416 | fluids3d 0.409 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.532 | fluids3d 0.522 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.929 | fluids3d 0.918 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.066 | fluids3d 1.054 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.442 | fluids3d 1.426 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.747 | fluids3d 0.740 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.711 | fluids3d 1.693 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.925 | fluids3d 3.899 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.948 | fluids3d 7.904 | 08ee29fc9fc9e8af | 1680 |
+== round 2 lanes 8 soft load 7.54 8.85 12.01
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| 2 3D fluids of 250 (2 substeps) | 1000 | 0.280 | fluids3d 0.267 | 440c4bf24713bea3 | 420 |
+| 2 3D fluids of 500 (2 substeps) | 2000 | 0.477 | fluids3d 0.465 | d1f9ecfc37601109 | 420 |
+| 4 3D fluids of 500 (2 substeps) | 4000 | 0.623 | fluids3d 0.608 | 1235328b60395556 | 420 |
+| 2 3D fluids of 1000 (2 substeps) | 4000 | 0.937 | fluids3d 0.924 | c3399bec3f9d657b | 420 |
+| 4 3D fluids of 1000 (2 substeps) | 8000 | 1.093 | fluids3d 1.079 | 656c30afa4119a76 | 420 |
+| 8 3D fluids of 1000 (2 substeps) | 16000 | 1.500 | fluids3d 1.482 | a9353309da8d37e3 | 420 |
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.806 | fluids3d 0.800 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.350 | fluids3d 2.328 | 06a1040579f9cb51 | 7560 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.352 | fluids3d 5.299 | bb26dd98da5e5880 | 7560 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 11.050 | fluids3d 10.999 | 08ee29fc9fc9e8af | 7560 |
+#### second binary (one range a pool thread, elementwise passes serial): runF
+== round 1 lanes off soft_old load 7.35 10.01 11.34
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.720 | fluids3d 0.714 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.026 | fluids3d 2.012 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.426 | fluids3d 5.400 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 12.346 | fluids3d 12.319 | 08ee29fc9fc9e8af | 0 |
+== round 1 lanes off soft2 load 6.99 9.84 11.27
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.798 | fluids3d 0.792 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.915 | fluids3d 1.905 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.392 | fluids3d 5.378 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 12.411 | fluids3d 12.382 | 08ee29fc9fc9e8af | 0 |
+== round 1 lanes 4 soft_old load 6.37 9.62 11.17
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.752 | fluids3d 0.745 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.558 | fluids3d 1.545 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.010 | fluids3d 3.976 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.372 | fluids3d 8.327 | 08ee29fc9fc9e8af | 1680 |
+== round 1 lanes 4 soft2 load 6.26 9.54 11.13
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.780 | fluids3d 0.772 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.835 | fluids3d 1.819 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.078 | fluids3d 4.050 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.453 | fluids3d 8.414 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 5 soft_old load 6.15 9.41 11.07
+lanes on, 5 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.792 | fluids3d 0.785 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.741 | fluids3d 1.720 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.772 | fluids3d 3.745 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.270 | fluids3d 8.227 | 08ee29fc9fc9e8af | 1680 |
+== round 1 lanes 5 soft2 load 6.22 9.37 11.04
+lanes on, 5 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.776 | fluids3d 0.768 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.957 | fluids3d 1.936 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.268 | fluids3d 4.234 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.521 | fluids3d 8.478 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 6 soft_old load 6.52 9.38 11.04
+lanes on, 6 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.762 | fluids3d 0.754 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.773 | fluids3d 1.752 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.922 | fluids3d 3.885 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.113 | fluids3d 8.069 | 08ee29fc9fc9e8af | 1680 |
+== round 1 lanes 6 soft2 load 7.12 9.45 11.05
+lanes on, 6 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.768 | fluids3d 0.759 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.031 | fluids3d 2.008 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.286 | fluids3d 4.248 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.511 | fluids3d 8.464 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 8 soft_old load 7.32 9.42 11.02
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.781 | fluids3d 0.772 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.815 | fluids3d 1.788 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.953 | fluids3d 3.915 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.129 | fluids3d 8.080 | 08ee29fc9fc9e8af | 1680 |
+== round 1 lanes 8 soft2 load 7.29 9.38 11.00
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.791 | fluids3d 0.782 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.173 | fluids3d 2.144 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.447 | fluids3d 4.408 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.592 | fluids3d 8.543 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 4 soft2-p256 load 7.19 9.33 10.97
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 256)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 1.087 | fluids3d 1.070 | 3316eb4f9c2d318b | 4200 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.897 | fluids3d 1.879 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.134 | fluids3d 4.102 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.543 | fluids3d 8.500 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 4 soft2-p1024 load 7.78 9.38 10.97
+lanes on, 4 threads; the measured grains (particles 2D 1024, 3D 1024)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.787 | fluids3d 0.779 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.024 | fluids3d 2.011 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.257 | fluids3d 4.221 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.719 | fluids3d 8.676 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 6 soft2-p256 load 8.11 9.42 10.98
+lanes on, 6 threads; the measured grains (particles 2D 256, 3D 256)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 1.149 | fluids3d 1.130 | 3316eb4f9c2d318b | 4200 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.073 | fluids3d 2.051 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.925 | fluids3d 3.902 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.180 | fluids3d 8.146 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 6 soft2-p1024 load 8.42 9.47 10.98
+lanes on, 6 threads; the measured grains (particles 2D 1024, 3D 1024)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.728 | fluids3d 0.722 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.850 | fluids3d 1.842 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.171 | fluids3d 4.146 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.534 | fluids3d 8.494 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 8 soft2-p256 load 8.28 9.40 10.94
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 256)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 1.234 | fluids3d 1.209 | 3316eb4f9c2d318b | 4200 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.171 | fluids3d 2.142 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.295 | fluids3d 4.255 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.414 | fluids3d 8.369 | 08ee29fc9fc9e8af | 4200 |
+== round 1 lanes 8 soft2-p1024 load 7.78 9.28 10.89
+lanes on, 8 threads; the measured grains (particles 2D 1024, 3D 1024)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.743 | fluids3d 0.736 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.904 | fluids3d 1.892 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.242 | fluids3d 4.212 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.585 | fluids3d 8.539 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes off soft_old load 7.71 9.24 10.86
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.822 | fluids3d 0.811 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.908 | fluids3d 1.896 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.649 | fluids3d 5.617 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 12.288 | fluids3d 12.251 | 08ee29fc9fc9e8af | 0 |
+== round 2 lanes off soft2 load 7.59 9.16 10.82
+lanes off (off by OG_LANES); the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.736 | fluids3d 0.728 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.061 | fluids3d 2.046 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 5.461 | fluids3d 5.434 | bb26dd98da5e5880 | 0 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 12.437 | fluids3d 12.397 | 08ee29fc9fc9e8af | 0 |
+== round 2 lanes 4 soft_old load 7.95 9.19 10.81
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.747 | fluids3d 0.740 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.785 | fluids3d 1.760 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.978 | fluids3d 3.945 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.567 | fluids3d 8.521 | 08ee29fc9fc9e8af | 1680 |
+== round 2 lanes 4 soft2 load 7.88 9.15 10.79
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.758 | fluids3d 0.750 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.934 | fluids3d 1.911 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.182 | fluids3d 4.149 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.814 | fluids3d 8.769 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 5 soft_old load 7.97 9.15 10.78
+lanes on, 5 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.777 | fluids3d 0.770 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.742 | fluids3d 1.721 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.998 | fluids3d 3.965 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.371 | fluids3d 8.327 | 08ee29fc9fc9e8af | 1680 |
+== round 2 lanes 5 soft2 load 7.68 9.05 10.72
+lanes on, 5 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.743 | fluids3d 0.736 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.964 | fluids3d 1.941 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.264 | fluids3d 4.228 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.509 | fluids3d 8.463 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 6 soft_old load 7.78 9.05 10.71
+lanes on, 6 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.778 | fluids3d 0.770 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.719 | fluids3d 1.703 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.798 | fluids3d 3.772 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.831 | fluids3d 7.798 | 08ee29fc9fc9e8af | 1680 |
+== round 2 lanes 6 soft2 load 7.56 8.98 10.68
+lanes on, 6 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.733 | fluids3d 0.727 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.854 | fluids3d 1.840 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.168 | fluids3d 4.142 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.283 | fluids3d 8.248 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 8 soft_old load 7.44 8.93 10.65
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.742 | fluids3d 0.736 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.679 | fluids3d 1.662 | 06a1040579f9cb51 | 1680 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.714 | fluids3d 3.688 | bb26dd98da5e5880 | 1680 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 7.894 | fluids3d 7.857 | 08ee29fc9fc9e8af | 1680 |
+== round 2 lanes 8 soft2 load 7.42 8.88 10.61
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 512)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.765 | fluids3d 0.759 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.031 | fluids3d 2.011 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.157 | fluids3d 4.129 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.236 | fluids3d 8.198 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 4 soft2-p256 load 7.23 8.82 10.58
+lanes on, 4 threads; the measured grains (particles 2D 256, 3D 256)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.880 | fluids3d 0.871 | 3316eb4f9c2d318b | 4200 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.821 | fluids3d 1.807 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 3.949 | fluids3d 3.926 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.284 | fluids3d 8.248 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 4 soft2-p1024 load 7.29 8.80 10.56
+lanes on, 4 threads; the measured grains (particles 2D 1024, 3D 1024)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.739 | fluids3d 0.732 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.010 | fluids3d 2.001 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.044 | fluids3d 4.021 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.254 | fluids3d 8.219 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 6 soft2-p256 load 7.11 8.74 10.53
+lanes on, 6 threads; the measured grains (particles 2D 256, 3D 256)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 1.064 | fluids3d 1.051 | 3316eb4f9c2d318b | 4200 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.950 | fluids3d 1.934 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.079 | fluids3d 4.054 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.279 | fluids3d 8.244 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 6 soft2-p1024 load 7.07 8.68 10.49
+lanes on, 6 threads; the measured grains (particles 2D 1024, 3D 1024)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.748 | fluids3d 0.742 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 1.907 | fluids3d 1.899 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.065 | fluids3d 4.042 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.482 | fluids3d 8.447 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 8 soft2-p256 load 7.22 8.69 10.48
+lanes on, 8 threads; the measured grains (particles 2D 256, 3D 256)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 1.175 | fluids3d 1.160 | 3316eb4f9c2d318b | 4200 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.089 | fluids3d 2.068 | 06a1040579f9cb51 | 4200 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.275 | fluids3d 4.246 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.316 | fluids3d 8.273 | 08ee29fc9fc9e8af | 4200 |
+== round 2 lanes 8 soft2-p1024 load 6.97 8.61 10.44
+lanes on, 8 threads; the measured grains (particles 2D 1024, 3D 1024)
+| scene | work | ms per tick | its phase, ms | world hash | physics calls |
+|---|---|---|---|---|---|
+| a 3D fluid of 1000 (2 substeps) | 2000 | 0.741 | fluids3d 0.733 | 3316eb4f9c2d318b | 0 |
+| a 3D fluid of 2000 (2 substeps) | 4000 | 2.054 | fluids3d 2.041 | 06a1040579f9cb51 | 0 |
+| a 3D fluid of 4000 (2 substeps) | 8000 | 4.631 | fluids3d 4.588 | bb26dd98da5e5880 | 4200 |
+| a 3D fluid of 8000 (2 substeps) | 16000 | 8.522 | fluids3d 8.478 | 08ee29fc9fc9e8af | 4200 |

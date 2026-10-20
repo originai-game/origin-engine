@@ -1064,6 +1064,7 @@ export const physics = Object.freeze({
   setRagdollRig: (world: WorldImpl, entity: number, desc?: unknown) =>
     parse(abi().og_physics_set_ragdoll_rig(world.id, entity, json(desc))),
   ragdollPose: (world: WorldImpl, entity: number) => parse(abi().og_physics_ragdoll_pose(world.id, entity)),
+  stats: (world: WorldImpl) => parse(abi().og_physics_stats(world.id)),
 });
 
 export const audio = Object.freeze({

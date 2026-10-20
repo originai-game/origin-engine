@@ -25,9 +25,13 @@
 //!   spacing 0                     # the finest level's spacing in metres (0: the samples')
 //!   ring 64                       # quads per side of every clipmap level
 //! }
+//! layers "tiles.ogt"             # optional: a texture array (type texture-array, beside the terrain or under assets/) of the layers' albedos
+//! layerNormals "tiles-n.ogt"      # optional: a texture array (kind normal) of their normal maps
 //! layer {
 //!   albedo "textures/grass.png"   # colour texture (alpha: the layer's height)
 //!   normal "textures/rock-n.png"  # a normal map (give it `texture { kind normal }`)
+//!   albedoLayer 0                 # with layers: its albedo's layer (default: its place, 0 to 3)
+//!   normalLayer 0                 # with layerNormals: its normal map's layer (default: its place)
 //!   color 1 1 1
 //!   roughness 0.95
 //!   tile 6                        # metres per repeat
@@ -42,7 +46,12 @@
 //!
 //! The heightmap and the control map are read relative to the terrain file
 //! (or, failing that, `assets/`); they are part of the terrain, not
-//! textures of their own. Rows of the heightmap run from -z (the image's
+//! textures of their own.
+//!
+//! With `layers` (and `layerNormals`) the layers' maps are layers of two
+//! texture arrays, cooked on their own: the terrain samples two textures
+//! instead of up to eight. A layer then names no `albedo` or `normal` of
+//! its own; `albedoLayer` and `normalLayer` pick its layers. Rows of the heightmap run from -z (the image's
 //! top) to +z, columns from -x to +x.
 
 use super::{CookError, Source};
@@ -151,6 +160,12 @@ pub(super) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> 
         })
         .collect();
     if let Ok(doc) = Document::parse(&text) {
+        for k in ["layers", "layerNormals"] {
+            if let Some(t) = string_of(&doc.body, k) {
+                let t = resolve(&s.rel, &root, &t);
+                out.push(format!("{t}={}", known(crate::runtime::asset_id(&t))));
+            }
+        }
         for l in doc.body.get_all("layer") {
             if let Some(b) = &l.block {
                 for k in ["albedo", "normal"] {
@@ -216,9 +231,12 @@ pub(super) struct TerrainDoc {
     pub lod_spacing: f32,
     pub lod_ring: u32,
     pub layers: Vec<(Option<String>, Option<String>, og_render::TerrainLayer)>,
+    /// `layers` and `layerNormals`: the texture arrays (asset paths).
+    pub albedo_array: Option<String>,
+    pub normal_array: Option<String>,
 }
 
-const KEYS: [&str; 10] = [
+const KEYS: [&str; 12] = [
     "heightmap",
     "height",
     "size",
@@ -229,10 +247,14 @@ const KEYS: [&str; 10] = [
     "collision",
     "lod",
     "layer",
+    "layers",
+    "layerNormals",
 ];
-const LAYER_KEYS: [&str; 11] = [
+const LAYER_KEYS: [&str; 13] = [
     "albedo",
     "normal",
+    "albedoLayer",
+    "normalLayer",
     "color",
     "roughness",
     "tile",
@@ -282,6 +304,21 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         ),
         None => (0.0, 0),
     };
+    let albedo_array = string_of(body, "layers");
+    let normal_array = string_of(body, "layerNormals");
+    for (key, name) in [("layers", &albedo_array), ("layerNormals", &normal_array)] {
+        if let Some(e) = body.get(key)
+            && name
+                .as_deref()
+                .is_none_or(|n| !n.to_ascii_lowercase().ends_with(".ogt"))
+        {
+            return Err(format!(
+                "line {}: {key} names a texture array, an .ogt of type texture-array: {key} \"tiles.ogt\"",
+                e.line
+            ));
+        }
+    }
+    let arrayed = albedo_array.is_some() || normal_array.is_some();
     let mut layers = Vec::new();
     for e in body.get_all("layer") {
         let Some(b) = &e.block else {
@@ -306,7 +343,37 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             Some(v) if v.len() == 3 => [v[0], v[1], v[2]],
             Some(_) => return Err(format!("line {}: 'color' takes three numbers", e.line)),
         };
+        let place = layers.len() as f32;
+        let index = |key: &str, array: &Option<String>| -> Result<Option<u32>, String> {
+            match (b.get(key), array) {
+                (Some(k), None) => Err(format!(
+                    "line {}: '{key}' picks a layer of the terrain's {}: name it first",
+                    k.line,
+                    if key == "albedoLayer" {
+                        "layers \"<array>.ogt\""
+                    } else {
+                        "layerNormals \"<array>.ogt\""
+                    }
+                )),
+                (_, None) => Ok(None),
+                (_, Some(_)) => {
+                    let v = number(b, key, place)?;
+                    if v < 0.0 || v.fract() != 0.0 {
+                        return Err(format!("'{key}' is a whole layer number from 0, got {v}"));
+                    }
+                    Ok(Some(v as u32))
+                }
+            }
+        };
+        if arrayed && let Some(k) = b.get("albedo").or_else(|| b.get("normal")) {
+            return Err(format!(
+                "line {}: with layer arrays (layers, layerNormals) a layer's maps are their layers: albedoLayer and normalLayer, not '{}'",
+                k.line, k.key
+            ));
+        }
         let layer = og_render::TerrainLayer {
+            albedo_layer: index("albedoLayer", &albedo_array)?,
+            normal_layer: index("normalLayer", &normal_array)?,
             albedo: None,
             normal: None,
             color: color.into(),
@@ -339,6 +406,8 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         lod_spacing,
         lod_ring,
         layers,
+        albedo_array: albedo_array.map(|a| resolve(rel, root, &a)),
+        normal_array: normal_array.map(|a| resolve(rel, root, &a)),
     })
 }
 
@@ -378,6 +447,11 @@ pub(super) fn cook_terrain(
             if !known(crate::runtime::asset_id(t)) {
                 missing.push(t.clone());
             }
+        }
+    }
+    for t in [&doc.albedo_array, &doc.normal_array].into_iter().flatten() {
+        if !known(crate::runtime::asset_id(t)) {
+            missing.push(t.clone());
         }
     }
     if !missing.is_empty() {
@@ -492,9 +566,13 @@ pub(super) fn cook_terrain(
                 altitude_min: l.altitude[0],
                 altitude_max: l.altitude[1],
                 altitude_fade: l.altitude_fade,
+                albedo_layer: l.albedo_layer.unwrap_or(format::NONE),
+                normal_layer: l.normal_layer.unwrap_or(format::NONE),
             }
         })
         .collect();
+    let (albedo_array_at, albedo_array_len) = put(&doc.albedo_array);
+    let (normal_array_at, normal_array_len) = put(&doc.normal_array);
     let meta = format::TerrainMeta {
         size_x: size[0],
         size_z: size[1],
@@ -513,6 +591,10 @@ pub(super) fn cook_terrain(
         lod_ring: doc.lod_ring,
         cast_shadows: u32::from(doc.cast_shadows),
         collision: u32::from(doc.collision),
+        albedo_array_at,
+        albedo_array_len,
+        normal_array_at,
+        normal_array_len,
     };
     let mut w = BlobWriter::new(
         format::Terrain::type_hash(),

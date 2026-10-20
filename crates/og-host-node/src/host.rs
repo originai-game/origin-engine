@@ -556,6 +556,9 @@ impl PhysicsApi for NodeHost {
     fn og_physics_ragdoll_pose(&self, world: u32, entity: f64) -> String {
         rt::og_physics_ragdoll_pose(world, entity)
     }
+    fn og_physics_stats(&self, world: u32) -> String {
+        rt::og_physics_stats(world)
+    }
     fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_raycast(world, desc)
     }

@@ -198,15 +198,23 @@ impl Hooks for WebHooks {
     }
 
     fn now_ms(&self) -> f64 {
-        PERFORMANCE.with(|p| match p {
-            Some((performance, now)) => now
-                .call0(performance)
-                .ok()
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0),
-            None => js_sys::Date::now(),
-        })
+        clock_ms()
     }
+}
+
+/// This thread's `performance.now()` (each Worker has its own, from its own
+/// origin), or the date where there is none: the hooks' clock and
+/// og-physics's for its per-phase stats, which a step on the lanes times on
+/// the pool Worker it runs on.
+pub(crate) fn clock_ms() -> f64 {
+    PERFORMANCE.with(|p| match p {
+        Some((performance, now)) => now
+            .call0(performance)
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
+        None => js_sys::Date::now(),
+    })
 }
 
 /// `cooked/stream/<name>.ogb`, as the Worker's fetcher tells a pack

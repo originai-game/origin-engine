@@ -37,7 +37,7 @@ fn object_vertex(model: mat4x4<f32>, scale: vec3<f32>, v: VertexIn) -> ObjectOut
 
 @vertex
 fn vs_object(v: VertexIn, i: InstanceIn) -> ObjectOut {
-  let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
   return object_vertex(model, axis_scale(model), v);
 }
 
@@ -45,7 +45,7 @@ fn vs_object(v: VertexIn, i: InstanceIn) -> ObjectOut {
 // so the pattern follows the skin as it deforms.
 @vertex
 fn vs_object_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> ObjectOut {
-  let instance = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3);
+  let instance = instance_matrix(i.m0, i.m1, i.m2, i.m3);
   let model = instance * skin_matrix(s, i.palette);
   return object_vertex(model, axis_scale(instance), morph_vertex(v, vi, i));
 }

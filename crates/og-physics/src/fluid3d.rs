@@ -464,7 +464,13 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
                 }
                 *p += *v * ds;
             }
-            // Number density over every neighbour.
+            // Number density over every neighbour. Each particle's sums
+            // could be gathered on the lanes bit for bit (its pairs with
+            // the particles before it, then its own: the order this scatter
+            // visits them), but the pairs' transpose that needs costs what
+            // the split saves: 8,000 particles on four lanes 8.37 against
+            // 8.45 ms a tick, 2,000 1.56 against 1.84 (round three,
+            // tests/evidence/P4/physics-3/). So it stays this scatter.
             rho.iter_mut().for_each(|r| *r = 0.0);
             near.iter_mut().for_each(|r| *r = 0.0);
             for i in 0..n {
@@ -481,7 +487,15 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
                 }
             }
             // Relaxation, Gauss-Seidel in index order over the pairs found
-            // before the move.
+            // before the move: each pair moves both particles at once and
+            // the next pair reads where they now are. Particle i's pairs
+            // read what particle i - 1's wrote whenever the two are
+            // neighbours, as lattice, emission and pouring order make them
+            // nearly always, so the chain that must run in this order is
+            // as long as the fluid: only another order (Jacobi, or two
+            // colours) splits it, and that moves every particle's bits and
+            // the world hash. Viscosity and mixing are passes of the same
+            // kind, over velocities and mixes, and stay serial too.
             for i in 0..n {
                 let f = fluid_of(i);
                 let pressure = f.stiffness * (rho[i] - f.rest_density);

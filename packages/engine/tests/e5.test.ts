@@ -120,6 +120,16 @@ test("every physics component of the round is adopted and steps in 3D", () => {
   expect(must(og.physics.waterHeight(w, pool, 30, 30))).toBeCloseTo(0.5, 6);
   // Readouts refuse an entity without the component.
   expect(og.physics.ropePoints(w, w.find("floor")!).ok).toBeFalse();
+  // What the last step cost, phase by phase, and where it ran.
+  const stats = must(og.physics.stats(w));
+  expect(stats.phases.map((p) => p.name)).toEqual([
+    "gather", "sync", "joints", "ragdolls", "water", "rapier",
+    "readout", "controllers", "soft", "fluids", "fluids3d", "writeBack",
+  ]);
+  expect(stats.bodies).toBeGreaterThan(0);
+  expect(stats.threads).toBeGreaterThanOrEqual(1);
+  expect(stats.ms).toBeGreaterThan(0);
+  expect(stats.phases.every((p) => p.ms >= 0 && p.ms <= stats.ms)).toBeTrue();
 });
 
 test("a platformer jumps on a held button and its fluid and water line are read back (2D)", () => {

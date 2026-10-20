@@ -1,8 +1,9 @@
 //! Where og-physics's work runs on the lanes (og-lanes, the `physics`
 //! site): from how many bodies the step goes to the pool for each thread
 //! count, and the grains of the passes og-physics splits itself. Measured
-//! with `examples/lanes_costs.rs` (tests/evidence/P4/physics-lanes/ and
-//! tests/evidence/P4/physics-lanes-2/).
+//! with `examples/lanes_costs.rs` and `examples/soft_lanes_costs.rs`
+//! (tests/evidence/P4/physics-lanes/, tests/evidence/P4/physics-lanes-2/
+//! and tests/evidence/P4/physics-3/).
 
 use std::sync::Mutex;
 
@@ -17,9 +18,26 @@ pub struct Grains {
     /// stages wait for their slowest worker. Below it the step runs on the
     /// calling thread and never wakes the pool. `usize::MAX`: never.
     pub pool_bodies: usize,
-    /// The contact pairs of one task when a step on the pool reads them
-    /// back.
+    /// The contact graph's edges of one task when a step on the pool reads
+    /// its touching pairs back, and the pairs of one bucket's deal when it
+    /// sorts them; they split from two grains, and never below the pool.
     pub pairs: usize,
+    /// The bodies of one task when a step brings the rapier world in line
+    /// with them before the step (what each body's change asks for) and
+    /// reads them back after it (the rest rule, the values written back);
+    /// they split from two grains. Measured not to pay to 4,000 bodies on
+    /// any thread count (what stays serial, every rapier call in body
+    /// order, outweighs it), so `usize::MAX`: never.
+    pub bodies: usize,
+    /// The rows of one task when the gather decodes a component's rows (an
+    /// archetype's bodies' og.RigidBody and og.Collider); they split from
+    /// two grains.
+    pub rows: usize,
+    /// The ragdolls of one task when a step plans their bones' targets
+    /// before the step; they split from two grains. Measured not to pay to
+    /// 1,024 ragdolls (0.2 ms in all, most of it the rapier calls made in
+    /// ragdoll order), so `usize::MAX`: never.
+    pub ragdolls: usize,
     /// The work of one task when ropes step side by side, in point passes
     /// (points × iterations); they split from two tasks' worth.
     pub rope_work: usize,
@@ -39,7 +57,8 @@ pub struct Grains {
 
 impl Grains {
     /// The measured grains for a lanes pool of `threads` threads (M4 Pro;
-    /// tests/evidence/P4/physics-lanes-2/).
+    /// tests/evidence/P4/physics-lanes-2/ and tests/evidence/P4/physics-3/,
+    /// which measured five and six threads apart).
     pub fn measured(threads: u32) -> Grains {
         Grains {
             pool_bodies: match threads {
@@ -48,8 +67,17 @@ impl Grains {
                 5..=6 => 1000,
                 _ => 1500,
             },
-            pairs: 512,
-            rope_work: if threads <= 4 { 800 } else { 2400 },
+            pairs: 2048,
+            bodies: usize::MAX,
+            rows: 1024,
+            ragdolls: usize::MAX,
+            // Five threads split ropes from eight as four do, six from 16,
+            // seven and up from about 24 (tests/evidence/P4/physics-3/).
+            rope_work: match threads {
+                0..=5 => 800,
+                6 => 1600,
+                _ => 2400,
+            },
             cloth_work: if threads <= 4 { 1100 } else { 2000 },
             fluid_work: 500,
             particles_2d: 256,
@@ -64,6 +92,9 @@ impl Grains {
         Grains {
             pool_bodies: 1,
             pairs: 1,
+            bodies: 1,
+            rows: 1,
+            ragdolls: 1,
             rope_work: 1,
             cloth_work: 1,
             fluid_work: 1,

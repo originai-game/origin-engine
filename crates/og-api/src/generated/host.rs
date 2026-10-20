@@ -362,6 +362,8 @@ pub trait PhysicsApi: Wire {
     fn og_physics_set_ragdoll_rig(&self, world: u32, entity: f64, desc: Option<String>) -> String;
     /// `og.physics.ragdollPose`
     fn og_physics_ragdoll_pose(&self, world: u32, entity: f64) -> String;
+    /// `og.physics.stats`
+    fn og_physics_stats(&self, world: u32) -> String;
 }
 
 /// `atmosphere`: packages/knowledge/wiki/atmosphere.md.
@@ -885,6 +887,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_ragdoll_rig_from_skeleton",
     "og_physics_set_ragdoll_rig",
     "og_physics_ragdoll_pose",
+    "og_physics_stats",
     "og_atmosphere_time_of_day",
     "og_anim_graph",
     "og_anim_humanoid",
@@ -3780,6 +3783,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "The flash's linear colour.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "materialLayer",
+                column: "i32",
+                default: "-1",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The texture-array layer this mesh's material reads (StandardMaterialDesc.mapArray and normalMapArray), in place of the material's mapLayer and normalMapLayer: one material, one draw, a layer per mesh (a tile set, a crowd's skins). -1 keeps the material's layers; a material without arrays ignores it.",
                 variants: &[],
             },
         ],

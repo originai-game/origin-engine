@@ -29,8 +29,9 @@ absent.
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 
-wgpu 31 is not on crates.io (2026-10-19: `cargo search wgpu` lists 30.0.1
-as the newest), so wgpu and naga stay on 30.0.1; the upgrade is owed when
+wgpu 31 is not on crates.io (2026-10-19, and again 2026-10-21: `cargo
+search wgpu` and `cargo search naga` list 30.0.1 as the newest), so wgpu
+and naga stay on 30.0.1; the upgrade is owed when
 31 ships, kept only if every committed reference frame passes without
 re-recording. `cargo update` within semver had nothing left to move on
 2026-10-19; the dependencies behind their latest are majors (bincode 3,

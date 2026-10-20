@@ -618,7 +618,12 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
         let s = super::assets::index_of(shader)
             .and_then(|i| rs.atmo.shaders.get(i).copied())
             .ok_or_else(|| format!("shader {shader} is not loaded in this world"))?;
-        let m = super::api::material(og_render::StandardMaterial::default(), &desc, &rs.textures)?;
+        let m = super::api::material(
+            og_render::StandardMaterial::default(),
+            &desc,
+            &rs.textures,
+            &rs.texture_arrays,
+        )?;
         let handle = rs.scene.add_standard_material(m);
         rs.scene.set_material_shader(handle, Some(s));
         rs.materials.push(handle);
