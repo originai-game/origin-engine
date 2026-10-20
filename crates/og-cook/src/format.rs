@@ -1204,7 +1204,8 @@ row!(
         /// The intensity and the turn about +y (degrees) baked in.
         intensity: f32,
         rotation: f32,
-        /// GGX samples per texel of each prefiltered level.
+        /// GGX samples per texel of each prefiltered level (0: a KTX2's
+        /// own prefiltered levels, `prefiltered true`, taken as they are).
         samples: u32,
     }
 );
