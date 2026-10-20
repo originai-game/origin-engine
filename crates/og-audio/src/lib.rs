@@ -64,7 +64,9 @@ pub use schema::{
     MusicBeat, SoundEnded, SoundStarted, Transform, end_reason,
 };
 pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
-pub use sound::{SoundBank, SoundData};
+pub use sound::{
+    CHUNK_AHEAD_SECONDS, CHUNK_BEHIND_SECONDS, ChunkLoader, SoundBank, SoundData, chunks_wanted,
+};
 pub use system::{
     AudioDesc, AudioLink, Occluder, SYSTEM_NAME, install, link, publish_link, retire_link,
 };

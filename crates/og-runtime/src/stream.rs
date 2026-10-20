@@ -811,6 +811,7 @@ pub(crate) fn add_sound(eng: &Engine, group: &str, id: &str) -> Result<(CookedSo
             sample_rate: shape.sample_rate,
             channels: shape.channels,
             frames: shape.frames.min(u32::MAX as u64) as u32,
+            ..Default::default()
         },
         qoa: Vec::new(),
     };
@@ -991,5 +992,67 @@ pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
             ok_void()
         }
         Err(e) => refuse(e),
+    }
+}
+
+/// The chunks of the sounds cooked in chunks: at a tick boundary and after
+/// the ticks (before the host's audio pump), every chunk the playheads
+/// want (`og_audio::chunks_wanted`: from half a second behind each to four
+/// seconds ahead, and a loop's start) is read and put in the bank, and the
+/// others are dropped, so a long track is never resident whole. Natively a
+/// read completes at once; on the web it is fetched like a pack and put in
+/// place at a later call (the four seconds ahead are for that fetch).
+/// Nothing here reaches the world: the tick side times a sound by its
+/// length alone.
+pub(crate) fn sound_chunks(eng: &Engine) {
+    let Some(link) = og_audio::link(eng.id) else {
+        return;
+    };
+    let bank = link.bank();
+    if !eng.assets.borrow().sounds.iter().any(|s| s.chunked()) {
+        return;
+    }
+    let wanted = match eng.world() {
+        Ok(world) => og_audio::chunks_wanted(world, bank),
+        Err(_) => return,
+    };
+    for (handle, id, n) in bank.keep_chunks(&wanted) {
+        let chunk = og_cook::runtime::chunk_id(&id, n);
+        let a = eng.assets.borrow();
+        let Ok((bundle, dir)) = a.bundle_for(&chunk) else {
+            continue;
+        };
+        let Ok(out) = bundle.output(&chunk) else {
+            continue;
+        };
+        let path = format!("{dir}/{}", out.file);
+        let bytes = match hooks().map(|h| h.read_asset(&path)) {
+            Some(super::assets::Fetch::Ready(bytes)) => bytes,
+            // Fetching: put in place at a later call.
+            Some(super::assets::Fetch::Pending) => continue,
+            Some(super::assets::Fetch::Failed(e)) => {
+                warn_once(eng, format!("{path}: {e}"));
+                continue;
+            }
+            None => continue,
+        };
+        let aligned = super::assets::aligned(&bytes);
+        match bundle.sound_chunk(&chunk, aligned.bytes()) {
+            Ok((k, qoa)) if k == n => {
+                if let Err(e) = bank.put_chunk(handle, n, &qoa) {
+                    warn_once(eng, e.reason().to_string());
+                }
+            }
+            Ok((k, _)) => warn_once(eng, format!("{path} holds chunk {k}, not {n}")),
+            Err(e) => warn_once(eng, e.to_string()),
+        }
+    }
+}
+
+fn warn_once(eng: &Engine, text: String) {
+    let mut st = eng.state.borrow_mut();
+    if st.ui_warned.insert(text.clone()) {
+        st.log
+            .push(json!({ "tick": 0, "warning": true, "text": text }));
     }
 }

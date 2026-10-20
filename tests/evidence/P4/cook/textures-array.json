@@ -1,0 +1,1 @@
+{"pixel": {"layers": 3, "gpu_layers": 3, "levels": 1, "format": "rgba8", "bytes": 24576}, "colour": {"layers": 2, "gpu_layers": 2, "levels": 7, "format": "bc7", "bytes": 5536}, "frame_texture_bytes": 30112}

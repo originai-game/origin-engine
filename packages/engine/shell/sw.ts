@@ -5,7 +5,8 @@
 // precached: it is cached in the same cache when the engine first fetches it,
 // so a place the player has been plays offline too. `og build` prepends
 // `const OG_SW = { version, files, lazy, single, lanes }` (the hash, the
-// precached relative paths, the packs, and the two engine variants' files)
+// precached relative paths, the packs and long sounds' chunks, and the two
+// engine variants' files)
 // to this file's bundle.
 //
 // The engine comes in two variants (docs/web-export.md §Lanes) and a page

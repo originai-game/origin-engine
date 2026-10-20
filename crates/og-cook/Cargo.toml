@@ -58,6 +58,7 @@ naga = { version = "30.0.1", optional = true, features = ["wgsl-in", "glsl-out",
 [dev-dependencies]
 og-tests = { path = "../og-tests" }
 og-ecs = { path = "../og-ecs" }
+og-audio = { path = "../og-audio" }
 image = { workspace = true }
 
 [[bin]]

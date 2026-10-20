@@ -302,6 +302,8 @@ pub trait LoadApi: Wire {
     fn og_load_shader(&self, world: u32, path: String) -> String;
     /// `og.load.texture`
     fn og_load_texture(&self, world: u32, path: String) -> String;
+    /// `og.load.textureArray`
+    fn og_load_texture_array(&self, world: u32, path: String) -> String;
     /// `og.load.skin`
     fn og_load_skin(&self, world: u32, path: String) -> String;
     /// `og.load.soundInfo`
@@ -843,6 +845,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_emitter",
     "og_load_shader",
     "og_load_texture",
+    "og_load_texture_array",
     "og_load_skin",
     "og_load_sound_info",
     "og_load_status",

@@ -10,18 +10,20 @@
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
-mod anim;
-mod audio;
+pub mod anim;
+pub mod audio;
 mod e6;
 mod environment;
 mod flipbook;
 mod font;
+pub mod ktx2_source;
 mod model;
 mod scene;
 pub mod sfx;
 mod stream;
 mod terrain;
 mod texture;
+pub mod texture_array;
 pub mod tilemap;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
@@ -409,6 +411,7 @@ enum Kind {
     Rig,
     Terrain,
     Environment,
+    TextureArray,
 }
 
 impl Kind {
@@ -432,6 +435,7 @@ impl Kind {
             Kind::Rig => "rig",
             Kind::Terrain => "terrain",
             Kind::Environment => "environment",
+            Kind::TextureArray => "texture-array",
         }
     }
 }
@@ -445,6 +449,18 @@ struct Source {
     hash: u64,
     gltf: Option<model::GltfSource>,
     error: Option<String>,
+    /// A WAV's QOA encoding, made once by the first of its outputs to cook
+    /// (a sound cooked in chunks has one output per chunk).
+    encoded: std::sync::OnceLock<Result<std::sync::Arc<audio::Encoded>, String>>,
+}
+
+impl Source {
+    fn encoded(&self, per_chunk: Option<u32>) -> Result<std::sync::Arc<audio::Encoded>, CookError> {
+        self.encoded
+            .get_or_init(|| audio::encode(&self.bytes, per_chunk).map(std::sync::Arc::new))
+            .clone()
+            .map_err(CookError)
+    }
 }
 
 enum Work<'a> {
@@ -454,7 +470,10 @@ enum Work<'a> {
     Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32),
     Texture(&'a Source, u32),
-    Sound(&'a Source),
+    /// A sound, whole or (QOA frames per chunk, chunks) the first of its chunks.
+    Sound(&'a Source, Option<(u32, u32)>),
+    /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
+    SoundChunk(&'a Source, u32, u32),
     Lut(&'a Source),
     Emitter(&'a Source),
     Skin(&'a Source),
@@ -468,6 +487,9 @@ enum Work<'a> {
     Rig(&'a Source),
     Terrain(&'a Source),
     Environment(&'a Source),
+    /// A texture array's blob, and layer `n`'s texture.
+    TextureArray(&'a Source, texture_array::ArrayDecl),
+    ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -623,7 +645,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     for (rel, path) in &files {
         let kind = match ext(rel).as_str() {
             "glb" | "gltf" => Kind::Model,
-            "png" | "jpg" | "jpeg" => Kind::Texture,
+            "png" | "jpg" | "jpeg" | "ktx2" => Kind::Texture,
             "wav" => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,
@@ -659,6 +681,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
+                    Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
@@ -692,6 +715,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             hash: 0,
             gltf: None,
             error: None,
+            encoded: std::sync::OnceLock::new(),
         });
     }
     let mut consumed: BTreeSet<String> = BTreeSet::new();
@@ -862,14 +886,57 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
             },
-            Kind::Sound => {
+            Kind::Sound if s.rel.ends_with(".ogt") => {
                 // A preset's stamp moves with the synthesiser.
-                let st = if s.rel.ends_with(".ogt") {
-                    stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash])
-                } else {
-                    stamp(&[b"sound", &hash])
+                let st = stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash]);
+                outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s, None)));
+            }
+            Kind::Sound => {
+                let settings = match audio::SoundSettings::parse(settings_block(s, "sound")) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        early_errors.push((s.rel.clone(), "sound", e));
+                        continue;
+                    }
                 };
-                outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s)));
+                // An unreadable header fails in the cook, with its reason.
+                let chunking = audio::shape(&s.bytes)
+                    .ok()
+                    .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
+                if chunking.is_some() && group_of.contains_key(&s.rel) {
+                    early_errors.push((
+                        s.rel.clone(),
+                        "sound",
+                        "a sound cooked in chunks streams by itself: leave it out of stream groups, or give it `sound { stream false }`".into(),
+                    ));
+                    continue;
+                }
+                let shape =
+                    chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
+                let st = stamp(&[
+                    b"sound",
+                    &hash,
+                    settings.describe().as_bytes(),
+                    shape.as_bytes(),
+                ]);
+                outs.push((
+                    s.rel.clone(),
+                    format::Sound::NAME,
+                    st,
+                    Work::Sound(s, chunking),
+                ));
+                if let Some((per, count)) = chunking {
+                    for n in 1..count {
+                        let st =
+                            stamp(&[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()]);
+                        outs.push((
+                            format!("{}#chunk{n}", s.rel),
+                            format::SoundChunk::NAME,
+                            st,
+                            Work::SoundChunk(s, per, n),
+                        ));
+                    }
+                }
             }
             Kind::Lut => {
                 let st = stamp(&[b"lut", &hash]);
@@ -956,6 +1023,37 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
                 let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
+            }
+            Kind::TextureArray => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let root = texture_array::assets_dir(&s.path, &s.rel);
+                match texture_array::parse(&s.rel, &text, &|p| root.join(p).is_file()) {
+                    Ok(decl) => {
+                        let deps = texture_array::dependencies(&root, &decl);
+                        let base = [
+                            b"texture-array 1".as_slice(),
+                            tex_desc.as_bytes(),
+                            &hash,
+                            deps.as_bytes(),
+                        ];
+                        outs.push((
+                            s.rel.clone(),
+                            format::TextureArray::NAME,
+                            stamp(&base),
+                            Work::TextureArray(s, decl.clone()),
+                        ));
+                        for n in 0..decl.layers.len() {
+                            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                            outs.push((
+                                texture_array::layer_id(&s.rel, n),
+                                format::Texture::NAME,
+                                st,
+                                Work::ArrayLayer(s, decl.clone(), n),
+                            ));
+                        }
+                    }
+                    Err(e) => early_errors.push((s.rel.clone(), "texture-array", e)),
+                }
             }
             Kind::Environment => {
                 let deps = environment::environment_dependencies(s);
@@ -1287,6 +1385,12 @@ fn run(
             let note = format!("{}: {}x{} image {image}", p.id, img.width, img.height);
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
+        Work::Texture(s, k) if s.rel.ends_with(".ktx2") => {
+            let explicit = settings_block(s, "texture")
+                .and_then(|b| b.get("kind"))
+                .map(|_| *k);
+            ktx2_source::cook(&s.bytes, explicit, &options.texture, p.stamp)
+        }
         Work::Texture(s, k) => {
             let img = texture::decode(&s.bytes).map_err(CookError)?;
             let note = format!(
@@ -1302,10 +1406,17 @@ fn run(
             );
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
-        Work::Sound(s) if s.rel.ends_with(".ogt") => {
+        Work::Sound(s, _) if s.rel.ends_with(".ogt") => {
             sfx::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
         }
-        Work::Sound(s) => audio::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n])),
+        Work::Sound(s, chunking) => {
+            let e = s.encoded(chunking.map(|c| c.0))?;
+            audio::cook(&e, *chunking, p.stamp).map(|(b, n)| (b, vec![n]))
+        }
+        Work::SoundChunk(s, per, n) => {
+            let e = s.encoded(Some(*per))?;
+            audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
+        }
         Work::Lut(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a .cube LUT is text (UTF-8)".into()))?;
@@ -1442,6 +1553,15 @@ fn run(
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Environment(s) => environment::cook_environment(s, p.stamp),
+        Work::TextureArray(s, decl) => {
+            let root = texture_array::assets_dir(&s.path, &s.rel);
+            texture_array::cook(&s.rel, &root, decl, &options.texture, p.stamp)
+        }
+        Work::ArrayLayer(s, decl, n) => {
+            let root = texture_array::assets_dir(&s.path, &s.rel);
+            texture_array::cook_layer(&root, decl, *n, &options.texture, p.stamp)
+                .map(|b| (b, Vec::new()))
+        }
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

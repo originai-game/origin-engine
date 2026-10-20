@@ -229,7 +229,10 @@ chain; palettes use exact `Mat4` products.
 | `graph.rs` | transitions fire in the tick their condition holds and cross-fade; blend1d and the additive layer; bad text refused with its line |
 | `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig |
 
-`crates/og-cook/tests/animation.rs` covers the cook side: every cooked
+`crates/og-cook/tests/anim_compress.rs` checks compressed clips against
+f32 ones on every committed animated model (each lane within the
+tolerance, each node within 0.5 mm per metre, a posed frame within the
+gfx tolerance). `crates/og-cook/tests/animation.rs` covers the cook side: every cooked
 sample of `walker.glb` (at its source rates and at 60 Hz) and
 `trickster.glb` equals an independent glTF sampler within 1e-5 (largest
 error 1.2e-7); joints, weights and morph deltas follow the cooked vertices;
@@ -308,7 +311,11 @@ arm waving parallel to the walker's, the clip played by og.anim.
 - **Procedural animation**: look-at/aim constraints, foot locking, joint
   limits and twist constraints in IK, springs/jiggle bones.
 - Layer masks (per-joint weights), sync groups across layers, mirroring,
-  transition interruption rules, clip compression (samples are f32).
+  transition interruption rules. Cooked clips can be quantised with
+  keyframe reduction (og-cook's `animation { compress true tolerance }`,
+  `src/anim_codec.rs`); the loader rebuilds every frame, so a registered
+  `ClipAsset` holds f32 samples whichever way it was cooked: resident
+  clips are not compressed in memory.
 
 ## Flipbooks (sprite animation, E4)
 
