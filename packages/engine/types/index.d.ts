@@ -1242,7 +1242,7 @@ export interface TextEntry {
 export type A11yActionKind = "focus" | "activate" | "increment" | "decrement";
 
 /**
- * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored).
+ * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).
  */
 export interface A11yRequest {
   /** What is asked. */
@@ -18543,7 +18543,7 @@ export declare namespace og {
      */
     function select(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult;
     /**
-     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too.
      *
      * @param id Its id.
      * @param value The value from game state.

@@ -404,6 +404,9 @@ pub(crate) struct NavFrame {
     pub pad0: bool,
     /// The control pads 1 to 3 pressed with A (0: none).
     pub pad_activate: [u64; 3],
+    /// A stepper a screen reader adjusted as a whole (its spinbutton's
+    /// key) and by how many steps.
+    pub spin: (u64, i32),
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells of a

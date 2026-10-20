@@ -310,7 +310,8 @@ fn asked(act: og_input::A11yAct, path: &str) -> InputFrame {
 /// A screen reader's requests (`InputFrame::a11y`, og-input's
 /// `og.A11yAction`) act on the control the tree names: Focus moves focus
 /// there with the ring, Activate presses it as Enter does (a switch
-/// toggles, a tab is chosen), Increment and Decrement step a slider, a
+/// toggles, a tab is chosen), Increment and Decrement step a slider and a
+/// stepper's spinbutton, a
 /// text field takes the focus to edit; a path outside an open dialog, or
 /// naming no control, does nothing.
 ///
@@ -340,6 +341,33 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Volume"));
     tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Volume"));
     assert_eq!(f.volume, 5.0);
+    // A stepper's spinbutton adjusts as a whole (the mirror's native
+    // control, VoiceOver's swipe up and down), within its range.
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Count"));
+    assert_eq!(f.count, 1.0, "increment steps the stepper");
+    let twice = InputFrame {
+        a11y: vec![
+            (A11yAct::Increment, "Form/Count".to_owned()),
+            (A11yAct::Increment, "Form/Count".to_owned()),
+        ],
+        ..InputFrame::default()
+    };
+    tick(&mut ui, &mut f, twice);
+    assert_eq!(f.count, 3.0, "two requests in a tick, two steps");
+    let node = ui
+        .a11y()
+        .nodes
+        .iter()
+        .find(|n| n.path == "Form/Count")
+        .cloned();
+    assert_eq!(
+        node.map(|n| (n.role, n.value)),
+        Some(("spinbutton".into(), "3".into()))
+    );
+    for _ in 0..5 {
+        tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Count"));
+    }
+    assert_eq!(f.count, 0.0, "not past its minimum");
     tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Name"));
     assert_eq!(ui.a11y().focused, "Form/Name", "a field takes the focus");
     tick(
@@ -359,6 +387,8 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     }
     tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Music"));
     assert!(f.on, "the switch under the dialog did not toggle");
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Count"));
+    assert_eq!(f.count, 0.0, "nor the stepper");
     tick(
         &mut ui,
         &mut f,
