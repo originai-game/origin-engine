@@ -38,12 +38,12 @@ beforeAll(() => {
 });
 
 test.skipIf(SLOW)("the same inputs give the same bytes, wherever they are written", async () => {
-  // The project's cooked bundle, when no earlier run left one (a hook's
-  // 5 s would not cover a cook).
-  if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-    const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
-    if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));
-  }
+  // The project's cooked bundle (in the test, not a hook: a hook's 5 s
+  // would not cover a cold cook).
+  // An incremental cook: free when cooked/ is current, and a cooker
+  // version bump re-cooks instead of reading stale output.
+  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
+  if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));
   const a = await webBuild(project, entry, join(work, "a"), true, settings());
   const b = await webBuild(project, entry, join(work, "deeper", "b"), true, settings());
   expect(a.ok && b.ok).toBe(true);

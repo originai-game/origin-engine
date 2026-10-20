@@ -13,7 +13,6 @@
 // both runs cull on the CPU (OG_GFX_CULLING=cpu), since GPU culling never
 // reaches the CPU cull.
 import { expect, test } from "bun:test";
-import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
@@ -42,10 +41,10 @@ type Run = {
 };
 
 // Module level, not a hook: a cook on a loaded machine outlives a hook's timeout.
-if (!existsSync(join(scene, "cooked", ".cook.ogt"))) {
-  const c = Bun.spawnSync([ogBin(), "cook", scene], { cwd: repo });
-  if (c.exitCode !== 0) throw new Error(new TextDecoder().decode(c.stderr));
-}
+// An incremental cook: free when cooked/ is current, and a cooker
+// version bump re-cooks instead of reading stale output.
+const c = Bun.spawnSync([ogBin(), "cook", scene], { cwd: repo });
+if (c.exitCode !== 0) throw new Error(new TextDecoder().decode(c.stderr));
 
 function run(lanes: string, replayLanes: string): Run {
   const r = Bun.spawnSync(["bun", "tests/support/lanes-hash.ts", "--replay-lanes", replayLanes], { cwd: pkg, env: { ...process.env, OG_LANES: lanes, OG_GFX_CULLING: "cpu" } });

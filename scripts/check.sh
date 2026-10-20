@@ -200,7 +200,11 @@ wasm_build() {
     lanes) cargo=("$OG_ROOT/scripts/wasm-lanes.sh") ;;
     *) ;;
   esac
-  "${cargo[@]}" --profile wasm "${args[@]}" --lib \
+  # The gate's profile (Cargo.toml [profile.wasm-gate]: the shipping wasm
+  # profile with codegen units, minutes faster, modules slightly larger, so
+  # the size gate holds an upper bound); OG_WASM_PROFILE=wasm measures the
+  # shipping profile itself.
+  "${cargo[@]}" --profile "${OG_WASM_PROFILE:-wasm-gate}" "${args[@]}" --lib \
       --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
   mkdir -p "$OG_WASM_OUT/raw"
   for f in $(grep '"reason":"compiler-artifact"' "$OG_WASM_OUT/cargo${variant:+-$variant}.json" \

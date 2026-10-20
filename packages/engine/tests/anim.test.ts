@@ -4,7 +4,6 @@
 // IK chain, refuses bad graphs by name, and gives the same world hash on the
 // native addon and the wasm module. Each host runs in its own process.
 import { expect, test } from "bun:test";
-import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
@@ -23,10 +22,10 @@ function run(host: string, ...extra: string[]) {
 }
 
 test("og.anim poses the walker the same way on both hosts", () => {
-  if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-    const c = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
-    if (c.exitCode !== 0) throw new Error(new TextDecoder().decode(c.stderr));
-  }
+  // An incremental cook: free when cooked/ is current, and a cooker
+  // version bump re-cooks instead of reading stale output.
+  const c = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
+  if (c.exitCode !== 0) throw new Error(new TextDecoder().decode(c.stderr));
   const node = run("node");
   const web = run("web");
   expect(node.tick).toBe(300);

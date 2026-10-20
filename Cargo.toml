@@ -50,6 +50,14 @@ codegen-units = 1
 # of a frame (tests/evidence/E7/wasm-size.md). Native builds never use it.
 [profile.wasm]
 inherits = "release"
+# The gate's wasm (scripts/check.sh wasm-build): the wasm profile with
+# codegen units, so wasm-build is minutes shorter; its modules are a little
+# larger than the shipping profile's (docs/ci.md §Lanes has the measured
+# ratio), so a size gate they pass, the shipping build passes too. pack.sh
+# and OG_RELEASE=1 build.sh ship `wasm`.
+[profile.wasm-gate]
+inherits = "wasm"
+codegen-units = 16
 [profile.wasm.package.naga]
 opt-level = "z"
 [profile.wasm.package.naga-types]
