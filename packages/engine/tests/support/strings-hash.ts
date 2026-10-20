@@ -1,10 +1,11 @@
 // A str field through TypeScript on the host named by --host (node: the napi
-// addon), one process per run: a component and a resource with str fields,
+// addon; web: the wasm module, run here outside a browser, as
+// hello-hash.ts does), one process per run: a component and a resource with str fields,
 // written with world.insert/world.set and a resource setter, read back with
 // world.get, through a system's Uint8Array view and the probe's get:, then
 // --ticks fixed steps. Prints JSON { host, hash, ... }.
 //
-//   bun tests/support/strings-hash.ts --host node [--ticks 30]
+//   bun tests/support/strings-hash.ts --host node|web [--ticks 30]
 
 import { og, defineComponent, defineResource, defineSystem, str, u32 } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -17,8 +18,16 @@ const opt = (name: string, fallback: string) => {
 };
 const host = opt("--host", "node");
 const ticks = Number(opt("--ticks", "30"));
-if (host !== "node") throw new Error("strings-hash runs on the native host (--host node)");
-(await import("../../src/node/index.ts")).loadNativeHost();
+if (host === "node") (await import("../../src/node/index.ts")).loadNativeHost();
+else {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const { loadWebHost } = await import("../../src/web/host.ts");
+  const glue = await import(join(pkg, "dist", "web", "origin-engine.js"));
+  await loadWebHost(glue, readFileSync(join(pkg, "dist", "web", "origin-engine_bg.wasm")));
+}
 
 export const Badge = defineComponent("StrBadge", { name: str(16), rank: u32(1) });
 export const Profile = defineResource("StrProfile", { name: str(48, "Mei"), renames: u32() });

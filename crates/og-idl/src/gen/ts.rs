@@ -413,7 +413,7 @@ impl<'a> Gen<'a, '_> {
         let fields: Vec<String> = r
             .fields
             .iter()
-            .map(|f| format!("readonly {}: FieldSpec<\"{}\">", f.name, f.ty))
+            .map(|f| format!("readonly {}: FieldSpec<\"{}\">", f.name, f.ty.name()))
             .collect();
         let layout = if fields.is_empty() {
             "{}".to_string()
@@ -496,6 +496,12 @@ impl<'a> Gen<'a, '_> {
         if let Some(s) = f.step {
             tags.push(format!("@step {s}"));
         }
+        if let Some(n) = self.ix.capacity(&f.ty) {
+            tags.push(format!(
+                "@capacity {n} bytes of UTF-8 ({}({n})); longer text is refused, never truncated",
+                f.ty.name()
+            ));
+        }
         if let Some(u) = &f.unit {
             let doc = self
                 .ix
@@ -546,6 +552,10 @@ impl<'a> Gen<'a, '_> {
         };
         if generics.iter().any(|g| g.name == name) {
             return name.to_string();
+        }
+        if self.ix.capacity(ty).is_some() {
+            // A text field (`str<48>`) reads and writes as a string.
+            return "string".into();
         }
         let arg = |i: usize| self.ty(&args[i], generics);
         match name {

@@ -134,6 +134,9 @@ pub fn default_json(ix: &Index<'_>, ty: &TypeRef, explicit: Option<&[Value]>) ->
     if let Some(values) = explicit {
         return Some(literal_json(ix, ty, values));
     }
+    if ix.capacity(ty).is_some() {
+        return Some(Json::str(""));
+    }
     let name = ty.name();
     Some(match name {
         "bool" => Json::Bool(false),

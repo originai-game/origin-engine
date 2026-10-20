@@ -334,6 +334,40 @@ and sent in the uniform (`TaaUniform::still`); then every pixel reads
 its own history texel with no reprojection computed on the GPU at all.
 Metal is byte for byte unchanged (the looks frames, every og-gfx scene).
 
+**What differed on GL (row 68): the depth read as 0.** TAA read the
+depth buffer with `textureLoad` (GLSL `texelFetch`). wgpu's GL backend
+binds no sampler object to a texture only `texelFetch` reads, so the
+texture's own filtering applies, and wgpu sets it to nearest only for
+unfilterable colour formats: the `Depth32Float` buffer kept GL's default
+linear filtering, which makes a `DEPTH_COMPONENT32F` texture without a
+compare mode incomplete under GLSL ES 3.0, and `texelFetch` of an
+incomplete texture returns 0. Every pixel was therefore reprojected from
+the near plane. Natively, through ANGLE's Metal renderer (the one Chrome's
+WebGL2 uses on macOS, loaded by wgpu's `angle` feature for the
+diagnosis), a motion visualisation read 0 for the depth everywhere and
+`taa-sharp` (the sliding camera) came out at RMSE 0.074 against metal,
+its poles broken into dashes. For a still camera the motion is the
+difference of two equal products, but at the near plane the products of
+a world point 2800 m out (fx-showcase's looks station) cancel to a few
+ulps of 2800 against a `w` of 0.1 m, and ANGLE's compiled shader rounds
+the current and the previous product differently: a TAA harness on
+ANGLE measured a still camera's motion up to 0.025 px with the depth at
+0 (3.8e-5 px on Metal, 5.5e-4 px on ANGLE with the real depth), above
+the own-texel test's 1e-3 px, so the history was resampled bilinearly
+at a small offset every frame: the sideways drift the browser showed.
+naga's GLSL itself was not the cause: it declares `precision highp`
+for floats and ints, and the shader alone, given the depth, matched
+Metal on ANGLE to within one 16-bit step for still and moving cameras.
+The resolve now reads the depth through a nearest sampler of its own
+(`depth_sampler`, binding 5) at the pixel's centre, which reads the
+texel `textureLoad` read on every backend and makes the GL backend bind
+a sampler to that unit. Metal: every og-gfx scene and the 37 looks
+frames byte for byte unchanged. ANGLE: `taa-sharp` RMSE 0.00028 and
+`taa-motion` 0.00010 against metal. The CPU's still decision stays (it
+spares the reprojection where nothing moved); `taa-sharp` now applies
+on every tier, so the browser tiers judge a moving camera through TAA
+on WebGL2 against metal.
+
 **Ambient occlusion by tier.** `AoMethod::Auto` (the default, and what
 `PostEffects.ao` asks for) is GTAO on the full tier and SSAO on WebGL2 by
 design (GTAO's horizon search is too heavy there), so any frame with AO
@@ -445,12 +479,17 @@ filter, `textureLod` nor gather a depth texture), the HDR target is
 render passes, there is no `first_instance`, and the uniform arrays stay far
 below the 16 KB WebGL2 uniform block limit (the frame uniform is about 4 KB:
 48 local shadow matrices since the shadows-aa round).
-Three constraints of wgpu's GL backend, each of which once broke
+Four constraints of wgpu's GL backend, each of which once broke
 fx-showcase on WebGL2:
 
 - GLSL has no `textureLoad` from a depth texture: TAA binds the depth
   buffer as an unfilterable float texture (WebGPU allows a depth format
   there) and reads `.r`, on every backend.
+- A texture read only with `textureLoad` gets no sampler object, and a
+  depth texture keeps GL's default linear filtering, under which it is
+  incomplete and reads 0: TAA samples the depth with a nearest sampler
+  of its own at the pixel's centre ([Where TAA reads its
+  history](#shadows-and-antialiasing-by-tier), row 68; `tests/shaders.rs` checks its GLSL).
 - A pipeline has 16 texture slots across all its bind groups, not per
   stage: the lit skinned pipeline uses all 16 (frame 5, material 8, fx 2,
   skin 1), so the sky cube is the sky pass's own group and on the texture
@@ -484,7 +523,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `taa` | Thin poles and bars after 16 TAA frames. | full |
 | `msaa` | The same geometry with 4× MSAA. | no-compute |
 | `fxaa` | The same geometry with FXAA. | all |
-| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening. | full |
+| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening (`Antialias::Taa`, so TAA on WebGL2 too: the browser's moving-camera TAA frame). | every |
 | `bloom` | Emissive spheres with bloom. | all |
 | `exposure` | A dim dusk scene metered to middle grey. | all |
 | `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |

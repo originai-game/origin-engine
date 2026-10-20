@@ -450,12 +450,18 @@ default method, which is GTAO on the full tier and SSAO on WebGL2
 (og-render's README, "Ambient occlusion by tier"); `sculpted-clay` uses
 it too but stays within tolerance (0.0062) and is judged against
 `metal`. The other 34 are judged against `metal` on WebGL2 since
-cf5f2b9: before it, TAA's history loop drifted sideways on the GL
-backend with a still camera (every edge about a pixel off, which the
+cf5f2b9 and 1a9037a: before them, TAA's history drifted sideways on the
+GL backend with a still camera (every edge about a pixel off, which the
 looks' posterize, ink and outlines turned into whole moved lines: 30
 frames at RMSE 0.010 to 0.046, present since the station joined the
-tiers), and the resolve now decides a still camera on the CPU and reads
-each pixel's own history texel with no GPU reprojection.
+tiers). The cause (1a9037a): wgpu's GL backend binds no sampler to a
+depth texture read with `textureLoad`, GLSL ES treats the texture, left
+on linear filtering, as incomplete and reads 0, so every pixel
+reprojected from the near plane; the resolve now samples the depth
+through a nearest sampler, decides a still camera on the CPU (cf5f2b9)
+and reads each pixel's own history texel. `taa-sharp`, the sliding
+camera, applies on every tier since 1a9037a and is WebGL2's
+moving-camera TAA frame: RMSE 0.00028 against `metal` (WebGPU 0.00024).
 
 `web-reference` also runs Ember Vale (`templates/archetypes/third-person`)
 on both tiers: reference.ts with `--project
@@ -540,9 +546,10 @@ frame is compared with `crates/og-tests/references/<webgpu|webgl2>/` when
 that frame is committed, else with `metal`, under the scene's own tolerance
 (`crates/og-tests/src/compare.rs`), and every frame's figures against
 `metal` are kept in the report. A scene that does not apply to the tier
-(`scenes::Applies`: `taa`, `taa-sharp` and `shadows-local-8`, whose eight
-shadowed lights are four on WebGL2, are full tier only, `msaa` the
-no-compute tier's 4x path) is listed, not rendered. `--scene a,b --time n`
+(`scenes::Applies`: `taa` and `shadows-local-8`, whose eight shadowed
+lights are four on WebGL2, are full tier only, `msaa` the no-compute
+tier's 4x path) is listed, not rendered; `taa-sharp` asks for
+`Antialias::Taa` and is the WebGL2 tier's moving-camera TAA frame. `--scene a,b --time n`
 times any scene it names, the shadows-aa cost scenes too (`COSTS`:
 `point-shadows-cube`, `shadows-local-8-cube`, `shadows-local-8-paraboloid`,
 `shadows-soft-off`, `aa-off`, `taa-motion`, built but not in `SCENES`). `--record` writes the tier's references;

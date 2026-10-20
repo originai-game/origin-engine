@@ -380,6 +380,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   pub doc: &'static str,\n\
          \x20   /// An enum column's variants in index order; empty otherwise.\n\
          \x20   pub variants: &'static [&'static str],\n\
+         \x20   /// A text column's capacity in bytes (`str.48` in the IDL); 0 otherwise.\n\
+         \x20   pub capacity: u32,\n\
          }\n\n\
          /// An engine-owned component, resource or event.\n\
          #[derive(Clone, Copy, Debug, PartialEq)]\n\
@@ -422,9 +424,9 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     _ => String::new(),
                 };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n            }},\n",
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n                capacity: {},\n            }},\n",
                     f.name,
-                    f.ty,
+                    f.ty.name(),
                     default,
                     f.readonly,
                     f.tunable,
@@ -434,7 +436,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     f.unit.as_deref().unwrap_or_default(),
                     f.label.as_deref().unwrap_or_default(),
                     f.doc.join(" "),
-                    variants
+                    variants,
+                    ix.capacity(&f.ty).unwrap_or(0)
                 ));
             }
             out.push_str("        ],\n    },\n");
