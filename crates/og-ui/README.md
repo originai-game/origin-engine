@@ -53,7 +53,8 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `scroll(id, ScrollDesc, f)` | a scroll column, vertical by default, horizontal or both ways by `ScrollDesc::axes` (`Element::scroll_x` for any container): the wheel (both axes) or a drag scrolls it, a released drag keeps its momentum, it clips its content, a capsule scrollbar per scrolling axis shows the position and a press on one grabs it; nested containers hand off (§Scrolling) | — |
 | `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp; `ellipsis` cuts it with "…" ("..." in a font without it) where it does not fit: a `nowrap` label on its one line (it can then shrink in a row), a wrapping one on its last line with `max_lines` | the whole text, cut or not |
 | `button(id, text, ButtonDesc) -> Response` | a capsule of `h-control-sm/md/lg`; `Secondary` (neutral fill, default), `Primary` (amber, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
-| `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture | — |
+| `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture; `aspect` (width over height) keeps its proportions: with the height left to fit it is as tall as its laid-out width over it, with a fixed height and the width left to fit as wide as the height times it (`Element::aspect`, any element) | — |
+| `zoom_view(id, &ZoomViewDesc) -> ZoomResponse` | a zoomable picture (a map, an artwork): two touches pinch it about their centre and pan it, the wheel zooms about the pointer, a drag pans; it stays on its picture and within `min_zoom`..`max_zoom` (1 to 4 by default); answers the zoom and the centre; role `image` named by its id, its zoom as its value (§Scrolling) | — |
 | `progress(id, value, ProgressDesc)` | a capsule track filled to 0–1 | — |
 | `slider(id, &mut f32, SliderDesc) -> Response` | track, amber fill, thumb; a press anywhere on it sets the value, dragging follows; `min`/`max`/`step` | — |
 | `toggle(id, &mut bool, label) -> Response` | a switch (amber on) with a label; a click flips it | the label |
@@ -78,7 +79,7 @@ Any container with `interactive: true` reports its response from `close()`.
 | `key_value(id, key, value, mono)` | `Key` (fg-muted) and `Value` (end) on one row | both |
 | `divider(id, vertical)`, `spacer(id, Option<Size>)` | a hairline in `border`; empty space | — |
 | `skeleton(id, SkeletonDesc)`, `spinner(id, size)` | the neutral fill with a passing sheen (still under reduced motion); eight dots turning by the tick | — |
-| `icon(id, name, IconDesc)` | a cell of the icon atlas (`set_icons`) by name, tinted | the name |
+| `icon(id, name, IconDesc)` | an icon of the icon atlas (`set_icons`) by name, tinted: a cell of a texture grid, or an icon set's distance-field glyph fitted to its square (§Icon sets) | the name |
 | `meter(id, value, max, &MeterDesc)` | health (green, warn under 30 %, danger under 15 %), mana (blue hue), xp (purple hue), accent or custom; a drop leaves a pale trail that follows after `fast`, a rise grows over `slow`, by the tick; notches; a label inside | the label |
 | `cooldown(id, remaining, &CooldownDesc)` | a disc whose amber ring fills clockwise from the top as the cooldown runs out (two rotated half discs), full when ready; a label or icon in the middle | the label |
 | `minimap(id, &MinimapDesc)` | the map texture in a `border-strong` frame, dots for markers (the player amber and ringed), N, a zone label | `Map`, `Zone` |
@@ -129,8 +130,22 @@ both ways. Its offsets are UI state, clamped by the layout to its content.
 - Keyboard and gamepad focus moving to a control outside a container's view
   scrolls it in on both axes.
 
+- **Two touches** (og-input's `og.Pointers`): when two fingers are held
+  on one scroll container (the innermost under each), it follows the
+  movement of their centre, so a list of buttons, which one finger would
+  press, scrolls under two; on a zoom view (`zoom_view`) they pan it the
+  same way and zoom it by the change of their spread, about their centre
+  (pinch). The press the first finger began presses nothing once the
+  second lands, and the primary pointer presses nothing while two are
+  held; two fingers on anything else (a stick and a button) are no
+  gesture. The gesture is UI state (`State::pinch`, `save_state`
+  version 7). A zoom view also zooms by the wheel about the pointer and
+  pans by a drag.
+
 `tests/widgets.rs` `scroll_views_scroll_both_ways_hand_off_fling_and_grab`
-covers each (and a restore).
+covers each (and a restore); `two_fingers_scroll_lists_and_pinch_zoom_views`
+covers two touches, the zoom view and aspect ratios, and the kit's
+`tests/gestures.og.ts` drives them through the probe.
 
 ## Layers
 
@@ -169,6 +184,31 @@ then each layer over it): Tab and the pads walk exactly the nodes marked
 `tests/a11y.rs` checks the roles, names, values and states of every
 widget and that Tab walks `focus_order`; the kit's `a11y` playtest checks
 that every screen names every control and gives every text a role.
+
+**The web shell's mirror** (`packages/engine/src/web/a11y.ts`). The Worker
+creates the engine with `a11y`; a frame's answer then carries the tree
+whenever `A11yTree::digest` (every node's path, role, name, value, states
+and bounds to the CSS pixel, the focus order, the focused path) changed,
+and only then. The shell keeps an invisible element per node at its bounds
+over the canvas, nested as the tree nests it, with its ARIA role, label (or
+text for text roles), `aria-valuenow`/`-valuetext`, `aria-checked`,
+`-selected`, `-expanded`, `-disabled`, `-busy`, a dialog's `aria-modal`,
+and `tabindex=-1` on focusable nodes. The DOM focus follows the UI's focus
+(not out of the page's own fields, nor from the text control's textarea);
+a status or alert node that appears (a toast) is written into a polite or
+an assertive live region. What a screen reader does there reaches the UI
+as input: a click on a mirrored element (its default action) is og-input's
+`a11y` request `activate`, focus moving onto one `focus`, and
+`increment`/`decrement` step an adjustable one (`InputFrame::a11y`; nav.rs
+`apply_a11y` resolves the path against the last frame and acts as Enter,
+Left and Right would, within the topmost dialog, also on a screen that
+turned navigation off). Keys pressed while a mirrored element has the DOM
+focus still reach the engine as keys. The native host creates no mirror
+and its frame answers carry no tree. `tests/a11y.rs` covers the requests
+and the digest; `packages/engine/tests/web/a11y.ts` checks the DOM against
+the tree on ui-kit's settings screen in Chrome, Chrome's own accessibility
+tree, a screen-reader-style click toggling Mute, the live region, and the
+page preferences below.
 
 ## Focus navigation (`src/nav.rs`)
 
@@ -224,8 +264,8 @@ addresses them with `@1` to `@3` after the buttons (`gamepad:a@2`).
 controls (`joystick`, `dpad`, `action_button`) answer any of them: a stick
 keeps the finger that started on it, a button answers whichever is over it,
 so a thumb on the stick and another on Hit work together
-(`templates/ui-kit/tests/multitouch.og.ts`). Everything else is
-single-pointer.
+(`templates/ui-kit/tests/multitouch.og.ts`). Two touches on one scroll
+container scroll it, on a zoom view pinch it (§Scrolling).
 
 ## Motion (`src/motion.rs`)
 
@@ -262,7 +302,7 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 | `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |
 | `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
 | `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
-| `glass <part> blur fill [tint]` | the part is glass: og-render's blurred frame under it (`DrawCmd::Glass`, `og_render::Glass`: the scene behind the overlay blurred by `blur` CSS px, tinted by the part's fill colour at `tint`, default 0.25), under its nine-slice drawn at `fill` of its opacity. The scifi pack's dialogs are glass (`glass panel 16 0.85 0.15`) |
+| `glass <part> blur fill [tint]` | the part is glass: og-render's blurred frame under it (`DrawCmd::Glass`, `og_render::Glass`: the scene and the overlay layers drawn below the glass, blurred by `blur` CSS px, tinted by the part's fill colour at `tint`, default 0.25), under its nine-slice drawn at `fill` of its opacity. The scifi pack's dialogs are glass (`glass panel 16 0.85 0.15`) |
 | `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`); the text glow is og-render's distance-field halo (`Text::glow`, one instance per glyph under its ink) reaching twice `size` CSS px, as far as the font's distance range allows: cook a glowing role's font with a wider `px_range` (the neon and scifi packs' display and numeric fonts take 12) |
 | `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift, each on a damped spring (og-tween's `Spring`, arithmetic only, in the UI state): the hover on `motion.hoverSpring` (default the tokens' `motion.spring.default`, damping 1 and 350 ms: no overshoot), the press on `motion.pressSpring` (default damping 0.55 over `motion.duration.instant`: in at once, a small bounce past rest on release) |
 | `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and the CJK `fallback`: a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
@@ -279,6 +319,25 @@ lines, every other line kept; `crates/og-cli/tests/cli.rs` packs
 `tests/fixtures/skin-pack`); `tests/packs.rs` holds each to 4.5:1
 for every ink a template puts on a skinned surface, measured over the frame
 art really under the text.
+
+## Icon sets
+
+An icon atlas is a grid of equal cells of a texture (`IconAtlas::texture`,
+`columns`, `rows`, `names`), or an **icon set**: SVG icons cooked like a
+font. og-cook's `type icons` file names the SVGs (`source`, `size`,
+`range`, one `icon "<name>" ["<file>"]` a line; `crates/og-cook/src/cook/icons.rs`)
+and cooks them into an `og.Font` blob: icon `i` is the glyph at U+E000 + i,
+its em square the SVG's view box (ascender 1, descender 0), the field a
+true signed distance in all four channels (strokes with round caps and
+joins are exact; a butt cap is cut square; a miter join draws round), the
+names in a `names` section. `og.load.font` loads it, `UiDesc.icons.font`
+(`IconAtlas::font`) makes it the atlas: `icon` draws its glyph fitted to
+the icon's square through the MTSDF text path (crisp at any size, in its
+ink), and rich text's `[icon=name]` draws it inline. The UI kit ships 64
+iconoir icons (the platform's icon set, MIT) as
+`templates/ui-kit/assets/icons/iconoir.ogt`: 72 KB cooked, one 473 × 476
+page at 48 px per icon, range 8. Its `materials` screen draws from it;
+`tests/materials_gfx.rs` renders them.
 
 ## Juice and screen transitions (`src/juice.rs`)
 
@@ -335,6 +394,22 @@ from amber (the same mix towards white or black, the same alpha; amber in
 gives the token palette back exactly), picking `accent-fg` or the light `fg`
 as the ink on it by contrast. `reduced_motion` is a theme flag. The generator
 still owns every value (`src/theme.rs`); variants are mappings over it.
+
+**The page's preferences.** `Viewport::reduced_motion` and `high_contrast`
+are what the page asks for (the web shell reads `prefers-reduced-motion:
+reduce` and `prefers-contrast: more` into the viewport and sends it again
+when either changes); every frame the UI applies them over the configured
+theme (`Ui::set_theme`): reduced motion turns the flag on, more contrast
+takes the high-contrast variant. A game's own settings can add to what the
+page asks, not take it away. `Ui::theme` answers the effective theme.
+
+**The edge light.** `Theme::edge` is the tokens' card edge (`shadow.edge`,
+generated as `SHADOW_EDGE_DARK` and `SHADOW_EDGE_LIGHT`): an opaque panel,
+card or tooltip surface in the token look (no skin atlas) draws it inside
+its edge. In dark that is the design language's edge light, a 0.5 px
+highlight along the top (white at 10 %) and a 0.5 px hairline all round
+(white at 7 %), since drop shadows vanish on black; in light a 0.5 px
+hairline (black at 6 %). Skins keep their own frames, shadows and glows.
 
 
 
@@ -643,11 +718,14 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
 | `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png` and `text-edit.png` from the kit's fonts cooked at test time (og-cook): every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; no missing glyph |
 | `tests/support/scenes.rs` | not a test: builds the four reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes |
-| `tests/gfx.rs` | the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
+| `tests/gfx.rs` | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (an amber bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/theme.rs` | `src/theme.rs` equals the generator's output for the vendored tokens |
 | `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop |
 | `tests/skin.rs` | a skinned card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default theme emits no skin piece; a skin file names the wrong line (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press` |
 | `tests/packs.rs` | the six packs parse, name only existing assets, and every ink a template draws on a skinned surface is at least 4.5:1 over the frame art under it (and `fg` on a selected tab) |
+| `tests/pack_contrast.rs` | every pack (the six and Ember Vale's copy of fantasy): each button role's label in each state, and `fg`, `fgMuted`, `fgSubtle`, against the draw commands composited over the atlas texels: a label on a panel at 4.5:1, a primary or secondary label at rest or hovered at 7:1; prints every row with its ink and ground |
+| `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, and the tree's digest moves with what a mirror shows; the page's reduced motion and contrast reach the theme and leave again |
+| `tests/materials_gfx.rs` | `references/<tier>/materials.png`: a dark card with its edge light, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled; no missing glyph |
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
 | `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; every screen in each style pack matches its cell of `references/<tier>/kit-skin-<pack>.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
@@ -655,12 +733,15 @@ Each was checked by breaking the code it covers (the kit round's breaks are
 in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
 release-inside rule, label probe text, element order, scroll clipping, wheel
 scrolling, a theme constant, the primary colour, the saved scroll state,
-Backspace, the toggle's click). Every reference frame (80: the four scenes,
-the three text scenes, 22 desktop and 21 phone kit screens, the text
-screen's three, 15 locale screens, 12 skin sheets) is committed for
-`metal` and `vulkan-cpu` (Mesa lavapipe, CI's tier), and the browser tiers
-judge the 74 they run (not the text scenes, which cook their fonts, nor
-the kit's text playtest) against `metal`. All 80 were re-recorded in the
+Backspace, the toggle's click). Every reference frame (83: the four scenes,
+the three text scenes, the materials scene, 23 desktop and 22 phone kit
+screens, the text screen's three, 15 locale screens, 12 skin sheets of
+21 cells) is committed for `metal` and `vulkan-cpu` (Mesa lavapipe, CI's
+tier), and the browser tiers judge the 76 they run (not the text and
+materials scenes, which cook their fonts and icons, nor the kit's text
+playtest) against `metal`. The UI shell round re-recorded the frames its
+edge light, glass, materials screen and pack palettes moved
+(`tests/evidence/P4/ui-shell/`). All 80 were re-recorded in the
 phase 4 text round (kerning, error-corrected atlases, the display face;
 `tests/evidence/P4/ui-text/`), and the vulkan-cpu frames now match metal
 with no outlier (RMSE at most 0.0019). A tier without its own reference compares with the
@@ -690,20 +771,25 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
   ellipsis truncation, selection, text areas, IME composition and the
   caret blink landed in the phase 4 UI text round; rich text in the phase 2
   UI round.)
-- (Animations: the skin's hover and press move on springs since the phase
-  2 UI round; the caret blinks by the tick since the phase 4 text round.)
-- (Skins: the ramp's tracking and a distance-field text glow landed in the
+- **Accessibility**: a screen reader's own adjust gesture on a mirrored
+  slider (VoiceOver's swipe up and down) has no DOM event to listen to, so
+  only the keys and `A11yMirror::adjust` step one; `prefers-reduced-
+  transparency` (solid glass) is not read. (The tree landed in the phase 2
+  UI round; the shell's mirror, live regions, focus following, requests
+  from the DOM and the page's motion and contrast preferences in the
+  phase 4 UI shell round.)
+- **Materials**: an icon set's field is one true distance, not three
+  channels, so a miter join draws round (under 0.2 units of iconoir's 24);
+  the kit's screens other than `materials` keep the 32-cell PNG grid
+  (their names are not iconoir's). Each glass run with overlay content
+  under it rebuilds the blur pyramid once (`tests/evidence/P4/ui-shell/
+  glass-cost.md`). (Glass landed in the phase 2 UI round; glass
+  over overlay layers, the edge light and icon sets in the phase 4 UI
+  shell round.)
+- **Input**: no fling after a two-finger scroll; a zoom view takes no keys
+  (it is an image, not a control). (Pads beyond the first landed in the
+  phase 2 UI round; two-finger scroll, pinch and the zoom view in the
+  phase 4 UI shell round.)
+- (Layout: aspect ratios landed in the phase 4 UI shell round; two-axis
+  scrolling, nested handoff, momentum and draggable scrollbars in the
   phase 2 UI round.)
-- **Accessibility**: the shell mirroring `og.ui.a11y()` into the page (ARIA
-  nodes over the canvas, live regions for toasts) so screen readers can read
-  the canvas UI; `prefers-reduced-motion` and `prefers-contrast` read from
-  the shell into `UiDesc` (the theme flags exist; nothing sets them from the
-  page yet). (The tree itself landed in the phase 2 UI round.)
-- Materials: the dark edge light (skins have shadows and glows); glass
-  over other overlay content (it blurs the scene only); icons (iconoir) as
-  an MTSDF atlas. (Glass landed in the phase 2 UI round.)
-- Layout: aspect-ratio images. (Two-axis scrolling, nested handoff,
-  momentum and draggable scrollbars landed in the phase 2 UI round.)
-- **Input**: several touches for widgets other than the touch controls
-  (two-finger scroll, pinch). (Pads beyond the first landed in the phase 2
-  UI round.)

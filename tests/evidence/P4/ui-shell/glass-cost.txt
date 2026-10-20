@@ -1,0 +1,16 @@
+round 0: no glass 0.593 ms
+round 1: four panels over the scene 1.886 ms
+round 2: four panels over overlay content 1.531 ms
+round 3: two layers of two panels, content under each 4.604 ms
+round 4: no glass 0.414 ms
+round 5: four panels over the scene 5.340 ms
+round 6: four panels over overlay content 1.419 ms
+round 7: two layers of two panels, content under each 6.376 ms
+round 8: no glass 0.670 ms
+round 9: four panels over the scene 2.133 ms
+round 10: four panels over overlay content 2.309 ms
+round 11: two layers of two panels, content under each 8.059 ms
+best (metal): no glass 0.414 ms (+0.000 ms against no glass)
+best (metal): four panels over the scene 1.886 ms (+1.472 ms against no glass)
+best (metal): four panels over overlay content 1.419 ms (+1.006 ms against no glass)
+best (metal): two layers of two panels, content under each 4.604 ms (+4.190 ms against no glass)

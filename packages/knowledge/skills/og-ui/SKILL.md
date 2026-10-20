@@ -78,7 +78,11 @@ touch (`joystick`, `dpad`, `actionButton`, each at least 44 CSS px), lists
 drag and drop; `scroll` with `axes: "horizontal"` or `"both"` for a strip
 of cards or a map, which hands the wheel and drags it cannot use to the
 scroller around it, keeps a flick's momentum and has grabbable
-scrollbars), layers (`anchor` for HUD corners, `modal` for dialogs,
+scrollbars; two fingers on a scroller scroll it on a phone, where one
+finger would press a row), `zoomView` for a map or an artwork two fingers
+pinch and pan (the wheel zooms it on a desktop), `aspect` on `image` (and
+any element) to keep a picture's proportions in a growing column,
+layers (`anchor` for HUD corners, `modal` for dialogs,
 `transition` for fade, slide and scale by the tick, `spotlight`) and
 `toast`. Ids are stable strings: give every control a meaningful id so a
 playtest can `touch_move_to` it (`Shop/Panel/Detail/Buy` resolves as
@@ -93,6 +97,15 @@ messages are markup). A link is a child element (`Hint/shop`, kind `link`)
 that keys, pads and touch reach like a button; the result's `link` names
 the one clicked. A typo in a tag stays visible as text and warns.
 
+Icons: an icon set cooked from SVGs (an `.ogt` of `type icons` naming
+them; the UI kit ships 64 iconoir icons as `icons/iconoir.ogt`) loads with
+`og.load.font` and becomes the atlas with `og.ui.configure(world, { icons:
+{ font } })`; `og.ui.icon(id, "heart", { size, tint })` and `[icon=heart]`
+then draw crisp distance-field glyphs at any size in their ink. A texture
+grid (`icons: { texture, columns, rows, names }`) still works for painted
+icons. Icons sit in `fgMuted` or `fgSubtle` (design language: icons are
+neutral).
+
 ## 4. Focus: keyboard and gamepad
 
 Every element carries an accessibility role, name, value and states
@@ -101,6 +114,12 @@ tree with its focus order). Give every control visible text or a meaningful
 id: an icon-only button is named by its icon, a card by the text inside it,
 else by its id, and a playtest can require that no `focusable` element has
 an empty name (ui-kit's `tests/a11y.og.ts`). Tab walks the tree's order.
+On the web the shell mirrors this tree into the page for screen readers
+(invisible ARIA elements over the canvas, toasts announced, the reader's
+clicks pressing the control), so the names you give are what a blind
+player hears. The page's `prefers-reduced-motion` and `prefers-contrast:
+more` turn on the reduced-motion and high-contrast themes on top of the
+game's own settings: nothing to wire.
 
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
@@ -173,9 +192,10 @@ tile cut) or `round` (a whole number of tiles resized to fit, as CSS
 stretch plain ones. `glass <part> <blur> <fill> [tint]` makes a part glass:
 the game behind it blurred (`blur` CSS px), tinted by the part's fill, under
 its frame drawn at `fill` opacity (the scifi pack's dialogs:
-`glass panel 16 0.85 0.15`). Glass blurs the scene, not other UI under it;
-it costs a frame copy and a blur pyramid when any is on screen (about 0.8 ms
-at 1280×720 on an M4 Pro), nothing otherwise.
+`glass panel 16 0.85 0.15`). Glass blurs the scene and the UI drawn under
+it (a HUD under a glass dialog); it costs a frame copy and a blur pyramid
+when any is on screen (about 0.8 ms at 1280×720 on an M4 Pro), and one more
+pyramid for each glass layer with UI under it, nothing without glass.
 
 A skin of the game's own art: draw each part as a nine-patch PNG
 (`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
