@@ -684,8 +684,13 @@ reference belongs to; a lavapipe frame never replaces a Metal reference.
 1. Read the table `size-gate` printed (or `target/evidence/size-gate.json`
    from the CI artifact): which wasm grew and by how much.
 2. Find the growth: `cargo tree -p og-host-web --target wasm32-unknown-unknown -e normal`
-   for new dependencies, and `twiggy top target/og-wasm/opt/<name>.wasm`
-   (`cargo install twiggy`) for the largest functions.
+   for new dependencies, and `scripts/wasm-size-report.sh
+   target/og-wasm/raw/<name>.wasm` for where the bytes are: the module
+   optimised as it ships, then per crate and for the largest functions,
+   each with its brotli alone beside its raw bytes (the optimised module in
+   `target/og-wasm/opt/` keeps no names to read). Rank by brotli: generic
+   copies compress to little more than one copy, so a raw table points at
+   them first and they pay least (tests/evidence/P4/wasm-size/README.md).
 3. Prefer removing the cause: drop or feature-gate the dependency, disable
    default features, move debug-only code behind the non-`publish`
    configuration, avoid generic monomorphization blow-ups.
