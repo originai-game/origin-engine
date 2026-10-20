@@ -708,6 +708,22 @@ impl Bundle {
         CookedAnimation::decode(asset_id(id), &blob)
     }
 
+    /// The clip names of an animation blob (`<model>#anim`), in glTF order,
+    /// without decoding its clips (what `GltfInfo.animations` lists).
+    pub fn clip_names(&self, id: &str, bytes: &[u8]) -> Result<Vec<String>, LoadError> {
+        let blob = self.blob::<format::Animation>(id, bytes)?;
+        let clips = table::<ClipRow>(&blob, "clips")?;
+        let strings = blob.raw("strings")?;
+        clips
+            .iter()
+            .map(|c| {
+                pool_str(strings, c.name_offset, c.name_len)
+                    .map(str::to_string)
+                    .ok_or_else(|| invalid(&blob, "clip name out of range"))
+            })
+            .collect()
+    }
+
     /// Reads and decodes a glTF's animation blob (native); `id` is the model's
     /// id with or without `#anim`.
     #[cfg(not(target_arch = "wasm32"))]

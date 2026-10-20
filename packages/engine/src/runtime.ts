@@ -999,8 +999,10 @@ export const anim = Object.freeze({
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
   humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
   retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),
-  clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }> }, name: string): number =>
-    info?.clips?.find((c) => c.name === name)?.clip ?? -1,
+  // One lookup for a flipbook's clips (an index, -1 when missing) and a
+  // loaded model's (og.load.animation: a ClipAsset, 0 when missing).
+  clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }>; skeleton?: number }, name: string): number =>
+    info?.clips?.find((c) => c.name === name)?.clip ?? (info?.skeleton !== undefined ? 0 : -1),
 });
 
 // ── E4: time scale, camera feel, tweens, tilemaps ───────────────────────────

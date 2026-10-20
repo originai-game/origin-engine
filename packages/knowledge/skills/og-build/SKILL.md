@@ -161,8 +161,9 @@ fix.
 ## 7. Big games: what the cook packs and the page fetches
 
 What `og cook` takes is decided by the file: `.glb`/`.gltf` and MagicaVoxel
-`.vox` (meshed into a glTF: flat-shaded quads, palette colours, one voxel
-one metre; og-game §5) are models; `.ogt` files by their `type` (scene,
+`.vox` (meshed into a glTF: flat-shaded quads, palette colours, `model {
+voxScale voxOrigin }` for the size and origin, frames as clips; og-game §5)
+are models; `.ogt` files by their `type` (scene,
 look, environment, texture-array, flipbook, particles, terrain, shader…);
 `.cube` LUTs, `.hex` and `.gpl` palettes, images, WAVs and fonts by
 extension. A look's built-in `@canvas/…` and `@palettes/…` assets are added

@@ -2187,6 +2187,19 @@ pub fn og_load_error(world: u32, asset: f64) -> String {
     json!(reason).to_string()
 }
 
+/// A model's clip names from its `#anim` blob, in glTF order; none when the
+/// cook wrote no `#anim` (no skins, clips or morph targets).
+fn clip_names(a: &assets::Assets, model: &str) -> Result<Vec<String>, String> {
+    let id = og_cook::runtime::anim_id(model);
+    if a.bundle_for(&id).is_err() {
+        return Ok(Vec::new());
+    }
+    let (bytes, bundle) = a.blob(&id)?;
+    bundle
+        .clip_names(&id, bytes.bytes())
+        .map_err(|e| e.to_string())
+}
+
 pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
     result((|| {
         let eng = engine(world)?;
@@ -2203,7 +2216,7 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
                 "scenes": scenes,
                 "geometries": geometries.iter().map(|g| *g as f64).collect::<Vec<_>>(),
                 "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),
-                "animations": Vec::<String>::new(),
+                "animations": clip_names(&a, &e.path)?,
             })),
             _ => Err(format!("{} is not a glTF", e.path)),
         }
