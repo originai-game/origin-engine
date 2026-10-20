@@ -157,16 +157,23 @@ lighting falls back to a forward tile table built on the CPU).
 
 - Forward+ (clustered) with a depth prepass; PBR metallic-roughness
   (glTF-compatible), normal, emissive, occlusion, clearcoat later.
-- Cascaded shadow maps for one directional light, cube or dual-paraboloid
-  for up to N point/spot lights by tier.
+- Cascaded shadow maps for one directional light (opt-in PCSS soft
+  shadows and blending across cascade splits); cube faces or two
+  dual-paraboloid hemispheres for up to 8 point/spot lights on the full
+  tier and 4 on WebGL2, the brightest at the camera first (cube on the full
+  tier and paraboloid on WebGL2 by default; `RenderOptions.pointShadows`).
 - IBL from an environment map prefiltered at cook time; sky model with
   exposure; height fog.
 - Post: bloom, tonemap (ACES or AgX), colour grading LUT, SSAO (GTAO on
-  WebGPU), FXAA/TAA by tier.
+  WebGPU), antialiasing by tier: TAA on the full tier (optional
+  Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
+  and where the HDR target cannot be multisampled.
 - Skinning on the GPU (storage buffers; vertex-texture fallback on GL).
 - Instancing by default: draws are batched per material and mesh; the
   TypeScript API has no per-object draw calls to misuse.
 - Particles: GPU simulation on WebGPU, CPU on GL; one emitter asset format.
+  Collision against the depth buffer in compute, against the scene's
+  colliders (ground, boxes, spheres, terrain height fields) on the CPU.
 - Terrain: clipmap heightfield with splat materials. Decals: deferred-style
   projection in the forward pass.
 - Text: MSDF for UI and world text, kerned from the font's GPOS pairs;

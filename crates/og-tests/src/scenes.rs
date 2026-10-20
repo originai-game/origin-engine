@@ -221,6 +221,22 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "shadows-soft" => g.scene = crate::shadow_scenes::soft_shadows_scene(true),
         // The same with hard shadows and no blending (evidence only, no reference).
         "shadows-soft-off" => g.scene = crate::shadow_scenes::soft_shadows_scene(false),
+        // Cost measurements (evidence only, no references): point-spot-lights
+        // and shadows-local-8 with each point shadow storage forced, and the
+        // thin geometry without antialiasing.
+        "point-shadows-cube" => {
+            g.scene = point_spot_lights();
+            g.desc.point_shadows = og_render::PointShadows::Cube;
+        }
+        "shadows-local-8-cube" | "shadows-local-8-paraboloid" => {
+            g.scene = crate::shadow_scenes::many_shadowed_lights(true);
+            g.desc.point_shadows = if name.ends_with("cube") {
+                og_render::PointShadows::Cube
+            } else {
+                og_render::PointShadows::Paraboloid
+            };
+        }
+        "aa-off" => g.scene = thin_geometry(),
         // taa-sharp's moving camera with a bilinear history and no
         // sharpening (evidence only, no reference).
         "taa-motion" => {

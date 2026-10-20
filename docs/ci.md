@@ -473,8 +473,12 @@ frame is compared with `crates/og-tests/references/<webgpu|webgl2>/` when
 that frame is committed, else with `metal`, under the scene's own tolerance
 (`crates/og-tests/src/compare.rs`), and every frame's figures against
 `metal` are kept in the report. A scene that does not apply to the tier
-(`scenes::Applies`: `taa` is full tier only, `msaa` the no-compute tier's
-4x path) is listed, not rendered. `--record` writes the tier's references;
+(`scenes::Applies`: `taa`, `taa-sharp` and `shadows-local-8`, whose eight
+shadowed lights are four on WebGL2, are full tier only, `msaa` the
+no-compute tier's 4x path) is listed, not rendered. `--scene a,b --time n`
+times any scene it names, the shadows-aa cost scenes too (`COSTS`:
+`point-shadows-cube`, `shadows-local-8-cube`, `shadows-local-8-paraboloid`,
+`shadows-soft-off`, `aa-off`, `taa-motion`, built but not in `SCENES`). `--record` writes the tier's references;
 `--time <n>` writes per-frame times of the perf scenes to
 `crates/og-tests/perf/<tier>-chrome-<adapter>/` beside the native ones.
 The perf-only city scenes (`city-street`, `city-aerial`) are timed only when

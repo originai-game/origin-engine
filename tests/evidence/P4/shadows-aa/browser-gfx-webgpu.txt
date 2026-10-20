@@ -1,0 +1,21 @@
+ok   point-spot-lights (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/point-spot-lights.png
+time point-spot-lights (webgpu): 0.427 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":23,"instances":9,"culled":0,"occluded":0,"triangles":4670,"shadow_casters":32,"counts_lag":0}
+time point-shadows-cube (webgpu): 0.445 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":23,"instances":9,"culled":0,"occluded":0,"triangles":4670,"shadow_casters":32,"counts_lag":0}
+ok   point-shadows-paraboloid (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/point-shadows-paraboloid.png
+time point-shadows-paraboloid (webgpu): 0.435 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":13,"instances":9,"culled":0,"occluded":0,"triangles":4670,"shadow_casters":27,"counts_lag":0}
+ok   shadows-local-8 (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/shadows-local-8.png
+time shadows-local-8 (webgpu): 1.348 ms per frame with the GPU (best of 7 x 60), submit median 0.2 ms, last frame {"gpu_culling":false,"draws":74,"instances":11,"culled":0,"occluded":0,"triangles":122,"shadow_casters":104,"counts_lag":0}
+time shadows-local-8-cube (webgpu): 1.332 ms per frame with the GPU (best of 7 x 60), submit median 0.2 ms, last frame {"gpu_culling":false,"draws":74,"instances":11,"culled":0,"occluded":0,"triangles":122,"shadow_casters":104,"counts_lag":0}
+time shadows-local-8-paraboloid (webgpu): 0.6 ms per frame with the GPU (best of 7 x 60), submit median 0.1 ms, last frame {"gpu_culling":false,"draws":31,"instances":11,"culled":0,"occluded":0,"triangles":122,"shadow_casters":88,"counts_lag":0}
+ok   shadows-soft (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00000 (≤ 0.01) against crates/og-tests/references/metal/shadows-soft.png
+time shadows-soft (webgpu): 0.635 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":21,"instances":16,"culled":0,"occluded":0,"triangles":1706,"shadow_casters":24,"counts_lag":0}
+time shadows-soft-off (webgpu): 0.412 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":21,"instances":16,"culled":0,"occluded":0,"triangles":1706,"shadow_casters":24,"counts_lag":0}
+ok   fxaa (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00005 (≤ 0.01) against crates/og-tests/references/metal/fxaa.png
+time fxaa (webgpu): 0.495 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":19,"instances":19,"culled":0,"occluded":0,"triangles":1742,"shadow_casters":46,"counts_lag":0}
+time aa-off (webgpu): 0.412 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":18,"instances":19,"culled":0,"occluded":0,"triangles":1742,"shadow_casters":46,"counts_lag":0}
+ok   taa (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00006 (≤ 0.01) against crates/og-tests/references/metal/taa.png
+time taa (webgpu): 0.493 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":19,"instances":19,"culled":0,"occluded":0,"triangles":1742,"shadow_casters":46,"counts_lag":0}
+time taa-motion (webgpu): 0.487 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":14,"instances":19,"culled":5,"occluded":0,"triangles":158,"shadow_casters":34,"counts_lag":0}
+ok   taa-sharp (webgpu): 0.000 % outliers (≤ 0.5 %), RMSE 0.00023 (≤ 0.01) against crates/og-tests/references/metal/taa-sharp.png
+time taa-sharp (webgpu): 0.552 ms per frame with the GPU (best of 7 x 60), submit median 0 ms, last frame {"gpu_culling":false,"draws":15,"instances":19,"culled":5,"occluded":0,"triangles":158,"shadow_casters":34,"counts_lag":0}
+PASS og-tests gfx on webgpu: 13 scenes in 16216 ms (module built in 1203 ms); /private/tmp/claude-501/-Volumes-app-origin-engine/c35cacf3-281a-4f6c-a921-ab3ea067b1dd/scratchpad/sa/web-gfx/reference-gfx-webgpu.json
