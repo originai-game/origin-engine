@@ -42,5 +42,7 @@ the round's report.
   0.0019.
 - Templates (metal): the 49 frames listed in `templates-metal-moved.tsv`.
   Their vulkan-cpu (fx-showcase, match3, runner) and browser (fx-showcase,
-  topdown, third-person's WebGL2 beacon) references were not re-recorded:
-  the text moves are within og-tests' tolerance there.
+  topdown, third-person's WebGL2 beacon) references were not re-recorded
+  nor rerun: on metal the moves are at most 0.545 % outliers (third-person's
+  title) and RMSE 0.036, so those tiers' own frames may now sit near or past
+  the tolerance until they are recorded again.
