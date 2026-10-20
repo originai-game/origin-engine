@@ -619,17 +619,26 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     }
 }
 
-/// The glass's cost on this machine's GPU at 1280×720: a frame with four
-/// dialog-sized glass panels against the same frame without
-/// (`cargo test -p og-ui --release --test gfx -- --ignored glass_cost
-/// --nocapture`; tests/evidence/P2/ui/glass-cost.md).
+/// The glass's cost on this machine's GPU at 1280×720: the same frame with
+/// no glass, four dialog-sized glass panels over the scene only, the four
+/// over overlay content (a HUD bar under them: the pyramid is built after
+/// it, once), and two layers of two panels with content under each (two
+/// pyramids) (`cargo test -p og-ui --release --test gfx -- --ignored
+/// glass_cost --nocapture`; tests/evidence/P2/ui/glass-cost.md,
+/// tests/evidence/P4/ui-shell/glass-cost.md).
 #[test]
 #[ignore]
 fn glass_cost() {
     let (w, h) = (1280u32, 720u32);
-    let mut best = [f64::INFINITY; 2];
-    for round in 0..6 {
-        let on = round % 2 == 1;
+    const MODES: [&str; 4] = [
+        "no glass",
+        "four panels over the scene",
+        "four panels over overlay content",
+        "two layers of two panels, content under each",
+    ];
+    let mut best = [f64::INFINITY; 4];
+    for round in 0..12 {
+        let mode = round % 4;
         let mut scene = RenderScene::new();
         scene.camera = og_render::Camera::orthographic_2d(Vec2::new(640.0, 360.0), 720.0);
         for k in 0..160 {
@@ -642,7 +651,21 @@ fn glass_cost() {
         scene.environment.background = Background::Color(Vec3::ZERO);
         scene.post.tonemap = Tonemap::None;
         let mut overlay = og_render::Overlay::new(w as f32, h as f32, 1.0);
-        if on {
+        let bar = |layer: i32, y: f32| og_render::Sprite {
+            position: Vec3::new(0.0, y, 0.0),
+            size: Vec2::new(w as f32, 40.0),
+            anchor: Vec2::ZERO,
+            color: [1.0, 0.45, 0.0, 1.0],
+            layer,
+            ..og_render::Sprite::default()
+        };
+        if mode >= 2 {
+            overlay.sprites.push(bar(-1, 300.0));
+        }
+        if mode == 3 {
+            overlay.sprites.push(bar(1, 420.0));
+        }
+        if mode >= 1 {
             for k in 0..4 {
                 overlay.glass.push(og_render::Glass {
                     position: Vec2::new(40.0 + k as f32 * 300.0, 160.0),
@@ -651,7 +674,7 @@ fn glass_cost() {
                     blur: 16.0,
                     tint: [0.1, 0.1, 0.12, 0.2],
                     alpha: 1.0,
-                    layer: 0,
+                    layer: if mode == 3 && k >= 2 { 2 } else { 0 },
                     clip: None,
                 });
             }
@@ -676,19 +699,20 @@ fn glass_cost() {
         }
         renderer.read_offscreen().expect("read back");
         let ms = start.elapsed().as_secs_f64() * 1000.0 / n as f64;
-        best[usize::from(on)] = best[usize::from(on)].min(ms);
-        println!("round {round}: glass {on}: {ms:.3} ms per frame");
+        println!("round {round}: {} {ms:.3} ms", MODES[mode]);
+        best[mode] = best[mode].min(ms);
     }
-    println!(
-        "best: without {:.3} ms, with four panels {:.3} ms, cost {:+.3} ms per frame ({})",
-        best[0],
-        best[1],
-        best[1] - best[0],
-        Renderer::new_blocking(&RenderDesc::default())
-            .expect("a headless adapter")
-            .info()
-            .backend_tier()
-    );
+    let tier = Renderer::new_blocking(&RenderDesc::default())
+        .expect("a headless adapter")
+        .info()
+        .backend_tier();
+    for (k, m) in MODES.iter().enumerate() {
+        println!(
+            "best ({tier}): {m} {:.3} ms ({:+.3} ms against no glass)",
+            best[k],
+            best[k] - best[0]
+        );
+    }
 }
 
 /// The glow's cost on this machine's GPU: 24 display-size labels rendered
