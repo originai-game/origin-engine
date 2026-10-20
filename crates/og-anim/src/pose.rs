@@ -271,8 +271,20 @@ impl Leaf<'_> {
     /// The pose at `t1` over `base` (the rest pose), its travel pinned when
     /// root motion is on.
     pub fn pose(&self, skeleton: &SkeletonAsset, root: Option<&RootMotion>, mesh: u32) -> Pose {
+        self.pose_at(skeleton, root, mesh, self.t1)
+    }
+
+    /// The pose at clip time `t` (a stepped player's held time, [`stepped`])
+    /// over the rest pose, pinned as [`Leaf::pose`].
+    pub fn pose_at(
+        &self,
+        skeleton: &SkeletonAsset,
+        root: Option<&RootMotion>,
+        mesh: u32,
+        t: f32,
+    ) -> Pose {
         let mut pose = Pose::rest(skeleton);
-        sample(skeleton, self.clip, self.binding, self.t1, mesh, &mut pose);
+        sample(skeleton, self.clip, self.binding, t, mesh, &mut pose);
         if let Some(r) = root {
             r.pin(&mut pose.nodes);
         }
@@ -327,6 +339,17 @@ impl Leaf<'_> {
             }
         }
     }
+}
+
+/// The clip time a stepped player samples (`AnimationPlayer.stepFps`):
+/// `t` floored to whole steps of 1/`fps`, so a pose holds for the step
+/// whatever the tick rate; `fps` 0 (or less) is `t`. A non-looping clip
+/// that reached its end (`t` at `duration`) shows its last frame.
+pub fn stepped(t: f32, fps: f32, duration: f32, looping: bool) -> f32 {
+    if fps <= 0.0 || (!looping && t >= duration) {
+        return t;
+    }
+    (t * fps).floor() / fps
 }
 
 /// Writes `clip` at time `t` into `pose` (channels the binding leaves

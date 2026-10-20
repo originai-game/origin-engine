@@ -97,6 +97,11 @@ pub struct AnimationPlayer {
     /// Cross-fade duration in seconds when `clip` changes.
     #[reflect(unit = "s", min = 0, max = 10, default = 0.2, tunable)]
     pub fade: f32,
+    /// Stepped playback: the pose is held for 1/stepFps seconds, sampled at
+    /// the clip time floored to that step (stop motion "on twos" at 12);
+    /// 0 samples every tick. Time, markers and root motion stay continuous.
+    #[reflect(name = "stepFps", min = 0, max = 60, tunable)]
+    pub step_fps: f32,
     /// Written: a non-looping clip reached its end.
     pub finished: bool,
 }
@@ -110,6 +115,7 @@ impl Default for AnimationPlayer {
             looping: true,
             weight: 1.0,
             fade: 0.2,
+            step_fps: 0.0,
             finished: false,
         }
     }

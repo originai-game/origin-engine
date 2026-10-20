@@ -17126,6 +17126,14 @@
           "x-og-unit": "s",
           "x-og-tunable": true
         },
+        "stepFps": {
+          "type": "number",
+          "description": "Stepped playback: each pose is held for 1/stepFps seconds, the clip sampled at its time floored to that step (12 is stop motion \"on twos\", 8 on threes), the same on every tick rate; 0 samples every tick. `time`, markers and root motion stay continuous; a one-shot still ends on its last frame.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 60,
+          "x-og-tunable": true
+        },
         "finished": {
           "type": "boolean",
           "description": "Written: a non-looping clip reached its end.",

@@ -3094,6 +3094,12 @@
           "tunable": true
         },
         {
+          "name": "stepFps",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "finished",
           "column": "bool",
           "default": false,
