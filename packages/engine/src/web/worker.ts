@@ -23,8 +23,12 @@
 // value is real and never goes backwards), then { type: "ready", engine,
 // tier, transport, rpc, textureFormat, files, textures } or { type: "error",
 // message } before ready; { type: "frame", first } after the first rendered
-// frame; { type: "crash", message } when the engine fails after ready (a
-// trap, a failing system, an uncaught error); { type: "log", lines } with
+// frame; { type: "crash", message, error } when the engine fails after
+// ready (a trap, a Rust panic on the engine's thread or in a lane, a failing
+// system, an uncaught error; `error` is the structured HostError of shell.ts:
+// kind, message, tick, lane, location); { type: "beat", tick } about once a
+// second while frames play, which the shell's frame deadline watches;
+// { type: "log", lines } with
 // the engine's log and the Worker's console (the crash card shows the last
 // 200); { type: "result", id, value | error } for `call` (`advance`,
 // `command`, `hash`, `frame`, `probe`, and `timings`: the played frames'
@@ -45,6 +49,7 @@ import { drainRing, stampAt, type InjectedInput } from "./input.ts";
 import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscoder, type TextureFormat } from "./basis.ts";
+import type { HostError } from "./shell.ts";
 
 interface Start {
   type: "start";
@@ -135,6 +140,10 @@ export interface WebExtras {
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
   og_web_lanes?(): string;
+  /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
+  og_web_panic?(): string;
+  /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
+  og_web_lanes_fault?(site: string): boolean;
 }
 
 /** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-runtime/src/assets.rs). */
@@ -416,6 +425,32 @@ export const LOG_LINES = 200;
 /** Played frames whose timings the Worker keeps (`timings`). */
 const FRAME_RECORDS = 4096;
 
+/** How often, at most, a playing Worker tells the shell it is alive (`beat`), ms. */
+export const BEAT_MS = 1000;
+
+/**
+ * What a failure was: a Rust panic the wasm recorded before it trapped
+ * (`og_web_panic`: its message, location, tick and lane), or else `message`
+ * at the last tick a frame reached.
+ */
+export function hostErrorOf(panic: string | undefined, message: string, tick: number | null): HostError {
+  try {
+    const p = JSON.parse(panic ?? "null") as { kind?: string; message?: string; location?: string; tick?: number; lane?: string | null } | null;
+    if (p && p.kind === "panic") {
+      return { kind: "panic", message: p.message ?? message, tick: typeof p.tick === "number" ? p.tick : tick, lane: p.lane ?? null, location: p.location || null };
+    }
+  } catch {
+    /* not JSON: no panic report */
+  }
+  return { kind: "error", message, tick, lane: null, location: null };
+}
+
+/** One line for the crash card and the log: `panic at tick 41 in a lane (cull): … (file:line:col)`. */
+export function describeHostError(e: HostError): string {
+  if (e.kind !== "panic") return e.message;
+  return `panic at tick ${e.tick ?? "?"}${e.lane ? ` in a lane (${e.lane})` : ""}: ${e.message}${e.location ? ` (${e.location})` : ""}`;
+}
+
 /** Run `game` in this Worker, driven by the shell's messages. */
 export function startWorker(game: GameToken): void {
   let engine: Engine | null = null;
@@ -429,6 +464,9 @@ export function startWorker(game: GameToken): void {
   let crashed = false;
   let firstFrame = false;
   let last = 0;
+  /** The tick the last frame reached (a crash's tick when no panic names one). */
+  let lastTick: number | null = null;
+  let lastBeat = 0;
   let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
   let audio: WorkerAudio | null = null;
   /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
@@ -459,12 +497,21 @@ export function startWorker(game: GameToken): void {
     if (crashed) return;
     crashed = true;
     playing = false;
+    let panic: string | undefined;
+    try {
+      // A trap after a Rust panic: the panic hook recorded what it said, where and when.
+      panic = glueRef?.og_web_panic?.();
+    } catch {
+      /* the module is past answering */
+    }
+    const error = hostErrorOf(panic, message, lastTick);
     try {
       flushLog();
     } catch {
       /* the engine may be the thing that broke */
     }
-    self.postMessage(ready ? { type: "crash", message } : { type: "error", message });
+    const text = describeHostError(error);
+    self.postMessage(ready ? { type: "crash", message: text, error } : { type: "error", message: text, error });
   };
   self.addEventListener?.("error", (e) => crash(e.message ?? String(e.error)));
   self.addEventListener?.("unhandledrejection", (e) => crash(e.reason instanceof Error ? e.reason.message : String(e.reason)));
@@ -567,6 +614,7 @@ export function startWorker(game: GameToken): void {
           recorded++;
         }
         behind = answered.behind ?? 0;
+        if (typeof answered.tick === "number") lastTick = answered.tick;
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
           self.postMessage({ type: "frame", first: true });
@@ -577,6 +625,11 @@ export function startWorker(game: GameToken): void {
     } catch (e) {
       crash(e instanceof Error ? (e.stack ?? e.message) : String(e));
       return;
+    }
+    // Alive: the shell's frame deadline hears from a playing Worker about once a second.
+    if (playing && now - lastBeat >= BEAT_MS) {
+      lastBeat = now;
+      self.postMessage({ type: "beat", tick: lastTick });
     }
     last = now;
     if (playing || retries.length > 0) schedule();
@@ -637,6 +690,8 @@ export function startWorker(game: GameToken): void {
     hash: (e) => e.hash(),
     /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
+    /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
+    fault: (_, [site]) => glueRef?.og_web_lanes_fault?.(String(site)) ?? false,
     frame: (e, [ms]) => e.frame(Number(ms)),
     // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
     timings: (_, [reset]) => {

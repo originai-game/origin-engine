@@ -438,7 +438,7 @@ step_bun_quick() {
 # §Browser reference tiers; `make web-reference`). In no lane: CI has no
 # Chrome for Testing.
 step_web_reference() {
-  local a b c d e f g h i j
+  local a b c d e f g h i j k
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
@@ -459,7 +459,10 @@ step_web_reference() {
     --shots title@54,beacon@204,dawn@432)
   (cd packages/engine && bun tests/web/reference.ts "${tp[@]}"); i=$?
   (cd packages/engine && bun tests/web/reference.ts --webgl "${tp[@]}"); j=$?
-  return $((a | b | c | d | e | f | g | h | i | j))
+  # A panic inside a lane reaches the page as a crash within 5 s, not a hang
+  # (docs/web-export.md §Errors), and the same fault single-threaded.
+  (cd packages/engine && bun tests/web/lane-panic.ts); k=$?
+  return $((a | b | c | d | e | f | g | h | i | j | k))
 }
 
 # --- Scheduling ---------------------------------------------------------------

@@ -519,10 +519,40 @@ pub fn og_web_lanes() -> String {
     og_runtime::lanes_report().to_string()
 }
 
-/// Routes Rust panics to the console instead of an opaque `unreachable`.
+/// A test hook: the next item the engine runs at lanes site `site` (`anim`,
+/// `extract`, `cull`, `physics`) panics, inside a lane when the call splits
+/// across the pool and on the engine's thread when it runs serially
+/// (og_lanes::inject_fault). False for an unknown site. The browser test of
+/// a lane's panic (`packages/engine/tests/web/lane-panic.ts`) calls it
+/// through the engine Worker's `fault` call.
+#[wasm_bindgen]
+pub fn og_web_lanes_fault(site: &str) -> bool {
+    match og_lanes::Site::from_name(site) {
+        Some(s) => {
+            og_lanes::inject_fault(s);
+            true
+        }
+        None => false,
+    }
+}
+
+/// The first Rust panic the engine recorded, as JSON (og-runtime's
+/// `panic_report`: kind, message, location, tick, and lane, the lane's site
+/// or null on the engine's thread), or `null`. The engine Worker reads it
+/// after a trap, so the crash it reports names the panic, its tick and its
+/// lane instead of `unreachable`.
+#[wasm_bindgen]
+pub fn og_web_panic() -> String {
+    og_runtime::panic_report().to_string()
+}
+
+/// Routes Rust panics to the console instead of an opaque `unreachable`,
+/// after recording them for `og_web_panic` (on any thread: a lane's panic
+/// on a pool Worker wakes the engine thread waiting for it, og-lanes).
 #[wasm_bindgen]
 pub fn og_web_init() {
     std::panic::set_hook(Box::new(|info| {
+        og_runtime::record_panic(info);
         let message = format!("origin-engine panicked: {info}");
         let console = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("console"));
         if let Ok(console) = console

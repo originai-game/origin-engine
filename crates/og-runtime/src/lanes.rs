@@ -69,3 +69,26 @@ pub fn report() -> serde_json::Value {
         "sites": sites,
     })
 }
+
+/// Records a Rust panic for the host's crash report (a panic hook calls it on
+/// whichever thread panicked): its message and location, the tick the world
+/// was running and, inside a lane, the lane's site (og_lanes::record_panic).
+pub fn record_panic(info: &std::panic::PanicHookInfo<'_>) {
+    og_lanes::record_panic_info(info, og_ecs::last_tick());
+}
+
+/// The first panic recorded, as the web host's `og_web_panic` answers it:
+/// `{ kind: "panic", message, location, tick, lane }` (`lane` the site's
+/// name, or null on the engine's own thread), or null.
+pub fn panic_report() -> serde_json::Value {
+    match og_lanes::panic_report() {
+        None => serde_json::Value::Null,
+        Some(p) => json!({
+            "kind": "panic",
+            "message": p.message,
+            "location": p.location,
+            "tick": p.tick,
+            "lane": p.lane.map(|s| s.name()),
+        }),
+    }
+}
