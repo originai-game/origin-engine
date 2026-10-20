@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# Soft rim light, a touch of grain and painterly smoothing: handmade surfaces.
+# Soft rim light, a touch of grain and painterly smoothing: handmade surfaces (set AnimationPlayer.stepFps 12 on the characters for stop motion on twos).
 name "Sculpted clay & stop-motion"
 MaterialStyle {
   rimIntensity 0.35

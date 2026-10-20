@@ -185,17 +185,16 @@
       "look": {
         "preset": "templates/looks/pixel-3d-hybrid.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "PostEffects.depthOfField",
           "PostEffects.ao",
           "RenderSettings.bloom",
           "Stylise.pixelSnap",
-          "billboard sprites"
+          "billboard sprites",
+          "SpriteDesc.dropShadow"
         ],
-        "missing": [
-          "sprites casting shadows on 3D sets: no engine primitive (draw a shadow sprite under each)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -285,17 +284,16 @@
       "look": {
         "preset": "templates/looks/sculpted-clay.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "StandardMaterialDesc.roughness",
           "StandardMaterialDesc.sheen",
           "StandardMaterialDesc.normalMap",
           "PostEffects.ao",
-          "PostEffects.depthOfField"
+          "PostEffects.depthOfField",
+          "AnimationPlayer.stepFps"
         ],
-        "missing": [
-          "stepped animation playback (holding poses on twos) has no engine switch yet: sample the clips at 12 to 15 Hz in game code"
-        ]
+        "missing": []
       },
       "skin": "cartoon",
       "palette": {
