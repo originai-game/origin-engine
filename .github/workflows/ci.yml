@@ -38,15 +38,35 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    container: &container
+      # Debian trixie: its Lavapipe is the og-lavapipe image's (LLVM 19.1.7),
+      # the Mesa the vulkan-cpu references are recorded with; Ubuntu 24.04's
+      # (LLVM 20.1.2) misses two of them by RMSE 0.0003 (docs/ci.md §CI).
+      # The host's unused SDKs are mounted to be emptied (provision).
+      image: debian:trixie
+      volumes:
+        - /usr/share/dotnet:/host/dotnet
+        - /usr/local/lib/android:/host/android
+        - /opt/ghc:/host/ghc
+        - /opt/hostedtoolcache/CodeQL:/host/codeql
+    defaults: &defaults
+      run:
+        shell: bash
     steps:
+      - &git
+        name: Git for the checkout
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates >/dev/null
       - uses: actions/checkout@v4
       - uses: ./.github/actions/provision
         with:
-          cache-key: quick
+          cache-key: quick-trixie
       - name: Lint the gate scripts
         run: shellcheck -x scripts/*.sh
       - name: Quick lane
         run: scripts/check.sh quick
+      - name: Disk
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true
       - name: Upload evidence
         if: failure()
         continue-on-error: true # the account's artifact quota must not fail a lane
@@ -63,13 +83,24 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    container: *container
+    defaults: *defaults
     steps:
+      - *git
       - uses: actions/checkout@v4
       - uses: ./.github/actions/provision
         with:
-          cache-key: functional
+          cache-key: functional-trixie
       - name: Functional lane
         run: scripts/check.sh functional
+        env:
+          OG_GFX_CAPTURE: sprites-array # TEMPORARY: the missing vulkan-cpu reference, read below
+      - name: TEMPORARY sprites-array frame
+        if: always()
+        run: base64 -w0 crates/og-tests/references/vulkan-cpu/sprites-array.png; echo; sha256sum crates/og-tests/references/vulkan-cpu/sprites-array.png
+      - name: Disk
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true
       - name: Upload evidence
         if: failure()
         continue-on-error: true
@@ -87,15 +118,21 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 330
+    container: *container
+    defaults: *defaults
     steps:
+      - *git
       - uses: actions/checkout@v4
       - uses: ./.github/actions/provision
         with:
-          cache-key: gate
+          cache-key: gate-trixie
       - name: Lint the gate scripts
         run: shellcheck -x scripts/*.sh
       - name: Gate
         run: scripts/check.sh
+      - name: Disk
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true
       - name: Upload evidence
         if: failure()
         continue-on-error: true
@@ -125,11 +162,14 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    container: *container
+    defaults: *defaults
     steps:
+      - *git
       - uses: actions/checkout@v4
       - uses: ./.github/actions/provision
         with:
-          cache-key: perf
+          cache-key: perf-trixie
       - name: Perf suite
         run: scripts/perf.sh --measure
       - name: Upload perf evidence
