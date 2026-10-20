@@ -494,9 +494,9 @@ WebGL2 tier's reductions §2.6 names): Forward+ with the prepass on
 demand (measured, P4 perf), the physical lobes (P4 materials), PCSS,
 cascade blending and 8 / 4 shadowed point and spot lights (P4 shadows),
 IBL from cooked environment maps (equirectangular, KTX2 cubes, six faces)
-with AgX and adapting exposure (P4 ibl-post, cook three), the stylisation
-primitives as looks (37 presets; P4 look and stylisation rounds two and
-three), CPU particle collision against the scene's colliders, kerned,
+with AgX and adapting exposure (P4 ibl-post, cook three and four), the
+stylisation primitives as looks (37 presets; P4 look and stylisation
+rounds two to four), CPU particle collision against the scene's colliders, kerned,
 shaped and bidi text with run-time glyphs (P4 UI text), and every WGSL
 module validated and translated per backend in the gate (the wasm ships
 WGSL; P4 perf). Of §7: the wasm budget holds per download, the largest

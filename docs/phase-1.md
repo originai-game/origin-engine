@@ -16,7 +16,9 @@ the packages' tests on the native host), and the wasm build, its size,
 determinism and the browser tiers are measured once at a wave's end
 (AGENTS.md §Build and gate discipline, docs/ci.md §When to run what). What
 the repository records of this wave's end at fe00f56 (scratch logs are not
-in it; what no commit or evidence file records is said so):
+in it; what no commit or evidence file records is said so). Cook round four
+and stylisation round four merged after it (1cdc3da); nothing of a gate
+after them is recorded either.
 
 - **`scripts/check.sh --all` on main: not recorded.** No `--all` summary
   was committed after 50eb7f7. The last whole full lanes on record are the
@@ -119,6 +121,69 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Phase 4, cook round four (2026-10-21)
+
+Branch `cook-4` from main at dca74cb, merged as 1cdc3da (after this
+record's base, fe00f56). No evidence directory: og-cook's and og-render's
+READMEs and the commits are the record. It closes what cook round three
+left.
+
+- **Materials sample texture arrays** (55c0c53): `StandardMaterial`
+  (version 5) gains `mapArray`/`mapLayer` and `normalMapArray`/
+  `normalMapLayer`; `og.Mesh.materialLayer` overrides both per instance,
+  riding in the instance transform's m0.w, so meshes of one material on
+  any layers stay one batch. One variant of the standard lit, prepass and
+  shadow pipelines draws them; physical and shader materials keep their 2D
+  path. og-tests `materials-array` (no reference recorded yet: row 54).
+- **Terrain layers from texture arrays** (e8de98d): `type terrain`'s
+  `layers` and `layerNormals` arrays with `albedoLayer`/`normalLayer` per
+  layer, two sampled textures instead of eight, through a variant of the
+  terrain layout and pipelines (`og.Terrain` meta v3, layer rows v2); a
+  terrain of separate textures draws exactly as before.
+- **A KTX2 cube's own prefiltered chain** (4262118): `prefiltered true`
+  takes a GGX-prefiltered KTX2 mip chain as it is (`bake::from_prefiltered`);
+  the irradiance is still projected from level 0.
+- **The `.vox` pivot** (88d2150): a committed fixture turned, mirrored and
+  with its axes cycled checks the importer against ogt_vox's documented
+  pivot; the importer already agreed.
+- Docs (566250d, 077d64b): og-render's §Array maps, og-cook's owed list
+  down to animation.
+
+Left out: compressed clips resident as f32 (row 56); the materials-array
+references (row 54).
+
+## Phase 4, stylisation round four (2026-10-21)
+
+Branch `stylise-4` from main at dca74cb, merged as 721886b (after this
+record's base, fe00f56). It closes what round three left but the octave
+bands.
+
+- **Object space** (2dc63ee): `StyliseSpace::Object` (capability
+  `objectSpace`): the canvas, hatching and halftone triplanar in each mesh
+  instance's own space, from an object pass after the prepass writing the
+  object-space position and normal (`stylise_object.rs`); terrain,
+  scattered copies and vertex-offset materials keep the world pattern.
+  og-tests `tests/stylise_space.rs`: the scene moved with its camera
+  differs by 0 pixels in object space, 1.07 % in world space.
+- **Hatching from depth** (9f4751f): `Stylise.hatchingDepth`: silhouettes
+  and creases darken the tone the strokes follow.
+- **Drop shadows bent over hollows** (947142f): `ShadowGround::bend` (a
+  5 × 3 grid carried down the sun), a bent shadow drawn as 4 × 2 cells;
+  the plane path unchanged (sprites-20k byte-identical).
+- **Surface space in a preset** (665b285): stylise-halftone-surface, and
+  inked-comic-3d hatched on the surfaces with `hatchingDepth`; the looks
+  station's HUD names the preset shown (b76ca77). Docs: 47d4676.
+- **Frames** (721886b): stylise-object and stylise-halftone-surface new on
+  `metal`; sprites-shadow-terrain moved (a hollow and a figure whose shadow
+  dips into it), every looks frame moved (the HUD label) and
+  looks-inked-comic-3d by its preset. Their vulkan-cpu copies are the wave
+  end's (row 54).
+
+Left out (og-render README): the octave fade's bands on a receding floor
+(row 55); object space leaves terrain, scattered copies and vertex-offset
+materials in world space and cuts no alpha holes; a bent shadow bridges
+features narrower than a cell of its grid.
+
 ## Phase 4, UI round four (2026-10-21)
 
 On main after cook round three (dca74cb): af5f296..fe00f56 and 4390233,
@@ -191,9 +256,10 @@ record paragraph) and the commits are the record.
   list cut to what remains.
 - **Frames**: none moved.
 
-Left out, in flight on `cook-4` (not owed rows): texture arrays in
-materials and terrain layers, a KTX2 cube's own prefiltered mip chain taken
-as it is, the `.vox` pivot of odd-sized models turned or mirrored.
+Left out: texture arrays in materials and terrain layers, a KTX2 cube's
+own prefiltered mip chain taken as it is, the `.vox` pivot of odd-sized
+models turned or mirrored. *Resolved in cook round four (55c0c53, e8de98d,
+4262118, 88d2150).*
 
 ## Phase 4, stylisation round three (2026-10-21)
 
@@ -229,9 +295,9 @@ recorded on main (da96248, 7f8b010).
 
 Left out: the surface patterns are triplanar in world space, not in each
 object's own space; a drop shadow lies on one plane, so it floats a little
-over a hollow narrower than itself; no preset uses surface space (all three
-in flight on `stylise-4`); the octave fade's faint bands on a long receding
-floor (row 55); the browser looks run itself (row 53); the two new frames
+over a hollow narrower than itself; no preset uses surface space. *All
+three resolved in round four (2dc63ee, 947142f, 665b285).* The octave
+fade's faint bands on a long receding floor (row 55); the browser looks run itself (row 53); the two new frames
 on lavapipe (row 54).
 
 ## Phase 4, UI fields round (2026-10-21)
@@ -408,7 +474,8 @@ array sprites (below).
   (11a0607), judged against `metal` on lavapipe (RMSE 0.0053, 4d6188b).
   Docs: a64d546.
 
-Left out: nothing named; arrays in materials and terrain went to `cook-4`.
+Left out: nothing named; arrays in materials and terrain came in cook
+round four (55c0c53, e8de98d).
 
 ## Phase 4, stylisation round two (2026-10-21)
 
@@ -445,8 +512,8 @@ Branch `r-stylise-2` from main at c1c5e5a, merged as f21f1f7.
 
 Left out: hatching on luminance only, the canvas in screen space, drop
 shadows on y = 0 and unshadowed by the cascades, fixed inkDepth
-thresholds. *All but the first closed in round three (d79ec8c, c9afcf3);
-hatching from depth is in flight on `stylise-4`.*
+thresholds. *The last three closed in round three (d79ec8c, c9afcf3),
+hatching from depth in round four (9f4751f).*
 
 ## Phase 4, physics lanes round (2026-10-21)
 
@@ -544,8 +611,8 @@ Branch `resources` from main at d08fdc9, merged as b571a77.
 - Docs (c2ea491): og-render's §Resources and removal; the ibl-post,
   cook-anim and perf notes resolved; no owed row added.
 
-Left out: arrays beyond world sprites (round two of the sprite arrays,
-above; materials and terrain on `cook-4`).
+Left out: arrays beyond world sprites. *Resolved in the sprite arrays
+round two (8cba44b, 8150acf) and cook round four (55c0c53, e8de98d).*
 
 ## Phase 4, stylisation round (2026-10-21)
 
@@ -2304,12 +2371,11 @@ After phase 4 (2026-10-21, the P4 sections above): rows 47 (493ea96) and
 50 with its remainder (dedf817, bddb741) done; still open for the engine
 14 and 35 (35 waits on wgpu 31), for the platform 36, for the owner 39, 40
 and row 44's budget meaning; twelve new rows (51–62) for what the phase 4
-rounds left out and no later round or stream in flight took up. In flight
-on unmerged branches, so not rows: texture arrays in materials and
-terrain, a KTX2 cube's own mip chain and the `.vox` pivot (`cook-4`);
-stylisation in object space, hatching from depth, drop shadows bent over
-hollows and a preset in surface space (`stylise-4`); 48-byte instances
-(`render-parity`); `scripts/wave-end.sh` (`ci-green`).
+rounds left out and no later round or stream in flight took up (cook
+round four and stylisation round four, merged after this record's base,
+closed their rounds' other left-outs). In flight on unmerged branches, so
+not rows: 48-byte instances (`render-parity`), `scripts/wave-end.sh`
+(`ci-green`).
 
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
@@ -2373,8 +2439,8 @@ resource only the owner can give.
 | 51 | The three.js comparison (`tools/bench/threejs-compare.ts`) run again after the lean pipelines: before them the 20,000-sphere field was 0.31x of three.js's WebGPU InstancedMesh and 0.48x of WebGL2's, the §7 reference scene 2.04x and 1.54x | P4 lean | S | engine, phase 4 (a wave-end measurement) | open |
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | open |
 | 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` is in flight on `ci-green` |
-| 54 | `vulkan-cpu` for the frames recorded on `metal` after the wave-end lavapipe pass (4d6188b): og-tests `stylise-surface`, `sprites-shadow-terrain` (no lavapipe run) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's) | P4 stylisation 3, UI fields | S | engine, phase 4 (a wave-end capture) | open |
-| 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open in the `stylise-4` branch's README) |
+| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. On every tier: og-tests `materials-array` (55c0c53; no reference recorded on any tier) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | open |
+| 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | open |
 | 58 | og-ui's cooked-font text frames in the browser tiers (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their fonts, which og-tests-web cannot) | P4 UI text | M | engine, phase 4 | open |
