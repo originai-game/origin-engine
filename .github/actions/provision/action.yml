@@ -1,0 +1,71 @@
+# Provisions an ubuntu-latest runner for scripts/check.sh (docs/ci.md
+# §What runs where): disk, the Rust toolchain and target/ cache, the system
+# packages, node, and scripts/install-tools.sh's pinned tools. The gate's
+# logic stays in scripts/; this only installs what the scripts expect.
+name: provision
+description: The machine scripts/check.sh expects, on ubuntu-latest.
+inputs:
+  cache-key:
+    description: The target/ cache's key (one per lane, so a lane restores what it built).
+    required: true
+runs:
+  using: composite
+  steps:
+    # The runner has about 14 GB free; the dev target, the wasm profiles and
+    # the determinism builds need more. The preinstalled SDKs the gate never
+    # uses take about 30 GB.
+    - name: Free disk space
+      shell: bash
+      run: |
+        df -h / | tail -1
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+          /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift \
+          /usr/local/share/chromium /usr/lib/jvm || true
+        df -h / | tail -1
+
+    # Reads rust-toolchain.toml (channel, rustfmt, clippy, rust-src, the
+    # wasm32 and linux-gnu targets). Caching is the next step's.
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        cache: false
+        rustflags: ""
+
+    # ~/.cargo and target/ (dependencies only: rust-cache drops the
+    # workspace's own units), one cache per lane. Saved on failure too, so a
+    # long cold build is not repeated.
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ inputs.cache-key }}
+        cache-on-failure: true
+
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+
+    # Lavapipe (mesa-vulkan-drivers) gives wgpu a Vulkan adapter, the
+    # `vulkan-cpu` tier the GPU reference tests compare against; ALSA's
+    # headers for cpal (alsa-sys); brotli for the size gate.
+    - name: System packages
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends \
+          mesa-vulkan-drivers libvulkan1 vulkan-tools libasound2-dev libudev-dev pkg-config brotli
+        vulkaninfo --summary 2>/dev/null | grep -E 'deviceName|driverName|apiVersion' || echo "vulkaninfo: no Vulkan device"
+
+    # The determinism step runs the wasm32 builds under node.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+
+    - name: Cache tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.local/bin
+          ~/.local/lib
+        key: og-tools-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'scripts/install-tools.sh') }}
+
+    - name: Tools (wasm-bindgen-cli, wasm-opt, brotli, bun, shellcheck)
+      shell: bash
+      run: scripts/install-tools.sh

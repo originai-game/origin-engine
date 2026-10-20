@@ -1,5 +1,6 @@
-# The gate is scripts/check.sh; this workflow only provisions the machine and
-# runs it (docs/ci.md). Keep logic in the scripts so local and CI runs match.
+# The gate is scripts/check.sh; this workflow only provisions the machine
+# (.github/actions/provision) and runs it (docs/ci.md §What runs where).
+# Keep logic in the scripts so local and CI runs match.
 name: ci
 
 on:
@@ -7,7 +8,7 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    - cron: "17 3 * * *" # nightly perf baseline, 03:17 UTC
+    - cron: "17 3 * * *" # nightly perf, 03:17 UTC
   workflow_dispatch:
 
 concurrency:
@@ -28,110 +29,115 @@ env:
   # target/ instead, and an empty RUSTC_WRAPPER turns the wrapper off.
   RUSTC_WRAPPER: ""
   OG_EVIDENCE_DIR: ${{ github.workspace }}/target/evidence
+  # One gate per runner: no machine-wide queue to wait in (scripts/lock.sh).
+  OG_GATE_MACHINE_LOCK: "0"
 
 jobs:
-  # The quick lane (docs/ci.md §Lanes): the PR signal in a few minutes.
+  # The quick lane (docs/ci.md §Lanes): the loop's signal on every PR.
   quick:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: ./.github/actions/provision
         with:
-          cache: true
-          cache-on-failure: true
-          rustflags: ""
-      - uses: taiki-e/install-action@nextest
-      - name: System packages
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers
-      - name: Cache tools
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: og-tools-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'scripts/install-tools.sh') }}
-      - name: Tools (wasm-bindgen-cli, wasm-opt, brotli, bun)
-        run: scripts/install-tools.sh
+          cache-key: quick
+      - name: Lint the gate scripts
+        run: shellcheck -x scripts/*.sh
       - name: Quick lane
         run: scripts/check.sh quick
+      - name: Upload evidence
+        if: failure()
+        continue-on-error: true # the account's artifact quota must not fail a lane
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-quick-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: target/evidence/**
 
+  # The functional lane: what a merge to main passes locally (AGENTS.md
+  # §When to run the gate), the PR signal beside quick.
+  functional:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/provision
+        with:
+          cache-key: functional
+      - name: Functional lane
+        run: scripts/check.sh functional
+      - name: Upload evidence
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-functional-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            target/evidence/**
+            **/*.diff.png
+
+  # The full lane with CI set: every step and test, the shipping wasm profile.
   gate:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
-
-      # Reads rust-toolchain.toml (channel, rustfmt, clippy, wasm32 target)
-      # and caches ~/.cargo and target/ through Swatinem/rust-cache.
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: ./.github/actions/provision
         with:
-          cache: true
-          cache-on-failure: true
-          rustflags: ""
-      - uses: taiki-e/install-action@nextest
-
-      # Lavapipe gives wgpu a Vulkan adapter for headless gfx tests.
-      - name: System packages
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers brotli
-
-      - name: Cache tools
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: og-tools-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'scripts/install-tools.sh') }}
-
-      - name: Tools (wasm-bindgen-cli, wasm-opt, brotli, bun)
-        run: scripts/install-tools.sh
-
+          cache-key: gate
       - name: Lint the gate scripts
         run: shellcheck -x scripts/*.sh
-
       - name: Gate
         run: scripts/check.sh
-
       - name: Upload evidence
         if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: evidence-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: ignore
+          retention-days: 7
           path: |
             target/evidence/**
             target/og-wasm/*.txt
             **/*.diff.png
-
       - name: Upload size report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: size-gate-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: ignore
+          retention-days: 7
           path: |
             target/evidence/size-gate.json
             target/evidence/check-summary.txt
 
-  # Skeleton: the perf suite against committed baselines (docs/phase-1.md §1,
-  # tests/ perf). og-tests registers its perf tests as #[ignore] with "perf" in
-  # the name; until it has any, this job runs zero tests and passes.
+  # The perf suite (docs/ci.md §What runs where, `make perf`).
   perf-nightly:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: ./.github/actions/provision
         with:
-          cache: true
-          rustflags: ""
-      - name: System packages
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers
+          cache-key: perf
       - name: Perf suite
-        run: cargo test -p og-tests -p og-runtime --release -- --ignored perf
+        run: scripts/perf.sh --measure
       - name: Upload perf evidence
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: perf-${{ github.run_id }}
           if-no-files-found: ignore
-          path: target/evidence/**
+          retention-days: 14
+          path: target/evidence/perf/**
