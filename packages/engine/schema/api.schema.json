@@ -10376,14 +10376,14 @@
       "properties": {
         "environmentIntensity": {
           "type": "number",
-          "description": "The strength of the image-based ambient light from the procedural sky.",
+          "description": "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set.",
           "default": 0.55,
           "minimum": 0,
           "x-og-tunable": true
         },
         "sky": {
           "type": "boolean",
-          "description": "Draw the procedural sky behind the scene instead of Camera.background.",
+          "description": "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map).",
           "default": false
         },
         "bloom": {

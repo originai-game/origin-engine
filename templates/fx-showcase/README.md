@@ -16,8 +16,9 @@ the animation and physics round four more (`src/anim-physics.ts`):
 retargeting, a 2D ragdoll, cloth that folds on itself and fluids that
 layer and blend. The
 render round adds four more the same way (`src/render.ts`): lights, moon,
-materials and skinned, and the 3D fluid round one (`src/sph.ts`):
-fluids3d.
+materials and skinned, the 3D fluid round one (`src/sph.ts`):
+fluids3d, and phase 4's image-based lighting round one (`src/ibl.ts`):
+environment.
 
 ```sh
 og run templates/fx-showcase                        # the window
@@ -25,6 +26,7 @@ og test templates/fx-showcase                       # the playtest below
 OG_FX_CAPTURE=1 og test templates/fx-showcase       # re-record this tier's references
 python3 templates/fx-showcase/tools/make-assets.py templates/fx-showcase/assets   # regenerate textures and the LUT
 python3 templates/fx-showcase/tools/make-terrain.py templates/fx-showcase/assets  # regenerate the valley's maps and layer textures
+python3 crates/og-tests/scripts/make-studio-hdr.py templates/fx-showcase/assets/env/studio.hdr 256   # regenerate the studio HDR
 ```
 
 ## What it demonstrates, and the skills it exercises
@@ -65,6 +67,7 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `materials` | every `StandardMaterialDesc` feature from TypeScript: metalness and roughness rows, emissive, `textures/bumps.png` as a normal map (glTF's frame), clearcoat glossy and rough, `textures/grille.png` cut by `alphaTest`, transparent glass, a double-sided panel, unlit, a squashed sphere (normals under a non-uniform scale) |
 | `skinned` | the walker with `shaders/ripple.ogt` set on its loaded materials by `og.render.setMaterialShader`: gold bands rippling up its skinned body as it walks |
 | `fluids3d` | two `og.Fluid3D` of one `group` in a tiled basin (their `bounds`): a blue pool of 1600 particles, and a heavy orange fluid (`density` 3, `mixing` 0) poured into its left end by an emitter (`emitRate`, up to `maxCount` 500) that sinks under it; drawn as one screen-space surface, the tiles seen through it tinted and bent, lit by the sun and an orange lamp, the low front wall cutting it (about 2 ms of CPU a tick at two substeps) |
+| `environment` | `og.load.environment(world, "env/studio.ogt")` (the cook prefiltered `env/studio.hdr`, a synthetic 256 × 128 studio, into a 128² GGX cube and irradiance harmonics) set as `og.Environment.map`, turned 40°, drawn behind with `background`: five spheres on a plinth (mirror chrome, brushed chrome, gold, red lacquer, chalk) lit by it alone but for a weak sun along the key light; `RenderSettings.toneMapping` `agx`, auto exposure adapting at 1 EV/s up and 2.5 down |
 
 `tests/frames.og.ts` shows each station, waits for its effects (TAA,
 particles) to settle, takes its frame at 1280×720 and compares it with

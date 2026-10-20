@@ -2931,14 +2931,16 @@ export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions)
  */
 export interface RenderSettings {
   /**
-   * The strength of the image-based ambient light from the procedural sky.
+   * The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set.
    *
    * @default 0.55
    * @range 0..
    * @tunable
    */
   environmentIntensity: number;
-  /** Draw the procedural sky behind the scene instead of Camera.background. */
+  /**
+   * Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map).
+   */
   sky: boolean;
   /** Light above the threshold bleeds into its surroundings. */
   bloom: boolean;

@@ -3909,7 +3909,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The strength of the image-based ambient light from the procedural sky.",
+                doc: "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set.",
                 variants: &[],
             },
             FieldDecl {
@@ -3923,7 +3923,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Draw the procedural sky behind the scene instead of Camera.background.",
+                doc: "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map).",
                 variants: &[],
             },
             FieldDecl {

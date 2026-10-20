@@ -713,8 +713,8 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `environmentIntensity` | `number` | `0.55` | ≥ 0 | — | tunable | The strength of the image-based ambient light from the procedural sky. |
-| `sky` | `boolean` | `false` | — | — | — | Draw the procedural sky behind the scene instead of Camera.background. |
+| `environmentIntensity` | `number` | `0.55` | ≥ 0 | — | tunable | The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set. |
+| `sky` | `boolean` | `false` | — | — | — | Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). |
 | `bloom` | `boolean` | `false` | — | — | — | Light above the threshold bleeds into its surroundings. |
 | `bloomThreshold` | `number` | `1` | ≥ 0 | — | tunable | Brightness after exposure where bloom starts; 1 is display white. |
 | `bloomKnee` | `number` | `0.5` | ≥ 0 | — | — | Softens the threshold over threshold plus or minus knee; 0 is a hard cut. |
@@ -729,12 +729,12 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 ```ogt
 resource RenderSettings {
   doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
-  field environmentIntensity f32 "The strength of the image-based ambient light from the procedural sky." {
+  field environmentIntensity f32 "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set." {
     default 0.55
     min 0
     tunable true
   }
-  field sky bool "Draw the procedural sky behind the scene instead of Camera.background."
+  field sky bool "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map)."
   field bloom bool "Light above the threshold bleeds into its surroundings."
   field bloomThreshold f32 "Brightness after exposure where bloom starts; 1 is display white." {
     default 1

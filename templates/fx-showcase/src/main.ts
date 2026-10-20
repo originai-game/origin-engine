@@ -19,9 +19,10 @@
 // the animation and physics round four (src/anim-physics.ts): retarget,
 // ragdoll2d, cloth, fluids, and the render round four (src/render.ts):
 // lights, moon, materials, skinned, and the 3D fluid station (src/sph.ts):
-// fluids3d.
+// fluids3d; phase 4 the image-based lighting station (src/ibl.ts):
+// environment.
 //
-// Commands: station:<name> (or station:<1-23>). `dump_entity:stage` reads
+// Commands: station:<name> (or station:<1-24>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
 // `dump_entity:e5` the E5 component.
 
@@ -32,9 +33,10 @@ import { P2, P2_STATIONS, P2Show, resetP2, showP2, type P2Station } from "./p2.t
 import { AP_STATIONS, APShow, buildAP, resetAP, showAP, type APStation } from "./anim-physics.ts";
 import { RD_STATIONS, buildRD, resetRD, showRD, type RDStation } from "./render.ts";
 import { SPH_STATIONS, SPHShow, buildSPH, showSPH, type SPHStation } from "./sph.ts";
+import { IBL_STATIONS, buildIBL, resetIBL, showIBL, type IBLStation } from "./ibl.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS] as const;
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...IBL_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -193,7 +195,8 @@ function hud(world: World, font: Font, station: Station): void {
   // 3D fluid station carry no count.
   const ap = p2 - P2_STATIONS.length;
   const rd = ap - AP_STATIONS.length;
-  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : `phase 2 station  ${station}`;
+  const phase4 = (IBL_STATIONS as readonly string[]).includes(station);
+  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : phase4 ? `phase 4 station  ${station}` : `phase 2 station  ${station}`;
   og.render.text(world, { font, text: label, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
   og.ui.anchor("Badge", { anchor: "bottomRight" }, () => og.ui.panel("BadgePanel", { padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("BadgeText", "og.ui over the frame", {})));
 }
@@ -220,6 +223,7 @@ function show(world: World, station: Station): void {
   resetP2(world);
   resetAP(world);
   resetRD(world);
+  resetIBL(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -299,6 +303,7 @@ function show(world: World, station: Station): void {
       else if ((AP_STATIONS as readonly string[]).includes(station)) showAP(world, station as APStation);
       else if ((RD_STATIONS as readonly string[]).includes(station)) showRD(world, station as RDStation);
       else if ((SPH_STATIONS as readonly string[]).includes(station)) showSPH(world, station as SPHStation);
+      else if ((IBL_STATIONS as readonly string[]).includes(station)) showIBL(world, station as IBLStation);
       else showE5(world, station as E5Station);
   }
 }
@@ -431,6 +436,8 @@ function build(world: World): void {
   buildRD({ box, sphere, mat, ground: (x, c) => ground(world, x, c), tex, walker: walkerModel, rig });
   // The 3D fluid station.
   buildSPH(world, { box, mat, ground: (x, c) => ground(world, x, c) });
+  // The image-based lighting station (phase 4).
+  buildIBL({ box, sphere, mat });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -458,7 +465,7 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
   },
-  commandHelp: { station: { usage: "<name|1-23>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned) and the 3D fluid station (fluids3d)." } },
+  commandHelp: { station: { usage: "<name|1-24>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d) and the image-based lighting station (environment)." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);
