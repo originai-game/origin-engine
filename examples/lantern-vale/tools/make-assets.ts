@@ -270,9 +270,7 @@ const INK: Record<string, string> = { calm: "#2a2440", alert: "#c0392b", lost: "
 
 function faces(): void {
   const S = 32;
-  // The sheet: the four bubbles side by side (sprites/faces-sheet.ogt, `array true`).
-  const strip = new Float32Array(S * FACES.length * S * 4);
-  for (const [k, name] of FACES.entries()) {
+  for (const name of FACES) {
     const px = new Float32Array(S * S * 4);
     const put = (x: number, y: number, c: [number, number, number], a = 255) => {
       if (x < 0 || y < 0 || x >= S || y >= S) return;
@@ -311,9 +309,7 @@ function faces(): void {
       }
     }
     write(`sprites/faces/${name}.png`, png(S, S, px, 4));
-    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) for (let c = 0; c < 4; c++) strip[(y * S * FACES.length + k * S + x) * 4 + c] = px[(y * S + x) * 4 + c]!;
   }
-  write("sprites/faces-sheet.png", png(S * FACES.length, S, strip, 4));
 }
 
 // ---------------------------------------------------------------- terrain
