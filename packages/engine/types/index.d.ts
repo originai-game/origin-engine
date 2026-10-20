@@ -5520,7 +5520,7 @@ export interface GltfInfo {
   /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
   /**
-   * Its animation clip names (the cook counts clips and does not cook them yet, so this is empty).
+   * Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name.
    */
   readonly animations: readonly string[];
 }
@@ -9346,6 +9346,7 @@ export interface FlipbookInfo {
   /** The first frame's height in pixels. */
   readonly frameHeight: number;
 }
+
 
 
 // ── tween ───────────────────────────────────────────────────────
@@ -17301,6 +17302,7 @@ export declare namespace og {
     function defaultBundle(world: World): Result<Asset>;
     /**
      * Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+     * A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of every frame).
      *
      * @param world The world that owns the asset.
      * @param path The asset id, such as `models/ship.glb`.
@@ -17792,6 +17794,13 @@ export declare namespace og {
      * @param name The clip's name.
      */
     function clip(info: FlipbookInfo, name: string): number;
+    /**
+     * A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, "models/slime.glb").value, "chase")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name). A skinned glTF's clips are its animations' names; an animated `.vox`'s are `frames` or its `voxClip` names. 0 (plays nothing) when the model has no such clip.
+     *
+     * @param info What og.load.animation answered.
+     * @param name The clip's name.
+     */
+    function clip(info: Animation, name: string): ClipAsset;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;

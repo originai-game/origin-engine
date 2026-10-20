@@ -498,38 +498,8 @@ function voxBytes(v: Vox): Uint8Array {
     if (c) rgba.push(...hex(c), 255);
     else rgba.push(0, 0, 0, 0);
   }
-  // A scene graph (root transform 0, group 1, transform 2 at the origin, shape 3 of model 0): without
-  // one, og cook places a lone model with its corner, not its centre, at the origin (FINDINGS.md).
-  const str = (a: number[], t: string) => {
-    u32(a, t.length);
-    for (const ch of t) a.push(ch.charCodeAt(0));
-  };
-  const trn = (node: number, child: number, frame: [string, string][]) => {
-    const b: number[] = [];
-    u32(b, node);
-    u32(b, 0);
-    u32(b, child);
-    u32(b, 0xffffffff);
-    u32(b, 0);
-    u32(b, 1);
-    u32(b, frame.length);
-    for (const [k, v] of frame) {
-      str(b, k);
-      str(b, v);
-    }
-    return b;
-  };
-  const grp: number[] = [];
-  u32(grp, 1);
-  u32(grp, 0);
-  u32(grp, 1);
-  u32(grp, 2);
-  const shp: number[] = [];
-  for (const n of [3, 0, 1, 0, 0]) u32(shp, n);
-  const children = [
-    ...chunkOf("SIZE", size), ...chunkOf("XYZI", xyzi), ...chunkOf("RGBA", rgba),
-    ...chunkOf("nTRN", trn(0, 1, [])), ...chunkOf("nGRP", grp), ...chunkOf("nTRN", trn(2, 3, [["_t", "0 0 0"]])), ...chunkOf("nSHP", shp),
-  ];
+  // No scene graph: og cook centres a lone model on MagicaVoxel's pivot, as a graph at the origin would.
+  const children = [...chunkOf("SIZE", size), ...chunkOf("XYZI", xyzi), ...chunkOf("RGBA", rgba)];
   for (const ch of "VOX ") out.push(ch.charCodeAt(0));
   u32(out, 150);
   for (const ch of "MAIN") out.push(ch.charCodeAt(0));
