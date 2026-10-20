@@ -9847,7 +9847,7 @@
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.\nThe MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.\nA transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
       "type": "object",
       "properties": {
         "color": {
@@ -10140,6 +10140,231 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-unit": "ratio"
+        },
+        "clearcoatMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The coat's strength from the texture's red channel, times clearcoat (MeshPhysicalMaterial.clearcoatMap).",
+          "default": null
+        },
+        "clearcoatRoughnessMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The coat's roughness from the texture's green channel, times clearcoatRoughness.",
+          "default": null
+        },
+        "clearcoatNormalMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A tangent-space normal map of the coat alone; the base keeps normalMap (MeshPhysicalMaterial.clearcoatNormalMap).",
+          "default": null
+        },
+        "clearcoatNormalScale": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How strongly clearcoatNormalMap bends the coat's normal, per tangent axis.",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "sheen": {
+          "type": "number",
+          "description": "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "sheenColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The sheen's colour (linear), times sheenColorMap; black is none.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "sheenRoughness": {
+          "type": "number",
+          "description": "How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "sheenColorMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The sheen's colour from the texture's RGB (sRGB).",
+          "default": null
+        },
+        "sheenRoughnessMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The sheen's roughness from the texture's alpha channel.",
+          "default": null
+        },
+        "transmission": {
+          "type": "number",
+          "description": "How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "transmissionMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Transmission from the texture's red channel.",
+          "default": null
+        },
+        "thickness": {
+          "type": "number",
+          "description": "The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall.",
+          "default": 0,
+          "minimum": 0
+        },
+        "thicknessMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Thickness from the texture's green channel.",
+          "default": null
+        },
+        "attenuationDistance": {
+          "type": "number",
+          "description": "The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity.",
+          "default": 0,
+          "minimum": 0
+        },
+        "attenuationColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The colour white light becomes after attenuationDistance in the volume (linear).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "ior": {
+          "type": "number",
+          "description": "The index of refraction (glTF KHR_materials_ior): the reflectance of a dielectric, ((ior - 1) / (ior + 1))^2 (4 % at 1.5), and how far transmission refracts.",
+          "default": 1.5,
+          "minimum": 1,
+          "maximum": 2.333
+        },
+        "iridescence": {
+          "type": "number",
+          "description": "A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "iridescenceIOR": {
+          "type": "number",
+          "description": "The film's index of refraction.",
+          "default": 1.3,
+          "minimum": 1,
+          "maximum": 2.333
+        },
+        "iridescenceThicknessRange": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The film's thickness in nanometres: x where iridescenceThicknessMap is black, y where it is white and everywhere without the map (three.js's [100, 400]).",
+          "default": {
+            "x": 100,
+            "y": 400
+          }
+        },
+        "iridescenceMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Iridescence from the texture's red channel.",
+          "default": null
+        },
+        "iridescenceThicknessMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The film's thickness between iridescenceThicknessRange's ends from the texture's green channel.",
+          "default": null
+        },
+        "anisotropy": {
+          "type": "number",
+          "description": "Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "anisotropyRotation": {
+          "type": "number",
+          "description": "The stretch's direction in radians from the tangent (+u) towards the bitangent.",
+          "default": 0
+        },
+        "anisotropyMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy.",
+          "default": null
         }
       },
       "additionalProperties": false
