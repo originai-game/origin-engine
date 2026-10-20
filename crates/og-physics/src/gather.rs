@@ -356,7 +356,7 @@ pub(crate) struct Scene {
 }
 
 /// Every row of component `T` in `a`, decoded from its columns, by ranges
-/// of rows on the lanes from two grains of them (`Grains::bodies`), the
+/// of rows on the lanes from two grains of them (`Grains::rows`), the
 /// ranges' rows joined in row order.
 fn read_rows<T: Reflect + Send>(
     a: &ArchetypeView<'_>,
@@ -381,7 +381,7 @@ fn read_rows<T: Reflect + Send>(
         }
         Ok(out)
     };
-    let mut parts = crate::lanes::map_ranges(a.len(), crate::lanes::now().bodies, decode);
+    let mut parts = crate::lanes::map_ranges(a.len(), crate::lanes::now().rows, decode);
     if parts.len() == 1 {
         return parts.pop().unwrap_or_else(|| Ok(Vec::new()));
     }

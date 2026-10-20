@@ -200,49 +200,71 @@ impl Pairs {
     }
 
     /// Each particle's pairs with the particles before it, as indices
-    /// into `pairs` in ascending order (`first[k]..first[k + 1]` into
-    /// `index`): the transpose of the pairs, built by ranges of particles
-    /// on the lanes from two grains. Each range counts what it sends to
-    /// every particle, the counts give each range its slots, and each
-    /// range fills its own.
-    fn incoming(&self, grain: usize) -> (Vec<u32>, Vec<u32>) {
+    /// into `pairs` in ascending order (`first[k]..first[k + 1]` into the
+    /// second vector), with each pair's `q = 1 - r / h` (`q[p]`): built by
+    /// the ranges of particles `parts` cuts, side by side on the lanes. Each
+    /// range computes its pairs' q and counts what it sends to every
+    /// particle, the counts give each range its run of every particle's
+    /// slots, and each range fills its own.
+    fn incoming(
+        &self,
+        positions: &[Vec3],
+        h: f32,
+        parts: &[std::ops::Range<usize>],
+    ) -> (Vec<f32>, Vec<u32>, Vec<u32>) {
         let n = self.start.len() - 1;
-        let ranges = crate::lanes::ranges(n, grain);
-        let counts: Vec<Vec<u32>> = crate::lanes::map_ranges(n, grain, |r| {
-            let mut c = vec![0u32; n];
-            for &j in &self.pairs[self.start[r.start] as usize..self.start[r.end] as usize] {
-                c[j as usize] += 1;
+        let site = og_lanes::Site::Physics;
+        let mut q = vec![0.0f32; self.pairs.len()];
+        // Each range's slice of q, cut at its pairs' bounds.
+        let mut jobs: Vec<(std::ops::Range<usize>, &mut [f32], Vec<u32>)> = Vec::new();
+        let mut rest: &mut [f32] = &mut q;
+        for r in parts {
+            let len = (self.start[r.end] - self.start[r.start]) as usize;
+            let (mine, tail) = std::mem::take(&mut rest).split_at_mut(len);
+            rest = tail;
+            jobs.push((r.clone(), mine, Vec::new()));
+        }
+        og_lanes::for_each_mut(site, &mut jobs, 1, |(r, q, counts)| {
+            *counts = vec![0u32; n];
+            let mut at = 0;
+            for i in r.clone() {
+                for &j in self.of(i) {
+                    let d = (positions[j as usize] - positions[i]).length();
+                    q[at] = 1.0 - d / h;
+                    at += 1;
+                    counts[j as usize] += 1;
+                }
             }
-            c
         });
-        // first[k]: where particle k's incoming pairs start; at[r][k]: where
-        // range r's pairs into k go.
+        // first[k]: where particle k's incoming pairs start; a range's
+        // counts become where its pairs into each particle go.
+        let mut counts: Vec<Vec<u32>> = jobs.into_iter().map(|(.., c)| c).collect();
         let mut first = vec![0u32; n + 1];
-        let mut at: Vec<Vec<u32>> = vec![vec![0u32; n]; counts.len()];
         let mut total = 0u32;
         for k in 0..n {
             first[k] = total;
-            for (r, c) in counts.iter().enumerate() {
-                at[r][k] = total;
-                total += c[k];
+            for c in counts.iter_mut() {
+                let here = c[k];
+                c[k] = total;
+                total += here;
             }
         }
         first[n] = total;
         let mut index = vec![0u32; total as usize];
         {
-            // Each range writes only its own slots: hand them out as the
-            // disjoint pieces of `index` they are, through a raw pointer.
+            // Each range writes only its own slots, interleaved with the
+            // others' in `index`: through a raw pointer.
             struct Slots(*mut u32);
-            // SAFETY: the ranges' slots are disjoint (`at` gives each range
-            // its own run of every particle's slots), so no two tasks write
-            // one element, and `index` outlives the call.
+            // SAFETY: `counts` gives each range its own run of every
+            // particle's slots, so no two tasks write one element, and
+            // `index` outlives the call.
             unsafe impl Sync for Slots {}
             unsafe impl Send for Slots {}
             let slots = Slots(index.as_mut_ptr());
             let slots = &slots;
-            let jobs: Vec<(std::ops::Range<usize>, Vec<u32>)> =
-                ranges.into_iter().zip(at).collect();
-            og_lanes::for_each_mut(og_lanes::Site::Physics, &mut { jobs }, 1, |(r, at)| {
+            let mut jobs: Vec<(std::ops::Range<usize>, Vec<u32>)> =
+                parts.iter().cloned().zip(counts).collect();
+            og_lanes::for_each_mut(site, &mut jobs, 1, |(r, at)| {
                 for i in r.clone() {
                     for p in self.start[i] as usize..self.start[i + 1] as usize {
                         let k = self.pairs[p] as usize;
@@ -253,16 +275,17 @@ impl Pairs {
                 }
             });
         }
-        (first, index)
+        (q, first, index)
     }
 }
 
 /// The number density and near density of every particle over its pairs
 /// (`q = 1 - r / h` for each pair closer than `h`; `q²` and `q³` summed),
 /// in the order the pairs' scatter visits them: for particle `k`, its pairs
-/// with the particles before it in their order, then its own. Each
-/// particle gathers its own sums, by ranges of particles on the lanes from
-/// two grains, so the sums are the scatter's bit for bit.
+/// with the particles before it in their order, then its own. With lanes
+/// on and two grains of particles, each particle gathers its own sums,
+/// a range of particles a pool thread, so the sums are the scatter's bit
+/// for bit; otherwise the scatter itself.
 fn densities(
     positions: &[Vec3],
     pairs: &Pairs,
@@ -272,7 +295,8 @@ fn densities(
     near: &mut [f32],
 ) {
     let n = positions.len();
-    if crate::lanes::ranges(n, grain).len() < 2 {
+    let threads = og_lanes::threads() as usize;
+    if threads <= 1 || n < grain.max(1).saturating_mul(2) {
         rho.iter_mut().for_each(|r| *r = 0.0);
         near.iter_mut().for_each(|r| *r = 0.0);
         for i in 0..n {
@@ -290,24 +314,18 @@ fn densities(
         }
         return;
     }
-    // Each pair's q, once, by ranges of particles.
-    let q: Vec<f32> = crate::lanes::map_ranges(n, grain, |r| {
-        let mut q = Vec::with_capacity((pairs.start[r.end] - pairs.start[r.start]) as usize);
-        for i in r {
-            for &j in pairs.of(i) {
-                let r = (positions[j as usize] - positions[i]).length();
-                q.push(1.0 - r / h);
-            }
-        }
-        q
-    })
-    .into_iter()
-    .flatten()
-    .collect();
-    let (first, index) = pairs.incoming(grain);
-    crate::lanes::for_each_chunk(rho, near, grain, |at, rho, near| {
+    let size = n.div_ceil(threads.min(n / grain.max(1)).max(2));
+    let parts = crate::lanes::ranges(n, size);
+    let (q, first, index) = pairs.incoming(positions, h, &parts);
+    let mut jobs: Vec<(usize, &mut [f32], &mut [f32])> = rho
+        .chunks_mut(size)
+        .zip(near.chunks_mut(size))
+        .enumerate()
+        .map(|(k, (r, m))| (k * size, r, m))
+        .collect();
+    og_lanes::for_each_mut(og_lanes::Site::Physics, &mut jobs, 1, |(at, rho, near)| {
         for (k, (rho, near)) in rho.iter_mut().zip(near.iter_mut()).enumerate() {
-            let k = at + k;
+            let k = *at + k;
             let (mut r, mut m) = (0.0f32, 0.0f32);
             let incoming = index[first[k] as usize..first[k + 1] as usize].iter();
             let own = pairs.start[k]..pairs.start[k + 1];
@@ -555,11 +573,9 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
         let cap = 0.5 * h / ds;
         let grain = crate::lanes::now().particles_3d;
         for _ in 0..substeps {
-            crate::lanes::for_each_chunk_of(&mut velocities, grain, |at, vs| {
-                for (k, v) in vs.iter_mut().enumerate() {
-                    *v += gravity * (fluid_of(at + k).gravity_scale * ds);
-                }
-            });
+            for (i, v) in velocities.iter_mut().enumerate() {
+                *v += gravity * (fluid_of(i).gravity_scale * ds);
+            }
             let pairs = Pairs::find(&positions, h);
             // Viscosity: radial impulses between approaching pairs, shared
             // by mass.
@@ -585,15 +601,13 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
                 }
             }
             previous.copy_from_slice(&positions);
-            crate::lanes::for_each_chunk(&mut positions, &mut velocities, grain, |_, ps, vs| {
-                for (p, v) in ps.iter_mut().zip(vs.iter_mut()) {
-                    let len = v.length();
-                    if len > cap {
-                        *v *= cap / len;
-                    }
-                    *p += *v * ds;
+            for (p, v) in positions.iter_mut().zip(velocities.iter_mut()) {
+                let len = v.length();
+                if len > cap {
+                    *v *= cap / len;
                 }
-            });
+                *p += *v * ds;
+            }
             // Number density over every neighbour, each particle's sums by
             // ranges on the lanes.
             densities(&positions, &pairs, h, grain, &mut rho, &mut near);
@@ -669,15 +683,10 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
             }
             // The velocity from the displacement, capped at half the
             // radius per substep (stable, and nothing tunnels a wall).
-            {
-                let (positions, previous) = (&positions, &previous);
-                crate::lanes::for_each_chunk_of(&mut velocities, grain, |at, vs| {
-                    for (k, v) in vs.iter_mut().enumerate() {
-                        let u = (positions[at + k] - previous[at + k]) / ds;
-                        let len = u.length();
-                        *v = if len > cap { u * (cap / len) } else { u };
-                    }
-                });
+            for ((v, p), q) in velocities.iter_mut().zip(&positions).zip(&previous) {
+                let u = (*p - *q) / ds;
+                let len = u.length();
+                *v = if len > cap { u * (cap / len) } else { u };
             }
             // Solids, the terrain and each member's container: pushed out,
             // the velocity into them dropped (pushing out adds none, so

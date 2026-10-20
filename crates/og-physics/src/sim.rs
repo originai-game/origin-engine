@@ -391,7 +391,7 @@ fn step_here(
         laps.split(Phase::Rapier);
     }
 
-    let (touching, moved) = after_step(settings, scene, sim, &handles, pre);
+    let (touching, moved) = after_step(settings, scene, sim, &handles, pre, split);
     out.touching = touching;
     out.moved = moved;
     laps.lap(Phase::Readout);
@@ -524,6 +524,32 @@ fn plan(b: &Body, tracked: &BTreeMap<u64, Tracked>, stale: &BTreeSet<u64>) -> Pl
     }
 }
 
+/// Entity keys in ascending order (a scene's usually are already: then no
+/// sort).
+fn sorted_keys(keys: impl Iterator<Item = u64>) -> Vec<u64> {
+    let mut keys: Vec<u64> = keys.collect();
+    if !keys.is_sorted() {
+        keys.sort_unstable();
+    }
+    keys
+}
+
+/// Keeps the entries of `map` whose key is in `live` (ascending), in one
+/// walk of both; `gone` sees each other entry, in key order, as it leaves.
+fn retain_live<T>(map: &mut BTreeMap<u64, T>, live: &[u64], mut gone: impl FnMut(&T)) {
+    let mut at = 0;
+    map.retain(|key, value| {
+        while at < live.len() && live[at] < *key {
+            at += 1;
+        }
+        let keep = live.get(at) == Some(key);
+        if !keep {
+            gone(value);
+        }
+        keep
+    });
+}
+
 /// Brings the persistent rapier world in line with `scene` (bodies and
 /// static colliders); returns each body's handle.
 fn sync<'s>(
@@ -546,21 +572,13 @@ fn sync<'s>(
         settings.solver_iterations.clamp(1, 32) as usize;
 
     // What is gone leaves first, in entity order.
-    let live: BTreeSet<u64> = scene.bodies.iter().map(|b| b.entity.to_bits()).collect();
-    tracked.retain(|e, t| {
-        let keep = live.contains(e);
-        if !keep {
-            w.remove_body(t.handle);
-        }
-        keep
+    let live = sorted_keys(scene.bodies.iter().map(|b| b.entity.to_bits()));
+    retain_live(tracked, &live, |t| {
+        w.remove_body(t.handle);
     });
-    let live: BTreeSet<u64> = scene.statics.iter().map(|s| s.entity.to_bits()).collect();
-    tracked_statics.retain(|e, t| {
-        let keep = live.contains(e);
-        if !keep {
-            w.remove_collider(t.handle);
-        }
-        keep
+    let live = sorted_keys(scene.statics.iter().map(|s| s.entity.to_bits()));
+    retain_live(tracked_statics, &live, |t| {
+        w.remove_collider(t.handle);
     });
 
     let stale = std::mem::take(&mut shared.stale_meshes);
@@ -680,6 +698,7 @@ fn after_step(
     sim: &mut Sim,
     handles: &Handles<'_>,
     before: Vec<rp::Pose>,
+    split: bool,
 ) -> (
     Vec<(Contact, Vec3, Vec3)>,
     Vec<Option<(Vec3, Quat, Option<Velocity>)>>,
@@ -690,6 +709,9 @@ fn after_step(
         ..
     } = sim;
     let grains = crate::lanes::now();
+    // The pairs split only when the step is on the pool: below it, waking
+    // the pool for them costs more than it saves (tests/evidence/P4/physics-3/).
+    let pairs = if split { grains.pairs } else { usize::MAX };
     // The solid pairs: each one's contact (its entities in order, the
     // deepest point and normal), its deepest penetration and the bodies it
     // touches, by ranges of the contact graph's edges on the lanes, joined
@@ -721,7 +743,7 @@ fn after_step(
             [body(c1), body(c2)],
         )
     };
-    let parts = crate::lanes::map_ranges(edges.len(), grains.pairs, |r| {
+    let parts = crate::lanes::map_ranges(edges.len(), pairs, |r| {
         edges[r]
             .iter()
             .map(|e| &e.weight)
@@ -765,7 +787,7 @@ fn after_step(
             Vec3::ZERO,
         ));
     }
-    let touching = sorted(touching, grains.pairs);
+    let touching = sorted(touching, pairs);
 
     // Each body read back by ranges of bodies on the lanes (rapier's
     // bodies read only), the rest rule decided there; then, in body order,

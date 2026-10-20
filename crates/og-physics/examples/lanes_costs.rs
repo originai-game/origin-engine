@@ -15,7 +15,7 @@
 //! Arguments, when given, are the pen sizes (default 16 64 128 256 512
 //! 1000 2000); `--forced` puts every step on the pool
 //! (`og_physics::set_grains(Some(og_physics::Grains::always()))`), to find where the pool pays.
-//! `--bodies N` and `--pairs N` set those grains (the others measured),
+//! `--bodies N`, `--pairs N` and `--rows N` set those grains (the others measured),
 //! to find where splitting the sync and the readout by ranges pays.
 //! `--phases` prints, for each scene, the mean of each phase of the step
 //! over the timed ticks (`PhysicsSystem::stats`) and whether it split.
@@ -73,13 +73,14 @@ fn main() {
             .position(|a| a == name)
             .map(|i| args[i + 1].parse::<usize>().expect("a grain"))
     };
-    let (bodies, pairs) = (value("--bodies"), value("--pairs"));
-    if bodies.is_some() || pairs.is_some() {
+    let (bodies, pairs, rows) = (value("--bodies"), value("--pairs"), value("--rows"));
+    if bodies.is_some() || pairs.is_some() || rows.is_some() {
         let threads = og_lanes::threads();
         let measured = og_physics::Grains::measured(threads);
         og_physics::set_grains(Some(og_physics::Grains {
             bodies: bodies.unwrap_or(measured.bodies),
             pairs: pairs.unwrap_or(measured.pairs),
+            rows: rows.unwrap_or(measured.rows),
             ..if forced {
                 og_physics::Grains::always()
             } else {
@@ -92,7 +93,7 @@ fn main() {
         .enumerate()
         .filter(|(i, a)| {
             !a.starts_with("--")
-                && (*i == 0 || !matches!(args[i - 1].as_str(), "--bodies" | "--pairs"))
+                && (*i == 0 || !matches!(args[i - 1].as_str(), "--bodies" | "--pairs" | "--rows"))
         })
         .map(|(_, a)| a.parse().expect("a pen size"))
         .collect();
