@@ -45,6 +45,11 @@ pub(crate) struct LoadedTerrain {
     /// Level-0 tiles' heights decoded for sampling, by tile index.
     pub tiles: std::cell::RefCell<BTreeMap<u32, Arc<[f32]>>>,
     pub layers: Vec<TerrainLayer>,
+    /// The texture arrays its layers sample (`layers`, `layerNormals`), as
+    /// load indices in RenderState::texture_arrays: resolved to the
+    /// renderer's handles each frame (an array of a streaming group comes
+    /// back under a new one).
+    pub layer_arrays: [Option<usize>; 2],
     pub height_blend: f32,
     pub lod: TerrainLod,
     pub cast_shadows: bool,
@@ -466,6 +471,19 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
         }
         layers.push(layer);
     }
+    // The layer arrays, through og.load.textureArray's cache.
+    let mut layer_arrays = [None; 2];
+    for (slot, name) in layer_arrays
+        .iter_mut()
+        .zip([&cooked.albedo_array, &cooked.normal_array])
+    {
+        if let Some(n) = name {
+            *slot = Some(
+                super::assets::load_texture_array_index(eng, n)
+                    .map_err(|e| format!("{id}: layer array {e}"))?,
+            );
+        }
+    }
     let index = eng.render.borrow().terrain.loaded.len();
     // Physics needs the whole field (one height field); nothing else does.
     let field = if cooked.collision {
@@ -484,6 +502,7 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
         edited: false,
         tiles: Default::default(),
         layers,
+        layer_arrays,
         height_blend: cooked.height_blend,
         lod: cooked.lod,
         cast_shadows: cooked.cast_shadows,
@@ -507,6 +526,60 @@ fn local(size: Vec2, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
     let p = Vec2::new(l.x, l.z);
     let half = size * 0.5;
     (p, p.x.abs() <= half.x && p.y.abs() <= half.y)
+}
+
+/// Drop shadows over terrain (`SpriteDesc.dropShadowHeight`): a shadow
+/// whose sprite stands where a drawn og.Terrain is higher than its level
+/// ground lies on the terrain instead, on the plane fitted to the heights
+/// under it (`ShadowGround::fit`), sampled as og.terrain.sample samples
+/// them. Where terrains overlap the highest counts. Runs after the frame's
+/// sprites and terrains are extracted.
+pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
+    if rs.scene.sprite_shadows.is_empty() || rs.scene.terrains.is_empty() {
+        return;
+    }
+    let st = &rs.terrain;
+    let scene = &mut rs.scene;
+    let drawn: Vec<(usize, Mat4)> = scene
+        .terrains
+        .iter()
+        .filter_map(|t| {
+            let i = st.loaded.iter().position(|l| l.render == t.terrain)?;
+            Some((i, t.transform))
+        })
+        .collect();
+    if drawn.is_empty() {
+        return;
+    }
+    // The highest drawn terrain's height at world x, z; None off them all.
+    let height_at = |x: f32, z: f32| -> Option<f32> {
+        drawn
+            .iter()
+            .filter_map(|&(i, m)| {
+                let t = &st.loaded[i];
+                let (p, inside) = local(t.size(), m, x, z);
+                inside.then(|| {
+                    let h = t.with_sampler(|s| s(p).0);
+                    m.transform_point3(Vec3::new(p.x, h, p.y)).y
+                })
+            })
+            .reduce(f32::max)
+    };
+    let sun = scene.light.direction_to_light;
+    for k in 0..scene.sprite_shadows.len() {
+        let shadow = scene.sprite_shadows[k];
+        let Some(sprite) = scene.sprites.get(shadow.sprite as usize) else {
+            continue;
+        };
+        let Some(h) = height_at(sprite.position.x, sprite.position.z) else {
+            continue;
+        };
+        if h <= shadow.ground.height {
+            continue;
+        }
+        let ground = og_render::ShadowGround::fit(|x, z| height_at(x, z).unwrap_or(h), sprite, sun);
+        scene.sprite_shadows[k].ground = ground;
+    }
 }
 
 pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
@@ -829,6 +902,8 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
         *l = TerrainLayer {
             albedo: l.albedo,
             normal: l.normal,
+            albedo_layer: l.albedo_layer,
+            normal_layer: l.normal_layer,
             color: color(&v["color"], Vec3::ONE),
             roughness: f(&v, "roughness", 0.9).clamp(0.04, 1.0),
             tile: f(&v, "tile", 4.0).max(0.01),
@@ -867,10 +942,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let world = h.world_of(e);
         let spacing = f(&v, "lodSpacing", 0.0);
         let ring = u(&v, "lodRing", 0);
+        let array = |i: Option<usize>| i.and_then(|i| rs.texture_arrays.get(i)?.handle);
+        let layer_arrays = og_render::TerrainLayerArrays {
+            albedo: array(t.layer_arrays[0]),
+            normal: array(t.layer_arrays[1]),
+        };
         rs.scene.terrains.push(og_render::Terrain {
             terrain: t.render,
             transform: world,
             layers: t.layers.clone(),
+            layer_arrays,
             height_blend: t.height_blend,
             cast_shadows: on(&v, "castShadows", true) && t.cast_shadows,
             lod: TerrainLod {

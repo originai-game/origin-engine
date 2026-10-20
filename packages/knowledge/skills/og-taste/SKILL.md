@@ -21,9 +21,29 @@ Write the premise in one line, then answer four questions:
 | **Era or world**: when and where is it set? | 8- and 16-bit nostalgia → pixel; myth, castles, quests → fantasy; space, hacking, mechs → sci-fi; city nights, synthwave, rhythm → neon; everyday, notebooks, mysteries → paper |
 | **Audience**: who plays, on what? | children and casual phone players → cartoon (big targets, bright, bouncy); core desktop players → any, but denser |
 
-Then pick a style from the catalogue (§12): its entry names the look
-preset that sets the frame's treatment, the palette and asset specs, and
-the skin pack that matches it. Then pick **one** starting skin. The six packs in the engine's
+Then choose the **look** from the style catalogue (§12): match the four
+answers against each style's `premise` (genre first, then mood, then era
+and audience), shortlist two, and take the one whose three `checks` the
+game can hold on every frame. Some premises and where they land:
+
+| Premise | Look (`extends`) | Why |
+|---|---|---|
+| a brisk 2D platformer, 16-bit nostalgia | `16bit-pixel` | energetic and bright: a 224-line grid, eight tones, a Bayer dither |
+| a cosy farming or life sim seen from above | `topdown-tile-pixel` | cosy and curious: a tile-friendly grid, flat crisp tiles |
+| a calm city or diorama builder | `miniature-diorama` | tilt-shift focus, a tabletop model |
+| an exploration or flight game, serene | `faceted-low-poly` | flat facets, a soft vignette, AgX light |
+| a fighting or character-action game | `anime-cel-3d` | toon bands, cool-tinted shadows, outlines that thin with distance |
+| survival horror, lonely and uncanny | `low-resolution-3d` | early-console 3D: snapped vertices, affine textures, fog |
+| an arcade shooter or rhythm game | `neon-vector` | bright outlines that bloom on a dark scene |
+| a narrative puzzle, gentle and sad | `watercolor-wash` | bleeding strokes pooling at their rims on paper |
+
+`npm create @origingame/game -- --premise "<one line>"` does this match
+for a new game and writes the result (`--look <slug>` names it instead):
+`assets/looks/<game>.ogt` extending the preset, named by `GameDesc.look`,
+with a README section on changing it. For a game that exists, write the
+same file by hand (§12) and add `look: "looks/<game>.ogt"` to `og.game`.
+The entry also names the palette rules, the asset specs and the skin pack
+that matches it. Then pick **one** starting skin. The six packs in the engine's
 `templates/ui-kit/assets/skins/` are starting points, not the only looks:
 
 | Pack | Premises it fits | Signature | Start look (§12) |
@@ -289,8 +309,27 @@ woven canvas, and `watercolor`, cold-pressed paper) and `Stylise.palette
 cook puts the ones a look names into the bundle; a palette or canvas of
 the game's own is a path under `assets/` as before.
 
+With a moving 3D camera, lay the paper and the strokes on the scene
+rather than over the screen: `Stylise.paintCanvasSpace surface` (grain
+per metre by `paintCanvasWorldScale`), `hatchingSpace surface` and
+`halftoneSpace surface` stick to the surfaces and wrap round forms, so
+nothing slides over the world as the camera moves; `screen` (the
+default) suits 2D, fixed cameras and a deliberate printed-sheet feel.
+When things move (characters, vehicles, a turning prop), take
+`hatchingSpace object` (and `halftoneSpace object`, `paintCanvasSpace
+object`): the marks are laid in each object's own space, so a walking
+figure carries its strokes instead of wading through them (terrain keeps
+the world's). `hatchingDepth` (0 to 1) gathers the strokes along
+silhouettes and creases as `inkDepth` inks them: the contour shading of
+an inked page. Pixel sprites standing in a 3D set take
+`Sprite.dropShadow`; on a deck or a step give them `dropShadowHeight`,
+and over an og.Terrain their shadows follow the slope, and bend into a
+hollow or over a ridge narrower than themselves, by themselves.
+
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
-is applied before `start` runs; switch looks at a tick with
+is applied after the first scene spawns and before `start` runs (so
+`start` may still change any field, and reads the look's skin from
+`og.render.look(world)?.skin`); switch looks at a tick with
 `og.load.look` and `og.render.applyLook` (a flashback, a photo mode, an
 area's mood). A look replaces each resource it names whole and leaves the
 others alone, so an area look that names only `Fog` and `Sky` keeps the
@@ -299,14 +338,24 @@ game's grade. A copy of a preset under the preset's own name
 look of the game that extends that slug. Colours may be written as sRGB
 `"#rrggbb"`; the cook stores them linear. The cook refuses a field the
 resource does not have, a value out of range and an asset not in the
-bundle, naming the line.
+bundle, naming the line. A look's top-level `antialias` takes `tier`,
+`off`, `msaa4` or `taa` (FXAA is `GameDesc.render`'s, og-game §16), and an
+`Environment` block sets an environment map (`map "env/dusk.ogt"`) as
+part of the look. A look in a streaming group applies once its group is
+resident. The mechanics (what each resource's fields do, presets, the
+built-in canvases) are og-game §15 and §16.
 
 **Expand the art bible.** Fill the catalogue's `artBibleTemplate` with the
 chosen entry and the project's premise, camera and platform, and keep the
 result with the game. It is the brief for every asset request after it:
 asking for one asset never redesigns the style. Then hold the game to the
 style's three `checks` on real frames (`og run --headless --commands` with
-screenshots of the title, play and results), as §10 holds the UI.
+screenshots of the title, play and results), as §10 holds the UI, and
+make a playtest fact of `og.render.look(world)?.name` so a later change
+cannot drop the look unnoticed. The platform's own wizard does the same
+in its style step (`docs/platform-asks.md` in the engine repository): the
+catalogue entry chosen from the premise, the look written, and the
+entry's three checks handed to the critic that reads the frames.
 
 | Slug | Family | Style | Support | Skin |
 |---|---|---|---|---|

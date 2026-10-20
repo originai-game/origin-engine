@@ -35,6 +35,15 @@
 //! the start of the next tick; the probe's `dump_stream` lists the budget,
 //! what is used (kept assets included) and the peak, every group, and what
 //! each keeps with its bytes.
+//!
+//! What streams is read through one queue ([`fetch`]): the chunks of the
+//! sounds cooked in chunks first, the one a playhead needs soonest first
+//! (`og_audio::chunk_distances`), then the loading groups' packs by
+//! priority (then name). At most [`MAX_FETCHES`] reads are in flight: a
+//! read the host answers `Pending` (the web host's fetch) holds a slot
+//! until it lands, and what does not get a slot waits in order. Natively a
+//! read completes at once, so nothing waits and only the order shows.
+//! `dump_stream`'s `fetch` lists what is in flight and what waits.
 
 use super::engine::{Engine, engine, hooks};
 use super::{ok, ok_void, refuse};
@@ -57,6 +66,11 @@ pub const DEFAULT_BUDGET: u64 = 256 << 20;
 
 /// The events `dump_stream` keeps.
 const MAX_LOG: usize = 256;
+
+/// The most streaming reads (sound chunks and packs) in flight at once: a
+/// browser fetches six at a time from one origin over HTTP/1.1, and the
+/// game's own requests need the rest.
+pub const MAX_FETCHES: usize = 4;
 
 /// `og.StreamState`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -154,6 +168,55 @@ impl Slot {
     }
 }
 
+/// What a streaming read is for.
+#[derive(Clone, Debug, PartialEq)]
+enum Need {
+    /// Chunk `n` of a sound cooked in chunks (`handle` in the bank), which
+    /// a playhead reaches in `seconds` (0: it is playing).
+    Chunk {
+        handle: u64,
+        id: String,
+        n: u32,
+        seconds: f64,
+    },
+    /// A loading group's pack.
+    Pack { group: String, priority: i32 },
+}
+
+/// A read wanted now: the file under the bundle and what it is for.
+#[derive(Clone, Debug)]
+struct Wanted {
+    path: String,
+    need: Need,
+}
+
+impl Wanted {
+    fn json(&self) -> Value {
+        match &self.need {
+            Need::Chunk { id, n, seconds, .. } => json!({
+                "path": self.path, "kind": "chunk", "sound": id, "chunk": n, "seconds": seconds,
+            }),
+            Need::Pack { group, priority } => json!({
+                "path": self.path, "kind": "pack", "group": group, "priority": priority,
+            }),
+        }
+    }
+}
+
+/// The streaming reads ([`fetch`]).
+#[derive(Default)]
+struct Fetches {
+    /// What the host is still fetching (it answered `Pending`), by path.
+    in_flight: BTreeMap<String, Need>,
+    /// What waited for a free slot at the last pass, in the order it is read.
+    queued: Vec<Wanted>,
+    /// Reads started and finished (landed or failed).
+    started: u64,
+    finished: u64,
+    /// The most in flight at once.
+    peak: usize,
+}
+
 /// An engine's streaming groups (in its assets).
 #[derive(Default)]
 pub(crate) struct Streams {
@@ -167,6 +230,7 @@ pub(crate) struct Streams {
     retained: Vec<Retained>,
     peak: u64,
     log: Vec<Value>,
+    fetch: Fetches,
 }
 
 /// An asset kept for the frame after its group unloaded.
@@ -480,43 +544,9 @@ pub(crate) fn update(eng: &Engine) {
     for name in unload {
         downgrade(eng, &name);
     }
-    // Loading groups read their packs; one group is put in place per update.
-    let loading: Vec<(usize, String)> = {
-        let a = eng.assets.borrow();
-        a.stream
-            .groups
-            .iter()
-            .enumerate()
-            .filter(|(_, g)| g.state == State::Loading && g.files.is_empty())
-            .map(|(i, g)| (i, format!("{}/{}", g.dir, g.desc.file)))
-            .collect()
-    };
-    let mut failed = Vec::new();
-    for (i, path) in loading {
-        let read = match hooks() {
-            Some(h) => h.read_asset(&path),
-            None => super::assets::Fetch::Failed("no host is installed to read assets".into()),
-        };
-        let mut a = eng.assets.borrow_mut();
-        let s = &mut a.stream;
-        let why = match read {
-            super::assets::Fetch::Pending => continue,
-            super::assets::Fetch::Failed(e) => format!("{path}: {e}"),
-            super::assets::Fetch::Ready(bytes) => match og_cook::runtime::unpack(&bytes) {
-                Ok(files) => {
-                    s.groups[i].files = files.into_iter().collect();
-                    continue;
-                }
-                Err(e) => format!("{path}: {e}"),
-            },
-        };
-        set_state(s, eng.id, i, State::Failed, tick, &why);
-        failed.push(s.groups[i].desc.name.clone());
-    }
-    // Textures the host put before the pack failed go with it.
-    for name in failed {
-        release(eng, &name);
-    }
+    // Loading groups read their packs (after the sound chunks a playhead
+    // needs); one group is put in place per update.
+    fetch(eng);
     let ready: Option<String> = {
         let a = eng.assets.borrow();
         a.stream
@@ -764,6 +794,8 @@ fn release(eng: &Engine, group: &str) {
             .unwrap_or_default();
         (format!("{}/{}", g.dir, g.desc.file), textures)
     };
+    // The host drops it when it lands; its slot is free now.
+    eng.assets.borrow_mut().stream.fetch.in_flight.remove(&pack);
     h.release_stream(&pack, &textures);
 }
 
@@ -886,7 +918,24 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
                 .particles
                 .iter()
                 .any(|p| rs.scene.emitter(p.emitter).and_then(|e| e.array) == Some(h));
-            emitted.then_some("a particle emitter draws from it")
+            if emitted {
+                return Some("a particle emitter draws from it");
+            }
+            let slot = h.slot();
+            let sampled = rs
+                .materials
+                .iter()
+                .filter_map(|&m| rs.scene.standard_material(m))
+                .any(|m| m.mapArray == slot || m.normalMapArray == slot);
+            if sampled {
+                return Some("a material samples it (mapArray, normalMapArray)");
+            }
+            let layered = rs
+                .terrain
+                .loaded
+                .iter()
+                .any(|t| t.layer_arrays.contains(&Some(i)));
+            layered.then_some("a terrain's layers sample it (layers, layerNormals)")
         }
         Held::Palette(i) => {
             let h = rs.fx.look.palettes.get(i)?.1?;
@@ -1226,6 +1275,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
             .collect::<Vec<_>>()
     );
     v["events"] = json!(s.log);
+    v["fetch"] = fetch_json(s);
     drop(a);
     v["terrain"] = super::terrain::stream_json(engine_id);
     v
@@ -1309,52 +1359,231 @@ pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
 /// seconds ahead, and a loop's start) is read and put in the bank, and the
 /// others are dropped, so a long track is never resident whole. Natively a
 /// read completes at once; on the web it is fetched like a pack and put in
-/// place at a later call (the four seconds ahead are for that fetch).
-/// Nothing here reaches the world: the tick side times a sound by its
-/// length alone.
+/// place at a later call (the four seconds ahead are for that fetch), the
+/// chunk a playhead needs soonest first ([`fetch`]). Nothing here reaches
+/// the world: the tick side times a sound by its length alone.
 pub(crate) fn sound_chunks(eng: &Engine) {
+    fetch(eng);
+}
+
+/// The chunks the playheads want that are not in the bank (dropping the
+/// others), each with how soon it is needed.
+fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
     let Some(link) = og_audio::link(eng.id) else {
-        return;
+        return Vec::new();
+    };
+    if !eng.assets.borrow().sounds.iter().any(|s| s.chunked()) {
+        return Vec::new();
+    }
+    let Ok(world) = eng.world() else {
+        return Vec::new();
     };
     let bank = link.bank();
-    if !eng.assets.borrow().sounds.iter().any(|s| s.chunked()) {
-        return;
-    }
-    let wanted = match eng.world() {
-        Ok(world) => og_audio::chunks_wanted(world, bank),
-        Err(_) => return,
-    };
-    for (handle, id, n) in bank.keep_chunks(&wanted) {
+    let distances = og_audio::chunk_distances(world, bank);
+    let sets = distances
+        .iter()
+        .map(|(h, chunks)| (*h, chunks.keys().copied().collect()))
+        .collect();
+    let a = eng.assets.borrow();
+    let mut out = Vec::new();
+    for (handle, id, n) in bank.keep_chunks(&sets) {
         let chunk = og_cook::runtime::chunk_id(&id, n);
-        let a = eng.assets.borrow();
         let Ok((bundle, dir)) = a.bundle_for(&chunk) else {
             continue;
         };
-        let Ok(out) = bundle.output(&chunk) else {
+        let Ok(o) = bundle.output(&chunk) else {
             continue;
         };
-        let path = format!("{dir}/{}", out.file);
-        let bytes = match hooks().map(|h| h.read_asset(&path)) {
-            Some(super::assets::Fetch::Ready(bytes)) => bytes,
-            // Fetching: put in place at a later call.
-            Some(super::assets::Fetch::Pending) => continue,
-            Some(super::assets::Fetch::Failed(e)) => {
-                warn_once(eng, format!("{path}: {e}"));
-                continue;
-            }
-            None => continue,
-        };
-        let aligned = super::assets::aligned(&bytes);
-        match bundle.sound_chunk(&chunk, aligned.bytes()) {
-            Ok((k, qoa)) if k == n => {
-                if let Err(e) = bank.put_chunk(handle, n, &qoa) {
-                    warn_once(eng, e.reason().to_string());
-                }
-            }
-            Ok((k, _)) => warn_once(eng, format!("{path} holds chunk {k}, not {n}")),
-            Err(e) => warn_once(eng, e.to_string()),
+        let seconds = distances
+            .get(&handle)
+            .and_then(|c| c.get(&n))
+            .copied()
+            .unwrap_or(f64::INFINITY);
+        out.push(Wanted {
+            path: format!("{dir}/{}", o.file),
+            need: Need::Chunk {
+                handle,
+                id,
+                n,
+                seconds,
+            },
+        });
+    }
+    out
+}
+
+/// The streaming reads, in order: the sound chunks a playhead needs
+/// soonest first, then the loading groups' packs by priority and name; at
+/// most [`MAX_FETCHES`] in flight (a read the host answers `Pending` holds
+/// its slot until it lands). A chunk no playhead wants any more is still
+/// asked after until it lands (then dropped), so its slot comes back; a
+/// pack whose group let go of it frees its slot at once (the host drops it
+/// when it lands).
+pub(crate) fn fetch(eng: &Engine) {
+    let mut wants = wanted_chunks(eng);
+    wants.sort_by(|a, b| match (&a.need, &b.need) {
+        (
+            Need::Chunk {
+                id: ia,
+                n: na,
+                seconds: sa,
+                ..
+            },
+            Need::Chunk {
+                id: ib,
+                n: nb,
+                seconds: sb,
+                ..
+            },
+        ) => sa.total_cmp(sb).then(ia.cmp(ib)).then(na.cmp(nb)),
+        _ => std::cmp::Ordering::Equal,
+    });
+    {
+        let a = eng.assets.borrow();
+        let mut packs: Vec<&Group> = a
+            .stream
+            .groups
+            .iter()
+            .filter(|g| g.state == State::Loading && g.files.is_empty())
+            .collect();
+        packs.sort_by(|x, y| {
+            y.desc
+                .priority
+                .cmp(&x.desc.priority)
+                .then(x.desc.name.cmp(&y.desc.name))
+        });
+        wants.extend(packs.into_iter().map(|g| Wanted {
+            path: format!("{}/{}", g.dir, g.desc.file),
+            need: Need::Pack {
+                group: g.desc.name.clone(),
+                priority: g.desc.priority,
+            },
+        }));
+    }
+    let read = |path: &str| match hooks() {
+        Some(h) => h.read_asset(path),
+        None => super::assets::Fetch::Failed("no host is installed to read assets".into()),
+    };
+    // In flight, no longer wanted: asked after so the slot comes back.
+    let stale: Vec<String> = {
+        let a = eng.assets.borrow();
+        a.stream
+            .fetch
+            .in_flight
+            .keys()
+            .filter(|p| !wants.iter().any(|w| &w.path == *p))
+            .cloned()
+            .collect()
+    };
+    for path in stale {
+        if !matches!(read(&path), super::assets::Fetch::Pending) {
+            let f = &mut eng.assets.borrow_mut().stream.fetch;
+            f.in_flight.remove(&path);
+            f.finished += 1;
         }
     }
+    let mut queued = Vec::new();
+    for w in wants {
+        {
+            let a = eng.assets.borrow();
+            let f = &a.stream.fetch;
+            if !f.in_flight.contains_key(&w.path) && f.in_flight.len() >= MAX_FETCHES {
+                drop(a);
+                queued.push(w);
+                continue;
+            }
+        }
+        let result = read(&w.path);
+        {
+            let mut a = eng.assets.borrow_mut();
+            let f = &mut a.stream.fetch;
+            let flying = f.in_flight.contains_key(&w.path);
+            if !flying {
+                f.started += 1;
+            }
+            if matches!(result, super::assets::Fetch::Pending) {
+                f.in_flight.insert(w.path.clone(), w.need.clone());
+                f.peak = f.peak.max(f.in_flight.len());
+                continue;
+            }
+            f.in_flight.remove(&w.path);
+            f.finished += 1;
+        }
+        let bytes = match result {
+            super::assets::Fetch::Ready(b) => Ok(b),
+            super::assets::Fetch::Failed(e) => Err(e),
+            super::assets::Fetch::Pending => unreachable!("held in flight above"),
+        };
+        deliver(eng, &w, bytes);
+    }
+    eng.assets.borrow_mut().stream.fetch.queued = queued;
+}
+
+/// A read landed: a chunk into the bank, a pack into its loading group (a
+/// failure fails the group and lets go of what the host put).
+fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
+    let path = &w.path;
+    match &w.need {
+        Need::Chunk { handle, id, n, .. } => {
+            let bytes = match bytes {
+                Ok(b) => b,
+                Err(e) => return warn_once(eng, format!("{path}: {e}")),
+            };
+            let chunk = og_cook::runtime::chunk_id(id, *n);
+            let decoded = {
+                let a = eng.assets.borrow();
+                let Ok((bundle, _)) = a.bundle_for(&chunk) else {
+                    return;
+                };
+                bundle.sound_chunk(&chunk, super::assets::aligned(&bytes).bytes())
+            };
+            match decoded {
+                Ok((k, qoa)) if k == *n => {
+                    if let Some(link) = og_audio::link(eng.id)
+                        && let Err(e) = link.bank().put_chunk(*handle, *n, &qoa)
+                    {
+                        warn_once(eng, e.reason().to_string());
+                    }
+                }
+                Ok((k, _)) => warn_once(eng, format!("{path} holds chunk {k}, not {n}")),
+                Err(e) => warn_once(eng, e.to_string()),
+            }
+        }
+        Need::Pack { group, .. } => {
+            let tick = tick_of(eng);
+            {
+                let mut a = eng.assets.borrow_mut();
+                let s = &mut a.stream;
+                let Some(i) = s.find(group) else { return };
+                // Let go of while it was fetched: the host dropped it.
+                if s.groups[i].state != State::Loading {
+                    return;
+                }
+                match bytes.and_then(|b| og_cook::runtime::unpack(&b).map_err(|e| e.to_string())) {
+                    Ok(files) => {
+                        s.groups[i].files = files.into_iter().collect();
+                        return;
+                    }
+                    Err(e) => set_state(s, eng.id, i, State::Failed, tick, &format!("{path}: {e}")),
+                }
+            }
+            // Textures the host put before the pack failed go with it.
+            release(eng, group);
+        }
+    }
+}
+
+/// `dump_stream`'s `fetch`: the slots, what is in flight and what waits.
+fn fetch_json(s: &Streams) -> Value {
+    let f = &s.fetch;
+    json!({
+        "max": MAX_FETCHES,
+        "inFlight": f.in_flight.iter().map(|(path, need)| Wanted { path: path.clone(), need: need.clone() }.json()).collect::<Vec<_>>(),
+        "queued": f.queued.iter().map(Wanted::json).collect::<Vec<_>>(),
+        "started": f.started as f64,
+        "finished": f.finished as f64,
+        "peak": f.peak,
+    })
 }
 
 fn warn_once(eng: &Engine, text: String) {

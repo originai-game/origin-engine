@@ -11,7 +11,11 @@
 //!   an ellipsis on one line and on a second;
 //! - `text-edit`: a field with a selection made by Shift+←, a field with an
 //!   input method's composition underlined at the caret, and a text area of
-//!   three lines with its caret.
+//!   three lines with its caret;
+//! - `text-mixed-runs` (`support::mixed_runs_ui`): labels mixing Latin (the
+//!   display face as the body) with Japanese, Arabic (shaped), Hebrew and
+//!   Devanagari, each run in its own face, one wrapping; rich text; a
+//!   focused field with a mixed name.
 //!
 //! Each needs the cook (native only), so the browser tiers do not run them.
 //!
@@ -41,6 +45,10 @@ const FONTS: &[(&str, &str)] = &[
     ("NotoSansArabic-subset.ttf", "charset ascii arabic"),
     ("NotoSansHebrew-subset.ttf", "charset all"),
     ("NotoSansDevanagari-subset.ttf", "charset all"),
+    (
+        "NotoSansJP-subset.otf",
+        "charset ascii cjk-punct\n  chars \"古い水車小屋冒険\"",
+    ),
 ];
 
 /// The kit's fonts cooked into a scratch project (one test: one cook).
@@ -449,6 +457,64 @@ fn end_of(ui: &Ui, id: &str) -> Vec2 {
     Vec2::new(e.x + e.width - 4.0, e.y + e.height / 2.0)
 }
 
+fn mixed_runs_scene(fonts: &[CookedFont]) {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene, fonts);
+    let japanese = add(&mut scene, &fonts[5], true);
+    let ui = mixed_runs_ui(
+        Fonts {
+            body: f.display.clone(),
+            fallbacks: vec![
+                japanese.clone(),
+                f.arabic.clone(),
+                f.hebrew.clone(),
+                f.devanagari.clone(),
+            ],
+            ..Fonts::default()
+        },
+        vp(),
+    );
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    // Each mixed line is drawn in more than one face.
+    let line = ui
+        .frame()
+        .element("Line#0")
+        .expect("the first line")
+        .clone();
+    let faces: std::collections::BTreeSet<og_render::FontHandle> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text { font, bounds, .. }
+                if (bounds.y - line.y).abs() < 1.0 && bounds.x < line.x + line.width =>
+            {
+                Some(*font)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(faces.len(), 2, "Latin and Japanese in their own faces");
+    // Every character a command draws is in the atlas of the face it names.
+    let all = [&f.display, &japanese, &f.arabic, &f.hebrew, &f.devanagari];
+    for i in &ui.frame().items {
+        if let DrawCmd::Text { font, text, .. } = &i.cmd {
+            let face = all
+                .iter()
+                .find(|u| u.handle == Some(*font))
+                .expect("one of the scene's faces");
+            for c in text.chars() {
+                assert!(
+                    face.metrics.in_atlas(c),
+                    "{c:?} of {text:?} is not in its face"
+                );
+            }
+        }
+    }
+    let stats = check("text-mixed-runs", &[&ui], scene);
+    assert_eq!(stats.missing_glyphs, 0);
+}
+
 fn edit_scene(fonts: &[CookedFont]) {
     let mut scene = RenderScene::new();
     let f = faces(&mut scene, fonts);
@@ -534,4 +600,5 @@ fn text_frames_match_their_references() {
     bidi_scene(&fonts);
     kerning_scene(&fonts);
     edit_scene(&fonts);
+    mixed_runs_scene(&fonts);
 }

@@ -29,11 +29,14 @@ FONTS = KIT / "assets" / "fonts"
 ASCII = "".join(chr(c) for c in range(0x20, 0x7F))
 # Strings drawn with run-time glyphs in zh-CN and ja (not cooked).
 RUNTIME_KEYS = {"menu.greeting"}
+# Strings mixing scripts, drawn a run per face from the other locales' fonts
+# (og-ui's font per run): no locale's subset takes their characters.
+MIXED_KEYS = {"menu.mixed"}
 
 
 def chars_of(locale: str) -> str:
     text = (STRINGS / f"{locale}.ogt").read_text(encoding="utf-8")
-    skip = RUNTIME_KEYS if locale in ("zh-CN", "ja") else set()
+    skip = (RUNTIME_KEYS if locale in ("zh-CN", "ja") else set()) | MIXED_KEYS
     used = "".join(
         m.group(2) for m in re.finditer(r'^string "([^"]*)" "(.*)"$', text, re.M) if m.group(1) not in skip
     )

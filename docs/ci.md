@@ -29,8 +29,9 @@ absent.
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 
-wgpu 31 is not on crates.io (2026-10-19: `cargo search wgpu` lists 30.0.1
-as the newest), so wgpu and naga stay on 30.0.1; the upgrade is owed when
+wgpu 31 is not on crates.io (2026-10-19, and again 2026-10-21: `cargo
+search wgpu` and `cargo search naga` list 30.0.1 as the newest), so wgpu
+and naga stay on 30.0.1; the upgrade is owed when
 31 ships, kept only if every committed reference frame passes without
 re-recording. `cargo update` within semver had nothing left to move on
 2026-10-19; the dependencies behind their latest are majors (bincode 3,
@@ -65,7 +66,7 @@ changed:
 | the GPU reference tests (nextest `-E 'not (package(og-tests) \| package(og-ui) \| package(og-render))'` in test and test-quick; `--exclude` under cargo test) | og-tests, og-ui, og-render and every workspace crate they build on (`cargo tree`, with dev-dependencies), `templates/ui-kit/assets` | the rest of the test step runs; the step's summary line says the GPU tests were skipped |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
-| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/ui-kit`, `templates/archetypes/third-person` | |
+| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person` | |
 
 A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
 `.cargo/` or `.config/` reruns every one of them. Each skip prints its
@@ -162,7 +163,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | yes | needs node |
 | perf | `cargo test -p og-tests -p og-runtime --release -- --ignored perf` (og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`) | `make perf` | | | yes |
-| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` and `--webgl --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -432,6 +433,17 @@ against `references/metal/`, and a frame on neither fails the run
 ("no reference at …; record one with --record"), never passes. A tier
 gets its own reference only for a difference the tier makes by design
 (§og-tests' gfx scenes in the browser).
+
+`web-reference` also runs fx-showcase's looks station on both tiers:
+reference.ts with `--looks` (output in `dist/test-reference/looks`) runs
+`tests/looks-script.ts`'s commands (the looks playtest's, without its
+screenshots and `quit`; the playtest and the runner import the same
+module, so they cannot drift) in one run and takes one shot per preset
+of the catalogue at its screenshot's tick (37 shots, the last at tick
+1164), each compared with `references/<tier>/looks-<slug>.png`, else
+`metal`'s. The plain and look-taken-off frames are the playtest's own
+check and are not taken. No browser tier has looks references of its
+own yet: every frame is judged against `metal`.
 
 `web-reference` also runs Ember Vale (`templates/archetypes/third-person`)
 on both tiers: reference.ts with `--project

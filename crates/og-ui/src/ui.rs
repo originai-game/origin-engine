@@ -34,6 +34,20 @@ pub struct Viewport {
     /// The page prefers more contrast (`prefers-contrast: more`): the
     /// theme is its high-contrast variant whatever the game configured.
     pub high_contrast: bool,
+    /// The page prefers less transparency (`prefers-reduced-transparency:
+    /// reduce`): the theme's `reduced_transparency` is on whatever the game
+    /// configured (glass parts draw as opaque surfaces, scrims and
+    /// translucent fills flat: `Theme::to_reduced_transparency`).
+    pub reduced_transparency: bool,
+    /// Text controls take macOS's editing keys: Command for the shortcuts
+    /// (A, C, X, Z) and with ←/→ for the line's ends (↑/↓ the text's),
+    /// Option with ←/→, Backspace and Delete by words, Control+A and E the
+    /// line's ends (emacs). Otherwise Control takes the shortcuts and moves
+    /// by words (Alt too), Home and End go to the line's ends and Command
+    /// only copies, cuts, selects all and undoes. The web shell sets it on
+    /// Apple platforms (`navigator.platform`); native hosts leave it off, so
+    /// a script edits the same on every OS.
+    pub mac_keys: bool,
 }
 
 impl Default for Viewport {
@@ -46,6 +60,8 @@ impl Default for Viewport {
             coarse_pointer: false,
             reduced_motion: false,
             high_contrast: false,
+            reduced_transparency: false,
+            mac_keys: false,
         }
     }
 }
@@ -86,8 +102,10 @@ pub struct UiDesc {
 /// The fonts of each role; `display` and `mono` (the numeric role) fall
 /// back to `body`, `rounded` to `display`, then `body`. A text the role's
 /// font cannot draw whole takes the first font of `chain` (the locale's,
-/// og.i18n), then of `fallbacks` (the game's), that can, then `fallback` (a
-/// skin's Latin display face and Chinese text).
+/// og.i18n) that can; a text mixing what the role's font draws with what it
+/// does not is laid out per run, each run from the first of the role's,
+/// `chain`, `fallbacks` (the game's) and `fallback` (a skin's Latin display
+/// face and Chinese text) that has it ([`Fonts::for_text`]).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Fonts {
     pub body: UiFont,
@@ -119,11 +137,18 @@ impl Fonts {
     }
 
     /// The font a text of `role` is measured and drawn with: the role's when
-    /// its atlas has every character; else the first of `chain` then
-    /// `fallbacks` whose atlas does; else the skin's `fallback` when it has
-    /// a character the role's lacks; else the first font, in the same
-    /// order, that can draw it with the characters its file renders at run
-    /// time (`font { runtime true }`); else the role's.
+    /// its atlas has every character; else the first of `chain` (the
+    /// locale's faces, which set its strings whole) whose atlas does; else,
+    /// for a text the role's font draws in part (a Latin name beside CJK or
+    /// Arabic), the role's font mixed with the others: each run from the
+    /// first of the role's, `chain`, `fallbacks` and `fallback` that has it
+    /// ([`FontMetrics::is_mixed`]; once [`Fonts::link`] made it, as
+    /// [`crate::Ui`] does); else the first of `fallbacks` whose atlas has
+    /// every character; else the skin's `fallback` when it has a character
+    /// the role's lacks; else the first font, in the same order, that can
+    /// draw it with the characters its file renders at run time (`font {
+    /// runtime true }`); else (no one font draws it all) the mixed font,
+    /// so only the characters no font has are missing.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
         let f = self.get(role);
         let cooked = |font: &UiFont| {
@@ -133,8 +158,19 @@ impl Fonts {
         if cooked(f) {
             return f;
         }
+        if let Some(c) = self.chain.iter().find(|c| cooked(c)) {
+            return c;
+        }
+        let mixed = f.metrics.mixed.as_deref();
+        if let Some(m) = mixed
+            && text
+                .chars()
+                .any(|c| !c.is_whitespace() && f.metrics.in_atlas(c))
+        {
+            return m;
+        }
         let others = || self.chain.iter().chain(&self.fallbacks);
-        if let Some(c) = others().find(|c| cooked(c)) {
+        if let Some(c) = self.fallbacks.iter().find(|c| cooked(c)) {
             return c;
         }
         if let Some(fb) = &self.fallback
@@ -151,7 +187,40 @@ impl Fonts {
         if drawable(f) {
             return f;
         }
-        others().find(|c| drawable(c)).unwrap_or(f)
+        if let Some(c) = others().find(|c| drawable(c)) {
+            return c;
+        }
+        // No one font draws it all: each run from the font that has it, so
+        // only what no font has is missing.
+        mixed.unwrap_or(f)
+    }
+
+    /// Makes each role's mixed font ([`Fonts::for_text`]): the role's font
+    /// with `chain`, `fallbacks` and `fallback` after it, for a text that
+    /// mixes scripts. [`crate::Ui`] links the fonts it is given; call it
+    /// again after changing them by hand.
+    pub fn link(&mut self) {
+        let others: Vec<UiFont> = self
+            .chain
+            .iter()
+            .chain(&self.fallbacks)
+            .chain(self.fallback.as_ref())
+            .map(UiFont::alone)
+            .collect();
+        let others: Option<std::sync::Arc<[UiFont]>> = (!others.is_empty()).then(|| others.into());
+        let roles = [
+            Some(&mut self.body),
+            self.display.as_mut(),
+            self.mono.as_mut(),
+            self.rounded.as_mut(),
+        ];
+        for f in roles.into_iter().flatten() {
+            f.metrics.mixed = others.as_ref().map(|o| {
+                let mut m = f.alone();
+                m.metrics.runs = Some(o.clone());
+                std::sync::Arc::new(m)
+            });
+        }
     }
 }
 
@@ -269,6 +338,10 @@ pub(crate) struct State {
     /// The world has had a typed-text stream (`og.TextInput`): key presses
     /// type nothing from then on.
     pub typed_stream: bool,
+    /// The presses counted into double and triple clicks in text controls.
+    pub click: crate::edit::Click,
+    /// Each text control's undo history, by key.
+    pub histories: BTreeMap<u64, crate::edit::History>,
     pub hover_ticks: u32,
     pub pointer: Vec2,
     /// The press that focused a field: where it landed, to place the caret.
@@ -332,6 +405,9 @@ pub(crate) struct NavFrame {
     pub pad0: bool,
     /// The control pads 1 to 3 pressed with A (0: none).
     pub pad_activate: [u64; 3],
+    /// A stepper a screen reader adjusted as a whole (its spinbutton's
+    /// key) and by how many steps.
+    pub spin: (u64, i32),
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells of a
@@ -663,10 +739,11 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 7;
+const STATE_VERSION: u32 = 8;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
-/// the flag on, its contrast preference takes the high-contrast variant
+/// its flag on, its contrast preference takes the high-contrast variant,
+/// and reduced transparency (the page's or the game's) the flat variant
 /// (a game's own settings can only add to what the page asks).
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
@@ -674,6 +751,9 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
         t = t.to_high_contrast();
     }
     t.reduced_motion |= viewport.reduced_motion;
+    if t.reduced_transparency || viewport.reduced_transparency {
+        t = t.to_reduced_transparency();
+    }
     t
 }
 
@@ -686,7 +766,11 @@ impl Ui {
         Ui {
             configured: desc.theme,
             theme: desc.theme,
-            fonts: desc.fonts,
+            fonts: {
+                let mut f = desc.fonts;
+                f.link();
+                f
+            },
             ticks_per_second: if desc.ticks_per_second == 0 {
                 60
             } else {
@@ -908,6 +992,7 @@ impl Ui {
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.fonts = fonts;
+        self.fonts.link();
     }
 
     /// The writing direction (left to right by default).
@@ -1744,13 +1829,17 @@ impl Ui {
     }
 
     /// A one-line text field: a press focuses it (caret at the press, a
-    /// drag selects), typed text replaces the selection at the caret,
-    /// Backspace/Delete/←/→/Home/End edit (Shift extends the selection;
-    /// Ctrl or Cmd with A selects all, with C copies and with X cuts, for
-    /// the host's clipboard), an input method's composition shows
-    /// underlined at the caret until it commits, Enter submits and Escape
-    /// leaves. The text scrolls to keep the caret in view; the caret blinks
-    /// by the tick (steady under reduced motion).
+    /// drag selects and scrolls the text past the field's edge, a double
+    /// click selects a word and a triple click everything), typed text
+    /// replaces the selection at the caret, Backspace/Delete/←/→/Home/End
+    /// edit (Shift extends the selection; Alt or Ctrl moves and deletes by
+    /// words, Ctrl+Home/End goes to the ends; Ctrl or Cmd with A selects
+    /// all, with C copies and with X cuts, for the host's clipboard, with Z
+    /// undoes and with Shift+Z or Y redoes, from a history of the last 100
+    /// steps with typing grouped by words), an input method's composition
+    /// shows underlined at the caret until it commits, Enter submits and
+    /// Escape leaves. The text scrolls to keep the caret in view; the caret
+    /// blinks by the tick (steady under reduced motion).
     pub fn text_field(
         &mut self,
         id: impl Into<Id>,
@@ -1839,9 +1928,10 @@ impl Ui {
 
     /// A multi-line text area: [`Ui::text_field`]'s editing, with Enter
     /// starting a new line, ↑ and ↓ moving between lines (and Home and End
-    /// to a line's ends), the text wrapped between words at the area's
-    /// width and scrolled to keep the caret's line in view. `rows` lines
-    /// show at once.
+    /// to a line's ends), a triple click selecting the line between its
+    /// breaks, the text wrapped between words at the area's width and
+    /// scrolled to keep the caret's line in view (a drag above or below it
+    /// scrolls it, faster the further out). `rows` lines show at once.
     pub fn text_area(
         &mut self,
         id: impl Into<Id>,
@@ -3018,7 +3108,7 @@ impl Ui {
         match &n.content {
             Content::Text(tc) => {
                 let font = self.fonts.for_text(tc.font, &tc.text);
-                if let Some(handle) = font.handle {
+                if font.handle.is_some() {
                     let m = &font.metrics;
                     let sk = n.scale;
                     let size = tc.step.size * sk;
@@ -3081,9 +3171,10 @@ impl Ui {
                             }
                             _ => x,
                         };
-                        // Bidi runs in visual order, shaped runs shaped (crate::text).
-                        let (drawn, placements) =
-                            crate::text::drawn_line(m, &line.text, self.direction, tc.tracking());
+                        // Bidi runs in visual order, shaped runs shaped, one
+                        // piece per font of a mixed text (crate::text).
+                        let pieces =
+                            crate::text::pieces(font, &line.text, self.direction, tc.tracking());
                         let baseline =
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
@@ -3094,38 +3185,47 @@ impl Ui {
                             let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);
                             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
                         });
-                        let text = |dx: f32, dy: f32, color: Srgba, glow| DrawCmd::Text {
-                            x: snap(x + dx),
-                            baseline: snap(baseline + dy),
-                            size,
-                            text: drawn.clone(),
-                            color: color.fade(alpha).linear(),
-                            font: handle,
-                            bounds: Rect::new(
-                                bounds.x + dx,
-                                bounds.y + dy,
-                                bounds.width,
-                                bounds.height,
-                            ),
-                            clip: text_clip,
-                            tracking,
-                            weight: 0.0,
-                            glow,
-                            placements: placements.clone(),
-                        };
+                        let one = pieces.len() == 1;
+                        let text =
+                            |dx: f32, dy: f32, color: Srgba, glow, cmds: &mut Vec<DrawCmd>| {
+                                for pc in &pieces {
+                                    let Some(font) = pc.font else { continue };
+                                    let ox = pc.dx * size;
+                                    cmds.push(DrawCmd::Text {
+                                        x: snap(x + dx) + ox,
+                                        baseline: snap(baseline + dy),
+                                        size,
+                                        text: pc.text.clone(),
+                                        color: color.fade(alpha).linear(),
+                                        font,
+                                        bounds: Rect::new(
+                                            bounds.x + dx + ox,
+                                            bounds.y + dy,
+                                            if one { bounds.width } else { pc.width * size },
+                                            bounds.height,
+                                        ),
+                                        clip: text_clip,
+                                        tracking,
+                                        weight: 0.0,
+                                        glow,
+                                        placements: pc.placements.clone(),
+                                    });
+                                }
+                            };
                         if let Some(sh) = t.skin.text_shadows[role] {
                             let c = sh.color.fade(tc.color.alpha);
-                            cmds.push(text(sh.dx, sh.dy, c, None));
+                            text(sh.dx, sh.dy, c, None, cmds);
                             if sh.blur > 0.0 {
-                                cmds.push(text(
+                                text(
                                     sh.dx + sh.blur / 2.0,
                                     sh.dy + sh.blur / 2.0,
                                     c.fade(0.5),
                                     None,
-                                ));
+                                    cmds,
+                                );
                             }
                         }
-                        cmds.push(text(0.0, 0.0, tc.color, glow));
+                        text(0.0, 0.0, tc.color, glow, cmds);
                         if n.heading
                             && k == 0
                             && let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some())
@@ -3336,7 +3436,9 @@ impl Ui {
             (text.as_str(), p.fg)
         };
         let font = self.fonts.for_text(FontRole::Body, shown);
-        let Some(handle) = font.handle else { return };
+        if font.handle.is_none() {
+            return;
+        }
         let m = &font.metrics;
         let sk = n.scale;
         let size = step.size * sk;
@@ -3392,21 +3494,26 @@ impl Ui {
             };
             marks(true, cmds);
             let baseline = top + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
-            let (drawn, placements) = crate::text::drawn_line(m, &line, self.direction, tracking);
-            if !drawn.is_empty() {
+            let pieces = crate::text::pieces(font, &line, self.direction, tracking);
+            let one = pieces.len() == 1;
+            for pc in pieces {
+                let Some(handle) = pc.font.filter(|_| !pc.text.is_empty()) else {
+                    continue;
+                };
+                let ox = pc.dx * size;
                 cmds.push(DrawCmd::Text {
-                    x: snap(x),
+                    x: snap(x) + ox,
                     baseline: snap(baseline),
                     size,
-                    text: drawn,
+                    text: pc.text,
                     color: color.fade(alpha).linear(),
                     font: handle,
-                    bounds: Rect::new(x, top, w, lh),
+                    bounds: Rect::new(x + ox, top, if one { w } else { pc.width * size }, lh),
                     clip,
                     tracking,
                     weight: 0.0,
                     glow: None,
-                    placements,
+                    placements: pc.placements,
                 });
             }
             marks(false, cmds);
@@ -3456,8 +3563,15 @@ impl Ui {
             nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
         // Glass: the blurred frame under the part, then its own frame
-        // thinned to the glass's fill.
-        let glass = skin.glass(part);
+        // thinned to the glass's fill; under reduced transparency an opaque
+        // surface instead, its frame whole.
+        let solid = self.theme.reduced_transparency && skin.glass(part).is_some();
+        let glass = skin.glass(part).filter(|_| !solid);
+        let (bg, fade) = if solid {
+            (Srgba { alpha: 1.0, ..bg }, alpha)
+        } else {
+            (bg, fade)
+        };
         if let Some(g) = glass {
             let mut tint = bg.linear();
             tint[3] = g.tint;
@@ -3645,7 +3759,9 @@ impl Ui {
                     font,
                 } => {
                     let f = self.fonts.for_text(*font, text);
-                    let Some(handle) = f.handle else { continue };
+                    if f.handle.is_none() {
+                        continue;
+                    }
                     let m = &f.metrics;
                     let r = frame.resolve(&n.rect);
                     let size = step.size * n.scale;
@@ -3657,22 +3773,31 @@ impl Ui {
                     let baseline =
                         ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                     let snap = |v: f32| (v * dpr).round() / dpr;
-                    let (drawn, placements) =
-                        crate::text::drawn_line(m, text, self.direction, tracking);
-                    cmds.push(DrawCmd::Text {
-                        x: snap(x),
-                        baseline: snap(baseline),
-                        size,
-                        text: drawn,
-                        color: color.fade(alpha).linear(),
-                        font: handle,
-                        bounds: Rect::new(x, ly, w, lh),
-                        clip,
-                        tracking,
-                        weight: 0.0,
-                        glow: None,
-                        placements,
-                    });
+                    let pieces = crate::text::pieces(f, text, self.direction, tracking);
+                    let one = pieces.len() == 1;
+                    for pc in pieces {
+                        let Some(handle) = pc.font else { continue };
+                        let ox = pc.dx * size;
+                        cmds.push(DrawCmd::Text {
+                            x: snap(x) + ox,
+                            baseline: snap(baseline),
+                            size,
+                            text: pc.text,
+                            color: color.fade(alpha).linear(),
+                            font: handle,
+                            bounds: Rect::new(
+                                x + ox,
+                                ly,
+                                if one { w } else { pc.width * size },
+                                lh,
+                            ),
+                            clip,
+                            tracking,
+                            weight: 0.0,
+                            glow: None,
+                            placements: pc.placements,
+                        });
+                    }
                 }
                 Shape::Glyph {
                     frame,
@@ -3825,6 +3950,37 @@ impl Ui {
         f32_(&mut b, pinch.center.x);
         f32_(&mut b, pinch.center.y);
         f32_(&mut b, pinch.spread);
+        let c = &s.click;
+        u64_(&mut b, c.tick);
+        f32_(&mut b, c.at.x);
+        f32_(&mut b, c.at.y);
+        b.push(c.count);
+        b.push(u8::from(c.moved));
+        u32_(&mut b, c.origin.0 as u32);
+        u32_(&mut b, c.origin.1 as u32);
+        let text = |b: &mut Vec<u8>, t: &str| {
+            u32_(b, t.len() as u32);
+            b.extend_from_slice(t.as_bytes());
+        };
+        u32_(&mut b, s.histories.len() as u32);
+        for (k, h) in &s.histories {
+            u64_(&mut b, *k);
+            u64_(&mut b, h.seen);
+            u64_(&mut b, h.used);
+            b.push(u8::from(h.open));
+            for stack in [&h.undo, &h.redo] {
+                u32_(&mut b, stack.len() as u32);
+                for c in stack {
+                    u32_(&mut b, c.at as u32);
+                    text(&mut b, &c.removed);
+                    text(&mut b, &c.inserted);
+                    b.push(c.kind as u8);
+                    for v in [c.before.0, c.before.1, c.after.0, c.after.1] {
+                        u32_(&mut b, v as u32);
+                    }
+                }
+            }
+        }
         b
     }
 
@@ -4127,6 +4283,42 @@ impl Reader<'_> {
             spread: self.f32()?,
         };
         s.pinch = on.then_some(pinch);
+        s.click = crate::edit::Click {
+            tick: self.u64()?,
+            at: Vec2::new(self.f32()?, self.f32()?),
+            count: self.u8()?,
+            moved: self.u8()? != 0,
+            origin: (self.u32()? as usize, self.u32()? as usize),
+        };
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let mut h = crate::edit::History {
+                seen: self.u64()?,
+                used: self.u64()?,
+                open: self.u8()? != 0,
+                ..Default::default()
+            };
+            for redo in [false, true] {
+                let n = self.u32()?;
+                let mut stack = Vec::new();
+                for _ in 0..n {
+                    stack.push(crate::edit::Change {
+                        at: self.u32()? as usize,
+                        removed: self.string()?,
+                        inserted: self.string()?,
+                        kind: crate::edit::EditKind::from_u8(self.u8()?),
+                        before: (self.u32()? as usize, self.u32()? as usize),
+                        after: (self.u32()? as usize, self.u32()? as usize),
+                    });
+                }
+                if redo {
+                    h.redo = stack;
+                } else {
+                    h.undo = stack;
+                }
+            }
+            s.histories.insert(k, h);
+        }
         Some(s)
     }
 }

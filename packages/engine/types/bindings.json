@@ -148,6 +148,12 @@
       "value": "DitherPattern"
     },
     {
+      "name": "StyliseSpace",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "StyliseSpace"
+    },
+    {
       "name": "TextureArray",
       "array": "Uint32Array",
       "stride": 2,
@@ -716,6 +722,12 @@
             "g": 1,
             "b": 1
           }
+        },
+        {
+          "name": "materialLayer",
+          "column": "i32",
+          "default": -1,
+          "tunable": true
         }
       ]
     },
@@ -1327,6 +1339,11 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "dropShadowHeight",
+          "column": "f32",
+          "default": 0
         },
         {
           "name": "visible",
@@ -5430,6 +5447,11 @@
           }
         },
         {
+          "name": "halftoneSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
+        },
+        {
           "name": "hatching",
           "column": "f32",
           "default": 0,
@@ -5458,6 +5480,17 @@
             "g": 0.035,
             "b": 0.03
           }
+        },
+        {
+          "name": "hatchingSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
+        },
+        {
+          "name": "hatchingDepth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "paintRadius",
@@ -5499,6 +5532,16 @@
           "default": 1
         },
         {
+          "name": "paintCanvasSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
+        },
+        {
+          "name": "paintCanvasWorldScale",
+          "column": "f32",
+          "default": 128
+        },
+        {
           "name": "ink",
           "column": "bool",
           "default": false
@@ -5529,6 +5572,16 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "inkDepthThreshold",
+          "column": "f32",
+          "default": 0.04
+        },
+        {
+          "name": "inkNormalThreshold",
+          "column": "f32",
+          "default": 0.4
         },
         {
           "name": "depthBands",

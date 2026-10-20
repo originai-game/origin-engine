@@ -35,8 +35,8 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
-| [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
-| [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
+| [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
+| [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
 
 ### `og-feel`
 
@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-880 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+882 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -896,6 +896,8 @@ Field units the docs and Tune use.
 | [`StreamStatus`](stream.md#type-StreamStatus) | struct | stream | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
+| [`StyliseSpace`](render.md#type-StyliseSpace) | enum | render | — |
+| [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |
 | [`SweepFrame`](probe.md#type-SweepFrame) | struct | probe | — |
 | [`SweepResult`](probe.md#type-SweepResult) | struct | probe | — |

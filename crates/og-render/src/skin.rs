@@ -105,12 +105,12 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 };
 
 /// `SkinnedInstanceIn`: the transform (its columns' xyz, as
-/// [`crate::instances::GpuTransform`]), (first joint, joint count, first
+/// [`crate::instances::GpuTransform::columns`]), (first joint, joint count, first
 /// morph element, morph targets) and the eight morph weights.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct SkinnedInstanceGpu {
-    pub transform: crate::instances::GpuTransform,
+    pub transform: [[f32; 3]; 4],
     pub palette: [f32; 4],
     pub morph0: [f32; 4],
     pub morph1: [f32; 4],

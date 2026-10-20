@@ -10,16 +10,23 @@
 //! a fresh build computes, by the same operations, so a frame is the same
 //! whether it was built fresh or from the last one.
 
-use crate::{RenderError, RenderScene};
+use crate::{Instance, RenderError, RenderScene};
 use glam::{Mat4, Vec3};
 
-/// An instance's transform as the GPU reads it: the x, y and z of its four
-/// columns (`instance.wgsl` `instance_matrix`), 48 bytes. Their w is taken
-/// as (0, 0, 0, 1): an instance's transform is affine.
-pub(crate) type GpuTransform = [[f32; 3]; 4];
+/// An instance as the GPU reads it, 52 bytes: the x, y and z of its
+/// transform's four columns (`instance.wgsl` `instance_matrix`; their w is
+/// taken as (0, 0, 0, 1): an instance's transform is affine), and the
+/// texture-array layer of an array-map material's instance plus one
+/// (`material::instance_layer_bits`; 0 elsewhere, read by pbr_array.wgsl).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct GpuTransform {
+    pub columns: [[f32; 3]; 4],
+    pub layer: f32,
+}
 
-/// `m` as the GPU reads it ([`GpuTransform`]).
-pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
+/// The columns of `m` as the GPU reads them ([`GpuTransform::columns`]).
+pub(crate) fn gpu_columns(m: &Mat4) -> [[f32; 3]; 4] {
     // Written out: an array map is a loop of closure calls in the dev profile.
     let (x, y, z, w) = (m.x_axis, m.y_axis, m.z_axis, m.w_axis);
     [
@@ -28,6 +35,14 @@ pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
         [z.x, z.y, z.z],
         [w.x, w.y, w.z],
     ]
+}
+
+/// `m` as the GPU reads it, layer 0 ([`GpuTransform`]).
+pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
+    GpuTransform {
+        columns: gpu_columns(m),
+        layer: 0.0,
+    }
 }
 
 /// One (mesh, material) run of the sorted instances.
@@ -41,14 +56,21 @@ pub(crate) struct Run {
     /// undoes their quantisation, as the right factor of each instance's
     /// GPU transform.
     pub dequant: Option<Mat4>,
+    /// Its material samples texture arrays: its instances carry their
+    /// layer ([`GpuTransform::layer`]).
+    pub array: bool,
 }
 
-/// An instance's GPU transform in a run with `dequant`.
-fn run_transform(m: &Mat4, dequant: Option<Mat4>) -> GpuTransform {
-    match dequant {
+/// An instance's GPU transform in `run`.
+fn run_transform(m: &Mat4, inst: &Instance, run: &Run) -> GpuTransform {
+    let mut t = match run.dequant {
         Some(d) => gpu_transform(&(*m * d)),
         None => gpu_transform(m),
+    };
+    if run.array {
+        t.layer = crate::material::instance_layer_bits(inst.material_layer);
     }
+    t
 }
 
 /// The sorted instances of the last frame and what was derived from them.
@@ -130,7 +152,8 @@ impl SortedInstances {
     /// hold. Fails on an instance whose mesh or material index is not below
     /// `meshes` / `materials` (the renderer's copies of the scene's);
     /// `mesh` describes the mesh at an index below `meshes`, `dequant` a
-    /// (mesh, material) run's [`Run::dequant`].
+    /// (mesh, material) run's [`Run::dequant`], `array` whether a material
+    /// samples texture arrays ([`Run::array`]).
     pub fn update(
         &mut self,
         scene: &RenderScene,
@@ -138,6 +161,7 @@ impl SortedInstances {
         mesh: impl Fn(usize) -> MeshInfo,
         materials: usize,
         dequant: impl Fn(usize, usize) -> Option<Mat4>,
+        array: impl Fn(usize) -> bool,
     ) -> Result<Sorted, RenderError> {
         let instances = &scene.instances;
         // The submission's keys against the last frame's (and kept for the
@@ -168,16 +192,15 @@ impl SortedInstances {
         };
         same = same
             && self.meshes.iter().all(|&(m, info)| mesh(m) == info)
-            && self
-                .runs
-                .iter()
-                .all(|r| same_dequant(r.dequant, dequant(r.mesh, r.material)))
+            && self.runs.iter().all(|r| {
+                same_dequant(r.dequant, dequant(r.mesh, r.material)) && r.array == array(r.material)
+            })
             && self.transforms.len() == self.order.len()
             && self.spheres.len() == self.order.len();
         if same {
             self.refresh(scene, &mesh);
         } else {
-            self.rebuild(scene, &mesh, &dequant);
+            self.rebuild(scene, &mesh, &dequant, &array);
         }
         Ok(Sorted {
             runs: self.runs.clone(),
@@ -203,6 +226,7 @@ impl SortedInstances {
         scene: &RenderScene,
         mesh_info: &impl Fn(usize) -> MeshInfo,
         dequant: &impl Fn(usize, usize) -> Option<Mat4>,
+        array: &impl Fn(usize) -> bool,
     ) -> usize {
         let instances = &scene.instances;
         let mut order: Vec<usize> = (0..instances.len()).collect();
@@ -233,12 +257,13 @@ impl SortedInstances {
                     first: self.order.len() as u32,
                     count: 1,
                     dequant: dequant(mesh, material),
+                    array: array(material),
                 }),
             }
             let m = inst.transform;
             self.spheres.push(world_sphere(&m, bounds));
-            let d = self.runs.last().and_then(|r| r.dequant);
-            self.transforms.push(run_transform(&m, d));
+            let run = self.runs.last().expect("pushed above");
+            self.transforms.push(run_transform(&m, inst, run));
             self.matrices.push(m);
             self.order.push(i as u32);
         }
@@ -254,12 +279,18 @@ impl SortedInstances {
         for run in &self.runs {
             let bounds = mesh_info(run.mesh).0;
             for k in run.first as usize..(run.first + run.count) as usize {
-                let m = &instances[self.order[k] as usize].transform;
+                let inst = &instances[self.order[k] as usize];
+                let m = &inst.transform;
                 if same_bits(m, &self.matrices[k]) {
+                    // An array run's layer may change on its own.
+                    if run.array {
+                        let layer = crate::material::instance_layer_bits(inst.material_layer);
+                        self.transforms[k].layer = layer;
+                    }
                     continue;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
-                self.transforms[k] = run_transform(m, run.dequant);
+                self.transforms[k] = run_transform(m, inst, run);
                 self.matrices[k] = *m;
                 changed += 1;
             }
@@ -302,7 +333,7 @@ mod tests {
 
     fn fresh(scene: &RenderScene) -> Sorted {
         SortedInstances::default()
-            .update(scene, 3, info, 2, |_, _| None)
+            .update(scene, 3, info, 2, |_, _| None, |_| false)
             .unwrap()
     }
 
@@ -328,7 +359,9 @@ mod tests {
     fn kept_instances_are_a_fresh_builds() {
         let mut scene = scene();
         let mut kept = SortedInstances::default();
-        let first = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let first = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(&first, &fresh(&scene));
         // The empty mesh's instances are dropped.
         assert_eq!(first.submission.len(), 200);
@@ -341,10 +374,15 @@ mod tests {
         kept.restore(first.transforms, first.spheres);
         // Unchanged: nothing computed.
         assert_eq!(kept.refresh(&scene, &info), 0);
-        let still = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let still = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(&still, &fresh(&scene));
         let mut culled = still.transforms;
-        culled.push([[9.0; 3]; 4]);
+        culled.push(GpuTransform {
+            columns: [[9.0; 3]; 4],
+            layer: 0.0,
+        });
         kept.restore(culled, still.spheres);
         // Three moved (one of them by a sign of zero only).
         scene.instances[3].transform.w_axis.x += 2.0;
@@ -352,16 +390,22 @@ mod tests {
         scene.instances[7].transform.w_axis.y = -0.0;
         assert_eq!(kept.refresh(&scene, &info), 3);
         kept.refresh(&scene, &info);
-        let moved = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let moved = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(&moved, &fresh(&scene));
         kept.restore(moved.transforms, moved.spheres);
         // Another order: sorted again.
         scene.instances.swap(0, 1);
         scene.instances[5].material = scene.instances[6].material;
-        let resorted = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let resorted = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(&resorted, &fresh(&scene));
         // Not given back: rebuilt.
-        let rebuilt = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let rebuilt = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(&rebuilt, &fresh(&scene));
         // A mesh's bounds changed: rebuilt with the new ones.
         kept.restore(rebuilt.transforms, rebuilt.spheres);
@@ -372,15 +416,17 @@ mod tests {
                 info(i)
             }
         };
-        let after = kept.update(&scene, 3, grown, 2, |_, _| None).unwrap();
+        let after = kept
+            .update(&scene, 3, grown, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(
             &after,
             &SortedInstances::default()
-                .update(&scene, 3, grown, 2, |_, _| None)
+                .update(&scene, 3, grown, 2, |_, _| None, |_| false)
                 .unwrap(),
         );
         assert!(matches!(
-            kept.update(&scene, 2, info, 2, |_, _| None),
+            kept.update(&scene, 2, info, 2, |_, _| None, |_| false),
             Err(RenderError::InvalidHandle(_))
         ));
     }
@@ -394,9 +440,11 @@ mod tests {
             Mat4::from_translation(Vec3::splat(-0.5)) * Mat4::from_scale(Vec3::new(1.0, 2.0, 0.5));
         let compact = |mesh: usize, material: usize| (mesh == 1 && material == 0).then_some(d);
         let mut kept = SortedInstances::default();
-        let plain = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let plain = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         kept.restore(plain.transforms.clone(), plain.spheres.clone());
-        let with = kept.update(&scene, 3, info, 2, compact).unwrap();
+        let with = kept.update(&scene, 3, info, 2, compact, |_| false).unwrap();
         for r in &with.runs {
             assert_eq!(r.dequant.is_some(), r.mesh == 1 && r.material == 0);
             for k in r.first as usize..(r.first + r.count) as usize {
@@ -408,7 +456,9 @@ mod tests {
         // The spheres are the mesh's, whatever the vertices.
         assert_eq!(with.spheres, plain.spheres);
         kept.restore(with.transforms, with.spheres);
-        let back = kept.update(&scene, 3, info, 2, |_, _| None).unwrap();
+        let back = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
         assert_same(&back, &plain);
     }
 }

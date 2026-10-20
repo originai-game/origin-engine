@@ -56,7 +56,8 @@ struct BatchGpu {
 
 @group(0) @binding(0) var<uniform> params: Params;
 // Region 0: the sorted transforms; region g + 1: pass g's visible ones.
-// An instance is 12 floats: its columns' xyz (instance.wgsl).
+// An instance is 13 floats: its columns' xyz (instance.wgsl) and its
+// texture-array layer (instances.rs `GpuTransform`).
 @group(0) @binding(1) var<storage, read_write> instances: array<f32>;
 @group(0) @binding(2) var<storage, read> batches: array<BatchGpu>;
 // [0, N): last frame's main visibility; then per pass N + 1 prefix
@@ -82,7 +83,7 @@ fn hidden_at(bi: u32) -> u32 { return params.counts.w * params.counts.y * 5u + p
 
 // Sorted instance k's transform.
 fn instance_at(k: u32) -> mat4x4<f32> {
-  let a = k * 12u;
+  let a = k * 13u;
   return instance_matrix(
     vec3<f32>(instances[a], instances[a + 1u], instances[a + 2u]),
     vec3<f32>(instances[a + 3u], instances[a + 4u], instances[a + 5u]),
@@ -317,8 +318,8 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   let at = prefix_at(g);
   let start = scan[at + b.first];
   if (scan[at + k + 1u] != scan[at + k]) {
-    let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 12u;
-    for (var j = 0u; j < 12u; j++) { instances[to + j] = instances[k * 12u + j]; }
+    let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 13u;
+    for (var j = 0u; j < 13u; j++) { instances[to + j] = instances[k * 13u + j]; }
   }
   if (k == b.first) {
     let draw = (g * params.counts.y + bi) * 5u;

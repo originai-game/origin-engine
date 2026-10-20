@@ -8,12 +8,23 @@
 //! and the scene graph (`nTRN` translations, `nGRP`, `nSHP`) so a multi-part
 //! file keeps each part where the editor put it; a file without a graph
 //! places its models side by side along x. Rotations in `nTRN` (the `_r`
-//! frame byte) are applied as the signed axis permutation they encode.
+//! frame byte) are applied as the signed axis permutation they encode; one
+//! with a negative determinant mirrors the model, so its triangles' winding
+//! is flipped to stay counter-clockwise from outside.
 //!
 //! Axes: MagicaVoxel is z-up with y away from the viewer; the mesh is y-up
-//! (glTF): `(x, y, z)` → `(x, z, -y)`, one voxel one metre, the model's
-//! origin at its `nTRN` translation (the editor's pivot is the model's
-//! centre, floored, as MagicaVoxel exports it).
+//! (glTF): `(x, y, z)` → `(x, z, -y)`, the model's origin at its `nTRN`
+//! translation. The pivot is MagicaVoxel's: `floor(size / 2)` (ogt_vox's
+//! documented convention, which vengi's importer matches), so voxel `v` of a
+//! model turned by `R` at translation `T` fills the cell whose lowest corner
+//! is `floor(T + R (v + 1/2 - floor(size / 2)))`; with a whole-voxel pivot
+//! and a signed axis permutation that is the box `T + R ([v, v + 1] -
+//! floor(size / 2))` the mesh is built from, turned or mirrored, odd sizes
+//! included (`tests/fixtures/vox/pivot.vox`: five turns and mirrors of a
+//! 3 x 2 x 5 model, checked voxel by voxel). The import settings' `model { voxScale
+//! voxOrigin }` ([`VoxSettings`]) give the metres per voxel (default 1) and
+//! the origin: `center` (the default) where the editor puts it, `bottom`
+//! the whole file lifted so its lowest voxel stands on y = 0.
 //!
 //! Greedy meshing: per face direction, per slice, runs of voxels of one
 //! colour merge into rectangles, so a 32³ block of one colour is 12
@@ -23,6 +34,82 @@
 //! roughness 0.9: `MaterialStyle` or the game's material replaces it.
 
 use std::collections::BTreeMap;
+
+/// Where a `.vox` file's origin is (`voxOrigin`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum VoxOrigin {
+    /// The editor's: each model about its centre (floored), at its `nTRN`
+    /// translation.
+    #[default]
+    Center,
+    /// The editor's in x and z, the whole file lifted so its lowest voxel
+    /// stands on y = 0 (a prop or a character on the ground).
+    Bottom,
+}
+
+/// A `.vox` file's import settings: `model { voxScale 0.1 voxOrigin bottom }`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VoxSettings {
+    /// Metres per voxel (default 1).
+    pub scale: f32,
+    pub origin: VoxOrigin,
+}
+
+impl Default for VoxSettings {
+    fn default() -> Self {
+        VoxSettings {
+            scale: 1.0,
+            origin: VoxOrigin::Center,
+        }
+    }
+}
+
+impl VoxSettings {
+    /// Reads the `model { … }` block of a `.vox`'s import settings.
+    pub fn parse(block: Option<&og_core::ogt::Block>) -> Result<VoxSettings, String> {
+        let mut v = VoxSettings::default();
+        let Some(b) = block else {
+            return Ok(v);
+        };
+        for e in &b.entries {
+            match e.key.as_str() {
+                "voxScale" => {
+                    v.scale = e
+                        .values
+                        .first()
+                        .and_then(|x| x.as_number())
+                        .map(|n| n.as_f32())
+                        .filter(|s| s.is_finite() && *s > 0.0)
+                        .ok_or_else(|| {
+                            format!(
+                                "line {}: voxScale takes the metres per voxel, a number above 0 (default 1)",
+                                e.line
+                            )
+                        })?;
+                }
+                "voxOrigin" => {
+                    v.origin = match e.values.first().and_then(|x| x.as_word()) {
+                        Some("center") => VoxOrigin::Center,
+                        Some("bottom") => VoxOrigin::Bottom,
+                        _ => {
+                            return Err(format!(
+                                "line {}: voxOrigin takes center (the editor's origin, the default) or bottom (the lowest voxel on y = 0)",
+                                e.line
+                            ));
+                        }
+                    };
+                }
+                k => {
+                    return Err(format!(
+                        "line {}: unknown model setting '{k}' for a .vox (voxScale, voxOrigin)",
+                        e.line
+                    ));
+                }
+            }
+        }
+        Ok(v)
+    }
+}
 
 /// MagicaVoxel's default palette (`RGBA` chunk absent), as the format
 /// specification lists it (index 0 is unused: a voxel's colour index is
@@ -123,13 +210,28 @@ fn string(b: &[u8], at: &mut usize) -> Result<String, String> {
 const IDENTITY: [(usize, i32); 3] = [(0, 1), (1, 1), (2, 1)];
 
 /// The `_r` byte of an `nTRN` frame: bits 0-1 the input axis of output x,
-/// bits 2-3 of output y (z is the remaining one), bits 4-6 the signs.
+/// bits 2-3 of output y (z is the remaining one), bits 4-6 the signs. A
+/// byte naming one axis twice (or axis 3) is not a rotation: the identity.
 fn rotation_of(r: u8) -> [(usize, i32); 3] {
     let ax = (r & 3) as usize;
     let ay = ((r >> 2) & 3) as usize;
+    if ax > 2 || ay > 2 || ax == ay {
+        return IDENTITY;
+    }
     let az = 3 - ax - ay;
     let sign = |bit: u8| if r & (1 << bit) != 0 { -1 } else { 1 };
-    [(ax, sign(4)), (ay, sign(5)), (az.min(2), sign(6))]
+    [(ax, sign(4)), (ay, sign(5)), (az, sign(6))]
+}
+
+/// The determinant of a signed axis permutation: the permutation's parity
+/// times its signs. -1 is a mirror (an odd number of axes flipped, or a
+/// swap of two axes alone), which turns a face's winding over.
+pub fn determinant(r: [(usize, i32); 3]) -> i32 {
+    let [a, b, c] = [r[0].0, r[1].0, r[2].0];
+    // Inversions of the permutation (a, b, c) of (0, 1, 2).
+    let inversions = (a > b) as i32 + (a > c) as i32 + (b > c) as i32;
+    let parity = if inversions % 2 == 0 { 1 } else { -1 };
+    parity * r[0].1 * r[1].1 * r[2].1
 }
 
 /// Parses the chunks of a `.vox` file.
@@ -494,14 +596,18 @@ fn linear(c: u8) -> f32 {
 
 /// A `.vox` as a glTF binary: one mesh per placed model under a node at
 /// its translation, each a flat-shaded greedy mesh with vertex colours and
-/// the shared white material.
-pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
+/// the shared white material, `settings.scale` metres per voxel, its
+/// origin where `settings.origin` says.
+pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
     let file = parse(bytes)?;
+    let scale = settings.scale;
     let mut bin: Vec<u8> = Vec::new();
     let mut buffer_views = Vec::new();
     let mut accessors = Vec::new();
     let mut meshes = Vec::new();
-    let mut nodes = Vec::new();
+    // Per placed model: its index, its mesh and its translation (glTF frame, metres).
+    let mut placed: Vec<(usize, usize, [f32; 3])> = Vec::new();
+    let mut floor = f32::MAX;
     let mut quads_total = 0usize;
     let meshed: Vec<Vec<Quad>> = file.models.iter().map(mesh_model).collect();
     for (pi, placement) in file.placements.iter().enumerate() {
@@ -518,6 +624,7 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
         let mut colors: Vec<[f32; 4]> = Vec::with_capacity(quads.len() * 4);
         let mut indices: Vec<u32> = Vec::with_capacity(quads.len() * 6);
         let rot = placement.rotation;
+        let mirrored = determinant(rot) < 0;
         let turn = |p: [f32; 3]| -> [f32; 3] {
             let mut o = [0f32; 3];
             for i in 0..3 {
@@ -540,7 +647,7 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
                     corner[1] - pivot[1],
                     corner[2] - pivot[2],
                 ]);
-                let p = [p[0], p[2], -p[1]];
+                let p = [p[0] * scale, p[2] * scale, -p[1] * scale];
                 for i in 0..3 {
                     lo[i] = lo[i].min(p[i]);
                     hi[i] = hi[i].max(p[i]);
@@ -550,8 +657,12 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
                 colors.push(col);
             }
             // (x, y, z) → (x, z, -y) is a rotation, so the winding stays
-            // counter-clockwise from outside.
-            indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+            // counter-clockwise from outside, unless the frame mirrors.
+            if mirrored {
+                indices.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
+            } else {
+                indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+            }
         }
         let mut view = |data: &[u8], target: u32| -> usize {
             while !bin.len().is_multiple_of(4) {
@@ -592,15 +703,32 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
             }]
         }));
         let t = placement.translation;
-        nodes.push(serde_json::json!({
-            "name": format!("vox{pi}"),
-            "mesh": meshes.len() - 1,
-            "translation": [t[0] as f32, t[2] as f32, -(t[1] as f32)]
-        }));
+        let at = [
+            t[0] as f32 * scale,
+            t[2] as f32 * scale,
+            -(t[1] as f32) * scale,
+        ];
+        floor = floor.min(at[1] + lo[1]);
+        placed.push((pi, meshes.len() - 1, at));
     }
     if meshes.is_empty() {
         return Err("vox: every model is empty".into());
     }
+    // `bottom`: every node lifted by the same height, the lowest voxel on 0.
+    let lift = match settings.origin {
+        VoxOrigin::Center => 0.0,
+        VoxOrigin::Bottom => -floor,
+    };
+    let nodes: Vec<serde_json::Value> = placed
+        .iter()
+        .map(|(pi, mesh, at)| {
+            serde_json::json!({
+                "name": format!("vox{pi}"),
+                "mesh": mesh,
+                "translation": [at[0], at[1] + lift, at[2]]
+            })
+        })
+        .collect();
     let _ = quads_total;
     let json = serde_json::json!({
         "asset": { "version": "2.0", "generator": "og-cook vox" },
@@ -699,7 +827,7 @@ mod tests {
         }
         let bytes = write([5, 3, 4], &voxels, None);
         assert_eq!(quad_count(&bytes).unwrap(), (6, 12));
-        let glb = to_glb(&bytes).unwrap();
+        let glb = to_glb(&bytes, &VoxSettings::default()).unwrap();
         assert_eq!(&glb[0..4], b"glTF");
         let g = gltf::Gltf::from_slice(&glb).unwrap();
         let mesh = g.document.meshes().next().unwrap();
@@ -728,7 +856,7 @@ mod tests {
             &[[0, 0, 0, 1], [0, 0, 1, 1], [0, 0, 2, 1]],
             Some(&palette[1..]),
         );
-        let glb = to_glb(&bytes).unwrap();
+        let glb = to_glb(&bytes, &VoxSettings::default()).unwrap();
         let g = gltf::Gltf::from_slice(&glb).unwrap();
         let blob = g.blob.clone().unwrap();
         let mesh = g.document.meshes().next().unwrap();
@@ -746,6 +874,358 @@ mod tests {
                 .iter()
                 .all(|c| c[0] > 0.99 && c[1] < 0.01 && c[2] < 0.01)
         );
+    }
+
+    /// A `.vox` of one model placed by a scene graph: root transform 0 →
+    /// group 1 → per placement a transform (`_t`, `_r`) over a shape of
+    /// model 0.
+    fn write_placed(
+        size: [u32; 3],
+        voxels: &[[u8; 4]],
+        placements: &[([i32; 3], Option<u8>)],
+    ) -> Vec<u8> {
+        write_placed_with(size, voxels, None, placements)
+    }
+
+    /// [`write_placed`] with a palette (`RGBA`, entry 0 for index 1).
+    fn write_placed_with(
+        size: [u32; 3],
+        voxels: &[[u8; 4]],
+        palette: Option<&[[u8; 4]]>,
+        placements: &[([i32; 3], Option<u8>)],
+    ) -> Vec<u8> {
+        let mut out = write(size, voxels, palette);
+        let mut extra = Vec::new();
+        let chunk = |out: &mut Vec<u8>, id: &[u8; 4], body: &[u8]| {
+            out.extend_from_slice(id);
+            out.extend_from_slice(&(body.len() as u32).to_le_bytes());
+            out.extend_from_slice(&0u32.to_le_bytes());
+            out.extend_from_slice(body);
+        };
+        let string = |b: &mut Vec<u8>, s: &str| {
+            b.extend_from_slice(&(s.len() as u32).to_le_bytes());
+            b.extend_from_slice(s.as_bytes());
+        };
+        let transform = |node: u32, child: u32, frame: &[(&str, String)]| {
+            let mut b = Vec::new();
+            b.extend_from_slice(&node.to_le_bytes());
+            b.extend_from_slice(&0u32.to_le_bytes()); // attributes
+            b.extend_from_slice(&child.to_le_bytes());
+            b.extend_from_slice(&(-1i32).to_le_bytes()); // reserved
+            b.extend_from_slice(&0u32.to_le_bytes()); // layer
+            b.extend_from_slice(&1u32.to_le_bytes()); // one frame
+            b.extend_from_slice(&(frame.len() as u32).to_le_bytes());
+            for (k, v) in frame {
+                string(&mut b, k);
+                string(&mut b, v);
+            }
+            b
+        };
+        chunk(&mut extra, b"nTRN", &transform(0, 1, &[]));
+        let mut group = Vec::new();
+        group.extend_from_slice(&1u32.to_le_bytes());
+        group.extend_from_slice(&0u32.to_le_bytes());
+        group.extend_from_slice(&(placements.len() as u32).to_le_bytes());
+        for i in 0..placements.len() as u32 {
+            group.extend_from_slice(&(2 + 2 * i).to_le_bytes());
+        }
+        chunk(&mut extra, b"nGRP", &group);
+        for (i, (t, r)) in placements.iter().enumerate() {
+            let node = 2 + 2 * i as u32;
+            let mut frame = vec![("_t", format!("{} {} {}", t[0], t[1], t[2]))];
+            if let Some(r) = r {
+                frame.push(("_r", r.to_string()));
+            }
+            chunk(&mut extra, b"nTRN", &transform(node, node + 1, &frame));
+            let mut shape = Vec::new();
+            shape.extend_from_slice(&(node + 1).to_le_bytes());
+            shape.extend_from_slice(&0u32.to_le_bytes());
+            shape.extend_from_slice(&1u32.to_le_bytes());
+            shape.extend_from_slice(&0u32.to_le_bytes()); // model 0
+            shape.extend_from_slice(&0u32.to_le_bytes()); // its attributes
+            chunk(&mut extra, b"nSHP", &shape);
+        }
+        out.extend_from_slice(&extra);
+        // MAIN's children size.
+        let children = (out.len() - 20) as u32;
+        out[16..20].copy_from_slice(&children.to_le_bytes());
+        out
+    }
+
+    /// A primitive's positions, normals and triangles.
+    type Primitive = (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<[u32; 3]>);
+
+    /// Per primitive of a glTF binary: its positions, normals and triangles.
+    fn primitives(glb: &[u8]) -> Vec<Primitive> {
+        let g = gltf::Gltf::from_slice(glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        g.document
+            .meshes()
+            .flat_map(|m| m.primitives().collect::<Vec<_>>())
+            .map(|p| {
+                let r = p.reader(|_| Some(&blob[..]));
+                let pos: Vec<[f32; 3]> = r.read_positions().unwrap().collect();
+                let nrm: Vec<[f32; 3]> = r.read_normals().unwrap().collect();
+                let idx: Vec<u32> = r.read_indices().unwrap().into_u32().collect();
+                let tris = idx.chunks(3).map(|t| [t[0], t[1], t[2]]).collect();
+                (pos, nrm, tris)
+            })
+            .collect()
+    }
+
+    /// Every triangle's winding (counter-clockwise) faces along its normal.
+    fn faces_out(glb: &[u8]) -> bool {
+        primitives(glb).iter().all(|(pos, nrm, tris)| {
+            tris.iter().all(|t| {
+                let v = |i: u32| glam::Vec3::from(pos[i as usize]);
+                let n = glam::Vec3::from(nrm[t[0] as usize]);
+                (v(t[1]) - v(t[0])).cross(v(t[2]) - v(t[0])).dot(n) > 0.0
+            })
+        })
+    }
+
+    #[test]
+    fn determinants_of_signed_axis_permutations() {
+        // Identity, a swap of x and y, one sign, two signs, a cycle.
+        assert_eq!(determinant(IDENTITY), 1);
+        assert_eq!(determinant([(1, 1), (0, 1), (2, 1)]), -1);
+        assert_eq!(determinant([(0, -1), (1, 1), (2, 1)]), -1);
+        assert_eq!(determinant([(0, -1), (1, -1), (2, 1)]), 1);
+        assert_eq!(determinant([(1, 1), (2, 1), (0, 1)]), 1);
+        // The `_r` byte 4 is the identity; 20 flips x; 1 swaps x and y.
+        assert_eq!(rotation_of(4), IDENTITY);
+        assert_eq!(determinant(rotation_of(20)), -1);
+        assert_eq!(rotation_of(1)[0..2], [(1, 1), (0, 1)]);
+        assert_eq!(determinant(rotation_of(1)), -1);
+        // Not a rotation: an axis twice.
+        assert_eq!(rotation_of(0), IDENTITY);
+    }
+
+    /// Every one of the 48 signed axis permutations a frame's `_r` can
+    /// hold keeps every face's winding counter-clockwise from outside: the
+    /// 24 mirrors flip it back (without the flip, they faced inwards).
+    #[test]
+    fn mirrors_flip_the_winding_and_every_frame_faces_out() {
+        let voxels = [[0, 0, 0, 1], [1, 0, 0, 2], [0, 1, 0, 3], [0, 0, 1, 4]];
+        let mut mirrors = 0;
+        let mut seen = std::collections::BTreeSet::new();
+        for r in 0u8..128 {
+            let rot = rotation_of(r);
+            if r & 3 == (r >> 2) & 3 || r & 3 == 3 || (r >> 2) & 3 == 3 || !seen.insert(rot) {
+                continue;
+            }
+            let bytes = write_placed([2, 2, 2], &voxels, &[([3, -2, 5], Some(r))]);
+            let file = parse(&bytes).unwrap();
+            assert_eq!(file.placements[0].rotation, rot);
+            mirrors += (determinant(rot) < 0) as usize;
+            let glb = to_glb(&bytes, &VoxSettings::default()).unwrap();
+            assert!(faces_out(&glb), "_r {r} ({rot:?}) turns faces inwards");
+        }
+        assert_eq!((seen.len(), mirrors), (48, 24));
+    }
+
+    /// The pivot fixture (`tests/fixtures/vox/pivot.vox`, made by
+    /// [`pivot_fixture`]): one 3 x 2 x 5 model (odd in x and z) of five
+    /// isolated voxels, each its own colour, placed five times: as is, turned
+    /// 90 degrees about z (`_r` 17), mirrored in x (20), turned 180 degrees
+    /// about y (84) and the axes cycled (9), each at its own translation.
+    const PIVOT_VOXELS: [[u8; 4]; 5] = [
+        [0, 0, 0, 1],
+        [2, 0, 0, 2],
+        [0, 1, 2, 3],
+        [1, 0, 3, 4],
+        [2, 1, 4, 5],
+    ];
+    const PIVOT_PLACEMENTS: [([i32; 3], Option<u8>); 5] = [
+        ([0, 0, 0], None),
+        ([10, 0, 0], Some(17)),
+        ([0, 10, 0], Some(20)),
+        ([0, 0, 10], Some(84)),
+        ([-10, 3, -7], Some(9)),
+    ];
+
+    fn pivot_fixture() -> Vec<u8> {
+        let palette: Vec<[u8; 4]> = (1..=5u8)
+            .map(|i| [i * 40, 255 - i * 40, i * 20, 255])
+            .collect();
+        write_placed_with([3, 2, 5], &PIVOT_VOXELS, Some(&palette), &PIVOT_PLACEMENTS)
+    }
+
+    /// MagicaVoxel's placement of a voxel (ogt_vox's documented pivot, which
+    /// vengi's importer matches): a model's pivot is `floor(size / 2)`, and
+    /// voxel `v` of a model turned by `R` at translation `T` occupies the
+    /// world cell whose lowest corner is `floor(T + R (v + 1/2 - pivot))`.
+    /// The pivot is a whole voxel and `R` a signed axis permutation, so the
+    /// centre lands on a half and the cell is `T + R (v + 1/2 - pivot) - 1/2`.
+    fn magicavoxel_cell(size: [u32; 3], v: [u8; 3], t: [i32; 3], r: [(usize, i32); 3]) -> [i32; 3] {
+        let centre = |i: usize| 2 * v[i] as i32 + 1 - 2 * (size[i] / 2) as i32;
+        std::array::from_fn(|i| {
+            let turned = centre(r[i].0) * r[i].1;
+            (2 * t[i] + turned).div_euclid(2)
+        })
+    }
+
+    /// Every voxel of every turned or mirrored placement of an odd-sized
+    /// model lands where MagicaVoxel puts it: the committed fixture (made
+    /// by the test writer) is meshed and each colour's box compared with
+    /// [`magicavoxel_cell`] taken to the glTF frame.
+    #[test]
+    fn turned_and_mirrored_odd_models_keep_magicavoxels_pivot() {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vox/pivot.vox");
+        let made = pivot_fixture();
+        if std::env::var_os("OG_WRITE_FIXTURES").is_some() {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, &made).unwrap();
+        }
+        let bytes = std::fs::read(&path).expect("the committed pivot fixture");
+        assert_eq!(bytes, made, "the fixture is the test writer's");
+        let file = parse(&bytes).unwrap();
+        assert_eq!(file.placements.len(), PIVOT_PLACEMENTS.len());
+        let glb = to_glb(&bytes, &VoxSettings::default()).unwrap();
+        let g = gltf::Gltf::from_slice(&glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        let nodes: Vec<_> = g.document.nodes().collect();
+        assert_eq!(nodes.len(), PIVOT_PLACEMENTS.len());
+        let palette = &file.palette;
+        for (node, (placement, (t, r))) in nodes
+            .iter()
+            .zip(file.placements.iter().zip(PIVOT_PLACEMENTS))
+        {
+            let rot = r.map_or(IDENTITY, rotation_of);
+            assert_eq!(placement.rotation, rot);
+            let at = glam::Vec3::from(node.transform().decomposed().0);
+            let prim = node.mesh().unwrap().primitives().next().unwrap();
+            let reader = prim.reader(|_| Some(&blob[..]));
+            let pos: Vec<glam::Vec3> = reader
+                .read_positions()
+                .unwrap()
+                .map(glam::Vec3::from)
+                .collect();
+            let col: Vec<[f32; 4]> = reader.read_colors(0).unwrap().into_rgba_f32().collect();
+            for v in PIVOT_VOXELS {
+                let c = palette[v[3] as usize];
+                let want = [linear(c[0]), linear(c[1]), linear(c[2])];
+                let (mut lo, mut hi) = (glam::Vec3::MAX, glam::Vec3::MIN);
+                for (p, k) in pos.iter().zip(&col) {
+                    if (0..3).all(|i| (k[i] - want[i]).abs() < 1e-6) {
+                        lo = lo.min(at + *p);
+                        hi = hi.max(at + *p);
+                    }
+                }
+                let m = magicavoxel_cell([3, 2, 5], [v[0], v[1], v[2]], t, rot);
+                // MagicaVoxel's cell [m, m + 1] in glTF's frame: (x, z, -y).
+                let cell_lo = glam::Vec3::new(m[0] as f32, m[2] as f32, -(m[1] as f32) - 1.0);
+                assert_eq!(
+                    (lo, hi),
+                    (cell_lo, cell_lo + glam::Vec3::ONE),
+                    "voxel {v:?} of the placement at {t:?} turned by _r {r:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn vox_scale_and_bottom_origin_place_the_mesh() {
+        // A column of three voxels, placed 10 voxels up (MagicaVoxel z).
+        let column = [[0, 0, 0, 1], [0, 0, 1, 1], [0, 0, 2, 1]];
+        let bytes = write_placed([1, 1, 3], &column, &[([0, 0, 10], None)]);
+        let node_y = |glb: &[u8]| {
+            let g = gltf::Gltf::from_slice(glb).unwrap();
+            let n = g.document.nodes().next().unwrap();
+            n.transform().decomposed().0[1]
+        };
+        let height = |glb: &[u8]| {
+            let p = &primitives(glb)[0].0;
+            p.iter()
+                .fold((f32::MAX, f32::MIN), |(l, h), v| (l.min(v[1]), h.max(v[1])))
+        };
+        let editor = to_glb(&bytes, &VoxSettings::default()).unwrap();
+        assert_eq!(
+            height(&editor),
+            (-1.0, 2.0),
+            "one metre a voxel, the pivot floored"
+        );
+        assert_eq!(node_y(&editor), 10.0);
+        let tenth = VoxSettings {
+            scale: 0.1,
+            origin: VoxOrigin::Center,
+        };
+        let small = to_glb(&bytes, &tenth).unwrap();
+        let (lo, hi) = height(&small);
+        assert!(
+            (lo + 0.1).abs() < 1e-6 && (hi - 0.2).abs() < 1e-6,
+            "{lo} {hi}"
+        );
+        assert!((node_y(&small) - 1.0).abs() < 1e-6);
+        let bottom = VoxSettings {
+            scale: 0.1,
+            origin: VoxOrigin::Bottom,
+        };
+        let grounded = to_glb(&bytes, &bottom).unwrap();
+        let (lo, hi) = height(&grounded);
+        let y = node_y(&grounded);
+        assert!(
+            (y + lo).abs() < 1e-6,
+            "the lowest voxel on y = 0: {}",
+            y + lo
+        );
+        assert!((y + hi - 0.3).abs() < 1e-6, "0.3 m tall: {}", y + hi);
+        // Two models: the lowest of the two decides, both lift together.
+        let two = write_placed(
+            [1, 1, 3],
+            &column,
+            &[([0, 0, 10], None), ([5, 0, -4], None)],
+        );
+        let g = to_glb(
+            &two,
+            &VoxSettings {
+                scale: 1.0,
+                origin: VoxOrigin::Bottom,
+            },
+        )
+        .unwrap();
+        let doc = gltf::Gltf::from_slice(&g).unwrap();
+        let ys: Vec<f32> = doc
+            .document
+            .nodes()
+            .map(|n| n.transform().decomposed().0[1])
+            .collect();
+        assert_eq!(ys, vec![15.0, 1.0], "-4 - 1 is the floor: both up by 5");
+    }
+
+    #[test]
+    fn vox_settings_are_read_and_bad_ones_refused() {
+        let block = |text: &str| {
+            og_core::ogt::Document::parse(&format!(
+                "type import\nversion 1\n---\nmodel {{\n{text}\n}}\n"
+            ))
+            .unwrap()
+            .body
+            .get("model")
+            .unwrap()
+            .block
+            .clone()
+            .unwrap()
+        };
+        assert_eq!(VoxSettings::parse(None).unwrap(), VoxSettings::default());
+        let b = block("voxScale 0.0625\nvoxOrigin bottom");
+        assert_eq!(
+            VoxSettings::parse(Some(&b)).unwrap(),
+            VoxSettings {
+                scale: 0.0625,
+                origin: VoxOrigin::Bottom
+            }
+        );
+        for (text, says) in [
+            ("voxScale 0", "above 0"),
+            ("voxScale -1", "above 0"),
+            ("voxOrigin top", "center"),
+            ("voxPivot 1", "unknown model setting 'voxPivot'"),
+        ] {
+            let e = VoxSettings::parse(Some(&block(text))).unwrap_err();
+            assert!(e.contains(says) && e.contains("line 5"), "{text}: {e}");
+        }
     }
 
     #[test]

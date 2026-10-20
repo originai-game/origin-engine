@@ -14,8 +14,18 @@
 // - The DOM reaches the UI as input: a screen reader's click on an element
 //   is `{ kind: "a11y", action: "activate", path }` and its moving focus
 //   onto one is `focus`; `adjust` sends `increment`/`decrement` for an
-//   adjustable one. Keys pressed while a mirrored element has the DOM
-//   focus still go to the engine as keys (the shell listens on the page),
+//   adjustable one. A slider and a stepper's spinbutton are mirrored as an
+//   `<input type="range">` (with its role: `slider`, `spinbutton`) held at
+//   the UI's value, one step from either end: a screen reader's own adjust
+//   gesture (VoiceOver's swipe up or down, TalkBack's volume keys, an arrow
+//   while interacting) moves the native value, or sets it from
+//   `aria-valuenow` and the step, and fires `input`, which becomes
+//   `increment` or `decrement` and puts the value back (the UI owns the
+//   value and its step; `aria-valuenow` and `aria-valuetext` say it). A
+//   stepper's − and + follow its range as siblings (an input holds no
+//   children). Keys pressed while a
+//   mirrored element has the DOM focus still go to the engine as keys (the
+//   shell listens on the page and keeps the arrows from the native range),
 //   where the focused control takes them: arrows move a focused slider.
 //   og-ui acts on the requests at the next frame against the controls it
 //   drew (nav.rs `apply_a11y`).
@@ -55,6 +65,8 @@ const SELECTABLE = new Set(["tab", "option"]);
 const EXPANDABLE = new Set(["combobox"]);
 /** Roles with a numeric value (aria-valuenow). */
 const RANGES = new Set(["slider", "spinbutton", "progressbar", "meter"]);
+/** Roles mirrored as a native range: a screen reader adjusts those itself (their children follow the range as siblings). */
+const ADJUSTABLE = new Set(["slider", "spinbutton"]);
 /** Roles read as their text content rather than a label. */
 const TEXTS = new Set(["text", "heading", "status", "alert", "tooltip"]);
 
@@ -105,6 +117,19 @@ export class A11yMirror {
       e.preventDefault();
       this.#send({ kind: "a11y", action: "activate", path });
     });
+    // A screen reader adjusted a mirrored range: one step, and back to the UI's value.
+    const adjusted = (e: Event) => {
+      const el = e.target as HTMLInputElement | null;
+      if (!el || el.tagName !== "INPUT" || el.type !== "range") return;
+      const path = pathOf(el);
+      const v = Number(el.value);
+      const at = Number(el.dataset.ogValue ?? "1");
+      el.value = String(at);
+      if (path === null || !Number.isFinite(v) || v === at) return;
+      this.#send({ kind: "a11y", action: v > at ? "increment" : "decrement", path });
+    };
+    on("input", adjusted);
+    on("change", adjusted);
     // A screen reader moved focus onto an element: the UI's focus follows it.
     on("focusin", (e) => {
       const path = pathOf(e.target);
@@ -116,6 +141,11 @@ export class A11yMirror {
   /** The tree as last mirrored. */
   get tree(): A11yTree {
     return this.#tree;
+  }
+
+  /** Whether an event target is one of the mirror's elements (its keys are the game's, not a field's). */
+  owns(target: EventTarget | null): boolean {
+    return target instanceof Node && this.root.contains(target);
   }
 
   /** The element mirroring the node at `path`, if it is in the tree. */
@@ -133,6 +163,13 @@ export class A11yMirror {
     const doc = this.root.ownerDocument;
     this.#place();
     const byPath = new Map(tree.nodes.map((n) => [n.path, n]));
+    // A native range holds no children: a node under one is placed beside it.
+    const ranged = (path: string) => ADJUSTABLE.has(byPath.get(path)?.role ?? "");
+    const host = (path: string): string => {
+      let p = path;
+      while (p && ranged(p)) p = byPath.get(p)?.parent ?? "";
+      return p;
+    };
     // Remove what left the tree.
     for (const [path, el] of this.#elements) {
       if (!byPath.has(path)) {
@@ -142,15 +179,26 @@ export class A11yMirror {
     }
     for (const node of tree.nodes) {
       let el = this.#elements.get(node.path);
+      // A slider or a spinbutton is a native range a screen reader adjusts; anything else a div.
+      const range = ADJUSTABLE.has(node.role);
+      if (el && (el.tagName === "INPUT") !== range) {
+        el.remove();
+        el = undefined;
+      }
       if (!el) {
-        el = doc.createElement("div");
+        el = doc.createElement(range ? "input" : "div");
+        if (el instanceof HTMLInputElement) {
+          Object.assign(el, { type: "range", min: "0", max: "2", step: "1", value: "1" });
+          el.dataset.ogValue = "1";
+        }
         el.dataset.ogPath = node.path;
         Object.assign(el.style, NODE);
         this.#elements.set(node.path, el);
       }
-      const parent = (node.parent && this.#elements.get(node.parent)) || this.root;
-      const px = node.parent ? (byPath.get(node.parent)?.x ?? 0) : 0;
-      const py = node.parent ? (byPath.get(node.parent)?.y ?? 0) : 0;
+      const above = host(node.parent);
+      const parent = (above && this.#elements.get(above)) || this.root;
+      const px = above ? (byPath.get(above)?.x ?? 0) : 0;
+      const py = above ? (byPath.get(above)?.y ?? 0) : 0;
       // Tree order is DOM order: append moves an existing element to the end of its parent.
       if (el.parentElement !== parent || parent.lastElementChild !== el) parent.appendChild(el);
       this.#describe(el, node, tree);
@@ -190,7 +238,8 @@ export class A11yMirror {
     if (node.role === "heading") set("aria-level", "2");
     if (node.role === "dialog") set("aria-modal", "true");
     const focusable = states.has("focusable") || tree.focusOrder.includes(node.path);
-    set("tabindex", focusable ? "-1" : null);
+    // A native range is in the page's Tab order unless told otherwise; the UI owns focus.
+    set("tabindex", focusable || el instanceof HTMLInputElement ? "-1" : null);
     set("aria-disabled", states.has("disabled") ? "true" : null);
     set("aria-checked", CHECKABLE.has(node.role) ? String(states.has("checked")) : null);
     set("aria-selected", SELECTABLE.has(node.role) ? String(states.has("selected")) : null);
@@ -201,6 +250,17 @@ export class A11yMirror {
     if (RANGES.has(node.role)) {
       const n = Number.parseFloat(node.value);
       set("aria-valuenow", Number.isFinite(n) ? String(n) : null);
+      // A native range sits at the UI's value, a step from either end, so
+      // a reader's step (from the native value or from aria-valuenow) lands
+      // on one side of it.
+      if (el instanceof HTMLInputElement) {
+        const at = Number.isFinite(n) ? n : 1;
+        if (el.dataset.ogValue !== String(at)) {
+          Object.assign(el, { min: String(at - 1), max: String(at + 1), step: "1" });
+          el.value = String(at);
+          el.dataset.ogValue = String(at);
+        }
+      }
       set("aria-valuetext", node.value || null);
       if (node.value.endsWith("%")) {
         set("aria-valuemin", "0");
@@ -296,6 +356,8 @@ const NODE: Partial<CSSStyleDeclaration> = {
   outline: "none",
   fontSize: "1px",
   whiteSpace: "nowrap",
+  appearance: "none",
+  boxSizing: "border-box",
 };
 
 /** A live region: read, never seen. */

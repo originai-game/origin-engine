@@ -38,6 +38,10 @@ is an engine feature request, not something to work around in the game.
   on every og.platform answer. A replay records them like a key press.
 - Rendering never feeds back into simulation: do not read camera or screen
   state to decide game logic.
+- The engine may spread its own work over the cores (physics, skinning,
+  culling: the lanes), and it gives the same result to the bit as one
+  thread. Game systems always run on the engine thread, one after another,
+  so nothing in game code needs a lock; it needs only the rules above.
 
 ## 3. Every failure is a value
 

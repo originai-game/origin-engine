@@ -64,11 +64,28 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             &format!("shadow ({p})"),
             crate::shadow_source(&hooks, palette),
         );
+        add(
+            &format!("pbr array maps ({p})"),
+            crate::material::array_lit_source(&crate::lit_source_with(&hooks, palette, tables)),
+        );
+        add(
+            &format!("shadow array maps ({p})"),
+            crate::material::array_shadow_source(&crate::shadow_source(&hooks, palette)),
+        );
+        add(
+            &format!("stylise object ({p})"),
+            crate::stylise_object::object_source(palette, tables),
+        );
     }
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(
         "sprite",
-        format!("{}{}", crate::FRAME_WGSL, crate::SPRITE_WGSL),
+        format!(
+            "{}{}{}",
+            crate::FRAME_WGSL,
+            crate::LIGHTING_WGSL,
+            crate::SPRITE_WGSL
+        ),
     );
     add("sprite array", crate::sprite_array::source());
     add(
@@ -82,6 +99,16 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         crate::terrain::terrain_lit_source(crate::FRAME_WGSL, &tables.wgsl(), crate::LIGHTING_WGSL),
     );
     add("terrain shadow", crate::terrain::terrain_shadow_source());
+    let terrain =
+        crate::terrain::terrain_lit_source(crate::FRAME_WGSL, &tables.wgsl(), crate::LIGHTING_WGSL);
+    add(
+        "terrain (layer arrays)",
+        crate::terrain::terrain_lit_array_source(&terrain),
+    );
+    add(
+        "terrain shadow (layer arrays)",
+        crate::terrain::terrain_shadow_array_source(),
+    );
     add(
         "water",
         crate::water::water_source(crate::FRAME_WGSL, crate::LIGHTING_WGSL),

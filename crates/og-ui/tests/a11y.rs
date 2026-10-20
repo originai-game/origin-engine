@@ -310,7 +310,8 @@ fn asked(act: og_input::A11yAct, path: &str) -> InputFrame {
 /// A screen reader's requests (`InputFrame::a11y`, og-input's
 /// `og.A11yAction`) act on the control the tree names: Focus moves focus
 /// there with the ring, Activate presses it as Enter does (a switch
-/// toggles, a tab is chosen), Increment and Decrement step a slider, a
+/// toggles, a tab is chosen), Increment and Decrement step a slider and a
+/// stepper's spinbutton, a
 /// text field takes the focus to edit; a path outside an open dialog, or
 /// naming no control, does nothing.
 ///
@@ -340,6 +341,33 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Volume"));
     tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Volume"));
     assert_eq!(f.volume, 5.0);
+    // A stepper's spinbutton adjusts as a whole (the mirror's native
+    // control, VoiceOver's swipe up and down), within its range.
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Count"));
+    assert_eq!(f.count, 1.0, "increment steps the stepper");
+    let twice = InputFrame {
+        a11y: vec![
+            (A11yAct::Increment, "Form/Count".to_owned()),
+            (A11yAct::Increment, "Form/Count".to_owned()),
+        ],
+        ..InputFrame::default()
+    };
+    tick(&mut ui, &mut f, twice);
+    assert_eq!(f.count, 3.0, "two requests in a tick, two steps");
+    let node = ui
+        .a11y()
+        .nodes
+        .iter()
+        .find(|n| n.path == "Form/Count")
+        .cloned();
+    assert_eq!(
+        node.map(|n| (n.role, n.value)),
+        Some(("spinbutton".into(), "3".into()))
+    );
+    for _ in 0..5 {
+        tick(&mut ui, &mut f, asked(A11yAct::Decrement, "Form/Count"));
+    }
+    assert_eq!(f.count, 0.0, "not past its minimum");
     tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Name"));
     assert_eq!(ui.a11y().focused, "Form/Name", "a field takes the focus");
     tick(
@@ -359,6 +387,8 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     }
     tick(&mut ui, &mut f, asked(A11yAct::Activate, "Form/Music"));
     assert!(f.on, "the switch under the dialog did not toggle");
+    tick(&mut ui, &mut f, asked(A11yAct::Increment, "Form/Count"));
+    assert_eq!(f.count, 0.0, "nor the stepper");
     tick(
         &mut ui,
         &mut f,
@@ -377,8 +407,10 @@ fn a_screen_readers_requests_reach_the_control_the_tree_names() {
     assert_ne!(ui.a11y().digest(), before, "focus moved: it changes");
 }
 
-/// The page's preferences arrive with the viewport: reduced motion turns
-/// the theme's flag on, more contrast takes the high-contrast variant,
+/// The page's preferences arrive with the viewport: reduced motion and
+/// reduced transparency turn the theme's flags on (reduced transparency
+/// also flattens the scrim and the translucent fills, as the game's own
+/// flag does), more contrast takes the high-contrast variant,
 /// over whatever the game configured, and leave again when the page
 /// drops them.
 #[test]
@@ -390,6 +422,7 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
     let at = |reduced_motion, high_contrast| Viewport {
         reduced_motion,
         high_contrast,
+        reduced_transparency: reduced_motion,
         ..Viewport::new(800.0, 1000.0)
     };
     for (reduced, high) in [(true, false), (false, true), (true, true), (false, false)] {
@@ -398,6 +431,7 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
         ui.end();
         let t = ui.theme();
         assert_eq!(t.reduced_motion, reduced, "reduced motion {reduced}");
+        assert_eq!(t.reduced_transparency, reduced, "reduced transparency");
         assert_eq!(t.contrast == Contrast::High, high, "high contrast {high}");
         if high {
             assert_eq!(
@@ -405,6 +439,40 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
                 "high contrast inks muted text as fg"
             );
         }
+        // Reduced transparency flattens the scrim and the translucent fills.
+        let p = t.palette;
+        let flat = [
+            p.scrim,
+            p.fill,
+            p.fill_strong,
+            p.accent_soft,
+            p.material_thick,
+        ];
+        assert_eq!(
+            flat.iter().all(|c| c.alpha == 1.0),
+            reduced,
+            "flat under reduced transparency only: {flat:?}"
+        );
+        if reduced && !high {
+            let c = configured.palette;
+            assert_eq!(
+                p.fill,
+                c.fill.over(c.surface),
+                "a fill as it looks on a surface"
+            );
+            assert_eq!(p.scrim, c.scrim.over(c.bg));
+            assert_eq!(p.fg, c.fg, "opaque inks unchanged");
+        }
     }
     assert_eq!(*ui.theme(), configured, "the configured theme is back");
+    // A game's own reduced transparency flattens the same way.
+    ui.set_theme(Theme {
+        reduced_transparency: true,
+        ..configured
+    });
+    ui.begin(InputFrame::default(), at(false, false));
+    form(&mut ui, &mut f);
+    ui.end();
+    assert_eq!(ui.theme().palette.scrim.alpha, 1.0);
+    assert_eq!(*ui.theme(), configured.to_reduced_transparency());
 }

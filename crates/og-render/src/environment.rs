@@ -256,6 +256,28 @@ pub mod bake {
         pub rgb: &'a [f32],
     }
 
+    /// A cube map of linear RGB: six square faces in [`face_direction`]'s
+    /// order and orientation (+x −x +y −y +z −z, each with rows from the
+    /// top, as KTX2 and WebGPU lay a cube out), face after face.
+    pub struct CubeFaces<'a> {
+        /// Each face's width and height.
+        pub size: u32,
+        /// `6 * size * size * 3` floats.
+        pub rgb: &'a [f32],
+    }
+
+    /// A cube map with its own prefiltered mip chain (cmgen's, IBLBaker's,
+    /// the glTF IBL sampler's): `levels[k]` holds six faces of
+    /// `max(1, size >> k)` texels in [`CubeFaces`]'s layout, the radiance
+    /// GGX-prefiltered at roughness `k / (levels.len() - 1)` (level 0 the
+    /// radiance itself).
+    pub struct PrefilteredCube<'a> {
+        /// Level 0's face size.
+        pub size: u32,
+        /// At least two levels, each `6 * n * n * 3` floats.
+        pub levels: &'a [Vec<f32>],
+    }
+
     /// How to bake.
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct BakeDesc {
@@ -369,26 +391,37 @@ pub mod bake {
         }
     }
 
-    /// The radiance cube at `n` (2x2 samples per texel), and its mips down
-    /// to 1x1 by 2x2 box filtering.
-    fn radiance_cube(src: &Equirect, n: u32, turn: f32, intensity: f32) -> Cube {
-        let (c, s) = (turn.cos(), turn.sin());
-        let mut base = Vec::with_capacity(6 * (n * n) as usize);
-        for face in 0..6 {
-            for j in 0..n {
-                for i in 0..n {
-                    let mut sum = Vec3::ZERO;
-                    for (di, dj) in [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)] {
-                        let d = texel_direction(face, n, i, j, di, dj);
-                        // The map turned by `turn`: look the image up at
-                        // the direction turned back.
-                        let d = Vec3::new(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
-                        sum += src.sample(d);
-                    }
-                    base.push(sum * 0.25 * intensity);
-                }
-            }
+    impl CubeFaces<'_> {
+        /// The faces as a [`Cube`] with its box-filtered mips.
+        fn cube(&self) -> Cube {
+            let texels = self
+                .rgb
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .map(|c| Vec3::from_array(*c))
+                .collect();
+            mips(self.size, texels)
         }
+    }
+
+    impl Cube {
+        /// Bilinear radiance along `d` from the level a cube of face size
+        /// `n` sampled 2x2 per texel reads without skipping texels: the
+        /// largest whose face is at most `2n` (the base when it is smaller).
+        fn resample(&self, d: Vec3, n: u32) -> Vec3 {
+            let level = self
+                .levels
+                .iter()
+                .position(|(m, _)| *m <= 2 * n)
+                .unwrap_or(self.levels.len() - 1);
+            self.bilinear(level, d)
+        }
+    }
+
+    /// A cube's mips down to 1x1 by 2x2 box filtering (an odd face drops
+    /// its last row and column).
+    fn mips(n: u32, base: Vec<Vec3>) -> Cube {
         let mut levels = vec![(n, base)];
         while levels.last().expect("base").0 > 1 {
             let (m, above) = levels.last().expect("base");
@@ -411,6 +444,29 @@ pub mod bake {
             levels.push((h as u32, next));
         }
         Cube { levels }
+    }
+
+    /// The radiance cube at `n` (2x2 samples per texel of `src`'s radiance
+    /// along a direction), and its mips down to 1x1 by 2x2 box filtering.
+    fn radiance_cube(src: &dyn Fn(Vec3) -> Vec3, n: u32, turn: f32, intensity: f32) -> Cube {
+        let (c, s) = (turn.cos(), turn.sin());
+        let mut base = Vec::with_capacity(6 * (n * n) as usize);
+        for face in 0..6 {
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = Vec3::ZERO;
+                    for (di, dj) in [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)] {
+                        let d = texel_direction(face, n, i, j, di, dj);
+                        // The map turned by `turn`: look the image up at
+                        // the direction turned back.
+                        let d = Vec3::new(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
+                        sum += src(d);
+                    }
+                    base.push(sum * 0.25 * intensity);
+                }
+            }
+        }
+        mips(n, base)
     }
 
     fn radical_inverse(mut bits: u32) -> f32 {
@@ -481,6 +537,111 @@ pub mod bake {
     /// irradiance projected from level 0 onto order-2 harmonics (each
     /// texel weighted by its solid angle) and convolved with the cosine lobe.
     pub fn bake(src: &Equirect, desc: &BakeDesc) -> Result<EnvironmentMapData, String> {
+        if src.width < 2 || src.height < 1 {
+            return Err(format!("a {}x{} image is too small", src.width, src.height));
+        }
+        if src.rgb.len() != (src.width * src.height * 3) as usize {
+            return Err("the image's pixels do not match its size".into());
+        }
+        bake_from(&|d| src.sample(d), desc)
+    }
+
+    /// [`bake`] from a cube map: the same radiance cube (2x2 samples per
+    /// texel, from the source level of at most twice its face size, so a
+    /// larger source is box-filtered first), prefiltered levels and
+    /// irradiance.
+    pub fn bake_cube(src: &CubeFaces, desc: &BakeDesc) -> Result<EnvironmentMapData, String> {
+        if src.size == 0 {
+            return Err("a cube map of 0x0 faces".into());
+        }
+        if src.rgb.len() != 6 * (src.size * src.size * 3) as usize {
+            return Err("the cube's texels do not match its face size".into());
+        }
+        let cube = src.cube();
+        bake_from(&|d| cube.resample(d, desc.size), desc)
+    }
+
+    /// A map from a cube's own prefiltered levels, without filtering them
+    /// again: level `m` of the map (roughness `m / 4`) reads the source at
+    /// lod `m / 4 * (levels - 1)`, trilinearly between its two nearest
+    /// levels, at each texel's centre, turned by `desc.rotation_degrees`
+    /// and times `desc.intensity`; a level whose lod is a whole level of
+    /// the source's size, unturned, is copied texel for texel (so a chain
+    /// of five levels from `desc.size` is taken exactly). The irradiance
+    /// is projected from level 0 as [`bake`]'s. `desc.size` is the source's
+    /// level 0 size and `desc.samples` is not used.
+    pub fn from_prefiltered(
+        src: &PrefilteredCube,
+        desc: &BakeDesc,
+    ) -> Result<EnvironmentMapData, String> {
+        check_desc(desc)?;
+        if src.size != desc.size {
+            return Err(format!(
+                "the source's faces are {0}², the map's {1}²: a prefiltered chain is taken at its own size",
+                src.size, desc.size
+            ));
+        }
+        if src.levels.len() < 2 {
+            return Err(format!(
+                "{} level(s): a prefiltered cube brings its mip chain (at least two levels)",
+                src.levels.len()
+            ));
+        }
+        let mut levels = Vec::with_capacity(src.levels.len());
+        for (k, rgb) in src.levels.iter().enumerate() {
+            let n = (src.size >> k).max(1);
+            if rgb.len() != 6 * (n * n * 3) as usize {
+                return Err(format!(
+                    "level {k} holds {} floats; six {n}² faces take {}",
+                    rgb.len(),
+                    6 * n * n * 3
+                ));
+            }
+            let texels = rgb
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .map(|c| Vec3::from_array(*c) * desc.intensity)
+                .collect();
+            levels.push((n, texels));
+        }
+        let cube = Cube { levels };
+        let top = (cube.levels.len() - 1) as f32;
+        let turn = desc.rotation_degrees.to_radians();
+        let (c, s) = (turn.cos(), turn.sin());
+        let mut out: Vec<Vec<Vec3>> = Vec::with_capacity(ENVIRONMENT_MAP_LEVELS as usize);
+        for m in 0..ENVIRONMENT_MAP_LEVELS {
+            let n = desc.size >> m;
+            let lod = m as f32 / (ENVIRONMENT_MAP_LEVELS - 1) as f32 * top;
+            let whole = lod.fract() == 0.0 && cube.levels[lod as usize].0 == n;
+            if whole && turn == 0.0 {
+                out.push(cube.levels[lod as usize].1.clone());
+                continue;
+            }
+            let faces = per_face(|face| {
+                let mut o = Vec::with_capacity((n * n) as usize);
+                for j in 0..n {
+                    for i in 0..n {
+                        let d = texel_direction(face, n, i, j, 0.5, 0.5);
+                        let d = Vec3::new(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
+                        o.push(cube.sample(d, lod));
+                    }
+                }
+                o
+            });
+            out.push(faces.into_iter().flatten().collect());
+        }
+        let texels = out.iter().flatten().map(|c| rgb9e5(c.to_array())).collect();
+        let map = EnvironmentMapData {
+            size: desc.size,
+            texels,
+            irradiance: irradiance_of(desc.size, &out[0]),
+        };
+        map.validate()?;
+        Ok(map)
+    }
+
+    fn check_desc(desc: &BakeDesc) -> Result<(), String> {
         let size = desc.size;
         if !size.is_power_of_two()
             || !(ENVIRONMENT_MAP_MIN_SIZE..=ENVIRONMENT_MAP_MAX_SIZE).contains(&size)
@@ -489,15 +650,18 @@ pub mod bake {
                 "size {size}: a power of two from {ENVIRONMENT_MAP_MIN_SIZE} to {ENVIRONMENT_MAP_MAX_SIZE}"
             ));
         }
-        if src.width < 2 || src.height < 1 {
-            return Err(format!("a {}x{} image is too small", src.width, src.height));
-        }
-        if src.rgb.len() != (src.width * src.height * 3) as usize {
-            return Err("the image's pixels do not match its size".into());
-        }
         if !(desc.intensity.is_finite() && desc.intensity >= 0.0) {
             return Err(format!("intensity {}: 0 or more", desc.intensity));
         }
+        Ok(())
+    }
+
+    fn bake_from(
+        src: &dyn Fn(Vec3) -> Vec3,
+        desc: &BakeDesc,
+    ) -> Result<EnvironmentMapData, String> {
+        check_desc(desc)?;
+        let size = desc.size;
         let cube = radiance_cube(
             src,
             size,
@@ -526,9 +690,21 @@ pub mod bake {
             });
             texels.extend(faces.into_iter().flatten());
         }
-        // Irradiance: radiance projected with each texel's solid angle,
-        // then the cosine lobe's band factors (1, 2/3, 1/4) for E / pi.
         let (n, base) = &cube.levels[0];
+        let map = EnvironmentMapData {
+            size,
+            texels,
+            irradiance: irradiance_of(*n, base),
+        };
+        map.validate()?;
+        Ok(map)
+    }
+
+    /// The irradiance over pi of a radiance cube of face size `n`: the
+    /// radiance projected with each texel's solid angle, then the cosine
+    /// lobe's band factors (1, 2/3, 1/4) for E / pi.
+    fn irradiance_of(n: u32, base: &[Vec3]) -> [[f32; 3]; 9] {
+        let n = &n;
         let mut coeffs = [Vec3::ZERO; 9];
         for face in 0..6 {
             for j in 0..*n {
@@ -556,14 +732,7 @@ pub mod bake {
             0.25,
             0.25,
         ];
-        let irradiance = std::array::from_fn(|k| (coeffs[k] * band[k]).to_array());
-        let map = EnvironmentMapData {
-            size,
-            texels,
-            irradiance,
-        };
-        map.validate()?;
-        Ok(map)
+        std::array::from_fn(|k| (coeffs[k] * band[k]).to_array())
     }
 
     /// The irradiance over pi of `map` facing unit `n` (what the renderer's
@@ -618,6 +787,102 @@ mod tests {
         // +x face: right is -z, up is +y.
         assert!(face_direction(0, 1.0, 0.0).z < 0.0);
         assert!(face_direction(0, 0.0, 1.0).y > 0.0);
+    }
+
+    /// A cube's own prefiltered chain is taken, not filtered again: five
+    /// levels from the map's size are copied texel for texel (the bake's
+    /// own levels read back come out as they went in), and a shorter chain
+    /// is read by roughness, level m at lod m / 4 * (levels - 1).
+    #[cfg(feature = "bake")]
+    #[test]
+    fn a_prefiltered_chain_is_taken_as_is() {
+        use super::bake::{
+            BakeDesc, Equirect, PrefilteredCube, bake, from_prefiltered, irradiance,
+        };
+        let (w, h) = (32u32, 16u32);
+        let rgb: Vec<f32> = (0..w * h)
+            .flat_map(|i| {
+                let (x, y) = ((i % w) as f32 / w as f32, (i / w) as f32 / h as f32);
+                [0.2 + 2.0 * x, 1.5 * (1.0 - y), 0.3 + x * y]
+            })
+            .collect();
+        let desc = BakeDesc {
+            size: 16,
+            samples: 32,
+            ..Default::default()
+        };
+        let baked = bake(
+            &Equirect {
+                width: w,
+                height: h,
+                rgb: &rgb,
+            },
+            &desc,
+        )
+        .unwrap();
+        let mut levels = Vec::new();
+        let mut at = 0;
+        for m in 0..ENVIRONMENT_MAP_LEVELS {
+            let count = 6 * ((16u32 >> m) as usize).pow(2);
+            levels.push(
+                baked.texels[at..at + count]
+                    .iter()
+                    .flat_map(|t| rgb9e5_decode(*t))
+                    .collect::<Vec<f32>>(),
+            );
+            at += count;
+        }
+        let src = PrefilteredCube {
+            size: 16,
+            levels: &levels,
+        };
+        let taken = from_prefiltered(&src, &desc).unwrap();
+        assert_eq!(taken.texels, baked.texels, "five levels are copied");
+        for n in [glam::Vec3::Y, glam::Vec3::X, -glam::Vec3::Z] {
+            let (a, b) = (irradiance(&taken, n), irradiance(&baked, n));
+            assert!(
+                (a - b).abs().max_element() < 0.01 * b.max_element(),
+                "{a} {b}"
+            );
+        }
+        // Three levels, each one value: level m reads lod m / 2.
+        let flat: Vec<Vec<f32>> = (0..3u32)
+            .map(|k| vec![k as f32 + 1.0; 6 * ((16u32 >> k) as usize).pow(2) * 3])
+            .collect();
+        let src = PrefilteredCube {
+            size: 16,
+            levels: &flat,
+        };
+        let turned = BakeDesc {
+            rotation_degrees: 30.0,
+            intensity: 2.0,
+            ..desc
+        };
+        let map = from_prefiltered(&src, &turned).unwrap();
+        let mut at = 0;
+        for m in 0..ENVIRONMENT_MAP_LEVELS {
+            let count = 6 * ((16u32 >> m) as usize).pow(2);
+            let want = 2.0 * (1.0 + m as f32 / 2.0);
+            for t in &map.texels[at..at + count] {
+                for c in rgb9e5_decode(*t) {
+                    assert!((c - want).abs() < want / 200.0, "level {m}: {c} not {want}");
+                }
+            }
+            at += count;
+        }
+        // One level is not a chain; another size is not this chain's.
+        assert!(
+            from_prefiltered(
+                &PrefilteredCube {
+                    size: 16,
+                    levels: &flat[..1]
+                },
+                &desc
+            )
+            .is_err()
+        );
+        let other = BakeDesc { size: 32, ..desc };
+        assert!(from_prefiltered(&src, &other).unwrap_err().contains("16²"));
     }
 
     #[cfg(feature = "bake")]
@@ -705,5 +970,122 @@ mod tests {
         .expect("bake");
         assert!(red(&turned, 5) > 4.0, "turned to -z: {}", red(&turned, 5));
         assert!(red(&turned, 0) < 1.5);
+    }
+
+    /// A smooth sky: brighter above, warm, a hot lobe towards +x.
+    #[cfg(feature = "bake")]
+    fn sky(d: glam::Vec3) -> [f32; 3] {
+        let lobe = 4.0 * d.x.max(0.0).powi(8);
+        let up = 1.0 + d.y;
+        [up + lobe, 0.8 * up, 0.6 * up]
+    }
+
+    /// The same sky given as cube faces bakes as it does given as an
+    /// equirectangular image: within 2 % in irradiance and a few percent
+    /// per texel of every level; a source cube larger than twice the bake
+    /// is box-filtered first, so 256² faces bake like 64² ones.
+    #[cfg(feature = "bake")]
+    #[test]
+    fn a_cube_bakes_as_its_equirectangular_twin() {
+        use super::bake::{BakeDesc, CubeFaces, Equirect, bake, bake_cube, irradiance};
+        use std::f32::consts::PI;
+        let (w, h) = (256u32, 128u32);
+        let mut equirect = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let lon = ((x as f32 + 0.5) / w as f32 - 0.5) * 2.0 * PI;
+                let lat = (0.5 - (y as f32 + 0.5) / h as f32) * PI;
+                let d = glam::Vec3::new(lat.cos() * lon.cos(), lat.sin(), lat.cos() * lon.sin());
+                equirect.extend(sky(d));
+            }
+        }
+        let cube = |n: u32| {
+            let mut rgb = Vec::new();
+            for face in 0..6 {
+                for j in 0..n {
+                    for i in 0..n {
+                        let x = 2.0 * (i as f32 + 0.5) / n as f32 - 1.0;
+                        let y = 1.0 - 2.0 * (j as f32 + 0.5) / n as f32;
+                        rgb.extend(sky(face_direction(face, x, y)));
+                    }
+                }
+            }
+            rgb
+        };
+        let desc = BakeDesc {
+            size: 32,
+            samples: 64,
+            rotation_degrees: 30.0,
+            intensity: 1.5,
+        };
+        let a = bake(
+            &Equirect {
+                width: w,
+                height: h,
+                rgb: &equirect,
+            },
+            &desc,
+        )
+        .unwrap();
+        let faces64 = cube(64);
+        let b = bake_cube(
+            &CubeFaces {
+                size: 64,
+                rgb: &faces64,
+            },
+            &desc,
+        )
+        .unwrap();
+        for n in [
+            glam::Vec3::Y,
+            -glam::Vec3::Y,
+            glam::Vec3::X,
+            glam::Vec3::Z,
+            -glam::Vec3::X,
+        ] {
+            let (ea, eb) = (irradiance(&a, n), irradiance(&b, n));
+            assert!(
+                ((ea - eb).abs() / ea.max(glam::Vec3::splat(0.05))).max_element() < 0.02,
+                "{n}: {ea} {eb}"
+            );
+        }
+        let diff = |x: &EnvironmentMapData, y: &EnvironmentMapData| {
+            let mut worst = 0f32;
+            let mut sum = 0f32;
+            for (p, q) in x.texels.iter().zip(&y.texels) {
+                let (p, q) = (rgb9e5_decode(*p), rgb9e5_decode(*q));
+                for c in 0..3 {
+                    let d = (p[c] - q[c]).abs() / p[c].max(q[c]).max(0.1);
+                    worst = worst.max(d);
+                    sum += d;
+                }
+            }
+            (sum / (3 * x.texels.len()) as f32, worst)
+        };
+        let (mean, worst) = diff(&a, &b);
+        assert!(mean < 0.01 && worst < 0.1, "mean {mean} worst {worst}");
+        // A 256² source is filtered down to the 64² level the bake reads.
+        let faces256 = cube(256);
+        let c = bake_cube(
+            &CubeFaces {
+                size: 256,
+                rgb: &faces256,
+            },
+            &desc,
+        )
+        .unwrap();
+        let (mean, worst) = diff(&b, &c);
+        assert!(mean < 0.005 && worst < 0.05, "mean {mean} worst {worst}");
+        // Faces of the wrong size are refused.
+        assert!(
+            bake_cube(
+                &CubeFaces {
+                    size: 63,
+                    rgb: &faces64
+                },
+                &desc
+            )
+            .is_err()
+        );
     }
 }

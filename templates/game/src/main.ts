@@ -14,6 +14,9 @@
 // patrols its post on the navmesh baked from assets/nav/yard.ogt (og.nav),
 // sees the trickster only inside its view cone and not through the wall,
 // raises the alarm and chases it, then searches and goes back.
+//
+// The frame's look is data: GameDesc.look names a file under assets/looks/
+// that extends a preset of the style catalogue, applied before start runs.
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, Vector3, SHAPE_BOX } from "@origingame/engine";
 import type { World } from "@origingame/engine";
@@ -137,6 +140,9 @@ export default og.game({
   tick: 60,
   seed: 1,
   scenes: { main: "scenes/main.ogt" },
+  // The art direction as data (og-taste §12): applied after the scene
+  // spawns and before start, which may still change any of it.
+  look: "looks/origin-game.ogt",
   resources: [Run],
   systems: [Move, Menu, StartSpin, Drop, Chime, Rotate],
   // MSAA keeps world-space sprites and text sharp; TAA would blur them across

@@ -266,3 +266,152 @@ pub fn physical_scene() -> RenderScene {
     };
     scene
 }
+
+/// Four 128² tiles as one sRGB texture array's layers: red bricks, a blue
+/// checker, green stripes, yellow dots on slate (alpha 1).
+pub fn tile_layers() -> Vec<TextureData> {
+    let bricks = texture(128, ColorSpace::Srgb, |u, v| {
+        let row = (v * 4.0) as u32;
+        let x = (u * 2.0 + if row % 2 == 1 { 0.5 } else { 0.0 }).fract();
+        let mortar = (v * 4.0).fract() < 0.08 || x < 0.04;
+        if mortar {
+            [0.8, 0.78, 0.72, 1.0]
+        } else {
+            [0.62, 0.2, 0.12, 1.0]
+        }
+    });
+    let checker = texture(128, ColorSpace::Srgb, |u, v| {
+        if ((u * 4.0) as u32 + (v * 4.0) as u32).is_multiple_of(2) {
+            [0.12, 0.3, 0.8, 1.0]
+        } else {
+            [0.92, 0.94, 0.96, 1.0]
+        }
+    });
+    let stripes = texture(128, ColorSpace::Srgb, |u, v| {
+        if ((u + v) * 5.0).fract() < 0.5 {
+            [0.15, 0.6, 0.25, 1.0]
+        } else {
+            [0.75, 0.9, 0.55, 1.0]
+        }
+    });
+    let dots = texture(128, ColorSpace::Srgb, |u, v| {
+        let d = Vec2::new((u * 3.0).fract() - 0.5, (v * 3.0).fract() - 0.5).length();
+        if d < 0.3 {
+            [0.98, 0.8, 0.15, 1.0]
+        } else {
+            [0.2, 0.22, 0.26, 1.0]
+        }
+    });
+    vec![bricks, checker, stripes, dots]
+}
+
+/// Materials sampling texture arrays (`materials-array`): one tile
+/// material (a four-layer colour array and a four-layer normal array) on
+/// eight cubes, each picking its layer per instance and the last keeping
+/// the material's (layer 2), one batch; beside them a cube of the plain 2D
+/// textures of layer 1, showing the tile the array cubes of layer 1 show; two
+/// blended panes of one array material (layer 0 for one, the material's 3
+/// for the other); and a sphere with only a normal array (its colour the
+/// white stand-in times orange). Under a low sun with shadows.
+pub fn array_scene() -> RenderScene {
+    use og_render::{Instance, TextureArrayData, TextureSource};
+    let mut scene = RenderScene::new();
+    crate::scenes::ground(&mut scene, 30.0, 0.5, 0.85);
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(0.9)));
+    let sphere = scene.add_mesh(shapes::sphere(48, 32));
+    let pane = scene.add_mesh(shapes::plane(1.6, 1.0));
+    let colours = tile_layers();
+    let normals: Vec<TextureData> = [3.0, 5.0, 8.0, 2.0]
+        .map(|cells| crate::p2_scenes::bump_normal_map(128, cells))
+        .to_vec();
+    let array = |scene: &mut RenderScene, layers: &[TextureData]| {
+        scene
+            .add_texture_array(TextureArrayData {
+                layers: layers.iter().cloned().map(TextureSource::Rgba).collect(),
+            })
+            .expect("same-sized layers")
+            .slot()
+    };
+    let tiles = array(&mut scene, &colours);
+    let bumps = array(&mut scene, &normals);
+    let tile_material = scene.add_standard_material(StandardMaterial {
+        mapArray: tiles,
+        mapLayer: 2,
+        normalMapArray: bumps,
+        normalMapLayer: 2,
+        roughness: 0.55,
+        ..Default::default()
+    });
+    for i in 0..8u32 {
+        let at = Vec3::new(
+            (i % 4) as f32 * 1.3 - 2.6,
+            0.45,
+            -1.2 + (i / 4) as f32 * 1.3,
+        );
+        scene.instances.push(Instance {
+            mesh: cube,
+            material: tile_material,
+            transform: Mat4::from_translation(at) * Mat4::from_rotation_y(0.35),
+            material_layer: (i < 7).then_some(i % 4),
+        });
+    }
+    // Layer 1 as plain 2D textures, beside the array cubes of layer 1.
+    let map = scene.add_texture(colours[1].clone());
+    let normal = scene.add_texture(normals[1].clone());
+    let plain = scene.add_standard_material(StandardMaterial {
+        map: map.slot(),
+        normalMap: normal.slot(),
+        roughness: 0.55,
+        ..Default::default()
+    });
+    scene.add_instance(
+        cube,
+        plain,
+        Mat4::from_translation(Vec3::new(2.6, 0.45, 1.4)) * Mat4::from_rotation_y(0.35),
+    );
+    let glass = scene.add_standard_material(StandardMaterial {
+        mapArray: tiles,
+        mapLayer: 3,
+        transparent: 1,
+        opacity: 0.65,
+        side: 2,
+        roughness: 0.3,
+        ..Default::default()
+    });
+    for (x, layer) in [(-1.0, Some(0)), (1.0, None)] {
+        scene.instances.push(Instance {
+            mesh: pane,
+            material: glass,
+            transform: Mat4::from_translation(Vec3::new(x, 0.9, 2.4))
+                * Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2),
+            material_layer: layer,
+        });
+    }
+    let bumpy = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.95, 0.5, 0.15),
+        normalMapArray: bumps,
+        normalMapLayer: 1,
+        roughness: 0.35,
+        ..Default::default()
+    });
+    scene.add_instance(
+        sphere,
+        bumpy,
+        Mat4::from_translation(Vec3::new(3.4, 0.6, -0.6)) * Mat4::from_scale(Vec3::splat(1.2)),
+    );
+    let sun = Vec3::new(-0.55, 0.7, 0.45);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.9;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.4, 7.2),
+        target: Vec3::new(0.3, 0.4, 0.2),
+        exposure: Exposure::linear(0.75),
+        ..Default::default()
+    };
+    scene
+}

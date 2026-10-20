@@ -13,9 +13,15 @@
 // and, for games that only read keys, as the keys of their standard mapping.
 //
 // Accessibility: the UI's accessibility tree is mirrored into the page over
-// the canvas (a11y.ts), and the page's `prefers-reduced-motion: reduce` and
-// `prefers-contrast: more` reach the UI with the viewport (og-ui's theme
-// takes them over the game's settings), followed as they change.
+// the canvas (a11y.ts), and the page's `prefers-reduced-motion: reduce`,
+// `prefers-contrast: more` and `prefers-reduced-transparency: reduce` reach
+// the UI with the viewport (og-ui's theme takes them over the game's
+// settings; glass, scrims and translucent fills become opaque), followed as
+// they change. So does the platform's keyboard: on Apple platforms
+// `macKeys` gives og-ui's text controls macOS's editing keys (Command for
+// the shortcuts and the line's ends, Option by words, Control+A and E). A
+// Mac's browser sends no keyup for a key released while Command is held,
+// so the shell releases those keys itself when Command goes up.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
@@ -77,11 +83,28 @@ export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio:
   return { width: Math.max(1, Math.round(cssWidth * dpr)), height: Math.max(1, Math.round(cssHeight * dpr)), dpr };
 }
 
-/** The page's motion and contrast preferences, as the viewport carries them to og-ui. */
-export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean } {
+/** The page's preferences og-ui follows, each with the viewport field it sets. */
+export const PAGE_PREFERENCES = [
+  ["reducedMotion", "(prefers-reduced-motion: reduce)"],
+  ["highContrast", "(prefers-contrast: more)"],
+  ["reducedTransparency", "(prefers-reduced-transparency: reduce)"],
+] as const;
+
+/** The page's motion, contrast and transparency preferences and the platform's editing keys, as the viewport carries them to og-ui. */
+export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; macKeys: boolean } {
   const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
-  return { reducedMotion: query("(prefers-reduced-motion: reduce)"), highContrast: query("(prefers-contrast: more)") };
+  const [motion, contrast, transparency] = PAGE_PREFERENCES.map(([, q]) => query(q));
+  return { reducedMotion: motion!, highContrast: contrast!, reducedTransparency: transparency!, macKeys: macKeys() };
 }
+
+/** Whether the page runs on an Apple platform, whose text fields take Command and Option (og-ui's `Viewport.macKeys`). */
+export function macKeys(nav: { platform?: string; userAgentData?: { platform?: string } } | undefined = globalThis.navigator as never): boolean {
+  const platform = nav?.userAgentData?.platform || nav?.platform || "";
+  return /^(mac|iphone|ipad|ipod)/i.test(platform);
+}
+
+/** The modifier keys' codes: held through other keys, released on their own keyup. */
+const MODIFIER_KEYS = new Set(["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "CapsLock"]);
 
 /** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
 const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
@@ -498,8 +521,8 @@ export class Shell {
     const mirror = new A11yMirror(canvas, (e) => this.#send(ring, e));
     this.#a11y = mirror;
     this.#listeners.push(() => mirror.dispose());
-    // The page's motion and contrast preferences, followed as the reader changes them.
-    for (const q of ["(prefers-reduced-motion: reduce)", "(prefers-contrast: more)"]) {
+    // The page's motion, contrast and transparency preferences, followed as the reader changes them.
+    for (const [, q] of PAGE_PREFERENCES) {
       const media = globalThis.matchMedia?.(q);
       if (!media?.addEventListener) continue;
       const changed = () => this.worker.postMessage({ type: "viewport", viewport: { ...this.#viewport, ...pagePreferences() } });
@@ -508,19 +531,30 @@ export class Shell {
     }
     const typing = (e: KeyboardEvent) => {
       if (text.owns(e.target)) return e.isComposing || text.composing || e.keyCode === 229;
+      // The mirror's elements (a slider's native range among them) pass their keys to the game.
+      if (mirror.owns(e.target)) return false;
       const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
       return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
     };
+    // Keys that went down while Command was held: a Mac's browser sends no
+    // keyup for them, so they are released when Command is.
+    const underCommand = new Set<string>();
     listen(globalThis as unknown as EventTarget, "keydown", (e) => {
       if (typing(e) || !e.code) return;
       // In the text target Space types and shortcuts copy, cut and paste.
       const shortcut = text.owns(e.target) && (e.ctrlKey || e.metaKey || e.code === "Space");
       if (KEPT_KEYS.has(e.code) && !shortcut) e.preventDefault();
+      if (e.metaKey && !MODIFIER_KEYS.has(e.code)) underCommand.add(e.code);
       if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down", time: stamp(e) });
     });
     listen(globalThis as unknown as EventTarget, "keyup", (e) => {
       if (typing(e) || !e.code) return;
+      underCommand.delete(e.code);
       this.#send(ring, { kind: "key", key: e.code, action: "up", time: stamp(e) });
+      if ((e.code === "MetaLeft" || e.code === "MetaRight") && !e.metaKey) {
+        for (const key of underCommand) this.#send(ring, { kind: "key", key, action: "up", time: stamp(e) });
+        underCommand.clear();
+      }
     });
     // Relative to the canvas's CSS box, whichever element the event landed on.
     const at = (e: PointerEvent | WheelEvent) => {

@@ -493,8 +493,11 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
 }
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
-/// coarsePointer?, reducedMotion?, highContrast? }` in CSS pixels (the last
-/// two the page's `prefers-reduced-motion` and `prefers-contrast`).
+/// coarsePointer?, reducedMotion?, highContrast?, reducedTransparency?,
+/// macKeys? }` in CSS pixels (reducedMotion, highContrast and
+/// reducedTransparency the page's `prefers-reduced-motion`,
+/// `prefers-contrast` and `prefers-reduced-transparency`; macKeys an Apple
+/// platform's editing keys in text controls).
 /// Answers wire JSON.
 #[wasm_bindgen]
 pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {

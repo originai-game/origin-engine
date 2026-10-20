@@ -4,7 +4,8 @@
 // vertex buffer). Per instance: a hit flash, 2D lighting from the light map
 // (lit layers), a soft round dot for untextured particles, and a glow
 // strength (`fs_glow` adds glowing sprites into the glow buffer).
-// Prepended by frame.wgsl.
+// A drop shadow fades where its ground already lies in the sun's cascaded
+// shadow. Prepended by frame.wgsl and lighting.wgsl.
 
 struct SpriteParams {
   // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas size in pixels.
@@ -27,8 +28,8 @@ struct SpriteIn {
   @location(2) uv_rect: vec4<f32>,            // u0, v0, u1, v1 (v down)
   @location(3) color: vec4<f32>,
   @location(4) flash: vec4<f32>,              // rgb: flash colour, a: amount
-  @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot
-  @location(6) ground: vec4<f32>,             // a drop shadow: x 1, yz: x and z moved per metre of height, w: the ground's height
+  @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot; a drop shadow's yz: its ground's rise per metre along x and z
+  @location(6) ground: vec4<f32>,             // a drop shadow: x 1, yz: x and z moved per metre of height, w: the ground's height under the anchor; x 2: a bent shadow's cell (bent_corner)
 };
 
 struct SpriteOut {
@@ -39,14 +40,53 @@ struct SpriteOut {
   @location(3) fx: vec3<f32>,
   @location(4) corner: vec2<f32>,
   @location(5) world: vec3<f32>,
+  @location(6) shadow: f32,                   // 1 for a drop shadow
 };
 
 // A drop shadow's corner: the standing quad's corner carried along the sun
-// down to the ground plane (sprites.rs shadow_ground); others unchanged.
+// down to the level ground at g.w (sprites.rs shadow_ground); others
+// unchanged.
 fn ground_shadow(p: vec3<f32>, g: vec4<f32>) -> vec3<f32> {
   if (g.x < 0.5) { return p; }
   let h = p.y - g.w;
   return vec3<f32>(p.x + g.y * h, g.w, p.z + g.z * h);
+}
+
+// The same onto a slope: the plane through g.w under the anchor `a`
+// rising by `rise` per metre along x and z (the terrain under a sprite).
+fn sloped_shadow(p: vec3<f32>, g: vec4<f32>, a: vec3<f32>, rise: vec2<f32>) -> vec3<f32> {
+  // Down the sun by t metres of height: p + (g.y, -1, g.z) t on the plane.
+  let above = p.y - g.w - rise.x * (p.x - a.x) - rise.y * (p.z - a.z);
+  let t = above / max(1.0 + rise.x * g.y + rise.y * g.z, 0.2);
+  return vec3<f32>(p.x + g.y * t, p.y - t, p.z + g.z * t);
+}
+
+// A cell of a bent drop shadow (sprites.rs bent_shadow, x 2): the cell's
+// corner `k` as a corner of the whole quad (the cell's column and row in
+// the flash's first two bytes, 2 x 4 cells) and the ground's height under
+// it (the cell's corners: w bottom left, fx.x bottom right, fx.y top
+// right, fx.z top left). Neighbouring cells compute a shared corner alike,
+// so the shadow has no seams.
+struct BentCorner {
+  c: vec2<f32>,
+  height: f32,
+};
+
+fn bent_corner(k: vec2<f32>, flash: vec4<f32>, g: vec4<f32>, fx: vec3<f32>) -> BentCorner {
+  var b: BentCorner;
+  let cell = round(flash.xy * 255.0);
+  b.c = (cell + k) * vec2<f32>(0.5, 0.25);
+  let bottom = select(g.w, fx.x, k.x > 0.5);
+  let top = select(fx.z, fx.y, k.x > 0.5);
+  b.height = select(bottom, top, k.y > 0.5);
+  return b;
+}
+
+// How much of a drop shadow shows at p: none where the sun's cascades
+// already shadow the ground (a shadow inside a shadow is no darker).
+fn drop_shadow_visible(p: vec3<f32>) -> f32 {
+  let l = normalize(frame.light_dir.xyz);
+  return cascade_shadow(p, vec3<f32>(0.0, 1.0, 0.0), max(l.y, 0.05));
 }
 
 @vertex
@@ -55,21 +95,52 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
+  if (s.ground.x > 1.5) {
+    return bent_vertex(corners[vi], s);
+  }
   let c = corners[vi];
   let local = (c - s.size_anchor.zw) * s.size_anchor.xy;
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
-  let world = ground_shadow(vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z), s.ground);
+  let standing = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  var world = ground_shadow(standing, s.ground);
+  if (s.ground.x > 0.5 && (s.fx.y != 0.0 || s.fx.z != 0.0)) {
+    world = sloped_shadow(standing, s.ground, s.position_rotation.xyz, s.fx.yz);
+  }
   var o: SpriteOut;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   // Bottom of the quad samples the bottom of the region (v grows downwards).
   o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, c.x), mix(s.uv_rect.w, s.uv_rect.y, c.y));
   o.color = s.color;
   o.flash = s.flash;
-  o.fx = s.fx;
+  o.fx = select(s.fx, vec3<f32>(0.0), s.ground.x > 0.5);
   o.corner = c;
   o.world = world;
+  o.shadow = select(0.0, 1.0, s.ground.x > 0.5);
+  return o;
+}
+
+// A cell of a bent drop shadow's corner `k`: the whole quad's corner it is
+// (bent_corner) carried down the sun to the ground's height under it.
+fn bent_vertex(k: vec2<f32>, s: SpriteIn) -> SpriteOut {
+  let b = bent_corner(k, s.flash, s.ground, s.fx);
+  let c = b.c;
+  let local = (c - s.size_anchor.zw) * s.size_anchor.xy;
+  let cs = cos(s.position_rotation.w);
+  let sn = sin(s.position_rotation.w);
+  let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
+  let standing = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  let world = ground_shadow(standing, vec4<f32>(1.0, s.ground.yz, b.height));
+  var o: SpriteOut;
+  o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, c.x), mix(s.uv_rect.w, s.uv_rect.y, c.y));
+  o.color = s.color;
+  o.flash = vec4<f32>(0.0);
+  o.fx = vec3<f32>(0.0);
+  o.corner = c;
+  o.world = world;
+  o.shadow = 1.0;
   return o;
 }
 
@@ -89,6 +160,9 @@ fn sprite_color(in: SpriteOut) -> vec4<f32> {
 @fragment
 fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
   var c = sprite_color(in);
+  if (in.shadow > 0.5) {
+    c.a *= drop_shadow_visible(in.world);
+  }
   if (c.a <= 0.0) { discard; }
   if (in.fx.y > 0.5) {
     let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;

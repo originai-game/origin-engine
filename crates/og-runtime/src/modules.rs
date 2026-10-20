@@ -287,8 +287,8 @@ pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
 }
 
 /// The host's play surface: CSS pixels, device pixels per CSS pixel, the
-/// safe area, the pointer kind and the page's motion and contrast
-/// preferences. The web host calls it when the canvas
+/// safe area, the pointer kind, the page's motion, contrast and
+/// transparency preferences and whether text controls take macOS's keys. The web host calls it when the canvas
 /// is sized; native hosts take the render target's size.
 pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     let eng = engine(engine_id)?;
@@ -301,6 +301,8 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         coarse_pointer: viewport["coarsePointer"].as_bool().unwrap_or(false),
         reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
         high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
+        reduced_transparency: viewport["reducedTransparency"].as_bool().unwrap_or(false),
+        mac_keys: viewport["macKeys"].as_bool().unwrap_or(false),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
@@ -313,6 +315,8 @@ fn viewport_json(v: &Viewport) -> Value {
         "coarsePointer": v.coarse_pointer,
         "reducedMotion": v.reduced_motion,
         "highContrast": v.high_contrast,
+        "reducedTransparency": v.reduced_transparency,
+        "macKeys": v.mac_keys,
         "breakpoint": v.breakpoint().name(),
     })
 }
@@ -833,6 +837,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             theme = theme.with_accent(Srgba::rgb(ch("r"), ch("g"), ch("b")));
         }
         theme.reduced_motion = d["reducedMotion"].as_bool().unwrap_or(false);
+        theme.reduced_transparency = d["reducedTransparency"].as_bool().unwrap_or(false);
         theme.density = match d["density"].as_str() {
             Some("compact") => DensityMode::Compact,
             Some("comfortable") => DensityMode::Comfortable,
@@ -1164,6 +1169,9 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
         "skin": skin,
+        "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
+        "reducedMotion": theme.reduced_motion,
+        "reducedTransparency": theme.reduced_transparency,
     })
     .to_string()
 }
@@ -2216,6 +2224,8 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     coarse_pointer: v["coarsePointer"].as_bool().unwrap_or(false),
                     reduced_motion: v["reducedMotion"].as_bool().unwrap_or(false),
                     high_contrast: v["highContrast"].as_bool().unwrap_or(false),
+                    reduced_transparency: v["reducedTransparency"].as_bool().unwrap_or(false),
+                    mac_keys: v["macKeys"].as_bool().unwrap_or(false),
                 },
             );
         } else {
