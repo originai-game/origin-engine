@@ -40,6 +40,15 @@ references of the station were recorded; reproduced at RMSE 0 after).
 - The station's `og run` ends on world hash db857402d8f25a35 on macOS and
   on linux/amd64 lavapipe.
 
+Streamed maps were never evicted: a map in a streaming group's pack was
+added once and stayed in the renderer after the group unloaded (and the
+cook refused an environment in a group). *Resolved in the resources round
+(01700f2 og-render `remove_environment_map`, 0fc358a og-runtime and
+og-cook): the cook lets a group hold environment maps, the unload removes
+the map and leaves its handle pending (the sky lights the scene), the
+group's return adds it again, and a map og.Environment still lights the
+frame with is kept, with a warning, until it no longer does.*
+
 ## Cook
 
 fx-showcase's `env/studio.ogt` (256×128 `.hdr`, size 128, 256 samples):

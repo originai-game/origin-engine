@@ -127,7 +127,12 @@ Branch `r-perf` from main at 5dc3aa0. Evidence: `tests/evidence/P4/perf/`.
   are written, both culling paths, `FrameStats::instance_upload_bytes`.
 - **Resources can be removed** (db105bd): `remove_mesh/texture/material/
   font`, generation-tagged handles, slots reused; the runtime unloads a
-  streaming group's model textures through `remove_texture`.
+  streaming group's model textures through `remove_texture`. *Extended in
+  the resources round (01700f2, 0fc358a): `remove_environment_map`,
+  `remove_texture_array` and `remove_palette` the same way, and a group's
+  maps, arrays, palettes and looks are let go when it unloads (kept with a
+  warning while the frame uses them); `FrameStats::texture_bytes` counts
+  arrays, maps and palettes.*
 - **Shaders** (912e333, 8779ca8, bd193d1): every WGSL module of both tiers
   validated by naga and translated to MSL, SPIR-V or GLSL ES 3.0 in the
   gate; a Vulkan pipeline cache across runs (`OG_PIPELINE_CACHE`); lavapipe

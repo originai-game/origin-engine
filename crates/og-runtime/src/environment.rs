@@ -9,7 +9,9 @@
 //! from a streaming group's pack once the group is resident. A map whose
 //! group is not resident yet is pending: its handle is live, the sky lights
 //! the scene, and the map is added at the first tick boundary its pack is
-//! there ([`resolve`]).
+//! there ([`resolve`]). When the group unloads, `super::stream` removes the
+//! map from the renderer and makes its handle pending again (kept, with a
+//! warning, while og.Environment still lights the frame with it).
 
 use super::engine::Engine;
 use super::extract::RenderState;
