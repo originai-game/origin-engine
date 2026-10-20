@@ -7,6 +7,72 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, 2026-10-21 (fe00f56)
+
+Phase 4 merged its streams into main after 50eb7f7 (the round sections
+below, newest first). From be179fc a merge passes `scripts/check.sh
+functional` (fmt, clippy, every test with the GPU reference frames, drift,
+the packages' tests on the native host), and the wasm build, its size,
+determinism and the browser tiers are measured once at a wave's end
+(AGENTS.md §Build and gate discipline, docs/ci.md §When to run what). What
+the repository records of this wave's end at fe00f56 (scratch logs are not
+in it; what no commit or evidence file records is said so):
+
+- **`scripts/check.sh --all` on main: not recorded.** No `--all` summary
+  was committed after 50eb7f7. The last whole full lanes on record are the
+  rounds' own, path-aware, on their merged branches: the web host and tools
+  round 9 of 9 at 4e121cd, ibl-post 9 of 9 in 899 s at 3a19da8, cook-anim 9
+  of 9 in 207 s (nextest 624 passed, 9 skipped); physical materials,
+  ui-text, shadows-aa and ui-shell passed every step but bun-test, which
+  failed on load timeouts or a stale cook (materials', ui-text's and
+  shadows-aa's then passed alone or after `og cook`; ui-shell's was not
+  rerun). Their sections have the figures.
+- **`scripts/check.sh functional` on main: not recorded** (docs/ci.md gives
+  90–160 s warm). Since c736dea and 222ae43 it skips the tests that compare
+  the two hosts' world hashes when the web module predates a crate change
+  (`OG_WASM_STALE`); the full lane runs them.
+- **`scripts/check.sh web-reference`: no whole run recorded after
+  50eb7f7.** On record: ibl-post's on its branch passed (427 s);
+  ui-shell's at a71c66b failed 36 fx-showcase frames (18 per tier, RMSE
+  0.0101 to 0.0149 against their own references, stale since the UI text
+  round kerned the HUD) and passed everything else (og-tests gfx 56 scenes
+  per tier, og-ui kit frames 16 of 16 playtests per tier, Ember Vale on
+  both tiers with the WebGL2 beacon at RMSE 0.0038 against its own, lane
+  panic, a11y 23 of 23 per tier), after which 47 fx-showcase and 8 topdown
+  browser frames within tolerance of `metal` were deleted (74e291c); the
+  stylisation round's, after phase B, passed once the runner asked again
+  for a deferred capture answered null (d08fdc9), the eight stylise scenes
+  within RMSE 0.00016 of `metal` on both tiers. The looks station's 37
+  frames per tier joined web-reference in stylisation round three
+  (70b1187); their run is not recorded.
+- **Wasm** (brotli -q 11, per download): the shipping `wasm` profile,
+  measured cold on 2026-10-21 and recorded in docs/ci.md by 5e9cbcf, on a
+  tree before stylisation phase B: 3D publish 2,947,818 B (70.3 % of
+  4 MiB), 2D publish 2,783,920 B (66.4 %), lanes 3,320,578 B (79.2 %, the
+  largest download; 3,198,197 B, 76 %, at 50eb7f7). The path-aware lane's
+  `wasm-gate` profile builds modules 5.3 to 5.9 % larger. After phase B and
+  every round since: not recorded.
+- **Determinism**: no run on main recorded. The physics lanes rounds ran
+  the determinism tool (host debug, host release with lanes off and on four
+  threads, wasm32 scalar and simd128) and its physics scenarios natively
+  with every pass split on four and eight lanes: every build agrees,
+  physics 18126409214070009362, unchanged (`tests/evidence/P4/physics-lanes/
+  determinism.md`, `tests/evidence/P4/physics-lanes-2/README.md`).
+- **vulkan-cpu** (the og-lavapipe image, binaries cross-built with
+  zigbuild): the wave-end lavapipe pass (4d6188b) kept sprites-array's own
+  frame (RMSE 0.0126 against `metal`: nearest-filtered pixel sprites),
+  dropped stylise-palette's (blue noise brings it within 0.0077) and judges
+  stylise-ink-depth, sprites-shadow and sprites-array-fx against `metal`
+  (0.0002, 0.0015, 0.0053); fx-showcase's looks frames after round two
+  (7f8b010): five re-recorded as the tier's own (RMSE 0.012 to 0.014),
+  watercolor-wash and painterly-3d judged against `metal` (0.0030, 0.0035);
+  Ember Vale's three frames within RMSE 0.0043 of `metal` (row 47,
+  493ea96). Recorded on `metal` after that pass and not yet run on
+  lavapipe: owed row 54.
+- **Not run here**: the phone paths of `--device`, the three.js comparison
+  after the lean pipelines (row 51), the lanes wasm's physics step in
+  Chrome (row 52), the native device latency tests (row 40).
+
 ## Main gate, 2026-10-20 (50eb7f7)
 
 The rounds below (lanes, culling, og-ui tiers) and the showcase round
@@ -52,6 +118,434 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Phase 4, UI round four (2026-10-21)
+
+On main after cook round three (dca74cb): af5f296..fe00f56 and 4390233,
+no merge commit. No evidence directory: the commits and og-ui's README
+(§What phase 2 owes) are the record.
+
+- **Command told apart from Control** (af5f296): `InputFrame.meta` beside
+  `ctrl`; `Viewport.macKeys` picks the convention (on a Mac Cmd+A/C/X/Z,
+  Cmd+←/→ to the line's ends, Option by words, Ctrl+A/E; elsewhere Ctrl
+  takes the shortcuts and words, Home/End the line's ends). The web shell
+  sets it on Apple platforms and releases the keys a Mac's browser sends no
+  keyup for under Command; native hosts leave it off, so scripts edit alike
+  on every OS. og-input holds a protocol key event's modifiers for its
+  tick; the probe's `key_down`/`key_up` take Shift+, Ctrl+, Alt+ and Meta+
+  chords.
+- **Words by UAX #29** (da15c95): og-i18n's `word_segments` and
+  `graphemes`; word moves, word deletes, double clicks and the undo
+  history's typing steps read them (Han and Hiragana a word per character,
+  a Katakana run one word, Thai, Lao, Khmer and Myanmar a grapheme cluster).
+- **A font per grapheme cluster** (83d882e): a base and its marks stay in
+  one run, joiners and variation selectors ask no face; every draw item of
+  text-mixed-runs, text-bidi and the kit's locale strings is unchanged.
+- **Accessibility** (187cfeb, c1894c3): a stepper's spinbutton is
+  adjustable like the slider (the mirror renders both as a native range
+  held a step from either end); reduced transparency also flattens scrims
+  and translucent fills, and `UiTheme` gains `contrast`, `reducedMotion`
+  and `reducedTransparency`.
+- **The kit** (d53640c): a mixed CJK, Latin and Arabic label
+  (`menu.mixed`) on the locale screens in all five locales, its playtest
+  asserting no missing glyph; off by default, so no kit frame moves.
+  4390233 renames a variable of `tests/web/a11y.ts` the engine package's
+  typecheck caught shadowing another. Docs: fe00f56 (og-ui, og-input and
+  og-probe READMEs, the og-ui skill).
+- **Frames**: none moved.
+
+Left out (og-ui README §What phase 2 owes): rows 59 and 60.
+
+## Phase 4, cook round three (2026-10-21)
+
+Branch `cook-3` from main at 463bc73, merged as dca74cb. No evidence
+directory: og-cook's README (the formats table, §What phase 2 owes and its
+record paragraph) and the commits are the record.
+
+- **Environments from KTX2 cube maps and six faces** (b6fa5e1, df6dfcf):
+  og-render's `bake::bake_cube` bakes six square faces into the same
+  prefiltered levels and irradiance as the equirectangular path (a smooth
+  sky given both ways within 2 % in irradiance and under 1 % mean per
+  texel); `type environment` takes a KTX2 cube (level 0 of RGBA16F,
+  RGB16F, RGBA32F, RGB32F, RGB9E5, B10G11R11 or BC6H, plain, Zstandard or
+  zlib) or `faces` with six `.hdr`/`.exr` images. `cook::bc6h` decodes all
+  14 modes and agreed with bcdec on every texel of 2,000,000 random blocks;
+  the fx-showcase studio cut into a 64-square RGBA16F cube bakes within
+  0.2 % mean per texel and 0.17 % in irradiance of its equirectangular map.
+- **One fetch queue** (ab8b9f8): every streamed read goes through one
+  queue, sound chunks nearest a playhead first (og-audio's
+  `chunk_distances`), then the loading groups' packs by priority, at most
+  four in flight (`MAX_FETCHES`); `dump_stream`'s `fetch` lists them;
+  og-runtime `tests/stream_fetch.rs`.
+- **Flipbooks in streaming groups** (5ff26cf): an `array true` sheet packs
+  its array and layers with it; on unload the array is kept while a sprite
+  of the sheet draws from it, and the sheet's sprites follow it back under
+  its new renderer handle.
+- **Cook times** (767610b): `cooked/.cook-times.ogt` per asset, kept out
+  of the manifest, the determinism comparison and the export; `og cook
+  --report` prints the slowest ten, `og cook --watch` times each change
+  against the 300 ms reload budget, as `og dev` does.
+- **.vox** (b592116): mirrored `nTRN` frames flip their winding (24 of the
+  48 frames faced inwards without it); `model { voxScale voxOrigin }`.
+- **og-cook README** (faa2cb5): every blob in the formats table, the owed
+  list cut to what remains.
+- **Frames**: none moved.
+
+Left out, in flight on `cook-4` (not owed rows): texture arrays in
+materials and terrain layers, a KTX2 cube's own prefiltered mip chain taken
+as it is, the `.vox` pivot of odd-sized models turned or mirrored.
+
+## Phase 4, stylisation round three (2026-10-21)
+
+Branch `stylise-3` from main at 463bc73, merged as 96dcdfe; its references
+recorded on main (da96248, 7f8b010).
+
+- **Surface space** (d79ec8c): `StyliseSpace` (screen or surface) for the
+  canvas, hatching and halftone (`paintCanvasSpace`, `hatchingSpace`,
+  `halftoneSpace`; capability `surfaceSpace`): each pixel's point rebuilt
+  from the prepass depth against a 1024 m grid origin under the camera, its
+  world normal weighting three planar projections; the canvas sampled at
+  `paintCanvasWorldScale` texels a metre, hatching and halftone laid in
+  metres, the finer of two power-of-two octaves fading in and out.
+  `inkDepthThreshold` (0.04) and `inkNormalThreshold` (0.4) are fields.
+  The screen paths are unchanged: every existing og-tests frame is
+  byte-identical on Metal.
+- **Drop shadows on the ground** (c9afcf3): `ShadowGround { height,
+  normal }` per shadow, `ShadowGround::fit` to uneven ground,
+  `SpriteDesc.dropShadowHeight`, og-runtime fitting each shadow to a drawn
+  og.Terrain under its anchor; a shadow's alpha is multiplied by the sun's
+  cascaded light, so it fades inside a wall's shadow. sprites-20k moves by
+  at most 2/255 on 261 pixels on Metal (the vertex shader's codegen) and is
+  re-recorded (da96248).
+- **The looks station in the browser** (70b1187): the playtest's script in
+  `templates/fx-showcase/tests/looks-script.ts`, shared with
+  `reference.ts --looks`; 37 shots per tier against `metal` in
+  `scripts/check.sh web-reference`.
+- **References**: stylise-surface and sprites-shadow-terrain on `metal`
+  (da96248); the looks frames on lavapipe after round two (7f8b010: five
+  re-recorded as the tier's own, two judged against `metal`).
+- Docs (d1785af): og-render README's round three, og-taste on surface
+  space.
+
+Left out: the surface patterns are triplanar in world space, not in each
+object's own space; a drop shadow lies on one plane, so it floats a little
+over a hollow narrower than itself; no preset uses surface space (all three
+in flight on `stylise-4`); the octave fade's faint bands on a long receding
+floor (row 55); the browser looks run itself (row 53); the two new frames
+on lavapipe (row 54).
+
+## Phase 4, UI fields round (2026-10-21)
+
+Branch `ui-fields-2` from main at 463bc73, merged as 82d3181; its
+references recorded on main (a2c5e44).
+
+- **A font per run** (54c8767, c55e8bb): a label the role's font draws
+  only in part is laid out per run, each character from the first of the
+  role's, the locale's, the game's fallbacks and the skin's fonts that has
+  it, each run measured, kerned, shaped and drawn with its own font; a text
+  no font draws whole takes the mixed font, so only the characters no font
+  has are missing. Only labels that mix faces move: text-bidi's mixed
+  line, re-recorded (a2c5e44).
+- **Fields** (a6e50f0, c55e8bb): Alt or Ctrl with the arrows by words,
+  Ctrl+Home/End, a double click selects the word and a triple click the
+  line, a drag from them extends by words or lines, undo and redo (100
+  steps, 8 controls, typing grouped by words), drag autoscroll past a text
+  control's edge; `save_state` version 8.
+- **Accessibility** (7beee65): `prefers-reduced-transparency`
+  (`Viewport.reducedTransparency`, `UiDesc.reducedTransparency`) draws a
+  skin's glass as opaque surfaces; the mirror puts a childless slider in
+  the page as a native range, so a screen reader's own adjust gesture
+  becomes increment or decrement.
+- **References** (9a0f727, a2c5e44): text-fields-2 (a reference scene the
+  browser tiers draw too) and text-mixed-runs (the kit's cooked faces) on
+  `metal`; og-ui holds 85 reference frames.
+- Docs (be66f81): og-ui's README and skill, the IDL's textField and
+  textArea docs.
+
+Left out: the three frames on lavapipe (row 54); og-ui's text remainder
+(row 59; Command, UAX #29 words and grapheme runs came in UI round four).
+
+## Phase 4, knowledge round three (2026-10-21)
+
+On main from 463bc73 (8e2794d..efb3bdc, before the UI fields merge), no
+merge commit and no evidence directory.
+
+- **The validator** (8e2794d) checks every `og.*` name and `Type.field` a
+  skill writes against the generated API; og-audio's `soundInfo` answers a
+  `Result` and the skills name its field, not a `.value` chain (efb3bdc).
+- **The skills teach phase 4** (0cd2021, e19d456): og-game's looks (§15),
+  light, exposure, environment maps, shadows and antialiasing (§16),
+  sprite drop shadows, texture arrays, stepped and compressed animation,
+  physical materials, `.vox` models, streaming without an unload call, the
+  physics queries and the lanes; og-taste §1's premise table and §12's
+  style step, its table held to the catalogue row by row; og-ui's text and
+  accessibility; og-i18n, og-build §7, og-audio's chunked music, og-feel's
+  stepFps, og-core's lanes. A test names each phase 4 API's skill.
+- **Every game gets a look** (3517983, c2c1370): `@origingame/create
+  --look <slug>` names a catalogue preset and `--premise` picks the style
+  whose premise fits best (asked on a terminal otherwise); the game's
+  `assets/looks/<id>.ogt` keeps the template's blocks under it and
+  `GameDesc.look` points at it. templates/game extends faceted-low-poly
+  (no reference frames); the idle archetype's look carries what its start
+  set (the sparkorb skin, `toneMapped false`, `environmentIntensity 0`), so
+  its frames stay. The package carries the catalogue.
+- **Platform ask 12** (02cfd57): the wizard's style step
+  (docs/platform-asks.md); the archetypes' and the knowledge package's
+  READMEs name the look (e45c448).
+
+Left out: the platform's side of ask 12 (row 62).
+
+## Phase 4, gate and lane policy (2026-10-21)
+
+On main, by the coordinating session; AGENTS.md §Build and gate discipline
+and docs/ci.md hold the rules.
+
+- **One place runs the gate** (378a6aa): parallel agents write code, check
+  their crate and run its unit tests one at a time; the coordinator alone
+  runs the gate, the review and the reference captures, serially (three
+  worktree gates and a lavapipe container took the load average past 100
+  and every one of them failed on timeouts).
+- **A shorter full lane** (51d561f): the wasm variants share one wasm32
+  target directory (wgpu, naga and og-render build once), the size gate
+  compresses every module at once, determinism is path-aware,
+  packages/engine's reload, reload-asset and web-export tests run under
+  `--all`, in CI and in a plain `bun run test` only (`OG_GATE_ALL`),
+  `OG_GATE_JOBS` defaults to 2 and the gate renices itself by 10;
+  `shellcheck -x` passes again (CI had failed on SC1091 since 2026-10-19).
+- **The `wasm-gate` profile** (0b066c6, 5e9cbcf): the path-aware lane
+  builds the wasm with 16 codegen units (cold: wasm-build 293 to 205 s,
+  wasm-opt 113 to 85 s, modules 5.3 to 5.9 % larger), `--all` and CI the
+  shipping `wasm` profile (`OG_WASM_PROFILE` overrides); the engine
+  package's anim, lanes and web-export tests cook every run (the cooker's
+  r3 and r4 had failed them on stale `cooked/`); `scripts/sweep.sh` prunes
+  stale incremental sessions.
+- **The functional lane** (be179fc, c736dea, 222ae43): `scripts/check.sh
+  functional` is what a merge passes; the wasm build, its size,
+  determinism and the browser tiers are a wave's end; the cross-host hash
+  tests skip on a web module older than a crate change (`OG_WASM_STALE`).
+- **The lane pool** (964cc29, ad63c34): `scripts/lane.sh take lane-N
+  <stream>` puts a stream on a persistent worktree whose `target/` stays
+  warm across streams, `free` returns it (an idle lane sits detached at
+  main), and `origin-engine-measure` carries the wave-end runs pinned at a
+  commit.
+- **Tests under load** (74ab809, 8b93b20): the terrain edit test takes 30 s
+  (1 s alone, 5.1 s beside the gate's native tests); og-runtime's
+  stream_release fixture is per test process (nextest ran its two tests in
+  one directory at once).
+
+Left out: a wave-end `--all` and web-reference on main with their summary
+filed (row 53; `scripts/wave-end.sh` is in flight on `ci-green`).
+
+## Phase 4, physics lanes round two (2026-10-21)
+
+Branch `physics-lanes-2` from main at c1c5e5a, merged as 463bc73.
+Evidence: `tests/evidence/P4/physics-lanes-2/`; the lanes round's note
+(Phase 3, lanes round, "Round two") has the summary.
+
+- **The pool threshold per thread count** (439e4e7, b6ff249):
+  `og_lanes::install_from` from `og_physics::pool_bodies`: 500 bodies on
+  two to four lanes, 1,000 on five or six, 1,500 from seven, where every
+  step forced on the pool beat lanes off (four lanes -6 % at 512 bodies,
+  -23 % at 1,000, -34 % at 2,000; eight from about 1,500, slower below).
+- **Soft bodies on the lanes** (b6ff249, 0dfb694): ropes, cloths and fluid
+  sets step side by side, a fluid's neighbour search and collisions split
+  by ranges of particles (`og_physics::Grains`: ropes from 1,600 point
+  passes on up to four lanes and 4,800 above, cloths 2,200 and 4,000,
+  fluid sets 1,000 particle substeps, 2D particles 256 a task, 3D 512);
+  ragdolls are flat in every mode and stay serial.
+- **Only the relay reaches the pool** (d8c4096): queries outside the step
+  run through `og_lanes::serial`; the lanes wasm's engine thread belongs to
+  its one-thread pool once the relay runs (og-physics `tests/lanes.rs`
+  injects a panic in a query).
+- `bench/lanes.ts --pile` (bad2b4e): the pile of 1,000 and 2,000 boxes in
+  Chrome's three modes and natively.
+
+Measured (release, ms per tick, the committed thresholds and grains, the
+least disturbed round, M4 Pro at load 7.8 to 28.8; every scene ends in one
+world hash in every mode):
+
+| scene | off | 4 lanes | 8 lanes |
+|---|---|---|---|
+| the pile (500 bodies) | 1.445 | 1.069 | serial |
+| a pen of 1,000 | 2.009 | 1.701 | serial |
+| a pen of 2,000 | 5.145 | 3.706 | 5.595 |
+| 128 ropes | 0.933 | 0.284 | 0.243 |
+| 32 cloths | 1.256 | 0.387 | 0.317 |
+| 8 3D fluids of 1,000 | 6.380 | 1.863 | 1.262 |
+| a 2D fluid of 8,000 | 15.190 | 6.703 | 5.781 |
+
+Eight lanes stay serial below 1,500 bodies; at 2,000 they were within the
+noise of serial at this load (the first round measured -15 % at load 7).
+The determinism tool's physics hash stays 18126409214070009362 with lanes
+off, on four, and with every pass split on four and eight (11,327
+parallel calls).
+
+Left out: the lanes wasm's step timed and hashed in Chrome (`bun
+bench/lanes.ts --chrome --pile`, row 52).
+
+## Phase 4, sprite arrays round two (2026-10-21)
+
+Branch `sprites-arrays-2` from main at c1c5e5a, merged as 2d387ac; its
+reference recorded on main (11a0607). Round one is the resources round's
+array sprites (below).
+
+- **og-render** (8cba44b): array sprites glow (array glow runs after the
+  plain ones, so no existing run moves), take the soft dot and draw in the
+  overlay (`Overlay::sprite_arrays`, `overlay_array.wgsl`); 2D particles
+  from an array (`ParticleEmitter::array`, by age, at a rate or at random;
+  `round`); colour LUTs on generation-tagged handles (`remove_lut`), each
+  counted in `texture_bytes`.
+- **og-cook, og-anim** (b6cb38c): an `array true` flipbook also cooks its
+  frames into `<sheet>#array`, one layer per frame; an emitter's `array`
+  line and `round true`; a streaming group may hold a `.cube` LUT.
+- **IDL and runtime** (3c3722d, 8150acf): `og.Sprite.array` and
+  `arrayLayer`, `FlipbookInfo.array`, screen sprites and emitters of
+  arrays; a grouped LUT loads with its group and is kept while the frame
+  grades with it; what the frame keeps after its group unloaded counts in
+  the budget (`StreamBudget.kept`, `StreamStatus.kept`, dump_stream's kept
+  assets with their bytes).
+- **Frames**: sprites-array byte-identical; sprites-array-fx on `metal`
+  (11a0607), judged against `metal` on lavapipe (RMSE 0.0053, 4d6188b).
+  Docs: a64d546.
+
+Left out: nothing named; arrays in materials and terrain went to `cook-4`.
+
+## Phase 4, stylisation round two (2026-10-21)
+
+Branch `r-stylise-2` from main at c1c5e5a, merged as f21f1f7.
+
+- **Built-in canvases and palettes** (827652f): paper, linen and
+  watercolour canvases (256², tileable) and the lcd2, handheld4, dusk16,
+  bright32 and 1bit palettes, made by the committed `generate.ts` (CC0),
+  named `"@canvas/<name>"` and `"@palettes/<name>"`; the cook adds what a
+  look names. watercolor-wash, paper-craft and painterly-3d lay the
+  canvases; monochrome-pixel and monochrome-dither-3d quantise to handheld4
+  and 1bit.
+- **Blue noise** (e1a248f): a 64 × 64 void-and-cluster threshold tile
+  (4,096 B; its test makes it again byte for byte) for
+  `DitherPattern::BlueNoise`; interleaved gradient noise kept as
+  `interleavedGradient`.
+- **Ink on depth edges** (9db993c): `Stylise.inkDepth` inks the
+  depth-normal prepass's silhouettes and creases beside the luminance
+  edges.
+- **Stepped animation** (9783414): `og.AnimationPlayer.stepFps` holds each
+  pose for 1/stepFps seconds; time, markers and root motion stay
+  continuous.
+- **Sprite drop shadows** (9b22f11): `SpriteDesc.dropShadow` and
+  `Sprite.dropShadow` cast a flattened dark copy along the sun onto y = 0,
+  at most five heights long.
+- **The catalogue** (735600b): pixel-3d-hybrid and sculpted-clay are full,
+  so every style is `full` or `content`; og-taste §12's table matches it.
+- **Frames** (f21f1f7): stylise-ink-depth and sprites-shadow new on
+  `metal`; stylise-palette moved (blue noise), five looks frames moved with
+  the built-in canvases and palettes, and three (illuminated-manuscript,
+  heavy-ink-shadows, minimal-geometric) because a look switch now resets
+  the TAA history (the resources round); every other frame unchanged. The
+  vulkan-cpu copies are the wave end's (4d6188b, 7f8b010).
+
+Left out: hatching on luminance only, the canvas in screen space, drop
+shadows on y = 0 and unshadowed by the cascades, fixed inkDepth
+thresholds. *All but the first closed in round three (d79ec8c, c9afcf3);
+hatching from depth is in flight on `stylise-4`.*
+
+## Phase 4, physics lanes round (2026-10-21)
+
+Branch `web-physics-lanes` from main at d08fdc9, merged as c1c5e5a.
+Evidence: `tests/evidence/P4/physics-lanes/`; the lanes round's note
+(Phase 3, lanes round, "Resolved later") has the summary.
+
+- **The step on the lanes** (1fd9c8d, 651a983): rapier's `parallel` build
+  in the lanes wasm too (`target_feature = "atomics"`), reaching the Worker
+  pool through a relay Worker; the whole og-physics step inside
+  `og_lanes::install` with a body grain of 200 a lane thread; the contact
+  readout one pass, split by 512 pairs on the pool.
+- **Same world** (dba5ceb): the determinism tool's physics hash adds a
+  1,000-body pen; lanes.test.ts steps a headless pile of 1,000 boxes with
+  lanes off and on four threads (the same hash, physics calls on every step
+  on four lanes, none off).
+- Docs (88aadf4, 427cf03): og-lanes' README, og-physics' "The step on the
+  lanes", design §2.2, docs/web-export.md's relay.
+
+Measured (release, ms per tick, the middle of three rounds, M4 Pro at load
+6.5 to 8.8; one world hash per scene in every mode):
+
+| scene | off | 4 lanes | 8 lanes | 4, every step on the pool | 8, every step on the pool |
+|---|---|---|---|---|---|
+| the pile (500 bodies) | 1.450 | 1.450 (serial) | 1.461 (serial) | 1.026 | 1.318 |
+| a pen of 16 | 0.022 | 0.022 (serial) | 0.022 (serial) | 0.045 | 0.077 |
+| a pen of 512 | 0.881 | 0.886 (serial) | 0.886 (serial) | 0.821 | 1.177 |
+| a pen of 1,000 | 1.914 | 1.523 (pool) | 1.958 (serial) | 1.533 | 2.122 |
+| a pen of 2,000 | 4.664 | 3.194 (pool) | 3.982 (pool) | 3.181 | 3.826 |
+
+Determinism (`determinism.md`, at dba5ceb): host debug, host release with
+lanes off and on four threads (483 parallel calls), wasm32 scalar and
+simd128 agree (math 6117185439544271997, world 15551159556835976588,
+physics 18126409214070009362, anim 14507017669422143574).
+
+Left out: the lanes wasm's step in Chrome (row 52); round two above moved
+the grain to a threshold per thread count.
+
+## Phase 4, lean pipelines round (2026-10-21)
+
+Branch `r-lean` from main at d08fdc9, merged as bcd35e6. Evidence:
+`tests/evidence/P4/lean/`. Closes owed row 50's remainder (cfe146a).
+
+- **Lean lit, prepass and shadow pipelines** (bddb741): a plain material
+  (opaque, untextured, no toon, rim, flash, dissolve, outline, material
+  shader, physical lobe or alpha cut) draws its unskinned instances through
+  `pbr_lean.wgsl`: 10 interpolated floats instead of 23 (the prepass 14),
+  only the attributes read, and no discard where the fragments take no
+  screen derivative (not flat shading, no decals in the frame); casters
+  neither skinned, dissolving nor hooked read positions alone. At most 12
+  lean lit and 6 lean prepass pipelines, made at first use.
+- **`OG_GFX_SERIAL`** (f96b39e): og-gfx waits for the GPU after each frame
+  and prints `gpu=`, an upper bound (the GPU clocks down between frames).
+
+Measured (Metal, dev og-gfx, 1280x720, median frame ms of five interleaved
+rounds, load 6 to 10):
+
+| scene | main (d08fdc9) | lean, discard kept | lean (bddb741) |
+|---|---|---|---|
+| spheres-20k | 7.115 | 6.273 | 4.585 |
+| spheres-20k-moving | 7.015 | 6.220 | 4.627 |
+| gltf-reference | 3.730 | 3.692 | 3.786 |
+
+All 64 captured Metal frames are byte-identical to main's; 45 scenes draw
+lean batches. A 3x4 instance transform was measured not worth it here (the
+whole upload of 20,000 moving transforms costs 0.04 ms natively). Shader
+text +5,908 B raw; the size gate was not run.
+
+Left out: the three.js comparison run again (row 51); a smaller instance
+encoding is in flight on `render-parity` (48-byte instances).
+
+## Phase 4, resources round (2026-10-21)
+
+Branch `resources` from main at d08fdc9, merged as b571a77.
+
+- **Removal** (01700f2): `remove_environment_map`, `remove_texture_array`
+  and `remove_palette` with generation-tagged handles, as the perf round's
+  meshes, textures, materials and fonts; a frame naming a removed one is
+  refused (`InvalidHandle`); the image-based light and the stylisation's
+  group are keyed by slot revision; `texture_bytes` counts maps and
+  palettes.
+- **Array sprites** (01700f2): `RenderScene::sprite_arrays` through a
+  sprite pipeline variant sampling `texture_2d_array`, one run per array
+  and blend whatever the layer; og-tests `sprites-array` (its `metal`
+  reference 5c53b2d).
+- **A look switch resets TAA** (ec71fcb): a look that adds or removes a
+  stylisation pass, the pixel grid, retro 3D or the material style cuts
+  the history like a camera cut (`Stylise::chain_bits`,
+  `FrameStats::taa_history`); a setting alone keeps it.
+- **Streaming groups let go** (0fc358a, ade313c): a group may hold texture
+  arrays, environment maps, palettes and looks; its unload removes them
+  from the renderer, leaves their handles pending and adds them back under
+  the same handles; one the frame still uses is kept, with a warning, until
+  it is not. `SpriteDesc.array` and `arrayLayer`.
+- Docs (c2ea491): og-render's §Resources and removal; the ibl-post,
+  cook-anim and perf notes resolved; no owed row added.
+
+Left out: arrays beyond world sprites (round two of the sprite arrays,
+above; materials and terrain on `cook-4`).
 
 ## Phase 4, stylisation round (2026-10-21)
 
@@ -100,7 +594,115 @@ says, and the run passes.
 Left out: the browser tiers of the looks station (the station's playtest
 runs natively and on lavapipe), an engine canvas texture, a true
 blue-noise texture (interleaved-gradient noise stands in), depth edges in
-the ink pass.
+the ink pass. *Resolved: the canvases, blue noise and depth ink in
+stylisation round two (827652f, e1a248f, 9db993c), which also made the
+seven partial catalogue entries full (735600b); the looks station in
+web-reference in round three (70b1187).*
+
+## Phase 4, UI shell round (2026-10-21)
+
+Branch `ui-shell` from main at 7696db4, merged as bdfd8ae. Evidence:
+`tests/evidence/P4/ui-shell/` (`NOTES.md` indexes it).
+
+- **The accessibility mirror and the page's preferences** (d99c7c9): the
+  `a11y` injected kind (an engine extension of protocol 5: focus, activate,
+  increment or decrement the control at a path) and `og.A11yAction`; the
+  web shell mirrors og-ui's tree into the page (an invisible element per
+  node at its bounds, ARIA role, label, value and states, focus following
+  the UI's, status and alert nodes into live regions), and a screen
+  reader's click or focus there is a request; `prefers-reduced-motion` and
+  `prefers-contrast` reach the theme every frame. `tests/web/a11y.ts` in
+  web-reference: 23 of 23 checks on each tier.
+- **Materials** (d99c7c9): glass over overlay layers (the overlay drawn
+  into the glass source, the pyramid rebuilt before each such glass run);
+  the edge light on opaque dark surfaces; icon sets cooked like fonts
+  (`type icons`, SVG paths into an `og.Font` blob; the kit ships 64 iconoir
+  icons, MIT); aspect ratios; two touches scroll a container, pinch and pan
+  `og.ui.zoomView`.
+- **Style packs at their bars** (7214094): every pack's labels at 4.5:1 as
+  drawn, primary and secondary at 7:1 (`pack_contrast.rs`); the lowest row
+  is 4.54:1, the lowest primary or secondary label 7.15:1.
+- **The kit** (8d9a378): the `materials` screen and the two-finger
+  playtest.
+- **References**: og-ui on `metal` (a71c66b) and `vulkan-cpu` (abd61fb), 83
+  frames, every vulkan-cpu one without outliers against `metal` (RMSE at
+  most 0.0019); the template vulkan-cpu frames the UI text round left stale
+  (10cf48d: match3 7, runner 8, fx-showcase 21 suites); fx-showcase's and
+  topdown's browser frames deleted where `metal` holds them (74e291c: 47
+  and 8; WebGL2's water stays, no reflection march there by design).
+
+Glass cost (`glass-cost.md`, release, Metal, 1280×720, best of three runs
+of 600 frames, load 43 to 48):
+
+| case | ms per frame | over no glass |
+|---|---:|---:|
+| no glass | 0.414 | |
+| four panels over the scene (one pyramid) | 1.886 | +1.47 |
+| the four over an overlay bar | 1.419 | +1.01 |
+| two layers of two panels, a bar under each (two pyramids) | 4.604 | +4.19 |
+
+Size (brotli, against main 376f3cd): 3D publish +8,268 B (2,921,812), 2D
+publish +8,591 B (2,758,190), lanes +7,332 B (3,297,822, 78.6 % of 4 MB).
+Gate (path-aware, on 18550a3): fmt, clippy, drift, determinism (904 s),
+wasm-build (1,047 s), wasm-opt (372 s), test (618 s) and size-gate
+passed; bun-test failed on five timeouts at load 60 to 80, not rerun.
+web-reference at a71c66b: the main gate above.
+
+Left out: og-ui's accessibility, materials and input remainders (rows 60
+and 61), a quieter rerun of the glass cost (row 61).
+
+## Phase 4, shadows and antialiasing round (2026-10-21)
+
+Branch `r-shadows-aa` from main at 20a6d47, merged as bcb0e4c. Evidence:
+`tests/evidence/P4/shadows-aa/` (`NOTES.md`); the design is og-render's
+README §Shadows and antialiasing by tier.
+
+- **og-render** (f507334): up to 8 shadowed point and spot lights on the
+  full tier and 4 on WebGL2, the brightest at the camera first;
+  `PointShadows` (`Auto`, `Cube`, `Paraboloid`: two hemispheres, two
+  passes instead of six); PCSS soft sun shadows (`shadowSoftness`) and
+  cascade blending (`cascadeBlend`), both off by default; FXAA 3.11 on any
+  tier, and where the HDR target cannot be multisampled; TAA's Catmull-Rom
+  history and sharpening. 51 og-gfx frames byte-identical on Metal before
+  and after.
+- **API** (5bd6bc8): `RenderOptions.pointShadows`, `taaHistory`,
+  `taaSharpen`, `Antialias.fxaa`, `DirectionalLight.shadowSoftness` and
+  `cascadeBlend`; `RenderCapabilities.maxShadowedLights` and
+  `pointShadows`.
+- **Particles** (6fb84fd): the CPU path (WebGL2) bounces off
+  `RenderScene::particle_colliders`, which og-runtime fills from og.Collider
+  boxes, spheres and terrain height fields.
+- **Scenes** (556b838, 4ddf4f2): shadows-soft, point-shadows-paraboloid,
+  shadows-local-8, fxaa, taa-sharp on `metal` and `vulkan-cpu` (RMSE 0.00135
+  to 0.00178 against `metal`); Ember Vale's WebGL2 beacon re-recorded
+  (d1821c9: sparks bounce, RMSE 0.01852 to 0.01645 against `metal`, still
+  over 0.01 by design).
+
+What `Auto` picks and the costs (frame ms; Chrome for Testing best of 7
+runs of 60 frames; Metal release, three runs at load 58 to 78):
+
+| frame | WebGL2 | WebGPU | metal |
+|---|---|---|---|
+| point-spot-lights, cube faces (7 passes) | 0.702 | 0.445 | 0.57–0.89 |
+| point-spot-lights, paraboloids (3 passes) | 0.503 | 0.435 | 0.44–0.53 |
+| shadows-local-8, cube (WebGL2 4 lights) | 1.085 | 1.332 | 2.19–2.70 |
+| shadows-local-8, paraboloids | 0.602 | 0.600 | 0.82–1.01 |
+| shadows-soft hard / PCSS 0.03 + blend 0.2 | 0.618 / 1.01 | 0.412 / 0.635 | 0.40–0.43 / 0.83–0.87 |
+| thin geometry: no AA / FXAA / 4× MSAA | 0.668 / 0.75 / 1.113 | 0.412 / 0.495 / – | 0.42 / 0.52–0.54 / – |
+| TAA bilinear / Catmull-Rom + 0.5 sharpen | – | 0.493 / 0.552 | 0.63–0.67 / 0.69–0.82 |
+
+So `Auto` is cube faces on the full tier and paraboloids on WebGL2. Size
+(brotli, merged with main 376f3cd, at b6b447d): 3D publish 2,926,692 B
+(+13,148, 69.8 % of 4 MiB), 2D publish 2,759,931 B (+10,332), lanes
+3,300,932 B (+10,442). Gate (path-aware, never `--all`): every step passed
+at 6fb84fd, b6b447d and 2651887 but bun-test, which failed on load
+timeouts, stale template cooks (cooker r4) and main's `toBeDefined`
+typecheck (fixed in 2651887); the same 119 tests pass run directly.
+
+Left out (not this round's): fx-showcase's `fx` and `2d` browser frames
+stale against their own references after the UI text round's kerning.
+*Resolved in the UI shell round (74e291c): deleted, judged against
+`metal`.*
 
 ## Phase 4, perf round (2026-10-20)
 
@@ -153,6 +755,112 @@ Branch `r-perf` from main at 5dc3aa0. Evidence: `tests/evidence/P4/perf/`.
   og-render (51 of 51); one reference re-recorded (vulkan-cpu
   terrain-grass).
 
+## Phase 4, cook and animation round (2026-10-20)
+
+Branch `cook-anim` from main at 5dc3aa0, merged with main 7696db4 and
+merged as 376f3cd. Evidence: `tests/evidence/P4/cook/` (`NOTES.md`).
+
+- **Animation samples** (ff6f056): `animation { compress true tolerance
+  t }` (off by default, t 1e-4) cooks rotations as 48-bit smallest-three
+  and translations, scales and morph weights as unorm16, then drops every
+  frame its neighbours rebuild within t; always and losslessly, constant
+  channels are stored once and morph targets keep only the vertices they
+  move. Every committed animated model's `#anim`: 179,465 B before,
+  161,898 B f32 now, 133,722 B compressed, the samples 62,504 to 42,968 to
+  14,770 B; the largest lane error 9.97e-5, node error 0.149 mm; the posed
+  trickster from both cooks at RMSE 0.0028 (`anim-compress.md`).
+- **Long sounds in chunks** (5ceeb3b): `sound { stream true chunk 4 }`, or
+  a QOA file over 1 MiB, cooks chunks of whole QOA frames that the
+  playheads stream (0.5 s behind to 4 s ahead); a 3-minute 48 kHz stereo
+  track (6,989,848 B of QOA, 46 chunks) looped with a crossfade mixes
+  bit-identical to the whole file with at most 918,200 B resident
+  (`sound-chunks.md`).
+- **KTX2 and texture arrays** (047b250): KTX2 sources' orientation and
+  swizzle honoured; `type texture-array` cooks to `og.TextureArray`
+  uploaded as one `D2Array` (`og.load.textureArray`); the `toktx`
+  fallback's new test found two bugs (a shared temp directory, an empty
+  version in every stamp), both fixed.
+
+Size (brotli, merged with 7696db4): 3D publish 2,913,544 B (+13,565,
+69.5 % of 4 MiB), 2D publish 2,749,599 B (+14,155), lanes 3,290,490 B
+(+12,533). Gate (path-aware, on the merged tree): 9 of 9 in 207 s (test
+163 s: nextest 624 passed, 9 skipped). No reference frame moved
+(compression is opt-in; cooker r4 re-cooks everything).
+
+Left out: texture arrays had no consumer. *Resolved in the resources
+round (01700f2, 0fc358a, ade313c) and the sprite arrays round two
+(8cba44b, 8150acf).* Compressed clips are rebuilt to f32 at load, so a
+resident clip is no smaller (row 56).
+
+## Phase 4, UI text round (2026-10-20)
+
+Branch `ui-text` from main at b62dd65, merged with main at 9b7f45c, 5dc3aa0
+and 20a6d47; main moved to it at 7696db4. Evidence:
+`tests/evidence/P4/ui-text/` (`NOTES.md`).
+
+- **Kerning, error correction, bidi** (5234b15): kerning pairs from the
+  cook to both text layouts, msdfgen's error correction, bidi by UAX #9.
+- **Editing** (1a43fe7): the typed-text stream (og-input's `text` kind and
+  `og.TextInput`), the probe's `type:`, `compose:` and `commit:`,
+  selection, the clipboard, text areas, input-method composition, ellipsis
+  and `maxLines`, the caret blink; the web shell's hidden textarea; glyphs
+  outside a cooked charset rendered at run time from the font's outlines
+  (`runtime true`; 16 CJK characters at 32 px/em 1.26 ms on average, at
+  most 2.37 ms, `glyph-costs.json`).
+- **The kit** (301c79f): the display and rounded faces, a text screen,
+  run-time CJK glyphs on the locale screens; zh-CN glyphs three archetypes
+  drew missing, and floating text takes the UI's font (2a8d66d).
+- **Frames**: og-ui text-bidi, text-kerning and text-edit new on `metal`
+  and `vulkan-cpu` (203d067, 033bf00); the kit's 70 frames re-recorded and
+  three new on both (d4af2af, ea5e9b1; vulkan-cpu against `metal` without
+  outliers, RMSE at most 0.0019); 49 template frames on `metal` (2031f94,
+  `templates-metal-moved.tsv`).
+
+Size (brotli, before the merges): publish 3,205,718 to 3,243,486 B
+(+37,768, 77.3 % of 4 MB), rustybuzz 130,265 B of it; after merging
+20a6d47: 3D publish 2,899,979 B (+36,158), 2D publish 2,735,444 B
+(+38,408), lanes 3,277,957 B (+40,485, 78.2 %). Gate (path-aware, after
+the last merge): every step passed but bun-test, which failed once on a
+stale cook of the reference scene and passed after `og cook`.
+
+Left out: the templates' vulkan-cpu and browser frames were not
+re-recorded. *Resolved: vulkan-cpu in the UI shell round (10cf48d), the
+browser frames deleted where `metal` holds them (74e291c), Ember Vale's
+WebGL2 beacon re-recorded in the shadows and antialiasing round
+(d1821c9).* og-ui's cooked-font text frames in the browser tiers (row 58).
+
+## Phase 4, image-based lighting and post round (2026-10-20)
+
+Branch `r-ibl-post` from main at b62dd65, merged with main 9b7f45c and
+5dc3aa0 and merged as 20a6d47. Evidence: `tests/evidence/P4/ibl-post/`
+(`NOTES.md`).
+
+- **AgX and exposure adaptation** (191e53b): `Tonemap::Agx` beside ACES
+  (`RenderSettings.toneMapping`); `Exposure::Auto` adapts by
+  `adaptSpeedUp`/`adaptSpeedDown` EV a second over the scene's ticks, no
+  wall clock; the adapted EV is carried by snapshot, restore and sweep.
+- **Environment maps** (3e360bf, 274a8aa): `type environment` cooks an
+  equirectangular `.hdr`/`.exr` into a prefiltered RGB9E5 map;
+  `og.load.environment` and `og.Environment` (map, intensity, rotation,
+  background) light the scene in the sky's place.
+- **The environment station** (6a707ad, b664627, 8386437): five spheres
+  under a cooked studio, AgX, adapting exposure, on every tier.
+
+References (RMSE against `metal`): post-agx on vulkan-cpu 0.00128, webgpu
+and webgl2 0.00004; environment-map 0.00097, 0.00001, 0.00000; the
+station 0.00113, 0.0005 and 0.00777 (WebGL2's MSAA in place of TAA, its
+own reference). No existing reference moved. Determinism: two renderers
+adapting over 330 ticks draw byte-identical frames and a restore redraws
+tick 120 byte for byte; the station ends on world hash db857402d8f25a35 on
+macOS and on lavapipe. Cook: the studio 0.52 s, 132,343 B. Size (brotli,
+after merging 5dc3aa0): 3D publish 2,863,821 B (+9,956, 68.3 %), 2D
+publish 2,697,036 B (+8,775), lanes 3,237,472 B (+6,690, 77.2 %). Gate
+(path-aware, at 3a19da8): 9 of 9 in 899 s; web-reference passed (427 s).
+
+Left out: streamed maps were never evicted. *Resolved in the resources
+round (01700f2, 0fc358a).* Environments from KTX2 cube maps and six faces
+came in cook round three (df6dfcf).
+
 ## Phase 4, web host and tools round (2026-10-20)
 
 Branch `web-host-tools` from main at b62dd65. Evidence:
@@ -198,6 +906,40 @@ Branch `web-host-tools` from main at b62dd65. Evidence:
   per-download budget), bun-test 160 s (114 engine and 19 knowledge
   tests), determinism 1,591 s; load 35 to 120 with a lavapipe container
   and other gates on the machine. `--all` is the coordinator's.
+
+## Phase 4, physical materials round (2026-10-20)
+
+Branch `r-materials` from main at b62dd65, merged as 9b7f45c. Evidence:
+`tests/evidence/P4/materials/` (`NOTES.md`).
+
+- **The physical lobes on both tiers** (6d3c5fb, 3c6c900): three.js's
+  MeshPhysicalMaterial fields on `StandardMaterial` (version 4): clearcoat
+  maps, sheen, transmission with volume and `ior`, iridescence, anisotropy;
+  a physical material draws its lit pass through `physical.wgsl`, and
+  WebGL2's sixteen texture units hold its fourteen scalar maps packed into
+  one RGBA8 array. The standard modules are split at their old line
+  boundaries, their text unchanged.
+- **The cook** (3691e40): glTF's `KHR_materials_clearcoat`, `_sheen`,
+  `_transmission`, `_volume`, `_ior`, `_iridescence` and `_anisotropy` into
+  `og.ModelMaterial` version 2 (cooker r3).
+- **WebGL2** (a46413b): naga renamed a second `gl` local to the reserved
+  `gl_1`; renamed, and og-render's `tests/webgl2.rs` now fails any
+  `gl_<digit>` identifier.
+- **The station** (b568308): fx-showcase's `physical` station and its
+  playtest; docs in the og-game skill and og-render's README (c6ea371).
+
+Tiers (`materials-physical`, RMSE against `metal`): webgl2 0.00000,
+webgpu 0.00003, vulkan-cpu 0.0018 (7 outlier pixels); the station on
+vulkan-cpu 0.00128. The 48 earlier og-gfx frames are byte-identical before
+and after on Metal and on lavapipe. Size (brotli): publish 3,205,718 to
+3,224,361 B (+18,643, 76.87 % of 4 MiB), lanes +17,361 B. Gate: the
+concurrent path-aware run (load 45 to 60) failed bun-test on four 5 s
+timeouts; on the same tree each step then passed on its own (test 575 of
+575, determinism 215 s, bun-test 44 s).
+
+Left out: nothing named. A transmissive object shows the opaque scene, the
+sky and terrain behind it, not water or other transparent objects, as in
+three.js (og-render's README §Physical materials).
 
 ## Phase 3, lanes round (2026-10-19)
 
