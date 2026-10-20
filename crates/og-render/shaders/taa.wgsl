@@ -100,26 +100,36 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
     }
   }
 
-  // Reproject: this pixel's world point, seen by the previous frame.
+  // Reproject: this pixel's world point, seen by the previous frame. The
+  // pixel's centre in uv comes from its window position, exact on every
+  // backend, not from the interpolated `in.uv`: on WebGL2 (Chrome, ANGLE)
+  // that arrives a fraction of a pixel off, growing across the frame, and
+  // the history sampled there every frame drifted the converged image by
+  // a pixel or two sideways (the looks station's ink and outline frames).
+  let here = in.pos.xy / vec2<f32>(size);
   let d = textureLoad(depth, px, 0).r;
-  let ndc = vec2<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+  let ndc = vec2<f32>(here.x * 2.0 - 1.0, 1.0 - here.y * 2.0);
   let w = taa.inv_view_proj * vec4<f32>(ndc, d, 1.0);
   let world = w.xyz / w.w;
   let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
   let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
   let motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
-  let prev_uv = in.uv - motion;
+  let prev_uv = here - motion;
   if (any(prev_uv < vec2<f32>(0.0)) || any(prev_uv > vec2<f32>(1.0))) {
     return cur4;
   }
-  var hist: vec3<f32>;
-  if (catmull_rom) {
-    hist = history_catmull_rom(prev_uv);
+  var hist4: vec4<f32>;
+  if (all(abs(motion) * vec2<f32>(size) < vec2<f32>(1e-3))) {
+    // Nothing moved under this pixel: its own history texel, unfiltered,
+    // so no sampler's coordinate precision can shift it.
+    hist4 = textureLoad(history, px, 0);
+  } else if (catmull_rom) {
+    hist4 = vec4<f32>(history_catmull_rom(prev_uv), textureSampleLevel(history, linear_sampler, prev_uv, 0.0).a);
   } else {
-    hist = textureSampleLevel(history, linear_sampler, prev_uv, 0.0).rgb;
+    hist4 = textureSampleLevel(history, linear_sampler, prev_uv, 0.0);
   }
-  hist = from_ycocg(clamp(to_ycocg(hist), lo, hi));
-  let hist_a = clamp(textureSampleLevel(history, linear_sampler, prev_uv, 0.0).a, a_lo, a_hi);
+  let hist = from_ycocg(clamp(to_ycocg(hist4.rgb), lo, hi));
+  let hist_a = clamp(hist4.a, a_lo, a_hi);
 
   let a = taa.params.x;
   let wc = a / (1.0 + dot(cur, LUMA));
