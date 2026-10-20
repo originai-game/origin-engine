@@ -547,6 +547,8 @@ mod canvas {
         /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
         /// oldest first.
         pending: Vec<Pending>,
+        /// The last frame's `FrameStats::missing_glyphs`.
+        missing: u32,
     }
 
     struct Pending {
@@ -593,8 +595,11 @@ mod canvas {
             });
             self.renderer
                 .render(scene, &RenderTarget::Surface)
-                .map(|_| ())
+                .map(|s| self.missing = s.missing_glyphs)
                 .map_err(|e| e.to_string())
+        }
+        fn missing_glyphs(&self) -> u32 {
+            self.missing
         }
         /// Request on one call, answer on a later one: the first call draws
         /// offscreen and starts the readback; a later call at the same size
@@ -694,6 +699,7 @@ mod canvas {
                 renderer,
                 tier: tier.clone(),
                 pending: Vec::new(),
+                missing: 0,
             })),
         )
         .map_err(|e| JsValue::from_str(&e))?;

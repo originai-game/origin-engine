@@ -43,6 +43,11 @@ pub trait RenderBackend {
     }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
+    /// The last frame's text characters its fonts lack (og-render's
+    /// `FrameStats::missing_glyphs`).
+    fn missing_glyphs(&self) -> u32 {
+        0
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on
@@ -124,8 +129,13 @@ pub(crate) struct RenderState {
     pub ui_atlas: Option<og_render::TextureHandle>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
+    /// Fonts (by index into `fonts`) that render missing characters at run
+    /// time from their file (`super::glyphs`).
+    pub runtime_fonts: BTreeMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
+    /// A frame drew text its fonts lack (warned once).
+    pub missing_warned: bool,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
@@ -155,7 +165,9 @@ impl RenderState {
             ui: None,
             ui_atlas: None,
             ui_pages: BTreeMap::new(),
+            runtime_fonts: BTreeMap::new(),
             notes: Vec::new(),
+            missing_warned: false,
             feel: Default::default(),
             atmo: Default::default(),
             terrain: Default::default(),
@@ -560,6 +572,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     };
     super::feel::camera_frame(world, rs, aspect);
     super::feel::extract(world, rs, &mut h);
+
+    // Characters the fonts lack, rendered from their files before any
+    // text is laid out for this frame.
+    super::glyphs::generate(rs);
 
     // Text, page by page; screen text into the overlay.
     let queued_texts: &[QueuedText] = if fresh { &rs.texts } else { &[] };

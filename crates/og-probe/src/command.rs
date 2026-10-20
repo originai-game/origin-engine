@@ -257,7 +257,17 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     (
         "type",
         "type:<text>",
-        "Type text, one key press per character (Shift for capitals and symbols).",
+        "Type text, two ticks per character: its key press (Shift for capitals and symbols) and the character as typed text (og.TextInput); a character no key types (é, 中) is typed text alone.",
+    ),
+    (
+        "compose",
+        "compose:<text>",
+        "An input method's composition so far (og.TextInput with composing): a focused text field shows it underlined at the caret; `compose:` with nothing ends it without a commit.",
+    ),
+    (
+        "commit",
+        "commit:<text>",
+        "An input method commits text (og.TextInput): a focused text field inserts it at the caret and the composition ends.",
     ),
     (
         "move_to_text",

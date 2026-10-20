@@ -22,6 +22,8 @@
 
 mod a11y;
 mod draw;
+pub(crate) mod edit;
+pub mod glyphs;
 mod id;
 mod input;
 mod juice;
@@ -63,8 +65,8 @@ pub use style::{
 pub use text::{FontMetrics, UiFont, VisualGlyph, bidi_runs, needs_visual};
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
-    PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame,
-    Viewport,
+    PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc,
+    TextTarget, Ui, UiDesc, UiFrame, Viewport,
 };
 pub use widgets::{
     ActionButtonDesc, AnchorDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc,

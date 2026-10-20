@@ -14,7 +14,7 @@
 
 use crate::input::{GamepadFrame, InputFrame, Nav, UiKey};
 use crate::layout::Rect;
-use crate::ui::{HIT_ADJUST, HIT_NAV, HIT_TEXT, Hit, Ui};
+use crate::ui::{HIT_ADJUST, HIT_MULTILINE, HIT_NAV, HIT_TEXT, Hit, Ui};
 
 /// The control nearest `from` in direction `dir` among `cands`, wrapping.
 pub(crate) fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
@@ -61,10 +61,13 @@ impl Ui {
     pub(crate) fn intents(&mut self, input: &InputFrame) -> Vec<Nav> {
         let mut out = std::mem::take(&mut self.state.pending);
         let editing = self.hit(self.state.focus).is_some_and(|h| h.has(HIT_TEXT));
+        let lines = self
+            .hit(self.state.focus)
+            .is_some_and(|h| h.has(HIT_MULTILINE));
         for k in &input.keys {
             let nav = match k {
-                UiKey::Up => Some(Nav::Up),
-                UiKey::Down => Some(Nav::Down),
+                UiKey::Up if !lines => Some(Nav::Up),
+                UiKey::Down if !lines => Some(Nav::Down),
                 UiKey::Left if !editing => Some(Nav::Left),
                 UiKey::Right if !editing => Some(Nav::Right),
                 UiKey::Tab if input.shift => Some(Nav::Prev),

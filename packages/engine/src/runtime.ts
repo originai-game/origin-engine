@@ -792,7 +792,20 @@ export class Engine {
   }
 
   /** One display frame: tick by the wall clock (through the probe: due command steps run), then render. */
-  frame(elapsedMs: number): { ok: boolean; ticks?: number; tick?: number; rendered?: boolean; paused?: boolean; quit?: boolean; behind?: number; reason?: string } {
+  frame(elapsedMs: number): {
+    ok: boolean;
+    ticks?: number;
+    tick?: number;
+    rendered?: boolean;
+    paused?: boolean;
+    quit?: boolean;
+    behind?: number;
+    reason?: string;
+    /** The UI's focused text control (web/text-input.ts's TextTarget), or null. */
+    text?: { path: string; rect: [number, number, number, number]; multiline: boolean; selection: string; composing: boolean } | null;
+    /** Text a copy or cut took this frame. */
+    copy?: string;
+  } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
     epoch++;
@@ -1087,6 +1100,7 @@ export const ui = Object.freeze({
   slider: (id: string, value: number, desc?: unknown) => parse(abi().og_ui_slider(id, value, json(desc))),
   toggle: (id: string, on: boolean, label: string) => parse(abi().og_ui_toggle(id, on, label)),
   textField: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_field(id, value, json(desc))),
+  textArea: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_area(id, value, json(desc))),
   tooltip: (text: string) => abi().og_ui_tooltip(text),
   idi: (name: string, index: number) => `${name}#${index}`,
 });

@@ -13,6 +13,7 @@
 // and, for games that only read keys, as the keys of their standard mapping.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
+import { TextEntry, type TextTarget } from "./text-input.ts";
 import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
@@ -121,6 +122,8 @@ export class Shell {
   #playing = false;
   /** Why the engine no longer answers (it crashed, or the shell was disposed); every call after it fails with it. */
   #stopped: Error | null = null;
+  /** The hidden textarea that takes the page's text for the UI's focused field (text-input.ts). */
+  #text: TextEntry | undefined;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
@@ -143,6 +146,14 @@ export class Shell {
       }
       if (m.type === "frame") {
         this.#onFirstFrame?.();
+        return;
+      }
+      if (m.type === "text") {
+        this.#text?.update((m as unknown as { target: TextTarget | null }).target);
+        return;
+      }
+      if (m.type === "copy") {
+        this.#text?.copied((m as unknown as { text: string }).text);
         return;
       }
       if (m.type === "rpc" && m.frame !== undefined) {
@@ -371,13 +382,22 @@ export class Shell {
     };
     // When an event happened on a clock the Worker shares (its `at` within the tick, input.ts stampAt).
     const stamp = (e: Event) => performance.timeOrigin + e.timeStamp;
+    // The UI's text fields take the page's text through a hidden textarea
+    // (text-input.ts); its keys still reach the engine, except an input
+    // method's while it composes.
+    const text = new TextEntry(canvas, (e) => this.#send(ring, e));
+    this.#text = text;
+    this.#listeners.push(() => text.dispose());
     const typing = (e: KeyboardEvent) => {
+      if (text.owns(e.target)) return e.isComposing || text.composing || e.keyCode === 229;
       const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
       return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
     };
     listen(globalThis as unknown as EventTarget, "keydown", (e) => {
       if (typing(e) || !e.code) return;
-      if (KEPT_KEYS.has(e.code)) e.preventDefault();
+      // In the text target Space types and shortcuts copy, cut and paste.
+      const shortcut = text.owns(e.target) && (e.ctrlKey || e.metaKey || e.code === "Space");
+      if (KEPT_KEYS.has(e.code) && !shortcut) e.preventDefault();
       if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down", time: stamp(e) });
     });
     listen(globalThis as unknown as EventTarget, "keyup", (e) => {

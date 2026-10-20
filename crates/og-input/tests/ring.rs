@@ -32,7 +32,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
         .iter()
         .map(|e| InjectedInput::from_json(e).unwrap())
         .collect();
-    assert_eq!(expected.len(), 11);
+    assert_eq!(expected.len(), 14);
     let read = json["read"].as_u64().unwrap() as usize;
     assert!(
         read % SLOTS + expected.len() > SLOTS,
@@ -45,7 +45,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
     assert_eq!(drained.read as u64, json["write"].as_u64().unwrap());
 
     let mut owned = bin.clone();
-    assert_eq!(ring::drain_mut(&mut owned).events.len(), 11);
+    assert_eq!(ring::drain_mut(&mut owned).events.len(), 14);
     assert!(
         ring::drain(&owned).events.is_empty(),
         "the read index was stored"
@@ -79,6 +79,14 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             y: 1.0,
             delta_x: 0.0,
             delta_y: -40.0,
+        },
+        InjectedInput::Text {
+            text: "かなカナ漢字 and a long tail past one slot's forty-eight bytes".into(),
+            composing: true,
+        },
+        InjectedInput::Text {
+            text: String::new(),
+            composing: false,
         },
     ];
     for e in &events {
@@ -124,8 +132,8 @@ fn the_input_layer_drains_a_ring_into_the_world() {
     let mut layer = InputLayer::new();
     layer.attach(&mut w).unwrap();
     let report = layer.drain_ring(&mut w, &bin);
-    assert_eq!((report.accepted, report.refused), (11, 0));
-    assert_eq!(layer.accepted(), 11);
+    assert_eq!((report.accepted, report.refused), (14, 0));
+    assert_eq!(layer.accepted(), 14);
     let input = *w.resource::<Input>().unwrap();
     assert!(input.down("KeyW") && input.down("ArrowLeft") && !input.down("NumpadSubtract"));
     assert!(input.button_down(PointerButton::Left) && input.button_down(PointerButton::Right));
@@ -142,4 +150,22 @@ fn the_input_layer_drains_a_ring_into_the_world() {
     let abu = 1 | 1 << 4 | 1 << 12;
     assert_eq!((held, pressed, released), (0, abu, abu));
     assert!(!pad.is_connected(1));
+    // The text slots, the long one joined again, became og.TextInput events
+    // (the long commit split into 255-byte events: here it fits one).
+    let typed = w.pending_events::<og_input::TextInput>().unwrap();
+    let texts: Vec<(&str, bool)> = typed
+        .iter()
+        .map(|e| (e.text.as_str(), e.composing))
+        .collect();
+    assert_eq!(
+        texts,
+        [
+            ("a", false),
+            ("にほんご", true),
+            (
+                "Typed text longer than one slot holds: 日本語のテキスト",
+                false
+            )
+        ]
+    );
 }

@@ -1044,6 +1044,11 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
 }
 
 #[wasm_bindgen]
+pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_text_area(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_tooltip(text: String) {
     <Host as UiApi>::og_ui_tooltip(&Host, text)
 }

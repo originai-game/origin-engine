@@ -701,5 +701,12 @@ pub(crate) fn break_lines(
             lines.push(Line { text: line, width });
         }
     }
+    // A kerning font kerns across the units too: each line's width is its
+    // whole text measured (what is drawn), not the sum of its units.
+    if m.kerns() {
+        for l in &mut lines {
+            l.width = m.measure_tracked(&l.text, size, tracking);
+        }
+    }
     lines
 }

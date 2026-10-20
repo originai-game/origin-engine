@@ -16,7 +16,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9247</sub>
+<sub>`api.ogt` line 9284</sub>
 
 ## Contents
 
@@ -65,7 +65,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 9320</sub>
+<sub>`api.ogt` line 9359</sub>
 
 <a id="fn-parse"></a>
 
@@ -93,7 +93,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 9328</sub>
+<sub>`api.ogt` line 9367</sub>
 
 <a id="fn-help"></a>
 
@@ -121,7 +121,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 9334</sub>
+<sub>`api.ogt` line 9373</sub>
 
 <a id="fn-schedule"></a>
 
@@ -151,7 +151,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 9340</sub>
+<sub>`api.ogt` line 9379</sub>
 
 ## Types
 
@@ -176,7 +176,9 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"gamepad"` | `gamepad:<a+b+...\|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it. |
 | `"key_down"` | `key_down:<Key>`: hold a key by its code. |
 | `"key_up"` | `key_up:<Key>`: release a key. |
-| `"type"` | `type:<text>`: type text, one key press per character. |
+| `"type"` | `type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone. |
+| `"compose"` | `compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it. |
+| `"commit"` | `commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends. |
 | `"move_to_text"` | `move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`). |
 | `"teleport"` | `teleport:<entity>:x,y,z`: set an entity's position. |
 | `"frame_entity"` | `frame_entity:<entity>`: point the camera at an entity. |
@@ -206,7 +208,9 @@ enum CoreAction {
   variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
   variant key_down "`key_down:<Key>`: hold a key by its code."
   variant key_up "`key_up:<Key>`: release a key."
-  variant type "`type:<text>`: type text, one key press per character."
+  variant type "`type:<text>`: type text, two ticks per character: its key press and the character as typed text (input.TextInput); a character no key types is typed text alone."
+  variant compose "`compose:<text>`: an input method's composition so far (input.TextInput composing); a focused text field shows it underlined at the caret, `compose:` with nothing ends it."
+  variant commit "`commit:<text>`: an input method commits text; a focused text field inserts it and the composition ends."
   variant move_to_text "`move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`)."
   variant teleport "`teleport:<entity>:x,y,z`: set an entity's position."
   variant frame_entity "`frame_entity:<entity>`: point the camera at an entity."
@@ -224,7 +228,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 9253</sub>
+<sub>`api.ogt` line 9290</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -251,7 +255,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 9283</sub>
+<sub>`api.ogt` line 9322</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -275,7 +279,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 9289</sub>
+<sub>`api.ogt` line 9328</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -300,7 +304,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 9296</sub>
+<sub>`api.ogt` line 9335</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -325,7 +329,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 9305</sub>
+<sub>`api.ogt` line 9344</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -348,4 +352,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 9313</sub>
+<sub>`api.ogt` line 9352</sub>

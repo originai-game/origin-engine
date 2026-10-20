@@ -439,6 +439,7 @@ impl Ui {
             let font = match s.font.as_deref() {
                 Some("display") => FontRole::Display,
                 Some("mono") => FontRole::Mono,
+                Some("rounded") => FontRole::Rounded,
                 Some("body") => FontRole::Body,
                 _ => desc.font,
             };

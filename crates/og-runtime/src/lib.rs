@@ -38,6 +38,7 @@ mod engine;
 mod extract;
 mod feel;
 mod fx;
+mod glyphs;
 mod i18n;
 mod lanes;
 pub use lanes::report as lanes_report;
@@ -87,8 +88,8 @@ pub use modules::{
     og_ui_preview_viewport, og_ui_progress, og_ui_radio, og_ui_remember, og_ui_rich_text,
     og_ui_screen_transition, og_ui_seconds, og_ui_select, og_ui_set_navigation, og_ui_set_players,
     og_ui_shake, og_ui_skeleton, og_ui_slider, og_ui_spacer, og_ui_spinner, og_ui_spotlight,
-    og_ui_stepper, og_ui_tabs, og_ui_text_field, og_ui_theme, og_ui_tick, og_ui_toast,
-    og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
+    og_ui_stepper, og_ui_tabs, og_ui_text_area, og_ui_text_field, og_ui_theme, og_ui_tick,
+    og_ui_toast, og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
 };
 pub use nav::{
     og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,

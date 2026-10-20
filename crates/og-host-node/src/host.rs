@@ -591,6 +591,9 @@ impl UiApi for NodeHost {
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String {
         rt::og_ui_text_field(id, value, desc)
     }
+    fn og_ui_text_area(&self, id: String, value: String, desc: Option<String>) -> String {
+        rt::og_ui_text_area(id, value, desc)
+    }
     fn og_ui_tooltip(&self, text: String) {
         rt::og_ui_tooltip(text)
     }

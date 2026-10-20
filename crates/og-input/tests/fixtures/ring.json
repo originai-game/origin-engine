@@ -1,5 +1,5 @@
 {
-  "write": 517,
+  "write": 521,
   "read": 506,
   "slots": 256,
   "bytes": 16392,
@@ -97,6 +97,19 @@
         0,
         0
       ]
+    },
+    {
+      "kind": "text",
+      "text": "a"
+    },
+    {
+      "kind": "text",
+      "text": "にほんご",
+      "composing": true
+    },
+    {
+      "kind": "text",
+      "text": "Typed text longer than one slot holds: 日本語のテキスト"
     }
   ]
 }

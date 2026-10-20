@@ -2321,8 +2321,9 @@ impl Renderer {
         self.cache
             .fonts
             .truncate(stale_fonts.first().copied().unwrap_or(usize::MAX));
-        for (i, font) in scene.fonts()[self.cache.fonts.len()..].iter().enumerate() {
-            let index = self.cache.fonts.len() + i;
+        let start = self.cache.fonts.len();
+        for (i, font) in scene.fonts()[start..].iter().enumerate() {
+            let index = start + i;
             let atlas = font.atlas.index();
             let (Some(gpu), Some((w, h))) = (
                 self.cache.textures.get(atlas),

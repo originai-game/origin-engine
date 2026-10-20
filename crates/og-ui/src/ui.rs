@@ -2,7 +2,7 @@
 
 use crate::draw::{DrawCmd, DrawItem, EmitDesc, assign_levels, emit};
 use crate::id::{Id, child_key};
-use crate::input::{InputFrame, Nav, UiKey};
+use crate::input::{InputFrame, Nav};
 use crate::layout::{
     Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets, Metrics, NONE,
     Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
@@ -76,7 +76,7 @@ pub struct UiDesc {
 }
 
 /// The fonts of each role; `display` and `mono` (the numeric role) fall
-/// back to `body`. A text the role's font cannot draw whole takes the first
+/// back to `body`, `rounded` to `display`, then `body`. A text the role's font cannot draw whole takes the first
 /// font of `chain` (the locale's, og.i18n) that can, then `fallback` (a
 /// skin's Latin display face and Chinese text).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -84,6 +84,8 @@ pub struct Fonts {
     pub body: UiFont,
     pub display: Option<UiFont>,
     pub mono: Option<UiFont>,
+    /// Levels and scores (`FontRole::Rounded`).
+    pub rounded: Option<UiFont>,
     pub fallback: Option<UiFont>,
     /// The active locale's fonts, first first.
     pub chain: Vec<UiFont>,
@@ -95,6 +97,11 @@ impl Fonts {
             FontRole::Body => &self.body,
             FontRole::Display => self.display.as_ref().unwrap_or(&self.body),
             FontRole::Mono => self.mono.as_ref().unwrap_or(&self.body),
+            FontRole::Rounded => self
+                .rounded
+                .as_ref()
+                .or(self.display.as_ref())
+                .unwrap_or(&self.body),
         }
     }
 
@@ -172,6 +179,8 @@ pub(crate) const HIT_OFFSCREEN: u8 = 16;
 pub(crate) const HIT_POINTER: u8 = 32;
 /// A focus scope (dialog backdrop, open menu).
 pub(crate) const HIT_SCOPE: u8 = 64;
+/// A multi-line text control: ↑ and ↓ edit it while it is focused.
+pub(crate) const HIT_MULTILINE: u8 = 128;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Hit {
@@ -224,6 +233,19 @@ pub(crate) struct State {
     pub active: u64,
     pub focus: u64,
     pub caret: usize,
+    /// The selection's other end (equal to `caret`: no selection).
+    pub anchor: usize,
+    /// The text control the caret belongs to (0: none yet).
+    pub edit_key: u64,
+    /// The tick of the last edit or caret move: the blink's phase.
+    pub edit_tick: u64,
+    /// An input method's composition in the focused text control.
+    pub composition: String,
+    /// The focused text control's scroll: a field's across, an area's down.
+    pub edit_scroll: f32,
+    /// The world has had a typed-text stream (`og.TextInput`): key presses
+    /// type nothing from then on.
+    pub typed_stream: bool,
     pub hover_ticks: u32,
     pub pointer: Vec2,
     /// The press that focused a field: where it landed, to place the caret.
@@ -325,6 +347,49 @@ pub struct UiFrame {
     pub focus_paths: [String; 4],
     /// The accessibility tree (`crate::a11y`).
     pub a11y: crate::a11y::A11yTree,
+    /// The focused text control, for the host: where an input method's
+    /// window goes, and the selection a copy takes (`None`: no text focus).
+    pub text_input: Option<TextTarget>,
+}
+
+/// What [`Ui::edit_marks`] draws one line's marks from.
+pub(crate) struct EditMarks<'a> {
+    pub m: &'a crate::text::FontMetrics,
+    /// The line's text as shown.
+    pub text: &'a str,
+    /// Where its first glyph's pen starts, and the line box's top and height.
+    pub x: f32,
+    pub top: f32,
+    pub line_h: f32,
+    pub size: f32,
+    pub tracking: f32,
+    /// The index of the line's first character in the whole text.
+    pub first: usize,
+    pub edit: &'a crate::layout::EditView,
+    pub clip: Rect,
+    pub alpha: f32,
+    /// The selection (under the text), or the composition and caret (over it).
+    pub under: bool,
+    /// The caret is on this line (a caret at a soft break shows once).
+    pub caret_here: bool,
+}
+
+/// The focused text control as a host sees it ([`UiFrame::text_input`]):
+/// the browser shell puts its hidden text target over it (so an input
+/// method's candidate window opens there) and copies `selection` on the
+/// page's copy and cut.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TextTarget {
+    /// The element's path.
+    pub path: String,
+    /// Its rectangle, CSS px.
+    pub rect: Rect,
+    /// A multi-line text area.
+    pub multiline: bool,
+    /// The selected text (empty: none).
+    pub selection: String,
+    /// An input method is composing in it.
+    pub composing: bool,
 }
 
 impl UiFrame {
@@ -396,6 +461,13 @@ pub struct LabelDesc {
     pub font: FontRole,
     /// A heading: a skin with a flourish frames it.
     pub heading: bool,
+    /// Cut with "…" where the text does not fit its width: on its one line
+    /// (with `nowrap`; the label can then shrink in a row) or on its last
+    /// line (`max_lines`).
+    pub ellipsis: bool,
+    /// The most lines a wrapping label shows (0: no limit); with `ellipsis`
+    /// the last one ends in "…" when text is left out.
+    pub max_lines: u32,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -472,6 +544,19 @@ pub struct FieldDesc {
     pub max_chars: u32,
 }
 
+/// How a multi-line text area looks ([`Ui::text_area`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TextAreaDesc {
+    /// Shown, dimmed, while the area is empty.
+    pub placeholder: String,
+    /// `None`: grow.
+    pub width: Option<Size>,
+    /// Lines shown at once (0: 4); more scroll.
+    pub rows: u32,
+    /// The most characters it takes (0: no limit).
+    pub max_chars: u32,
+}
+
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
 #[derive(Clone, Debug)]
 pub struct Ui {
@@ -504,6 +589,10 @@ pub struct Ui {
     pub(crate) toast_anchor: Anchor,
     /// UI events with a skin sound, not yet taken by the host.
     pub(crate) sounds: Vec<crate::skin::UiSound>,
+    /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
+    pub(crate) clipboard: Option<String>,
+    /// The focused text control this frame (into [`UiFrame::text_input`]).
+    pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
     /// The configured skin's name (empty: the tokens).
@@ -519,7 +608,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 5;
+const STATE_VERSION: u32 = 6;
 
 /// A skin's `textGlow` size is how far the old four offset copies reached;
 /// the distance-field glow fades to nothing over this many times it.
@@ -555,6 +644,8 @@ impl Ui {
             icons: IconAtlas::default(),
             toast_anchor: Anchor::Bottom,
             sounds: Vec::new(),
+            clipboard: None,
+            text_target: None,
             cover: None,
             skin_name: String::new(),
             direction: og_i18n::Direction::Ltr,
@@ -854,7 +945,15 @@ impl Ui {
         self.apply_nav(&intents);
         self.apply_pads(&input);
         self.state.pointer = p;
+        // Once a world has a typed-text stream, key presses type nothing.
+        let mut input = input;
+        if input.typed_stream {
+            self.state.typed_stream = true;
+        } else if self.state.typed_stream {
+            input.text.clear();
+        }
         self.input = input;
+        self.text_target = None;
 
         let mut el = root;
         el.width = Size::Fixed(viewport.width);
@@ -1147,6 +1246,8 @@ impl Ui {
             align: TextAlign::Start,
             wrap: true,
             font: FontRole::Body,
+            ellipsis: false,
+            max_lines: 0,
         }
     }
 
@@ -1169,7 +1270,10 @@ impl Ui {
             align: desc.align,
             wrap: !desc.nowrap,
             font: desc.font,
+            ellipsis: desc.ellipsis,
+            max_lines: desc.max_lines,
         });
+        // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();
         n.heading = desc.heading;
     }
@@ -1429,6 +1533,13 @@ impl Ui {
         }
     }
 
+    /// Text a copy (Ctrl or Cmd with C) or cut (with X) took from a text
+    /// control's selection since the last call: the host puts it on the
+    /// clipboard (the browser shell does on the page's copy event).
+    pub fn take_clipboard(&mut self) -> Option<String> {
+        self.clipboard.take()
+    }
+
     /// The UI events of the last frames that have a sound in the skin,
     /// oldest first; taking them empties the queue (the host plays them).
     pub fn take_sounds(&mut self) -> Vec<(crate::skin::UiSound, u64)> {
@@ -1550,9 +1661,14 @@ impl Ui {
         r
     }
 
-    /// A one-line text field: a press focuses it (caret at the press), typed
-    /// text inserts at the caret, Backspace/Delete/arrows/Home/End edit,
-    /// Enter submits and Escape leaves.
+    /// A one-line text field: a press focuses it (caret at the press, a
+    /// drag selects), typed text replaces the selection at the caret,
+    /// Backspace/Delete/←/→/Home/End edit (Shift extends the selection;
+    /// Ctrl or Cmd with A selects all, with C copies and with X cuts, for
+    /// the host's clipboard), an input method's composition shows
+    /// underlined at the caret until it commits, Enter submits and Escape
+    /// leaves. The text scrolls to keep the caret in view; the caret blinks
+    /// by the tick (steady under reduced motion).
     pub fn text_field(
         &mut self,
         id: impl Into<Id>,
@@ -1578,74 +1694,44 @@ impl Ui {
         self.nodes[i].nav = true;
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
-        let len = value.chars().count();
+        let step = t.type_ramp.body;
         if r.focused {
-            let metrics = &self.fonts.body.metrics;
-            let size = t.type_ramp.body.size;
-            if let (Some(px), Some(h)) = (self.state.focus_click, self.hit(key)) {
-                // The caret goes to the character boundary nearest the press.
-                let mut pen = h.rect.x + t.space.md;
-                let mut best = (0usize, (px - pen).abs());
-                for (k, c) in value.chars().enumerate() {
-                    pen += metrics.advance(c) * size;
-                    let d = (px - pen).abs();
-                    if d < best.1 {
-                        best = (k + 1, d);
-                    }
-                }
-                self.state.caret = best.0;
-            }
-            let mut caret = self.state.caret.min(len);
-            let mut chars: Vec<char> = value.chars().collect();
-            let before = chars.clone();
-            for c in self.input.text.chars() {
-                if desc.max_chars == 0 || chars.len() < desc.max_chars as usize {
-                    chars.insert(caret, c);
-                    caret += 1;
-                }
-            }
-            for key_pressed in self.input.keys.clone() {
-                match key_pressed {
-                    UiKey::Backspace if caret > 0 => {
-                        chars.remove(caret - 1);
-                        caret -= 1;
-                    }
-                    UiKey::Delete if caret < chars.len() => {
-                        chars.remove(caret);
-                    }
-                    UiKey::Left => caret = caret.saturating_sub(1),
-                    UiKey::Right => caret = (caret + 1).min(chars.len()),
-                    UiKey::Home => caret = 0,
-                    UiKey::End => caret = chars.len(),
-                    UiKey::Enter => {
-                        r.submitted = true;
-                        self.state.focus = 0;
-                    }
-                    UiKey::Escape => self.state.focus = 0,
-                    _ => {}
-                }
-            }
-            if chars != before {
-                *value = chars.into_iter().collect();
-                r.changed = true;
-            }
-            self.state.caret = caret;
+            let inner = self
+                .hit(key)
+                .map(|h| h.full.inset(&Insets::xy(t.space.md, 0.0)));
+            let e = self.edit(
+                key,
+                value,
+                &crate::edit::EditDesc {
+                    multiline: false,
+                    max_chars: desc.max_chars,
+                    role: FontRole::Body,
+                    size: step.size,
+                    tracking: crate::layout::step_tracking(&step, value),
+                    line_height: step.line_height,
+                    inner,
+                },
+            );
+            r.changed = e.changed;
+            r.submitted = e.submitted;
             r.focused = self.state.focus == key;
         }
         let focused = r.focused;
-        let shown = if value.is_empty() {
-            desc.placeholder.as_str()
+        let (shown, composition) = self.shown_text(value, focused);
+        let placeholder = shown.is_empty();
+        let shown = if placeholder {
+            desc.placeholder.clone()
         } else {
-            value.as_str()
+            shown
         };
-        let color = if value.is_empty() {
+        let color = if placeholder {
             t.palette.fg_subtle
         } else {
             t.palette.fg
         };
-        let mut content = self.text_content(shown, t.type_ramp.body, color);
+        let mut content = self.text_content(&shown, step, color);
         content.wrap = false;
-        let caret = focused.then_some(self.state.caret.min(value.chars().count()));
+        let edit = self.edit_view(key, focused, value, composition, false);
         let n = &mut self.nodes[i];
         n.el.background = Some(if focused {
             t.palette.surface
@@ -1653,8 +1739,12 @@ impl Ui {
             t.palette.fill
         });
         n.content = Content::Text(content);
-        n.widget = Widget::Field { focused, caret };
-        n.probe_text = shown.to_owned();
+        n.widget = Widget::Field(edit);
+        n.probe_text = if value.is_empty() {
+            desc.placeholder.clone()
+        } else {
+            value.clone()
+        };
         // A field is named by its placeholder (or its id) and its value is its text.
         n.a11y.name = Some(if desc.placeholder.is_empty() {
             n.id.clone()
@@ -1663,6 +1753,149 @@ impl Ui {
         });
         n.a11y.value = Some(value.clone());
         r
+    }
+
+    /// A multi-line text area: [`Ui::text_field`]'s editing, with Enter
+    /// starting a new line, ↑ and ↓ moving between lines (and Home and End
+    /// to a line's ends), the text wrapped between words at the area's
+    /// width and scrolled to keep the caret's line in view. `rows` lines
+    /// show at once.
+    pub fn text_area(
+        &mut self,
+        id: impl Into<Id>,
+        value: &mut String,
+        desc: &TextAreaDesc,
+    ) -> Response {
+        let t = self.theme;
+        let step = t.type_ramp.body;
+        let rows = if desc.rows == 0 { 4 } else { desc.rows };
+        let lh = if value.chars().any(crate::text::is_cjk) {
+            step.cjk_line_height
+        } else {
+            step.line_height
+        };
+        let pad = Insets::xy(t.space.md, t.space.sm);
+        let i = self.leaf(
+            "textarea",
+            id.into(),
+            Element {
+                width: desc.width.unwrap_or(Size::grow()),
+                height: Size::Fixed(rows as f32 * lh + pad.vertical()),
+                padding: pad,
+                interactive: true,
+                radius: t.radius.field,
+                skin: Some(SkinPart::Field),
+                ..Element::default()
+            },
+        );
+        self.nodes[i].focusable = true;
+        self.nodes[i].nav = true;
+        self.nodes[i].multiline = true;
+        let key = self.nodes[i].key;
+        let mut r = self.respond(key);
+        if r.focused {
+            let inner = self.hit(key).map(|h| h.full.inset(&pad));
+            let e = self.edit(
+                key,
+                value,
+                &crate::edit::EditDesc {
+                    multiline: true,
+                    max_chars: desc.max_chars,
+                    role: FontRole::Body,
+                    size: step.size,
+                    tracking: crate::layout::step_tracking(&step, value),
+                    line_height: lh,
+                    inner,
+                },
+            );
+            r.changed = e.changed;
+            r.submitted = e.submitted;
+            r.focused = self.state.focus == key;
+        }
+        let focused = r.focused;
+        let (shown, composition) = self.shown_text(value, focused);
+        let edit = self.edit_view(key, focused, value, composition, true);
+        let n = &mut self.nodes[i];
+        n.el.background = Some(if focused {
+            t.palette.surface
+        } else {
+            t.palette.fill
+        });
+        n.widget = Widget::TextArea {
+            edit,
+            text: shown,
+            placeholder: desc.placeholder.clone(),
+            line_height: lh,
+        };
+        n.probe_text = if value.is_empty() {
+            desc.placeholder.clone()
+        } else {
+            value.clone()
+        };
+        n.a11y.name = Some(if desc.placeholder.is_empty() {
+            n.id.clone()
+        } else {
+            desc.placeholder.clone()
+        });
+        n.a11y.value = Some(value.clone());
+        r
+    }
+
+    /// A text control's text as shown: its value with the composition (if
+    /// focused and composing) at the caret, and the composition's range.
+    fn shown_text(&self, value: &str, focused: bool) -> (String, Option<(usize, usize)>) {
+        if !focused || self.state.composition.is_empty() {
+            return (value.to_string(), None);
+        }
+        let at = self.state.caret.min(value.chars().count());
+        let mut out: String = value.chars().take(at).collect();
+        out.push_str(&self.state.composition);
+        out.extend(value.chars().skip(at));
+        let n = self.state.composition.chars().count();
+        (out, Some((at, at + n)))
+    }
+
+    /// The caret, selection and composition of text control `key` for
+    /// drawing (in the shown text's characters), and the host's view of it.
+    fn edit_view(
+        &mut self,
+        key: u64,
+        focused: bool,
+        value: &str,
+        composition: Option<(usize, usize)>,
+        multiline: bool,
+    ) -> crate::layout::EditView {
+        if !focused {
+            return crate::layout::EditView::default();
+        }
+        let len = value.chars().count();
+        let caret = self.state.caret.min(len);
+        let anchor = self.state.anchor.min(len);
+        let (a, b) = (caret.min(anchor), caret.max(anchor));
+        let n = composition.map_or(0, |(s, e)| e - s);
+        if let Some(h) = self.hit(key) {
+            let path = self
+                .nodes
+                .iter()
+                .position(|n| n.key == key)
+                .map(|i| self.path_of(i))
+                .unwrap_or_default();
+            self.text_target = Some(TextTarget {
+                path,
+                rect: h.full,
+                multiline,
+                selection: value.chars().skip(a).take(b - a).collect(),
+                composing: n > 0,
+            });
+        }
+        crate::layout::EditView {
+            focused: true,
+            caret: caret + n,
+            selection: (a, b),
+            composition,
+            scroll: self.state.edit_scroll,
+            caret_on: self.caret_shown(),
+        }
     }
 
     /// A tooltip for the element just built: shown below it (above when there
@@ -2043,6 +2276,9 @@ impl Ui {
             if n.focusable {
                 flags |= HIT_TEXT;
             }
+            if n.multiline {
+                flags |= HIT_MULTILINE;
+            }
             if n.nav {
                 flags |= HIT_NAV;
             }
@@ -2310,6 +2546,7 @@ impl Ui {
             warnings: std::mem::take(&mut self.warnings),
             focus_paths,
             a11y,
+            text_input: self.text_target.take(),
         };
         &self.frame
     }
@@ -2529,7 +2766,10 @@ impl Ui {
                 cmds.push(quad(rect.outset(at), n.el.radius + at, behind));
             }
         }
-        let field_ring = matches!(n.widget, Widget::Field { focused: true, .. });
+        let field_ring = match &n.widget {
+            Widget::Field(e) | Widget::TextArea { edit: e, .. } => e.focused,
+            _ => false,
+        };
         let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();
         if field_ring || n.ring || outline {
             // A ring, a gap of what is behind, then the control.
@@ -2686,6 +2926,9 @@ impl Ui {
             }
             _ => {}
         }
+        if matches!(n.widget, Widget::TextArea { .. }) {
+            self.text_area_commands(i, rect, clip, cmds);
+        }
         match &n.content {
             Content::Text(tc) => {
                 let font = self.fonts.for_text(tc.font, &tc.text);
@@ -2704,11 +2947,16 @@ impl Ui {
                     let block = lh * n.lines.len() as f32;
                     let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                     // Text overflows its own box (a snapped edge must not eat a glyph)
-                    // except in a field, which scrolls nothing and clips.
+                    // except in a field, which scrolls its text and clips.
                     let text_clip = match n.widget {
                         Widget::Field { .. } => clip.intersect(&rect),
                         _ => clip,
                     };
+                    let field = match &n.widget {
+                        Widget::Field(e) => Some(*e),
+                        _ => None,
+                    };
+                    let mut field_x = inner.x;
                     for (k, line) in n.lines.iter().enumerate() {
                         let ly = top + k as f32 * lh;
                         let free = inner.width - line.width * sk;
@@ -2720,13 +2968,40 @@ impl Ui {
                                 (TextAlign::Center, _) => free / 2.0,
                                 (TextAlign::End, false) | (TextAlign::Start, true) => free,
                             };
+                        // A focused field: scrolled, its selection under the text.
+                        let x = match &field {
+                            Some(e) if e.focused && tc.color != p.fg_subtle => {
+                                let x = x - e.scroll;
+                                self.edit_marks(
+                                    &EditMarks {
+                                        m,
+                                        text: &line.text,
+                                        x,
+                                        top: ly,
+                                        line_h: lh,
+                                        size,
+                                        tracking: tc.tracking(),
+                                        first: 0,
+                                        edit: e,
+                                        clip: text_clip,
+                                        alpha,
+                                        under: true,
+                                        caret_here: true,
+                                    },
+                                    cmds,
+                                );
+                                field_x = x;
+                                x
+                            }
+                            _ => x,
+                        };
                         // Bidi runs in visual order, shaped runs shaped (crate::text).
                         let (drawn, placements) =
                             crate::text::drawn_line(m, &line.text, self.direction, tc.tracking());
                         let baseline =
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
-                        let role = tc.font as usize;
+                        let role = tc.font.skin_index();
                         let tracking = tc.tracking();
                         // A skin's text glow: the font's distance field, under the glyphs.
                         let glow = t.skin.text_glows[role].map(|g| {
@@ -2783,22 +3058,44 @@ impl Ui {
                             }
                         }
                     }
-                    if let Widget::Field { caret: Some(c), .. } = n.widget {
-                        let text = match &n.content {
-                            Content::Text(tc) if tc.color != p.fg_subtle => tc.text.as_str(),
-                            _ => "",
+                    if let Some(e) = &field
+                        && e.focused
+                    {
+                        // The composition's underline and the caret, over the text.
+                        let text = if tc.color != p.fg_subtle {
+                            tc.text.as_str()
+                        } else {
+                            ""
                         };
-                        let prefix: String = text.chars().take(c).collect();
-                        let cx = inner.x + m.measure_tracked(&prefix, size, tc.tracking());
-                        let ch = size + t.space.xxs * 2.0;
-                        let caret_w = 1.0f32.max(1.0 / dpr);
-                        cmds.push(DrawCmd::Quad {
-                            rect: Rect::new(cx, rect.y + (rect.height - ch) / 2.0, caret_w, ch)
-                                .snapped(dpr),
-                            radius: 0.0,
-                            color: p.accent.fade(alpha).linear(),
-                            clip: text_clip,
-                        });
+                        // An empty field's caret sits at its start.
+                        let x = if text.is_empty() {
+                            if self.direction == og_i18n::Direction::Rtl {
+                                inner.right()
+                            } else {
+                                inner.x
+                            }
+                        } else {
+                            field_x
+                        };
+                        let ly = top;
+                        self.edit_marks(
+                            &EditMarks {
+                                m,
+                                text,
+                                x,
+                                top: ly,
+                                line_h: lh,
+                                size,
+                                tracking: tc.tracking(),
+                                first: 0,
+                                edit: e,
+                                clip: text_clip,
+                                alpha,
+                                under: false,
+                                caret_here: true,
+                            },
+                            cmds,
+                        );
                     }
                 }
             }
@@ -2813,6 +3110,162 @@ impl Ui {
             Content::None => {}
         }
         self.shape_commands(n, cmds);
+    }
+
+    /// A text control's marks on one line: under the text, the selection
+    /// (a neutral fill over each selected glyph, merged where they touch);
+    /// over it, the composition's underline and the caret while it shows.
+    pub(crate) fn edit_marks(&self, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
+        let p = &self.theme.palette;
+        let dpr = self.viewport.dpr();
+        let boxes = crate::edit::boxes(mk.m, mk.text, self.direction, mk.size, mk.tracking);
+        let n = mk.text.chars().count();
+        let span =
+            |range: (usize, usize), cmds: &mut Vec<DrawCmd>, y: f32, h: f32, color: Srgba| {
+                let (a, b) = (range.0.max(mk.first), range.1.min(mk.first + n));
+                if a >= b {
+                    return;
+                }
+                let mut runs: Vec<(f32, f32)> = Vec::new();
+                for g in &boxes {
+                    let k = g.index + mk.first;
+                    if k < a || k >= b {
+                        continue;
+                    }
+                    match runs.last_mut() {
+                        Some(r) if (r.1 - g.x0).abs() < 0.01 => r.1 = g.x1,
+                        _ => runs.push((g.x0, g.x1)),
+                    }
+                }
+                for (x0, x1) in runs {
+                    cmds.push(DrawCmd::Quad {
+                        rect: Rect::new(mk.x + x0, y, x1 - x0, h).snapped(dpr),
+                        radius: 0.0,
+                        color: color.fade(mk.alpha).linear(),
+                        clip: mk.clip,
+                    });
+                }
+            };
+        let e = mk.edit;
+        let ch = mk.size + self.theme.space.xxs * 2.0;
+        let cy = mk.top + (mk.line_h - ch) / 2.0;
+        if mk.under {
+            span(e.selection, cmds, cy, ch, p.fill_strong);
+            return;
+        }
+        if let Some(c) = e.composition {
+            let th = (mk.size * 0.07).max(1.0 / dpr);
+            span(c, cmds, cy + ch - th, th, p.fg);
+        }
+        if e.caret_on && mk.caret_here && e.caret >= mk.first && e.caret <= mk.first + n {
+            let cx = mk.x + crate::edit::caret_x(&boxes, e.caret - mk.first);
+            let caret_w = 1.0f32.max(1.0 / dpr);
+            cmds.push(DrawCmd::Quad {
+                rect: Rect::new(cx, cy, caret_w, ch).snapped(dpr),
+                radius: 0.0,
+                color: p.accent.fade(mk.alpha).linear(),
+                clip: mk.clip,
+            });
+        }
+    }
+
+    /// A text area's lines: wrapped at its inner width, scrolled, clipped
+    /// to it, each with its marks.
+    fn text_area_commands(&self, i: usize, rect: Rect, clip: Rect, cmds: &mut Vec<DrawCmd>) {
+        let n = &self.nodes[i];
+        let Widget::TextArea {
+            edit,
+            text,
+            placeholder,
+            line_height,
+        } = &n.widget
+        else {
+            return;
+        };
+        let t = &self.theme;
+        let p = &t.palette;
+        let step = t.type_ramp.body;
+        let (shown, color) = if text.is_empty() {
+            (placeholder.as_str(), p.fg_subtle)
+        } else {
+            (text.as_str(), p.fg)
+        };
+        let font = self.fonts.for_text(FontRole::Body, shown);
+        let Some(handle) = font.handle else { return };
+        let m = &font.metrics;
+        let sk = n.scale;
+        let size = step.size * sk;
+        let lh = line_height * sk;
+        let tracking = crate::layout::step_tracking(&step, shown);
+        let pad = n.el.padding;
+        let inner = Rect::new(
+            rect.x + pad.left * sk,
+            rect.y + pad.top * sk,
+            rect.width - pad.horizontal() * sk,
+            rect.height - pad.vertical() * sk,
+        );
+        let clip = clip.intersect(&rect);
+        let dpr = self.viewport.dpr();
+        let snap = |v: f32| (v * dpr).round() / dpr;
+        let chars: Vec<char> = shown.chars().collect();
+        let lines = crate::edit::wrap(&chars, m, size, tracking, inner.width.max(1.0));
+        let caret_line = lines
+            .iter()
+            .rposition(|l| l.0 <= edit.caret && edit.caret <= l.1)
+            .unwrap_or(0);
+        let rtl = self.direction == og_i18n::Direction::Rtl;
+        let alpha = n.alpha;
+        for (li, &(a, b)) in lines.iter().enumerate() {
+            let top = inner.y + li as f32 * lh - edit.scroll * sk;
+            if top + lh < inner.y - lh || top > inner.bottom() + lh {
+                continue;
+            }
+            let line: String = chars[a..b].iter().collect();
+            let w = m.measure_tracked(&line, size, tracking);
+            let x = if rtl { inner.right() - w } else { inner.x };
+            let marks = |under: bool, cmds: &mut Vec<DrawCmd>| {
+                if edit.focused && !text.is_empty() || (edit.focused && !under) {
+                    self.edit_marks(
+                        &EditMarks {
+                            m,
+                            text: if text.is_empty() { "" } else { &line },
+                            x,
+                            top,
+                            line_h: lh,
+                            size,
+                            tracking,
+                            first: a,
+                            edit,
+                            clip,
+                            alpha,
+                            under,
+                            caret_here: li == caret_line,
+                        },
+                        cmds,
+                    );
+                }
+            };
+            marks(true, cmds);
+            let baseline = top + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+            let (drawn, placements) = crate::text::drawn_line(m, &line, self.direction, tracking);
+            if !drawn.is_empty() {
+                cmds.push(DrawCmd::Text {
+                    x: snap(x),
+                    baseline: snap(baseline),
+                    size,
+                    text: drawn,
+                    color: color.fade(alpha).linear(),
+                    font: handle,
+                    bounds: Rect::new(x, top, w, lh),
+                    clip,
+                    tracking,
+                    weight: 0.0,
+                    glow: None,
+                    placements,
+                });
+            }
+            marks(false, cmds);
+        }
     }
 
     /// A skinned background: the part's shadow and glow, its nine-slice
@@ -3186,6 +3639,13 @@ impl Ui {
         u64_(&mut b, t.key);
         b.push(t.axis);
         f32_(&mut b, t.grab);
+        u32_(&mut b, s.anchor as u32);
+        u64_(&mut b, s.edit_key);
+        u64_(&mut b, s.edit_tick);
+        u32_(&mut b, s.composition.len() as u32);
+        b.extend_from_slice(s.composition.as_bytes());
+        f32_(&mut b, s.edit_scroll);
+        b.push(u8::from(s.typed_stream));
         b
     }
 
@@ -3475,6 +3935,12 @@ impl Reader<'_> {
             grab: self.f32()?,
         };
         s.thumb = (t.key != 0).then_some(t);
+        s.anchor = self.u32()? as usize;
+        s.edit_key = self.u64()?;
+        s.edit_tick = self.u64()?;
+        s.composition = self.string()?;
+        s.edit_scroll = self.f32()?;
+        s.typed_stream = self.u8()? != 0;
         Some(s)
     }
 }

@@ -72,7 +72,7 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
         "radio" => "radio",
         "toggle" => "switch",
         "slider" => "slider",
-        "field" => "textbox",
+        "field" | "textarea" => "textbox",
         "select" => "combobox",
         "option" => "option",
         "tab" => "tab",

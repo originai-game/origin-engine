@@ -528,6 +528,8 @@ pub trait UiApi: Wire {
     fn og_ui_toggle(&self, id: String, on: bool, label: String) -> String;
     /// `og.ui.textField`
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String;
+    /// `og.ui.textArea`
+    fn og_ui_text_area(&self, id: String, value: String, desc: Option<String>) -> String;
     /// `og.ui.tooltip`
     fn og_ui_tooltip(&self, text: String);
     /// `og.ui.breakpoint`
@@ -930,6 +932,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_slider",
     "og_ui_toggle",
     "og_ui_text_field",
+    "og_ui_text_area",
     "og_ui_tooltip",
     "og_ui_breakpoint",
     "og_ui_frame_viewport",
@@ -2241,6 +2244,55 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "event",
+        name: "TextInput",
+        schema: "og.TextInput",
+        fields: &[
+            FieldDecl {
+                name: "text",
+                column: "String",
+                default: "\"\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The text (whole characters).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "composing",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "more",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Continues the composition of the event before it (a composition longer than one event).",
                 variants: &[],
             },
         ],
