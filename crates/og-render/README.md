@@ -1521,7 +1521,24 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   towards a colour (pbr_fs.wgsl and physical.wgsl, an additive term on the
   diffuse), and `outline_distance` scales each material outline's width by
   that distance over the view depth in the prepass (never for an
-  orthographic camera).
+  orthographic camera). Two exceptions (lantern-vale FINDINGS #16, where a
+  look's toon silently switched the lanterns' lacquer and the slimes'
+  jelly off): a material with `styled` 0 (the IDL's
+  `StandardMaterialDesc.styled false`) is drawn exactly as declared,
+  `styled` returning it whole and its uniform's mode bit 8 turning the
+  frame's shadow tint and outline distance off for it; and the style's
+  toon passes by a material with a physical lobe
+  (`StandardMaterial::has_physical_lobes`: a clear coat, sheen,
+  transmission, iridescence, anisotropy, an `ior` other than 1.5, or one
+  of their maps), since toon shading has none of them: it keeps its
+  physical shading and takes the rest of the style (rim, outline, flat
+  facets, shadow tint). *Chosen*: a material that names a physical lobe
+  has chosen its lighting model, and a scene-wide default must not undo
+  that without a word; a game that wants it toon anyway sets its own
+  `toon`, knowingly dropping the lobe. og-tests `stylise-toon-physical`:
+  under a toon style, a plain red sphere in bands, a lacquered one with
+  its coat's sharp highlight, a jelly refracting the stripes behind it,
+  and an unstyled one in plain PBR without rim or outline.
 - **Hull outlines** (`StandardMaterial::outlineWidth`, the style's
   `outline_width`; fxpost.wgsl `fs_outline`): a material's own outline is
   what toon shading's inverted hull draws, the object's silhouette (a
@@ -1582,7 +1599,8 @@ of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
 `full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
 (`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
 halftone, as its check asks (ink marks painted onto surfaces).
-Round five adds `stylise-outline-voxels` (`metal`).
+Round five adds `stylise-outline-voxels` and `stylise-toon-physical`
+(`metal`).
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the

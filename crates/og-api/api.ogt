@@ -1699,7 +1699,7 @@ module render {
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
     doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false."
     doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them."
     doc "A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it."
     doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
@@ -1791,6 +1791,9 @@ module render {
     field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's." {
       min 0
       max 31
+    }
+    field styled bool "Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon." {
+      default true
     }
     field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
       min 0
@@ -2561,8 +2564,8 @@ module render {
   }
 
   resource MaterialStyle {
-    doc "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
-    field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights."
+    doc "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
+    field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway."
     field gradientMap Texture "The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands."
     field shadowTint Color "The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration." {
       default 0.18 0.16 0.32

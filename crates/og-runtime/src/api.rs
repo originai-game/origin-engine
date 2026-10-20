@@ -1450,6 +1450,7 @@ pub(crate) fn material(
     set!(normalScale, vec2("normalScale", glam::Vec2::ONE));
     set!(aoMapIntensity, num("aoMapIntensity"));
     set!(unlit, flag("unlit"));
+    set!(styled, flag("styled"));
     set!(toon, flag("toon"));
     set!(gradientMap, tex("gradientMap")?);
     set!(rimColor, rgb("rimColor"));

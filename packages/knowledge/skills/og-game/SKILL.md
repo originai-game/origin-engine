@@ -704,7 +704,12 @@ og.render.look(world)?.name;                                              // the
   its default: `toon` (with a `gradientMap`), `shadowTint` and
   `shadowTintAmount`, `rimIntensity`, `outlineWidth` (with
   `outlineDistance` to thin lines with depth) and `flatShading`. Unlit and
-  shader materials, sprites and the UI are untouched. An outline is a hull
+  shader materials, sprites and the UI are untouched, and so is a material
+  made with `styled: false` (exactly as declared under any look). The
+  style's `toon` passes by a material with a physical lobe (`clearcoat`,
+  `sheen`, `transmission`, `iridescence`, `anisotropy`, an `ior` other
+  than 1.5), which keeps its physical shading and takes the rest; give it
+  `toon: true` itself to make it toon anyway. An outline is a hull
   outline: each object's silhouette and its creases against other objects
   (the ground under it), never the edges between its own faces, so `.vox`
   models and flat-shaded meshes keep clean faces; for lines on every

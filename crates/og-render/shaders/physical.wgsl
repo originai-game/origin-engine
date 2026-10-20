@@ -397,7 +397,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
   var specular = sun.specular * frame.light_color.rgb * shadow;
   diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
-  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
+  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
     diffuse += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
   }
 

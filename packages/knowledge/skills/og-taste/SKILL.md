@@ -331,7 +331,15 @@ is applied after the first scene spawns and before `start` runs (so
 `start` may still change any field, and reads the look's skin from
 `og.render.look(world)?.skin`); switch looks at a tick with
 `og.load.look` and `og.render.applyLook` (a flashback, a photo mode, an
-area's mood). A look replaces each resource it names whole and leaves the
+area's mood). A look's `MaterialStyle` reaches every lit material that
+leaves the field at its default; a material that must stay as made (a
+photographic hero prop in a toon set, a product shot, a gem) takes
+`styled: false` in `og.render.standardMaterial` and is drawn exactly as
+declared. Physical materials are safe under a toon look: lacquer
+(`clearcoat`), glass and jelly (`transmission`), velvet (`sheen`) keep
+their shading and take only the rim, the outline and the shadow tint, so
+a toon look never switches them off; set `toon: true` on one yourself to
+flatten it too. A look replaces each resource it names whole and leaves the
 others alone, so an area look that names only `Fog` and `Sky` keeps the
 game's grade. A copy of a preset under the preset's own name
 (`assets/looks/<slug>.ogt` with `extends "<slug>"`) overrides it for every

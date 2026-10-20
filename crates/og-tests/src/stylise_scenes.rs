@@ -19,10 +19,14 @@
 //!   silhouettes).
 //! - `stylise-retro`: vertex snapping, affine textures and 12-bit depth
 //!   over the physical materials scene.
-//! - `stylise-material`: the material style alone: every lit material toon
-//!   with a warm shadow tint, a rim, outlines that thin with distance, and
-//!   flat facets, over the physical materials scene (no per-material
-//!   stylised fields).
+//! - `stylise-material`: the material style alone: a warm shadow tint, a
+//!   rim, outlines that thin with distance, and flat facets, over the
+//!   physical materials scene (no per-material stylised fields), and toon
+//!   on every lit material without a physical lobe (the physical ones keep
+//!   their coats, sheen, film, anisotropy and glass).
+//! - `stylise-outline-voxels`: hull outlines on unwelded voxel meshes.
+//! - `stylise-toon-physical`: a toon style over a plain, a lacquered, a
+//!   jelly and an unstyled sphere.
 //! - `stylise-ink-depth`: ink with depth edges over flat, unlit shapes of
 //!   one colour on a floor of the same colour, where luminance finds no
 //!   edge: every line is a silhouette or a crease from the prepass.
@@ -612,6 +616,107 @@ pub fn outline_voxels_scene() -> RenderScene {
         position: Vec3::new(0.0, 4.2, 5.6),
         target: Vec3::new(0.0, 0.8, 0.0),
         exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    scene
+}
+
+/// `stylise-toon-physical`: a look's toon (with a shadow tint, a rim and a
+/// 2 px outline) over four spheres of one red: a plain one, which turns
+/// toon; a lacquered one (`clearcoat` 1), which keeps its physical shading
+/// and its coat's sharp highlight; a green jelly (`transmission`, a
+/// thickness, ior 1.4) in front of a striped panel, which keeps refracting
+/// it; and one with `styled` 0, drawn exactly as declared (smooth PBR, no
+/// rim, outline or tinted shadow of its own). The first three take the
+/// rim, the opaque two the outline (a transmissive material is not in the
+/// depth prepass) (lantern-vale FINDINGS #16).
+pub fn toon_physical_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let floor_material = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.55, 0.55, 0.6),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, floor_material, Mat4::IDENTITY);
+    // A striped panel behind the jelly, so its refraction shows.
+    let stripes = scene.add_texture(crate::physical_scenes::stripes(128, 8.0, false));
+    let panel_material = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.9, 0.85, 0.7),
+        map: stripes.slot(),
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let panel = scene.add_mesh(shapes::cuboid(Vec3::new(6.4, 1.6, 0.1)));
+    scene.add_instance(
+        panel,
+        panel_material,
+        Mat4::from_translation(Vec3::new(0.0, 0.8, -1.2)),
+    );
+    let sphere = scene.add_mesh(shapes::sphere(64, 48));
+    let red = Vec3::new(0.7, 0.08, 0.06);
+    let spheres = [
+        StandardMaterial {
+            color: red,
+            roughness: 0.55,
+            ..Default::default()
+        },
+        StandardMaterial {
+            color: red,
+            roughness: 0.55,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.06,
+            ..Default::default()
+        },
+        StandardMaterial {
+            color: Vec3::new(0.55, 0.95, 0.5),
+            roughness: 0.15,
+            transmission: 0.9,
+            thickness: 0.8,
+            attenuationColor: Vec3::new(0.3, 0.85, 0.3),
+            attenuationDistance: 1.2,
+            ior: 1.4,
+            ..Default::default()
+        },
+        StandardMaterial {
+            color: red,
+            roughness: 0.55,
+            styled: 0,
+            ..Default::default()
+        },
+    ];
+    for (i, m) in spheres.into_iter().enumerate() {
+        let material = scene.add_standard_material(m);
+        scene.add_instance(
+            sphere,
+            material,
+            Mat4::from_translation(Vec3::new(-2.4 + 1.6 * i as f32, 0.6, 0.0))
+                * Mat4::from_scale(Vec3::splat(1.2)),
+        );
+    }
+    scene.stylise.material = MaterialStyle {
+        toon: true,
+        shadow_tint: [0.18, 0.16, 0.42],
+        shadow_tint_amount: 0.7,
+        rim_color: [1.0, 0.85, 0.7],
+        rim_intensity: 0.4,
+        rim_power: 3.0,
+        outline_color: [0.04, 0.03, 0.06],
+        outline_width: 2.0,
+        ..Default::default()
+    };
+    let sun = Vec3::new(-0.5, 0.75, 0.45);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.9;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.0, 5.4),
+        target: Vec3::new(0.0, 0.6, 0.0),
+        exposure: Exposure::linear(0.7),
         ..Default::default()
     };
     scene

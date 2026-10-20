@@ -2622,7 +2622,7 @@ export interface RenderOptions {
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
- * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+ * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.
  * The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.
  * A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.
  * normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
@@ -2848,6 +2848,12 @@ export interface StandardMaterialDesc {
    * @range 0..31
    */
   readonly outlineWidth?: number;
+  /**
+   * Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon.
+   *
+   * @default true
+   */
+  readonly styled?: boolean;
   /**
    * A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none.
    *
@@ -4142,13 +4148,13 @@ export interface Stylise {
 }
 
 /**
- * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
+ * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
  *
  * The `MaterialStyle` resource (token `og.MaterialStyle`).
  */
 export interface MaterialStyle {
   /**
-   * Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights.
+   * Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway.
    */
   toon: boolean;
   /**
@@ -17090,7 +17096,7 @@ export declare namespace og {
    */
   const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly hatchingDepth: FieldSpec<"f32">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32"> }, Stylise>;
   /**
-   * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
+   * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
    */
   const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool"> }, MaterialStyle>;
   /**

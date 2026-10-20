@@ -5602,7 +5602,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights.",
+                doc: "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway.",
                 variants: &[],
             },
             FieldDecl {

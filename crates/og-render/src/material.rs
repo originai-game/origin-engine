@@ -46,7 +46,7 @@ impl Side {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 5)]
+#[reflect(name = "og.StandardMaterial", version = 6)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -253,6 +253,12 @@ pub struct StandardMaterial {
     /// The layer of `normalMapArray` sampled.
     #[reflect(min = 0.0, default = 0.0)]
     pub normalMapLayer: u32,
+    /// 1 (the default): the scene's [`crate::MaterialStyle`] fills the
+    /// stylised fields this material leaves at their defaults ([`styled`]).
+    /// 0: drawn exactly as declared, untouched by the style (no toon, rim,
+    /// outline, flat facets, shadow tint or outline distance from it).
+    #[reflect(min = 0.0, max = 1.0, default = 1.0)]
+    pub styled: u32,
 }
 
 impl Default for StandardMaterial {
@@ -322,6 +328,7 @@ impl Default for StandardMaterial {
             mapLayer: 0,
             normalMapArray: 0,
             normalMapLayer: 0,
+            styled: 1,
         }
     }
 }
@@ -364,6 +371,20 @@ impl StandardMaterial {
                 || self.iridescence > 0.0
                 || self.anisotropy > 0.0
                 || self.ior != 1.5)
+    }
+
+    /// Whether it sets a `MeshPhysicalMaterial` lobe: a clear coat or any
+    /// field [`StandardMaterial::is_physical`] draws through the physical
+    /// pipelines. The scene's toon passes such a material by
+    /// ([`styled`]): toon shading has none of those lobes.
+    pub fn has_physical_lobes(&self) -> bool {
+        self.clearcoat > 0.0
+            || self.physical_textures().iter().any(Option::is_some)
+            || self.sheen > 0.0
+            || self.transmission > 0.0
+            || self.iridescence > 0.0
+            || self.anisotropy > 0.0
+            || self.ior != 1.5
     }
 
     /// Whether it refracts the scene behind it (drawn after the opaque
@@ -689,7 +710,8 @@ pub(crate) struct MaterialUniform {
     /// rgb: emissive x intensity, w: alpha cutoff (< 0: none).
     pub emissive: [f32; 4],
     /// x: normal map (0 none, 1 RGB, 2 two-channel), y: ao intensity (< 0: no
-    /// map), z: environment intensity, w: mode bits (1 flat, 2 unlit, 4 blended).
+    /// map), z: environment intensity, w: mode bits (1 flat, 2 unlit, 4
+    /// blended, 8 unstyled: no shadow tint or outline distance).
     pub flags: [f32; 4],
     /// x: toon (0 off, 1 gradient map, 2 built-in bands), y: rim intensity,
     /// z: rim power, w: flash amount.
@@ -710,13 +732,20 @@ pub(crate) struct MaterialUniform {
 
 /// `m` with the scene's [`crate::MaterialStyle`] filled into every stylised
 /// field the material leaves at its own default: toon and the ramp, the
-/// rim light, the outline, flat facets. An unlit material keeps its look.
+/// rim light, the outline, flat facets. An unlit material keeps its look,
+/// and so does one with `styled` 0 (its uniform also turns the frame's
+/// shadow tint and outline distance off, [`uniform`]). The style's toon
+/// passes by a material with a physical lobe
+/// ([`StandardMaterial::has_physical_lobes`]: a clear coat, sheen,
+/// transmission, iridescence, anisotropy, an `ior` other than 1.5), which
+/// toon shading would drop: it keeps its physical shading and takes the
+/// rest of the style. Its own `toon` still makes it toon.
 pub(crate) fn styled(m: &StandardMaterial, style: &crate::MaterialStyle) -> StandardMaterial {
     let mut s = *m;
-    if m.unlit != 0 || !style.is_active() {
+    if m.unlit != 0 || m.styled == 0 || !style.is_active() {
         return s;
     }
-    if style.toon && s.toon == 0 {
+    if style.toon && s.toon == 0 && !m.has_physical_lobes() {
         s.toon = 1;
     }
     if s.toon != 0
@@ -746,7 +775,8 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
     let cutoff = if m.alphaTest > 0.0 { m.alphaTest } else { -1.0 };
     let mode = (m.flatShading != 0) as u32
         | ((m.unlit != 0) as u32) << 1
-        | (m.is_transparent() as u32) << 2;
+        | (m.is_transparent() as u32) << 2
+        | ((m.styled == 0) as u32) << 3;
     let scale = if has_normal { m.normalScale } else { Vec2::ONE };
     MaterialUniform {
         base_color: [m.color.x, m.color.y, m.color.z, m.opacity],
@@ -1173,5 +1203,89 @@ mod tests {
         assert!(scene.remove_texture_array(array));
         let m = scene.standard_material(h).unwrap();
         assert_eq!((m.mapArray, m.normalMapArray), (0, 0));
+    }
+}
+
+#[cfg(test)]
+mod style_tests {
+    use super::*;
+
+    fn toon_style() -> crate::MaterialStyle {
+        crate::MaterialStyle {
+            toon: true,
+            rim_intensity: 0.5,
+            rim_color: [1.0, 0.9, 0.8],
+            rim_power: 3.0,
+            outline_width: 2.0,
+            flat_shading: true,
+            ..Default::default()
+        }
+    }
+
+    /// A plain material takes every field of the style.
+    #[test]
+    fn a_plain_material_takes_the_style() {
+        let s = styled(&StandardMaterial::default(), &toon_style());
+        assert_eq!(
+            (s.toon, s.flatShading, s.outlineWidth, s.rimIntensity),
+            (1, 1, 2.0, 0.5)
+        );
+    }
+
+    /// A material with a physical lobe keeps its physical shading under the
+    /// style's toon (toon would drop the lobe) and takes the rest; its own
+    /// toon still makes it toon.
+    #[test]
+    fn a_physical_lobe_keeps_physical_shading_under_toon() {
+        let style = toon_style();
+        for m in [
+            StandardMaterial {
+                clearcoat: 1.0,
+                ..Default::default()
+            },
+            StandardMaterial {
+                transmission: 0.9,
+                ..Default::default()
+            },
+            StandardMaterial {
+                sheen: 0.5,
+                ..Default::default()
+            },
+            StandardMaterial {
+                ior: 1.33,
+                ..Default::default()
+            },
+        ] {
+            assert!(m.has_physical_lobes());
+            let s = styled(&m, &style);
+            assert_eq!(s.toon, 0, "{m:?}");
+            assert_eq!(
+                (s.outlineWidth, s.rimIntensity, s.flatShading),
+                (2.0, 0.5, 1)
+            );
+        }
+        let own = StandardMaterial {
+            clearcoat: 1.0,
+            toon: 1,
+            ..Default::default()
+        };
+        assert_eq!(styled(&own, &style).toon, 1);
+        assert!(!StandardMaterial::default().has_physical_lobes());
+    }
+
+    /// `styled` 0: the material exactly as declared, and its uniform turns
+    /// the frame's shadow tint and outline distance off (mode bit 8).
+    #[test]
+    fn an_unstyled_material_is_untouched() {
+        let m = StandardMaterial {
+            styled: 0,
+            ..Default::default()
+        };
+        assert_eq!(styled(&m, &toon_style()), m);
+        assert_eq!(uniform(&m, false).flags[3] as u32 & 8, 8);
+        assert_eq!(
+            uniform(&StandardMaterial::default(), false).flags[3] as u32 & 8,
+            0
+        );
     }
 }
