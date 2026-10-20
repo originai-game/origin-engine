@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-860 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+873 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -207,6 +207,8 @@ Field units the docs and Tune use.
 | [`DialogueLine`](ui.md#type-DialogueLine) | desc struct | ui | — |
 | [`DialogueResult`](ui.md#type-DialogueResult) | struct | ui | — |
 | [`Direction`](ui.md#type-Direction) | enum | ui | — |
+| [`DitherPattern`](render.md#type-DitherPattern) | enum | render | — |
+| [`DitherPattern()`](render.md#column-DitherPattern) | column kind | render | — |
 | [`DofQuality`](render.md#type-DofQuality) | enum | render | — |
 | [`DofQuality()`](render.md#column-DofQuality) | column kind | render | — |
 | [`DpadDesc`](ui.md#type-DpadDesc) | desc struct | ui | — |
@@ -339,6 +341,8 @@ Field units the docs and Tune use.
 | [`LOCK_TRANSLATION_X`](physics.md#const-LOCK_TRANSLATION_X) | constant | physics | — |
 | [`LOCK_TRANSLATION_Y`](physics.md#const-LOCK_TRANSLATION_Y) | constant | physics | — |
 | [`LOCK_TRANSLATION_Z`](physics.md#const-LOCK_TRANSLATION_Z) | constant | physics | — |
+| [`Look`](render.md#type-Look) | handle | render | — |
+| [`LookInfo`](render.md#type-LookInfo) | struct | render | — |
 | [`Lut`](render.md#type-Lut) | handle | render | — |
 | [`Lut()`](render.md#column-Lut) | column kind | render | — |
 | [`MainMenuDesc`](ui.md#type-MainMenuDesc) | desc struct | ui | — |
@@ -460,7 +464,10 @@ Field units the docs and Tune use.
 | [`og.load.fontInfo`](load.md#fn-fontInfo) | function | load | `og_load_font_info` |
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
+| [`og.load.look`](load.md#fn-look) | function | load | `og_load_look` |
+| [`og.load.lookInfo`](load.md#fn-lookInfo) | function | load | `og_load_look_info` |
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
+| [`og.load.palette`](load.md#fn-palette) | function | load | `og_load_palette` |
 | [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
@@ -471,6 +478,7 @@ Field units the docs and Tune use.
 | [`og.load.texture`](load.md#fn-texture) | function | load | `og_load_texture` |
 | [`og.load.textureArray`](load.md#fn-textureArray) | function | load | `og_load_texture_array` |
 | [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
+| [`og.MaterialStyle`](render.md#record-MaterialStyle) | resource | render | — |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
 | [`og.Model`](load.md#record-Model) | component | load | — |
@@ -533,9 +541,11 @@ Field units the docs and Tune use.
 | [`og.PointLight`](render.md#record-PointLight) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
+| [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.capabilities`](render.md#fn-capabilities) | function | render | `og_render_capabilities` |
 | [`og.render.floatingText`](render.md#fn-floatingText) | function | render | `og_render_floating_text` |
+| [`og.render.look`](render.md#fn-look) | function | render | `og_render_look` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
@@ -567,6 +577,7 @@ Field units the docs and Tune use.
 | [`og.stream.setBudget`](stream.md#fn-setBudget) | function | stream | `og_stream_set_budget` |
 | [`og.stream.status`](stream.md#fn-status) | function | stream | `og_stream_status` |
 | [`og.StreamEvent`](stream.md#record-StreamEvent) | event | stream | — |
+| [`og.Stylise`](render.md#record-Stylise) | resource | render | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
 | [`og.Terrain`](terrain.md#record-Terrain) | component | terrain | — |
 | [`og.terrain.bounds`](terrain.md#fn-bounds) | function | terrain | `og_terrain_bounds` |
@@ -709,6 +720,8 @@ Field units the docs and Tune use.
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |
+| [`Palette`](render.md#type-Palette) | handle | render | — |
+| [`Palette()`](render.md#column-Palette) | column kind | render | — |
 | [`PanelDesc`](ui.md#type-PanelDesc) | desc struct | ui | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |

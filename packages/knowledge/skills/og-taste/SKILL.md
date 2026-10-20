@@ -1,6 +1,6 @@
 ---
 name: og-taste
-description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) and mapping it to a UI skin, a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
+description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, skin) with a UI skin, a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
 ---
 
 A game is judged in its first second, before anyone reads a word. The
@@ -21,7 +21,9 @@ Write the premise in one line, then answer four questions:
 | **Era or world**: when and where is it set? | 8- and 16-bit nostalgia → pixel; myth, castles, quests → fantasy; space, hacking, mechs → sci-fi; city nights, synthwave, rhythm → neon; everyday, notebooks, mysteries → paper |
 | **Audience**: who plays, on what? | children and casual phone players → cartoon (big targets, bright, bouncy); core desktop players → any, but denser |
 
-Then pick **one** starting skin. The six packs in the engine's
+Then pick a style from the catalogue (§12): its entry names the look
+preset that sets the frame's treatment, the palette and asset specs, and
+the skin pack that matches it. Then pick **one** starting skin. The six packs in the engine's
 `templates/ui-kit/assets/skins/` are starting points, not the only looks:
 
 | Pack | Premises it fits | Signature |
@@ -224,3 +226,121 @@ UI trees and the run's audio, with og-feel's measures beside it; og-build §5
 is the one list of its measures, thresholds and fixes. The numbers cannot
 judge a style: read the frames before changing anything, and fix the cause
 in the skin or the template, never per call.
+
+## 12. Style catalogue: looks
+
+A style is chosen once per game and then held by data, not by habit: the
+**look** (`assets/looks/<game>.ogt`, an `.ogt` of `type look`) binds the
+frame's whole treatment (tone mapping and exposure, the post stack, the
+stylisation primitives, material defaults such as toon shading and
+outlines, fog and sky, the UI skin and the antialiasing) in one diffable
+file. The engine ships the primitives and the presets; the taste is in
+which one you pick and how you tune it.
+
+**Pick from the catalogue.** `looks/catalogue.json` (beside this skill)
+describes 37 styles in four families (pixel and retro, paint and line,
+shape and material, 3D rendering). For each: a one-line descriptor, three
+checks a critic can judge on a captured frame, the premises it fits
+(genre, mood, era, audience, as §1 asks them), the preset it maps to, the
+skin pack, palette constraints, asset specs (logical resolution, sprite
+scale, face budget, outline width, texture density) and an art-bible
+direction. Match the premise's four answers against `premise`, shortlist
+two, and choose by the checks you can actually hold for the whole game.
+
+**Read `look.support` before promising a style.** `full`: every primitive
+the style needs draws today. `partial` and `planned`: the frame will lack
+what `missing` names until those primitives land; say so to whoever asked
+for the style, and either accept the gap or pick a neighbour. `content`:
+the look lives in authored art (painted backdrops, frame-by-frame
+animation, hand-placed pixels); the engine frames it with the look, but
+the assets carry it, so budget for them.
+
+**Write the look.** Start from the style's preset and change only what the
+game needs; your file wins field by field. A style whose `look.presetReady`
+is false has no preset in this engine yet: leave out `extends` and set the
+blocks yourself from the entry's `primitives`.
+
+```text
+type look
+version 1
+---
+name "Harbour at dusk"
+extends "anime-cel-3d"          # the preset's slug (templates/looks/<slug>.ogt)
+skin "skins/harbour/skin.ogt"   # the game's own copy of the style's skin pack
+RenderSettings {
+  toneMapping agx
+  exposure 1.1
+}
+MaterialStyle {
+  shadowTint "#3b3566"
+  shadowTintAmount 0.6
+}
+Fog {
+  enabled true
+  color "#9aa7c7"
+  density 0.012
+}
+```
+
+Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
+is applied before `start` runs; switch looks at a tick with
+`og.load.look` and `og.render.applyLook` (a flashback, a photo mode, an
+area's mood). A look replaces each resource it names whole and leaves the
+others alone, so an area look that names only `Fog` and `Sky` keeps the
+game's grade. A copy of a preset under the preset's own name
+(`assets/looks/<slug>.ogt` with `extends "<slug>"`) overrides it for every
+look of the game that extends that slug. Colours may be written as sRGB
+`"#rrggbb"`; the cook stores them linear. The cook refuses a field the
+resource does not have, a value out of range and an asset not in the
+bundle, naming the line.
+
+**Expand the art bible.** Fill the catalogue's `artBibleTemplate` with the
+chosen entry and the project's premise, camera and platform, and keep the
+result with the game. It is the brief for every asset request after it:
+asking for one asset never redesigns the style. Then hold the game to the
+style's three `checks` on real frames (`og run --headless --commands` with
+screenshots of the title, play and results), as §10 holds the UI.
+
+| Slug | Family | Style | Support | Skin |
+|---|---|---|---|---|
+| `expressionist-painting` | Paint and line | Expressionist paint | content | `paper` |
+| `bold-comic-illustration` | Paint and line | Bold comic illustration | partial | `fantasy` |
+| `watercolor-wash` | Paint and line | Watercolour wash | planned | `paper` |
+| `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | partial | `fantasy` |
+| `faceted-low-poly` | 3D rendering | Faceted low poly | full | `paper` |
+| `sculpted-clay` | 3D rendering | Sculpted clay | partial | `cartoon` |
+| `8bit-pixel` | Pixel and retro | Early console pixels | partial | `pixel` |
+| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `pixel` |
+| `illuminated-manuscript` | Paint and line | Manuscript page | content | `paper` |
+| `rubber-hose-animation` | Paint and line | Rubber-hose cartoon | content | `cartoon` |
+| `pencil-hatching` | Paint and line | Pencil and hatching | planned | `paper` |
+| `gothic-contour` | Paint and line | Gothic ornament | content | `fantasy` |
+| `lush-painted-worlds` | Paint and line | Lush opaque painting | content | `fantasy` |
+| `decorative-storybook` | Paint and line | Storybook ornament | content | `cartoon` |
+| `classical-painting-collage` | Paint and line | Old-master collage | content | `paper` |
+| `detailed-doodle` | Paint and line | Fine-line doodle worlds | content | `paper` |
+| `black-figure-pottery` | Paint and line | Black-figure pottery | content | `fantasy` |
+| `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | planned | `fantasy` |
+| `monochrome-pixel` | Pixel and retro | One-ink pixels | partial | `pixel` |
+| `16bit-pixel` | Pixel and retro | Late console pixels | partial | `pixel` |
+| `detailed-pixel` | Pixel and retro | Dense illustrative pixels | partial | `fantasy` |
+| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | partial | `neon` |
+| `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | partial | `fantasy` |
+| `low-resolution-3d` | 3D rendering | Low-resolution 3D | planned | `scifi` |
+| `coarse-pixel` | Pixel and retro | Minimal low-count pixels | partial | `pixel` |
+| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | partial | `neon` |
+| `inked-comic-3d` | 3D rendering | Inked comic 3D | partial | `scifi` |
+| `paper-craft` | Shape and material | Paper craft | partial | `paper` |
+| `miniature-diorama` | 3D rendering | Miniature diorama | full | `cartoon` |
+| `painterly-3d` | 3D rendering | Painterly 3D | planned | `fantasy` |
+| `cinematic-realism` | 3D rendering | Cinematic realism | full | `scifi` |
+| `muted-cinematic-3d` | 3D rendering | Muted theatrical light | full | `scifi` |
+| `layered-silhouette` | Shape and material | Layered silhouettes | partial | `neon` |
+| `minimal-geometric` | Shape and material | Minimal geometry | full | `neon` |
+| `neon-vector` | Shape and material | Neon vector lines | full | `neon` |
+| `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | planned | `pixel` |
+| `luminous-layered-painting` | 3D rendering | Luminous layered depths | partial | `fantasy` |
+
+Use the catalogue as a vocabulary, never as a list of games to copy: every
+design, character and composition stays original (the platform's rule),
+and the descriptors deliberately name no game or studio.

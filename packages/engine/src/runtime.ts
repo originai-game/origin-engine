@@ -226,6 +226,7 @@ export interface GameDescIn {
   readonly facts?: Function | null;
   readonly start?: Function | null;
   readonly render?: Readonly<Record<string, unknown>>;
+  readonly look?: string;
 }
 
 export function defineGame(desc: GameDescIn = {}): GameToken {
@@ -250,6 +251,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
       facts,
       start,
       render: desc.render ?? {},
+      look: desc.look ?? "",
     });
     gameHandles.set(token, a.og_game_game(wire));
   });
@@ -943,6 +945,8 @@ export const render = Object.freeze({
   updateMaterial: (world: WorldImpl, material: number, desc?: unknown) =>
     parse(abi().og_render_update_material(world.id, material, json(desc))),
   capabilities: (world: WorldImpl) => parse(abi().og_render_capabilities(world.id)),
+  applyLook: (world: WorldImpl, look: number) => parse(abi().og_render_apply_look(world.id, look)),
+  look: (world: WorldImpl) => parse(abi().og_render_look(world.id)),
   text: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_text(world.id, json(desc))),
   sprite: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sprite(world.id, json(desc))),
   ribbon: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_ribbon(world.id, json(desc))),
@@ -974,6 +978,9 @@ export const load = Object.freeze({
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
   shader: (world: WorldImpl, path: string) => parse(abi().og_load_shader(world.id, path)),
   skin: (world: WorldImpl, path: string) => parse(abi().og_load_skin(world.id, path)),
+  look: (world: WorldImpl, path: string) => parse(abi().og_load_look(world.id, path)),
+  lookInfo: (world: WorldImpl, look: number) => parse(abi().og_load_look_info(world.id, look)),
+  palette: (world: WorldImpl, path: string) => parse(abi().og_load_palette(world.id, path)),
   soundInfo: (world: WorldImpl, sound: number) => parse(abi().og_load_sound_info(world.id, sound)),
   status: (world: WorldImpl, asset: number) => abi().og_load_status(world.id, asset),
   error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),

@@ -357,6 +357,12 @@ impl RenderApi for NodeHost {
     fn og_render_capabilities(&self, world: u32) -> String {
         rt::og_render_capabilities(world)
     }
+    fn og_render_apply_look(&self, world: u32, look: f64) -> String {
+        rt::og_render_apply_look(world, look)
+    }
+    fn og_render_look(&self, world: u32) -> String {
+        rt::og_render_look(world)
+    }
     fn og_render_text(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_text(world, desc)
     }
@@ -429,6 +435,15 @@ impl LoadApi for NodeHost {
     }
     fn og_load_skin(&self, world: u32, path: String) -> String {
         rt::og_load_skin(world, path)
+    }
+    fn og_load_look(&self, world: u32, path: String) -> String {
+        rt::og_load_look(world, path)
+    }
+    fn og_load_look_info(&self, world: u32, look: f64) -> String {
+        rt::og_load_look_info(world, look)
+    }
+    fn og_load_palette(&self, world: u32, path: String) -> String {
+        rt::og_load_palette(world, path)
     }
     fn og_load_flipbook(&self, world: u32, path: String) -> String {
         rt::og_load_flipbook(world, path)

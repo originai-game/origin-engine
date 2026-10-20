@@ -615,6 +615,18 @@ pub fn og_render_set_shader_param(env: Env, world: u32, material: f64, name: Str
     <Host as RenderApi>::og_render_set_shader_param(&Host, world, material, name, value)
 }
 
+#[napi(js_name = "og_render_apply_look")]
+pub fn og_render_apply_look(env: Env, world: u32, look: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_apply_look(&Host, world, look)
+}
+
+#[napi(js_name = "og_render_look")]
+pub fn og_render_look(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_look(&Host, world)
+}
+
 #[napi(js_name = "og_render_capabilities")]
 pub fn og_render_capabilities(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -715,6 +727,24 @@ pub fn og_load_texture_array(env: Env, world: u32, path: String) -> String {
 pub fn og_load_skin(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_skin(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_look")]
+pub fn og_load_look(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_look(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_look_info")]
+pub fn og_load_look_info(env: Env, world: u32, look: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_look_info(&Host, world, look)
+}
+
+#[napi(js_name = "og_load_palette")]
+pub fn og_load_palette(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_palette(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_sound_info")]

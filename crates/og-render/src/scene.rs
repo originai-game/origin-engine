@@ -980,6 +980,7 @@ pub struct RenderScene {
     morphs: Vec<Option<MorphTargets>>,
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
+    palettes: Vec<crate::Palette>,
     environment_maps: Vec<crate::EnvironmentMapData>,
     texture_arrays: Vec<crate::TextureArrayData>,
     trail_styles: Vec<TrailStyle>,
@@ -998,6 +999,9 @@ pub struct RenderScene {
     /// background by [`Background::Sky`]; `None`: the sky lights it.
     pub environment_map: Option<crate::EnvironmentMap>,
     pub post: PostEffects,
+    /// Stylisation after (and, for depth bands, with) the post stack: off
+    /// by default ([`crate::Stylise`]).
+    pub stylise: crate::Stylise,
     /// 2D quads drawn after the 3D scene, blended, sorted by layer.
     pub sprites: Vec<Sprite>,
     /// MSDF text, sorted with the sprites by layer.
@@ -1099,6 +1103,7 @@ impl RenderScene {
             environment: Environment::default(),
             environment_map: None,
             post: PostEffects::default(),
+            stylise: crate::Stylise::default(),
             sprites: Vec::new(),
             texts: Vec::new(),
             debug: DebugView::None,
@@ -1106,6 +1111,7 @@ impl RenderScene {
             morphs: Vec::new(),
             emitters: Vec::new(),
             luts: Vec::new(),
+            palettes: Vec::new(),
             environment_maps: Vec::new(),
             texture_arrays: Vec::new(),
             trail_styles: Vec::new(),
@@ -1405,6 +1411,20 @@ impl RenderScene {
 
     pub(crate) fn luts(&self) -> &[ColorLut] {
         &self.luts
+    }
+
+    /// Adds a colour palette (an asset; og-cook's `.hex` and `.gpl`) for
+    /// [`crate::Stylise`]'s quantisation; at most
+    /// [`crate::MAX_PALETTE_COLORS`] colours are kept.
+    pub fn add_palette(&mut self, mut palette: crate::Palette) -> crate::PaletteHandle {
+        palette.colors.truncate(crate::MAX_PALETTE_COLORS);
+        self.palettes.push(palette);
+        crate::PaletteHandle(self.palettes.len() as u32 - 1)
+    }
+
+    /// The palettes added, by handle index.
+    pub fn palettes(&self) -> &[crate::Palette] {
+        &self.palettes
     }
 
     pub(crate) fn trail_styles(&self) -> &[TrailStyle] {

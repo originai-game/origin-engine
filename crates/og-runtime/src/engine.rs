@@ -172,6 +172,8 @@ pub(crate) struct GameDecl {
     pub render: Value,
     /// GameDesc.start, called once before the first tick.
     pub start: Option<u32>,
+    /// GameDesc.look: applied before start runs; empty is none.
+    pub look: String,
 }
 
 #[derive(Clone, Debug)]
@@ -283,6 +285,11 @@ pub(crate) struct State {
     pub boot_scene: Option<String>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
+    /// GameDesc.look, until it has been applied (just before start).
+    pub boot_look: Option<String>,
+    /// The last UiDesc given to og.ui.configure, which applying a look's
+    /// skin keeps.
+    pub ui_desc: Value,
     pub step_ms: f64,
     pub render_ms: f64,
     pub warnings: Vec<String>,
@@ -521,6 +528,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
             .unwrap_or_default(),
         render: desc["render"].clone(),
         start: desc["start"].as_u64().map(|n| n as u32),
+        look: desc["look"].as_str().unwrap_or_default().to_string(),
     };
     DECL.with(|d| {
         let mut d = d.borrow_mut();
@@ -930,6 +938,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         facts: a.game.facts,
         boot_scene: None,
         start: a.game.start,
+        boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
+        ui_desc: Value::Null,
         step_ms: 0.0,
         render_ms: 0.0,
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
@@ -998,6 +1008,10 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         engine.state.borrow_mut().boot_scene = Some(path.clone());
         boot_scene(&engine);
     }
+    // GameDesc.look's antialias, before the host attaches its renderer.
+    if !a.game.look.is_empty() {
+        super::look::boot_antialias(&engine, &a.game.look);
+    }
     // `deferStart`: the host attaches its renderer and reports the viewport
     // first; start then runs at the first tick boundary.
     if !options["deferStart"].as_bool().unwrap_or(false) {
@@ -1010,6 +1024,16 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
 fn run_start(eng: &Engine) -> Result<(), String> {
     if eng.state.borrow().boot_scene.is_some() {
         return Ok(());
+    }
+    let look = eng.state.borrow_mut().boot_look.take();
+    if let Some(path) = look
+        && let Err(e) = super::look::load(eng, &path).and_then(|i| super::look::apply(eng, i))
+    {
+        let text = format!("GameDesc.look: {e}; the world starts without it");
+        let mut st = eng.state.borrow_mut();
+        st.log
+            .push(json!({ "tick": 0, "warning": true, "text": text }));
+        st.warnings.push(text);
     }
     let Some(start) = eng.state.borrow_mut().start.take() else {
         return Ok(());
@@ -1523,12 +1547,24 @@ pub fn command(id: u32, action: &str, args: &str) -> String {
 
 /// `og_engine_write_resource`.
 pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
+    match parse(Some(value)).and_then(|v| write_resource_value(world, resource, &v)) {
+        Ok(()) => super::ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
+/// Writes the fields `value` names into a resource (the others keep
+/// theirs): through the running system's context, which refuses a
+/// resource it did not declare among its writes, or straight into the
+/// world outside systems.
+pub(crate) fn write_resource_value(
+    world: u32,
+    resource: &str,
+    value: &Value,
+) -> Result<(), String> {
     if let Some(f) = running(world) {
-        // Inside a system: through its context, which refuses a resource
-        // the system did not declare among its writes.
-        let result = (|| {
+        return (|| {
             let eng = engine(world)?;
-            let value = parse(Some(value))?;
             let (layout, id) = {
                 let st = eng.state.borrow();
                 let layout = st
@@ -1562,17 +1598,12 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };
             let current = ctx.resource_bytes(id).map_err(err)?;
-            let bytes = layout.encode(Some(&current), Some(&value))?;
+            let bytes = layout.encode(Some(&current), Some(value))?;
             ctx.set_resource_bytes(id, &bytes).map_err(err)
         })();
-        return match result {
-            Ok(()) => super::ok_void(),
-            Err(e) => refuse(e),
-        };
     }
-    let result = (|| {
+    (|| {
         let eng = engine(world)?;
-        let value = parse(Some(value))?;
         let st = eng.state.borrow();
         let layout = st
             .layouts
@@ -1591,13 +1622,9 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
         let w = eng.world()?;
         let id = w.id_by_name(resource).map_err(err)?;
         let current = w.resource_bytes(id).map_err(err)?;
-        let bytes = layout.encode(Some(&current), Some(&value))?;
+        let bytes = layout.encode(Some(&current), Some(value))?;
         w.insert_resource_bytes(id, &bytes).map_err(err)
-    })();
-    match result {
-        Ok(()) => super::ok_void(),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 // ── views ───────────────────────────────────────────────────────────────────

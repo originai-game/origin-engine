@@ -42,6 +42,7 @@ mod fx;
 mod glyphs;
 mod i18n;
 mod lanes;
+mod look;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod nav;

@@ -2150,6 +2150,34 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
     }
 
+    /// The look of a look blob (`og.Look`): flattened and checked by the
+    /// cook; the assets it names are the caller's to load.
+    pub fn look(&self, id: &str, bytes: &[u8]) -> Result<crate::look::LookFile, LoadError> {
+        let blob = self.blob::<format::Look>(id, bytes)?;
+        let meta = one::<format::LookMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the look text is cut short or not UTF-8"))?;
+        crate::look::LookFile::parse(text).map_err(|e| invalid(&blob, e))
+    }
+
+    /// The colours of a palette blob (`og.Palette`): sRGB, in file order.
+    pub fn palette(&self, id: &str, bytes: &[u8]) -> Result<Vec<[u8; 3]>, LoadError> {
+        let blob = self.blob::<format::Palette>(id, bytes)?;
+        let meta = one::<format::PaletteMeta>(&blob)?;
+        let rgb = blob.raw("rgb")?;
+        let n = meta.count as usize;
+        if n == 0 || n > 256 || rgb.len() < n * 3 {
+            return Err(invalid(
+                &blob,
+                format!("a palette of {n} colours in {} bytes", rgb.len()),
+            ));
+        }
+        Ok(rgb[..n * 3].as_chunks::<3>().0.to_vec())
+    }
+
     /// The humanoid map of a rig blob (`og.Rig`).
     pub fn rig(&self, id: &str, bytes: &[u8]) -> Result<og_anim::RigAsset, LoadError> {
         let blob = self.blob::<format::Rig>(id, bytes)?;

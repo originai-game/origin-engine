@@ -1,0 +1,5 @@
+type skin
+version 1
+---
+name "tiny"
+base dark

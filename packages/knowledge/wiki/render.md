@@ -14,7 +14,7 @@ module render {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1598</sub>
+<sub>`api.ogt` line 1599</sub>
 
 ## Contents
 
@@ -56,6 +56,14 @@ module render {
 | [`StripBlend`](#type-StripBlend) | enum | How a trail, ribbon or beam is blended. |
 | [`StripBlend()`](#column-StripBlend) | column kind | A StripBlend field: the variant's index. |
 | [`og.PostEffects`](#record-PostEffects) | resource | The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation. |
+| [`Palette`](#type-Palette) | handle | A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours). |
+| [`Look`](#type-Look) | handle | A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook. |
+| [`Palette()`](#column-Palette) | column kind | A Palette handle field (0 is none). |
+| [`DitherPattern`](#type-DitherPattern) | enum | The threshold pattern Stylise.dither spreads the steps of posterize and palette with. |
+| [`DitherPattern()`](#column-DitherPattern) | column kind | A DitherPattern field: the variant's index. |
+| [`og.Stylise`](#record-Stylise) | resource | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation. |
+| [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
+| [`LookInfo`](#type-LookInfo) | struct | A loaded look: where it came from and what applying it sets. |
 | [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
 | [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
 | [`og.Occluder2D`](#record-Occluder2D) | component | A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn. |
@@ -91,6 +99,8 @@ module render {
 | [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest. |
 | [`og.render.setMaterialShader`](#fn-setMaterialShader) | function | Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes. |
 | [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
+| [`og.render.applyLook`](#fn-applyLook) | function | Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. |
+| [`og.render.look`](#fn-look) | function | The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
 
@@ -124,7 +134,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2517</sub>
+<sub>`api.ogt` line 2766</sub>
 
 <a id="fn-sprite"></a>
 
@@ -154,7 +164,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2633</sub>
+<sub>`api.ogt` line 2882</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -184,7 +194,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 2797</sub>
+<sub>`api.ogt` line 3046</sub>
 
 <a id="fn-measureText"></a>
 
@@ -214,7 +224,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 2804</sub>
+<sub>`api.ogt` line 3053</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -244,7 +254,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2864</sub>
+<sub>`api.ogt` line 3113</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -274,7 +284,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2871</sub>
+<sub>`api.ogt` line 3120</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -304,7 +314,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2878</sub>
+<sub>`api.ogt` line 3127</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -334,7 +344,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2900</sub>
+<sub>`api.ogt` line 3150</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -366,7 +376,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2907</sub>
+<sub>`api.ogt` line 3157</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -398,7 +408,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2917</sub>
+<sub>`api.ogt` line 3167</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -430,7 +440,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 2925</sub>
+<sub>`api.ogt` line 3175</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -464,7 +474,65 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 2933</sub>
+<sub>`api.ogt` line 3183</sub>
+
+<a id="fn-applyLook"></a>
+
+### `og.render.applyLook`
+
+Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes.
+
+```ts
+og.render.applyLook(world: World, look: Look): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose look changes. |
+| `look` | `Look` | no | The look, from og.load.look. |
+
+**Returns** `Result<void>`: Refused for a look not loaded in this world or a resource the system did not declare.
+
+Binding symbol `og_render_apply_look` · publish builds: kept
+
+```ogt
+fn applyLook {
+  doc "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its skin, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes."
+  param world World "The world whose look changes."
+  param look Look "The look, from og.load.look."
+  returns Result.Void "Refused for a look not loaded in this world or a resource the system did not declare."
+}
+```
+
+<sub>`api.ogt` line 3192</sub>
+
+<a id="fn-look"></a>
+
+### `og.render.look`
+
+The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any.
+
+```ts
+og.render.look(world: World): LookInfo | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world asked. |
+
+**Returns** `LookInfo | null`.
+
+Binding symbol `og_render_look` · publish builds: kept
+
+```ogt
+fn look {
+  doc "The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any."
+  param world World "The world asked."
+  returns Option.LookInfo
+}
+```
+
+<sub>`api.ogt` line 3199</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -492,7 +560,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2942</sub>
+<sub>`api.ogt` line 3205</sub>
 
 <a id="fn-text"></a>
 
@@ -522,7 +590,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2948</sub>
+<sub>`api.ogt` line 3211</sub>
 
 ## Components, resources and events
 
@@ -568,7 +636,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1848</sub>
+<sub>`api.ogt` line 1849</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -623,7 +691,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1868</sub>
+<sub>`api.ogt` line 1869</sub>
 
 <a id="record-PointLight"></a>
 
@@ -664,7 +732,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1900</sub>
+<sub>`api.ogt` line 1901</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -716,7 +784,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1920</sub>
+<sub>`api.ogt` line 1921</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -739,6 +807,7 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `adaptSpeedDown` | `number` | `0` | 0 … 100 | `evPerSecond` | tunable | How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair. |
 | `toneMapped` | `boolean` | `true` | — | — | — | Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. |
 | `toneMapping` | `ToneMapping` | `"aces"` | — | — | — | Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none. |
+| `exposure` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. |
 | `decalAtlas` | `Texture` | `0` | — | — | — | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
 
 ```ogt
@@ -782,11 +851,17 @@ resource RenderSettings {
     default true
   }
   field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none."
+  field exposure f32 "A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are." {
+    default 1
+    min 0
+    max 16
+    tunable true
+  }
   field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
 }
 ```
 
-<sub>`api.ogt` line 1965</sub>
+<sub>`api.ogt` line 1966</sub>
 
 <a id="record-Environment"></a>
 
@@ -826,7 +901,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2035</sub>
+<sub>`api.ogt` line 2042</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -1063,7 +1138,290 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2115</sub>
+<sub>`api.ogt` line 2122</sub>
+
+<a id="record-Stylise"></a>
+
+### `og.Stylise` (resource)
+
+Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
+
+Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
+
+Token `og.Stylise`, registered under the schema name `og.Stylise`; its value type is `Stylise`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `pixelHeight` | `number` | `0` | 0 … 2160 | — | — | The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights. |
+| `pixelUpscale` | `number` | `0` | 0 … 16 | — | — | The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it. |
+| `pixelSnap` | `boolean` | `true` | — | — | — | Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets). |
+| `posterize` | `number` | `0` | 0 … 64 | — | — | Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off. |
+| `palette` | `Palette` | `0` | — | — | — | Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none. |
+| `dither` | `DitherPattern` | `"none"` | — | — | — | How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion. |
+| `ditherStrength` | `number` | `1` | 0 … 2 | — | tunable | The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands. |
+| `ditherScale` | `number` | `1` | 1 … 8 | — | — | The size of one dither cell in logical pixels. |
+| `halftone` | `number` | `0` | 0 … 1 | `ratio` | tunable | Halftone print: tones become dots on a rotated grid, larger where the image is darker; 0 is off, 1 dots only. |
+| `halftoneSize` | `number` | `6` | 2 … 64 | — | — | The dot grid's pitch in logical pixels. |
+| `halftoneAngle` | `number` | `45` | — | `deg` | — | The dot grid's angle. |
+| `halftoneColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The ink of the dots (linear). |
+| `hatching` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only. |
+| `hatchingScale` | `number` | `6` | 2 … 64 | — | — | The spacing of hatch lines in logical pixels. |
+| `hatchingLevels` | `number` | `4` | 1 … 6 | — | — | How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6). |
+| `hatchingAngle` | `number` | `45` | — | `deg` | — | The direction of the first stroke set. |
+| `hatchingColor` | `Color` | `{ r: 0.04, g: 0.035, b: 0.03 }` | — | — | — | The stroke colour (linear): graphite, sepia or ink. |
+| `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off. |
+| `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara). |
+| `paintEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
+| `paintBleed` | `number` | `0` | 0 … 1 | `ratio` | tunable | Colour bleeding across edges into its neighbours, wet in wet; 0 is none. |
+| `paintCanvas` | `Texture` | `0` | — | — | — | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
+| `paintCanvasStrength` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the canvas texture modulates the frame: 0 none, 1 its full grain. |
+| `paintCanvasScale` | `number` | `1` | 0.125 … 8 | — | — | Canvas texels per logical pixel. |
+| `ink` | `boolean` | `false` | — | — | — | Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. |
+| `inkThreshold` | `number` | `0.1` | 0 … 1 | — | tunable | The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines. |
+| `inkWidth` | `number` | `1` | 0.5 … 8 | — | tunable | The line width in logical pixels. |
+| `inkColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line colour (linear). |
+| `depthBands` | `number` | `0` | 0 … 8 | — | — | Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off. |
+| `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts. |
+| `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; beyond it everything is the far colour. |
+| `depthBandsNearColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The nearest band's colour (linear, before exposure). |
+| `depthBandsFarColor` | `Color` | `{ r: 0.55, g: 0.6, b: 0.7 }` | — | — | — | The farthest band's colour (linear, before exposure). |
+| `depthBandsFlatten` | `number` | `1` | 0 … 1 | `ratio` | tunable | How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene. |
+| `vertexSnap` | `number` | `0` | 0 … 16 | — | — | Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off. |
+| `affineTexturing` | `number` | `0` | 0 … 1 | `ratio` | — | How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off. |
+| `depthBits` | `number` | `0` | 0 … 24 | — | — | Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision. |
+
+```ogt
+resource Stylise {
+  doc "Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation."
+  doc "Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised."
+  field pixelHeight u32 "The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights." {
+    min 0
+    max 2160
+  }
+  field pixelUpscale u32 "The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it." {
+    min 0
+    max 16
+  }
+  field pixelSnap bool "Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets)." {
+    default true
+  }
+  field posterize u32 "Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off." {
+    min 0
+    max 64
+  }
+  field palette Palette "Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none."
+  field dither DitherPattern "How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion."
+  field ditherStrength f32 "The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands." {
+    default 1
+    min 0
+    max 2
+    tunable true
+  }
+  field ditherScale u32 "The size of one dither cell in logical pixels." {
+    default 1
+    min 1
+    max 8
+  }
+  field halftone f32 "Halftone print: tones become dots on a rotated grid, larger where the image is darker; 0 is off, 1 dots only." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field halftoneSize f32 "The dot grid's pitch in logical pixels." {
+    default 6
+    min 2
+    max 64
+  }
+  field halftoneAngle f32 "The dot grid's angle." {
+    default 45
+    unit deg
+  }
+  field halftoneColor Color "The ink of the dots (linear)." {
+    default 0.02 0.02 0.03
+  }
+  field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field hatchingScale f32 "The spacing of hatch lines in logical pixels." {
+    default 6
+    min 2
+    max 64
+  }
+  field hatchingLevels u32 "How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6)." {
+    default 4
+    min 1
+    max 6
+  }
+  field hatchingAngle f32 "The direction of the first stroke set." {
+    default 45
+    unit deg
+  }
+  field hatchingColor Color "The stroke colour (linear): graphite, sepia or ink." {
+    default 0.04 0.035 0.03
+  }
+  field paintRadius f32 "Painterly smoothing (a Kuwahara filter): flat regions become strokes of one colour this many logical pixels across while edges stay sharp; 0 is off." {
+    min 0
+    max 8
+    tunable true
+  }
+  field paintAnisotropy f32 "How far the strokes follow the image's edges: 0 square brush cells, 1 strokes stretched along every contour (an anisotropic Kuwahara)." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field paintEdgeDarkening f32 "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field paintBleed f32 "Colour bleeding across edges into its neighbours, wet in wet; 0 is none." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field paintCanvas Texture "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none."
+  field paintCanvasStrength f32 "How much the canvas texture modulates the frame: 0 none, 1 its full grain." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field paintCanvasScale f32 "Canvas texels per logical pixel." {
+    default 1
+    min 0.125
+    max 8
+  }
+  field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass."
+  field inkThreshold f32 "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines." {
+    default 0.1
+    min 0
+    max 1
+    tunable true
+  }
+  field inkWidth f32 "The line width in logical pixels." {
+    default 1
+    min 0.5
+    max 8
+    tunable true
+  }
+  field inkColor Color "The line colour (linear)." {
+    default 0.02 0.02 0.03
+  }
+  field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
+    min 0
+    max 8
+  }
+  field depthBandsNear f32 "Where the first band starts." {
+    default 5
+    min 0
+    unit m
+  }
+  field depthBandsFar f32 "Where the last band ends; beyond it everything is the far colour." {
+    default 60
+    min 0
+    unit m
+  }
+  field depthBandsNearColor Color "The nearest band's colour (linear, before exposure)." {
+    default 0.02 0.02 0.03
+  }
+  field depthBandsFarColor Color "The farthest band's colour (linear, before exposure)." {
+    default 0.55 0.6 0.7
+  }
+  field depthBandsFlatten f32 "How far a band replaces the surfaces' own shading: 1 flat silhouettes, 0 a tint over the lit scene." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field vertexSnap f32 "Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off." {
+    min 0
+    max 16
+  }
+  field affineTexturing f32 "How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field depthBits u32 "Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision." {
+    min 0
+    max 24
+  }
+}
+```
+
+<sub>`api.ogt` line 2325</sub>
+
+<a id="record-MaterialStyle"></a>
+
+### `og.MaterialStyle` (resource)
+
+Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
+
+Token `og.MaterialStyle`, registered under the schema name `og.MaterialStyle`; its value type is `MaterialStyle`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `toon` | `boolean` | `false` | — | — | — | Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. |
+| `gradientMap` | `Texture` | `0` | — | — | — | The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands. |
+| `shadowTint` | `Color` | `{ r: 0.18, g: 0.16, b: 0.32 }` | — | — | — | The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration. |
+| `shadowTintAmount` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far shadowed light moves towards shadowTint; 0 is off. |
+| `rimColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Rim (fresnel) light for materials without their own (linear). |
+| `rimIntensity` | `number` | `0` | ≥ 0 | — | tunable | The rim light's strength; 0 is none. |
+| `rimPower` | `number` | `3` | ≥ 0.1 | — | — | How tight the rim is (higher: thinner). |
+| `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The outline colour for materials without their own (linear). |
+| `outlineWidth` | `number` | `0` | 0 … 31 | — | tunable | The outline width in pixels at outlineDistance for materials without their own; 0 is none. |
+| `outlineDistance` | `number` | `0` | ≥ 0 | `m` | — | The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide. |
+| `flatShading` | `boolean` | `false` | — | — | — | Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks. |
+
+```ogt
+resource MaterialStyle {
+  doc "Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
+  field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights."
+  field gradientMap Texture "The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands."
+  field shadowTint Color "The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration." {
+    default 0.18 0.16 0.32
+  }
+  field shadowTintAmount f32 "How far shadowed light moves towards shadowTint; 0 is off." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field rimColor Color "Rim (fresnel) light for materials without their own (linear)." {
+    default 1 1 1
+  }
+  field rimIntensity f32 "The rim light's strength; 0 is none." {
+    min 0
+    tunable true
+  }
+  field rimPower f32 "How tight the rim is (higher: thinner)." {
+    default 3
+    min 0.1
+  }
+  field outlineColor Color "The outline colour for materials without their own (linear)." {
+    default 0.02 0.02 0.03
+  }
+  field outlineWidth f32 "The outline width in pixels at outlineDistance for materials without their own; 0 is none." {
+    min 0
+    max 31
+    tunable true
+  }
+  field outlineDistance f32 "The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide." {
+    min 0
+    unit m
+  }
+  field flatShading bool "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks."
+}
+```
+
+<sub>`api.ogt` line 2489</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1102,7 +1460,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2290</sub>
+<sub>`api.ogt` line 2539</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1153,7 +1511,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2309</sub>
+<sub>`api.ogt` line 2558</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1184,7 +1542,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2339</sub>
+<sub>`api.ogt` line 2588</sub>
 
 <a id="record-Decal"></a>
 
@@ -1239,7 +1597,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2353</sub>
+<sub>`api.ogt` line 2602</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1270,7 +1628,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2385</sub>
+<sub>`api.ogt` line 2634</sub>
 
 <a id="record-Trail"></a>
 
@@ -1346,7 +1704,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2396</sub>
+<sub>`api.ogt` line 2645</sub>
 
 <a id="record-Beam"></a>
 
@@ -1412,7 +1770,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2444</sub>
+<sub>`api.ogt` line 2693</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1525,7 +1883,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2640</sub>
+<sub>`api.ogt` line 2889</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1573,7 +1931,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2712</sub>
+<sub>`api.ogt` line 2961</sub>
 
 ## Types
 
@@ -1589,7 +1947,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
 ```
 
-<sub>`api.ogt` line 1602</sub>
+<sub>`api.ogt` line 1603</sub>
 
 <a id="type-Material"></a>
 
@@ -1603,7 +1961,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Material "A material instance."
 ```
 
-<sub>`api.ogt` line 1603</sub>
+<sub>`api.ogt` line 1604</sub>
 
 <a id="type-Texture"></a>
 
@@ -1617,7 +1975,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>`api.ogt` line 1604</sub>
+<sub>`api.ogt` line 1605</sub>
 
 <a id="type-Side"></a>
 
@@ -1642,7 +2000,7 @@ enum Side {
 }
 ```
 
-<sub>`api.ogt` line 1620</sub>
+<sub>`api.ogt` line 1621</sub>
 
 <a id="type-RenderTier"></a>
 
@@ -1673,7 +2031,7 @@ enum RenderTier {
 }
 ```
 
-<sub>`api.ogt` line 1627</sub>
+<sub>`api.ogt` line 1628</sub>
 
 <a id="type-Antialias"></a>
 
@@ -1702,7 +2060,7 @@ enum Antialias {
 }
 ```
 
-<sub>`api.ogt` line 1637</sub>
+<sub>`api.ogt` line 1638</sub>
 
 <a id="type-PointShadows"></a>
 
@@ -1727,7 +2085,7 @@ enum PointShadows {
 }
 ```
 
-<sub>`api.ogt` line 1646</sub>
+<sub>`api.ogt` line 1647</sub>
 
 <a id="type-TaaHistory"></a>
 
@@ -1750,7 +2108,7 @@ enum TaaHistory {
 }
 ```
 
-<sub>`api.ogt` line 1653</sub>
+<sub>`api.ogt` line 1654</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -1788,7 +2146,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 1659</sub>
+<sub>`api.ogt` line 1660</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -2044,7 +2402,7 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 1677</sub>
+<sub>`api.ogt` line 1678</sub>
 
 <a id="type-ToneMapping"></a>
 
@@ -2069,7 +2427,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1951</sub>
+<sub>`api.ogt` line 1952</sub>
 
 <a id="type-Lut"></a>
 
@@ -2083,7 +2441,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2010</sub>
+<sub>`api.ogt` line 2017</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -2097,7 +2455,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`)."
 ```
 
-<sub>`api.ogt` line 2011</sub>
+<sub>`api.ogt` line 2018</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -2111,7 +2469,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2012</sub>
+<sub>`api.ogt` line 2019</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -2136,7 +2494,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2062</sub>
+<sub>`api.ogt` line 2069</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -2159,7 +2517,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2076</sub>
+<sub>`api.ogt` line 2083</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2182,7 +2540,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2089</sub>
+<sub>`api.ogt` line 2096</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2205,7 +2563,95 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2102</sub>
+<sub>`api.ogt` line 2109</sub>
+
+<a id="type-Palette"></a>
+
+### `Palette` (handle)
+
+A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours).
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
+```
+
+<sub>`api.ogt` line 2299</sub>
+
+<a id="type-Look"></a>
+
+### `Look` (handle)
+
+A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook.
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
+```
+
+<sub>`api.ogt` line 2300</sub>
+
+<a id="type-DitherPattern"></a>
+
+### `DitherPattern` (enum)
+
+The threshold pattern Stylise.dither spreads the steps of posterize and palette with.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | No dither: every pixel rounds to its nearest step or colour, in flat bands. |
+| `"bayer2"` | Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds. |
+| `"bayer4"` | Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art. |
+| `"bayer8"` | Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours. |
+| `"blueNoise"` | Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl. |
+
+```ogt
+enum DitherPattern {
+  doc "The threshold pattern Stylise.dither spreads the steps of posterize and palette with."
+  variant none "No dither: every pixel rounds to its nearest step or colour, in flat bands."
+  variant bayer2 "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds."
+  variant bayer4 "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art."
+  variant bayer8 "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours."
+  variant blueNoise "Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl."
+}
+```
+
+<sub>`api.ogt` line 2309</sub>
+
+<a id="type-LookInfo"></a>
+
+### `LookInfo` (struct)
+
+A loaded look: where it came from and what applying it sets.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `look` | `Look` | `0` | — | — | — | Its handle. |
+| `path` | `string` | `""` | — | — | — | Its asset id. |
+| `name` | `string` | `""` | — | — | — | Its name (the file's `name`, else its file name without `.ogt`). |
+| `extends` | `readonly string[]` | `[]` | — | — | — | The looks it builds on, nearest first: asset ids under assets/ and built-in preset slugs. |
+| `resources` | `readonly string[]` | `[]` | — | — | — | The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults. |
+| `skin` | `Skin \| null` | `null` | — | — | — | The UI skin it names, loaded with it; applying the look configures the UI with it. |
+| `antialias` | `Antialias \| null` | `null` | — | — | — | The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method. |
+
+```ogt
+struct LookInfo {
+  doc "A loaded look: where it came from and what applying it sets."
+  field look Look "Its handle."
+  field path String "Its asset id."
+  field name String "Its name (the file's `name`, else its file name without `.ogt`)."
+  field extends List.String "The looks it builds on, nearest first: asset ids under assets/ and built-in preset slugs."
+  field resources List.String "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
+  field skin Option.Skin "The UI skin it names, loaded with it; applying the look configures the UI with it."
+  field antialias Option.Antialias "The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method."
+}
+```
+
+<sub>`api.ogt` line 2528</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2245,7 +2691,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2484</sub>
+<sub>`api.ogt` line 2733</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2276,7 +2722,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2505</sub>
+<sub>`api.ogt` line 2754</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2338,7 +2784,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2524</sub>
+<sub>`api.ogt` line 2773</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2367,7 +2813,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2558</sub>
+<sub>`api.ogt` line 2807</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2390,7 +2836,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2569</sub>
+<sub>`api.ogt` line 2818</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2484,7 +2930,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2576</sub>
+<sub>`api.ogt` line 2825</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -2572,7 +3018,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2739</sub>
+<sub>`api.ogt` line 2988</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -2610,7 +3056,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2811</sub>
+<sub>`api.ogt` line 3060</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -2642,7 +3088,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2831</sub>
+<sub>`api.ogt` line 3080</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -2678,7 +3124,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>`api.ogt` line 3095</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -2696,6 +3142,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
+| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
 
 ```ogt
 struct RenderCapabilities {
@@ -2708,10 +3155,11 @@ struct RenderCapabilities {
   field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
+  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
 }
 ```
 
-<sub>`api.ogt` line 2888</sub>
+<sub>`api.ogt` line 3137</sub>
 
 <a id="type-Shader"></a>
 
@@ -2725,7 +3173,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 2915</sub>
+<sub>`api.ogt` line 3165</sub>
 
 ## Column kinds
 
@@ -2744,6 +3192,8 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-DofQuality"></a>`DofQuality` | `DofQuality` | `Uint32Array` | 1 | A DofQuality field: the variant's index. |
 | <a id="column-SpriteBlend"></a>`SpriteBlend` | `SpriteBlend` | `Uint32Array` | 1 | A SpriteBlend field: the variant's index. |
 | <a id="column-StripBlend"></a>`StripBlend` | `StripBlend` | `Uint32Array` | 1 | A StripBlend field: the variant's index. |
+| <a id="column-Palette"></a>`Palette` | `Palette` | `Uint32Array` | 2 | A Palette handle field (0 is none). |
+| <a id="column-DitherPattern"></a>`DitherPattern` | `DitherPattern` | `Uint32Array` | 1 | A DitherPattern field: the variant's index. |
 
 ```ogt
 column Geometry {
@@ -2754,7 +3204,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 1606</sub>
+<sub>`api.ogt` line 1607</sub>
 
 ```ogt
 column Material {
@@ -2765,7 +3215,7 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 1613</sub>
+<sub>`api.ogt` line 1614</sub>
 
 ```ogt
 column ToneMapping {
@@ -2776,7 +3226,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1958</sub>
+<sub>`api.ogt` line 1959</sub>
 
 ```ogt
 column Texture {
@@ -2787,7 +3237,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2014</sub>
+<sub>`api.ogt` line 2021</sub>
 
 ```ogt
 column Lut {
@@ -2798,7 +3248,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2021</sub>
+<sub>`api.ogt` line 2028</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -2809,7 +3259,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2028</sub>
+<sub>`api.ogt` line 2035</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -2820,7 +3270,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2055</sub>
+<sub>`api.ogt` line 2062</sub>
 
 ```ogt
 column AoMethod {
@@ -2831,7 +3281,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2069</sub>
+<sub>`api.ogt` line 2076</sub>
 
 ```ogt
 column DofQuality {
@@ -2842,7 +3292,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2082</sub>
+<sub>`api.ogt` line 2089</sub>
 
 ```ogt
 column SpriteBlend {
@@ -2853,7 +3303,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2095</sub>
+<sub>`api.ogt` line 2102</sub>
 
 ```ogt
 column StripBlend {
@@ -2864,7 +3314,29 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2108</sub>
+<sub>`api.ogt` line 2115</sub>
+
+```ogt
+column Palette {
+  doc "A Palette handle field (0 is none)."
+  array Uint32Array
+  stride 2
+  value Palette
+}
+```
+
+<sub>`api.ogt` line 2302</sub>
+
+```ogt
+column DitherPattern {
+  doc "A DitherPattern field: the variant's index."
+  array Uint32Array
+  stride 1
+  value DitherPattern
+}
+```
+
+<sub>`api.ogt` line 2318</sub>
 
 ## Constants
 
@@ -2877,10 +3349,10 @@ column StripBlend {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 2885</sub>
+<sub>`api.ogt` line 3134</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 2886</sub>
+<sub>`api.ogt` line 3135</sub>

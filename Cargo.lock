@@ -1748,6 +1748,7 @@ dependencies = [
  "nalgebra 0.34.2",
  "og-ai",
  "og-anim",
+ "og-api",
  "og-audio",
  "og-blob",
  "og-core",

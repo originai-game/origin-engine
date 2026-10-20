@@ -209,6 +209,10 @@ export interface HostAbi<A, V> {
   og_render_set_material_shader(world: number, material: number, shader: string): string;
   /** `og.render.setShaderParam` */
   og_render_set_shader_param(world: number, material: number, name: string, value: string): string;
+  /** `og.render.applyLook` */
+  og_render_apply_look(world: number, look: number): string;
+  /** `og.render.look` */
+  og_render_look(world: number): string;
   /** `og.render.capabilities` */
   og_render_capabilities(world: number): string;
   /** `og.render.text` */
@@ -243,6 +247,12 @@ export interface HostAbi<A, V> {
   og_load_texture_array(world: number, path: string): string;
   /** `og.load.skin` */
   og_load_skin(world: number, path: string): string;
+  /** `og.load.look` */
+  og_load_look(world: number, path: string): string;
+  /** `og.load.lookInfo` */
+  og_load_look_info(world: number, look: number): string;
+  /** `og.load.palette` */
+  og_load_palette(world: number, path: string): string;
   /** `og.load.soundInfo` */
   og_load_sound_info(world: number, sound: number): string;
   /** `og.load.status` */
@@ -702,6 +712,8 @@ export const SYMBOLS: readonly string[] = [
   "og_render_shader_material",
   "og_render_set_material_shader",
   "og_render_set_shader_param",
+  "og_render_apply_look",
+  "og_render_look",
   "og_render_capabilities",
   "og_render_text",
   "og_load_bundle",
@@ -719,6 +731,9 @@ export const SYMBOLS: readonly string[] = [
   "og_load_texture",
   "og_load_texture_array",
   "og_load_skin",
+  "og_load_look",
+  "og_load_look_info",
+  "og_load_palette",
   "og_load_sound_info",
   "og_load_status",
   "og_load_error",
