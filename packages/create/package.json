@@ -10,6 +10,6 @@
   "files": ["bin", "template", "archetypes", "looks", "README.md"],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",
-    "test": "bun test tests/"
+    "test": "bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/"
   }
 }

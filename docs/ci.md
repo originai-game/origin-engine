@@ -209,9 +209,10 @@ runs and the wasm is the shipping profile), `OG_GATE_MACHINE_LOCK=0` (one
 gate per runner), an empty `RUSTC_WRAPPER` (no sccache) and
 `CARGO_PROFILE_DEV_DEBUG=line-tables-only`. Two settings answer the
 runner's speed, two vCPU of Lavapipe against the M4 Pro the tests were
-tuned on: `OG_BUN_TEST_TIMEOUT=60000` (packages/engine's `bun run test`
-passes it to `bun test --timeout`, the default for a test that names no
-timeout of its own: render tests there took 5 to 25 s against bun's 5 s),
+tuned on: `OG_BUN_TEST_TIMEOUT=60000` (every package's `bun run test` passes it to
+`bun test --timeout`, the default for a test that names no timeout of its
+own: render tests in packages/engine took 5 to 25 s against bun's 5 s,
+packages/knowledge's mount test 5.0 s),
 and `OG_GATE_JOBS=1` in the gate job (bun-test beside test starved both,
 and twelve render tests and five of the slow integration tests ran out of
 time).
