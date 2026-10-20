@@ -155,7 +155,10 @@ is the fallback through wgpu's GL backend with a reduced feature tier
 (no compute: GPU culling and particles fall back to CPU paths, clustered
 lighting falls back to a forward tile table built on the CPU).
 
-- Forward+ (clustered) with a depth prepass; PBR metallic-roughness
+- Forward+ (clustered), with a depth-normal prepass when an effect reads
+  depth or normals (on every frame it cost the 20,000-sphere field two
+  thirds of its frame and bought nothing: `tests/evidence/P4/perf/prepass.md`);
+  PBR metallic-roughness
   (glTF-compatible), normal, emissive, occlusion, clearcoat later.
 - Cascaded shadow maps for one directional light, cube or dual-paraboloid
   for up to N point/spot lights by tier.

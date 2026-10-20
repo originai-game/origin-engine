@@ -934,8 +934,14 @@ with their mips, chosen per tier and reported in
 `RenderDesc::mobile()` (two 1024² cascades, ASTC/ETC2 first). Evidence:
 `tests/evidence/M6/render-*`.
 
-- **Render graph**: a depth prepass for every frame (it runs only when an
-  effect reads it).
+- **Render graph**: a depth prepass for every frame. *Decided (P4 perf):
+  on demand.* The depth-normal prepass runs when an effect reads it (AO,
+  outlines, depth of field, motion blur, god rays, soft particles, water,
+  3D fluids). Forced on every frame it changes no lit pixel (the lit pass
+  keeps its own depth test, and the clusters come from light volumes, not
+  scene depth) and costs a second geometry pass: spheres-20k 9.98 to 16.56
+  ms (+66 %), city-street +0.3 ms, city-aerial +0.5 ms, showcase within
+  noise (`tests/evidence/P4/perf/prepass.md`). Design §2.6 says so.
 - **GL-tier references**: the og-tests scenes (`msaa` among them) have no
   `gl` / `webgl2` references: native GL needs wgpu's
   `gles`/`angle` features (Cargo.lock change, ANGLE dylibs on macOS) and was
