@@ -103,7 +103,8 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `cargo run` is waiting behind the build lock and may rebuild the world.
 - **Two lanes.** `scripts/check.sh quick` (fmt, clippy, drift, the logic
   tests of every crate but og-tests, the knowledge and create packages) is
-  the loop while working and the PR signal, under half a minute warm.
+  the loop while working, under half a minute warm; CI runs it and the
+  functional lane on every PR.
   `scripts/check.sh` (full) adds the gfx, perf-shaped and browser-shaped
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
@@ -114,8 +115,10 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   test with the GPU reference frames, drift, the packages' tests on the
   native host) and that is what a merge must pass. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
-  end: `scripts/check.sh --all` and `scripts/check.sh web-reference` once
-  per wave, with their summary in the report, never per merge. A size or
+  end: `scripts/wave-end.sh` (`scripts/check.sh --all`, `scripts/check.sh
+  web-reference`, then the vulkan-cpu frames on lavapipe and their table
+  against metal, serially) once per wave, with its summary in the report,
+  never per merge. A size or
   frame-time number is a target to pursue there, not a reason to hold a
   functional merge. Never run `--all` after every edit. When a reference frame changes, re-record
   it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx

@@ -13,8 +13,8 @@ The one place the versions are stated. Each is pinned where the third
 column says, and CI installs the same: the Rust toolchain from
 `rust-toolchain.toml` (`actions-rust-lang/setup-rust-toolchain`), the rest
 from `scripts/install-tools.sh`, except cargo-nextest, which CI takes from
-`taiki-e/install-action@nextest` (latest) and the script installs when
-absent.
+`taiki-e/install-action` (latest) and the script installs when absent, and
+node, which CI takes from `actions/setup-node`.
 
 | Tool | Version | Pinned by |
 |---|---|---|
@@ -25,6 +25,8 @@ absent.
 | bun | 1.4.2 | `BUN_VERSION` in `scripts/install-tools.sh` |
 | TypeScript (type checking only; Bun bundles) | 7.0.2 | `packages/engine/package.json` `typecheck`, `crates/og-idl/tests/idl.rs`, the templates' `devDependencies` |
 | cargo-nextest | 0.9.148 here | not pinned |
+| ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
+| node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |
 | sccache (the rustc wrapper, `.cargo/config.toml`; not used in CI) | 0.14.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
@@ -49,7 +51,7 @@ step.
 
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
-| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host with the last full lane's wasm); no wasm build, size, determinism or browser tiers | about the full lane's test step |
+| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main, and CI job `functional` on every PR: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host with the last full lane's wasm); no wasm build, size, determinism or browser tiers | about the full lane's test step |
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
 | `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` on every PR and push to main | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 
@@ -148,21 +150,22 @@ had grown `target/` to 143 GB.
 
 ## What runs where
 
-| Step | Command | Lane | CI `quick` (PR) | CI `gate` (push to main, PR) | CI `perf-nightly` (03:17 UTC, manual) |
-|---|---|---|---|---|---|
-| `fmt` | `cargo fmt --all --check` | both | yes | yes | |
-| `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | both | yes | yes | |
-| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | |
-| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
-| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variant (`publish` with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, §The lanes wasm) of crates marked `publish lanes`; copies to `target/og-wasm/raw/` | full | | yes | |
-| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes) variants, `opt-all.txt` every one | full | | yes | |
-| `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | yes | |
-| `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
-| `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | |
-| `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
-| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | yes | needs node |
-| perf | `cargo test -p og-tests -p og-runtime --release -- --ignored perf` (og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`) | `make perf` | | | yes |
-| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
+| Step | Command | Lane | CI `quick` (PR) | CI `functional` (PR) | CI `gate` (push to main, PR) | CI `perf-nightly` (03:17 UTC, manual) |
+|---|---|---|---|---|---|---|
+| `fmt` | `cargo fmt --all --check` | every | yes | yes | yes | |
+| `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | every | yes | yes | yes | |
+| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
+| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
+| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variant (`publish` with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, §The lanes wasm) of crates marked `publish lanes`; copies to `target/og-wasm/raw/` | full | | | yes | |
+| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes) variants, `opt-all.txt` every one | full | | | yes | |
+| `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | | yes | |
+| `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | every | yes | yes | yes | |
+| `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | | |
+| `bun-functional` | `bun run test` in each `packages/*` with the last full lane's wasm (`OG_GATE=1`, as bun-test) when `target/og-wasm/opt-all.txt` exists, else only `packages/knowledge` and `packages/create` (CI's functional job builds no wasm, so it runs those two) | functional | | yes | | |
+| `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | | yes | |
+| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | | yes (node from `actions/setup-node`) | |
+| perf | `scripts/perf.sh`: `cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf` against this machine's baselines (og-tests: `crates/og-tests/perf/<tier>-<adapter>/`, og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`); `--measure` records instead, copies the numbers to `target/evidence/perf/` and restores the tree | `make perf` | | | | `--measure` (below) |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -294,8 +297,10 @@ the load average past 100 and every step past its timeouts):
   streams, then gate once; never gate per merge. The wasm build and its
   size, determinism and the browser tiers are not in it: they measure,
   and a measurement is pursued at a wave's end, not held against a merge.
-- **At a wave's end**: `scripts/check.sh` (the full lane, path-aware) or
-  `--all`, and `scripts/check.sh web-reference`.
+- **At a wave's end**: `scripts/wave-end.sh`, by the session that runs
+  gates (§The wave-end run): `scripts/check.sh --all`, `scripts/check.sh
+  web-reference` and the vulkan-cpu frames on lavapipe, serially, with the
+  table of every vulkan-cpu frame against metal.
 - **Once at the end of a round**: `scripts/check.sh --all`, before the
   final commit, with its summary in the report. Never `--all` after every
   edit; never touch files or delete `target/og-gate/` to force a step.
@@ -306,6 +311,32 @@ the load average past 100 and every step past its timeouts):
   wasm-build and wasm-opt, skipped when `crates/` did not change),
   `scripts/check.sh web-reference` for the browser tiers. Then `--all` once
   at the end of the round as above.
+
+## The wave-end run
+
+`scripts/wave-end.sh` runs a wave's measurements one after another under
+the machine's and the target's gate locks, which it holds across its
+stages (the `check.sh` runs inside find them held by their parent), so no
+other gate starts in between. Each stage runs even when one before it
+failed; the exit status is non-zero when any did. Logs, the summary and
+the table go to `target/evidence/wave-end/`.
+
+| Stage | What |
+|---|---|
+| `gate` | `scripts/check.sh --all` |
+| `web` | `scripts/check.sh web-reference` |
+| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx` and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
+| `prepare` | each template cooked (`og cook`, the gate's dev `og`) and bundled for the native host into `<template>/.og/game.native.js`, as `og test` does, on the Mac |
+| `gfx` | `og-gfx --all --capture target/lava-gfx` in `og-lavapipe-bun:local` (`docker run --rm -v <checkout>:<checkout> -w <checkout>`, `OG_TEST_ASSETS=<checkout>/crates/og-tests/assets`, the og-gfx binary as `--entrypoint`; no `--platform`: the amd64 image runs under emulation, and the checkout sits at its own path because the bundles hold absolute paths) |
+| `playtests` | every playtest of the templates with vulkan-cpu frames (fx-showcase, ui-kit, match3, runner, topdown; `--templates` names others) through `bun packages/engine/src/node/playtest-run.ts --file <playtest> --entry <template>/.og/game.native.js --root <template>`, in one container |
+| `table` | `scripts/frames-vs-metal.ts`: outliers and RMSE (og-tests' rule, fx-showcase's `difference`) of the captured og-tests frames against `metal` and against the committed `vulkan-cpu`, and of every committed `references/vulkan-cpu/` frame (og-ui, the templates) against its `metal`; printed and written to `vulkan-cpu-vs-metal.tsv` |
+
+Nothing is recorded unless `--record` names it: `<template>` or
+`<template>/<playtest>` runs those playtests with `OG_FX_CAPTURE=1` and
+`OG_UI_CAPTURE=1`, `gfx` or `gfx/<scene>` copies the capture into
+`crates/og-tests/references/vulkan-cpu/`. `--stages cross,gfx,table` runs
+some stages (in their order); `--dry-run` prints every command and runs
+none.
 
 ## The lanes wasm
 
