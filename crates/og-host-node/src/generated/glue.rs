@@ -717,6 +717,12 @@ pub fn og_load_texture(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_texture(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_texture_array")]
+pub fn og_load_texture_array(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_texture_array(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_skin")]
 pub fn og_load_skin(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

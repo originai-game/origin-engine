@@ -5198,6 +5198,13 @@ export type Sound = number & { readonly [handleType]: "Sound" };
 export type Skin = number & { readonly [handleType]: "Skin" };
 
 /**
+ * A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TextureArray = number & { readonly [handleType]: "TextureArray" };
+
+/**
  * An Asset handle field.
  *
  * A `Asset` field: stored in a `Uint32Array` with stride 2.
@@ -5309,6 +5316,32 @@ export interface SoundInfo {
    * @unit s (seconds of simulation time)
    */
   readonly seconds: number;
+  /**
+   * The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest.
+   */
+  readonly chunks: number;
+}
+
+/** What og.load.textureArray uploaded. */
+export interface TextureArrayInfo {
+  /** The array. */
+  readonly array: TextureArray;
+  /** Each layer's width in texels. */
+  readonly width: number;
+  /** Each layer's height in texels. */
+  readonly height: number;
+  /** Its layers, in the order the file lists them. */
+  readonly layers: number;
+  /** Mip levels of each layer. */
+  readonly levels: number;
+  /**
+   * The encoding on the GPU: `rgba8`, or the block format the device takes for its kind (`bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`).
+   */
+  readonly format: string;
+  /**
+   * Bytes it takes on the GPU, every level of every layer (counted in the frame's texture bytes).
+   */
+  readonly bytes: number;
 }
 
 /**
@@ -5320,6 +5353,7 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
 
 
 
@@ -16843,6 +16877,7 @@ export declare namespace og {
     function fontInfo(world: World, font: Font): Result<FontInfo>;
     /**
      * Load a cooked sound for the audio module.
+     * A long sound (music, ambience) can be cooked in chunks of whole QOA frames: `sound { stream true chunk 4 }` in its `.wav.ogt` import settings (chunk in seconds, 1 to 60, default 4), and every sound whose QOA file would pass 1 MiB unless `stream false`. Its first chunk loads with it and the others follow the playheads (SoundInfo.chunks), so music is never resident whole; it plays sample for sample as the whole file would, loops and crossfades included. A sound cooked in chunks cannot join a streaming group.
      *
      * @param world The world that owns the sound.
      * @param path The sound's asset id, such as `audio/blip.wav`.
@@ -16882,11 +16917,21 @@ export declare namespace og {
     function shader(world: World, path: string): Result<Shader>;
     /**
      * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+     * Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
      *
      * @param world The world whose renderer owns the texture.
      * @param path The texture's asset id, such as `textures/stone.png`.
      */
     function texture(world: World, path: string): Result<Texture>;
+    /**
+     * Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array.
+     * TextureArray is not yet sampled by a material, sprite or terrain layer; TextureArrayInfo and the frame's texture bytes report it.
+     *
+     * @param world The world whose renderer owns the array.
+     * @param path The array's asset id, such as `tiles/ground.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.
+     */
+    function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
      * Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
      *
@@ -16952,6 +16997,7 @@ export declare namespace og {
     function gltfInfo(world: World, asset: Asset): Result<GltfInfo>;
     /**
      * Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+     * Clips are cooked as f32 samples, or with `animation { compress true tolerance 0.0001 }` in the model's import settings as quantised keys (rotations as 48-bit smallest-three, translations, scales and weights as 16 bits over each channel's range) with every frame dropped that interpolation rebuilds within the tolerance; either way every frame is rebuilt here and the clip plays as f32. Morph targets are cooked sparse (the vertices each moves).
      *
      * @param world The world whose animation owns the assets.
      * @param path The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted).

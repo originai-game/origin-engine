@@ -1749,6 +1749,7 @@ dependencies = [
  "og-ai",
  "og-anim",
  "og-api",
+ "og-audio",
  "og-blob",
  "og-core",
  "og-ecs",

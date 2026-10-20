@@ -966,6 +966,7 @@ pub struct RenderScene {
     luts: Vec<ColorLut>,
     palettes: Vec<crate::Palette>,
     environment_maps: Vec<crate::EnvironmentMapData>,
+    texture_arrays: Vec<crate::TextureArrayData>,
     trail_styles: Vec<TrailStyle>,
     terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
@@ -1092,6 +1093,7 @@ impl RenderScene {
             luts: Vec::new(),
             palettes: Vec::new(),
             environment_maps: Vec::new(),
+            texture_arrays: Vec::new(),
             trail_styles: Vec::new(),
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
@@ -1356,6 +1358,24 @@ impl RenderScene {
 
     pub(crate) fn environment_maps(&self) -> &[crate::EnvironmentMapData] {
         &self.environment_maps
+    }
+
+    /// Adds a texture array (an asset; og-cook's `type texture-array`):
+    /// layers of one size, encoding and mip count, uploaded as one
+    /// `D2Array` texture. Refused when the layers disagree.
+    pub fn add_texture_array(
+        &mut self,
+        data: crate::TextureArrayData,
+    ) -> Result<crate::TextureArrayHandle, String> {
+        data.info()?;
+        self.texture_arrays.push(data);
+        Ok(crate::TextureArrayHandle(
+            self.texture_arrays.len() as u32 - 1,
+        ))
+    }
+
+    pub fn texture_arrays(&self) -> &[crate::TextureArrayData] {
+        &self.texture_arrays
     }
 
     /// Adds a trail style (an asset).

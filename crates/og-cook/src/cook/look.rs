@@ -434,6 +434,7 @@ mod tests {
             hash: 0,
             gltf: None,
             error: None,
+            encoded: Default::default(),
         }
     }
 
@@ -502,7 +503,8 @@ mod tests {
         ]);
         let l = cook(&root, "looks/main.ogt", &[]).unwrap();
         assert_eq!(l.extends, vec!["looks/cel.ogt", "cel"]);
-        assert_eq!(l.name.as_deref(), Some("Our cel"));
+        // A look is not called after its base.
+        assert_eq!(l.name, None);
     }
 
     #[test]

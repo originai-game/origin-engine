@@ -619,6 +619,39 @@ impl Bundle {
         })
     }
 
+    /// Decodes a texture array blob: its shape and its layers' texture ids
+    /// (each an `og.Texture` of its own, loaded as any texture).
+    pub fn texture_array(&self, id: &str, bytes: &[u8]) -> Result<CookedTextureArray, LoadError> {
+        let blob = self.blob::<format::TextureArray>(id, bytes)?;
+        let meta = one::<format::TextureArrayMeta>(&blob)?;
+        let rows = table::<format::ArrayLayerRow>(&blob, "layers")?;
+        let strings = blob.raw("strings")?;
+        let layers = rows
+            .iter()
+            .map(|r| {
+                pool_str(strings, r.name_offset, r.name_len)
+                    .map(str::to_string)
+                    .ok_or_else(|| invalid(&blob, "layer name out of range"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if layers.len() != meta.layers as usize || layers.is_empty() {
+            return Err(invalid(&blob, "layer count disagrees with the meta row"));
+        }
+        Ok(CookedTextureArray {
+            id: asset_id(id).to_string(),
+            meta,
+            layers,
+        })
+    }
+
+    /// Reads a chunk of a sound cooked in chunks (`<id>#chunk<n>`,
+    /// [`chunk_id`]): its index and its QOA frames.
+    pub fn sound_chunk(&self, id: &str, bytes: &[u8]) -> Result<(u32, Vec<u8>), LoadError> {
+        let blob = self.blob::<format::SoundChunk>(id, bytes)?;
+        let meta = one::<format::SoundChunkMeta>(&blob)?;
+        Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+    }
+
     /// Decodes a font blob, inflating its atlas pages.
     pub fn font(&self, id: &str, bytes: &[u8]) -> Result<CookedFont, LoadError> {
         let blob = self.blob::<format::Font>(id, bytes)?;
@@ -1442,12 +1475,74 @@ impl CookedTexture {
 pub struct CookedSound {
     pub id: String,
     pub meta: SoundMeta,
+    /// The QOA file; of a sound cooked in chunks (`meta.chunk_count` > 0),
+    /// its header and first chunk only.
     pub qoa: Vec<u8>,
 }
 
+/// A sound chunk blob's index and QOA frames, read from its file's bytes
+/// without a bundle (a mixer thread reading a chunk the moment a voice
+/// needs it), its type and cook `stamp` checked.
+pub fn sound_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<(u32, Vec<u8>), LoadError> {
+    let aligned = og_blob::AlignedBytes::from_slice(bytes);
+    let expect = Expect {
+        type_hash: format::SoundChunk::type_hash(),
+        schema_version: format::SoundChunk::schema_version(),
+        stamp: Some(stamp),
+    };
+    let blob = Blob::open(aligned.as_slice(), path, &expect)?;
+    let meta = one::<format::SoundChunkMeta>(&blob)?;
+    Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+}
+
+/// A cooked texture array: its shape and its layers' texture ids, in
+/// layer order ([`Bundle::texture_array`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTextureArray {
+    pub id: String,
+    pub meta: format::TextureArrayMeta,
+    pub layers: Vec<String>,
+}
+
+impl CookedTextureArray {
+    /// The array og-render uploads from its layers' textures, each in the
+    /// encoding `formats` takes (RGBA8 without a renderer; native only:
+    /// the web host hands the layers over transcoded).
+    #[cfg(feature = "transcode")]
+    pub fn to_texture_array(
+        &self,
+        bundle: &Bundle,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Result<og_render::TextureArrayData, LoadError> {
+        let mut layers = Vec::with_capacity(self.layers.len());
+        for l in &self.layers {
+            let t = bundle.load_texture(l)?;
+            layers.push(t.to_texture_source(formats)?);
+        }
+        Ok(og_render::TextureArrayData { layers })
+    }
+}
+
+/// The id of chunk `n` of a sound cooked in chunks (`audio/theme.wav#chunk3`).
+pub fn chunk_id(id: &str, n: u32) -> String {
+    format!("{}#chunk{n}", asset_id(id))
+}
+
 impl CookedSound {
-    /// Interleaved 16-bit PCM.
+    /// Whether it was cooked in chunks (the others are blobs of their own).
+    pub fn chunked(&self) -> bool {
+        self.meta.chunk_count > 0
+    }
+
+    /// Interleaved 16-bit PCM (of a sound cooked in chunks: refused, its
+    /// samples are not all here).
     pub fn decode(&self) -> Result<qoa::Decoded, LoadError> {
+        if self.chunked() {
+            return Err(LoadError::Invalid {
+                path: self.id.clone(),
+                reason: "cooked in chunks: decode it chunk by chunk".into(),
+            });
+        }
         qoa::decode(&self.qoa).map_err(|reason| LoadError::Invalid {
             path: self.id.clone(),
             reason,
@@ -1680,6 +1775,7 @@ impl CookedAnimation {
         let clips = table::<ClipRow>(blob, "clips")?;
         let channels = table::<ChannelRow>(blob, "channels")?;
         let samples = blob.table::<f32>("samples", 0)?.into_owned();
+        let packed = blob.table::<u16>("packed", 0)?.into_owned();
         let events = table::<EventRow>(blob, "events")?;
         let streams = table::<SkinStreamRow>(blob, "skin_streams")?;
         let skin_data = blob.raw("skin_data")?;
@@ -1738,11 +1834,8 @@ impl CookedAnimation {
             for ch in rows {
                 let path = og_anim::ChannelPath::from_code(ch.path)
                     .ok_or_else(|| bad(format!("channel path {}", ch.path)))?;
-                let n = (c.frames * ch.lanes) as usize;
-                let at = ch.sample_offset as usize;
-                let data = samples
-                    .get(at..at + n)
-                    .ok_or_else(|| bad("channel samples out of range".into()))?;
+                let data = crate::anim_codec::decode(ch, c.frames, &samples, &packed)
+                    .map_err(|e| bad(format!("clip channel: {e}")))?;
                 let node_name = skeleton
                     .nodes
                     .get(ch.node as usize)
@@ -1754,7 +1847,7 @@ impl CookedAnimation {
                     path,
                     step: ch.interpolation == format::interpolation::STEP,
                     lanes: ch.lanes,
-                    samples: data.to_vec(),
+                    samples: data,
                 });
             }
             let evs = events
@@ -1821,36 +1914,59 @@ impl CookedAnimation {
         }
         let mut out_morphs = Vec::with_capacity(morphs.len());
         for m in &morphs {
-            let (n, k) = (m.vertex_count as usize, m.target_count as usize);
+            let (n, k, moved) = (
+                m.vertex_count as usize,
+                m.target_count as usize,
+                m.moved as usize,
+            );
             let stride = if m.normals != 0 { 24 } else { 12 };
-            let raw = meshopt_codec::decode_vertex_buffer(
-                &morph_data[slice(morph_data, m.data_offset, m.data_size)?],
-                n * k,
-                stride,
-            )
-            .map_err(|e| bad(format!("morph stream: {e}")))?;
+            let decode = |o: u32, l: u32, stride: usize| -> Result<Vec<u8>, LoadError> {
+                if moved == 0 {
+                    return Ok(Vec::new());
+                }
+                meshopt_codec::decode_vertex_buffer(
+                    &morph_data[slice(morph_data, o, l)?],
+                    moved,
+                    stride,
+                )
+                .map_err(|e| bad(format!("morph stream: {e}")))
+            };
+            let raw = decode(m.data_offset, m.data_size, stride)?;
+            let index = decode(m.index_offset, m.index_size, 4)?;
             let f: Vec<f32> = raw
                 .as_chunks::<4>()
                 .0
                 .iter()
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect();
-            let lanes = stride / 4;
-            let at = |t: usize, v: usize, o: usize| {
-                let i = (t * n + v) * lanes + o;
-                Vec3::new(f[i], f[i + 1], f[i + 2])
-            };
-            let positions = (0..k)
-                .map(|t| (0..n).map(|v| at(t, v, 0)).collect())
+            let index: Vec<usize> = index
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|b| u32::from_le_bytes(*b) as usize)
                 .collect();
-            let normals = (m.normals != 0).then(|| {
-                (0..k)
-                    .map(|t| (0..n).map(|v| at(t, v, 3)).collect())
-                    .collect()
-            });
+            let lanes = stride / 4;
             let rows = targets
                 .get(m.target_first as usize..m.target_first as usize + k)
                 .ok_or_else(|| bad("morph targets out of range".into()))?;
+            let mut positions = vec![vec![Vec3::ZERO; n]; k];
+            let mut normals = (m.normals != 0).then(|| vec![vec![Vec3::ZERO; n]; k]);
+            for (t, row) in rows.iter().enumerate() {
+                let (first, count) = (row.moved_first as usize, row.moved_count as usize);
+                if first + count > moved {
+                    return Err(bad("morph target's moved vertices out of range".into()));
+                }
+                for (e, &v) in index.iter().enumerate().skip(first).take(count) {
+                    if v >= n {
+                        return Err(bad(format!("morph vertex {v} of {n}")));
+                    }
+                    let at = e * lanes;
+                    positions[t][v] = Vec3::new(f[at], f[at + 1], f[at + 2]);
+                    if let Some(normals) = normals.as_mut() {
+                        normals[t][v] = Vec3::new(f[at + 3], f[at + 4], f[at + 5]);
+                    }
+                }
+            }
             out_morphs.push(MorphTargets {
                 primitive: m.primitive as usize,
                 mesh: m.mesh as usize,

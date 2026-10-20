@@ -41,7 +41,12 @@ pub fn encoder_name(opts: &TextureOptions) -> Result<String, CookError> {
 
 fn toktx_version() -> Result<String, CookError> {
     match std::process::Command::new("toktx").arg("--version").output() {
-        Ok(out) => Ok(String::from_utf8_lossy(&out.stdout).trim().to_string()),
+        // toktx 4 prints its version on stderr.
+        Ok(out) => Ok(format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout).trim(),
+            String::from_utf8_lossy(&out.stderr).trim()
+        )),
         Err(_) => Err(CookError(
             "texture cooking needs a Basis Universal encoder: build og-cook with its `basis` feature (the default), \
              or install KTX-Software's `toktx` (https://github.com/KhronosGroup/KTX-Software/releases) on PATH; \
@@ -101,10 +106,12 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
 
 fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, String> {
     toktx_version().map_err(|e| e.0)?;
+    // One directory per encode: two textures of one size cook at once.
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let dir = std::env::temp_dir().join(format!(
         "og-cook-toktx-{}-{}",
         std::process::id(),
-        img.rgba.len()
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let (src, dst) = (dir.join("in.png"), dir.join("out.ktx2"));
@@ -160,6 +167,14 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
     };
     let _ = std::fs::remove_dir_all(&dir);
     result
+}
+
+/// `toktx`'s KTX2 with its `KTXorientation` and `KTXswizzle` honoured
+/// (`ktx2_source::honour`: re-encoded flipped and swizzled when not the
+/// identity).
+fn toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, String> {
+    let ktx = encode_toktx(img, k, opts)?;
+    super::ktx2_source::honour(ktx, |fixed| encode_toktx(fixed, k, opts))
 }
 
 /// Cooks an image into a texture blob.
@@ -220,14 +235,14 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
     };
     #[cfg(feature = "basis")]
     let ktx = if opts.force_toktx {
-        encode_toktx(img, k, opts)
+        toktx(img, k, opts)
     } else {
         encode_basisu(img, k, opts).and_then(|basis| {
             ktx2::from_basis(&basis, srgb, opts.zstd, crate::format::COOKER_VERSION)
         })
     };
     #[cfg(not(feature = "basis"))]
-    let ktx = encode_toktx(img, k, opts);
+    let ktx = toktx(img, k, opts);
     let ktx = ktx.map_err(CookError)?;
     let info = ktx2::parse(&ktx)
         .map_err(|e| CookError(format!("the encoder wrote an invalid KTX2: {e}")))?;

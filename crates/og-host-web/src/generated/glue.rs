@@ -599,6 +599,11 @@ pub fn og_load_texture(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_texture_array(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_texture_array(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_skin(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_skin(&Host, world, path)
 }

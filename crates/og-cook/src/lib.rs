@@ -3,6 +3,7 @@
 //!
 //! | module | feature | what it owns |
 //! |---|---|---|
+//! | [`anim_codec`] | `runtime` | how animation channels hold their samples: f32, constant, quantised keys with keyframe reduction |
 //! | [`format`] | always | the asset blobs: reflected root and row structs, type hashes, section names |
 //! | [`runtime`] | `runtime` | [`runtime::Bundle`] (the manifest as an index), loaders into og-render types and [`runtime::SceneDesc`] |
 //! | [`ktx2`] | `runtime` | KTX2 parsing, lossless RGBA8 textures; `.basis` ↔ KTX2 with `basis`/`transcode` |
@@ -18,6 +19,8 @@
 //! dependencies). `transcode` adds native Basis Universal transcoding to
 //! RGBA8; `cook` (the default) adds the importers and encoders.
 
+#[cfg(feature = "runtime")]
+pub mod anim_codec;
 pub mod format;
 #[cfg(feature = "runtime")]
 pub mod fx;
