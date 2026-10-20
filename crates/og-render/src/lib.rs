@@ -359,9 +359,21 @@ impl Backend {
 
     /// A wgpu instance for this backend, for hosts that create their own surface
     /// before calling [`Renderer::with_surface`].
+    ///
+    /// Without wgpu's validation of indirect draws (`VALIDATION_INDIRECT_CALL`,
+    /// on by default natively): it re-checks every indirect draw's
+    /// arguments in a compute pass of its own each frame, and the only
+    /// indirect draws are GPU culling's (`cull_gpu.rs`), whose arguments
+    /// cull.wgsl writes in range by construction (a batch's index count,
+    /// at most its instances, zero offsets) over buffers sized for them.
+    /// About 0.4 ms of CPU a frame on spheres-20k natively (release); the
+    /// browsers validate WebGPU's indirect draws themselves.
     pub fn instance(self) -> wgpu::Instance {
+        let mut flags = wgpu::InstanceFlags::from_build_config();
+        flags.remove(wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL);
         wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: self.backends(),
+            flags,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
         })
     }
