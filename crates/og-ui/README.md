@@ -168,8 +168,12 @@ takes input on, so it cannot drift from the screen. Each element has a
 `meter`, `timer`, `status`, `dialog`, `tooltip`, `separator`, `group`; none
 for layout containers, spacers and unnamed pictures), a **name** (its text;
 or what the widget gives it: an icon's name, a dialog's title, Decrease and
-Increase for a stepper's buttons, a field's placeholder; a control showing
-no text of its own is named by the text inside it, then by its id), a
+Increase for a stepper's buttons; a control showing no text of its own is
+named by the text inside it, then by the label just before it in its row,
+then by its id; a text field or area, whose text is its value, by that
+label, else its placeholder, else its id), a **description** read after
+the name (a labelled field's placeholder; the mirror's
+`aria-placeholder`), a
 **value** (a slider's or stepper's number, a progress's percent, a meter's
 amount, a field's text, a select's choice, a cooldown's remaining share)
 and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,

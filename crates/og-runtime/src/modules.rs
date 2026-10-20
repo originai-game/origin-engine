@@ -2218,7 +2218,7 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
         .map(|n| {
             json!({
                 "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
-                "value": n.value, "states": n.states,
+                "description": n.description, "value": n.value, "states": n.states,
                 "x": n.x, "y": n.y, "width": n.width, "height": n.height,
             })
         })

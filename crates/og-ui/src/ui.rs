@@ -872,24 +872,33 @@ impl Ui {
         &self.frame.a11y
     }
 
-    /// What element `i` tells the accessibility tree: role, name, value and
-    /// its own states (the frame adds `focusable` and `focused`).
-    pub(crate) fn a11y_info(&self, i: usize) -> (&'static str, String, String, Vec<String>) {
+    /// What element `i` tells the accessibility tree: role, name,
+    /// description, value and its own states (the frame adds `focusable`
+    /// and `focused`).
+    pub(crate) fn a11y_info(
+        &self,
+        i: usize,
+    ) -> (&'static str, String, String, String, Vec<String>) {
         let n = &self.nodes[i];
         let (kind, anonymous) = self.kinds.get(i).copied().unwrap_or(("", true));
         let role = crate::a11y::role_of(kind, n);
+        let none = || ("", String::new(), String::new(), String::new(), Vec::new());
         if role.is_empty() {
-            return ("", String::new(), String::new(), Vec::new());
+            return none();
         }
+        // A text box shows its value (or its placeholder), which is not
+        // what it is: it is named by its label, the placeholder described.
+        let textbox = role == "textbox";
         let mut name = n.a11y.name.clone().unwrap_or_default();
-        if name.is_empty() {
+        let mut description = n.a11y.description.clone().unwrap_or_default();
+        if name.is_empty() && !textbox {
             name = n.probe_text.clone();
         }
         // A picture nothing names is decoration (an icon names itself).
         if name.is_empty() && role == "image" && !n.nav {
-            return ("", String::new(), String::new(), Vec::new());
+            return none();
         }
-        if name.is_empty() && (n.el.interactive || n.nav) {
+        if name.is_empty() && (n.el.interactive || n.nav) && !textbox {
             name = crate::a11y::text_within(&self.nodes, i);
         }
         let labelled = role != "text" && role != "heading";
@@ -908,12 +917,17 @@ impl Ui {
                 name = self.nodes[siblings[at - 1]].probe_text.clone();
             }
         }
+        // Without a label, a field is named by what its placeholder asks.
+        if name.is_empty() && !description.is_empty() {
+            name = std::mem::take(&mut description);
+        }
         if name.is_empty() && !anonymous && labelled {
             name = n.id.clone();
         }
         (
             role,
             name,
+            description,
             crate::a11y::value_of(n),
             crate::a11y::states_of(n),
         )
@@ -1916,12 +1930,10 @@ impl Ui {
         } else {
             value.clone()
         };
-        // A field is named by its placeholder (or its id) and its value is its text.
-        n.a11y.name = Some(if desc.placeholder.is_empty() {
-            n.id.clone()
-        } else {
-            desc.placeholder.clone()
-        });
+        // A field is named by its label (the label before it in its row),
+        // else its placeholder, else its id; the placeholder describes it,
+        // and its value is its text.
+        n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(value.clone());
         r
     }
@@ -2004,11 +2016,8 @@ impl Ui {
         } else {
             value.clone()
         };
-        n.a11y.name = Some(if desc.placeholder.is_empty() {
-            n.id.clone()
-        } else {
-            desc.placeholder.clone()
-        });
+        // Named and described as a field is.
+        n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(value.clone());
         r
     }
@@ -2404,7 +2413,7 @@ impl Ui {
         let mut top_scope = 0u64;
         for &i in &order[1..] {
             let n = &self.nodes[i];
-            let (role, name, value, states) = self.a11y_info(i);
+            let (role, name, description, value, states) = self.a11y_info(i);
             let parent_path = {
                 let mut up = if n.parent == NONE { n.anchor } else { n.parent };
                 loop {
@@ -2473,6 +2482,7 @@ impl Ui {
                 parent: parent_path.clone(),
                 role: role.to_owned(),
                 name: name.clone(),
+                description: description.clone(),
                 value: value.clone(),
                 states,
                 x: r.x,
@@ -2558,6 +2568,7 @@ impl Ui {
                             parent: path.clone(),
                             role: "link".into(),
                             name: text.clone(),
+                            description: String::new(),
                             value: String::new(),
                             states: Vec::new(),
                             x: lr.x,

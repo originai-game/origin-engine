@@ -9084,7 +9084,8 @@ module ui {
     field path String "Its path, as touch_move_to and og.ui.focus name it."
     field parent String "The path of the nearest node above it in the tree; empty at the top."
     field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
-    field name String "Its accessible name: what a screen reader says it is."
+    field name String "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
+    field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
     field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
     field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
     field x f32 "Left edge of the whole element." {

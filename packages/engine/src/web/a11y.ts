@@ -42,6 +42,8 @@ export interface A11yNode {
   readonly parent: string;
   readonly role: string;
   readonly name: string;
+  /** Read after the name: a text field's placeholder; empty for none. */
+  readonly description: string;
   readonly value: string;
   readonly states: readonly string[];
   readonly x: number;
@@ -235,6 +237,11 @@ export class A11yMirror {
       for (const c of [...el.childNodes]) if (c.nodeType === 3) c.remove();
       set("aria-label", node.name || null);
     }
+    // A text box's description slot carries its text (below); its
+    // placeholder, which the tree gives as the description, is aria-placeholder.
+    const box = node.role === "textbox" || node.role === "combobox";
+    set("aria-description", box ? null : node.description || null);
+    set("aria-placeholder", node.role === "textbox" ? node.description || null : null);
     if (node.role === "heading") set("aria-level", "2");
     if (node.role === "dialog") set("aria-modal", "true");
     const focusable = states.has("focusable") || tree.focusOrder.includes(node.path);

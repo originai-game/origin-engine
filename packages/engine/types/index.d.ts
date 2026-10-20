@@ -13806,8 +13806,14 @@ export interface A11yNode {
    * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
    */
   readonly role: string;
-  /** Its accessible name: what a screen reader says it is. */
+  /**
+   * Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value).
+   */
   readonly name: string;
+  /**
+   * Read after the name (aria-description): a text field's placeholder when a label names it; empty for none.
+   */
+  readonly description: string;
   /**
    * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
    */

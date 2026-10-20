@@ -5,7 +5,9 @@
 //! Ways it could fail, each covered below:
 //! - a widget has no role, or the wrong one (a switch read as a button);
 //! - a control has no name (an icon button, a stepper's − and +, a field
-//!   that shows only its text, a slider beside its row's label), or a value or state goes stale (a checked
+//!   that shows only its text, a slider beside its row's label), a text
+//!   field is named by its placeholder or its text when a label names it
+//!   (the placeholder is its description), or a value or state goes stale (a checked
 //!   box not `checked`, a slider's number missing, the chosen tab not
 //!   `selected`);
 //! - the probe's elements and the tree disagree;
@@ -24,6 +26,7 @@ struct Form {
     check: bool,
     volume: f32,
     name: String,
+    nick: String,
     tab: usize,
     choice: usize,
     count: f32,
@@ -73,6 +76,35 @@ fn form(ui: &mut Ui, f: &mut Form) {
             &FieldDesc {
                 placeholder: "Your name".into(),
                 ..FieldDesc::default()
+            },
+        );
+        // A settings row: the label names the field, the placeholder
+        // describes it (lantern-vale FINDINGS #23 heard "Your name").
+        ui.row(
+            "Player",
+            Element {
+                width: Size::grow(),
+                ..Element::row()
+            },
+            |ui| {
+                ui.label("Label", "Lamplighter", LabelDesc::default());
+                ui.text_field(
+                    "Field",
+                    &mut f.nick,
+                    &FieldDesc {
+                        placeholder: "Your name".into(),
+                        ..FieldDesc::default()
+                    },
+                );
+                let mut note = String::new();
+                ui.text_area(
+                    "Note",
+                    &mut note,
+                    &TextAreaDesc {
+                        placeholder: "A note".into(),
+                        ..TextAreaDesc::default()
+                    },
+                );
             },
         );
         ui.tabs("Mode", &["Easy", "Hard"], &mut f.tab, TabsDesc::default());
@@ -140,6 +172,7 @@ fn every_widget_has_a_role_a_name_and_its_state() {
         on: true,
         volume: 35.0,
         name: "Ada".into(),
+        nick: "Mei".into(),
         tab: 1,
         count: 3.0,
         ..Form::default()
@@ -176,7 +209,22 @@ fn every_widget_has_a_role_a_name_and_its_state() {
         "0.50",
         "a control without text takes the label before it"
     );
-    assert_eq!(has("Form/Name", "textbox", "Your name").value, "Ada");
+    // A field alone is named by its placeholder; one after its row's label
+    // by the label, the placeholder its description, whatever it holds.
+    let alone = has("Form/Name", "textbox", "Your name");
+    assert_eq!(
+        (alone.value.as_str(), alone.description.as_str()),
+        ("Ada", "")
+    );
+    let labelled = has("Form/Player/Field", "textbox", "Lamplighter");
+    assert_eq!(
+        (labelled.value.as_str(), labelled.description.as_str()),
+        ("Mei", "Your name"),
+        "the label names it, the placeholder describes it"
+    );
+    // An area after a field is not labelled by it: its placeholder names it.
+    let area = has("Form/Player/Note", "textbox", "A note");
+    assert_eq!(area.description, "");
     has("Form/Mode", "tablist", "Mode");
     assert!(
         has("Form/Mode/Tab#1", "tab", "Hard")

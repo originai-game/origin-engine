@@ -150,10 +150,13 @@ game's own settings: nothing to wire. A stepper is adjusted as a whole
 There are no label or role fields to set: a node's `role` comes from the
 widget (button, link, text, heading, image, checkbox, slider, textbox,
 progressbar, dialog, status…; layout containers have none) and its `name`
-from its text, then the text inside it, then its id. So the work is in
-the ids and texts: `"Buy"` reads well, `"btn3"` is what a blind player
-hears. `og.ui.a11y()` answers `{ nodes, focusOrder, focused }`, each
-`A11yNode` with `role`, `name`, `value`, `states` (disabled, focused,
+from its text, then the text inside it, then the label just before it in
+its row, then its id. A text field is named by that label (put the label
+and the field in one `row`), else by its placeholder, and the placeholder
+is its `description`: `"Lamplighter"`, then `"Your name"`, never the text
+typed in it (that is its `value`). So the work is in the ids and texts:
+`"Buy"` reads well, `"btn3"` is what a blind player hears. `og.ui.a11y()` answers `{ nodes, focusOrder, focused }`, each
+`A11yNode` with `role`, `name`, `description`, `value`, `states` (disabled, focused,
 checked, selected, expanded, busy…) and its rectangle. A screen reader's
 own requests (focus, activate, increment, decrement) arrive as
 `og.A11yAction` events and are applied to the control at the next frame

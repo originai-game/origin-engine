@@ -21,6 +21,9 @@ pub(crate) struct A11y {
     pub role: Option<&'static str>,
     /// A name other than its text (an icon button's icon, a dialog's title).
     pub name: Option<String>,
+    /// Read after the name (a text field's placeholder: its name is its
+    /// label); it names the control when nothing else does.
+    pub description: Option<String>,
     pub value: Option<String>,
     pub checked: Option<bool>,
     pub selected: Option<bool>,
@@ -37,6 +40,9 @@ pub struct A11yNode {
     pub parent: String,
     pub role: String,
     pub name: String,
+    /// Read after the name: a text field's placeholder, a hint. Empty for
+    /// none.
+    pub description: String,
     pub value: String,
     pub states: Vec<String>,
     /// Its bounds in CSS pixels (the whole element, also where a scroll
@@ -66,7 +72,14 @@ impl A11yTree {
     pub fn digest(&self) -> u64 {
         let mut h = og_core::hash::StableHasher::new();
         for n in &self.nodes {
-            for s in [&n.path, &n.parent, &n.role, &n.name, &n.value] {
+            for s in [
+                &n.path,
+                &n.parent,
+                &n.role,
+                &n.name,
+                &n.description,
+                &n.value,
+            ] {
                 h.write_str(s);
             }
             h.write_u64(n.states.len() as u64);
