@@ -29,8 +29,18 @@ x86_64-unknown-linux-gnu.2.31`; 2026-10-20.
 
 After the merges the publish variants are per profile (main's
 `publish,physics3d` and `publish,physics2d`); both keep `shaping`
-(scripts/wasm-crates.txt). The gate summary after the last merge is in
-the round's report.
+(scripts/wasm-crates.txt). After merging main 20a6d47
+(`wasm-size-after-merge-20a6d47.json`), against main's own numbers: 3D
+publish 2,899,979 B brotli (+36,158 over 2,863,821), 2D publish 2,735,444 B
+(+38,408 over 2,697,036), lanes 3,277,957 B (+40,485 over 3,237,472; the
+largest download, 78.2 % of the 4 MB budget).
+
+The path-aware gate after the last merge: fmt, clippy, wasm-build, test
+(nextest, GPU tests included), wasm-opt, size-gate, drift and determinism
+passed; bun-test failed once on a stale `crates/og-tests/reference-scene/
+cooked/` (cooked here before main bumped the cooker to r3; lanes.test.ts
+cooks it only when absent) and passed after `og cook` of it
+(`scripts/check.sh --only bun-test`).
 
 ## Frames
 
