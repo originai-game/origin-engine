@@ -106,9 +106,10 @@ fn d_ggx_aniso(alpha_t: f32, alpha_b: f32, n_dot_h: f32, t_dot_h: f32, b_dot_h: 
 }
 
 fn v_ggx_aniso(alpha_t: f32, alpha_b: f32, tv: f32, bv: f32, tl: f32, bl: f32, n_dot_v: f32, n_dot_l: f32) -> f32 {
-  let gv = n_dot_l * length(vec3<f32>(alpha_t * tv, alpha_b * bv, n_dot_v));
-  let gl = n_dot_v * length(vec3<f32>(alpha_t * tl, alpha_b * bl, n_dot_l));
-  return clamp(0.5 / (gv + gl), 0.0, 1.0);
+  // (Not `gl`: GLSL reserves the gl_ prefix naga's renaming would give it.)
+  let lambda_v = n_dot_l * length(vec3<f32>(alpha_t * tv, alpha_b * bv, n_dot_v));
+  let lambda_l = n_dot_v * length(vec3<f32>(alpha_t * tl, alpha_b * bl, n_dot_l));
+  return clamp(0.5 / (lambda_v + lambda_l), 0.0, 1.0);
 }
 
 // Thin-film iridescence (Belcour and Barla 2017, as three.js): the

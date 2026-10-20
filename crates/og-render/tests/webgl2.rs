@@ -67,7 +67,16 @@ fn webgl2_failures(name: &str, source: &str) -> Vec<String> {
             naga::proc::BoundsCheckPolicies::default(),
         )
         .and_then(|mut w| w.write().map(|_| ()));
+        // naga renames a second `gl` in a module to `gl_1`, which GLSL ES
+        // reserves (the browser refuses the pipeline; naga does not).
+        let reserved = out
+            .match_indices("gl_")
+            .any(|(i, _)| out[i + 3..].starts_with(|c: char| c.is_ascii_digit()));
         match result {
+            Ok(()) if reserved => failures.push(format!(
+                "{name}::{}: a `gl_<n>` identifier (GLSL reserves gl_)",
+                entry.name
+            )),
             Ok(()) => translated += 1,
             Err(e) => failures.push(format!("{name}::{}: {e}", entry.name)),
         }
