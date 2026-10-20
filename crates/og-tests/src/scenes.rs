@@ -35,6 +35,7 @@ pub const SCENES: &[&str] = &[
     "trails-beams",
     "decals",
     "post-grade",
+    "post-agx",
     "ao-gtao",
     "ao-ssao",
     "dof-low",
@@ -279,6 +280,17 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "post-grade" => {
             g.scene = spike_gltf_scene()?;
             fx::grade(&mut g.scene);
+        }
+        // The bloom scene's saturated emissive spheres through AgX instead
+        // of ACES: the brightest cores go to white instead of skewing hue.
+        "post-agx" => {
+            g.scene = emissive_spheres();
+            g.scene.post.bloom = Some(Bloom {
+                threshold: 1.0,
+                knee: 0.5,
+                intensity: 0.8,
+            });
+            g.scene.post.tonemap = Tonemap::Agx;
         }
         "ao-gtao" => g.scene = fx::ao_scene(og_render::AoMethod::Gtao),
         "ao-ssao" => g.scene = fx::ao_scene(og_render::AoMethod::Ssao),
@@ -1017,6 +1029,8 @@ fn showcase() -> Result<RenderScene, String> {
             compensation: 0.3,
             min_ev: -4.0,
             max_ev: 4.0,
+            adapt_speed_up: 0.0,
+            adapt_speed_down: 0.0,
         },
         ..Default::default()
     };

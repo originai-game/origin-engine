@@ -108,11 +108,12 @@ Field units the docs and Tune use.
 | `perSecond` | a rate per second: the fraction of a value that decays in one second |
 | `kgPerM3` | kilograms per cubic metre (per square metre in the 2D profile) |
 | `db` | decibels |
+| `evPerSecond` | exposure stops (EV) per second of simulation time |
 | `bpm` | beats per minute |
 
 ## Every name
 
-845 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+847 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -908,6 +909,8 @@ Field units the docs and Tune use.
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |
 | [`Tone`](ui.md#type-Tone) | enum | ui | — |
+| [`ToneMapping`](render.md#type-ToneMapping) | enum | render | — |
+| [`ToneMapping()`](render.md#column-ToneMapping) | column kind | render | — |
 | [`TransitionDesc`](ui.md#type-TransitionDesc) | desc struct | ui | — |
 | [`TransitionKind`](ui.md#type-TransitionKind) | enum | ui | — |
 | [`TutorialDesc`](ui.md#type-TutorialDesc) | desc struct | ui | — |

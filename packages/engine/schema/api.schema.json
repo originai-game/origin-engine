@@ -22,6 +22,7 @@
     "perSecond": "a rate per second: the fraction of a value that decays in one second",
     "kgPerM3": "kilograms per cubic metre (per square metre in the 2D profile)",
     "db": "decibels",
+    "evPerSecond": "exposure stops (EV) per second of simulation time",
     "bpm": "beats per minute"
   },
   "x-og-modules": [
@@ -1142,6 +1143,8 @@
         "DirectionalLight",
         "PointLight",
         "SpotLight",
+        "ToneMapping",
+        "ToneMapping",
         "RenderSettings",
         "Lut",
         "ParticleEmitter",
@@ -10325,6 +10328,22 @@
       },
       "additionalProperties": false
     },
+    "ToneMapping": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen.",
+      "type": "string",
+      "enum": [
+        "aces",
+        "agx",
+        "none"
+      ],
+      "x-og-variants": {
+        "aces": "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default.",
+        "agx": "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES.",
+        "none": "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
+      }
+    },
     "RenderSettings": {
       "x-og-kind": "resource",
       "x-og-module": "render",
@@ -10370,13 +10389,36 @@
         },
         "autoExposure": {
           "type": "boolean",
-          "description": "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation.",
+          "description": "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye.",
           "default": false
+        },
+        "adaptSpeedUp": {
+          "type": "number",
+          "description": "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "evPerSecond",
+          "x-og-tunable": true
+        },
+        "adaptSpeedDown": {
+          "type": "number",
+          "description": "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "evPerSecond",
+          "x-og-tunable": true
         },
         "toneMapped": {
           "type": "boolean",
-          "description": "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
+          "description": "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
           "default": true
+        },
+        "toneMapping": {
+          "$ref": "#/$defs/ToneMapping",
+          "description": "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none.",
+          "default": "aces"
         },
         "decalAtlas": {
           "$ref": "#/$defs/Texture",

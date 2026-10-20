@@ -18,7 +18,7 @@ module system {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 388</sub>
+<sub>`api.ogt` line 389</sub>
 
 ## Contents
 
@@ -61,7 +61,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 419</sub>
+<sub>`api.ogt` line 420</sub>
 
 ## Interfaces
 
@@ -77,7 +77,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 412</sub>
+<sub>`api.ogt` line 413</sub>
 
 <a id="member-System-name"></a>
 
@@ -95,7 +95,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 414</sub>
+<sub>`api.ogt` line 415</sub>
 
 <a id="member-System-reads"></a>
 
@@ -113,7 +113,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 415</sub>
+<sub>`api.ogt` line 416</sub>
 
 <a id="member-System-writes"></a>
 
@@ -131,7 +131,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 416</sub>
+<sub>`api.ogt` line 417</sub>
 
 ## Types
 
@@ -163,7 +163,7 @@ struct SystemDesc {
 }
 ```
 
-<sub>`api.ogt` line 395</sub>
+<sub>`api.ogt` line 396</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -192,4 +192,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 405</sub>
+<sub>`api.ogt` line 406</sub>

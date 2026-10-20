@@ -3924,6 +3924,17 @@ impl Renderer {
             god_rays.is_some(),
             scene.tick,
         );
+        if camera.exposure.adaptation().is_some() {
+            self.post.advance_exposure(
+                &self.queue,
+                camera.exposure,
+                scene.tick,
+                scene.tick_rate,
+                (self.frame_index % 2) as usize,
+            );
+        } else {
+            self.post.forget_exposure();
+        }
         let mut fx_uniform =
             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
         let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
@@ -4103,6 +4114,9 @@ impl Renderer {
         if auto_exposure {
             passes.push(FramePass::Meter);
             passes.extend((0..post::meter_levels() - 1).map(FramePass::Reduce));
+            if camera.exposure.adaptation().is_some() {
+                passes.push(FramePass::Adapt);
+            }
         }
         if bloom {
             let levels = post::bloom_levels(self.width, self.height);
@@ -5341,6 +5355,53 @@ impl Renderer {
     /// (call it on a camera cut).
     pub fn reset_history(&mut self) {
         self.taa_history = None;
+    }
+
+    /// Keeps the renderer's state that belongs to the world's time (the
+    /// adapted exposure of [`Exposure::Auto`] with adapt speeds, and the
+    /// tick it was adapted to) for a world snapshot; [`Renderer::restore_state`]
+    /// with the answer brings it back, so frames after a restore are the
+    /// frames the snapshot's world would have drawn. Kept on the GPU (no
+    /// readback): the last 64 saves are kept.
+    pub fn save_state(&mut self) -> RendererState {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("save state"),
+            });
+        let exposure = self.post.save_exposure(&mut encoder);
+        self.queue.submit(Some(encoder.finish()));
+        RendererState { exposure }
+    }
+
+    /// Brings back what [`Renderer::save_state`] kept; state no longer kept
+    /// starts afresh (the next adapted frame takes the metered exposure).
+    pub fn restore_state(&mut self, state: RendererState) {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("restore state"),
+            });
+        self.post.restore_exposure(&mut encoder, state.exposure);
+        self.queue.submit(Some(encoder.finish()));
+    }
+}
+
+/// What [`Renderer::save_state`] kept, by number ([`RendererState::id`] and
+/// [`RendererState::from_id`] carry it through a host's snapshot as a u64).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RendererState {
+    exposure: u64,
+}
+
+impl RendererState {
+    /// The number a host keeps with its snapshot (0: nothing kept).
+    pub fn id(self) -> u64 {
+        self.exposure
+    }
+
+    pub fn from_id(id: u64) -> RendererState {
+        RendererState { exposure: id }
     }
 }
 

@@ -27,6 +27,7 @@ unit radps "radians per second"
 unit perSecond "a rate per second: the fraction of a value that decays in one second"
 unit kgPerM3 "kilograms per cubic metre (per square metre in the 2D profile)"
 unit db "decibels"
+unit evPerSecond "exposure stops (EV) per second of simulation time"
 unit bpm "beats per minute"
 
 # ── math ──────────────────────────────────────────────────────────────────
@@ -1834,6 +1835,20 @@ module render {
     field castShadow bool "Cast a shadow map."
   }
 
+  enum ToneMapping {
+    doc "The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen."
+    variant aces "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default."
+    variant agx "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES."
+    variant none "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
+  }
+
+  column ToneMapping {
+    doc "A ToneMapping field: the variant's index."
+    array Uint32Array
+    stride 1
+    value ToneMapping
+  }
+
   resource RenderSettings {
     doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
     field environmentIntensity f32 "The strength of the image-based ambient light from the procedural sky." {
@@ -1857,10 +1872,23 @@ module render {
       min 0
       tunable true
     }
-    field autoExposure bool "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation."
-    field toneMapped bool "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
+    field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye."
+    field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
+      min 0
+      max 100
+      unit evPerSecond
+      tunable true
+    }
+    field adaptSpeedDown f32 "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair." {
+      min 0
+      max 100
+      unit evPerSecond
+      tunable true
+    }
+    field toneMapped bool "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
       default true
     }
+    field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none."
     field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
   }
 

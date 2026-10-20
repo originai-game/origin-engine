@@ -58,6 +58,15 @@ pub trait RenderBackend {
     fn deferred(&self) -> bool {
         false
     }
+    /// og-render's `Renderer::save_state` (the adapted exposure) as its
+    /// number, for a probe snapshot; 0 keeps nothing.
+    fn save_state(&mut self) -> u64 {
+        0
+    }
+    /// og-render's `Renderer::restore_state` of what `save_state` answered.
+    fn restore_state(&mut self, state: u64) {
+        let _ = state;
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.
@@ -403,7 +412,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             intensity: f(s, "bloomIntensity", 0.6),
         });
         scene.post.tonemap = if on(s, "toneMapped", true) {
-            og_render::Tonemap::Aces
+            match s["toneMapping"].as_u64().or_else(|| {
+                s["toneMapping"]
+                    .as_str()
+                    .and_then(|n| ["aces", "agx", "none"].iter().position(|v| *v == n))
+                    .map(|i| i as u64)
+            }) {
+                Some(1) => og_render::Tonemap::Agx,
+                Some(2) => og_render::Tonemap::None,
+                _ => og_render::Tonemap::Aces,
+            }
         } else {
             og_render::Tonemap::None
         };
@@ -412,6 +430,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 compensation: exposure.max(1e-6).log2(),
                 min_ev: -10.0,
                 max_ev: 10.0,
+                adapt_speed_up: f(s, "adaptSpeedUp", 0.0).max(0.0),
+                adapt_speed_down: f(s, "adaptSpeedDown", 0.0).max(0.0),
             }
         } else {
             og_render::Exposure::linear(exposure)

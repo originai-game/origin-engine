@@ -82,6 +82,12 @@
       "value": "Material"
     },
     {
+      "name": "ToneMapping",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ToneMapping"
+    },
+    {
       "name": "Texture",
       "array": "Uint32Array",
       "stride": 2,
@@ -4960,9 +4966,26 @@
           "default": false
         },
         {
+          "name": "adaptSpeedUp",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "adaptSpeedDown",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "toneMapped",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "toneMapping",
+          "column": "ToneMapping",
+          "default": "aces"
         },
         {
           "name": "decalAtlas",

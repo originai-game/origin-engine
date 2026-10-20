@@ -108,6 +108,8 @@ export interface ColumnKinds {
   Geometry: { readonly array: Uint32Array; readonly stride: 2; readonly value: Geometry };
   /** A Material handle field. */
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
+  /** A ToneMapping field: the variant's index. */
+  ToneMapping: { readonly array: Uint32Array; readonly stride: 1; readonly value: ToneMapping };
   /** A Texture handle field (0 is none). */
   Texture: { readonly array: Uint32Array; readonly stride: 2; readonly value: Texture };
   /** A Lut handle field (0 is none). */
@@ -2904,6 +2906,23 @@ export interface SpotLight {
 }
 
 /**
+ * The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen.
+ * - `"aces"`: ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default.
+ * - `"agx"`: AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES.
+ * - `"none"`: No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false).
+ */
+export type ToneMapping = "aces" | "agx" | "none";
+
+/**
+ * A ToneMapping field: the variant's index.
+ *
+ * A `ToneMapping` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions): FieldSpec<"ToneMapping">;
+
+/**
  * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
  *
  * The `RenderSettings` resource (token `og.RenderSettings`).
@@ -2945,15 +2964,35 @@ export interface RenderSettings {
    */
   bloomIntensity: number;
   /**
-   * Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation.
+   * Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye.
    */
   autoExposure: boolean;
   /**
-   * ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1.
+   * How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure.
+   *
+   * @range 0..100
+   * @unit evPerSecond (exposure stops (EV) per second of simulation time)
+   * @tunable
+   */
+  adaptSpeedUp: number;
+  /**
+   * How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair.
+   *
+   * @range 0..100
+   * @unit evPerSecond (exposure stops (EV) per second of simulation time)
+   * @tunable
+   */
+  adaptSpeedDown: number;
+  /**
+   * Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1.
    *
    * @default true
    */
   toneMapped: boolean;
+  /**
+   * Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none.
+   */
+  toneMapping: ToneMapping;
   /**
    * The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.
    */
@@ -15813,7 +15852,7 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly toneMapped: FieldSpec<"bool">; readonly decalAtlas: FieldSpec<"Texture"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly decalAtlas: FieldSpec<"Texture"> }, RenderSettings>;
   /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.

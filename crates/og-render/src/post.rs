@@ -13,6 +13,7 @@ const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");
 const POST_WGSL: &str = include_str!("../shaders/post.wgsl");
 const TAA_WGSL: &str = include_str!("../shaders/taa.wgsl");
 const LUMINANCE_WGSL: &str = include_str!("../shaders/luminance.wgsl");
+const EXPOSURE_WGSL: &str = include_str!("../shaders/exposure.wgsl");
 const FXPOST_WGSL: &str = include_str!("../shaders/fxpost.wgsl");
 
 /// The prepass targets: world normal and velocity, view depth, outline ids.
@@ -26,6 +27,12 @@ pub(crate) const FAR_DEPTH: f32 = 1.0e9;
 /// The metering grid of auto exposure (reduced to 1x1 by 8x8 averages).
 const METER_SIZE: u32 = 64;
 const LUMINANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+/// The adapted exposure (EV) of temporal adaptation: full precision, so a
+/// step of a fraction of a stop per tick is not lost to rounding.
+const EXPOSURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+/// Adapted exposures kept for [`PostPasses::save_exposure`] (a ring: the
+/// probe keeps 16 snapshots, a sweep one more).
+const EXPOSURE_SAVES: u32 = 64;
 /// The most bloom levels (the first at half resolution).
 const MAX_BLOOM_LEVELS: u32 = 6;
 /// The weight of the current frame in the TAA blend.
@@ -42,6 +49,37 @@ struct PostUniform {
     grain: [f32; 4],
     flash: [f32; 4],
     extra: [f32; 4],
+}
+
+/// `struct Adapt` in exposure.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct AdaptUniform {
+    speed: [f32; 4],
+    meter: [f32; 4],
+}
+
+/// What [`PostPasses::save_exposure`] kept: the adapted exposure's texel in
+/// the save ring and the tick it was adapted to.
+#[derive(Clone, Copy, Debug)]
+struct ExposureSave {
+    id: u64,
+    last_tick: Option<u64>,
+}
+
+/// The adapted exposure between frames: two 1x1 textures (frame `n` reads
+/// `n % 2`'s other one and writes `n % 2`), the tick the latest was adapted
+/// to (`None`: the next adapted frame starts at the metered exposure), and
+/// the saves of world snapshots.
+pub(crate) struct ExposureState {
+    textures: [wgpu::Texture; 2],
+    pub views: [wgpu::TextureView; 2],
+    saves: wgpu::Texture,
+    ring: Vec<Option<ExposureSave>>,
+    next_id: u64,
+    /// The tick the latest adapted exposure belongs to, the texture it is
+    /// in, and whether the other one holds it too (after a restore).
+    last: Option<(u64, usize, bool)>,
 }
 
 /// `struct FxPost` in fxpost.wgsl.
@@ -170,6 +208,10 @@ pub(crate) struct PostPasses {
     taa_layout: wgpu::BindGroupLayout,
     meter: wgpu::RenderPipeline,
     reduce: wgpu::RenderPipeline,
+    adapt_layout: wgpu::BindGroupLayout,
+    adapt: wgpu::RenderPipeline,
+    adapt_buffer: wgpu::Buffer,
+    pub exposure: ExposureState,
     prefilter: wgpu::RenderPipeline,
     down: wgpu::RenderPipeline,
     up: wgpu::RenderPipeline,
@@ -356,6 +398,57 @@ impl PostPasses {
             LUMINANCE_FORMAT,
             None,
         );
+        let adapt_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("exposure adapt"),
+            entries: &[
+                layout_entry(0, float_texture(false)),
+                layout_entry(1, float_texture(false)),
+                layout_entry(2, UNIFORM),
+            ],
+        });
+        let adapt = fullscreen_pipeline(
+            device,
+            "exposure adapt",
+            &module("exposure", EXPOSURE_WGSL),
+            "fs_adapt",
+            &pipeline_layout("exposure adapt", &adapt_layout),
+            EXPOSURE_FORMAT,
+            None,
+        );
+        let exposure_texture = |label: &str, width: u32| {
+            device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: EXPOSURE_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            })
+        };
+        let textures = [
+            exposure_texture("adapted exposure", 1),
+            exposure_texture("adapted exposure", 1),
+        ];
+        let exposure = ExposureState {
+            views: [
+                textures[0].create_view(&Default::default()),
+                textures[1].create_view(&Default::default()),
+            ],
+            textures,
+            saves: exposure_texture("adapted exposure saves", EXPOSURE_SAVES),
+            ring: vec![None; EXPOSURE_SAVES as usize],
+            next_id: 1,
+            last: None,
+        };
         let prefilter = fullscreen_pipeline(
             device,
             "bloom prefilter",
@@ -487,6 +580,10 @@ impl PostPasses {
             taa_layout,
             meter,
             reduce,
+            adapt_layout,
+            adapt,
+            adapt_buffer: uniform("exposure adapt", std::mem::size_of::<AdaptUniform>()),
+            exposure,
             prefilter,
             down,
             up,
@@ -510,13 +607,23 @@ impl PostPasses {
         god_rays: bool,
         tick: u64,
     ) {
+        let adapted = exposure.adaptation().is_some();
         let (exposure, compensation) = match exposure {
             Exposure::Manual { ev } => ([ev, 0.0, 0.0, 0.0], 0.0),
             Exposure::Auto {
                 compensation,
                 min_ev,
                 max_ev,
-            } => ([0.0, 1.0, min_ev, max_ev.max(min_ev)], compensation),
+                ..
+            } => (
+                [
+                    0.0,
+                    if adapted { 2.0 } else { 1.0 },
+                    min_ev,
+                    max_ev.max(min_ev),
+                ],
+                compensation,
+            ),
         };
         let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
         let bloom = match (lit_bloom, post.glow.filter(|_| glow)) {
@@ -527,6 +634,7 @@ impl PostPasses {
         let tonemap = match post.tonemap {
             Tonemap::Aces => 0.0,
             Tonemap::None => 1.0,
+            Tonemap::Agx => 2.0,
         };
         let v = post.vignette.unwrap_or(crate::Vignette {
             intensity: 0.0,
@@ -564,6 +672,127 @@ impl PostPasses {
             extra: [god_rays as u32 as f32, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&self.post_buffer, 0, bytemuck::bytes_of(&uniform));
+    }
+
+    /// Advances the adapted exposure's clock to this frame's tick and writes
+    /// the adaptation uniform. `exposure` adapts ([`Exposure::adaptation`]);
+    /// `slot` is the texture this frame writes. Returns nothing: the frame's
+    /// adapt pass does the rest. A frame that does not adapt calls
+    /// [`PostPasses::forget_exposure`] instead.
+    pub fn advance_exposure(
+        &mut self,
+        queue: &wgpu::Queue,
+        exposure: Exposure,
+        tick: u64,
+        tick_rate: f32,
+        slot: usize,
+    ) {
+        let Exposure::Auto {
+            compensation,
+            min_ev,
+            max_ev,
+            ..
+        } = exposure
+        else {
+            return;
+        };
+        let (up, down) = exposure.adaptation().unwrap_or((0.0, 0.0));
+        // The previous adapted exposure must be in the texture this frame
+        // reads; a frame whose tick went back starts again.
+        let (dt, snap) = match self.exposure.last {
+            Some((t, written, both)) if tick >= t && (written != slot || both) => {
+                ((tick - t) as f32 / tick_rate.max(1e-3), false)
+            }
+            _ => (0.0, true),
+        };
+        self.exposure.last = Some((tick, slot, false));
+        let u = AdaptUniform {
+            speed: [dt, up, down, snap as u32 as f32],
+            meter: [compensation, min_ev, max_ev.max(min_ev), 0.0],
+        };
+        queue.write_buffer(&self.adapt_buffer, 0, bytemuck::bytes_of(&u));
+    }
+
+    /// A frame without adaptation: the next adapted frame starts afresh.
+    pub fn forget_exposure(&mut self) {
+        self.exposure.last = None;
+    }
+
+    fn texel_copy(
+        encoder: &mut wgpu::CommandEncoder,
+        from: &wgpu::Texture,
+        from_x: u32,
+        to: &wgpu::Texture,
+        to_x: u32,
+    ) {
+        encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: from,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: from_x,
+                    y: 0,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: to,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: to_x,
+                    y: 0,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    /// Keeps the adapted exposure as it is now; the answer names it for
+    /// [`PostPasses::restore_exposure`]. Recorded into `encoder`, so it
+    /// copies what the frames submitted before it wrote.
+    pub fn save_exposure(&mut self, encoder: &mut wgpu::CommandEncoder) -> u64 {
+        let id = self.exposure.next_id;
+        self.exposure.next_id += 1;
+        let at = (id % EXPOSURE_SAVES as u64) as u32;
+        if let Some((_, written, _)) = self.exposure.last {
+            Self::texel_copy(
+                encoder,
+                &self.exposure.textures[written],
+                0,
+                &self.exposure.saves,
+                at,
+            );
+        }
+        self.exposure.ring[at as usize] = Some(ExposureSave {
+            id,
+            last_tick: self.exposure.last.map(|(t, ..)| t),
+        });
+        id
+    }
+
+    /// Brings back the adapted exposure [`PostPasses::save_exposure`] kept
+    /// as `id`; one no longer kept (or 0) starts the next adapted frame
+    /// afresh. Recorded into `encoder`.
+    pub fn restore_exposure(&mut self, encoder: &mut wgpu::CommandEncoder, id: u64) {
+        let at = (id % EXPOSURE_SAVES as u64) as usize;
+        let kept = self.exposure.ring[at].filter(|s| s.id == id && id != 0);
+        self.exposure.last = match kept.and_then(|s| s.last_tick) {
+            Some(tick) => {
+                for t in &self.exposure.textures {
+                    Self::texel_copy(encoder, &self.exposure.saves, at as u32, t, 0);
+                }
+                // Both textures hold it: whichever the next frame reads.
+                Some((tick, 0, true))
+            }
+            None => None,
+        };
     }
 }
 
@@ -691,6 +920,9 @@ pub(crate) enum FramePass {
     Meter,
     /// Metering level `i` into `i + 1`.
     Reduce(u32),
+    /// Temporal exposure adaptation: the metered exposure approached from
+    /// the previous frame's (`Exposure::Auto` with adapt speeds).
+    Adapt,
     BloomPrefilter,
     /// Bloom level `i` into `i + 1`.
     BloomDown(u32),
@@ -724,6 +956,7 @@ impl FramePass {
             FramePass::GodRaysBlur => "god-rays-blur".into(),
             FramePass::Meter => "meter".into(),
             FramePass::Reduce(i) => format!("meter-reduce.{i}"),
+            FramePass::Adapt => "exposure-adapt".into(),
             FramePass::BloomPrefilter => "bloom-prefilter".into(),
             FramePass::BloomDown(i) => format!("bloom-down.{i}"),
             FramePass::BloomUp(i) => format!("bloom-up.{i}"),
@@ -984,7 +1217,14 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     let lit = names.last.unwrap_or("history-write");
     let auto = has(FramePass::Meter);
     let bloom = has(FramePass::BloomPrefilter);
-    let lum = luminance_name(meter_levels() - 1);
+    let metered = luminance_name(meter_levels() - 1);
+    // What the exposure is read from: the adapted exposure when it adapts.
+    let lum = if has(FramePass::Adapt) {
+        g.import("exposure");
+        "exposure".to_string()
+    } else {
+        metered.clone()
+    };
     let prepass = has(FramePass::Prepass);
     for &p in passes {
         let name = p.name();
@@ -1080,6 +1320,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::Meter => g.pass(name, &[lit], &["luminance.0"]),
             FramePass::Reduce(i) => g.pass(name, &[&luminance_name(i)], &[&luminance_name(i + 1)]),
+            FramePass::Adapt => g.pass(name, &[&metered], &["exposure"]),
             FramePass::BloomPrefilter => {
                 let mut reads = vec![lit];
                 if auto {
@@ -1116,6 +1357,7 @@ struct Bindings {
     taa: Option<[wgpu::BindGroup; 2]>,
     meter: Option<[wgpu::BindGroup; 2]>,
     reduce: Vec<wgpu::BindGroup>,
+    adapt: Option<[wgpu::BindGroup; 2]>,
     prefilter: Option<[wgpu::BindGroup; 2]>,
     down: Vec<wgpu::BindGroup>,
     up: Vec<wgpu::BindGroup>,
@@ -1300,11 +1542,34 @@ impl FrameGraph {
         });
         let levels = meter_levels();
         let auto = has(FramePass::Meter);
-        let lum = if auto {
+        let metered = if auto {
             self.view(&luminance_name(levels - 1))
         } else {
             &passes.black
         };
+        // The exposure the passes of frame slot `i` read: the adapted one
+        // this slot writes, or the metered texel.
+        let adapting = has(FramePass::Adapt);
+        let lum = |slot: usize| -> &wgpu::TextureView {
+            if adapting {
+                &passes.exposure.views[slot]
+            } else {
+                metered
+            }
+        };
+        let adapt = adapting.then(|| {
+            [0usize, 1].map(|slot| {
+                group(
+                    "exposure adapt",
+                    &passes.adapt_layout,
+                    &[
+                        tex(metered),
+                        tex(&passes.exposure.views[1 - slot]),
+                        passes.adapt_buffer.as_entire_binding(),
+                    ],
+                )
+            })
+        });
         let meter = auto.then(|| {
             [0, 1].map(|slot| {
                 group(
@@ -1332,21 +1597,22 @@ impl FrameGraph {
         } else {
             &passes.black
         };
-        let post_group = |label: &str, src: &wgpu::TextureView, bloom: &wgpu::TextureView| {
-            group(
-                label,
-                &passes.post_layout,
-                &[
-                    tex(src),
-                    sampler.clone(),
-                    passes.post_buffer.as_entire_binding(),
-                    tex(lum),
-                    tex(bloom),
-                    tex(lut),
-                    tex(god),
-                ],
-            )
-        };
+        let post_group =
+            |label: &str, src: &wgpu::TextureView, bloom: &wgpu::TextureView, slot: usize| {
+                group(
+                    label,
+                    &passes.post_layout,
+                    &[
+                        tex(src),
+                        sampler.clone(),
+                        passes.post_buffer.as_entire_binding(),
+                        tex(lum(slot)),
+                        tex(bloom),
+                        tex(lut),
+                        tex(god),
+                    ],
+                )
+            };
         let bloom = has(FramePass::BloomPrefilter);
         let bloom_count = frame
             .iter()
@@ -1358,15 +1624,15 @@ impl FrameGraph {
         } else {
             &passes.black
         };
-        let prefilter =
-            bloom.then(|| [0, 1].map(|slot| post_group("bloom prefilter", source(slot), glow)));
+        let prefilter = bloom
+            .then(|| [0, 1].map(|slot| post_group("bloom prefilter", source(slot), glow, slot)));
         let (down, up) = if bloom {
             (
                 (0..bloom_count - 1)
-                    .map(|i| post_group("bloom down", self.view(&bloom_name(i)), &passes.black))
+                    .map(|i| post_group("bloom down", self.view(&bloom_name(i)), &passes.black, 0))
                     .collect(),
                 (1..bloom_count)
-                    .map(|i| post_group("bloom up", self.view(&bloom_name(i)), &passes.black))
+                    .map(|i| post_group("bloom up", self.view(&bloom_name(i)), &passes.black, 0))
                     .collect(),
             )
         } else {
@@ -1377,7 +1643,7 @@ impl FrameGraph {
         } else {
             &passes.black
         };
-        let post = [0, 1].map(|slot| post_group("post", source(slot), bloom_top));
+        let post = [0, 1].map(|slot| post_group("post", source(slot), bloom_top, slot));
 
         // The effect passes: (a, depth, gbuffer, b) per slot.
         let depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
@@ -1425,6 +1691,7 @@ impl FrameGraph {
             taa: taa_groups,
             meter,
             reduce,
+            adapt,
             prefilter,
             down,
             up,
@@ -1507,6 +1774,18 @@ impl FrameGraph {
                     clear,
                     &passes.reduce,
                     &b.reduce[i as usize],
+                );
+                1
+            }
+            FramePass::Adapt => {
+                let groups = b.adapt.as_ref().expect("adaptation bound");
+                fullscreen_pass(
+                    encoder,
+                    "exposure adapt",
+                    &passes.exposure.views[slot],
+                    clear,
+                    &passes.adapt,
+                    &groups[slot],
                 );
                 1
             }

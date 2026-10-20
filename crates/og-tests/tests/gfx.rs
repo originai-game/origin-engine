@@ -698,6 +698,35 @@ fn post_grade_matches_its_reference() {
     check("post-grade");
 }
 
+/// AgX: the bloom scene's emissive spheres keep their hue in the glow but
+/// their over-exposed cores go towards white, where ACES skews them.
+#[test]
+fn post_agx_matches_its_reference() {
+    check("post-agx");
+    // The same frame through ACES (the bloom scene): AgX's halo around the
+    // orange sphere is less saturated (mean max-min channel spread).
+    let chroma = |img: &RgbaImage| {
+        let mut sum = 0.0;
+        for y in 330..470 {
+            for x in 180..360 {
+                let i = ((y * img.width + x) * 4) as usize;
+                let p = &img.pixels[i..i + 3];
+                sum += (p.iter().max().unwrap() - p.iter().min().unwrap()) as f32;
+            }
+        }
+        sum / (140.0 * 180.0)
+    };
+    let mut agx = built("post-agx");
+    let mut aces = built("bloom");
+    let (agx, aces) = (
+        gfx::render_built(&mut agx).expect("agx").image,
+        gfx::render_built(&mut aces).expect("aces").image,
+    );
+    let (a, b) = (chroma(&agx), chroma(&aces));
+    println!("orange halo chroma: agx {a:.1}, aces {b:.1}");
+    assert!(a < b * 0.9, "agx {a:.1} against aces {b:.1}");
+}
+
 #[test]
 fn ao_gtao_matches_its_reference() {
     assert!(check("ao-gtao").stats.prepass_draws > 0);
