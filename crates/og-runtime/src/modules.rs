@@ -1049,7 +1049,9 @@ pub(crate) fn load_skin(eng: &Engine, path: &str) -> Result<usize, String> {
                 .skin_text(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
-        let file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
+        let mut file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
+        // Ids relative to the skin file first, as the cook resolved them.
+        file.resolve(&id, |r| eng.assets.borrow().bundle_for(r).is_ok());
         let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
             let i = super::assets::load_texture(eng, p)?;
             eng.render

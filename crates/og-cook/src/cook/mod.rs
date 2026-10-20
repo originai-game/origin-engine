@@ -1160,7 +1160,10 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Skin => {
                 let text = String::from_utf8_lossy(&s.bytes);
                 let refs: Vec<String> = og_ui::parse_skin(&text)
-                    .map(|f| f.references())
+                    .map(|mut f| {
+                        f.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
+                        f.references()
+                    })
                     .unwrap_or_default()
                     .into_iter()
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
@@ -1795,15 +1798,17 @@ fn run(
         Work::Skin(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a skin is text (UTF-8)".into()))?;
-            let file = og_ui::parse_skin(text).map_err(CookError)?;
+            let mut file = og_ui::parse_skin(text).map_err(CookError)?;
+            file.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
             let missing: Vec<String> = file
                 .references()
                 .into_iter()
                 .filter(|r| !known.contains(crate::runtime::asset_id(r)))
                 .collect();
             if !missing.is_empty() {
+                let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
                 return Err(CookError(format!(
-                    "the skin names asset(s) not under assets/: {}",
+                    "the skin names asset(s) neither beside it in {dir}/ nor under assets/: {} (an id is read relative to the skin file first, then from assets/; a copied pack's `fallback` font is the project's own: point it at a CJK font the game has, or remove the line, og-taste §1)",
                     missing.join(", ")
                 )));
             }

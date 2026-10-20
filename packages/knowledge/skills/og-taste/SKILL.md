@@ -62,10 +62,19 @@ if (skin.ok) og.ui.configure(world, { skin: skin.value });
 
 Make it the game's own by changing the skin file, never by passing colours
 to individual calls: copy the pack directory into the game's
-`assets/skins/<game>/`, then change `palette` (start with `accent`, `bg`,
-`surface`, `fg`), `ramp` and `fonts` (any OFL font; keep
-`fallback "fonts/NotoSansSC-Regular-subset.ttf"` for Chinese), and redraw
-the atlas if the frames should change. The art in the art direction of the
+`assets/skins/<game>/` (`cp -R .../skins/fantasy assets/skins/<game>`) and
+load `skins/<game>/skin.ogt`. Nothing in it needs rewriting: the ids in a
+skin file are read relative to the file first (`atlas "atlas.png"`, `body
+"Newsreader-Medium.ttf"`), then from `assets/` (`skins/fantasy/atlas.png`
+still works). The one asset outside the pack is its CJK `fallback`,
+`fonts/NotoSansSC-Regular-subset.ttf` (2.5 MB, shared by every pack, so
+not copied six times): a project made by `npm create @origingame/game`
+has it at that id; otherwise point the line at the game's own CJK font,
+or delete it when the game shows no Chinese, Japanese or Korean (the cook
+names the line it cannot find). Then change `palette` (start with
+`accent`, `bg`, `surface`, `fg`), `ramp` and `fonts` (any OFL font beside
+the skin file), and redraw the atlas if the frames should change (`og skin
+pack`, og-ui §6). The art in the art direction of the
 world (sprites, backgrounds) and the skin must agree: a pixel-art world in a
 neon UI reads as two games.
 

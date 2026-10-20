@@ -238,7 +238,9 @@ panel texture, shadows and glows, press squash and hover lift, entrances and
 sounds. Choosing one is og-taste §1. Six packs to start from are in
 the engine repository under `templates/ui-kit/assets/skins/` (`pixel`,
 `cartoon`, `fantasy`, `scifi`, `paper`, `neon`; copy the directory into the
-game's `assets/skins/`):
+game's `assets/skins/` and rename it at will: a skin's ids are read
+relative to its file first, then from `assets/`; og-taste §1 has the one
+line to check, the CJK `fallback`):
 
 ```ts
 const skin = og.load.skin(world, "skins/fantasy/skin.ogt");   // atlas, fonts, icons load with it

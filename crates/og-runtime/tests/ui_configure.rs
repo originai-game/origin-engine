@@ -4,13 +4,21 @@
 //! FINDINGS #11: configuring sounds after a look's skin dropped the skin,
 //! and with no font every glyph vanished silently).
 //!
-//! A project with a skin (`skins/mini/skin.ogt`, a light base, its body
-//! font beside it) is cooked once.
+//! A skin names its assets relative to its own file first (FINDINGS #6: a
+//! copied pack had to be rewritten): `copied/skin.ogt` names `Body.ttf`
+//! beside it, `../mini/Body.ttf` up a directory and `skins/mini/Body.ttf`
+//! from assets/, and both the cook and og.load.skin find all three.
+//!
+//! A project with two skins (`skins/mini/skin.ogt`, a light base whose body
+//! font is named from assets/; `skins/copied/skin.ogt`, relative ids) is
+//! cooked once.
 //!
 //! Ways this could fail: a later call that sets only `reducedMotion` or
 //! `contrast` drops the skin (the theme's skin name goes empty) or resets
 //! the fields the earlier call set; `null` does not clear; a fontless UI
-//! says nothing; a UI with a font warns anyway.
+//! says nothing; a UI with a font warns anyway; the cook refuses the
+//! relative ids ("names asset(s) not under assets/") or the runtime looks
+//! for them at the root of assets/.
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_take_log, og_game_game,
@@ -46,6 +54,16 @@ fn project() -> &'static Path {
         write(
             "skins/mini/skin.ogt",
             b"type skin\nversion 1\n---\nname \"mini\"\nbase light\nfonts {\n  body \"skins/mini/Body.ttf\"\n}\n",
+        );
+        let font = repo().join("templates/ui-kit/assets/skins/fantasy/Cinzel-Bold.ttf");
+        write("skins/copied/Body.ttf", &std::fs::read(font).unwrap());
+        write(
+            "skins/copied/Body.ttf.ogt",
+            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+        );
+        write(
+            "skins/copied/skin.ogt",
+            b"type skin\nversion 1\n---\nname \"copied\"\nfonts {\n  body \"Body.ttf\"\n  display \"../mini/Body.ttf\"\n  numeric \"skins/mini/Body.ttf\"\n}\n",
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -146,4 +164,16 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     // A desc that is not an object is refused.
     let r: Value = serde_json::from_str(&og_ui_configure(e, Some("3".into()))).unwrap();
     assert_eq!(r["ok"], json!(false), "{r}");
+}
+
+#[test]
+fn a_skin_names_its_assets_relative_to_itself_or_from_assets() {
+    let e = engine();
+    let skin = value(og_load_skin(e, "skins/copied/skin.ogt".into()));
+    configure(e, json!({ "skin": skin }));
+    assert_eq!(theme(e)["skin"].as_str(), Some("copied"));
+    assert!(
+        warnings(e).iter().all(|w| !w.contains("no font")),
+        "its body font, beside it, loaded"
+    );
 }
