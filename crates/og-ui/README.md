@@ -8,7 +8,10 @@ MSDF text batches, and addressable by the probe through stable string ids
 (`touch_move_to`, `move_to_text`, `dump_ui`).
 
 It depends on og-core, og-ecs, og-input, og-render, og-probe (no
-default features), og-tween (its spring), og-i18n and rustybuzz only. No layout or GUI library: the layout is ~600 lines in `src/layout.rs`.
+default features), og-tween (its spring), og-i18n, unicode-bidi (UAX #9),
+ttf-parser (a font file's metrics and outlines) and, behind the default
+`shaping` feature, rustybuzz only. No layout or GUI library: the layout is
+~600 lines in `src/layout.rs`.
 
 ![The sample screen](references/metal/sample-screen.png)
 
@@ -48,14 +51,15 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `open(id, Element)` / `close() -> Response` | a container (`row`, `column`, `container` take a closure) | — |
 | `panel(id, PanelDesc, f)` | a card: `surface`, `radius.card`, `space.lg` padding, `space.md` gap, a column unless `row` | — |
 | `scroll(id, ScrollDesc, f)` | a scroll column, vertical by default, horizontal or both ways by `ScrollDesc::axes` (`Element::scroll_x` for any container): the wheel (both axes) or a drag scrolls it, a released drag keeps its momentum, it clips its content, a capsule scrollbar per scrolling axis shows the position and a press on one grabs it; nested containers hand off (§Scrolling) | — |
-| `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp | the text |
+| `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp; `ellipsis` cuts it with "…" ("..." in a font without it) where it does not fit: a `nowrap` label on its one line (it can then shrink in a row), a wrapping one on its last line with `max_lines` | the whole text, cut or not |
 | `button(id, text, ButtonDesc) -> Response` | a capsule of `h-control-sm/md/lg`; `Secondary` (neutral fill, default), `Primary` (amber, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture | — |
 | `progress(id, value, ProgressDesc)` | a capsule track filled to 0–1 | — |
 | `slider(id, &mut f32, SliderDesc) -> Response` | track, amber fill, thumb; a press anywhere on it sets the value, dragging follows; `min`/`max`/`step` | — |
 | `toggle(id, &mut bool, label) -> Response` | a switch (amber on) with a label; a click flips it | the label |
-| `text_field(id, &mut String, &FieldDesc) -> Response` | one line: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace/Delete/←/→/Home/End edit, Enter submits and leaves, Escape leaves, a press elsewhere blurs; placeholder; `max_chars`; focus ring in `focus` | the text, or the placeholder while empty |
-| `rich_text(id, markup, RichTextDesc) -> RichTextResponse` | one paragraph of inline spans from markup (`src/markup.rs`: `[b]`, `[color=…]`, `[size=…]`, `[font=…]`, `[icon=…]`, `[link=…]`, `[wave]`, `[shake]`, `[pulse]`; `[[` is a literal `[`): lines break between the spans' words (a word split across spans stays whole), every span on one baseline, each line as tall as its tallest span; bold thickens the glyphs in the MSDF shader (as far as the field reaches) and draws a second copy a device pixel right; links are child elements (kind `link`) that focus and press like buttons; shaped and right-to-left pieces are drawn shaped in visual order; a bad tag stays as text and warns | the plain text (links: their text) |
+| `text_field(id, &mut String, &FieldDesc) -> Response` | one line: a press focuses it with the caret at the press and a drag selects (Shift+press extends), typed text replaces the selection at the caret, Backspace/Delete/←/→/Home/End edit and Shift with them selects, Ctrl/Cmd+A selects all, +C copies and +X cuts (`Ui::take_clipboard`; the web shell's copy and cut events), an input method's composition shows underlined at the caret until it commits, Enter submits and leaves, Escape leaves, a press elsewhere blurs; the text scrolls to keep the caret in view; the caret blinks (§Text); placeholder; `max_chars`; focus ring in `focus` | the text, or the placeholder while empty |
+| `text_area(id, &mut String, &TextAreaDesc) -> Response` | several lines: the field's editing, Enter breaks the line, ↑/↓ move between lines (and stay out of focus navigation while it is edited), Home/End to a line's ends; wraps between words at its width, `rows` lines tall (default 4), scrolled to keep the caret's line in view | the text, or the placeholder while empty |
+| `rich_text(id, markup, RichTextDesc) -> RichTextResponse` | one paragraph of inline spans from markup (`src/markup.rs`: `[b]`, `[color=…]`, `[size=…]`, `[font=…]`, `[icon=…]`, `[link=…]`, `[wave]`, `[shake]`, `[pulse]`; `[[` is a literal `[`): lines break between the spans' words (a word split across spans stays whole), every span on one baseline, each line as tall as its tallest span; bold thickens the glyphs in the MSDF shader (as far as the field reaches) and draws a second copy a device pixel right; links are child elements (kind `link`) that focus and press like buttons; each line runs the bidirectional algorithm over its whole text at the UI's direction, so pieces reorder and so do runs of either direction inside one span, each run drawn shaped (§Text); a bad tag stays as text and warns | the plain text (links: their text) |
 | `tooltip(text)` | for the element just built: shown below it (above without room, clamped to the safe area) once the pointer has rested on it for `motion.duration.slow`; drawn over everything | the text |
 
 Any container with `interactive: true` reports its response from `close()`.
@@ -334,6 +338,76 @@ still owns every value (`src/theme.rs`); variants are mappings over it.
 
 
 
+## Text
+
+Fonts are cooked MTSDF atlases (`crates/og-cook/README.md`: kerning pairs,
+shaped forms, msdfgen's error correction); `FontMetrics` (`src/text.rs`)
+measures exactly as og-render lays out, so measured and drawn text agree.
+
+- **Roles and choice.** `Fonts` has `body`, `display`, `mono` (the numeric
+  role) and `rounded` (levels and scores; falls back to `display`, then
+  `body`), the locale's `chain` (og.i18n), the game's `fallbacks`
+  (`UiDesc.fallbackFonts`: Hebrew, Devanagari, a CJK face) and a skin's
+  `fallback`. `for_text` takes the role's font when its atlas has every
+  character, else the first of the chain then the fallbacks whose atlas
+  does, else the skin's fallback, and only then a font that can draw the
+  text with glyphs rendered at run time (below); so a Japanese label keeps
+  the Japanese face when that face has it cooked. The UI kit cooks the
+  design language's display face (Inter at its display optical size,
+  semibold) and rounded face (Nunito bold) as atlases of their own
+  (`templates/ui-kit/tools/make-faces.py`).
+- **Kerning.** The cook's pair table rides in `MsdfFont::kerning` and
+  `FontMetrics::kern`; og-render applies it between neighbours in world
+  and overlay text alike, and og-ui measures with it (a line is measured
+  whole, so pairs across words count; a line that fits whole is not
+  broken). A font without pairs lays out byte for byte as before.
+- **Bidi and shaping** run in og-ui, at layout, on both hosts (the same
+  Rust in the wasm and the native addon), so measured widths, line breaks,
+  hit testing and drawing agree. A line with a right-to-left or shaped
+  character is laid out by unicode-bidi (UAX #9) into level runs in visual
+  order (`FontMetrics::visual`, `bidi_runs`): a label at the paragraph
+  direction of its first strong character (the UI's with none), rich text
+  over each whole line at the UI's direction (pieces reorder, and so do
+  runs inside one span). Each run is shaped whole by rustybuzz in its
+  direction when it holds a shaped script and the font ships its file
+  (`shape::FontFile`): glyph ids map into the atlas as U+F0000 + id (the
+  cook renders every form the font's substitutions reach), and the glyphs'
+  advances and offsets go to og-render as `Text::placements` (Devanagari's
+  conjuncts and pre-base signs, marks on their bases, Arabic joining); an
+  unshaped right-to-left run (Hebrew) is reversed with its brackets
+  mirrored. Shaping is og-ui's `shaping` feature (rustybuzz; on by default
+  and in the shipped wasm, passed on by og-runtime and og-host-web): a
+  build without it draws shaped scripts unshaped and keeps bidi, kerning
+  and run-time glyphs. What it costs the publish wasm: §What it costs.
+- **CJK and other uncooked characters** render at run time
+  (`src/glyphs.rs`): a font cooked with `runtime true` ships its file, a
+  character outside its atlas is measured from the file's metrics and
+  recorded (`FontFile::take_wanted`), and og-runtime renders it from the
+  outlines before the frame is laid out for drawing, into 512² pages of the
+  font's own (every page learns the advance; `RenderScene::set_font`). The
+  glyph is a true distance in all four channels at the cook's geometry
+  (`em_px`, `px_range`, the same padding and plane bounds), computed with
+  `+ − × ÷` and square roots on f32 in a fixed order, so both hosts render
+  the same bytes; at UI sizes its slightly rounded corners do not show. The
+  choice over a cook-time fallback atlas: a game cannot know a player's
+  name or a chat line, and cooking all of GB2312 is 19.8 MB of atlas, where
+  the subset font file is 2.5 MB and renders only what is shown (the UI
+  kit's locale screens draw 欢迎回来，旅人晨星 and おかえりなさい、旅人さん
+  that way; a frame that still draws a missing glyph warns once).
+- **Ellipsis.** `LabelDesc::ellipsis` (and `max_lines`) cut at layout.
+- **Editing** (`src/edit.rs`): the caret and selection are placed from the
+  same visual layout the text is drawn with, so a press lands on the
+  character under it and a selection covers the glyphs it shows in either
+  direction. The selection is a neutral fill (`fill-strong`) under the
+  glyphs, the composition a hairline under its own, the caret an amber bar
+  that blinks: shown for 530 ms (32 ticks at 60 Hz) after the last edit or
+  move, hidden as long, by the tick (steady under reduced motion). The
+  caret, anchor, composition, scroll and blink phase are in `save_state`
+  (version 6). `UiFrame::text_input` names the focused text control, its
+  rectangle and its selection: the web shell keeps its hidden textarea over
+  it (an input method's window opens there) and copies the selection on
+  the page's copy and cut events.
+
 ## Layout
 
 Sizes per axis: `Size::Fit { min, max }` (content; the default),
@@ -364,10 +438,11 @@ One layout per frame, in five walks over the tree (`src/layout.rs`):
    rectangles (the intersection of every scrolling ancestor), and device-pixel
    snapping of every rectangle (`Viewport::dpr`).
 
-Text is measured and drawn with its type step's tracking (`tracking_em`,
-og-render's `Text::tracking`: the tokens tighten `xl` and up by 0.01 to
-0.035 em, and a skin's ramp line may set its own); tracking is Latin
-tracking, so a text with CJK characters or a shaped script takes none.
+Text is measured and drawn with its font's kerning (§Text) and its type
+step's tracking (`tracking_em`, og-render's `Text::tracking`: the tokens
+tighten `xl` and up by 0.01 to 0.035 em, and a skin's ramp line may set its
+own); tracking is Latin tracking, so a text with CJK characters or a shaped
+script takes none.
 
 Everything is in CSS pixels of the play surface (origin top left, y down),
 the unit of `og.Input` and the probe. The root is the viewport, padded by
@@ -462,17 +537,21 @@ one-tick edges (`button_pressed`/`button_released`, `pressed`) are the
 press and release edges the widgets use; og-ui keeps no input state of its
 own. Pointing it at another resource is the one line
 `pub type OgInput = og_input::Input;` in `src/input.rs` plus an
-`impl InputSource`. Typed text: `og.Input` has key codes but no
-characters, so text is derived from the printable keys pressed this tick
-(US layout, Shift held); injected `modifiers` never reach the resource, so
-`type:Hello` types `hello`. og-input owes a typed-text stream (the shell's
-`beforeinput`/composition events) for real keyboards and IME.
+`impl InputSource`.
 
-og-probe still ships its interim `og.Input` (version 1) and `WorldInput`;
-a host must create the probe with `Probe::with_input` over og-input's layer
-until og-probe re-exports og-input (its README says how). The tests do that
-with a 20-line bridge (`tests/support/mod.rs`, `ProbeInput`) that converts
-the probe's `InjectedInput` through its protocol 5 JSON.
+**Typed text** is og-input's typed-text stream: `og.TextInput` events
+(`text`, `composing`, `more`), which the web shell sends from the page's
+`beforeinput` and composition events (its hidden textarea over the focused
+field: `packages/engine/src/web/text-input.ts`) and the probe's `type:`,
+`compose:` and `commit:` from scripts. `InputFrame::with_text` turns a
+tick's events into committed text and the composition so far. A world
+that has never had one types from the keys instead (the US-layout
+character of each printable key pressed, Shift held); once one has
+arrived, key presses type nothing (`State::typed_stream`, saved), so a
+key and its character, which reach the engine on two paths, never both
+type. `type:Hello` types `Hello` (each character's key and the character).
+The probe's default input sink is og-input's layer, which og-probe
+re-exports; the tests use it directly.
 
 ## Probe contract
 
@@ -544,6 +623,10 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 |---|---|
 | `tests/layout.rs` | a nested tree (grow with a cap, wrap with a growing child, shrink-and-wrap, percent, centre, space-between, stretch, the safe area) gives the rectangles reasoned in the test and `tests/golden/layout.json` |
 | `tests/probe.rs` | through og-probe's command channel only: a click needs press and release inside (press-inside-release-outside, press-outside-release-inside and held presses do not click); `dump_ui` lists every visible element with bounds and text, in draw order; `move_to_text` exact, substring, `@N`, `@-N` and misses (which cancel the next touch); wheel scrolling moves rows, clips them to the list and stops at the content's end; the text field, toggle and slider edit game state; restoring the world and `save_state` replays identical frames |
+| `tests/text.rs` | Shift+arrows select and typing replaces the selection, Ctrl/Cmd+A, C (the clipboard) and X; a drag selects from the press and a Shift+press extends; a text area breaks lines on Enter, ↑/↓ move between lines and stay out of focus navigation, it wraps; a composition shows at the caret, replaces the selection as it starts, commits, ends when empty; the caret shows 32 ticks and hides 32 at 60 Hz and never blinks under reduced motion; once a typed-text stream exists keys type nothing; labels cut with an ellipsis on one line and at two lines, the probe reading the whole text; the edit state survives a save and restore |
+| `tests/rtl.rs` | Arabic shaped into joined forms in visual order; UAX #9 orders runs (digits, neutrals at a line's end, brackets mirrored, Hebrew reversed); Devanagari's conjunct and pre-base sign; kerning pairs tighten the measure and the visual layout alike; a right-to-left UI mirrors |
+| `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
+| `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png` and `text-edit.png` from the kit's fonts cooked at test time (og-cook): every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; no missing glyph |
 | `tests/support/scenes.rs` | not a test: builds the four reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes |
 | `tests/gfx.rs` | the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/theme.rs` | `src/theme.rs` equals the generator's output for the vendored tokens |
@@ -576,12 +659,18 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
 
 ## What phase 2 owes
 
-- **Text**: the display and rounded faces cooked as their own atlases;
-  kerning; bidirectional runs inside one rich-text span; ellipsis
-  truncation; selection in fields; multi-line text areas; IME composition.
-  (Rich text, inline spans from markup, landed in the phase 2 UI round.)
-- **Animations**: caret blink. (The skin's hover and press move on springs
-  since the phase 2 UI round.)
+- **Text**: a font per run inside one label (a line mixing scripts that no
+  single font covers takes the first font that covers it all, so a Hebrew
+  word next to digits needs a Hebrew font with digits); word-wise caret
+  moves (Ctrl/Alt+arrows), double-click word selection and undo in fields;
+  og-ui's text frames in the browser tiers (they cook their fonts, which
+  og-tests-web cannot). (The display and rounded faces, kerning, bidi
+  inside one rich-text span, shaping with rustybuzz, run-time CJK glyphs,
+  ellipsis truncation, selection, text areas, IME composition and the
+  caret blink landed in the phase 4 UI text round; rich text in the phase 2
+  UI round.)
+- (Animations: the skin's hover and press move on springs since the phase
+  2 UI round; the caret blinks by the tick since the phase 4 text round.)
 - (Skins: the ramp's tracking and a distance-field text glow landed in the
   phase 2 UI round.)
 - **Accessibility**: the shell mirroring `og.ui.a11y()` into the page (ARIA
@@ -597,6 +686,3 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
 - **Input**: several touches for widgets other than the touch controls
   (two-finger scroll, pinch). (Pads beyond the first landed in the phase 2
   UI round.)
-- og-probe re-exports og-input since 5c79c75, so the `ProbeInput` bridge in
-  `tests/support/mod.rs` and the "og-probe still ships its interim
-  `og.Input`" note in §Input are out of date; the bridge can go.
