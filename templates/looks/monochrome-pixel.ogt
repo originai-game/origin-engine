@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# A low grid, three tones per channel, a Bayer 8 dither: one hue carries the picture (set a two-colour palette to go all the way).
+name "Monochrome-led pixel art"
+antialias off
+Stylise {
+  pixelHeight 160
+  pixelSnap true
+  posterize 3
+  dither bayer8
+}
+RenderSettings {
+  toneMapping none
+}

@@ -1,0 +1,18 @@
+type look
+version 1
+---
+# Soft rim light, a touch of grain and painterly smoothing: handmade surfaces.
+name "Sculpted clay & stop-motion"
+MaterialStyle {
+  rimIntensity 0.35
+  rimPower 2.5
+  rimColor "#fff2e0"
+}
+Stylise {
+  paintRadius 2
+  paintAnisotropy 0.2
+}
+PostEffects {
+  filmGrain 0.03
+  ao true
+}

@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "monochrome-pixel" (templates/looks/monochrome-pixel.ogt), shown by the looks station.
+extends "monochrome-pixel"

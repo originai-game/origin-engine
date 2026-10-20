@@ -171,6 +171,15 @@ lighting falls back to a forward tile table built on the CPU).
   WebGPU), antialiasing by tier: TAA on the full tier (optional
   Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
   and where the HDR target cannot be multisampled.
+- Stylisation, as data a look composes (`og.Stylise`, `og.MaterialStyle`,
+  a `type look` asset): a logical pixel grid scaled up by whole numbers
+  with the camera and sprites snapped to it, posterise and palette
+  quantisation through ordered or blue-noise-like dither, halftone,
+  cross-hatching, ink lines, painterly (Kuwahara) smoothing with pigment
+  pooling, bleed and a canvas, flat depth bands, retro-3D vertex snapping,
+  affine texturing and coarse depth, and scene-wide material defaults
+  (toon, rim, outlines thinning with distance, tinted shadows, flat
+  facets); every primitive off at zero and then free, on both tiers.
 - Skinning on the GPU (storage buffers; vertex-texture fallback on GL).
 - Instancing by default: draws are batched per material and mesh; the
   TypeScript API has no per-object draw calls to misuse.

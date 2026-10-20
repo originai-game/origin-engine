@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "classical-painting-collage" (templates/looks/classical-painting-collage.ogt), shown by the looks station.
+extends "classical-painting-collage"

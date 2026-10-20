@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "anime-cel-3d" (templates/looks/anime-cel-3d.ogt), shown by the looks station.
+extends "anime-cel-3d"

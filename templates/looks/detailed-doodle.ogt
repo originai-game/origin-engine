@@ -1,0 +1,14 @@
+type look
+version 1
+---
+# Thin ink on every edge, light hatching in the shadows, six tones.
+name "Fine-line doodle worlds"
+Stylise {
+  ink true
+  inkThreshold 0.1
+  inkWidth 1
+  hatching 0.5
+  hatchingLevels 2
+  hatchingScale 5
+  posterize 6
+}

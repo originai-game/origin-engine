@@ -1,0 +1,19 @@
+type look
+version 1
+---
+# A pixel grid over a 3D set with sprites snapped to it, and a tilt-shift depth of field.
+name "Pixel sprites in 3D worlds"
+antialias off
+Stylise {
+  pixelHeight 240
+  pixelSnap true
+  posterize 10
+  dither bayer4
+}
+PostEffects {
+  depthOfField true
+  dofFocusDistance 10
+  dofFocusRange 3
+  dofMaxBlur 0.01
+  dofQuality low
+}

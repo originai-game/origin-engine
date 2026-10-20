@@ -3,19 +3,20 @@
 
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
-  let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
+  let uv = stylised_uv(in.uv, in.affine);
+  let base_sample = textureSample(base_color_tex, material_sampler, uv);
   // A material shader's hooks (identities with the built-in hooks).
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
   hook.normal = in.normal;
-  hook.uv = in.uv;
+  hook.uv = uv;
   hook.color = in.color;
   hook.time = frame.time.x;
   let params = shader_params();
   let base = surface_color(hook, params, material.base_color * base_sample * in.color);
   var dissolve = vec4<f32>(0.0);
-  if (EFFECTS) { dissolve = dissolve_at(in.uv, in.local_pos); }
+  if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   // One discard for the alpha cut-off and the dissolve (see dissolve_at).
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5) {
     discard;
@@ -26,13 +27,13 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let alpha = select(1.0, base.a, (mode & 4u) != 0u);
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
-    let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
+    let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
-  let metalness_sample = textureSample(metalness_tex, material_sampler, in.uv);
-  let roughness_sample = textureSample(roughness_tex, material_sampler, in.uv);
+  let metalness_sample = textureSample(metalness_tex, material_sampler, uv);
+  let roughness_sample = textureSample(roughness_tex, material_sampler, uv);
   let dpx = dpdx(in.world_pos);
   let dpy = dpdy(in.world_pos);
   var s: Surface;
@@ -58,7 +59,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     decal_emissive = d.emissive;
   }
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
-  let normal_sample = textureSample(normal_tex, material_sampler, in.uv);
+  let normal_sample = textureSample(normal_tex, material_sampler, uv);
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
@@ -94,6 +95,11 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
   // Caustics where the surface lies under the frame's water (0 without).
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
+  // The material style's shadow tint: shadowed sunlight moves towards a
+  // colour instead of black (the cool or warm shadow of illustration).
+  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
+    color += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
+  }
 
   // Point and spot lights: those of this fragment's cluster, in scene order.
   if (frame.params.z > 0.5) {
@@ -116,7 +122,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, mip).rgb;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
-  let ao_sample = textureSample(ao_tex, material_sampler, in.uv).r;
+  let ao_sample = textureSample(ao_tex, material_sampler, uv).r;
   var ibl_scale = frame.params.x * material.flags.z;
   if (material.flags.y >= 0.0) {
     // Ambient occlusion darkens only the image-based light.
@@ -142,7 +148,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
   color += ibl * ibl_scale;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {

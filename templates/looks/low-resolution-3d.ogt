@@ -1,0 +1,19 @@
+type look
+version 1
+---
+# Early-console 3D: a low grid, vertices snapped to it, affine textures, a coarse depth buffer, sixteen tones.
+name "Low-resolution retro 3D"
+antialias off
+Stylise {
+  pixelHeight 240
+  vertexSnap 2
+  affineTexturing 1
+  depthBits 12
+  posterize 16
+  dither bayer2
+}
+Fog {
+  enabled true
+  color "#5a6070"
+  density 0.03
+}

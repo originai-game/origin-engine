@@ -1,0 +1,19 @@
+type look
+version 1
+---
+# Cel shading, heavy outlines, halftone dots in the shadows and ink on every edge.
+name "Inked comic-book 3D"
+MaterialStyle {
+  toon true
+  outlineWidth 3
+  outlineDistance 8
+  outlineColor "#0a0810"
+}
+Stylise {
+  halftone 0.35
+  halftoneSize 5
+  halftoneAngle 30
+  ink true
+  inkThreshold 0.15
+  inkWidth 1.5
+}

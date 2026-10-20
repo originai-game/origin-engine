@@ -767,6 +767,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let tick = time.tick;
     super::fx::settings(world, rs);
     super::fx::components(world, rs, &mut h, tick);
+    // The pixel grid's snap: after the sprites and the camera are in.
+    super::fx::snap_to_grid(rs);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
     super::environment::extract(world, rs);

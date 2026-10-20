@@ -37,6 +37,13 @@ fn fs_prepass(in: PrepassOut) -> PrepassTargets {
   var o: PrepassTargets;
   o.gbuffer = vec4<f32>(oct_encode(n), velocity);
   o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
-  o.outline = vec4<f32>(clamp(material.outline.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), material.outline.w / 32.0);
+  // The material style's outline distance: nearer than it the line grows,
+  // farther it thins in proportion (never for an orthographic camera).
+  var width = material.outline.w;
+  if (frame.outline_style.x > 0.0 && frame.view_pos.w < 0.5 && width > 0.0) {
+    let depth = max(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.01);
+    width = clamp(width * frame.outline_style.x / depth, 0.5, 31.0);
+  }
+  o.outline = vec4<f32>(clamp(material.outline.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), width / 32.0);
   return o;
 }

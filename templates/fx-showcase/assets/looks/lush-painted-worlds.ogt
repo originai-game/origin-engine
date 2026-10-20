@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "lush-painted-worlds" (templates/looks/lush-painted-worlds.ogt), shown by the looks station.
+extends "lush-painted-worlds"

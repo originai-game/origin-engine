@@ -1,0 +1,13 @@
+type look
+version 1
+---
+# Six flat depth bands from a dark foreground to a pale distance.
+name "Layered silhouettes"
+Stylise {
+  depthBands 6
+  depthBandsNear 3
+  depthBandsFar 50
+  depthBandsNearColor "#141028"
+  depthBandsFarColor "#c8d8ec"
+  depthBandsFlatten 1
+}

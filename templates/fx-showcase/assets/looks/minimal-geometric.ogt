@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "minimal-geometric" (templates/looks/minimal-geometric.ogt), shown by the looks station.
+extends "minimal-geometric"

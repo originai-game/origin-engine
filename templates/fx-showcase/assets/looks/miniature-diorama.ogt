@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "miniature-diorama" (templates/looks/miniature-diorama.ogt), shown by the looks station.
+extends "miniature-diorama"

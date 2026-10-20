@@ -35,7 +35,7 @@
       },
       "look": {
         "preset": "templates/looks/expressionist-painting.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Stylise.paintRadius",
@@ -44,7 +44,7 @@
         ],
         "missing": [
           "the painting is content: painted portraits and backdrops",
-          "Stylise.paint* for 3D parts to match the painted art (phase B of the stylisation round)"
+          "Stylise.paint* for 3D parts to match the painted art"
         ]
       },
       "skin": "paper",
@@ -86,17 +86,15 @@
       },
       "look": {
         "preset": "templates/looks/bold-comic-illustration.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "StandardMaterialDesc.toon",
           "PostEffects.outline",
           "Stylise.ink",
           "MaterialStyle.shadowTint"
         ],
-        "missing": [
-          "Stylise.ink for contours on painted textures and MaterialStyle.shadowTint (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -137,8 +135,8 @@
       },
       "look": {
         "preset": "templates/looks/watercolor-wash.ogt",
-        "presetReady": false,
-        "support": "planned",
+        "presetReady": true,
+        "support": "partial",
         "primitives": [
           "Stylise.paintEdgeDarkening",
           "Stylise.paintBleed",
@@ -146,7 +144,7 @@
           "Stylise.paintCanvasStrength"
         ],
         "missing": [
-          "Stylise.paintEdgeDarkening, Stylise.paintBleed and Stylise.paintCanvas (phase B of the stylisation round)"
+          "a tileable paper texture of your own for Stylise.paintCanvas (the engine ships no canvas asset)"
         ]
       },
       "skin": "paper",
@@ -188,7 +186,7 @@
       },
       "look": {
         "preset": "templates/looks/pixel-3d-hybrid.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "partial",
         "primitives": [
           "PostEffects.depthOfField",
@@ -198,8 +196,7 @@
           "billboard sprites"
         ],
         "missing": [
-          "Stylise.pixelSnap for sprites in a perspective camera (phase B of the stylisation round)",
-          "sprites casting shadows on 3D sets: no engine primitive yet"
+          "sprites casting shadows on 3D sets: no engine primitive (draw a shadow sprite under each)"
         ]
       },
       "skin": "fantasy",
@@ -241,7 +238,7 @@
       },
       "look": {
         "preset": "templates/looks/faceted-low-poly.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "full",
         "primitives": [
           "StandardMaterialDesc.flatShading",
@@ -289,7 +286,7 @@
       },
       "look": {
         "preset": "templates/looks/sculpted-clay.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "partial",
         "primitives": [
           "StandardMaterialDesc.roughness",
@@ -341,18 +338,15 @@
       },
       "look": {
         "preset": "templates/looks/8bit-pixel.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
           "Stylise.pixelSnap",
           "Antialias off"
         ],
-        "missing": [
-          "Stylise.pixelHeight and Stylise.pixelSnap: the whole-number upscale of the frame (phase B of the stylisation round)",
-          "Stylise.palette quantisation (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "pixel",
       "palette": {
@@ -394,16 +388,14 @@
       },
       "look": {
         "preset": "templates/looks/voxel-worlds.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "PostEffects.ao",
           "box instancing"
         ],
-        "missing": [
-          "MagicaVoxel .vox import into flat-shaded greedy meshes (og-cook, phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "pixel",
       "palette": {
@@ -444,7 +436,7 @@
       },
       "look": {
         "preset": "templates/looks/illuminated-manuscript.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Stylise.paintCanvas",
@@ -453,7 +445,7 @@
         ],
         "missing": [
           "the page is content: figures, borders and lettering",
-          "Stylise.paintCanvas for the vellum grain (phase B of the stylisation round)"
+          "Stylise.paintCanvas for the vellum grain"
         ]
       },
       "skin": "paper",
@@ -495,7 +487,7 @@
       },
       "look": {
         "preset": "templates/looks/rubber-hose-animation.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "PostEffects.filmGrain",
@@ -546,17 +538,15 @@
       },
       "look": {
         "preset": "templates/looks/pencil-hatching.ogt",
-        "presetReady": false,
-        "support": "planned",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.hatching",
           "Stylise.hatchingLevels",
           "Stylise.paintCanvas",
           "Stylise.ink"
         ],
-        "missing": [
-          "Stylise.hatching (tonal art map) and Stylise.paintCanvas (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "paper",
       "palette": {
@@ -597,7 +587,7 @@
       },
       "look": {
         "preset": "templates/looks/gothic-contour.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Fog",
@@ -607,7 +597,7 @@
           "sprite layers"
         ],
         "missing": [
-          "ornament is content; Stylise.depthBands for layered haze (phase B of the stylisation round)"
+          "ornament is content; Stylise.depthBands for layered haze"
         ]
       },
       "skin": "fantasy",
@@ -649,7 +639,7 @@
       },
       "look": {
         "preset": "templates/looks/lush-painted-worlds.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Stylise.paintRadius",
@@ -658,7 +648,7 @@
           "RenderSettings.bloom"
         ],
         "missing": [
-          "painted backdrops are content; Stylise.paint* for 3D props (phase B of the stylisation round)"
+          "painted backdrops are content; Stylise.paint* for 3D props"
         ]
       },
       "skin": "fantasy",
@@ -700,7 +690,7 @@
       },
       "look": {
         "preset": "templates/looks/decorative-storybook.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Stylise.ink",
@@ -708,7 +698,7 @@
           "sprite layers"
         ],
         "missing": [
-          "illustration is content; Stylise.ink and paintCanvas (phase B of the stylisation round)"
+          "illustration is content; Stylise.ink and paintCanvas"
         ]
       },
       "skin": "cartoon",
@@ -750,7 +740,7 @@
       },
       "look": {
         "preset": "templates/looks/classical-painting-collage.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "sprites with transforms",
@@ -800,7 +790,7 @@
       },
       "look": {
         "preset": "templates/looks/detailed-doodle.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Stylise.ink",
@@ -808,7 +798,7 @@
           "sprites"
         ],
         "missing": [
-          "the drawing is content; Stylise.ink can outline 3D props to match (phase B of the stylisation round)"
+          "the drawing is content; Stylise.ink can outline 3D props to match"
         ]
       },
       "skin": "paper",
@@ -850,7 +840,7 @@
       },
       "look": {
         "preset": "templates/looks/black-figure-pottery.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "content",
         "primitives": [
           "Stylise.palette",
@@ -858,7 +848,7 @@
           "unlit materials"
         ],
         "missing": [
-          "silhouettes are content; Stylise.palette locks the colours (phase B of the stylisation round)"
+          "silhouettes are content; Stylise.palette locks the colours"
         ]
       },
       "skin": "fantasy",
@@ -900,17 +890,15 @@
       },
       "look": {
         "preset": "templates/looks/heavy-ink-shadows.ogt",
-        "presetReady": false,
-        "support": "planned",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.posterize",
           "Stylise.hatching",
           "Stylise.ink",
           "PostEffects.vignette"
         ],
-        "missing": [
-          "Stylise.hatching and Stylise.ink (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -951,7 +939,7 @@
       },
       "look": {
         "preset": "templates/looks/monochrome-pixel.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "partial",
         "primitives": [
           "Stylise.pixelHeight",
@@ -960,7 +948,7 @@
           "Stylise.dither"
         ],
         "missing": [
-          "Stylise.palette with a two-colour palette and Stylise.dither for shading (phase B of the stylisation round)"
+          "a two-colour palette of your own (og.load.palette) for a true single hue; the preset posterises"
         ]
       },
       "skin": "pixel",
@@ -1002,17 +990,15 @@
       },
       "look": {
         "preset": "templates/looks/16bit-pixel.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.pixelSnap",
           "Antialias off",
           "sprite layers for parallax"
         ],
-        "missing": [
-          "Stylise.pixelHeight and Stylise.pixelSnap (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "pixel",
       "palette": {
@@ -1053,8 +1039,8 @@
       },
       "look": {
         "preset": "templates/looks/detailed-pixel.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.pixelSnap",
@@ -1062,10 +1048,7 @@
           "PostEffects.glow",
           "RenderSettings.bloom"
         ],
-        "missing": [
-          "Stylise.pixelHeight and Stylise.pixelSnap (phase B of the stylisation round)",
-          "the detail itself is content: hand-placed clusters, not a filter"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -1106,8 +1089,8 @@
       },
       "look": {
         "preset": "templates/looks/luminous-pixel.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Lighting2D",
@@ -1115,9 +1098,7 @@
           "PostEffects.glow",
           "RenderSettings.bloom"
         ],
-        "missing": [
-          "Stylise.pixelHeight (phase B of the stylisation round); glow and 2D lights draw today"
-        ]
+        "missing": []
       },
       "skin": "neon",
       "palette": {
@@ -1158,17 +1139,15 @@
       },
       "look": {
         "preset": "templates/looks/topdown-tile-pixel.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "tilemap layers",
           "Sprite.sortY",
           "Stylise.pixelHeight",
           "Stylise.pixelSnap"
         ],
-        "missing": [
-          "Stylise.pixelHeight and Stylise.pixelSnap so tile edges stay on the grid while the camera moves (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -1209,8 +1188,8 @@
       },
       "look": {
         "preset": "templates/looks/low-resolution-3d.ogt",
-        "presetReady": false,
-        "support": "planned",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.vertexSnap",
@@ -1219,9 +1198,7 @@
           "Stylise.dither",
           "Fog"
         ],
-        "missing": [
-          "Stylise.pixelHeight, vertexSnap, affineTexturing and depthBits (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "scifi",
       "palette": {
@@ -1262,16 +1239,14 @@
       },
       "look": {
         "preset": "templates/looks/coarse-pixel.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
           "Antialias off"
         ],
-        "missing": [
-          "Stylise.pixelHeight with large upscales (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "pixel",
       "palette": {
@@ -1312,8 +1287,8 @@
       },
       "look": {
         "preset": "templates/looks/anime-cel-3d.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "StandardMaterialDesc.toon",
           "StandardMaterialDesc.gradientMap",
@@ -1322,9 +1297,7 @@
           "MaterialStyle.shadowTint",
           "MaterialStyle.outlineDistance"
         ],
-        "missing": [
-          "MaterialStyle.shadowTint and MaterialStyle.outlineDistance (phase B of the stylisation round); per-material toon and outlines draw today"
-        ]
+        "missing": []
       },
       "skin": "neon",
       "palette": {
@@ -1365,17 +1338,15 @@
       },
       "look": {
         "preset": "templates/looks/inked-comic-3d.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "PostEffects.outline",
           "StandardMaterialDesc.toon",
           "Stylise.ink",
           "Stylise.hatching"
         ],
-        "missing": [
-          "Stylise.hatching and Stylise.ink for screen-space ink marks (phase B of the stylisation round); outlines and toon draw today"
-        ]
+        "missing": []
       },
       "skin": "scifi",
       "palette": {
@@ -1416,7 +1387,7 @@
       },
       "look": {
         "preset": "templates/looks/paper-craft.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "partial",
         "primitives": [
           "StandardMaterialDesc.flatShading",
@@ -1426,7 +1397,7 @@
           "soft shadows"
         ],
         "missing": [
-          "Stylise.paintCanvas for frame-wide paper grain and MaterialStyle.flatShading for every material at once (phase B of the stylisation round); per-material flatShading and paper textures draw today"
+          "a tileable paper texture of your own for Stylise.paintCanvas (the engine ships no canvas asset)"
         ]
       },
       "skin": "paper",
@@ -1468,7 +1439,7 @@
       },
       "look": {
         "preset": "templates/looks/miniature-diorama.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "full",
         "primitives": [
           "PostEffects.depthOfField",
@@ -1518,8 +1489,8 @@
       },
       "look": {
         "preset": "templates/looks/painterly-3d.ogt",
-        "presetReady": false,
-        "support": "planned",
+        "presetReady": true,
+        "support": "partial",
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintAnisotropy",
@@ -1528,7 +1499,7 @@
           "Fog"
         ],
         "missing": [
-          "Stylise.paintRadius and paintAnisotropy (Kuwahara) and paintCanvas (phase B of the stylisation round)"
+          "a tileable canvas texture of your own for Stylise.paintCanvas (the engine ships no canvas asset)"
         ]
       },
       "skin": "fantasy",
@@ -1570,7 +1541,7 @@
       },
       "look": {
         "preset": "templates/looks/cinematic-realism.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "full",
         "primitives": [
           "StandardMaterial (PBR)",
@@ -1622,7 +1593,7 @@
       },
       "look": {
         "preset": "templates/looks/muted-cinematic-3d.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "full",
         "primitives": [
           "PostEffects.godRays",
@@ -1673,17 +1644,15 @@
       },
       "look": {
         "preset": "templates/looks/layered-silhouette.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "Stylise.depthBands",
           "Fog",
           "unlit materials",
           "PostEffects.godRays"
         ],
-        "missing": [
-          "Stylise.depthBands for flat layers by depth (phase B of the stylisation round); Fog approximates it today"
-        ]
+        "missing": []
       },
       "skin": "neon",
       "palette": {
@@ -1724,7 +1693,7 @@
       },
       "look": {
         "preset": "templates/looks/minimal-geometric.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "full",
         "primitives": [
           "unlit materials",
@@ -1773,7 +1742,7 @@
       },
       "look": {
         "preset": "templates/looks/neon-vector.ogt",
-        "presetReady": false,
+        "presetReady": true,
         "support": "full",
         "primitives": [
           "RenderSettings.bloom",
@@ -1824,8 +1793,8 @@
       },
       "look": {
         "preset": "templates/looks/monochrome-dither-3d.ogt",
-        "presetReady": false,
-        "support": "planned",
+        "presetReady": true,
+        "support": "partial",
         "primitives": [
           "Stylise.posterize",
           "Stylise.palette",
@@ -1833,7 +1802,7 @@
           "Stylise.pixelHeight"
         ],
         "missing": [
-          "Stylise.palette, Stylise.dither and Stylise.pixelHeight (phase B of the stylisation round)"
+          "a two-colour palette of your own (og.load.palette) for true 1-bit; the preset posterises to two tones per channel"
         ]
       },
       "skin": "pixel",
@@ -1875,8 +1844,8 @@
       },
       "look": {
         "preset": "templates/looks/luminous-layered-painting.ogt",
-        "presetReady": false,
-        "support": "partial",
+        "presetReady": true,
+        "support": "full",
         "primitives": [
           "sprite layers",
           "Fog",
@@ -1885,9 +1854,7 @@
           "PostEffects.glow",
           "Stylise.paintRadius"
         ],
-        "missing": [
-          "painted layers are content; Stylise.paint* to blend 3D elements with them (phase B of the stylisation round)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {

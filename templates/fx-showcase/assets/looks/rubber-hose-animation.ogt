@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "rubber-hose-animation" (templates/looks/rubber-hose-animation.ogt), shown by the looks station.
+extends "rubber-hose-animation"

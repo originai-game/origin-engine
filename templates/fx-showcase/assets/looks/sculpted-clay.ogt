@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "sculpted-clay" (templates/looks/sculpted-clay.ogt), shown by the looks station.
+extends "sculpted-clay"

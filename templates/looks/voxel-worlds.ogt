@@ -1,0 +1,12 @@
+type look
+version 1
+---
+# Flat faces with ambient occlusion in the corners (.vox models cook to flat-shaded meshes).
+name "Voxel worlds"
+MaterialStyle {
+  flatShading true
+}
+PostEffects {
+  ao true
+  aoIntensity 1.2
+}

@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# Anisotropic brush strokes with pigment pooling and a little bleed over the lit scene.
+name "Painterly 3D"
+Stylise {
+  paintRadius 3
+  paintAnisotropy 0.7
+  paintEdgeDarkening 0.4
+  paintBleed 0.3
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.25
+}

@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# Flat facets with a fine contour, twelve tones and ambient occlusion in the folds.
+name "Folded paper & papercraft"
+MaterialStyle {
+  flatShading true
+  outlineWidth 1
+  outlineColor "#5a4a3a"
+}
+Stylise {
+  posterize 12
+}
+PostEffects {
+  ao true
+}

@@ -1,0 +1,17 @@
+type look
+version 1
+---
+# A tilt-shift depth of field, a vignette and AgX: a tabletop model.
+name "Miniature dioramas"
+PostEffects {
+  depthOfField true
+  dofFocusDistance 12
+  dofFocusRange 2.5
+  dofMaxBlur 0.014
+  dofQuality high
+  vignette true
+  vignetteIntensity 0.35
+}
+RenderSettings {
+  toneMapping agx
+}

@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# A tile-friendly grid, eight tones, no dither, so tiles stay flat and crisp.
+name "Top-down tile-based pixel art"
+antialias off
+Stylise {
+  pixelHeight 180
+  pixelSnap true
+  posterize 8
+  dither none
+}
+RenderSettings {
+  toneMapping none
+}

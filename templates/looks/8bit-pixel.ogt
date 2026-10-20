@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# A coarse grid, four tones per channel through a Bayer dither, no antialiasing, authored colours untouched.
+name "8-bit-inspired pixel art"
+antialias off
+Stylise {
+  pixelHeight 192
+  pixelSnap true
+  posterize 4
+  dither bayer2
+}
+RenderSettings {
+  toneMapping none
+}

@@ -1,0 +1,17 @@
+type look
+version 1
+---
+# Five depth bands tinted from a dark foreground to a glowing distance, with bloom.
+name "Luminous layered environments"
+Stylise {
+  depthBands 5
+  depthBandsNear 3
+  depthBandsFar 60
+  depthBandsNearColor "#1a1430"
+  depthBandsFarColor "#ffd9a0"
+  depthBandsFlatten 0.6
+}
+RenderSettings {
+  bloom true
+  bloomIntensity 0.5
+}

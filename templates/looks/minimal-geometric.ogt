@@ -1,0 +1,14 @@
+type look
+version 1
+---
+# Flat facets and six clean tones, nothing else.
+name "Minimal geometric color"
+MaterialStyle {
+  flatShading true
+}
+Stylise {
+  posterize 6
+}
+RenderSettings {
+  toneMapping none
+}

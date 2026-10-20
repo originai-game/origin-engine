@@ -1,0 +1,18 @@
+type look
+version 1
+---
+# Flat cel shading with thick outlines and four tones, no shadows to speak of.
+name "Rubber-hose animation"
+MaterialStyle {
+  toon true
+  outlineWidth 3
+  outlineColor "#101010"
+  shadowTint "#ffffff"
+  shadowTintAmount 1
+}
+Stylise {
+  posterize 4
+}
+RenderSettings {
+  toneMapping none
+}

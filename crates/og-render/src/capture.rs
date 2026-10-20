@@ -170,7 +170,7 @@ impl Renderer {
     /// Starts a capture of the last frame drawn to
     /// [`crate::RenderTarget::Offscreen`] (see the module docs).
     pub fn begin_capture(&self) -> Result<CaptureRequest, RenderError> {
-        let (width, height) = (self.width, self.height);
+        let (width, height) = (self.out_width, self.out_height);
         let swizzle = match self.output_format {
             wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb => false,
             wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => true,

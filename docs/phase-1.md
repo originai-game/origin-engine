@@ -53,6 +53,42 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Phase 4, stylisation round (2026-10-21)
+
+On main, by the coordinating session (AGENTS.md §Build and gate
+discipline: agents write code, one session merges and gates). Phase A
+(the r-look stream, e795264) had landed the `type look` asset, the
+`og.Stylise` and `og.MaterialStyle` resources as data, palettes, and the
+style catalogue (`packages/knowledge/looks/catalogue.json`). Phase B,
+here:
+
+- **og-render** (`README.md` §Phase 4: stylisation): the pixel grid
+  (logical size, whole-number upscale, letterboxed), the chain after the
+  tonemap (paint, lines, quantize, FXAA, upscale), depth bands, retro-3D
+  vertex snapping, affine texturing and depth bits, the material style
+  (toon, rim, outline and flat defaults, shadow tint, outlines thinning
+  with distance). `STYLISE_DRAWN` lists all of it; every earlier reference
+  frame is unchanged (og-gfx `--all` on Metal: the same RMSE lines as
+  before, the rest at 0).
+- **og-runtime**: the pixel snap of the 2D camera and world sprites
+  (`fx::snap_to_grid`).
+- **og-cook**: MagicaVoxel `.vox` files cook as models (greedy-meshed,
+  flat-shaded, vertex colours; `cook/vox.rs`), and the 37 presets of
+  `templates/looks/` are the built-in looks `extends "<slug>"` resolves.
+- **fx-showcase**: the `looks` station and `look:<slug>`, with
+  `tests/looks.og.ts` taking one frame per preset (37) and proving
+  `look:none` restores the plain diorama.
+- **Knowledge**: the catalogue's entries are `presetReady`, 21 `full`, 7
+  `partial` (what a game must supply: a canvas or palette asset, sprite
+  shadows, stepped animation), 9 `content`; og-taste §1 names a start
+  look per pack.
+
+Left out: `vulkan-cpu` references for the eight stylise scenes and the 37
+looks frames (recorded on Metal here; the container capture is the wave's
+end), the browser tiers of the looks station, an engine canvas texture,
+a true blue-noise texture (interleaved-gradient noise stands in), depth
+edges in the ink pass.
+
 ## Phase 4, perf round (2026-10-20)
 
 Branch `r-perf` from main at 5dc3aa0. Evidence: `tests/evidence/P4/perf/`.

@@ -15,7 +15,24 @@
 /// `dither`, `halftone`, `hatching`, `paint`, `ink`, `depthBands` and
 /// `retro3d` ([`Stylise`]); `toon`, `shadowTint`, `rim`, `outline`,
 /// `outlineDistance` and `flatShading` ([`MaterialStyle`]).
-pub const STYLISE_DRAWN: &[&str] = &[];
+pub const STYLISE_DRAWN: &[&str] = &[
+    "pixel",
+    "posterize",
+    "palette",
+    "dither",
+    "halftone",
+    "hatching",
+    "paint",
+    "ink",
+    "depthBands",
+    "retro3d",
+    "toon",
+    "shadowTint",
+    "rim",
+    "outline",
+    "outlineDistance",
+    "flatShading",
+];
 
 /// A colour palette added to a [`crate::RenderScene`] for
 /// [`Stylise::palette`].

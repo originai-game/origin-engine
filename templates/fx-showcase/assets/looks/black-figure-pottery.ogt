@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "black-figure-pottery" (templates/looks/black-figure-pottery.ogt), shown by the looks station.
+extends "black-figure-pottery"

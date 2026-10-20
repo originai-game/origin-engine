@@ -1,0 +1,17 @@
+type look
+version 1
+---
+# Flat colour fields with a dark contour and a warm vignette, as gold-leaf pages.
+name "Illuminated manuscript illustration"
+MaterialStyle {
+  outlineWidth 2
+  outlineColor "#3a2410"
+}
+Stylise {
+  posterize 8
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.4
+  vignetteColor "#4a3418"
+}

@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "pixel-3d-hybrid" (templates/looks/pixel-3d-hybrid.ogt), shown by the looks station.
+extends "pixel-3d-hybrid"

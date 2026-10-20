@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# Very few, very large pixels and four tones.
+name "Coarse minimal pixel art"
+antialias off
+Stylise {
+  pixelHeight 90
+  pixelSnap true
+  posterize 4
+  dither none
+}
+RenderSettings {
+  toneMapping none
+}

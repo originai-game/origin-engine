@@ -17,6 +17,7 @@ const LUMINANCE_WGSL: &str = include_str!("../shaders/luminance.wgsl");
 const EXPOSURE_WGSL: &str = include_str!("../shaders/exposure.wgsl");
 const FXPOST_WGSL: &str = include_str!("../shaders/fxpost.wgsl");
 const FXAA_WGSL: &str = include_str!("../shaders/fxaa.wgsl");
+const STYLISE_WGSL: &str = include_str!("../shaders/stylise.wgsl");
 
 /// The tonemapped image FXAA reads (sRGB-encoded 8 bits, as the output).
 pub(crate) const LDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -114,6 +115,31 @@ pub(crate) struct FxPostUniform {
     pub god: [f32; 4],
     pub god2: [f32; 4],
     pub god_tint: [f32; 4],
+    /// Depth bands (`stylise.rs`): x: count (0: none), y: near, z: far,
+    /// w: flatten.
+    pub bands: [f32; 4],
+    pub bands_near: [f32; 4],
+    pub bands_far: [f32; 4],
+}
+
+/// `struct Stylise` in stylise.wgsl: the post-tonemap stylisation passes'
+/// parameters (`PostPasses::write_stylise`).
+#[repr(C)]
+#[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct StyliseUniform {
+    pub screen: [f32; 4],
+    pub output: [f32; 4],
+    pub offset: [f32; 4],
+    pub background: [f32; 4],
+    pub quantize: [f32; 4],
+    pub halftone: [f32; 4],
+    pub halftone_color: [f32; 4],
+    pub hatching: [f32; 4],
+    pub hatching_color: [f32; 4],
+    pub paint: [f32; 4],
+    pub canvas: [f32; 4],
+    pub ink: [f32; 4],
+    pub ink_color: [f32; 4],
 }
 
 #[repr(C)]
@@ -235,8 +261,24 @@ pub(crate) struct PostPasses {
     taa_sharpen_pipeline: Option<wgpu::RenderPipeline>,
     /// Its strength (`TaaUniform::params.w`).
     pub taa_sharpen: f32,
-    /// FXAA: the tonemap into [`LDR_FORMAT`] and the FXAA pass into the output.
-    fxaa: Option<(wgpu::RenderPipeline, wgpu::RenderPipeline)>,
+    /// The tonemap into [`LDR_FORMAT`], for a frame with passes after it
+    /// (FXAA, the stylisation chain); made on first use.
+    tonemap_ldr: Option<wgpu::RenderPipeline>,
+    /// The passes after the tonemap ([`chain_passes`]), each as (into the
+    /// next LDR target, into the output); made on first use.
+    chain: HashMap<FramePass, (wgpu::RenderPipeline, wgpu::RenderPipeline)>,
+    stylise_layout: wgpu::BindGroupLayout,
+    stylise_pl: wgpu::PipelineLayout,
+    source_pl: wgpu::PipelineLayout,
+    post_pl: wgpu::PipelineLayout,
+    post_shader: wgpu::ShaderModule,
+    stylise_shader: Option<wgpu::ShaderModule>,
+    fxaa_shader: Option<wgpu::ShaderModule>,
+    output_format: wgpu::TextureFormat,
+    /// `struct Stylise` (stylise.wgsl), written per frame.
+    pub stylise_buffer: wgpu::Buffer,
+    /// Repeats: the paint pass's canvas texture.
+    repeat_sampler: wgpu::Sampler,
     sampler: wgpu::Sampler,
     black: wgpu::TextureView,
     /// The identity 32³ grading LUT (bound when no grading is set).
@@ -323,6 +365,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_motion_blur", HDR_FORMAT),
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
+    ("fs_depth_bands", HDR_FORMAT),
 ];
 
 impl PostPasses {
@@ -401,6 +444,20 @@ impl PostPasses {
         };
         let source_pl = pipeline_layout("post source", &source_layout);
         let post_pl = pipeline_layout("post", &post_layout);
+        // The stylisation passes (stylise.wgsl): the source, its sampler,
+        // the parameters, the palette, the canvas and its repeating sampler.
+        let stylise_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("stylise"),
+            entries: &[
+                layout_entry(0, float_texture(true)),
+                layout_entry(1, sampler_ty),
+                layout_entry(2, UNIFORM),
+                layout_entry(3, float_texture(true)),
+                layout_entry(4, float_texture(true)),
+                layout_entry(5, sampler_ty),
+            ],
+        });
+        let stylise_pl = pipeline_layout("stylise", &stylise_layout);
         let meter = fullscreen_pipeline(
             device,
             "meter",
@@ -557,32 +614,13 @@ impl PostPasses {
                         None,
                     )
                 });
-        let fxaa = (antialias == Antialias::Fxaa).then(|| {
-            let fxaa_shader = module("fxaa", FXAA_WGSL);
-            (
-                fullscreen_pipeline(
-                    device,
-                    "tonemap (ldr)",
-                    &post_shader,
-                    "fs",
-                    &post_pl,
-                    LDR_FORMAT,
-                    None,
-                ),
-                fullscreen_pipeline(
-                    device,
-                    "fxaa",
-                    &fxaa_shader,
-                    if output_format.is_srgb() {
-                        "fs"
-                    } else {
-                        "fs_srgb_encode"
-                    },
-                    &source_pl,
-                    output_format,
-                    None,
-                ),
-            )
+        let repeat_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("stylise canvas"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("post"),
@@ -664,12 +702,107 @@ impl PostPasses {
             taa,
             taa_sharpen_pipeline,
             taa_sharpen,
-            fxaa,
+            tonemap_ldr: None,
+            chain: HashMap::new(),
+            stylise_layout,
+            stylise_pl,
+            source_pl,
+            post_pl,
+            post_shader,
+            stylise_shader: None,
+            fxaa_shader: None,
+            output_format,
+            stylise_buffer: uniform("stylise", std::mem::size_of::<StyliseUniform>()),
+            repeat_sampler,
             sampler,
             black: black_texture.create_view(&Default::default()),
             post_buffer: uniform("post", std::mem::size_of::<PostUniform>()),
             taa_buffer: uniform("taa", std::mem::size_of::<TaaUniform>()),
         }
+    }
+
+    /// Makes the pipelines of the passes after the tonemap that `passes`
+    /// holds and this renderer lacks ([`chain_passes`]): the tonemap into
+    /// the LDR target, and each pass into the next target and into the
+    /// output (sRGB-encoded in the shader where the output is not sRGB).
+    pub fn ensure_chain(&mut self, device: &wgpu::Device, passes: &[FramePass]) {
+        let chain = chain_passes(passes);
+        if chain.is_empty() {
+            return;
+        }
+        if self.tonemap_ldr.is_none() {
+            self.tonemap_ldr = Some(fullscreen_pipeline(
+                device,
+                "tonemap (ldr)",
+                &self.post_shader,
+                "fs",
+                &self.post_pl,
+                LDR_FORMAT,
+                None,
+            ));
+        }
+        let srgb = self.output_format.is_srgb();
+        for pass in chain {
+            if self.chain.contains_key(&pass) {
+                continue;
+            }
+            let entry: &str = match pass {
+                FramePass::Fxaa => "fs",
+                FramePass::Paint => "fs_paint",
+                FramePass::Lines => "fs_lines",
+                FramePass::Quantize => "fs_quantize",
+                FramePass::Upscale => "fs_upscale",
+                _ => unreachable!("not a pass after the tonemap"),
+            };
+            let encoded = if pass == FramePass::Fxaa {
+                "fs_srgb_encode".to_string()
+            } else {
+                format!("{entry}_srgb")
+            };
+            let output_entry = if srgb { entry } else { encoded.as_str() };
+            let (shader, layout) = if pass == FramePass::Fxaa {
+                let shader = self.fxaa_shader.get_or_insert_with(|| {
+                    device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("fxaa"),
+                        source: wgpu::ShaderSource::Wgsl(fullscreen_source(FXAA_WGSL).into()),
+                    })
+                });
+                (&*shader, &self.source_pl)
+            } else {
+                let shader = self.stylise_shader.get_or_insert_with(|| {
+                    device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("stylise"),
+                        source: wgpu::ShaderSource::Wgsl(fullscreen_source(STYLISE_WGSL).into()),
+                    })
+                });
+                (&*shader, &self.stylise_pl)
+            };
+            let label = pass.name();
+            let to_ldr = fullscreen_pipeline(
+                device,
+                &format!("{label} (ldr)"),
+                shader,
+                entry,
+                layout,
+                LDR_FORMAT,
+                None,
+            );
+            let to_output = fullscreen_pipeline(
+                device,
+                &label,
+                shader,
+                output_entry,
+                layout,
+                self.output_format,
+                None,
+            );
+            self.chain.insert(pass, (to_ldr, to_output));
+        }
+    }
+
+    /// Writes the stylisation passes' parameters.
+    pub fn write_stylise(&self, queue: &wgpu::Queue, uniform: &StyliseUniform) {
+        queue.write_buffer(&self.stylise_buffer, 0, bytemuck::bytes_of(uniform));
     }
 
     /// Writes the post uniform. `glow`: the glow buffer feeds the bloom
@@ -938,6 +1071,68 @@ impl Persistent {
     }
 }
 
+impl Persistent {
+    /// The TAA history at a new scene size (the offscreen target keeps the
+    /// output's).
+    pub fn resize_history(
+        &mut self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        antialias: Antialias,
+    ) {
+        let attach_bind =
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
+        self.history = (antialias == Antialias::Taa).then(|| {
+            [0, 1].map(|_| {
+                target_texture(
+                    device,
+                    "taa history",
+                    width,
+                    height,
+                    HDR_FORMAT,
+                    attach_bind,
+                )
+                .create_view(&Default::default())
+            })
+        });
+    }
+}
+
+/// A `width` × `height` texture of `format` from its RGBA8 texels.
+pub(crate) fn texture_from_rgba8(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    label: &str,
+    width: u32,
+    height: u32,
+    format: wgpu::TextureFormat,
+    rgba: &[u8],
+) -> wgpu::TextureView {
+    use wgpu::util::DeviceExt;
+    device
+        .create_texture_with_data(
+            queue,
+            &wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            },
+            wgpu::util::TextureDataOrder::LayerMajor,
+            rgba,
+        )
+        .create_view(&Default::default())
+}
+
 /// The bloom chain's length for a target size (the first level at half
 /// resolution, each next one half the previous).
 pub(crate) fn bloom_levels(width: u32, height: u32) -> u32 {
@@ -1006,9 +1201,38 @@ pub(crate) enum FramePass {
     BloomDown(u32),
     /// Bloom level `i + 1` added onto `i`.
     BloomUp(u32),
+    /// Flat colour bands by depth over the lit image (`stylise.rs`).
+    DepthBands,
     Tonemap,
-    /// FXAA over the tonemapped image (`ldr`) into the output.
+    /// The passes after the tonemap ([`chain_passes`]), each from one LDR
+    /// target into the next, the last into the output: painterly
+    /// smoothing, hatching/halftone/ink lines, posterise and palette
+    /// quantisation, FXAA, and the pixel grid scaled up to the output.
+    Paint,
+    Lines,
+    Quantize,
+    /// FXAA over the tonemapped image (the GL tier's MSAA alternative).
     Fxaa,
+    Upscale,
+}
+
+/// The passes after the tonemap that `passes` holds, in the order they run.
+pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
+    [
+        FramePass::Paint,
+        FramePass::Lines,
+        FramePass::Quantize,
+        FramePass::Fxaa,
+        FramePass::Upscale,
+    ]
+    .into_iter()
+    .filter(|p| passes.contains(p))
+    .collect()
+}
+
+/// The LDR target chain pass `i` reads (the tonemap writes `ldr.0`).
+fn ldr_name(i: usize) -> String {
+    format!("ldr.{i}")
 }
 
 impl FramePass {
@@ -1042,7 +1266,12 @@ impl FramePass {
             FramePass::BloomDown(i) => format!("bloom-down.{i}"),
             FramePass::BloomUp(i) => format!("bloom-up.{i}"),
             FramePass::Tonemap => "tonemap".into(),
+            FramePass::DepthBands => "depth-bands".into(),
+            FramePass::Paint => "paint".into(),
+            FramePass::Lines => "lines".into(),
+            FramePass::Quantize => "quantize".into(),
             FramePass::Fxaa => "fxaa".into(),
+            FramePass::Upscale => "upscale".into(),
         }
     }
 }
@@ -1087,6 +1316,8 @@ fn bloom_name(i: u32) -> String {
 /// pass (and outlines), after TAA (`None`: the history; its sharpening:
 /// `hdr.sharp`), after depth of field and motion blur.
 struct LitNames {
+    /// The lit image after the main pass and the depth bands.
+    lit: &'static str,
     main: &'static str,
     /// `None` when TAA writes the history and nothing sharpens it.
     aa: Option<&'static str>,
@@ -1096,10 +1327,15 @@ struct LitNames {
 
 fn lit_names(passes: &[FramePass]) -> LitNames {
     let has = |p| passes.contains(&p);
+    let lit = if has(FramePass::DepthBands) {
+        "hdr.bands"
+    } else {
+        "hdr"
+    };
     let main = if has(FramePass::Outline) {
         "hdr.outline"
     } else {
-        "hdr"
+        lit
     };
     let aa = if has(FramePass::TaaSharpen) {
         Some("hdr.sharp")
@@ -1117,6 +1353,7 @@ fn lit_names(passes: &[FramePass]) -> LitNames {
         after_dof
     };
     LitNames {
+        lit,
         main,
         aa,
         after_dof,
@@ -1263,8 +1500,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::Glow) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
     }
-    if has(FramePass::Fxaa) {
-        g.transient("ldr", desc(w, h, LDR_FORMAT, 1, attach_bind));
+    let chain = chain_passes(passes);
+    for i in 0..chain.len() {
+        g.transient(ldr_name(i), desc(w, h, LDR_FORMAT, 1, attach_bind));
+    }
+    if has(FramePass::DepthBands) {
+        g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
     for (pass, name) in [
         (FramePass::Outline, "hdr.outline"),
@@ -1388,9 +1629,10 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &reads, &writes)
             }
             FramePass::Glow => g.pass(name, &[], &["glow"]),
+            FramePass::DepthBands => g.pass(name, &["hdr", "lindepth"], &["hdr.bands"]),
             FramePass::Outline => g.pass(
                 name,
-                &["hdr", "gbuffer", "lindepth", "outline-id"],
+                &[names.lit, "gbuffer", "lindepth", "outline-id"],
                 &["hdr.outline"],
             ),
             FramePass::Taa => g.pass(
@@ -1438,14 +1680,27 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if has(FramePass::GodRaysBlur) {
                     reads.push("god.blur");
                 }
-                let target = if has(FramePass::Fxaa) {
-                    "ldr"
+                let target = if chain.is_empty() {
+                    "output".to_string()
                 } else {
-                    "output"
+                    ldr_name(0)
                 };
-                g.pass(name, &reads, &[target])
+                g.pass(name, &reads, &[target.as_str()])
             }
-            FramePass::Fxaa => g.pass(name, &["ldr"], &["output"]),
+            FramePass::Paint
+            | FramePass::Lines
+            | FramePass::Quantize
+            | FramePass::Fxaa
+            | FramePass::Upscale => {
+                let i = chain.iter().position(|&c| c == p).expect("in the chain");
+                let read = ldr_name(i);
+                let write = if i + 1 == chain.len() {
+                    "output".to_string()
+                } else {
+                    ldr_name(i + 1)
+                };
+                g.pass(name, &[read.as_str()], &[write.as_str()])
+            }
         };
     }
     g
@@ -1456,7 +1711,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
 struct Bindings {
     taa: Option<[wgpu::BindGroup; 2]>,
     taa_sharpen: Option<[wgpu::BindGroup; 2]>,
-    fxaa: Option<wgpu::BindGroup>,
+    /// The passes after the tonemap, each reading its LDR target.
+    chain: HashMap<FramePass, wgpu::BindGroup>,
     meter: Option<[wgpu::BindGroup; 2]>,
     reduce: Vec<wgpu::BindGroup>,
     adapt: Option<[wgpu::BindGroup; 2]>,
@@ -1476,6 +1732,8 @@ pub(crate) struct FrameGraph {
     cfg: Option<GraphConfig>,
     /// Identifies the grading LUT the bindings were made with.
     lut_key: Option<(u64, usize)>,
+    /// Identifies the palette and canvas the stylise bindings were made with.
+    stylise_key: u64,
     order: Vec<FramePass>,
     plan: Option<GraphPlan>,
     pool: Vec<(TargetDesc, wgpu::TextureView)>,
@@ -1530,11 +1788,13 @@ impl FrameGraph {
         post: &PostPasses,
         persistent: &Persistent,
         lut: (Option<(u64, usize)>, &wgpu::TextureView),
+        stylise: (&wgpu::TextureView, &wgpu::TextureView, u64),
     ) -> Result<(), GraphError> {
         if self.plan.is_some()
             && passes == self.passes
             && self.cfg.as_ref() == Some(cfg)
             && self.lut_key == lut.0
+            && self.stylise_key == stylise.2
         {
             return Ok(());
         }
@@ -1578,15 +1838,25 @@ impl FrameGraph {
                 self.views.insert(name, slot_views[slot].clone());
             }
         }
-        self.bindings = Some(self.bind(device, post, persistent, &passes, cfg, lut.1));
+        self.bindings = Some(self.bind(
+            device,
+            post,
+            persistent,
+            &passes,
+            cfg,
+            lut.1,
+            (stylise.0, stylise.1),
+        ));
         self.generation += 1;
         self.passes = passes;
         self.cfg = Some(*cfg);
         self.lut_key = lut.0;
+        self.stylise_key = stylise.2;
         self.plan = Some(plan);
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn bind(
         &self,
         device: &wgpu::Device,
@@ -1595,6 +1865,7 @@ impl FrameGraph {
         frame: &[FramePass],
         cfg: &GraphConfig,
         lut: &wgpu::TextureView,
+        stylise: (&wgpu::TextureView, &wgpu::TextureView),
     ) -> Bindings {
         fn tex(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
             wgpu::BindingResource::TextureView(v)
@@ -1658,13 +1929,31 @@ impl FrameGraph {
                 )
             })
         });
-        let fxaa = has(FramePass::Fxaa).then(|| {
-            group(
-                "fxaa",
-                &passes.source_layout,
-                &[tex(self.view("ldr")), sampler.clone()],
-            )
-        });
+        let mut chain = HashMap::new();
+        for (i, p) in chain_passes(frame).into_iter().enumerate() {
+            let source = self.view(&ldr_name(i));
+            let g = if p == FramePass::Fxaa {
+                group(
+                    "fxaa",
+                    &passes.source_layout,
+                    &[tex(source), sampler.clone()],
+                )
+            } else {
+                group(
+                    &p.name(),
+                    &passes.stylise_layout,
+                    &[
+                        tex(source),
+                        sampler.clone(),
+                        passes.stylise_buffer.as_entire_binding(),
+                        tex(stylise.0),
+                        tex(stylise.1),
+                        wgpu::BindingResource::Sampler(&passes.repeat_sampler),
+                    ],
+                )
+            };
+            chain.insert(p, g);
+        }
         let levels = meter_levels();
         let auto = has(FramePass::Meter);
         let metered = if auto {
@@ -1794,8 +2083,9 @@ impl FrameGraph {
             let groups = match p {
                 FramePass::Ao => pair(&|_| fx_group(black, black)),
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
+                FramePass::DepthBands => pair(&|_| fx_group(self.view("hdr"), black)),
                 FramePass::Outline => {
-                    pair(&|_| fx_group(self.view("hdr"), self.view("outline-id")))
+                    pair(&|_| fx_group(self.view(names.lit), self.view("outline-id")))
                 }
                 FramePass::DofCoc => pair(&|slot| fx_group(stage(names.aa, slot), black)),
                 FramePass::DofBlur => pair(&|_| fx_group(self.view("dof.coc"), black)),
@@ -1815,7 +2105,7 @@ impl FrameGraph {
         Bindings {
             taa: taa_groups,
             taa_sharpen,
-            fxaa,
+            chain,
             meter,
             reduce,
             adapt,
@@ -1851,6 +2141,7 @@ impl FrameGraph {
             FramePass::MotionBlur => Some(("fs_motion_blur", "hdr.mb")),
             FramePass::GodRaysMask => Some(("fs_godrays_mask", "god.mask")),
             FramePass::GodRaysBlur => Some(("fs_godrays_blur", "god.blur")),
+            FramePass::DepthBands => Some(("fs_depth_bands", "hdr.bands")),
             _ => None,
         };
         if let Some((entry, target)) = effect {
@@ -1951,11 +2242,12 @@ impl FrameGraph {
                 1
             }
             FramePass::Tonemap => {
-                match (&passes.fxaa, self.passes.contains(&FramePass::Fxaa)) {
-                    (Some((tonemap_ldr, _)), true) => fullscreen_pass(
+                let chain = chain_passes(&self.passes);
+                match (&passes.tonemap_ldr, chain.is_empty()) {
+                    (Some(tonemap_ldr), false) => fullscreen_pass(
                         encoder,
                         "tonemap",
-                        self.view("ldr"),
+                        self.view(&ldr_name(0)),
                         clear,
                         tonemap_ldr,
                         &b.post[slot],
@@ -1971,13 +2263,27 @@ impl FrameGraph {
                 }
                 1
             }
-            FramePass::Fxaa => match (&passes.fxaa, &b.fxaa) {
-                (Some((_, pipeline)), Some(group)) => {
-                    fullscreen_pass(encoder, "fxaa", output, clear, pipeline, group);
-                    1
+            FramePass::Paint
+            | FramePass::Lines
+            | FramePass::Quantize
+            | FramePass::Fxaa
+            | FramePass::Upscale => {
+                let chain = chain_passes(&self.passes);
+                let i = chain.iter().position(|&p| p == pass).expect("in the chain");
+                let last = i + 1 == chain.len();
+                match (passes.chain.get(&pass), b.chain.get(&pass)) {
+                    (Some((to_ldr, to_output)), Some(group)) => {
+                        let (target, pipeline) = if last {
+                            (output, to_output)
+                        } else {
+                            (self.view(&ldr_name(i + 1)), to_ldr)
+                        };
+                        fullscreen_pass(encoder, &pass.name(), target, clear, pipeline, group);
+                        1
+                    }
+                    _ => 0,
                 }
-                _ => 0,
-            },
+            }
             FramePass::TaaSharpen => match (&passes.taa_sharpen_pipeline, &b.taa_sharpen) {
                 (Some(pipeline), Some(groups)) => {
                     fullscreen_pass(
@@ -2010,6 +2316,7 @@ impl FrameGraph {
             | FramePass::Fluid3d
             | FramePass::Reflection
             | FramePass::Main
+            | FramePass::DepthBands
             | FramePass::Glow => 0,
         }
     }
@@ -2042,7 +2349,12 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "reflection-depth",
         "reflection-msaa",
         "glow",
-        "ldr",
+        "ldr.0",
+        "ldr.1",
+        "ldr.2",
+        "ldr.3",
+        "ldr.4",
+        "hdr.bands",
         "hdr.sharp",
         "hdr.outline",
         "hdr.dof",
@@ -2082,6 +2394,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("exposure", EXPOSURE_WGSL),
         ("taa", TAA_WGSL),
         ("fxaa", FXAA_WGSL),
+        ("stylise", STYLISE_WGSL),
         ("fx post", FXPOST_WGSL),
     ]
     .into_iter()

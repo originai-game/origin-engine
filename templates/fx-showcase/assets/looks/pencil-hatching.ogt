@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "pencil-hatching" (templates/looks/pencil-hatching.ogt), shown by the looks station.
+extends "pencil-hatching"

@@ -46,6 +46,16 @@ pub(crate) struct FrameUniform {
     /// x: the sun's shadow softness (0: hard PCF), y: 1 when point lights'
     /// shadows are paraboloid hemispheres, z, w: unused.
     pub shadow: [f32; 4],
+    /// Stylisation (`stylise.rs`, `Retro3d`): xy: the screen grid vertices
+    /// snap to, in cells across and down (0: none), z: affine texturing
+    /// (0 perspective-correct, 1 affine), w: depth bits (0: full precision).
+    pub stylise: [f32; 4],
+    /// `MaterialStyle`: rgb: the linear colour shadowed light moves
+    /// towards, w: how far (0: off).
+    pub shadow_tint: [f32; 4],
+    /// `MaterialStyle`: x: the distance at which outlines are their width
+    /// (0: constant), yzw: unused.
+    pub outline_style: [f32; 4],
 }
 
 /// The camera's matrices for one frame.

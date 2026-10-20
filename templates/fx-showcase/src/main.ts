@@ -35,9 +35,10 @@ import { RD_STATIONS, buildRD, resetRD, showRD, type RDStation } from "./render.
 import { SPH_STATIONS, SPHShow, buildSPH, showSPH, type SPHStation } from "./sph.ts";
 import { PM_STATIONS, buildPM, showPM, type PMStation } from "./physical.ts";
 import { IBL_STATIONS, buildIBL, resetIBL, showIBL, type IBLStation } from "./ibl.ts";
+import { LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS] as const;
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -225,6 +226,7 @@ function show(world: World, station: Station): void {
   resetAP(world);
   resetRD(world);
   resetIBL(world);
+  resetLooks(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -306,6 +308,7 @@ function show(world: World, station: Station): void {
       else if ((SPH_STATIONS as readonly string[]).includes(station)) showSPH(world, station as SPHStation);
       else if ((PM_STATIONS as readonly string[]).includes(station)) showPM(world, station as PMStation);
       else if ((IBL_STATIONS as readonly string[]).includes(station)) showIBL(world, station as IBLStation);
+      else if ((LOOK_STATIONS as readonly string[]).includes(station)) showLooks(world, station as LookStation);
       else showE5(world, station as E5Station);
   }
 }
@@ -442,6 +445,8 @@ function build(world: World): void {
   buildPM({ box, sphere, mat, ground: (x, c) => ground(world, x, c), tex });
   // The image-based lighting station (phase 4).
   buildIBL({ box, sphere, mat });
+  // The looks station (phase 4): the catalogue's presets over one diorama.
+  buildLooks({ box, sphere, mat, tex });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -468,8 +473,9 @@ export default og.game({
       const name = (args[0] ?? "post") as Station;
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
+    look: (world, args) => applyLookPreset(world, args[0] ?? "none"),
   },
-  commandHelp: { station: { usage: "<name|1-25>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment)." } },
+  commandHelp: { station: { usage: "<name|1-26>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), and the looks station (looks)." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

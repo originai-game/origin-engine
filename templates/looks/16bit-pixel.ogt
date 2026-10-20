@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# A finer grid with eight-tone ramps and a Bayer 4 dither.
+name "16-bit-inspired pixel art"
+antialias off
+Stylise {
+  pixelHeight 224
+  pixelSnap true
+  posterize 8
+  dither bayer4
+}
+RenderSettings {
+  toneMapping none
+}

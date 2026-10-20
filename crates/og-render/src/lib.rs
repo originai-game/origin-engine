@@ -811,6 +811,10 @@ struct GpuFont {
 /// GPU copies of one scene's resources, indexed like the scene's handles.
 #[derive(Default)]
 struct SceneCache {
+    /// The scene's palettes (`add_palette`) as 256 x 1 textures.
+    palettes: Vec<wgpu::TextureView>,
+    /// The material style the materials were uploaded with.
+    material_style: MaterialStyle,
     scene_id: u64,
     meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.
@@ -1023,8 +1027,14 @@ pub struct Renderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
     info: RenderInfo,
+    /// The size the scene is drawn at: the output's, or the stylisation's
+    /// logical pixel grid ([`Stylise::pixel`](crate::Stylise::pixel)),
+    /// scaled up to the output by the last post pass.
     width: u32,
     height: u32,
+    /// The output's size (the offscreen target, the surface, the overlay).
+    out_width: u32,
+    out_height: u32,
     output_format: wgpu::TextureFormat,
     /// The offscreen target's sRGB view format ([`linear_view_format`]).
     offscreen_linear: Option<wgpu::TextureFormat>,
@@ -2207,6 +2217,8 @@ impl Renderer {
             info,
             width,
             height,
+            out_width: width,
+            out_height: height,
             output_format,
             offscreen_linear,
             surface,
@@ -2300,7 +2312,7 @@ impl Renderer {
     }
 
     pub fn size(&self) -> (u32, u32) {
-        (self.width, self.height)
+        (self.out_width, self.out_height)
     }
 
     pub fn output_format(&self) -> wgpu::TextureFormat {
@@ -2327,9 +2339,13 @@ impl Renderer {
     pub fn resize(&mut self, width: u32, height: u32) {
         let max = self.device.limits().max_texture_dimension_2d;
         let (width, height) = (width.clamp(1, max), height.clamp(1, max));
-        if (width, height) == (self.width, self.height) {
+        if (width, height) == (self.out_width, self.out_height) {
             return;
         }
+        self.out_width = width;
+        self.out_height = height;
+        // The scene follows the output until the next frame's stylisation
+        // sets its own grid (`scene_size`).
         self.width = width;
         self.height = height;
         self.persistent = post::Persistent::new(
@@ -2347,6 +2363,44 @@ impl Renderer {
             config.height = height;
             surface.configure(&self.device, config);
         }
+    }
+
+    /// The size the scene is drawn at this frame: the output's, or the
+    /// stylisation's logical grid (`pixel`: `height` rows, the width from
+    /// the output's aspect, both at most the output), with the whole-number
+    /// upscale and the scaled frame's offset in the output.
+    fn pixel_grid(&self, pixel: Option<PixelScale>) -> ((u32, u32), u32, (u32, u32)) {
+        let out = (self.out_width, self.out_height);
+        let Some(p) = pixel.filter(|p| p.height > 0) else {
+            return (out, 1, (0, 0));
+        };
+        let h = p.height.min(out.1).max(1);
+        let w = ((h as f32 * out.0 as f32 / out.1 as f32).round() as u32).clamp(1, out.0);
+        let fit = (out.0 / w).min(out.1 / h).max(1);
+        let up = if p.upscale > 0 {
+            p.upscale.min(fit)
+        } else {
+            fit
+        };
+        let offset = (
+            out.0.saturating_sub(w * up) / 2,
+            out.1.saturating_sub(h * up) / 2,
+        );
+        ((w, h), up, offset)
+    }
+
+    /// Draws the scene at `width` × `height` from now on (the output keeps
+    /// its size): the graph, the TAA history and the glass targets follow.
+    fn scene_size(&mut self, width: u32, height: u32) {
+        if (width, height) == (self.width, self.height) {
+            return;
+        }
+        self.width = width;
+        self.height = height;
+        self.persistent
+            .resize_history(&self.device, width, height, self.info.antialias);
+        self.graph.invalidate();
+        self.taa_history = None;
     }
 
     /// Uploads whatever the scene added (or changed) since the last frame.
@@ -2506,6 +2560,24 @@ impl Renderer {
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("texture upload"),
                 });
+            for index in self.cache.palettes.len()..scene.palettes().len() {
+                let palette = &scene.palettes()[index];
+                let mut rgba = vec![0u8; MAX_PALETTE_COLORS * 4];
+                for (i, c) in palette.colors.iter().enumerate() {
+                    rgba[i * 4..i * 4 + 3].copy_from_slice(c);
+                    rgba[i * 4 + 3] = 255;
+                }
+                let view = post::texture_from_rgba8(
+                    &self.device,
+                    &self.queue,
+                    "palette",
+                    MAX_PALETTE_COLORS as u32,
+                    1,
+                    wgpu::TextureFormat::Rgba8UnormSrgb,
+                    &rgba,
+                );
+                self.cache.palettes.push(view);
+            }
             for index in self.cache.textures.len()..scene.textures().len() {
                 let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
                 self.cache.textures.push(gpu);
@@ -2557,6 +2629,10 @@ impl Renderer {
                 .flatten()
                 .any(|h| replaced.contains(&h.index()))
         };
+        // The scene's material style: every lit material takes it where it
+        // leaves a field at its default, so a change restyles them all.
+        let restyle = self.cache.material_style != scene.stylise.material;
+        self.cache.material_style = scene.stylise.material;
         for (i, (material, revision)) in scene.materials().enumerate() {
             if self
                 .cache
@@ -2564,9 +2640,12 @@ impl Renderer {
                 .get(i)
                 .is_some_and(|m| m.revision == revision)
                 && !samples_replaced(material)
+                && !restyle
             {
                 continue;
             }
+            let styled = material::styled(material, &scene.stylise.material);
+            let material = &styled;
             let hooked = scene.material_shader(MaterialHandle::from_index(i));
             let (bind_group, factors) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1))?;
@@ -3679,6 +3758,8 @@ impl Renderer {
             return Err(RenderError::InvalidHandle(stale));
         }
         self.sync(scene)?;
+        let (grid, upscale, grid_offset) = self.pixel_grid(scene.stylise.pixel);
+        self.scene_size(grid.0, grid.1);
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
         let (mut batches, mut transforms, spheres, submission) = self.build_batches(scene)?;
@@ -3755,7 +3836,9 @@ impl Renderer {
         let motion_blur = post_fx.motion_blur;
         let god_rays = post_fx.god_rays;
         let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
+        let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
         let prepass = ao.is_some()
+            || depth_bands.is_some()
             || outline
             || dof.is_some()
             || motion_blur.is_some()
@@ -3798,14 +3881,14 @@ impl Renderer {
             && self
                 .glass_targets
                 .as_ref()
-                .is_none_or(|g| g.size != (self.width, self.height))
+                .is_none_or(|g| g.size != (self.out_width, self.out_height))
         {
             self.glass_targets = Some(self.glass.targets(
                 &self.device,
                 self.output_format,
                 self.offscreen_linear,
-                self.width,
-                self.height,
+                self.out_width,
+                self.out_height,
                 &self.sprite_layout,
             ));
         }
@@ -4351,8 +4434,8 @@ impl Renderer {
                 bytemuck::cast_slice(&of.instances),
             );
             let u = overlay::OverlayRenderer::uniform(
-                self.width,
-                self.height,
+                self.out_width,
+                self.out_height,
                 o,
                 !self.output_format.is_srgb() && !self.has_linear_view(target),
             );
@@ -4428,6 +4511,34 @@ impl Renderer {
                     light.shadow_softness.max(0.0)
                 },
                 (self.info.point_shadows == PointShadows::Paraboloid) as u32 as f32,
+                0.0,
+                0.0,
+            ],
+            stylise: match scene.stylise.retro {
+                Some(r) if r.vertex_snap > 0.0 || r.affine > 0.0 || r.depth_bits > 0 => [
+                    if r.vertex_snap > 0.0 {
+                        self.width as f32 / r.vertex_snap
+                    } else {
+                        0.0
+                    },
+                    if r.vertex_snap > 0.0 {
+                        self.height as f32 / r.vertex_snap
+                    } else {
+                        0.0
+                    },
+                    r.affine.clamp(0.0, 1.0),
+                    r.depth_bits.min(24) as f32,
+                ],
+                _ => [0.0; 4],
+            },
+            shadow_tint: {
+                let m = &scene.stylise.material;
+                let a = m.shadow_tint_amount.clamp(0.0, 1.0);
+                [m.shadow_tint[0], m.shadow_tint[1], m.shadow_tint[2], a]
+            },
+            outline_style: [
+                scene.stylise.material.outline_distance.max(0.0),
+                0.0,
                 0.0,
                 0.0,
             ],
@@ -4589,6 +4700,20 @@ impl Renderer {
                 .map_or(Vec3::ONE, |g| g.tint)
                 .extend(1.0)
                 .to_array(),
+            bands: depth_bands.map_or([0.0; 4], |b| {
+                [
+                    b.count.clamp(2, 8) as f32,
+                    b.near.max(0.0),
+                    b.far.max(b.near + 0.01),
+                    b.flatten.clamp(0.0, 1.0),
+                ]
+            }),
+            bands_near: depth_bands.map_or([0.0; 4], |b| {
+                [b.near_color[0], b.near_color[1], b.near_color[2], 1.0]
+            }),
+            bands_far: depth_bands.map_or([0.0; 4], |b| {
+                [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]
+            }),
         };
         self.queue
             .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));
@@ -4664,6 +4789,9 @@ impl Renderer {
             passes.push(FramePass::Reflection);
         }
         passes.push(FramePass::Main);
+        if depth_bands.is_some() {
+            passes.push(FramePass::DepthBands);
+        }
         if glow {
             passes.push(FramePass::Glow);
         }
@@ -4703,8 +4831,130 @@ impl Renderer {
             passes.extend((0..levels - 1).rev().map(FramePass::BloomUp));
         }
         passes.push(FramePass::Tonemap);
+        // The stylisation chain (post.rs `chain_passes`), then FXAA, then
+        // the pixel grid scaled up to the output.
+        let st = &scene.stylise;
+        if st.paint.is_some() {
+            passes.push(FramePass::Paint);
+        }
+        if st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some() {
+            passes.push(FramePass::Lines);
+        }
+        if st.quantize.is_some() {
+            passes.push(FramePass::Quantize);
+        }
         if self.info.antialias == Antialias::Fxaa {
             passes.push(FramePass::Fxaa);
+        }
+        if (self.width, self.height) != (self.out_width, self.out_height) {
+            passes.push(FramePass::Upscale);
+        }
+        self.post.ensure_chain(&self.device, &passes);
+        // The stylise passes' parameters, palette and canvas.
+        let palette_view = st
+            .quantize
+            .and_then(|q| q.palette)
+            .and_then(|p| self.cache.palettes.get(p.index()))
+            .unwrap_or(&self.default_white);
+        let canvas_view = st
+            .paint
+            .and_then(|p| p.canvas)
+            .and_then(|t| self.cache.textures.get(t.index()))
+            .map_or(&self.default_white, |g| &g.view);
+        let stylise_key = {
+            let p = st
+                .quantize
+                .and_then(|q| q.palette)
+                .map_or(u64::MAX, |p| p.index() as u64);
+            let c = st
+                .paint
+                .and_then(|p| p.canvas)
+                .map_or(u64::MAX, |t| t.index() as u64);
+            scene.id() ^ p.rotate_left(16) ^ c.rotate_left(40)
+        };
+        {
+            let (w, h) = (self.width as f32, self.height as f32);
+            let bg = match scene.environment.background {
+                Background::Color(c) => c,
+                _ => Vec3::ZERO,
+            };
+            let q = st.quantize;
+            let pattern = match q.map(|q| q.dither) {
+                Some(DitherPattern::Bayer2) => 2.0,
+                Some(DitherPattern::Bayer4) => 4.0,
+                Some(DitherPattern::Bayer8) => 8.0,
+                Some(DitherPattern::BlueNoise) => -1.0,
+                _ => 0.0,
+            };
+            let palette_count = q
+                .and_then(|q| q.palette)
+                .and_then(|p| scene.palettes().get(p.index()))
+                .map_or(0.0, |p| p.colors.len() as f32);
+            let ht = st.halftone;
+            let hc = st.hatching;
+            let pt = st.paint;
+            let ink = st.ink;
+            let u = post::StyliseUniform {
+                screen: [w, h, 1.0 / w, 1.0 / h],
+                output: [
+                    self.out_width as f32,
+                    self.out_height as f32,
+                    upscale as f32,
+                    0.0,
+                ],
+                offset: [
+                    grid_offset.0 as f32,
+                    grid_offset.1 as f32,
+                    pt.and_then(|p| p.canvas).is_some() as u32 as f32,
+                    palette_count,
+                ],
+                background: [bg.x, bg.y, bg.z, 1.0],
+                quantize: [
+                    q.map_or(0.0, |q| q.posterize.min(64) as f32),
+                    pattern,
+                    q.map_or(0.0, |q| q.dither_strength.clamp(0.0, 2.0)),
+                    q.map_or(1.0, |q| q.dither_scale.max(1) as f32),
+                ],
+                halftone: ht.map_or([0.0; 4], |h| {
+                    [
+                        h.strength.clamp(0.0, 1.0),
+                        h.size.max(2.0),
+                        h.angle_degrees.to_radians(),
+                        0.0,
+                    ]
+                }),
+                halftone_color: ht.map_or([0.0; 4], |h| [h.color[0], h.color[1], h.color[2], 1.0]),
+                hatching: hc.map_or([0.0; 4], |h| {
+                    [
+                        h.strength.clamp(0.0, 1.0),
+                        h.scale.max(2.0),
+                        h.levels.clamp(1, 6) as f32,
+                        h.angle_degrees.to_radians(),
+                    ]
+                }),
+                hatching_color: hc.map_or([0.0; 4], |h| [h.color[0], h.color[1], h.color[2], 1.0]),
+                paint: pt.map_or([0.0; 4], |p| {
+                    [
+                        p.radius.clamp(0.0, 8.0),
+                        p.anisotropy.clamp(0.0, 1.0),
+                        p.edge_darkening.clamp(0.0, 1.0),
+                        p.bleed.clamp(0.0, 1.0),
+                    ]
+                }),
+                canvas: pt.map_or([0.0; 4], |p| {
+                    [
+                        p.canvas_strength.clamp(0.0, 1.0),
+                        p.canvas_scale.max(0.125),
+                        0.0,
+                        0.0,
+                    ]
+                }),
+                ink: ink.map_or([0.0; 4], |i| {
+                    [1.0, i.threshold.clamp(0.0, 1.0), i.width.max(0.5), 0.0]
+                }),
+                ink_color: ink.map_or([0.0; 4], |i| [i.color[0], i.color[1], i.color[2], 1.0]),
+            };
+            self.post.write_stylise(&self.queue, &u);
         }
         let lightmap_scale = scene
             .lighting_2d
@@ -4772,6 +5022,7 @@ impl Renderer {
                 &self.post,
                 &self.persistent,
                 (lut_index.map(|i| (scene.id(), i)), lut_view),
+                (palette_view, canvas_view, stylise_key),
             )
             .map_err(|e| RenderError::Graph(e.to_string()))?;
 

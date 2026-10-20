@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "16bit-pixel" (templates/looks/16bit-pixel.ogt), shown by the looks station.
+extends "16bit-pixel"

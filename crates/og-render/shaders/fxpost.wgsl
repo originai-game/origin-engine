@@ -20,6 +20,9 @@ struct FxPost {
   god: vec4<f32>,             // xy: sun uv, z: decay, w: density
   god2: vec4<f32>,            // x: samples, y: 1 when the sun is in front, z: intensity, w: sky threshold
   god_tint: vec4<f32>,
+  bands: vec4<f32>,           // x: depth bands (0: none), y: near, z: far, w: flatten
+  bands_near: vec4<f32>,      // the nearest band's colour (linear)
+  bands_far: vec4<f32>,       // the farthest band's colour (linear)
 };
 @group(0) @binding(0) var<uniform> fxp: FxPost;
 @group(0) @binding(1) var fx_linear: sampler;
@@ -218,6 +221,25 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   }
   let k = clamp(edges, 0.0, 1.0) * color.a;
   return vec4<f32>(mix(c.rgb, color.rgb, k), c.a);
+}
+
+// Flat colour bands by depth (stylise.rs DepthBands): the scene between
+// near and far cut into `bands` layers, each tinted towards one colour
+// between the near and far colours; the sky stays. `flatten` 1 replaces
+// the shading with the band's colour (layered silhouettes), 0 tints.
+@fragment
+fn fs_depth_bands(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let c = textureLoad(tex_a, px, 0);
+  let d = depth_at(px);
+  if (is_sky(d) || fxp.bands.x < 2.0) { return c; }
+  let n = fxp.bands.x;
+  let t = clamp((d - fxp.bands.y) / max(fxp.bands.z - fxp.bands.y, 1e-3), 0.0, 1.0);
+  let band = min(floor(t * n), n - 1.0) / (n - 1.0);
+  let color = mix(fxp.bands_near.rgb, fxp.bands_far.rgb, band);
+  // A tint keeps the surface's brightness; flat replaces it.
+  let tinted = color * (0.5 + dot(c.rgb, LUMA));
+  return vec4<f32>(mix(tinted, color, fxp.bands.w), c.a);
 }
 
 // The signed circle of confusion in half-resolution pixels (near < 0).

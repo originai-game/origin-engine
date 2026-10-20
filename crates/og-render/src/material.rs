@@ -660,6 +660,38 @@ pub(crate) struct MaterialUniform {
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
 }
 
+/// `m` with the scene's [`crate::MaterialStyle`] filled into every stylised
+/// field the material leaves at its own default: toon and the ramp, the
+/// rim light, the outline, flat facets. An unlit material keeps its look.
+pub(crate) fn styled(m: &StandardMaterial, style: &crate::MaterialStyle) -> StandardMaterial {
+    let mut s = *m;
+    if m.unlit != 0 || !style.is_active() {
+        return s;
+    }
+    if style.toon && s.toon == 0 {
+        s.toon = 1;
+    }
+    if s.toon != 0
+        && s.gradientMap == 0
+        && let Some(t) = style.gradient_map
+    {
+        s.gradientMap = t.slot();
+    }
+    if style.rim_intensity > 0.0 && s.rimIntensity <= 0.0 {
+        s.rimIntensity = style.rim_intensity;
+        s.rimColor = Vec3::from(style.rim_color);
+        s.rimPower = style.rim_power.max(0.1);
+    }
+    if style.outline_width > 0.0 && s.outlineWidth <= 0.0 {
+        s.outlineWidth = style.outline_width.clamp(0.0, 31.0);
+        s.outlineColor = Vec3::from(style.outline_color);
+    }
+    if style.flat_shading && s.flatShading == 0 {
+        s.flatShading = 1;
+    }
+    s
+}
+
 /// The uniform for `m`; `two_channel_normal` when its normal map is BC5/EAC.
 pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> MaterialUniform {
     let has_normal = m.normalMap != 0;

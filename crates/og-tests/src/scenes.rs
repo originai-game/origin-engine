@@ -73,6 +73,14 @@ pub const SCENES: &[&str] = &[
     "shadows-local-8",
     "fxaa",
     "taa-sharp",
+    "stylise-pixel",
+    "stylise-palette",
+    "stylise-print",
+    "stylise-halftone",
+    "stylise-paint",
+    "stylise-bands",
+    "stylise-retro",
+    "stylise-material",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -409,6 +417,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // iridescence, anisotropy) and transmission in front of textured
         // geometry.
         "materials-physical" => g.scene = crate::physical_scenes::physical_scene(),
+        // The stylisation primitives (stylise_scenes.rs), each over a scene
+        // the references know.
+        "stylise-pixel" => g.scene = crate::stylise_scenes::pixel_scene()?,
+        "stylise-palette" => g.scene = crate::stylise_scenes::palette_scene()?,
+        "stylise-print" => g.scene = crate::stylise_scenes::print_scene(),
+        "stylise-halftone" => g.scene = crate::stylise_scenes::halftone_scene()?,
+        "stylise-paint" => g.scene = crate::stylise_scenes::paint_scene(),
+        "stylise-bands" => g.scene = crate::stylise_scenes::bands_scene()?,
+        "stylise-retro" => g.scene = crate::stylise_scenes::retro_scene(),
+        "stylise-material" => g.scene = crate::stylise_scenes::material_scene(),
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),

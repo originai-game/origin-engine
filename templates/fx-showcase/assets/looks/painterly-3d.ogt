@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "painterly-3d" (templates/looks/painterly-3d.ogt), shown by the looks station.
+extends "painterly-3d"

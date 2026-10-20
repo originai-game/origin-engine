@@ -1,0 +1,17 @@
+type look
+version 1
+---
+# Pixels that glow: bloom over an eight-tone grid.
+name "Luminous high-contrast pixel art"
+antialias off
+Stylise {
+  pixelHeight 216
+  pixelSnap true
+  posterize 8
+  dither bayer4
+}
+RenderSettings {
+  bloom true
+  bloomThreshold 0.7
+  bloomIntensity 0.9
+}

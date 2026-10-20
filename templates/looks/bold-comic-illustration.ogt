@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# Cel shading with thick outlines, ink on every edge and six flat tones.
+name "Bold comic illustration"
+MaterialStyle {
+  toon true
+  outlineWidth 3
+  outlineColor "#0a0810"
+}
+Stylise {
+  ink true
+  inkThreshold 0.12
+  inkWidth 1.5
+  posterize 6
+}

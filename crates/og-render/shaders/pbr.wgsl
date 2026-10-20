@@ -84,7 +84,35 @@ struct VertexOut {
   @location(4) local_pos: vec3<f32>,
   // The world tangent and the bitangent's sign (w 0: none).
   @location(5) tangent: vec4<f32>,
+  // Affine texturing (frame.stylise.z): uv times the clip w, and that w,
+  // so the fragment can undo the perspective-correct interpolation.
+  @location(6) affine: vec3<f32>,
 };
+
+// The uv a fragment samples with: the interpolated one, or (retro 3D) the
+// affine one, interpolated without perspective as early hardware did.
+fn stylised_uv(uv: vec2<f32>, affine: vec3<f32>) -> vec2<f32> {
+  if (frame.stylise.z <= 0.0 || affine.z <= 0.0) { return uv; }
+  return mix(uv, affine.xy / affine.z, frame.stylise.z);
+}
+
+// Retro 3D (frame.stylise): the clip position snapped to a screen grid of
+// stylise.xy cells and its depth quantised to stylise.w bits, as fixed-point
+// hardware did; the identity when both are 0.
+fn retro_clip(clip: vec4<f32>) -> vec4<f32> {
+  var c = clip;
+  if (c.w <= 0.0) { return c; }
+  if (frame.stylise.x > 0.0) {
+    let half = frame.stylise.xy * 0.5;
+    let ndc = c.xy / c.w;
+    c = vec4<f32>(round(ndc * half) / half * c.w, c.zw);
+  }
+  if (frame.stylise.w > 0.0) {
+    let steps = exp2(frame.stylise.w);
+    c.z = floor(c.z / c.w * steps) / steps * c.w;
+  }
+  return c;
+}
 
 struct PrepassOut {
   @builtin(position) clip: vec4<f32>,
@@ -122,7 +150,8 @@ fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   h.time = frame.time.x;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   var o: VertexOut;
-  o.clip = frame.view_proj * world;
+  o.clip = retro_clip(frame.view_proj * world);
+  o.affine = vec3<f32>(v.uv * o.clip.w, o.clip.w);
   o.world_pos = world.xyz;
   o.normal = n;
   o.uv = v.uv;

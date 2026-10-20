@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# Visible facets, broad colour fields, a soft vignette and AgX.
+name "Faceted low-poly"
+MaterialStyle {
+  flatShading true
+}
+RenderSettings {
+  toneMapping agx
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.3
+}

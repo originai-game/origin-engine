@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# Hard shadow bands, cool-tinted shadows, outlines that thin with distance.
+name "Anime cel-shaded 3D"
+MaterialStyle {
+  toon true
+  shadowTint "#2a3060"
+  shadowTintAmount 0.7
+  outlineWidth 2.5
+  outlineDistance 10
+  outlineColor "#141028"
+}
+RenderSettings {
+  toneMapping agx
+}

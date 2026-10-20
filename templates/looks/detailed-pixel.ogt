@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# A tall grid with twelve-tone ramps and a fine dither.
+name "Densely detailed pixel art"
+antialias off
+Stylise {
+  pixelHeight 270
+  pixelSnap true
+  posterize 12
+  dither bayer8
+  ditherStrength 0.6
+}
+RenderSettings {
+  toneMapping none
+}

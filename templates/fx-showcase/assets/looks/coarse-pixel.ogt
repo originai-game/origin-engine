@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "coarse-pixel" (templates/looks/coarse-pixel.ogt), shown by the looks station.
+extends "coarse-pixel"

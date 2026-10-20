@@ -1,0 +1,13 @@
+type look
+version 1
+---
+# Graphite cross-hatching in four tones with ink on the edges.
+name "Pencil and hatched drawing"
+Stylise {
+  hatching 0.9
+  hatchingScale 6
+  hatchingLevels 4
+  ink true
+  inkThreshold 0.12
+  inkWidth 1.5
+}

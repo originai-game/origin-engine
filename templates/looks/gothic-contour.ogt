@@ -1,0 +1,19 @@
+type look
+version 1
+---
+# Thick ink contours, five tones, tinted shadows and a dark vignette.
+name "Gothic ornamental linework"
+Stylise {
+  ink true
+  inkThreshold 0.08
+  inkWidth 2
+  posterize 5
+}
+MaterialStyle {
+  shadowTint "#1a1030"
+  shadowTintAmount 0.6
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.6
+}

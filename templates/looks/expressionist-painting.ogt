@@ -1,0 +1,14 @@
+type look
+version 1
+---
+# Wide anisotropic strokes, heavy pigment pooling and bleed, a lifted exposure.
+name "Expressionist painting"
+Stylise {
+  paintRadius 5
+  paintAnisotropy 0.9
+  paintEdgeDarkening 0.7
+  paintBleed 0.5
+}
+RenderSettings {
+  exposure 1.1
+}

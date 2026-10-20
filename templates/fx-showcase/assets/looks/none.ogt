@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# No stylisation: applying it resets Stylise, MaterialStyle, the post
+# stack and the fog, so the other stations (and the looks station's own
+# plain frame) start clean. RenderSettings is not named: it holds the
+# decal atlas; resetLooks puts back the fields a preset may set.
+name "None"
+Stylise {
+}
+MaterialStyle {
+}
+PostEffects {
+}
+Fog {
+}

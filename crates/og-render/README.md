@@ -1014,6 +1014,72 @@ renderers adapt identically over 330 ticks after a 4 EV drop, the frame
 restore to tick 31 redraws tick 120 byte for byte, and zero speeds equal
 `Exposure::auto()` bit for bit.
 
+## Phase 4: stylisation
+
+The primitives a look composes into a non-photographic frame
+(`src/stylise.rs`; the IDL's `Stylise` and `MaterialStyle` resources, set
+by a `type look` asset through `og.render.applyLook`), each off at its
+zero value and then costing nothing: no pass is recorded, no pipeline
+built. `RenderCapabilities.stylise` names what this renderer draws
+(`STYLISE_DRAWN`). All of it draws on both tiers (render passes only).
+
+- **The pixel grid** (`PixelScale`): the scene is drawn at a logical size
+  (`height` rows, the width from the output's aspect, both at most the
+  output's) into every target the frame has, and the last post pass
+  (`upscale`, stylise.wgsl) scales it up by a whole number with
+  `textureLoad` (nearest), centred in the output with the camera's
+  background colour round it. `Renderer::size` is the output's;
+  `width`/`height` inside the renderer are the scene's. The TAA history
+  follows the scene size, the offscreen target and the overlay stay at the
+  output's. With `snap`, og-runtime moves the 2D camera and every world
+  sprite by whole logical pixels.
+- **The chain after the tonemap** (`chain_passes` in post.rs): the tonemap
+  writes `ldr.0` (sRGB8) when any pass follows, and each of `paint`,
+  `lines`, `quantize`, `fxaa` and `upscale` reads one LDR target and writes
+  the next, the last into the output (sRGB-encoded in the shader where the
+  output is not an sRGB format). Pipelines are made on first use
+  (`PostPasses::ensure_chain`).
+  - `paint`: a Kuwahara filter of four sectors (turned and stretched along
+    the image's edges by `anisotropy`), pigment pooling at the edges, a
+    bleed from a ring two radii out, and a tileable canvas texture laid
+    over the frame through a repeating sampler.
+  - `lines`: cross-hatching from the tone (one stroke set per level, each
+    turned further, over a paper-light ground), halftone dots on a
+    rotated grid sized by the tone, and ink on luminance edges (a Sobel
+    gradient, widened by the max over the line's width).
+  - `quantize`: posterisation in display space with an ordered Bayer 2/4/8
+    dither (bit-interleaved in the shader) or interleaved-gradient noise,
+    then the nearest colour of a 256-entry palette (`RenderScene::add_palette`,
+    a 256 × 1 sRGB texture) by Oklab distance.
+- **Depth bands** (`DepthBands`): an HDR pass after the main pass
+  (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
+  `near` to `far` into `count` flat layers between two colours; `flatten`
+  1 replaces the shading, 0 tints it. The outline pass reads the banded
+  image.
+- **Retro 3D** (`Retro3d`, pbr.wgsl `retro_clip` and `stylised_uv`): the
+  clip position snapped to a screen grid of `vertex_snap` logical pixels,
+  depth quantised to `depth_bits`, and affine texturing by interpolating
+  uv × w and dividing by the interpolated w in the fragment (no
+  `noperspective` qualifier, so WebGL2 has it too). The physical shader
+  shares the vertex path; the prepass alpha cut stays perspective-correct.
+- **The material style** (`MaterialStyle`, material.rs `styled`): every lit
+  material that leaves a stylised field at its default takes the scene's
+  (toon and its ramp, the rim, the outline, flat facets), re-uploaded
+  whenever the style changes; `shadow_tint` moves shadowed sunlight
+  towards a colour (pbr_fs.wgsl and physical.wgsl, an additive term on the
+  diffuse), and `outline_distance` scales each material outline's width by
+  that distance over the view depth in the prepass (never for an
+  orthographic camera).
+
+Scenes: `stylise-pixel`, `stylise-palette`, `stylise-print`,
+`stylise-halftone`, `stylise-paint`, `stylise-bands`, `stylise-retro`,
+`stylise-material` (og-tests, `metal` and `vulkan-cpu` references), and
+fx-showcase's `looks` station, one frame per preset of
+`templates/looks/`. Not yet: the paint pass's canvas and the palettes ship
+as a game's own assets (no engine canvas texture); a blue-noise texture
+(interleaved-gradient noise stands in); the ink and hatching passes work
+on luminance only (no depth edges: `PostEffects.outline` is the depth one).
+
 ## What phase 2 owes
 
 Delivered in P4: clearcoat maps, sheen, transmission (with volume and

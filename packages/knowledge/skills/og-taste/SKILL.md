@@ -26,14 +26,14 @@ preset that sets the frame's treatment, the palette and asset specs, and
 the skin pack that matches it. Then pick **one** starting skin. The six packs in the engine's
 `templates/ui-kit/assets/skins/` are starting points, not the only looks:
 
-| Pack | Premises it fits | Signature |
-|---|---|---|
-| `pixel` | platformers, roguelikes, retro shooters, jam games | square frames, 2 px bevels, hard shadows, a bitmap face |
-| `cartoon` | casual, match-3, party, kids, idle | thick outlines, cream panels, squash on press, pops |
-| `fantasy` | RPGs, card battlers, quest and dungeon games | parchment, gold corners and flourishes, a serif display |
-| `scifi` | space, tactics, hacking, mech | hairlines, cut corners, brackets, scanlines, mono numerals |
-| `paper` | narrative, puzzle, cosy, mystery, word games | off-white sheets, ink outlines, soft shadows, one red |
-| `neon` | arcade, rhythm, racing, synthwave | dark glass, glowing tubes, italic display |
+| Pack | Premises it fits | Signature | Start look (§12) |
+|---|---|---|---|
+| `pixel` | platformers, roguelikes, retro shooters, jam games | square frames, 2 px bevels, hard shadows, a bitmap face | `16bit-pixel` |
+| `cartoon` | casual, match-3, party, kids, idle | thick outlines, cream panels, squash on press, pops | `bold-comic-illustration` |
+| `fantasy` | RPGs, card battlers, quest and dungeon games | parchment, gold corners and flourishes, a serif display | `illuminated-manuscript` |
+| `scifi` | space, tactics, hacking, mech | hairlines, cut corners, brackets, scanlines, mono numerals | `cinematic-realism` |
+| `paper` | narrative, puzzle, cosy, mystery, word games | off-white sheets, ink outlines, soft shadows, one red | `pencil-hatching` |
+| `neon` | arcade, rhythm, racing, synthwave | dark glass, glowing tubes, italic display | `neon-vector` |
 
 ```ts
 const skin = og.load.skin(world, "skins/fantasy/skin.ogt");

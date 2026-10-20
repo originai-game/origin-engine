@@ -1,0 +1,19 @@
+type look
+version 1
+---
+# AgX, a little bloom, grain, aberration, a vignette and eye-like exposure adaptation.
+name "Cinematic realism"
+RenderSettings {
+  toneMapping agx
+  bloom true
+  bloomIntensity 0.3
+  autoExposure true
+  adaptSpeedUp 1
+  adaptSpeedDown 3
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.3
+  chromaticAberration 0.5
+  filmGrain 0.03
+}

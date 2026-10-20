@@ -21,6 +21,7 @@ struct PhysicalOut {
   @location(5) tangent: vec4<f32>,
   // The model's scale along its axes (the thickness is in object space).
   @location(6) scale: vec3<f32>,
+  @location(7) affine: vec3<f32>,
 };
 
 fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
@@ -33,6 +34,7 @@ fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
   p.color = o.color;
   p.local_pos = o.local_pos;
   p.tangent = o.tangent;
+  p.affine = o.affine;
   p.scale = vec3<f32>(length(model[0].xyz), length(model[1].xyz), length(model[2].xyz));
   return p;
 }
@@ -277,29 +279,30 @@ fn scene_behind(uv: vec2<f32>, lod: f32) -> vec3<f32> {
 
 @fragment
 fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
-  let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
+  let uv = stylised_uv(in.uv, in.affine);
+  let base_sample = textureSample(base_color_tex, material_sampler, uv);
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
   hook.normal = in.normal;
-  hook.uv = in.uv;
+  hook.uv = uv;
   hook.color = in.color;
   hook.time = frame.time.x;
   let params = shader_params();
   let base = surface_color(hook, params, material.base_color * base_sample * in.color);
   var dissolve = vec4<f32>(0.0);
-  if (EFFECTS) { dissolve = dissolve_at(in.uv, in.local_pos); }
+  if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5) {
     discard;
   }
   let mode = u32(material.flags.w);
   let alpha = select(1.0, base.a, (mode & 4u) != 0u);
   // The packed maps (physical.rs): white where a material has none.
-  let maps = pack_sample(physical.layers.x, in.uv);      // metalness, roughness, ao, dissolve
-  let coat_maps = pack_sample(physical.layers.y, in.uv); // clearcoat, its roughness, transmission, thickness
-  let sheen_maps = pack_sample(physical.layers.z, in.uv); // sheen colour (sRGB), its roughness
-  let film_maps = pack_sample(physical.layers.w, in.uv);  // the coat's normal, iridescence
-  let aniso_maps = pack_sample(physical.layers2.x, in.uv); // anisotropy, the film's thickness
+  let maps = pack_sample(physical.layers.x, uv);      // metalness, roughness, ao, dissolve
+  let coat_maps = pack_sample(physical.layers.y, uv); // clearcoat, its roughness, transmission, thickness
+  let sheen_maps = pack_sample(physical.layers.z, uv); // sheen colour (sRGB), its roughness
+  let film_maps = pack_sample(physical.layers.w, uv);  // the coat's normal, iridescence
+  let aniso_maps = pack_sample(physical.layers2.x, uv); // anisotropy, the film's thickness
   let dpx = dpdx(in.world_pos);
   let dpy = dpdy(in.world_pos);
   var s: Surface;
@@ -332,7 +335,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   t = select(normalize(cross(select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n_vertex.y) > 0.9), n_vertex)), normalize(t), framed);
   let bt = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
   let tbn = mat3x3<f32>(t, bt, n_vertex);
-  let normal_sample = textureSample(normal_tex, material_sampler, in.uv);
+  let normal_sample = textureSample(normal_tex, material_sampler, uv);
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
@@ -394,6 +397,9 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
   var specular = sun.specular * frame.light_color.rgb * shadow;
   diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
+  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
+    diffuse += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
+  }
 
   if (frame.params.z > 0.5) {
     let word = cluster_word(cluster_at(in.clip.xy, in.world_pos));
@@ -478,7 +484,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   }
   var color = diffuse + specular;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {

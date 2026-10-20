@@ -1,0 +1,14 @@
+type look
+version 1
+---
+# Light brush strokes over a bright, blooming scene.
+name "Lush painted worlds"
+Stylise {
+  paintRadius 2
+  paintAnisotropy 0.5
+}
+RenderSettings {
+  bloom true
+  bloomIntensity 0.4
+  exposure 1.05
+}

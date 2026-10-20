@@ -341,6 +341,38 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     }
 }
 
+/// Pixel snap (`Stylise.pixelSnap`): on a logical pixel grid with the 2D
+/// camera (orthographic, looking down -z), the camera and every world
+/// sprite move by whole logical pixels, so a scrolling scene never swims
+/// between pixel rows and sprites keep their edges.
+pub(crate) fn snap_to_grid(rs: &mut RenderState) {
+    let scene = &mut rs.scene;
+    let Some(p) = scene.stylise.pixel.filter(|p| p.snap && p.height > 0) else {
+        return;
+    };
+    let og_render::Projection::Orthographic { height } = scene.camera.projection else {
+        return;
+    };
+    let forward = (scene.camera.target - scene.camera.position).normalize_or_zero();
+    if forward.z > -0.999 {
+        return;
+    }
+    let unit = height / p.height as f32;
+    if unit <= 0.0 {
+        return;
+    }
+    let snap = |v: f32| (v / unit).round() * unit;
+    let c = &mut scene.camera;
+    let d = c.target - c.position;
+    c.position.x = snap(c.position.x);
+    c.position.y = snap(c.position.y);
+    c.target = c.position + d;
+    for s in &mut scene.sprites {
+        s.position.x = snap(s.position.x);
+        s.position.y = snap(s.position.y);
+    }
+}
+
 /// `Stylise` and `MaterialStyle` as og-render's description (every
 /// primitive `None` or zero unless its field turns it on).
 fn stylise(

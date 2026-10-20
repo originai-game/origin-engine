@@ -1,0 +1,5 @@
+type look
+version 1
+---
+# The engine preset "bold-comic-illustration" (templates/looks/bold-comic-illustration.ogt), shown by the looks station.
+extends "bold-comic-illustration"

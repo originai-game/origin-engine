@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# Two depth bands: black figures on terracotta, with ink contours.
+name "Black-figure pottery"
+Stylise {
+  depthBands 2
+  depthBandsNear 2
+  depthBandsFar 25
+  depthBandsNearColor "#100c08"
+  depthBandsFarColor "#b0552a"
+  depthBandsFlatten 1
+  ink true
+  inkThreshold 0.2
+  inkWidth 1
+}

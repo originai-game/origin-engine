@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# Cel bands with near-black shadows, thick ink and three tones.
+name "Heavy ink and shadow"
+MaterialStyle {
+  toon true
+  shadowTint "#000000"
+  shadowTintAmount 0
+}
+Stylise {
+  ink true
+  inkThreshold 0.1
+  inkWidth 2
+  posterize 3
+}
