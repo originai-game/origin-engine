@@ -1,0 +1,10 @@
+type texture-array
+version 1
+---
+# The slimes' expression bubbles (tools/make-assets.ts, 32 x 32 pixel art):
+# layer 0 calm, 1 alert, 2 lost, 3 sleepy (Face in src/components.ts).
+kind pixel
+layer "faces/calm.png"
+layer "faces/alert.png"
+layer "faces/lost.png"
+layer "faces/sleepy.png"

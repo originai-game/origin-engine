@@ -1,0 +1,18 @@
+type project
+version 1
+---
+name "Lantern Vale"
+id "lantern-vale"
+engine "0.0.1"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 7
+scenes {
+  main "scenes/main.ogt"
+}
+scene main
+publish {
+  probe player
+  out "dist"
+}

@@ -1,0 +1,40 @@
+type terrain
+version 1
+---
+# Lantern Vale (tools/make-assets.ts makes the maps): 96 m square, a meadow
+# floor rolling round y 0, the paths between the lanterns beaten flat, a
+# ring of ridges past 34 m from the centre and the far side (north, -z) a
+# step higher and mossy.
+heightmap "vale.png"
+height -2 14
+size 96 96
+control "vale-control.png"
+heightBlend 0.15
+# Meadow grass (control R).
+layer {
+  albedo "textures/grass.png"
+  tile 6
+  slope 0 32
+  slopeFade 6
+}
+# The paths between the lanterns (control G).
+layer {
+  albedo "textures/path.png"
+  tile 4
+  slope 0 40
+}
+# Rock on the ridges' slopes, projected three ways (control B).
+layer {
+  albedo "textures/rock.png"
+  tile 8
+  triplanar true
+  slope 28 90
+  slopeFade 6
+}
+# Moss on the far side (control A).
+layer {
+  albedo "textures/moss.png"
+  tile 5
+  slope 0 32
+  slopeFade 6
+}

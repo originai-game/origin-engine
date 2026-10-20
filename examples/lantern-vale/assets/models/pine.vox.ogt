@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# A far-side pine (the far-side streaming group): 1.65 m across, 4.5 m tall (tools/make-assets.ts).
+model {
+  voxScale 0.15
+  voxOrigin bottom
+}

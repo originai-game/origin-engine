@@ -1,0 +1,56 @@
+type look
+version 1
+---
+# Lantern Vale at dusk: the anime cel preset's light (AgX, a cool shadow
+# side) over a violet dusk. Its toon is off here and given to the voxel
+# models one by one (src/world.ts styleModels), so the lanterns' lacquer
+# and the slimes' jelly keep their physical shading; its hull outlines are
+# off too (on a .vox model's unwelded faces they cover the surface), and
+# ink draws the silhouettes instead. The lanterns bloom; the camera's eye
+# adapts as the sun sets (auto exposure, 1 EV/s up and 3 down); the cooked
+# dusk sky lights every material; a lavender fog softens the ridges.
+name "Lantern Vale at dusk"
+extends "anime-cel-3d"
+skin "skins/lantern/skin.ogt"
+antialias taa
+MaterialStyle {
+  toon false
+  outlineWidth 0
+  shadowTint "#3b2d6e"
+  shadowTintAmount 0.65
+  rimColor "#ffc58a"
+  rimIntensity 0.3
+}
+Stylise {
+  ink true
+  inkThreshold 0.5
+  inkDepth 0.6
+  inkNormalThreshold 2
+  inkWidth 1
+  inkColor "#1a1230"
+}
+RenderSettings {
+  toneMapping agx
+  exposure 1.1
+  autoExposure true
+  adaptSpeedUp 1
+  adaptSpeedDown 3
+  bloom true
+  bloomIntensity 0.55
+  bloomThreshold 1.1
+}
+Environment {
+  map "env/dusk.ogt"
+  intensity 0.9
+  rotation 90
+}
+Fog {
+  enabled true
+  color "#6a5a86"
+  density 0.006
+  start 30
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.3
+}

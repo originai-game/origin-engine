@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a two-step UI confirm: og.load.sound(world, "<this file>") plays it.
+preset "select"
+seed 0
+pitch 1
+length 1
+volume 1

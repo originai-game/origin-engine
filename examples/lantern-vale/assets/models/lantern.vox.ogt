@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# A valley lantern: 0.7 m square, 2.6 m tall, standing on y 0 (tools/make-assets.ts).
+model {
+  voxScale 0.1
+  voxOrigin bottom
+}
