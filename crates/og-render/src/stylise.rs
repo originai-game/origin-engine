@@ -12,9 +12,9 @@
 
 /// The primitive groups this renderer draws, by the names
 /// `RenderCapabilities.stylise` reports: `pixel`, `posterize`, `palette`,
-/// `dither`, `halftone`, `hatching`, `paint`, `ink`, `depthBands` and
-/// `retro3d` ([`Stylise`]); `toon`, `shadowTint`, `rim`, `outline`,
-/// `outlineDistance` and `flatShading` ([`MaterialStyle`]).
+/// `dither`, `halftone`, `hatching`, `paint`, `ink`, `inkDepth`,
+/// `depthBands` and `retro3d` ([`Stylise`]); `toon`, `shadowTint`, `rim`,
+/// `outline`, `outlineDistance` and `flatShading` ([`MaterialStyle`]).
 pub const STYLISE_DRAWN: &[&str] = &[
     "pixel",
     "posterize",
@@ -24,6 +24,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "hatching",
     "paint",
     "ink",
+    "inkDepth",
     "depthBands",
     "retro3d",
     "toon",
@@ -65,7 +66,11 @@ pub enum DitherPattern {
     Bayer2,
     Bayer4,
     Bayer8,
+    /// A 64 × 64 void-and-cluster tile (`blue_noise.rs`), repeated.
     BlueNoise,
+    /// Interleaved gradient noise (Jimenez), computed per pixel: no
+    /// texture, a diagonal structure up close.
+    InterleavedGradient,
 }
 
 /// Fewer tones and a fixed palette, mixed by a dither.
@@ -120,13 +125,19 @@ pub struct Paint {
     pub canvas_scale: f32,
 }
 
-/// Ink lines on luminance edges.
+/// Ink lines on luminance edges, and with `depth` on the prepass's depth
+/// and normal edges too.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Ink {
     pub threshold: f32,
     /// Line width in logical pixels.
     pub width: f32,
     pub color: [f32; 3],
+    /// How strongly lines are drawn where the depth-normal prepass breaks
+    /// (silhouettes against what is behind, creases), 0 to 1: lines on
+    /// flat colour that luminance alone misses. 0 is luminance only; above
+    /// 0 the frame runs the prepass.
+    pub depth: f32,
 }
 
 /// Flat colour bands by depth.

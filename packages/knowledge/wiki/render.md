@@ -134,7 +134,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2787</sub>
+<sub>`api.ogt` line 2794</sub>
 
 <a id="fn-sprite"></a>
 
@@ -164,7 +164,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2905</sub>
+<sub>`api.ogt` line 2916</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -194,7 +194,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3071</sub>
+<sub>`api.ogt` line 3087</sub>
 
 <a id="fn-measureText"></a>
 
@@ -224,7 +224,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3078</sub>
+<sub>`api.ogt` line 3094</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -254,7 +254,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3138</sub>
+<sub>`api.ogt` line 3154</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -284,7 +284,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3145</sub>
+<sub>`api.ogt` line 3161</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -314,7 +314,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3152</sub>
+<sub>`api.ogt` line 3168</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -344,7 +344,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3175</sub>
+<sub>`api.ogt` line 3191</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -376,7 +376,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3182</sub>
+<sub>`api.ogt` line 3198</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -408,7 +408,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3192</sub>
+<sub>`api.ogt` line 3208</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -440,7 +440,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3200</sub>
+<sub>`api.ogt` line 3216</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -474,7 +474,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3208</sub>
+<sub>`api.ogt` line 3224</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -504,7 +504,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3217</sub>
+<sub>`api.ogt` line 3233</sub>
 
 <a id="fn-look"></a>
 
@@ -532,7 +532,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3224</sub>
+<sub>`api.ogt` line 3240</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -560,7 +560,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3230</sub>
+<sub>`api.ogt` line 3246</sub>
 
 <a id="fn-text"></a>
 
@@ -590,7 +590,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3236</sub>
+<sub>`api.ogt` line 3252</sub>
 
 ## Components, resources and events
 
@@ -1176,10 +1176,11 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `paintCanvas` | `Texture` | `0` | — | — | — | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
 | `paintCanvasStrength` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the canvas texture modulates the frame: 0 none, 1 its full grain. |
 | `paintCanvasScale` | `number` | `1` | 0.125 … 8 | — | — | Canvas texels per logical pixel. |
-| `ink` | `boolean` | `false` | — | — | — | Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. |
+| `ink` | `boolean` | `false` | — | — | — | Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases. |
 | `inkThreshold` | `number` | `0.1` | 0 … 1 | — | tunable | The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines. |
 | `inkWidth` | `number` | `1` | 0.5 … 8 | — | tunable | The line width in logical pixels. |
 | `inkColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line colour (linear). |
+| `inkDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses. |
 | `depthBands` | `number` | `0` | 0 … 8 | — | — | Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off. |
 | `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts. |
 | `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; beyond it everything is the far colour. |
@@ -1297,7 +1298,7 @@ resource Stylise {
     min 0.125
     max 8
   }
-  field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass."
+  field ink bool "Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases."
   field inkThreshold f32 "The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines." {
     default 0.1
     min 0
@@ -1312,6 +1313,12 @@ resource Stylise {
   }
   field inkColor Color "The line colour (linear)." {
     default 0.02 0.02 0.03
+  }
+  field inkDepth f32 "With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
   }
   field depthBands u32 "Flat colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many layers, each tinted towards one colour between depthBandsNearColor and depthBandsFarColor, for layered-silhouette and stage looks; 0 is off." {
     min 0
@@ -1356,7 +1363,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2346</sub>
+<sub>`api.ogt` line 2347</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -1421,7 +1428,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2510</sub>
+<sub>`api.ogt` line 2517</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1460,7 +1467,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2560</sub>
+<sub>`api.ogt` line 2567</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1511,7 +1518,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2579</sub>
+<sub>`api.ogt` line 2586</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1542,7 +1549,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2609</sub>
+<sub>`api.ogt` line 2616</sub>
 
 <a id="record-Decal"></a>
 
@@ -1597,7 +1604,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2623</sub>
+<sub>`api.ogt` line 2630</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1628,7 +1635,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2655</sub>
+<sub>`api.ogt` line 2662</sub>
 
 <a id="record-Trail"></a>
 
@@ -1704,7 +1711,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2666</sub>
+<sub>`api.ogt` line 2673</sub>
 
 <a id="record-Beam"></a>
 
@@ -1770,7 +1777,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2714</sub>
+<sub>`api.ogt` line 2721</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1809,6 +1816,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `shadow` | `number` | `0` | 0 … 1 | — | tunable | A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer. |
 | `shadowSize` | `Vector2` | `{ x: 0, y: 0 }` | ≥ 0 | `m` | — | The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width. |
 | `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
@@ -1881,13 +1889,18 @@ component Sprite {
   field shadowOffset Vector2 "The blob's centre relative to the anchor." {
     unit m
   }
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened onto the ground plane y = 0 along the sun, drawn before every sprite of its layer (SpriteDesc.dropShadow): pixel sprites standing in a 3D set." {
+    min 0
+    max 1
+    tunable true
+  }
   field visible bool "Whether it is drawn." {
     default true
   }
 }
 ```
 
-<sub>`api.ogt` line 2912</sub>
+<sub>`api.ogt` line 2923</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1935,7 +1948,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2986</sub>
+<sub>`api.ogt` line 3002</sub>
 
 ## Types
 
@@ -2611,7 +2624,8 @@ A string: one of the variants below. The zero value is `"none"`.
 | `"bayer2"` | Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds. |
 | `"bayer4"` | Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art. |
 | `"bayer8"` | Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours. |
-| `"blueNoise"` | Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl. |
+| `"blueNoise"` | Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl. |
+| `"interleavedGradient"` | Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close. |
 
 ```ogt
 enum DitherPattern {
@@ -2620,7 +2634,8 @@ enum DitherPattern {
   variant bayer2 "Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds."
   variant bayer4 "Ordered dither by a 4 by 4 Bayer matrix: the cross-hatched ramps of 8- and 16-bit art."
   variant bayer8 "Ordered dither by an 8 by 8 Bayer matrix: finer ramps with 64 levels between two colours."
-  variant blueNoise "Blue noise: an even grain without a visible grid, fixed per pixel so a still frame does not crawl."
+  variant blueNoise "Blue noise: an even grain without a visible grid (a 64 by 64 void-and-cluster tile the engine ships, repeated), fixed per pixel so a still frame does not crawl."
+  variant interleavedGradient "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
 }
 ```
 
@@ -2655,7 +2670,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2549</sub>
+<sub>`api.ogt` line 2556</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2695,7 +2710,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2754</sub>
+<sub>`api.ogt` line 2761</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2726,7 +2741,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2775</sub>
+<sub>`api.ogt` line 2782</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2788,7 +2803,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2794</sub>
+<sub>`api.ogt` line 2801</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2817,7 +2832,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2828</sub>
+<sub>`api.ogt` line 2835</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2840,7 +2855,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2839</sub>
+<sub>`api.ogt` line 2846</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2869,6 +2884,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
 | `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -2925,6 +2941,10 @@ struct SpriteDesc {
   }
   field blend SpriteBlend "Alpha or additive."
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened onto the ground plane y = 0 along the sun (the first og.DirectionalLight), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the plane edge on." {
+    min 0
+    max 1
+  }
   field flipX bool "Mirror the region left to right."
   field flipY bool "Mirror the region top to bottom."
   field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -2938,7 +2958,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>`api.ogt` line 2853</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3026,7 +3046,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3013</sub>
+<sub>`api.ogt` line 3029</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3064,7 +3084,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3085</sub>
+<sub>`api.ogt` line 3101</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3096,7 +3116,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3105</sub>
+<sub>`api.ogt` line 3121</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3132,7 +3152,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3120</sub>
+<sub>`api.ogt` line 3136</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3150,7 +3170,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
-| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
+| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
 
 ```ogt
 struct RenderCapabilities {
@@ -3163,11 +3183,11 @@ struct RenderCapabilities {
   field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
-  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+  field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands and retro3d of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
 }
 ```
 
-<sub>`api.ogt` line 3162</sub>
+<sub>`api.ogt` line 3178</sub>
 
 <a id="type-Shader"></a>
 
@@ -3181,7 +3201,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3190</sub>
+<sub>`api.ogt` line 3206</sub>
 
 ## Column kinds
 
@@ -3344,7 +3364,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2339</sub>
+<sub>`api.ogt` line 2340</sub>
 
 ## Constants
 
@@ -3357,10 +3377,10 @@ column DitherPattern {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3159</sub>
+<sub>`api.ogt` line 3175</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3160</sub>
+<sub>`api.ogt` line 3176</sub>

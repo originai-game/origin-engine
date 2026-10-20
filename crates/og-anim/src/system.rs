@@ -6,7 +6,7 @@ use crate::asset::{ClipAsset, NONE, SkeletonAsset, bind};
 use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, LayerMode, Motion};
 use crate::ik;
-use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion};
+use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
 use crate::schema::*;
 use crate::xform::{Trs, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
@@ -1160,8 +1160,9 @@ fn eval_player(
             weight: (1.0 - alpha) * comp.weight,
         };
         leaf.events(events);
+        let held = stepped(t1, comp.step_fps, pc.duration, ps.prev_looping);
         blend.push(
-            leaf.pose(skel, root, mesh),
+            leaf.pose_at(skel, root, mesh, held),
             leaf.delta(skel, root),
             1.0 - alpha,
         );
@@ -1184,7 +1185,12 @@ fn eval_player(
         weight: alpha * comp.weight,
     };
     leaf.events(events);
-    blend.push(leaf.pose(skel, root, mesh), leaf.delta(skel, root), alpha);
+    let held = stepped(t1, comp.step_fps, clip.duration, comp.looping);
+    blend.push(
+        leaf.pose_at(skel, root, mesh, held),
+        leaf.delta(skel, root),
+        alpha,
+    );
     ps.time = t1;
     ps.written = t1;
     comp.time = t1;

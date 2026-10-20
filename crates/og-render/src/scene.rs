@@ -1183,6 +1183,11 @@ pub struct RenderScene {
     /// index wins). Sprites of one array draw as one run whatever their
     /// layers, so a sheet of frames in an array batches across frames.
     pub sprite_arrays: Vec<SpriteArray>,
+    /// Drop shadows of single world sprites, by sprite index (the last
+    /// entry for an index wins): each a flattened dark copy of the sprite
+    /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
+    /// before every sprite of its layer.
+    pub sprite_shadows: Vec<SpriteShadow>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// Live slots and generations of the removable kinds.
@@ -1273,6 +1278,7 @@ impl RenderScene {
             tile_layers: Vec::new(),
             trail_layers: Vec::new(),
             sprite_arrays: Vec::new(),
+            sprite_shadows: Vec::new(),
             texture_filters: Vec::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
@@ -2431,6 +2437,26 @@ pub enum TextureFilter {
     /// The nearest texel: crisp pixel art at any scale.
     Nearest,
 }
+
+/// A sprite's drop shadow ([`RenderScene::sprite_shadows`]): the sprite's
+/// quad as it stands, projected along the sun onto the ground plane y = 0
+/// (lifted by [`SPRITE_SHADOW_LIFT`] over a ground mesh there), its texture's
+/// alpha in black at `opacity` times the sprite's own alpha. With the sun
+/// at or below the horizon there is none; a low sun's shadow is at most
+/// five times as long as the sprite is tall. For pixel sprites standing in
+/// 3D sets (a perspective camera over the xz ground); a 2D camera looking
+/// down -z sees the plane edge on.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpriteShadow {
+    /// The index in [`RenderScene::sprites`].
+    pub sprite: u32,
+    /// How dark, 0 to 1.
+    pub opacity: f32,
+}
+
+/// How far above y = 0 a sprite's drop shadow lies (metres), so it never
+/// fights a ground mesh at 0 for depth.
+pub const SPRITE_SHADOW_LIFT: f32 = 0.01;
 
 /// A sprite's sort key within its layer ([`RenderScene::sprite_order`]).
 #[derive(Clone, Copy, Debug, PartialEq)]

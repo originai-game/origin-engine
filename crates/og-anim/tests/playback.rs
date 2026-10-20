@@ -235,3 +235,63 @@ fn a_marker_at_zero_fires_on_the_first_tick_and_at_every_loop() {
         "{ticks:?}"
     );
 }
+
+#[test]
+fn a_stepped_player_holds_each_pose_for_its_step() {
+    let (mut w, anim) = world();
+    let smooth = spawn(&mut w, AnimationPlayer::new(WALK));
+    let held = spawn(
+        &mut w,
+        AnimationPlayer {
+            step_fps: 12.0,
+            ..AnimationPlayer::new(WALK)
+        },
+    );
+    let walk = anim.clip(WALK).unwrap();
+    let (mut last, mut changes, mut smooth_last, mut smooth_changes) = (None, 0, None, 0);
+    for k in 1..=60u32 {
+        w.step().unwrap();
+        let p: AnimationPlayer = w.get(held).unwrap();
+        // Time, and with it markers and root motion, stays continuous.
+        let off = (p.time - k as f32 / 60.0).rem_euclid(1.0);
+        assert!(off.min(1.0 - off) < 1e-4, "tick {k}: {}", p.time);
+        let pose = anim.pose(held).unwrap();
+        // Where the held time is an even twelfth it is a 30 Hz sample:
+        // j/12 s is sample 5j/2.
+        let j = (p.time * 12.0).floor() as usize;
+        if j.is_multiple_of(2) {
+            let i = j * 5 / 2;
+            for ch in &walk.channels {
+                let n = ch.node as usize;
+                let s = &ch.samples[i * ch.lanes as usize..][..ch.lanes as usize];
+                let got: Vec<f32> = match ch.path {
+                    ChannelPath::Translation => pose[n].translation.to_array().to_vec(),
+                    ChannelPath::Rotation => pose[n].rotation.to_array().to_vec(),
+                    _ => continue,
+                };
+                for (a, b) in got.iter().zip(s) {
+                    assert!((a - b).abs() < 1e-4, "tick {k}: {got:?} vs {s:?}");
+                }
+            }
+        }
+        changes += (last.as_ref() != Some(&pose)) as u32;
+        last = Some(pose);
+        let sp = anim.pose(smooth).unwrap();
+        smooth_changes += (smooth_last.as_ref() != Some(&sp)) as u32;
+        smooth_last = Some(sp);
+    }
+    // One second at 12 steps a second: 12 poses (the first counted on
+    // arrival), each held for 5 ticks of 60; smooth playback moves every tick.
+    assert!((12..=13).contains(&changes), "{changes} pose changes");
+    assert_eq!(smooth_changes, 60);
+}
+
+#[test]
+fn stepped_time_floors_to_the_step_and_ends_on_the_last_frame() {
+    assert_eq!(stepped(0.49, 0.0, 1.0, true), 0.49);
+    assert_eq!(stepped(0.49, 12.0, 1.0, true), 5.0 / 12.0);
+    assert_eq!(stepped(0.5, 4.0, 1.0, true), 0.5);
+    // A one-shot that reached its end holds its last frame, on the step or not.
+    assert_eq!(stepped(0.95, 12.0, 0.95, false), 0.95);
+    assert_eq!(stepped(0.95, 12.0, 0.95, true), 11.0 / 12.0);
+}

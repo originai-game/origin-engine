@@ -24,26 +24,33 @@ pub(crate) struct SpriteInstance {
     /// x: glow strength, y: 1 when 2D lighting applies, z: 1 for a soft dot
     /// (untextured particles).
     fx: [f32; 3],
+    /// A drop shadow's projection (`SpriteShadow`): x 1 projects the
+    /// standing quad onto the ground, yz the x and z it moves per metre of
+    /// height, w the ground's height. All 0 for every other instance.
+    ground: [f32; 4],
     /// The texture array layer an array sprite draws (sprite_array.wgsl;
     /// the other sprite pipelines do not read it).
     layer: u32,
 }
+
+/// An instance that stands where it is drawn.
+const NO_GROUND: [f32; 4] = [0.0; 4];
 
 pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u64;
 
 pub(crate) const SPRITE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: SPRITE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4],
 };
 
-/// [`SPRITE_LAYOUT`] with the instance's layer (location 6), for the array
+/// [`SPRITE_LAYOUT`] with the instance's layer (location 7), for the array
 /// sprite pipelines.
 pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> =
     wgpu::VertexBufferLayout {
         array_stride: SPRITE_STRIDE,
         step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Uint32],
+        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4, 7 => Uint32],
     };
 
 /// What one run draws with.
@@ -179,6 +186,7 @@ fn sprite_instance(
             NO_FLASH
         },
         fx: [glow, lit as u32 as f32, soft as u32 as f32],
+        ground: NO_GROUND,
         layer: 0,
     }
 }
@@ -228,6 +236,18 @@ pub(crate) fn array_entries(
         arrays.insert(a.sprite, (a.array, a.layer));
     }
     Ok(arrays)
+}
+
+/// The drop-shadow projection of a scene's sun (`SpriteInstance::ground`):
+/// `None` with the sun at or below the horizon. A low sun is raised to
+/// about 11° so a shadow is at most five times the sprite's height.
+fn shadow_ground(direction_to_light: glam::Vec3) -> Option<[f32; 4]> {
+    let l = direction_to_light;
+    if l.y.is_nan() || l.y <= 1e-4 {
+        return None;
+    }
+    let ly = l.y.max(0.2 * l.length());
+    Some([1.0, -l.x / ly, -l.z / ly, crate::SPRITE_SHADOW_LIFT])
 }
 
 /// The world rectangle an orthographic camera sees (for culling tiles).
@@ -293,6 +313,7 @@ fn tile_instances(
                     color: layer.color,
                     flash: NO_FLASH,
                     fx: [0.0, 0.0, 0.0],
+                    ground: NO_GROUND,
                     layer: 0,
                 });
             }
@@ -370,6 +391,20 @@ pub(crate) fn build<'a>(
         "sprite",
         &array_layers,
     )?;
+    // Drop shadows by sprite index (the last entry wins), under a sun.
+    let mut shadows: HashMap<u32, f32> = HashMap::new();
+    for s in &scene.sprite_shadows {
+        if s.sprite as usize >= scene.sprites.len() {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite_shadows: sprite {} of {}",
+                s.sprite,
+                scene.sprites.len()
+            )));
+        }
+        shadows.insert(s.sprite, s.opacity.clamp(0.0, 1.0));
+    }
+    let ground = shadow_ground(scene.light.direction_to_light).filter(|_| !shadows.is_empty());
+    let mut shadow_count = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
         scene.text_outlines.iter().map(|o| (o.text, o)).collect();
     // (layer, key, source, instance), in submission order.
@@ -396,6 +431,24 @@ pub(crate) fn build<'a>(
         };
         let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
         let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
+        // Its drop shadow: the same quad and texel alpha in black, projected
+        // onto the ground, before every sprite of the layer.
+        if let (Some(g), Some(&opacity)) = (ground, shadows.get(&(i as u32)))
+            && opacity > 0.0
+        {
+            let mut shadow = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
+            shadow.color = [0.0, 0.0, 0.0, opacity * s.color[3]];
+            shadow.ground = g;
+            let source = match arrays.get(&(i as u32)) {
+                Some(&(array, layer)) => {
+                    shadow.layer = layer;
+                    RunSource::Array(SpriteBlend::Alpha, array)
+                }
+                None => RunSource::Sprite(SpriteBlend::Alpha, s.texture),
+            };
+            keyed.push((s.layer, f32::MIN, source, shadow));
+            shadow_count += 1;
+        }
         if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
             inst.layer = layer;
             if glow > 0.0 {
@@ -439,7 +492,8 @@ pub(crate) fn build<'a>(
         }
         keyed.push((s.layer, 0.0, run(e.blend), inst));
     }
-    let sprites = keyed.len() as u32;
+    let sprites = keyed.len() as u32 - shadow_count;
+    let after_sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
     for (i, text) in scene.texts.iter().enumerate() {
         let font = font(text.font.index()).ok_or_else(|| {
@@ -489,13 +543,14 @@ pub(crate) fn build<'a>(
                         color: text.color,
                         flash: outline_color,
                         fx: [outline, 0.0, 0.0],
+                        ground: NO_GROUND,
                         layer: 0,
                     },
                 ));
             }
         });
     }
-    let glyphs = keyed.len() as u32 - sprites;
+    let glyphs = keyed.len() as u32 - after_sprites;
     // Stable: within a (layer, key, source) run, submission order is kept.
     keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.cmp(&b.2)));
     // Tile layers and layered strips, each before the sprites of its layer
@@ -595,4 +650,56 @@ pub(crate) fn build<'a>(
         tiles,
         tile_chunks,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SpriteShadow;
+    use glam::Vec3;
+
+    fn frame(scene: &RenderScene) -> SpriteFrame {
+        build(scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).expect("a frame")
+    }
+
+    #[test]
+    fn a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun() {
+        let mut scene = RenderScene::new();
+        scene.light.direction_to_light = Vec3::new(1.0, 2.0, -0.5);
+        let sprite = |x: f32, layer: i32| Sprite {
+            position: Vec3::new(x, 0.0, 0.0),
+            size: glam::Vec2::new(1.0, 2.0),
+            anchor: glam::Vec2::new(0.5, 0.0),
+            color: [1.0, 1.0, 1.0, 0.5],
+            layer,
+            ..Default::default()
+        };
+        scene.sprites = vec![sprite(0.0, 1), sprite(2.0, 1), sprite(4.0, 0)];
+        scene.sprite_shadows = vec![SpriteShadow {
+            sprite: 1,
+            opacity: 0.8,
+        }];
+        let f = frame(&scene);
+        assert_eq!(f.sprites, 3, "a shadow is not a sprite of the frame");
+        // Layer 0's sprite, then layer 1: the shadow before both sprites.
+        let xs: Vec<f32> = f.instances.iter().map(|i| i.position_rotation[0]).collect();
+        assert_eq!(xs, [4.0, 2.0, 0.0, 2.0]);
+        let shadow = &f.instances[1];
+        assert_eq!(shadow.color, [0.0, 0.0, 0.0, 0.4]);
+        // Per metre of height: -x/y and -z/y of the direction to the sun.
+        assert_eq!(shadow.ground, [1.0, -0.5, 0.25, crate::SPRITE_SHADOW_LIFT]);
+        assert!(f.instances.iter().filter(|i| i.ground[0] > 0.0).count() == 1);
+        // No sun above the horizon, no shadow; an index past the sprites is refused.
+        scene.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
+        assert_eq!(frame(&scene).instances.len(), 3);
+        scene.sprite_shadows[0].sprite = 3;
+        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).is_err());
+    }
+
+    #[test]
+    fn a_low_sun_casts_at_most_five_heights() {
+        let g = shadow_ground(Vec3::new(1.0, 0.01, 0.0)).unwrap();
+        assert!((g[1].abs() - 5.0).abs() < 0.01, "{g:?}");
+        assert_eq!(shadow_ground(Vec3::new(1.0, 0.0, 0.0)), None);
+    }
 }

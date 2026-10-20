@@ -552,6 +552,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprite_order.clear();
     scene.sprite_fx.clear();
     scene.sprite_arrays.clear();
+    scene.sprite_shadows.clear();
     scene.text_outlines.clear();
     scene.tile_layers.clear();
     scene.trail_layers.clear();

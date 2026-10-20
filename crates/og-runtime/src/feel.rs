@@ -1857,6 +1857,8 @@ struct SpriteOut {
     cast_shadow: bool,
     /// Drawn from this layer of a texture array instead of its texture.
     array: Option<(og_render::TextureArrayHandle, u32)>,
+    /// `Sprite.dropShadow`: a flattened dark copy on the ground (0 none).
+    drop_shadow: f32,
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
@@ -1878,6 +1880,12 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
         scene
             .occluders_2d
             .push(og_render::Occluder2d::from_sprite(&s.sprite, 0.0));
+    }
+    if s.drop_shadow > 0.0 {
+        scene.sprite_shadows.push(og_render::SpriteShadow {
+            sprite: index,
+            opacity: s.drop_shadow.min(1.0),
+        });
     }
     if s.flash[3] > 0.0 || s.glow > 0.0 || s.additive {
         scene.sprite_fx.push(og_render::SpriteFx {
@@ -2085,6 +2093,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     additive: false,
                     cast_shadow: false,
                     array: None,
+                    drop_shadow: 0.0,
                 },
             );
         }
@@ -2128,6 +2137,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         additive: add,
                         cast_shadow: false,
                         array: gimage.array(),
+                        drop_shadow: 0.0,
                     },
                 );
             }
@@ -2148,6 +2158,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             _ => vec![base],
         };
         let cast = on(&v, "castShadow", false);
+        let drop_shadow = f(&v, "dropShadow", 0.0).clamp(0.0, 1.0);
         for (i, p) in pieces.into_iter().enumerate() {
             push(
                 scene,
@@ -2159,6 +2170,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     additive,
                     cast_shadow: cast && i == 0,
                     array: image.array(),
+                    drop_shadow,
                 },
             );
         }

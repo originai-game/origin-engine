@@ -136,16 +136,14 @@
       "look": {
         "preset": "templates/looks/watercolor-wash.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "Stylise.paintEdgeDarkening",
           "Stylise.paintBleed",
           "Stylise.paintCanvas",
           "Stylise.paintCanvasStrength"
         ],
-        "missing": [
-          "a tileable paper texture of your own for Stylise.paintCanvas (the engine ships no canvas asset)"
-        ]
+        "missing": []
       },
       "skin": "paper",
       "palette": {
@@ -187,17 +185,16 @@
       "look": {
         "preset": "templates/looks/pixel-3d-hybrid.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "PostEffects.depthOfField",
           "PostEffects.ao",
           "RenderSettings.bloom",
           "Stylise.pixelSnap",
-          "billboard sprites"
+          "billboard sprites",
+          "SpriteDesc.dropShadow"
         ],
-        "missing": [
-          "sprites casting shadows on 3D sets: no engine primitive (draw a shadow sprite under each)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -287,17 +284,16 @@
       "look": {
         "preset": "templates/looks/sculpted-clay.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "StandardMaterialDesc.roughness",
           "StandardMaterialDesc.sheen",
           "StandardMaterialDesc.normalMap",
           "PostEffects.ao",
-          "PostEffects.depthOfField"
+          "PostEffects.depthOfField",
+          "AnimationPlayer.stepFps"
         ],
-        "missing": [
-          "stepped animation playback (holding poses on twos) has no engine switch yet: sample the clips at 12 to 15 Hz in game code"
-        ]
+        "missing": []
       },
       "skin": "cartoon",
       "palette": {
@@ -940,16 +936,14 @@
       "look": {
         "preset": "templates/looks/monochrome-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
           "Stylise.posterize",
           "Stylise.dither"
         ],
-        "missing": [
-          "a two-colour palette of your own (og.load.palette) for a true single hue; the preset posterises"
-        ]
+        "missing": []
       },
       "skin": "pixel",
       "palette": {
@@ -1388,7 +1382,7 @@
       "look": {
         "preset": "templates/looks/paper-craft.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "MaterialStyle.flatShading",
@@ -1396,9 +1390,7 @@
           "Stylise.paintCanvas",
           "soft shadows"
         ],
-        "missing": [
-          "a tileable paper texture of your own for Stylise.paintCanvas (the engine ships no canvas asset)"
-        ]
+        "missing": []
       },
       "skin": "paper",
       "palette": {
@@ -1490,7 +1482,7 @@
       "look": {
         "preset": "templates/looks/painterly-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintAnisotropy",
@@ -1498,9 +1490,7 @@
           "PostEffects.lut",
           "Fog"
         ],
-        "missing": [
-          "a tileable canvas texture of your own for Stylise.paintCanvas (the engine ships no canvas asset)"
-        ]
+        "missing": []
       },
       "skin": "fantasy",
       "palette": {
@@ -1794,16 +1784,14 @@
       "look": {
         "preset": "templates/looks/monochrome-dither-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "primitives": [
           "Stylise.posterize",
           "Stylise.palette",
           "Stylise.dither",
           "Stylise.pixelHeight"
         ],
-        "missing": [
-          "a two-colour palette of your own (og.load.palette) for true 1-bit; the preset posterises to two tones per channel"
-        ]
+        "missing": []
       },
       "skin": "pixel",
       "palette": {

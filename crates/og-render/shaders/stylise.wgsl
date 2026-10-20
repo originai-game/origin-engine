@@ -7,9 +7,11 @@
 //             along the image's edges by `anisotropy`), pigment pooling at
 //             the edges, colour bleeding, a canvas laid over the frame;
 //   lines     cross-hatching from the tone, halftone dots on a rotated
-//             grid, ink lines on luminance edges;
+//             grid, ink lines on luminance edges and, with `inkDepth`, on
+//             the depth-normal prepass's silhouettes and creases;
 //   quantize  posterised channels and/or the nearest palette colour, mixed
-//             by an ordered (Bayer) or interleaved-gradient dither;
+//             by an ordered (Bayer), blue-noise or interleaved-gradient
+//             dither;
 //   upscale   the logical frame scaled up by a whole number with nearest
 //             filtering, centred in the output with the background round it.
 //
@@ -19,15 +21,16 @@ struct Stylise {
   output: vec4<f32>,          // output w, h, the whole-number upscale, 0
   offset: vec4<f32>,          // xy: where the scaled frame starts in the output, z: 1 with a canvas, w: palette colours
   background: vec4<f32>,      // the display colour round the frame (linear)
-  quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient), z: strength in steps, w: cell size
+  quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient, -2 blue noise), z: strength in steps, w: cell size
   halftone: vec4<f32>,        // x: strength, y: pitch, z: angle (rad)
   halftone_color: vec4<f32>,
   hatching: vec4<f32>,        // x: strength, y: spacing, z: levels, w: angle (rad)
   hatching_color: vec4<f32>,
   paint: vec4<f32>,           // x: radius, y: anisotropy, z: edge darkening, w: bleed
   canvas: vec4<f32>,          // x: strength, y: texels per logical pixel
-  ink: vec4<f32>,             // x: 1 on, y: threshold, z: width
+  ink: vec4<f32>,             // x: 1 on, y: threshold, z: width, w: depth edges' strength (0: luminance only)
   ink_color: vec4<f32>,
+  ink_depth: vec4<f32>,       // x: the camera's far plane (sky), y: relative depth step, z: normal turn (1 - cos)
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -35,6 +38,9 @@ struct Stylise {
 @group(0) @binding(3) var palette: texture_2d<f32>;   // 256 x 1 sRGB colours, linear when sampled
 @group(0) @binding(4) var canvas: texture_2d<f32>;
 @group(0) @binding(5) var repeat_sampler: sampler;
+@group(0) @binding(6) var blue_noise: texture_2d<f32>;  // 64 x 64 thresholds (blue_noise.rs), R8
+@group(0) @binding(7) var pre_depth: texture_2d<f32>;   // the prepass view depth (R32Float); far without a prepass
+@group(0) @binding(8) var pre_normal: texture_2d<f32>;  // the prepass's oct-encoded world normal (xy)
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let lo = c * 12.92;
@@ -172,6 +178,45 @@ fn stroke(p: vec2<f32>, angle: f32, spacing: f32, width: f32) -> f32 {
   return 1.0 - smoothstep(width * 0.5, width * 0.5 + 0.75, f);
 }
 
+fn view_depth(px: vec2<i32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(pre_depth));
+  return textureLoad(pre_depth, clamp(px, vec2<i32>(0), size - 1), 0).r;
+}
+
+fn oct_decode(e: vec2<f32>) -> vec3<f32> {
+  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
+  if (n.z < 0.0) {
+    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
+  }
+  return normalize(n);
+}
+
+fn normal_at(px: vec2<i32>) -> vec3<f32> {
+  let size = vec2<i32>(textureDimensions(pre_normal));
+  return oct_decode(textureLoad(pre_normal, clamp(px, vec2<i32>(0), size - 1), 0).xy);
+}
+
+// 1 where the prepass breaks within the line's width: a neighbour farther
+// by more than the depth step (a silhouette, drawn on the nearer surface)
+// or one of about the same depth turned past the crease threshold, as the
+// outline pass finds them (fxpost.wgsl fs_outline); 0 on the sky.
+fn depth_edge(px: vec2<i32>) -> f32 {
+  let d0 = view_depth(px);
+  if (d0 >= st.ink_depth.x * 0.999) { return 0.0; }
+  let n0 = normal_at(px);
+  let r = max(st.ink.z, 1.0);
+  for (var i = 0; i < 8; i++) {
+    let a = f32(i) * 0.7853982;
+    let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
+    let d = view_depth(q);
+    if (d > d0 * (1.0 + st.ink_depth.y)) { return 1.0; }
+    if (abs(d - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(q), n0) > st.ink_depth.z) {
+      return 1.0;
+    }
+  }
+  return 0.0;
+}
+
 fn lines(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   let p = in.pos.xy;
@@ -211,7 +256,10 @@ fn lines(in: VsOut) -> vec3<f32> {
         edge = max(edge, length(gradient(px + vec2<i32>(x, y))));
       }
     }
-    let k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
+    var k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
+    if (st.ink.w > 0.0) {
+      k = max(k, depth_edge(px) * st.ink.w);
+    }
     c = mix(c, st.ink_color.rgb, k);
   }
   return c;
@@ -252,8 +300,15 @@ fn ign(p: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
 }
 
+// The void-and-cluster tile, repeated: byte v is the threshold (v + 0.5) / 256.
+fn blue(cell: vec2<u32>) -> f32 {
+  let v = textureLoad(blue_noise, vec2<i32>(cell % vec2<u32>(64u)), 0).r;
+  return (round(v * 255.0) + 0.5) / 256.0;
+}
+
 fn dither_at(pos: vec2<f32>) -> f32 {
   let cell = vec2<u32>(pos / max(st.quantize.w, 1.0));
+  if (st.quantize.y < -1.5) { return blue(cell); }
   if (st.quantize.y < 0.0) { return ign(vec2<f32>(cell)); }
   if (st.quantize.y >= 2.0) { return bayer(cell, u32(st.quantize.y)); }
   return 0.5;

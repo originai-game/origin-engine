@@ -1,13 +1,14 @@
 type look
 version 1
 ---
-# A low grid, three tones per channel, a Bayer 8 dither: one hue carries the picture (set a two-colour palette to go all the way).
+# A low grid, four tones per channel through a Bayer 8 dither, every pixel one of four greens (the engine's @palettes/handheld4): one hue carries the picture.
 name "Monochrome-led pixel art"
 antialias off
 Stylise {
   pixelHeight 160
   pixelSnap true
-  posterize 3
+  posterize 4
+  palette "@palettes/handheld4"
   dither bayer8
 }
 RenderSettings {
