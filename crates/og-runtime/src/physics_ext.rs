@@ -1,7 +1,8 @@
 //! The physics beyond rigid bodies seen from game code (the E5 round): the
 //! readouts of the last step (`og.physics.ropePoints`, `clothPoints`,
-//! `fluidParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`), the
-//! ragdoll rig (`setRagdollRig`, `ragdollRigFromSkeleton`), and drawing a
+//! `fluidParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`), what
+//! the last step cost (`stats`), the ragdoll rig (`setRagdollRig`,
+//! `ragdollRigFromSkeleton`), and drawing a
 //! ragdoll: a model posed by og-anim whose entity has a rig made from its
 //! skeleton is drawn with its joints blended towards the bones' bodies by
 //! og.Ragdoll.blend. Rigs are assets, like meshes: kept by the engine and
@@ -145,6 +146,37 @@ pub fn og_physics_ragdoll_pose(world: u32, e: f64) -> String {
             )
         },
     )
+}
+
+/// `og.physics.stats`: the last step's phases, their times and whether
+/// each ran on the lanes pool.
+pub fn og_physics_stats(world: u32) -> String {
+    answer((|| {
+        let eng = engine(world)?;
+        let stats = physics(&eng)?.stats();
+        let phases: Vec<Value> = stats
+            .phases
+            .iter()
+            .map(|p| json!({ "name": p.name, "ms": p.ms, "split": p.split }))
+            .collect();
+        // Before the first step, every phase at zero.
+        let phases = if phases.is_empty() {
+            og_physics::Phase::ALL
+                .iter()
+                .map(|p| json!({ "name": p.name(), "ms": 0.0, "split": false }))
+                .collect()
+        } else {
+            phases
+        };
+        Ok(json!({
+            "tick": stats.tick as f64,
+            "bodies": stats.bodies,
+            "threads": stats.threads,
+            "pool": stats.pool,
+            "ms": stats.ms,
+            "phases": phases,
+        }))
+    })())
 }
 
 /// The entity's position from its og.Transform (water lives at the top of

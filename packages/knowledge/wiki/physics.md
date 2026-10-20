@@ -111,6 +111,9 @@ module physics {
 | [`og.physics.ragdollRigFromSkeleton`](#fn-ragdollRigFromSkeleton) | function | A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not. |
 | [`og.physics.setRagdollRig`](#fn-setRagdollRig) | function | Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world. |
 | [`og.physics.ragdollPose`](#fn-ragdollPose) | function | An og.Ragdoll's bones after the last step, in rig order (empty before its first step). |
+| [`PhysicsPhase`](#type-PhysicsPhase) | struct | One phase of the last physics step, for og.physics.stats. |
+| [`PhysicsStats`](#type-PhysicsStats) | struct | What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them. |
+| [`og.physics.stats`](#fn-stats) | function | What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step. |
 
 ## Functions
 
@@ -511,6 +514,34 @@ fn ragdollPose {
 ```
 
 <sub>`api.ogt` line 5027</sub>
+
+<a id="fn-stats"></a>
+
+### `og.physics.stats`
+
+What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step.
+
+```ts
+og.physics.stats(world: World): Result<PhysicsStats>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `Result<PhysicsStats>`: Refused for an engine without physics.
+
+Binding symbol `og_physics_stats` · publish builds: kept
+
+```ogt
+fn stats {
+  doc "What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step."
+  param world World "The world."
+  returns Result.PhysicsStats "Refused for an engine without physics."
+}
+```
+
+<sub>`api.ogt` line 5055</sub>
 
 ## Components, resources and events
 
@@ -2592,6 +2623,62 @@ struct BonePose {
 ```
 
 <sub>`api.ogt` line 4960</sub>
+
+<a id="type-PhysicsPhase"></a>
+
+### `PhysicsPhase` (struct)
+
+One phase of the last physics step, for og.physics.stats.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back). |
+| `ms` | `number` | `0` | — | `ms` | — | Wall-clock time it took (0 where the host has no clock); never world state. |
+| `split` | `boolean` | `false` | — | — | — | Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles. |
+
+```ogt
+struct PhysicsPhase {
+  doc "One phase of the last physics step, for og.physics.stats."
+  field name String "gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back)."
+  field ms f64 "Wall-clock time it took (0 where the host has no clock); never world state." {
+    unit ms
+  }
+  field split bool "Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles."
+}
+```
+
+<sub>`api.ogt` line 5034</sub>
+
+<a id="type-PhysicsStats"></a>
+
+### `PhysicsStats` (struct)
+
+What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tick` | `number` | `0` | — | — | — | The tick the step ran (0 before the first). |
+| `bodies` | `number` | `0` | — | — | — | The rapier bodies it stepped (with ragdoll bones and vehicle wheels). |
+| `threads` | `number` | `0` | — | — | — | The lanes pool's threads at the time (1: lanes off or single-threaded). |
+| `pool` | `boolean` | `false` | — | — | — | Whether the whole step ran on the lanes pool (from a number of bodies per thread count), where rapier splits its broad phase, narrow phase and solver. |
+| `ms` | `number` | `0` | — | `ms` | — | Wall-clock time of the whole og.physics system, gather to write-back. |
+| `phases` | `readonly PhysicsPhase[]` | `[]` | — | — | — | Every phase, in the order they run. |
+
+```ogt
+struct PhysicsStats {
+  doc "What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them."
+  field tick f64 "The tick the step ran (0 before the first)."
+  field bodies u32 "The rapier bodies it stepped (with ragdoll bones and vehicle wheels)."
+  field threads u32 "The lanes pool's threads at the time (1: lanes off or single-threaded)."
+  field pool bool "Whether the whole step ran on the lanes pool (from a number of bodies per thread count), where rapier splits its broad phase, narrow phase and solver."
+  field ms f64 "Wall-clock time of the whole og.physics system, gather to write-back." {
+    unit ms
+  }
+  field phases List.PhysicsPhase "Every phase, in the order they run."
+}
+```
+
+<sub>`api.ogt` line 5043</sub>
 
 ## Constants
 

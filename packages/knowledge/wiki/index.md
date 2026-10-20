@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-882 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+885 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -519,6 +519,7 @@ Field units the docs and Tune use.
 | [`og.physics.setMesh`](physics.md#fn-setMesh) | function | physics | `og_physics_set_mesh` |
 | [`og.physics.setRagdollRig`](physics.md#fn-setRagdollRig) | function | physics | `og_physics_set_ragdoll_rig` |
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
+| [`og.physics.stats`](physics.md#fn-stats) | function | physics | `og_physics_stats` |
 | [`og.physics.vehicleWheels`](physics.md#fn-vehicleWheels) | function | physics | `og_physics_vehicle_wheels` |
 | [`og.physics.waterHeight`](physics.md#fn-waterHeight) | function | physics | `og_physics_water_height` |
 | [`og.platform.aiMark`](platform.md#fn-aiMark) | function | platform | `og_platform_ai_mark` |
@@ -732,6 +733,8 @@ Field units the docs and Tune use.
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
+| [`PhysicsPhase`](physics.md#type-PhysicsPhase) | struct | physics | — |
+| [`PhysicsStats`](physics.md#type-PhysicsStats) | struct | physics | — |
 | [`PickOperation`](probe.md#type-PickOperation) | struct | probe | — |
 | [`PickResult`](probe.md#type-PickResult) | struct | probe | — |
 | [`PIN_LEFT`](physics.md#const-PIN_LEFT) | constant | physics | — |

@@ -7922,6 +7922,49 @@ export interface BonePose {
 
 
 
+/** One phase of the last physics step, for og.physics.stats. */
+export interface PhysicsPhase {
+  /**
+   * gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back).
+   */
+  readonly name: string;
+  /**
+   * Wall-clock time it took (0 where the host has no clock); never world state.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly ms: number;
+  /**
+   * Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles.
+   */
+  readonly split: boolean;
+}
+
+/**
+ * What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them.
+ */
+export interface PhysicsStats {
+  /** The tick the step ran (0 before the first). */
+  readonly tick: number;
+  /** The rapier bodies it stepped (with ragdoll bones and vehicle wheels). */
+  readonly bodies: number;
+  /** The lanes pool's threads at the time (1: lanes off or single-threaded). */
+  readonly threads: number;
+  /**
+   * Whether the whole step ran on the lanes pool (from a number of bodies per thread count), where rapier splits its broad phase, narrow phase and solver.
+   */
+  readonly pool: boolean;
+  /**
+   * Wall-clock time of the whole og.physics system, gather to write-back.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly ms: number;
+  /** Every phase, in the order they run. */
+  readonly phases: readonly PhysicsPhase[];
+}
+
+
 // ── atmosphere ──────────────────────────────────────────────────
 // Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
 // The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
@@ -17576,6 +17619,13 @@ export declare namespace og {
      * @returns Refused for an entity without a ragdoll.
      */
     function ragdollPose(world: World, entity: Entity): Result<readonly BonePose[]>;
+    /**
+     * What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step.
+     *
+     * @param world The world.
+     * @returns Refused for an engine without physics.
+     */
+    function stats(world: World): Result<PhysicsStats>;
   }
   /**
    * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.

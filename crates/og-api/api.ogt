@@ -5030,6 +5030,33 @@ module physics {
     param entity Entity "The ragdoll's entity."
     returns Result.List.BonePose "Refused for an entity without a ragdoll."
   }
+
+  struct PhysicsPhase {
+    doc "One phase of the last physics step, for og.physics.stats."
+    field name String "gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back)."
+    field ms f64 "Wall-clock time it took (0 where the host has no clock); never world state." {
+      unit ms
+    }
+    field split bool "Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles."
+  }
+
+  struct PhysicsStats {
+    doc "What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them."
+    field tick f64 "The tick the step ran (0 before the first)."
+    field bodies u32 "The rapier bodies it stepped (with ragdoll bones and vehicle wheels)."
+    field threads u32 "The lanes pool's threads at the time (1: lanes off or single-threaded)."
+    field pool bool "Whether the whole step ran on the lanes pool (from a number of bodies per thread count), where rapier splits its broad phase, narrow phase and solver."
+    field ms f64 "Wall-clock time of the whole og.physics system, gather to write-back." {
+      unit ms
+    }
+    field phases List.PhysicsPhase "Every phase, in the order they run."
+  }
+
+  fn stats {
+    doc "What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step."
+    param world World "The world."
+    returns Result.PhysicsStats "Refused for an engine without physics."
+  }
 }
 
 # ── atmosphere ────────────────────────────────────────────────────────────

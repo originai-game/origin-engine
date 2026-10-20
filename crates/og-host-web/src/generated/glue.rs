@@ -729,6 +729,11 @@ pub fn og_physics_ragdoll_pose(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_stats(world: u32) -> String {
+    <Host as PhysicsApi>::og_physics_stats(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
     <Host as AtmosphereApi>::og_atmosphere_time_of_day(&Host, world)
 }
