@@ -183,6 +183,8 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
   );
   const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] };
   const [a, b, c, d] = cat.styles.map((s) => s.slug);
+  const taste = readFileSync(join(real.pkg, "skills/og-taste/SKILL.md"), "utf8");
+  const row = (slug: string) => new RegExp(`^\\| \`${slug}\` \\| (.*) \\|$`, "m").exec(taste)![1]!.split(" | ").map((x) => x.replaceAll("`", "")).join(", ");
   expect(p.sort()).toEqual(
     [
       `looks/catalogue.json: ${a}: needs exactly three checks a critic can judge on a frame`,
@@ -191,6 +193,7 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       `looks/catalogue.json: ${d}: a second style with this slug`,
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
       "skills/og-taste/SKILL.md: the style catalogue (§12) does not list `a-new-look`",
+      `skills/og-taste/SKILL.md: §12's row for \`${b}\` reads ${row(b!)}; the catalogue says ${row(b!).replace(/, full, /, ", planned, ")}`,
     ].sort(),
   );
 });
@@ -207,4 +210,49 @@ test("every og.* name and Type.field a skill writes exists in the generated API"
   expect(p.sort()).toEqual(
     ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz"].map((n) => `skills/og-game/SKILL.md: names \`${n}\`, ${why}`).sort(),
   );
+});
+
+test("og-taste §12's table is held to the catalogue, row by row", () => {
+  const p = added((r) =>
+    edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>
+      s.replace("| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |", "| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
+    ),
+  );
+  expect(p.sort()).toEqual([
+    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, partial, cartoon; the catalogue says 3D rendering, Voxel worlds, full, pixel",
+    "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | family | style | support | skin |)",
+  ]);
+});
+
+/**
+ * Phase 4's APIs, each with the skill that teaches it: every name must
+ * appear in that skill (and, by the validator, exist in the generated API).
+ */
+const TAUGHT: Record<string, string[]> = {
+  "og-game": [
+    "GameDesc.look", "og.load.look", "og.load.lookInfo", "og.load.palette", "og.render.applyLook", "og.render.look", "og.Stylise", "og.MaterialStyle",
+    "@canvas/paper", "@palettes/handheld4", "RenderCapabilities.stylise",
+    "og.Environment", "og.load.environment", "type environment", "toneMapping", "agx", "autoExposure", "adaptSpeedUp", "adaptSpeedDown",
+    "shadowSoftness", "cascadeBlend", "pointShadows", "taaHistory", "taaSharpen", "fxaa",
+    "clearcoat", "sheen", "transmission", "iridescence", "anisotropy",
+    "og.Sprite.dropShadow", "SpriteDesc.dropShadow", "stepFps", "og.load.textureArray", "SpriteDesc.arrayLayer", "og.Sprite.arrayLayer", "FlipbookInfo.array", "array true",
+    "StreamBudget", "StreamStatus", "og.stream.release", "og.physics.raycast", "og.physics.shapeCast", "og.physics.overlap", "lanes", ".vox", "compress true",
+  ],
+  "og-taste": ["extends", "GameDesc.look", "--premise", "--look", "og.render.look", "looks/catalogue.json"],
+  "og-ui": ["og.ui.textArea", "og.ui.textField", "compose:", "commit:", "ellipsis", "maxLines", "fallbackFonts", "og.ui.a11y", "og.A11yAction", "og.ui.zoomView", "og.Pointers", "og.ui.hasIcon", "kerning"],
+  "og-i18n": ["runtime true", "fallbackFonts", "shaped", "Kerning"],
+  "og-build": ["cooked/stream/", "environment maps", "texture arrays", "palettes", "looks and LUTs", ".vox", "compress true", "stream true", "isolation", "OG_LANES", "dump_lanes", "compose:"],
+  "og-audio": ["stream true", "chunk 4", "chunks", "og.load.soundInfo"],
+  "og-feel": ["stepFps"],
+  "og-core": ["lanes"],
+};
+
+test("every phase 4 API is taught by its skill", () => {
+  const b = bundle(real);
+  const missing: string[] = [];
+  for (const [skill, names] of Object.entries(TAUGHT)) {
+    const text = b.files[`game/skills/${skill}/SKILL.md`]!;
+    for (const n of names) if (!text.includes(n)) missing.push(`${skill}: ${n}`);
+  }
+  expect(missing).toEqual([]);
 });

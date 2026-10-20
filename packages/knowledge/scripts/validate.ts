@@ -297,6 +297,7 @@ export const NOT_API: Record<string, string> = {
   "og.settings": "the platform store key settings are saved under (og-platform-sdk §2)",
   "og.AudioPlayback": "an engine-owned component dump_entity shows while a voice plays; game code never names it",
   "og.AudioStream": "an engine-owned component dump_entity shows on a streamed voice; game code never names it",
+  "og.physics.queries": "the engine system dump_world lists that records the colliders a system's queries see",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {
@@ -343,7 +344,7 @@ function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[
     const bad = new Set<string>();
     for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?/g)) {
       const [whole, head, member] = [x[0], x[1]!, x[2]];
-      if (`og.${head}` in NOT_API) continue;
+      if (whole in NOT_API || `og.${head}` in NOT_API) continue;
       if (!api.root.has(head)) {
         bad.add(`og.${head}`);
         continue;
@@ -455,6 +456,14 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
       else if (existsSync(preset) && !/^type look\s*$/m.test(readFileSync(preset, "utf8"))) problems.push(`${id}: ${look.preset} is not an .ogt of type look`);
     }
     if (tasteText && !tasteText.includes(`\`${s.slug}\``)) problems.push(`skills/og-taste/SKILL.md: the style catalogue (§12) does not list \`${s.slug}\``);
+    else if (tasteText) {
+      // §12's row for the style says what the catalogue says: family, name, support, skin.
+      const row = new RegExp(`^\\| \`${s.slug.replace(/[-]/g, "\\-")}\` \\| ([^|]+) \\| ([^|]+) \\| ([^|]+) \\| \`([^\`]+)\` \\|$`, "m").exec(tasteText);
+      const want = [cat.categories?.[s.category] ?? s.category, s.name, look.support, s.skin];
+      const have = row?.slice(1, 5).map((x) => x.trim());
+      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | family | style | support | skin |)`);
+      else if (have.join("|") !== want.join("|")) problems.push(`skills/og-taste/SKILL.md: §12's row for \`${s.slug}\` reads ${have.join(", ")}; the catalogue says ${want.join(", ")}`);
+    }
     const all = JSON.stringify(s);
     if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
   }
