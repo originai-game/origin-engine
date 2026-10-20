@@ -50,7 +50,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
 | An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
 | Level select | `og.ui.levelSelect(id, { levels })` | `chosen`, `closed` |
-| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare })` | `selected` (`retry`, `next`, `menu`, `share`) |
+| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2) | `selected` (`retry`, `next`, `menu`, `share`) |
 | A leaderboard | `og.ui.leaderboardScreen(id, { scopes, entries, loading, error })` | `scope`, `changed`, `retry`, `closed` |
 | Onboarding | `og.ui.tutorialOverlay(id, { open, steps, index })` (each step names an element id) | the next `index`, `finished`, `skipped` |
 | Loading | `og.ui.loadingScreen(id, { title, progress, tips })` | nothing |

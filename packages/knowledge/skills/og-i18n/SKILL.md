@@ -56,6 +56,13 @@ string "results.time" "タイム {time}"
   (`{n, plural, other {コイン#枚}}`): the argument names stay the same in
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
+- og.ui's templates have words of their own (Retry, Share, "Best 1,200",
+  "New best", Cancel): each is a field of the template's desc with the
+  English default (`ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`,
+  `actions`; `ConfirmDesc.confirmLabel`, `cancelLabel`), so a localised
+  game passes its table's: `bestLabel: og.i18n.t(world, "results.best")`
+  with `"Best {best}"` / `"最佳 {best}"` in the tables (the template fills
+  `{best}`, formatted).
 - Emphasis inside a sentence is rich-text markup in the message itself
   (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
   `og.ui.richText`): each translation bolds or colours its own words, in

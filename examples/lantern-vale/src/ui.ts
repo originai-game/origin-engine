@@ -307,6 +307,9 @@ function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
     score: score(world, g),
     best: g.best,
     newBest: g.newBest,
+    // og.ui's own words, from the tables too: "{best}" is the kit's to fill.
+    bestLabel: say(world, "results.best"),
+    newBestLabel: say(world, "results.newBest"),
     stars,
     maxStars: 3,
     stats: [

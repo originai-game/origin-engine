@@ -15291,6 +15291,24 @@ export interface ResultsDesc {
    * @default null
    */
   readonly onShare?: UiAction | null;
+  /**
+   * The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it.
+   *
+   * @default "Best {best}"
+   */
+  readonly bestLabel?: string;
+  /**
+   * The badge a new best shows.
+   *
+   * @default "New best"
+   */
+  readonly newBestLabel?: string;
+  /**
+   * The Share button's label.
+   *
+   * @default "Share"
+   */
+  readonly shareLabel?: string;
 }
 
 /**

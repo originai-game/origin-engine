@@ -9683,6 +9683,15 @@ module ui {
     field actions List.MenuItem "The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`)."
     field shareText String "Text a share would post; empty hides Share."
     field onShare Option.UiAction "Called with the share text when Share is pressed (the shell posts it)."
+    field bestLabel String "The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it." {
+      default "Best {best}"
+    }
+    field newBestLabel String "The badge a new best shows." {
+      default "New best"
+    }
+    field shareLabel String "The Share button's label." {
+      default "Share"
+    }
   }
 
   struct LeaderboardEntry {
