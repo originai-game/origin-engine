@@ -198,149 +198,6 @@ impl Pairs {
     fn of(&self, i: usize) -> &[u32] {
         &self.pairs[self.start[i] as usize..self.start[i + 1] as usize]
     }
-
-    /// Each particle's pairs with the particles before it, as indices
-    /// into `pairs` in ascending order (`first[k]..first[k + 1]` into the
-    /// second vector), with each pair's `q = 1 - r / h` (`q[p]`): built by
-    /// the ranges of particles `parts` cuts, side by side on the lanes. Each
-    /// range computes its pairs' q and counts what it sends to every
-    /// particle, the counts give each range its run of every particle's
-    /// slots, and each range fills its own.
-    fn incoming(
-        &self,
-        positions: &[Vec3],
-        h: f32,
-        parts: &[std::ops::Range<usize>],
-    ) -> (Vec<f32>, Vec<u32>, Vec<u32>) {
-        let n = self.start.len() - 1;
-        let site = og_lanes::Site::Physics;
-        let mut q = vec![0.0f32; self.pairs.len()];
-        // Each range's slice of q, cut at its pairs' bounds.
-        let mut jobs: Vec<(std::ops::Range<usize>, &mut [f32], Vec<u32>)> = Vec::new();
-        let mut rest: &mut [f32] = &mut q;
-        for r in parts {
-            let len = (self.start[r.end] - self.start[r.start]) as usize;
-            let (mine, tail) = std::mem::take(&mut rest).split_at_mut(len);
-            rest = tail;
-            jobs.push((r.clone(), mine, Vec::new()));
-        }
-        og_lanes::for_each_mut(site, &mut jobs, 1, |(r, q, counts)| {
-            *counts = vec![0u32; n];
-            let mut at = 0;
-            for i in r.clone() {
-                for &j in self.of(i) {
-                    let d = (positions[j as usize] - positions[i]).length();
-                    q[at] = 1.0 - d / h;
-                    at += 1;
-                    counts[j as usize] += 1;
-                }
-            }
-        });
-        // first[k]: where particle k's incoming pairs start; a range's
-        // counts become where its pairs into each particle go.
-        let mut counts: Vec<Vec<u32>> = jobs.into_iter().map(|(.., c)| c).collect();
-        let mut first = vec![0u32; n + 1];
-        let mut total = 0u32;
-        for k in 0..n {
-            first[k] = total;
-            for c in counts.iter_mut() {
-                let here = c[k];
-                c[k] = total;
-                total += here;
-            }
-        }
-        first[n] = total;
-        let mut index = vec![0u32; total as usize];
-        {
-            // Each range writes only its own slots, interleaved with the
-            // others' in `index`: through a raw pointer.
-            struct Slots(*mut u32);
-            // SAFETY: `counts` gives each range its own run of every
-            // particle's slots, so no two tasks write one element, and
-            // `index` outlives the call.
-            unsafe impl Sync for Slots {}
-            unsafe impl Send for Slots {}
-            let slots = Slots(index.as_mut_ptr());
-            let slots = &slots;
-            let mut jobs: Vec<(std::ops::Range<usize>, Vec<u32>)> =
-                parts.iter().cloned().zip(counts).collect();
-            og_lanes::for_each_mut(site, &mut jobs, 1, |(r, at)| {
-                for i in r.clone() {
-                    for p in self.start[i] as usize..self.start[i + 1] as usize {
-                        let k = self.pairs[p] as usize;
-                        // SAFETY: slot at[k] is this range's (see above).
-                        unsafe { *slots.0.add(at[k] as usize) = p as u32 };
-                        at[k] += 1;
-                    }
-                }
-            });
-        }
-        (q, first, index)
-    }
-}
-
-/// The number density and near density of every particle over its pairs
-/// (`q = 1 - r / h` for each pair closer than `h`; `q²` and `q³` summed),
-/// in the order the pairs' scatter visits them: for particle `k`, its pairs
-/// with the particles before it in their order, then its own. With lanes
-/// on and two grains of particles, each particle gathers its own sums,
-/// a range of particles a pool thread, so the sums are the scatter's bit
-/// for bit; otherwise the scatter itself.
-fn densities(
-    positions: &[Vec3],
-    pairs: &Pairs,
-    h: f32,
-    grain: usize,
-    rho: &mut [f32],
-    near: &mut [f32],
-) {
-    let n = positions.len();
-    let threads = og_lanes::threads() as usize;
-    if threads <= 1 || n < grain.max(1).saturating_mul(2) {
-        rho.iter_mut().for_each(|r| *r = 0.0);
-        near.iter_mut().for_each(|r| *r = 0.0);
-        for i in 0..n {
-            for &j in pairs.of(i) {
-                let r = (positions[j as usize] - positions[i]).length();
-                let q = 1.0 - r / h;
-                if q > 0.0 {
-                    let (q2, q3) = (q * q, q * q * q);
-                    rho[i] += q2;
-                    rho[j as usize] += q2;
-                    near[i] += q3;
-                    near[j as usize] += q3;
-                }
-            }
-        }
-        return;
-    }
-    let size = n.div_ceil(threads.min(n / grain.max(1)).max(2));
-    let parts = crate::lanes::ranges(n, size);
-    let (q, first, index) = pairs.incoming(positions, h, &parts);
-    let mut jobs: Vec<(usize, &mut [f32], &mut [f32])> = rho
-        .chunks_mut(size)
-        .zip(near.chunks_mut(size))
-        .enumerate()
-        .map(|(k, (r, m))| (k * size, r, m))
-        .collect();
-    og_lanes::for_each_mut(og_lanes::Site::Physics, &mut jobs, 1, |(at, rho, near)| {
-        for (k, (rho, near)) in rho.iter_mut().zip(near.iter_mut()).enumerate() {
-            let k = *at + k;
-            let (mut r, mut m) = (0.0f32, 0.0f32);
-            let incoming = index[first[k] as usize..first[k + 1] as usize].iter();
-            let own = pairs.start[k]..pairs.start[k + 1];
-            for p in incoming.copied().chain(own) {
-                let q = q[p as usize];
-                if q > 0.0 {
-                    let (q2, q3) = (q * q, q * q * q);
-                    r += q2;
-                    m += q3;
-                }
-            }
-            *rho = r;
-            *near = m;
-        }
-    });
 }
 
 impl Fluid3State {
@@ -571,7 +428,6 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
         let mut rho = vec![0.0f32; n];
         let mut near = vec![0.0f32; n];
         let cap = 0.5 * h / ds;
-        let grain = crate::lanes::now().particles_3d;
         for _ in 0..substeps {
             for (i, v) in velocities.iter_mut().enumerate() {
                 *v += gravity * (fluid_of(i).gravity_scale * ds);
@@ -608,19 +464,38 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
                 }
                 *p += *v * ds;
             }
-            // Number density over every neighbour, each particle's sums by
-            // ranges on the lanes.
-            densities(&positions, &pairs, h, grain, &mut rho, &mut near);
+            // Number density over every neighbour. Each particle's sums
+            // could be gathered on the lanes bit for bit (its pairs with
+            // the particles before it, then its own: the order this scatter
+            // visits them), but the pairs' transpose that needs costs what
+            // the split saves: 8,000 particles on four lanes 8.37 against
+            // 8.45 ms a tick, 2,000 1.56 against 1.84 (round three,
+            // tests/evidence/P4/physics-3/). So it stays this scatter.
+            rho.iter_mut().for_each(|r| *r = 0.0);
+            near.iter_mut().for_each(|r| *r = 0.0);
+            for i in 0..n {
+                for &j in pairs.of(i) {
+                    let r = (positions[j as usize] - positions[i]).length();
+                    let q = 1.0 - r / h;
+                    if q > 0.0 {
+                        let (q2, q3) = (q * q, q * q * q);
+                        rho[i] += q2;
+                        rho[j as usize] += q2;
+                        near[i] += q3;
+                        near[j as usize] += q3;
+                    }
+                }
+            }
             // Relaxation, Gauss-Seidel in index order over the pairs found
-            // before the move: each pair moves both particles at once, and
+            // before the move: each pair moves both particles at once and
             // the next pair reads where they now are. Particle i's pairs
             // read what particle i - 1's wrote whenever the two are
             // neighbours, as lattice, emission and pouring order make them
-            // nearly always, so the chain of pairs that must run in this
-            // order is as long as the fluid: only another order (Jacobi,
-            // or two colours) splits it, which moves every particle's bits
-            // and the world hash. Viscosity and mixing are the same kind of
-            // pass, over velocities and mixes, and stay serial too.
+            // nearly always, so the chain that must run in this order is
+            // as long as the fluid: only another order (Jacobi, or two
+            // colours) splits it, and that moves every particle's bits and
+            // the world hash. Viscosity and mixing are passes of the same
+            // kind, over velocities and mixes, and stay serial too.
             for i in 0..n {
                 let f = fluid_of(i);
                 let pressure = f.stiffness * (rho[i] - f.rest_density);
@@ -694,31 +569,36 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
             // particle alone, so by ranges on the lanes from two grains.
             let shared: &[Member<'_>] = members;
             let owner = &owner;
-            crate::lanes::for_each_chunk(&mut positions, &mut velocities, grain, |at, ps, vs| {
-                for (k, (p, v)) in ps.iter_mut().zip(vs.iter_mut()).enumerate() {
-                    let m = &shared[owner[at + k] as usize];
-                    let r_particle = m.fluid.radius.max(0.02) * 0.25;
-                    if let Some((q, normal)) = solids.push_out(*p, r_particle) {
-                        *p = q;
-                        let along = v.dot(normal);
-                        let slide = *v - normal * along;
-                        *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
-                    }
-                    let half = m.fluid.bounds * 0.5;
-                    for k in 0..3 {
-                        if half[k] > 0.0 {
-                            let (lo, hi) = (m.centre[k] - half[k], m.centre[k] + half[k]);
-                            if p[k] < lo {
-                                p[k] = lo;
-                                v[k] = v[k].max(0.0);
-                            } else if p[k] > hi {
-                                p[k] = hi;
-                                v[k] = v[k].min(0.0);
+            crate::lanes::for_each_chunk(
+                &mut positions,
+                &mut velocities,
+                crate::lanes::now().particles_3d,
+                |at, ps, vs| {
+                    for (k, (p, v)) in ps.iter_mut().zip(vs.iter_mut()).enumerate() {
+                        let m = &shared[owner[at + k] as usize];
+                        let r_particle = m.fluid.radius.max(0.02) * 0.25;
+                        if let Some((q, normal)) = solids.push_out(*p, r_particle) {
+                            *p = q;
+                            let along = v.dot(normal);
+                            let slide = *v - normal * along;
+                            *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
+                        }
+                        let half = m.fluid.bounds * 0.5;
+                        for k in 0..3 {
+                            if half[k] > 0.0 {
+                                let (lo, hi) = (m.centre[k] - half[k], m.centre[k] + half[k]);
+                                if p[k] < lo {
+                                    p[k] = lo;
+                                    v[k] = v[k].max(0.0);
+                                } else if p[k] > hi {
+                                    p[k] = hi;
+                                    v[k] = v[k].min(0.0);
+                                }
                             }
                         }
                     }
-                }
-            });
+                },
+            );
         }
         // Back into each member.
         let mut at = 0;
