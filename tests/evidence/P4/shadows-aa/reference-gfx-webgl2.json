@@ -1,0 +1,191 @@
+{
+  "tier": "webgl2",
+  "buildMs": 128435,
+  "scenes": {
+    "point-spot-lights": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 363.4,
+      "metal": {
+        "outliers": 0.011,
+        "rmse": 0.00225,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/point-spot-lights.png",
+      "outliers": 0.011,
+      "rmse": 0.00225,
+      "ok": true,
+      "frameMs": 0.523,
+      "ms": 3931
+    },
+    "point-shadows-cube": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 25.7,
+      "frameMs": 0.702,
+      "ms": 1512
+    },
+    "point-shadows-paraboloid": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 21.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/point-shadows-paraboloid.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 0.503,
+      "ms": 1539
+    },
+    "shadows-local-8-cube": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 23.6,
+      "frameMs": 1.085,
+      "ms": 1741
+    },
+    "shadows-local-8-paraboloid": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 30.4,
+      "frameMs": 0.602,
+      "ms": 1456
+    },
+    "shadows-soft": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 37.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-soft.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 1.01,
+      "ms": 1111
+    },
+    "shadows-soft-off": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 22.7,
+      "frameMs": 0.618,
+      "ms": 906
+    },
+    "fxaa": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Fxaa",
+      "frames": 1,
+      "renderMs": 51,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fxaa.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 0.75,
+      "ms": 1229
+    },
+    "aa-off": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 22.7,
+      "frameMs": 0.668,
+      "ms": 940
+    },
+    "msaa": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 1,
+      "renderMs": 189.5,
+      "against": "crates/og-tests/references/webgl2/msaa.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 1.113,
+      "ms": 1368
+    },
+    "showcase": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 16,
+      "renderMs": 1147.3,
+      "metal": {
+        "outliers": 0.212,
+        "rmse": 0.01103,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/webgl2/showcase.png",
+      "outliers": 0.032,
+      "rmse": 0.00274,
+      "ok": true,
+      "frameMs": 2.918,
+      "ms": 3631
+    },
+    "overlay": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 16,
+      "renderMs": 116.4,
+      "metal": {
+        "outliers": 0.194,
+        "rmse": 0.01055,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/webgl2/overlay.png",
+      "outliers": 0.027,
+      "rmse": 0.00243,
+      "ok": true,
+      "frameMs": 2.907,
+      "ms": 2288
+    },
+    "shadows-local-8": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "applies": false,
+      "ms": 247
+    },
+    "taa-sharp": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Taa",
+      "frames": 16,
+      "applies": false,
+      "ms": 409
+    }
+  },
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "ms": 22851,
+  "log": []
+}

@@ -57,6 +57,7 @@ declare module "bun:test" {
     toBeLessThan(value: number): void;
     toBeCloseTo(value: number, digits?: number): void;
     toBeNull(): void;
+    toBeDefined(): void;
     toMatch(pattern: RegExp | string): void;
     toContain(value: unknown): void;
     toThrow(pattern?: RegExp | string): void;

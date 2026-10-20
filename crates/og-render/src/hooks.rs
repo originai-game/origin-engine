@@ -235,3 +235,18 @@ pub fn lit_module_source(shader: &MaterialShader, full: bool) -> String {
 pub fn physical_module_source(shader: &MaterialShader, full: bool) -> String {
     crate::physical_source(&shader.hooks_wgsl(), full)
 }
+
+/// The shadow casters' module with `shader`'s hooks (vertex_offset and
+/// surface_color cut the shadow as they cut the lit pass), with the joint
+/// palette in a storage buffer (`full`) or a texture (WebGL2): what every
+/// cascade, spot, cube-face and paraboloid pass draws casters with.
+pub fn shadow_module_source(shader: &MaterialShader, full: bool) -> String {
+    crate::shadow_source(
+        &shader.hooks_wgsl(),
+        if full {
+            crate::skin::PaletteMode::Storage
+        } else {
+            crate::skin::PaletteMode::Texture
+        },
+    )
+}

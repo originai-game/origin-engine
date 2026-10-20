@@ -2,18 +2,13 @@
 // range from a point or spot light. The value also goes to an R32Float colour
 // target: every backend (WebGL2 included) can fetch it as a plain texture, so
 // the PCF compares are explicit and identical everywhere. One uniform slot per
-// pass, selected with a dynamic offset. Prepended by noise.wgsl,
-// material.wgsl (group 1: dissolving and hooked casters), skin_*.wgsl
-// (group 2: skinned casters) and the material shader hooks (hooks.rs): a
-// material with a shader casts through vs_hooked / vs_skinned_hooked and
-// fs_hooked, displaced by its vertex_offset and cut by its surface_color's
-// alpha as its lit pass is.
-struct ShadowPass {
-  view_proj: mat4x4<f32>,
-  light: vec4<f32>,  // xyz: light position, w: range (0: directional, write depth)
-  time: vec4<f32>,   // x: the scene clock in seconds (the hooks' h.time)
-};
-@group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;
+// pass, selected with a dynamic offset (shadow_pass.wgsl, with the
+// paraboloid projection of a point light's hemispheres). Prepended by
+// noise.wgsl, material.wgsl (group 1: dissolving and hooked casters),
+// skin_*.wgsl (group 2: skinned casters), the material shader hooks
+// (hooks.rs) and shadow_pass.wgsl: a material with a shader casts through
+// vs_hooked / vs_skinned_hooked and fs_hooked, displaced by its
+// vertex_offset and cut by its surface_color's alpha as its lit pass is.
 
 struct VertexIn {
   @location(0) position: vec3<f32>,
@@ -61,7 +56,7 @@ fn shadow_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
 fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {
   let world = model * vec4<f32>(v.position, 1.0);
   var o: VsOut;
-  o.clip = shadow_pass.view_proj * world;
+  o.clip = shadow_clip(world);
   o.world = world.xyz;
   o.uv = v.uv;
   o.local_pos = v.position;
@@ -91,7 +86,7 @@ fn shadow_vertex_hooked(model: mat4x4<f32>, v: VertexIn) -> VsOut {
   var o = shadow_vertex(model, v);
   o.normal = shadow_normal(model, v.normal);
   o.world = o.world + vertex_offset(shadow_hook(o), shader_params());
-  o.clip = shadow_pass.view_proj * vec4<f32>(o.world, 1.0);
+  o.clip = shadow_clip(vec4<f32>(o.world, 1.0));
   return o;
 }
 
@@ -156,31 +151,39 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInst
   return shadow_vertex_hooked(mat4x4<f32>(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
 }
 
-fn shadow_value(in: VsOut) -> vec4<f32> {
+// `dx`, `dy`: the world position's derivatives, taken first (before any
+// discard) for a paraboloid pass's ray to the triangle's plane.
+fn shadow_value(in: VsOut, dx: vec3<f32>, dy: vec3<f32>) -> vec4<f32> {
   if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(length(in.world - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 0.0, 1.0);
+    return vec4<f32>(local_distance(in.world, in.clip, dx, dy), 0.0, 0.0, 1.0);
   }
   return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
 }
 
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
-  return shadow_value(in);
+  let dx = dpdx(in.world);
+  let dy = dpdy(in.world);
+  return shadow_value(in, dx, dy);
 }
 
 // Dissolving casters: the dissolved pixels cast no shadow.
 @fragment
 fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
+  let dx = dpdx(in.world);
+  let dy = dpdy(in.world);
   if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
-  return shadow_value(in);
+  return shadow_value(in, dx, dy);
 }
 
 // Casters with a material shader: what its surface_color cuts below the
 // alpha test (and the dissolve) casts no shadow, as it is not drawn lit.
 @fragment
 fn fs_hooked(in: VsOut) -> @location(0) vec4<f32> {
+  let dx = dpdx(in.world);
+  let dy = dpdy(in.world);
   let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, in.uv) * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) { discard; }
-  return shadow_value(in);
+  return shadow_value(in, dx, dy);
 }

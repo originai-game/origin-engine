@@ -1,0 +1,59 @@
+{
+  "tier": "webgl2",
+  "size": "1280x720",
+  "tolerance": {
+    "channel": 32,
+    "outliers": 0.005,
+    "rmse": 0.01
+  },
+  "stations": {
+    "post": {
+      "tick": 60,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/webgl2/post.png",
+      "outliers": 0.113,
+      "rmse": 0.00908,
+      "ok": true
+    },
+    "lens": {
+      "tick": 120,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/webgl2/lens.png",
+      "outliers": 0.112,
+      "rmse": 0.00876,
+      "ok": true
+    },
+    "fx": {
+      "tick": 240,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/webgl2/fx.png",
+      "outliers": 0.127,
+      "rmse": 0.01402,
+      "ok": false
+    },
+    "2d": {
+      "tick": 300,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/webgl2/2d.png",
+      "outliers": 0.118,
+      "rmse": 0.01265,
+      "ok": false
+    },
+    "stylised": {
+      "tick": 420,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/webgl2/stylised.png",
+      "outliers": 0.136,
+      "rmse": 0.00951,
+      "ok": true
+    }
+  },
+  "renderer": "webgl2",
+  "textureFormat": "bc7+bc5+rgba8",
+  "textures": 23,
+  "refused": "probe.commands: script must be a string, not object",
+  "ticks": 420,
+  "engine": [],
+  "ms": 5235,
+  "log": []
+}

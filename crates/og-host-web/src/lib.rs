@@ -613,12 +613,10 @@ mod canvas {
             self.renderer.size()
         }
         fn antialias(&self) -> String {
-            match self.renderer.info().antialias {
-                og_render::Antialias::Msaa4 => "msaa4",
-                og_render::Antialias::Taa => "taa",
-                _ => "off",
-            }
-            .into()
+            og_runtime::antialias_name(self.renderer.info().antialias).into()
+        }
+        fn info(&self) -> Option<og_render::RenderInfo> {
+            Some(self.renderer.info().clone())
         }
         fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
             if let Some((w, h)) = super::take_resize(self.engine) {
@@ -698,15 +696,6 @@ mod canvas {
         }
     }
 
-    fn antialias(name: &str) -> og_render::Antialias {
-        match name {
-            "off" => og_render::Antialias::Off,
-            "msaa4" => og_render::Antialias::Msaa4,
-            "taa" => og_render::Antialias::Taa,
-            _ => og_render::Antialias::Tier,
-        }
-    }
-
     /// Put the renderer on an OffscreenCanvas transferred to this Worker.
     /// Resolves to the tier (`webgpu`, `webgl2`), or rejects with the reason.
     #[wasm_bindgen]
@@ -720,14 +709,15 @@ mod canvas {
         } else {
             Backend::WebGpu
         };
-        let options = og_runtime::render_options(engine);
-        let desc = RenderDesc {
-            width: canvas.width().max(1),
-            height: canvas.height().max(1),
-            backend,
-            antialias: antialias(options["antialias"].as_str().unwrap_or("tier")),
-            ..RenderDesc::default()
-        };
+        let desc = og_runtime::render_desc(
+            engine,
+            RenderDesc {
+                width: canvas.width().max(1),
+                height: canvas.height().max(1),
+                backend,
+                ..RenderDesc::default()
+            },
+        );
         let instance = backend.instance();
         let surface = instance
             .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas))

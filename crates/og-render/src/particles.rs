@@ -259,9 +259,12 @@ pub enum ParticleAlign {
     Velocity { stretch: f32 },
 }
 
-/// Particles bounce off the depth buffer (the full tier; on the no-compute
-/// tier they pass through and [`crate::FrameStats::particle_collision_skipped`]
-/// counts the system). World space only. Turns the depth prepass on.
+/// Particles bounce off the depth buffer on the full tier (turning the
+/// depth prepass on), and off [`crate::RenderScene::particle_colliders`] on
+/// the CPU path (the no-compute tier, [`ParticleSimulation::Cpu`]); a CPU
+/// system with no colliders to meet passes through and
+/// [`crate::FrameStats::particle_collision_skipped`] counts it, as does a
+/// sprite-mode one. World space only.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ParticleCollision {
     /// Fraction of the normal speed kept (0 sticks, 1 bounces fully).
@@ -827,8 +830,130 @@ fn spawn(
     }
 }
 
+/// What CPU-simulated particles bounce off ([`crate::RenderScene::particle_colliders`]):
+/// the scene's ground and solid shapes as the host knows them (og-runtime
+/// gives its static colliders and terrains' height fields). A particle
+/// bounces when a step carries it from outside a shape to inside: one born
+/// inside (sparks from a brazier's box) leaves freely.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ParticleCollider {
+    /// Solid below the plane `normal · p = offset` (`normal` need not be
+    /// normalized): an endless ground.
+    Plane {
+        normal: Vec3,
+        offset: f32,
+    },
+    /// A box of `half_extents` placed by `transform` (rotation, translation
+    /// and scale).
+    Box {
+        transform: Mat4,
+        half_extents: Vec3,
+    },
+    Sphere {
+        center: Vec3,
+        radius: f32,
+    },
+    /// A height field placed as [`crate::Terrain::transform`] places it
+    /// (centred, along its x and z): solid below its surface, within its
+    /// rectangle.
+    HeightField {
+        data: crate::TerrainData,
+        transform: Mat4,
+    },
+}
+
+impl ParticleCollider {
+    /// Whether `p` is inside, and the outward normal there (for a box, of
+    /// the face nearest `from`, where the particle came from).
+    fn hit(&self, from: Vec3, p: Vec3) -> Option<Vec3> {
+        match self {
+            ParticleCollider::Plane { normal, offset } => {
+                let n = normal.normalize_or_zero();
+                (n != Vec3::ZERO && n.dot(p) < *offset / normal.length()).then_some(n)
+            }
+            ParticleCollider::Sphere { center, radius } => {
+                let d = p - *center;
+                (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
+            }
+            ParticleCollider::Box {
+                transform,
+                half_extents,
+            } => {
+                let inv = transform.inverse();
+                let l = inv.transform_point3(p);
+                if l.abs().cmpge(*half_extents).any() {
+                    return None;
+                }
+                // The face the step came through: the axis it was most outside on.
+                let f = inv.transform_point3(from);
+                let out = f.abs() - *half_extents;
+                let axis = if out.x >= out.y && out.x >= out.z {
+                    Vec3::X * f.x.signum()
+                } else if out.y >= out.z {
+                    Vec3::Y * f.y.signum()
+                } else {
+                    Vec3::Z * f.z.signum()
+                };
+                Some(
+                    inv.transpose()
+                        .transform_vector3(axis)
+                        .normalize_or(Vec3::Y),
+                )
+            }
+            ParticleCollider::HeightField { data, transform } => {
+                let inv = transform.inverse();
+                let l = inv.transform_point3(p);
+                let half = data.size * 0.5;
+                if l.x.abs() > half.x || l.z.abs() > half.y {
+                    return None;
+                }
+                let at = glam::Vec2::new(l.x, l.z);
+                (l.y < data.height(at)).then(|| {
+                    let n = data.normal(at);
+                    inv.transpose().transform_vector3(n).normalize_or(Vec3::Y)
+                })
+            }
+        }
+    }
+}
+
+/// The CPU path's collision response, as the compute shader's: the normal
+/// part of the velocity reflected by `bounce`, the tangential part reduced
+/// by `friction`, and the step taken again from `before`.
+fn collide(
+    colliders: &[ParticleCollider],
+    c: ParticleCollision,
+    before: Vec3,
+    pos: &mut Vec3,
+    vel: &mut Vec3,
+    dt: f32,
+) {
+    for collider in colliders {
+        if collider.hit(before, before).is_some() {
+            continue;
+        }
+        let Some(n) = collider.hit(before, *pos) else {
+            continue;
+        };
+        let vn = vel.dot(n);
+        if vn < 0.0 {
+            let normal_part = n * vn;
+            *vel = (*vel - normal_part) * (1.0 - c.friction) - normal_part * c.bounce;
+            *pos = before + *vel * dt;
+        }
+        return;
+    }
+}
+
 /// One fixed step of a live particle at `time` seconds.
-fn integrate(e: &ParticleEmitter, p: &mut ParticleState, dt: f32, time: f32, seed: u32) {
+fn integrate(
+    e: &ParticleEmitter,
+    p: &mut ParticleState,
+    dt: f32,
+    time: f32,
+    seed: u32,
+    colliders: &[ParticleCollider],
+) {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
     let mut vel = Vec3::from_slice(&p.vel_life[..3]);
     vel += e.gravity * dt;
@@ -843,7 +968,11 @@ fn integrate(e: &ParticleEmitter, p: &mut ParticleState, dt: f32, time: f32, see
         vel += n * e.noise.strength * dt;
     }
     vel *= 1.0 / (1.0 + e.drag.max(0.0) * dt);
+    let before = pos;
     pos += vel * dt;
+    if let Some(c) = e.collision {
+        collide(colliders, c, before, &mut pos, &mut vel, dt);
+    }
     p.pos_age = pos.extend(p.pos_age[3] + dt).to_array();
     p.vel_life = vel.extend(p.vel_life[3]).to_array();
 }
@@ -871,12 +1000,14 @@ pub struct CpuParticles {
 
 impl CpuParticles {
     /// Steps the system to `sys.tick`; returns the ticks simulated.
+    /// `colliders`: what its particles bounce off (empty: nothing).
     pub(crate) fn advance(
         &mut self,
         e: &ParticleEmitter,
         sys: &ParticleSystem,
         tick_rate: f32,
         points: &[[f32; 4]],
+        colliders: &[ParticleCollider],
     ) -> u32 {
         let max = e.max_particles;
         if self.slots.len() != max as usize {
@@ -893,7 +1024,7 @@ impl CpuParticles {
             for (slot, p) in self.slots.iter_mut().enumerate() {
                 match slot_spawn(slot as u32, max, step.first, step.count) {
                     Some((n, k)) => *p = spawn(e, seed, n, k, step, dt, points),
-                    None if p.alive() => integrate(e, p, dt, step.time, seed),
+                    None if p.alive() => integrate(e, p, dt, step.time, seed, colliders),
                     None => {}
                 }
             }

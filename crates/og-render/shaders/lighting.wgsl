@@ -57,22 +57,89 @@ fn cascade_index(p: vec3<f32>) -> u32 {
   return CASCADES;
 }
 
-// The bias is in world units scaled by the cascade's texel size (a normal
-// offset growing with the light's angle to the surface, plus a depth bias
-// converted to the cascade's normalized depth), so it holds at any scene
-// scale. Shadows fade out over the last tenth of the shadow distance.
-fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
-  let c = cascade_index(p);
-  if (c >= CASCADES) { return 1.0; }
+// The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`): a
+// blocker search over the widest penumbra the cascade allows, then 16
+// bilinear PCF taps over the penumbra the blockers' mean depth gives
+// (softness × the distance from blocker to receiver, in texels). A
+// Vogel disc spreads the taps; a slope term keeps the wide kernel off a
+// receiver tilted from the light. Every read is a textureLoad compare, as
+// pcf's, so WebGL2 draws it too.
+const PCSS_TAPS: i32 = 16;
+const PCSS_MAX_TEXELS: f32 = 24.0;
+
+fn vogel(i: i32, radius: f32) -> vec2<f32> {
+  let r = sqrt((f32(i) + 0.5) / f32(PCSS_TAPS)) * radius;
+  let a = f32(i) * 2.39996323;
+  return vec2<f32>(cos(a), sin(a)) * r;
+}
+
+fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f32 {
+  let size = vec2<f32>(textureDimensions(cascade_map));
+  let isize = vec2<i32>(size);
+  // World units per texel, and the cascade's depth range in world units.
+  let texel = bias.x;
+  let depth_range = texel / max(bias.y, 1e-12);
+  let softness = frame.shadow.x;
+  // How the receiver's light-space depth changes per texel along it.
+  let slope = bias.y * min(tan_l, 4.0);
+  let search = clamp(softness * ref_depth * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
+  var blockers = 0.0;
+  var sum = 0.0;
+  for (var i = 0; i < PCSS_TAPS; i++) {
+    let o = vogel(i, search);
+    let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
+    let d = textureLoad(cascade_map, at, i32(c), 0).r;
+    if (d < ref_depth - slope * length(o)) {
+      blockers += 1.0;
+      sum += d;
+    }
+  }
+  if (blockers < 0.5) { return 1.0; }
+  let blocker = sum / blockers;
+  let penumbra = clamp(softness * (ref_depth - blocker) * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
+  var lit = 0.0;
+  for (var i = 0; i < PCSS_TAPS; i++) {
+    let o = vogel(i, penumbra);
+    lit += pcf(cascade_map, uv + o / size, c, ref_depth - slope * length(o));
+  }
+  return lit / f32(PCSS_TAPS);
+}
+
+// One cascade's shadow at p (-1: beyond its depth, lit). The bias is in
+// world units scaled by the cascade's texel size (a normal offset growing
+// with the light's angle to the surface, plus a depth bias converted to the
+// cascade's normalized depth), so it holds at any scene scale.
+fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
   let bias = frame.cascade_bias[c];
   let sin_l = sqrt(max(1.0 - n_dot_l * n_dot_l, 0.0));
   let offset = p + n * bias.x * (0.25 + sin_l);
   let sp = frame.cascade_view_proj[c] * vec4<f32>(offset, 1.0);
   let uv = vec2<f32>(sp.x * 0.5 + 0.5, 0.5 - sp.y * 0.5);
-  if (sp.z > 1.0) { return 1.0; }
-  let shadow = pcf(cascade_map, uv, c, sp.z - bias.y);
-  let last = frame.cascade_bias[u32(frame.light_dir.w) - 1u].z;
+  if (sp.z > 1.0) { return -1.0; }
+  if (frame.shadow.x > 0.0) {
+    return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
+  }
+  return pcf(cascade_map, uv, c, sp.z - bias.y);
+}
+
+// The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
+// to its far split, `DirectionalLight::cascade_blend`) it fades into the
+// next one, which covers that band too. Shadows fade out over the last
+// tenth of the shadow distance.
+fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
+  let c = cascade_index(p);
+  if (c >= CASCADES) { return 1.0; }
+  var shadow = cascade_sample(c, p, n, n_dot_l);
+  if (shadow < 0.0) { return 1.0; }
+  let count = u32(frame.light_dir.w);
   let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
+  let band = frame.cascade_bias[c].w;
+  if (c + 1u < count && depth > band) {
+    var next = cascade_sample(c + 1u, p, n, n_dot_l);
+    if (next < 0.0) { next = 1.0; }
+    shadow = mix(shadow, next, smoothstep(band, frame.cascade_bias[c].z, depth));
+  }
+  let last = frame.cascade_bias[count - 1u].z;
   return mix(shadow, 1.0, smoothstep(0.9 * last, last, depth));
 }
 
@@ -84,6 +151,12 @@ fn cube_face(d: vec3<f32>) -> u32 {
   return select(5u, 4u, d.z > 0.0);
 }
 
+// Dual-paraboloid point shadows (shadows.rs): hemisphere 0 holds what lies
+// below the light, 1 what lies above, each the paraboloid projection of
+// its half of the sphere scaled into 0.9 of the disc (shadow_pass.wgsl
+// draws them).
+const PARABOLOID_SCALE: f32 = 0.9;
+
 // Local shadows store distance / range; the fragment compares its own.
 fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   let slot = i32(light.direction_slot.w);
@@ -93,7 +166,19 @@ fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   let dist = length(to_frag);
   // Normal offset grows with distance (texels widen with it).
   let offset = p + n * light.cone.z * dist;
-  var layer = u32(slot) * 6u;
+  var layer = u32(slot);
+  if (light.color_kind.w < 0.5 && frame.shadow.y > 0.5) {
+    let to = offset - light.position_range.xyz;
+    let below = to.y <= 0.0;
+    let sigma = select(-1.0, 1.0, below);
+    layer += select(1u, 0u, below);
+    let l = vec3<f32>(to.x, sigma * to.z, -sigma * to.y);
+    let d = max(length(l), 1e-6);
+    let q = l / d;
+    let ndc = q.xy * (PARABOLOID_SCALE / (1.0 + q.z));
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    return pcf(local_shadow_map, uv, layer, d / range - light.cone.w);
+  }
   if (light.color_kind.w < 0.5) { layer += cube_face(to_frag); }
   let clip = frame.local_view_proj[layer] * vec4<f32>(offset, 1.0);
   if (clip.w <= 0.0) { return 1.0; }

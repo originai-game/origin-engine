@@ -469,11 +469,19 @@ impl ParticleRenderer {
             out.capacity += e.max_particles;
             let seed = hash_seed(sys.seed);
             let sprite_mode = matches!(e.render, ParticleRender::Sprite { .. });
-            if e.collision.is_some() && (!gpu || sprite_mode) {
+            // The CPU path bounces world-space billboards off the scene's
+            // colliders; sprite systems and a scene without colliders pass through.
+            let colliders: &[crate::particles::ParticleCollider] =
+                if e.collision.is_some() && e.space == SimulationSpace::World && !sprite_mode {
+                    &scene.particle_colliders
+                } else {
+                    &[]
+                };
+            if e.collision.is_some() && (sprite_mode || (!gpu && colliders.is_empty())) {
                 out.collision_skipped += 1;
             }
             if let ParticleRender::Sprite { layer } = e.render {
-                out.ticks += state.cpu.advance(e, sys, tick_rate, points);
+                out.ticks += state.cpu.advance(e, sys, tick_rate, points, &[]);
                 out.cpu_alive += state.cpu.alive() as u32;
                 push_sprites(e, sys, &state.cpu.slots, layer, &mut out.sprites);
                 continue;
@@ -544,7 +552,7 @@ impl ParticleRenderer {
                     depth,
                 });
             } else {
-                out.ticks += state.cpu.advance(e, sys, tick_rate, points);
+                out.ticks += state.cpu.advance(e, sys, tick_rate, points, colliders);
                 out.cpu_alive += state.cpu.alive() as u32;
                 let bytes: &[u8] = bytemuck::cast_slice(&state.cpu.slots);
                 let upload = state.upload.get_or_insert_with(|| {

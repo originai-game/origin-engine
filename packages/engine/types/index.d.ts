@@ -2518,12 +2518,28 @@ export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "vulkan-cpu" | "metal"
 
 /**
  * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
- * - `"tier"`: The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2.
+ * - `"tier"`: The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled.
  * - `"off"`: One sample per pixel.
- * - `"msaa4"`: 4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled.
- * - `"taa"`: Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames.
+ * - `"msaa4"`: 4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled.
+ * - `"taa"`: Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it.
+ * - `"fxaa"`: FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture.
  */
-export type Antialias = "tier" | "off" | "msaa4" | "taa";
+export type Antialias = "tier" | "off" | "msaa4" | "taa" | "fxaa";
+
+/**
+ * How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved.
+ * - `"auto"`: Cube faces on the full tier, paraboloids on WebGL2.
+ * - `"cube"`: Six 90 degree faces: six shadow passes per light.
+ * - `"paraboloid"`: Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection).
+ */
+export type PointShadows = "auto" | "cube" | "paraboloid";
+
+/**
+ * How TAA resamples its history each frame, as og-render's TaaHistory.
+ * - `"bilinear"`: One bilinear tap: cheap, slightly soft while the camera moves.
+ * - `"catmullRom"`: A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion.
+ */
+export type TaaHistory = "bilinear" | "catmullRom";
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
@@ -2544,6 +2560,26 @@ export interface RenderOptions {
    * @range 256..4096
    */
   readonly shadowMapSize?: number;
+  /**
+   * How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser).
+   *
+   * @default "auto"
+   */
+  readonly pointShadows?: PointShadows;
+  /**
+   * With TAA: how the history is resampled.
+   *
+   * @default "bilinear"
+   */
+  readonly taaHistory?: TaaHistory;
+  /**
+   * With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly taaSharpen?: number;
 }
 
 /**
@@ -3022,11 +3058,26 @@ export interface DirectionalLight {
    * @unit m (metres)
    */
   shadowDistance: number;
+  /**
+   * Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel.
+   *
+   * @range 0..0.2
+   * @tunable
+   */
+  shadowSoftness: number;
+  /**
+   * The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades).
+   *
+   * @range 0..0.5
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  cascadeBlend: number;
 }
 
 /**
  * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
- * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
+ * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.
  *
  * The value of the `PointLight` component (token `og.PointLight`).
  */
@@ -3054,7 +3105,9 @@ export interface PointLight {
    * @tunable
    */
   distance: number;
-  /** Cast cube shadows. */
+  /**
+   * Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows).
+   */
   castShadow: boolean;
 }
 
@@ -5136,8 +5189,14 @@ export interface RenderCapabilities {
   readonly antialias: Antialias;
   /** How many point and spot lights one frame draws (MAX_LIGHTS on every tier). */
   readonly maxLights: number;
-  /** How many point and spot lights may cast shadows. */
+  /**
+   * How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs.
+   */
   readonly maxShadowedLights: number;
+  /**
+   * How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to).
+   */
+  readonly pointShadows: PointShadows;
   /** The render target width in device pixels. */
   readonly width: number;
   /** The render target height in device pixels. */
@@ -16610,10 +16669,10 @@ export declare namespace og {
    * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
    */
-  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32"> }, DirectionalLight>;
+  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
   /**
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
-   * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
+   * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.
    */
   const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */

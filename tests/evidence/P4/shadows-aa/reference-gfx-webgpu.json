@@ -1,0 +1,189 @@
+{
+  "tier": "webgpu",
+  "buildMs": 1203,
+  "scenes": {
+    "point-spot-lights": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3507.9,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/point-spot-lights.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 0.427,
+      "ms": 4378
+    },
+    "point-shadows-cube": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 25.1,
+      "frameMs": 0.445,
+      "ms": 694
+    },
+    "point-shadows-paraboloid": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 28.2,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/point-shadows-paraboloid.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 0.435,
+      "ms": 888
+    },
+    "shadows-local-8": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 35.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-local-8.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 1.348,
+      "ms": 1913
+    },
+    "shadows-local-8-cube": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 36.4,
+      "frameMs": 1.332,
+      "ms": 1543
+    },
+    "shadows-local-8-paraboloid": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 36.6,
+      "frameMs": 0.6,
+      "ms": 1364
+    },
+    "shadows-soft": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 31.8,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-soft.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "frameMs": 0.635,
+      "ms": 794
+    },
+    "shadows-soft-off": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 36.8,
+      "frameMs": 0.412,
+      "ms": 459
+    },
+    "fxaa": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Fxaa",
+      "frames": 1,
+      "renderMs": 195.8,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00005,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fxaa.png",
+      "outliers": 0,
+      "rmse": 0.00005,
+      "ok": true,
+      "frameMs": 0.495,
+      "ms": 832
+    },
+    "aa-off": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 37.2,
+      "frameMs": 0.412,
+      "ms": 461
+    },
+    "taa": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 220.9,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00006,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/taa.png",
+      "outliers": 0,
+      "rmse": 0.00006,
+      "ok": true,
+      "frameMs": 0.493,
+      "ms": 798
+    },
+    "taa-motion": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 40.5,
+      "frameMs": 0.487,
+      "ms": 513
+    },
+    "taa-sharp": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 320.8,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00023,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/taa-sharp.png",
+      "outliers": 0,
+      "rmse": 0.00023,
+      "ok": true,
+      "frameMs": 0.552,
+      "ms": 959
+    }
+  },
+  "adapter": "",
+  "ms": 16216,
+  "log": []
+}

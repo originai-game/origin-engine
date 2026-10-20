@@ -397,6 +397,13 @@ fn heightfield(d: &TerrainData) -> og_physics::HeightfieldDesc {
     }
 }
 
+/// The height field a SHAPE_HEIGHTFIELD collider's `mesh` names (a
+/// collision terrain's TerrainInfo.geometry), as physics has it.
+pub(crate) fn field_of_geometry(t: &TerrainState, geometry: u64) -> Option<TerrainData> {
+    let index = geometry.checked_sub(GEOMETRY_BASE)?;
+    t.loaded.get(index as usize)?.field.clone()
+}
+
 /// Registers a terrain's height field with physics and remembers it, so
 /// a hot reload's new physics gets it too.
 fn set_heightfield(eng: &Engine, geometry: u64, d: &TerrainData) -> Result<(), String> {

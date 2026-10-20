@@ -703,7 +703,12 @@ impl TerrainRenderer {
         let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("terrain shadow"),
             source: wgpu::ShaderSource::Wgsl(
-                format!("{common}{}", include_str!("../shaders/terrain_shadow.wgsl")).into(),
+                format!(
+                    "{common}{}{}",
+                    crate::SHADOW_PASS_WGSL,
+                    include_str!("../shaders/terrain_shadow.wgsl")
+                )
+                .into(),
             ),
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {

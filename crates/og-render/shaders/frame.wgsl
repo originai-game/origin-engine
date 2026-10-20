@@ -6,12 +6,12 @@
 // declared after it in the lit shader only (clusters.rs).
 
 const CASCADES: u32 = 3u;
-const LOCAL_SHADOW_LAYERS: u32 = 12u;
+const LOCAL_SHADOW_LAYERS: u32 = 48u;
 
 struct LocalLight {
   position_range: vec4<f32>,  // xyz: position, w: range
   color_kind: vec4<f32>,      // rgb: color * intensity, w: 0 point, 1 spot
-  direction_slot: vec4<f32>,  // xyz: spot axis (away from the light), w: shadow slot (-1: none)
+  direction_slot: vec4<f32>,  // xyz: spot axis (away from the light), w: first shadow layer (-1: none)
   cone: vec4<f32>,            // x: cos outer, y: 1 / (cos inner - cos outer), z: normal offset per metre, w: depth bias
 };
 
@@ -24,9 +24,9 @@ struct Frame {
   params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights drawn, w: 1 / cascade map size
   view_forward: vec4<f32>,    // xyz: camera forward, w: 1 / local shadow map size
   cascade_view_proj: array<mat4x4<f32>, 3>,
-  cascade_bias: array<vec4<f32>, 3>,    // x: normal offset (world), y: depth bias (normalized), z: slice far (view depth), w: unused
+  cascade_bias: array<vec4<f32>, 3>,    // x: normal offset (world), y: depth bias (normalized), z: slice far (view depth), w: where it fades into the next (view depth; z: no blending)
   cluster: vec4<f32>,         // x, y: clusters per pixel across and down, z, w: depth slice scale and bias (of log2 depth in perspective)
-  local_view_proj: array<mat4x4<f32>, 12>,
+  local_view_proj: array<mat4x4<f32>, 48>,  // per layer: a spot's view or a cube face (paraboloid layers: unused)
   // The atmosphere (`AtmosphereGpu` in atmosphere.rs).
   fog_color: vec4<f32>,       // rgb: colour, w: 1 when fog is on
   fog_distance: vec4<f32>,    // x: density, y: start, z: end, w: max opacity
@@ -44,6 +44,7 @@ struct Frame {
   // Water (`water.rs`): caustics on what lies below the first surface that has them.
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
+  shadow: vec4<f32>,          // x: the sun's softness (0: hard), y: 1 when point lights' shadows are paraboloids, zw: unused
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;

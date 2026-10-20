@@ -2,8 +2,8 @@
 //!
 //! A wgpu Forward+ renderer: PBR metallic-roughness, one directional light
 //! with three cascaded shadow maps, up to 256 point and spot lights in view,
-//! clustered (`clusters.rs`; two of them shadowed), split-sum image-based lighting generated from a procedural sky,
-//! antialiasing by tier (TAA on WebGPU-class backends, 4x MSAA on WebGL2),
+//! clustered (`clusters.rs`; up to eight of them shadowed, four on WebGL2, `shadows.rs`), split-sum image-based lighting generated from a procedural sky,
+//! antialiasing by tier (TAA on WebGPU-class backends, 4x MSAA or FXAA on WebGL2),
 //! bloom, manual or metered exposure, ACES tonemapping, and a 2D batch of
 //! sprites and MSDF text. It runs natively (Metal, Vulkan; headless for
 //! executors) and in the browser (WebGPU, or WebGL2 through wgpu's GL
@@ -52,6 +52,7 @@ mod post;
 mod ribbons;
 mod scatter;
 mod scene;
+mod shadows;
 pub mod shapes;
 mod skin;
 mod sprites;
@@ -84,18 +85,20 @@ pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 pub use headless::render_to_rgba;
 pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
-    physical_module_source,
+    physical_module_source, shadow_module_source,
 };
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
-    ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
-    ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet,
+    ParticleBlend, ParticleCollider, ParticleCollision, ParticleEmitter, ParticleNoise,
+    ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace,
+    SpriteSheet,
 };
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;
 pub use scene::*;
+pub use shadows::PointShadows;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
@@ -120,10 +123,11 @@ pub use weather::{
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
 
-use frame::{CASCADES, Cascade, Frustum, LOCAL_SHADOW_LAYERS};
+use frame::{CASCADES, Cascade, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
 use post::FramePass;
+use shadows::LOCAL_SHADOW_LAYERS;
 use sprites::{FontLayout, RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
@@ -221,12 +225,14 @@ pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
     }
 }
 const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
+/// The shadow pass's slot and the paraboloid projection every caster shares.
+pub(crate) const SHADOW_PASS_WGSL: &str = include_str!("../shaders/shadow_pass.wgsl");
 
 /// The shadow shader's source with `hooks` (a material shader's, or the
 /// built-in identities) and the joint palette read as `palette`.
-fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
+pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_WGSL}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_PASS_WGSL}{SHADOW_WGSL}",
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
@@ -328,21 +334,38 @@ pub enum Antialias {
     #[default]
     Off,
     /// The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x
-    /// MSAA on the no-compute tier (WebGL2, GL).
+    /// MSAA on the no-compute tier (WebGL2, GL), or FXAA there where the
+    /// HDR format cannot be multisampled.
     Tier,
-    /// 4x MSAA on any tier (falls back to `Off` where the HDR format cannot be
+    /// 4x MSAA on any tier (FXAA where the HDR format cannot be
     /// multisampled). Sharp sprites and text; no temporal blur.
     Msaa4,
     /// Temporal antialiasing on any tier: a sub-pixel jitter per frame and a
     /// reprojected, neighbourhood-clamped history. Converges over ~8 frames.
+    /// [`RenderDesc::taa_history`] and [`RenderDesc::taa_sharpen`] refine it.
     Taa,
+    /// FXAA 3.11 (quality preset 12) over the tonemapped image, before the
+    /// overlay: one full-screen pass, no extra samples and no history, on
+    /// any tier. Softer than MSAA on texture detail; nothing to converge.
+    Fxaa,
+}
+
+/// How TAA reads its history ([`RenderDesc::taa_history`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TaaHistory {
+    /// One bilinear tap: cheap, slightly blurred under motion.
+    #[default]
+    Bilinear,
+    /// Catmull-Rom over 4×4 texels in 9 bilinear taps: keeps the history
+    /// sharp when the camera moves (each frame resamples it).
+    CatmullRom,
 }
 
 /// How to create a [`Renderer`]. The default is a 1280x720 renderer on the
 /// platform's primary API with an sRGB RGBA8 output, no antialiasing, three
 /// 2048² shadow cascades and BC/ASTC/ETC2 texture compression where the GPU
 /// has it. [`RenderDesc::mobile`] is the preset for phones.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderDesc {
     pub width: u32,
     pub height: u32,
@@ -368,6 +391,16 @@ pub struct RenderDesc {
     /// full tier for large scenes (frustum and occlusion), or the CPU path
     /// ([`Culling`]).
     pub culling: Culling,
+    /// How point lights' shadows are stored: cube faces, or dual-paraboloid
+    /// hemispheres (two passes instead of six; [`PointShadows`]). `Auto`:
+    /// cube on the full tier, paraboloid on WebGL2.
+    pub point_shadows: PointShadows,
+    /// With TAA: how the history is resampled ([`TaaHistory`]).
+    pub taa_history: TaaHistory,
+    /// With TAA: a sharpening pass after it, 0 (off, the default) to 1: a
+    /// clamped unsharp mask over the 4 neighbours that restores what the
+    /// history's blend softened, never past the neighbourhood's range.
+    pub taa_sharpen: f32,
 }
 
 /// Where instances are culled ([`RenderDesc::culling`]).
@@ -413,6 +446,9 @@ impl Default for RenderDesc {
             texture_compression: TextureCompression::Auto,
             particles: ParticleSimulation::Auto,
             culling: Culling::Auto,
+            point_shadows: PointShadows::Auto,
+            taa_history: TaaHistory::Bilinear,
+            taa_sharpen: 0.0,
         }
     }
 }
@@ -446,11 +482,17 @@ pub struct RenderInfo {
     pub backend: wgpu::Backend,
     pub device_type: wgpu::DeviceType,
     pub tier: Tier,
-    /// The antialiasing in use: `Off`, `Msaa4` or `Taa`.
+    /// The antialiasing in use: `Off`, `Msaa4`, `Taa` or `Fxaa`.
     pub antialias: Antialias,
     /// The cascade size and count in use (after clamping).
     pub shadow_map_size: u32,
     pub shadow_cascades: u32,
+    /// How many point and spot lights cast shadows in one frame on this
+    /// tier ([`MAX_SHADOWED_LIGHTS`] on the full tier,
+    /// [`NO_COMPUTE_SHADOWED_LIGHTS`] on WebGL2).
+    pub shadowed_lights: u32,
+    /// How point lights' shadows are stored: `Cube` or `Paraboloid` (never `Auto`).
+    pub point_shadows: PointShadows,
     /// The encoding each kind of texture should be uploaded in, and every
     /// encoding this device accepts.
     pub texture_formats: TextureFormats,
@@ -529,6 +571,11 @@ pub struct FrameStats {
     pub shadow_casters: u32,
     /// Shadow passes (cascades plus local light faces).
     pub shadow_passes: u32,
+    /// Point and spot lights drawn with shadows, and those in view whose
+    /// shadows were left out past [`RenderInfo::shadowed_lights`] (the
+    /// least radiant at the camera).
+    pub shadowed_lights: u32,
+    pub shadowed_lights_dropped: u32,
     /// Local lights drawn; those in view beyond [`MAX_LIGHTS`] that were
     /// not (the least important); those outside the view.
     pub lights: u32,
@@ -643,7 +690,10 @@ struct ShadowPassUniform {
     light: [f32; 4],
     /// x: the scene clock in seconds (a material shader's `h.time`).
     time: [f32; 4],
-    pad: [f32; 40],
+    /// x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1
+    /// above, z: the map's side, w: the projection's scale (shadow_pass.wgsl).
+    paraboloid: [f32; 4],
+    pad: [f32; 36],
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
@@ -1566,9 +1616,11 @@ impl Renderer {
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
             Antialias::Taa => Antialias::Taa,
+            Antialias::Fxaa => Antialias::Fxaa,
             Antialias::Tier if tier == Tier::Full => Antialias::Taa,
             Antialias::Tier | Antialias::Msaa4 if msaa_ok => Antialias::Msaa4,
-            Antialias::Tier | Antialias::Msaa4 => Antialias::Off,
+            // No multisampled HDR target: the post-process instead.
+            Antialias::Tier | Antialias::Msaa4 => Antialias::Fxaa,
         };
         let samples = if antialias == Antialias::Msaa4 {
             MSAA_SAMPLES
@@ -1612,6 +1664,8 @@ impl Renderer {
             antialias,
             shadow_map_size: shadow_size,
             shadow_cascades: cascades,
+            shadowed_lights: shadows::shadowed_lights(tier) as u32,
+            point_shadows: desc.point_shadows.resolve(tier),
             texture_formats,
         };
         log::info!(
@@ -1763,11 +1817,18 @@ impl Renderer {
             ..Default::default()
         });
         let cascade_map = ShadowMap::new(&device, "cascades", shadow_size, cascades);
+        // Twelve layers to begin with; a frame that needs more grows it to
+        // the tier's capacity (`grow_local_shadows`).
         let local_map = ShadowMap::new(
             &device,
             "local shadows",
             LOCAL_SHADOW_SIZE,
-            LOCAL_SHADOW_LAYERS as u32,
+            shadows::INITIAL_LOCAL_LAYERS
+                .min(shadows::capacity(
+                    info.shadowed_lights as usize,
+                    info.point_shadows,
+                ))
+                .max(1) as u32,
         );
 
         // Uniforms.
@@ -2011,7 +2072,16 @@ impl Renderer {
         let fx_buffer = uniform_buffer("fx", std::mem::size_of::<fx::FxUniform>());
         let sprite_fx_buffer = uniform_buffer("sprite fx", 16);
 
-        let post = post::PostPasses::new(&device, &queue, output_format, antialias);
+        let post = post::PostPasses::new(
+            &device,
+            &queue,
+            output_format,
+            antialias,
+            post::AaOptions {
+                taa_history: desc.taa_history,
+                taa_sharpen: desc.taa_sharpen.clamp(0.0, 1.0),
+            },
+        );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
@@ -2043,7 +2113,7 @@ impl Renderer {
                     include_str!("../shaders/scatter.wgsl")
                 ),
                 shadow_wgsl: format!(
-                    "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{}",
+                    "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{}",
                     particles_gpu::NOISE_WGSL,
                     include_str!("../shaders/scatter_common.wgsl"),
                     include_str!("../shaders/scatter_shadow.wgsl")
@@ -2946,6 +3016,38 @@ impl Renderer {
         ))
     }
 
+    /// Grows the local shadow array to the tier's capacity when the scene's
+    /// shadowed lights could need more layers than it has (once per
+    /// renderer: the frame bind groups are made again with it).
+    fn grow_local_shadows(&mut self, scene: &RenderScene) {
+        let capacity =
+            shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows);
+        if self.local_map.layers.len() >= capacity {
+            return;
+        }
+        // At most every shadowed light of the scene's, and the tier's capacity.
+        let needed = scene
+            .lights
+            .iter()
+            .filter(|l| l.cast_shadows)
+            .map(|l| match l.kind {
+                LightKind::Point => self.info.point_shadows.layers(),
+                LightKind::Spot { .. } => 1,
+            })
+            .sum::<usize>()
+            .min(capacity);
+        if needed <= self.local_map.layers.len() {
+            return;
+        }
+        self.local_map = ShadowMap::new(
+            &self.device,
+            "local shadows",
+            LOCAL_SHADOW_SIZE,
+            capacity as u32,
+        );
+        self.environment = None;
+    }
+
     /// (Re)generates the image-based lighting when the sky, or the
     /// environment map that replaces it, changed.
     fn ensure_environment(&mut self, scene: &RenderScene) {
@@ -3532,6 +3634,7 @@ impl Renderer {
         target: &RenderTarget,
     ) -> Result<FrameStats, RenderError> {
         self.sync(scene)?;
+        self.grow_local_shadows(scene);
         self.ensure_environment(scene);
         let (mut batches, mut transforms, spheres, submission) = self.build_batches(scene)?;
         let mut origins = submission.clone();
@@ -3798,11 +3901,14 @@ impl Renderer {
                 .iter()
                 .filter(|l| l.cast_shadows)
                 .map(|l| match l.kind {
-                    LightKind::Point => 6,
+                    LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
                 })
                 .sum::<usize>()
-                .min(LOCAL_SHADOW_LAYERS);
+                .min(shadows::capacity(
+                    self.info.shadowed_lights as usize,
+                    self.info.point_shadows,
+                ));
         let gpu_cull = self.indirect
             && match self.desc_culling {
                 Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
@@ -3960,6 +4066,7 @@ impl Renderer {
                 light.max_shadow_distance,
                 shadow_size,
                 self.info.shadow_cascades as usize,
+                light.cascade_blend,
             )
         } else {
             Vec::new()
@@ -3999,8 +4106,21 @@ impl Renderer {
             },
             self.light_tables.ref_capacity(),
         );
-        let (lights_gpu, local_shadows) =
-            frame::local_lights(&scene.lights, &self.clusters.kept, LOCAL_SHADOW_SIZE);
+        let (lights_gpu, local_shadows, shadowed_dropped) = frame::local_lights(
+            &scene.lights,
+            &self.clusters.kept,
+            camera.position,
+            frame::LocalShadowBudget {
+                max_shadowed: self.info.shadowed_lights as usize,
+                point: self.info.point_shadows,
+                shadow_size: LOCAL_SHADOW_SIZE,
+            },
+        );
+        debug_assert!(
+            local_shadows
+                .last()
+                .is_none_or(|ls| ls.layer + ls.faces.len() <= self.local_map.layers.len())
+        );
         if !lights_gpu.is_empty() {
             self.queue
                 .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
@@ -4051,7 +4171,7 @@ impl Renderer {
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
         for ls in &local_shadows {
             for (face, (_, f)) in ls.faces.iter().enumerate() {
-                local_frustums[ls.slot * 6 + face] = Some(f.clone());
+                local_frustums[ls.layer + face] = Some(f.clone());
                 let list = if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
                     indirect_list(&batches, sorted, g, |_| true)
@@ -4067,7 +4187,7 @@ impl Renderer {
                     )
                     .0
                 };
-                local_lists[ls.slot * 6 + face] = Some(list);
+                local_lists[ls.layer + face] = Some(list);
             }
         }
         self.cull_inside = cull_inside;
@@ -4245,27 +4365,49 @@ impl Renderer {
                 scene.tick_rate,
             ),
             caustics: water::caustics(&scene.water),
+            shadow: [
+                if cascades.is_empty() {
+                    0.0
+                } else {
+                    light.shadow_softness.max(0.0)
+                },
+                (self.info.point_shadows == PointShadows::Paraboloid) as u32 as f32,
+                0.0,
+                0.0,
+            ],
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
             uniform.cascade_view_proj[i] = c.view_proj.to_cols_array_2d();
-            uniform.cascade_bias[i] = [c.normal_offset, c.depth_bias, c.split_far, 0.0];
+            uniform.cascade_bias[i] = [c.normal_offset, c.depth_bias, c.split_far, c.blend_start];
             shadow_slots[i] = ShadowPassUniform {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
                 time: uniform.atmosphere.time,
-                pad: [0.0; 40],
+                paraboloid: [0.0; 4],
+                pad: [0.0; 36],
             };
         }
         for ls in &local_shadows {
             for (face, (vp, _)) in ls.faces.iter().enumerate() {
-                let layer = ls.slot * 6 + face;
+                let layer = ls.layer + face;
                 uniform.local_view_proj[layer] = vp.to_cols_array_2d();
                 shadow_slots[CASCADES + layer] = ShadowPassUniform {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
                     time: uniform.atmosphere.time,
-                    pad: [0.0; 40],
+                    // Hemisphere 0 below the light, 1 above (frame.rs).
+                    paraboloid: if ls.paraboloid {
+                        [
+                            1.0,
+                            if face == 0 { 1.0 } else { -1.0 },
+                            LOCAL_SHADOW_SIZE as f32,
+                            shadows::PARABOLOID_SCALE,
+                        ]
+                    } else {
+                        [0.0; 4]
+                    },
+                    pad: [0.0; 36],
                 };
             }
         }
@@ -4421,7 +4563,7 @@ impl Renderer {
                     post::taa_weight(self.taa_history.is_some()),
                     self.width as f32,
                     self.height as f32,
-                    0.0,
+                    self.post.taa_sharpen,
                 ],
             };
             self.queue
@@ -4441,7 +4583,7 @@ impl Renderer {
             (0..cascades.len() as u32).map(FramePass::Cascade).collect();
         for ls in &local_shadows {
             for face in 0..ls.faces.len() {
-                passes.push(FramePass::LocalFace((ls.slot * 6 + face) as u32));
+                passes.push(FramePass::LocalFace((ls.layer + face) as u32));
             }
         }
         if prepass {
@@ -4474,6 +4616,9 @@ impl Renderer {
         }
         if taa {
             passes.push(FramePass::Taa);
+            if self.post.taa_sharpen > 0.0 {
+                passes.push(FramePass::TaaSharpen);
+            }
         }
         if dof.is_some() {
             passes.extend([
@@ -4502,6 +4647,9 @@ impl Renderer {
             passes.extend((0..levels - 1).rev().map(FramePass::BloomUp));
         }
         passes.push(FramePass::Tonemap);
+        if self.info.antialias == Antialias::Fxaa {
+            passes.push(FramePass::Fxaa);
+        }
         let lightmap_scale = scene
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
@@ -4627,6 +4775,8 @@ impl Renderer {
             triangles: main_list.triangles + blended_list.triangles,
             in_view_triangles: main_list.in_view_triangles,
             lights: self.clusters.kept.len() as u32,
+            shadowed_lights: local_shadows.len() as u32,
+            shadowed_lights_dropped: shadowed_dropped,
             lights_dropped: cluster_stats.dropped,
             lights_culled: cluster_stats.culled,
             cluster_lights: cluster_stats.refs,

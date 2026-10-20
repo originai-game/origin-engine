@@ -263,8 +263,8 @@ fn msaa_matches_its_reference_on_the_no_compute_tier() {
 }
 
 /// Thin white bars on black, unlit (emissive only, no tonemap): without
-/// antialiasing every pixel is black or white; MSAA and TAA produce partial
-/// coverage along the edges. Returns the partially covered pixels and the
+/// antialiasing every pixel is black or white; MSAA, TAA and FXAA produce
+/// partial coverage along the edges. Returns the partially covered pixels and the
 /// antialiasing the renderer resolved.
 fn edge_pixels(antialias: Antialias, frames: u32) -> (usize, Antialias) {
     let mut scene = RenderScene::new();
@@ -315,8 +315,13 @@ fn antialiasing_smooths_edges() {
     let (off, _) = edge_pixels(Antialias::Off, 1);
     let (msaa, msaa_mode) = edge_pixels(Antialias::Msaa4, 1);
     let (taa, taa_mode) = edge_pixels(Antialias::Taa, 16);
-    println!("partially covered pixels: off {off}, msaa {msaa} ({msaa_mode:?}), taa {taa}");
+    let (fxaa, fxaa_mode) = edge_pixels(Antialias::Fxaa, 1);
+    println!(
+        "partially covered pixels: off {off}, msaa {msaa} ({msaa_mode:?}), taa {taa}, fxaa {fxaa}"
+    );
     assert_eq!(taa_mode, Antialias::Taa);
+    assert_eq!(fxaa_mode, Antialias::Fxaa);
+    assert!(fxaa > 2_000, "FXAA left {fxaa} partial pixels");
     assert!(off < 50, "{off} partial pixels without antialiasing");
     assert!(taa > 3_000, "TAA left {taa} partial pixels");
     if msaa_mode == Antialias::Msaa4 {

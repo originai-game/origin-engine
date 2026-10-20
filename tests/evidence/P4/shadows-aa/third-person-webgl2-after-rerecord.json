@@ -1,0 +1,43 @@
+{
+  "tier": "webgl2",
+  "size": "1280x720",
+  "tolerance": {
+    "channel": 32,
+    "outliers": 0.005,
+    "rmse": 0.01
+  },
+  "stations": {
+    "title": {
+      "tick": 54,
+      "size": "1280x720",
+      "against": "templates/archetypes/third-person/references/metal/title.png",
+      "outliers": 0.005,
+      "rmse": 0.00431,
+      "ok": true
+    },
+    "beacon": {
+      "tick": 204,
+      "size": "1280x720",
+      "against": "templates/archetypes/third-person/references/webgl2/beacon.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true
+    },
+    "dawn": {
+      "tick": 432,
+      "size": "1280x720",
+      "against": "templates/archetypes/third-person/references/metal/dawn.png",
+      "outliers": 0,
+      "rmse": 0.0018,
+      "ok": true
+    }
+  },
+  "renderer": "webgl2",
+  "textureFormat": "bc7",
+  "textures": 10,
+  "refused": "probe.commands: script must be a string, not object",
+  "ticks": 432,
+  "engine": [],
+  "ms": 7169,
+  "log": []
+}
