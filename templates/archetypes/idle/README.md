@@ -166,8 +166,12 @@ pure functions, the stars come from an og.Rng stream forked by name, and
    `ICONS` (src/ui.ts), a case in `base`, a mote in `tools/make-assets.py`,
    an `owned<n>` field.
 3. **Prestige**: `novaGain`, `dustMultiplier`.
-4. **The look**: `assets/skins/sparkorb/skin.ogt`'s palette and the art in
-   `tools/make-assets.py`, then `python3 tools/make-assets.py && og cook .`.
+4. **The look**: `assets/looks/idle.ogt` (named by `GameDesc.look`) holds
+   the frame's treatment and names the skin; `extends "<slug>"` there
+   starts from a style of the catalogue (og-taste §12), and the reference
+   frames are then recorded again (`OG_FX_CAPTURE=1 og test .`). The
+   skin's palette is `assets/skins/sparkorb/skin.ogt`, the art
+   `tools/make-assets.py`: `python3 tools/make-assets.py && og cook .`.
 5. **Words and numbers**: `assets/strings/*.ogt` (a locale's `num.step`
    and units make its big numbers); a new Chinese string needs the script
    run again to subset the font.

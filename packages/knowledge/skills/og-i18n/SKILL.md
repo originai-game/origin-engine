@@ -74,8 +74,23 @@ string "results.time" "タイム {time}"
   cooked with the `arabic` charset also carries its joining forms and its
   outlines, which og-ui's shaper needs.
 - og-ui looks a glyph up in the active locale's fonts first, then every
-  other loaded table's, then the skin's. A box (tofu) in a frame means a
-  font lacks the character: add it to the subset and to `chars`.
+  other loaded table's, then `UiDesc.fallbackFonts` (fonts for scripts no
+  table names: a Hebrew or Devanagari face), then the skin's. A box (tofu)
+  in a frame means a font lacks the character: add it to the subset and
+  to `chars`. One label is drawn in one font, so the font that covers a
+  Hebrew word must also have the digits beside it.
+- Player-typed text (a name, a chat line) is not in any table: cook the
+  CJK face with `runtime true` in its import settings and the characters
+  outside its atlas are drawn at run time (about 1 to 2 ms each, once per
+  character), with a warning the first time. Keep `chars` for everything
+  the tables hold, so a frame never waits on them; `charset all` for CJK
+  is about 20 MB and never the answer.
+- Complex scripts are shaped from the font file the cook keeps: Arabic
+  joins, Devanagari conjuncts and pre-base vowel signs, marks over their
+  bases. Cook such a font with the script's charset (`arabic`) or its
+  `chars`; check a frame of every shaped string (a conjunct drawn as
+  separate letters means the font or its file is missing). Kerning pairs
+  apply in every font that has them: nothing to set.
 - Chinese, Japanese and Korean break between characters under kinsoku:
   closing brackets and quotes, 、。，？！, small kana, ー and the iteration
   marks never start a line, opening brackets never end one, and a katakana
@@ -89,7 +104,9 @@ Arabic, Hebrew, Persian and Urdu locales set the UI's direction to
 right-to-left: og.ui mirrors the whole layout about the surface's centre
 (a corner anchored top-left moves top-right, rows run right to left),
 flips start and end alignment, and orders words by direction while numbers
-and Latin words inside stay left to right. Do not mirror the play field or
+and Latin words inside stay left to right (by the Unicode bidirectional
+algorithm, over each whole line of `og.ui.richText`; a label takes the
+direction of its first strong character). Do not mirror the play field or
 the camera. Icons are drawn as they are: give a direction icon (back, next)
 its mirrored twin for right to left, and leave icons of objects alone.
 

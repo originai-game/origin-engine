@@ -1,6 +1,8 @@
 //! Skins, motion and screen transitions, driven tick by tick.
 //!
 //! Ways these could fail, each covered below:
+//! - a glass part stays see-through when the page prefers reduced
+//!   transparency (`a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice`);
 //! - a skin's slices never reach the frame (the background stays a plain
 //!   quad), or the nine pieces leave gaps or overlap the element's edges;
 //! - the default theme starts emitting skin pieces (it must stay the token
@@ -796,13 +798,19 @@ fn the_probe_names_each_elements_kind_and_a_disabled_control() {
 /// frame keeps its full opacity and hides the glass.
 #[test]
 fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
-    let frame_of = |skin: &str| {
+    let frame_of = |skin: &str, reduced_transparency: bool| {
         let file = parse_skin(skin).expect("the skin parses");
         let tex = atlas();
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_theme(file.theme(Some(tex), [0; 6]));
+        let vp = Viewport {
+            reduced_transparency,
+            ..Viewport::new(800.0, 600.0)
+        };
         for _ in 0..30 {
-            step(&mut ui, InputFrame::default(), false);
+            ui.begin(InputFrame::default(), vp);
+            screen(&mut ui, false);
+            ui.end();
         }
         let menu = ui.frame().element("Menu").expect("the panel").clone();
         let glass: Vec<(i32, Rect, f32, f32, [f32; 4])> = ui
@@ -848,10 +856,10 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
             .expect("the panel's centre piece");
         (menu, glass, centre, ui.theme().radius.card)
     };
-    let (_, none, (_, solid), _) = frame_of(SKIN);
+    let (_, none, (_, solid), _) = frame_of(SKIN, false);
     assert!(none.is_empty(), "no glass without the line");
     let glassy = SKIN.replace("glow button", "glass card 16 0.5 0.2\nglow button");
-    let (menu, glass, (level, thin), card_radius) = frame_of(&glassy);
+    let (menu, glass, (level, thin), card_radius) = frame_of(&glassy, false);
     assert_eq!(glass.len(), 1, "one glass panel: {glass:?}");
     let (glevel, rect, radius, blur, tint) = glass[0];
     assert!(
@@ -871,6 +879,14 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
     assert!(
         (thin - solid * 0.5).abs() < 1e-3,
         "the frame is drawn at the line's fill: {thin} against {solid}"
+    );
+    // The page prefers reduced transparency: no blur, the frame whole (an
+    // opaque surface), as without the glass line.
+    let (_, opaque, (_, whole), _) = frame_of(&glassy, true);
+    assert!(opaque.is_empty(), "no glass under reduced transparency");
+    assert!(
+        (whole - solid).abs() < 1e-6,
+        "the frame at full opacity: {whole} against {solid}"
     );
 }
 

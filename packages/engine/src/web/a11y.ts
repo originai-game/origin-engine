@@ -14,8 +14,14 @@
 // - The DOM reaches the UI as input: a screen reader's click on an element
 //   is `{ kind: "a11y", action: "activate", path }` and its moving focus
 //   onto one is `focus`; `adjust` sends `increment`/`decrement` for an
-//   adjustable one. Keys pressed while a mirrored element has the DOM
-//   focus still go to the engine as keys (the shell listens on the page),
+//   adjustable one. A slider is mirrored as an `<input type="range">` held
+//   at the middle of three steps: a screen reader's own adjust gesture
+//   (VoiceOver's swipe up or down, TalkBack's volume keys, an arrow while
+//   interacting) moves the native value and fires `input`, which becomes
+//   `increment` or `decrement` and puts the value back in the middle (the
+//   UI owns the value; `aria-valuetext` says it). Keys pressed while a
+//   mirrored element has the DOM focus still go to the engine as keys (the
+//   shell listens on the page and keeps the arrows from the native range),
 //   where the focused control takes them: arrows move a focused slider.
 //   og-ui acts on the requests at the next frame against the controls it
 //   drew (nav.rs `apply_a11y`).
@@ -55,6 +61,8 @@ const SELECTABLE = new Set(["tab", "option"]);
 const EXPANDABLE = new Set(["combobox"]);
 /** Roles with a numeric value (aria-valuenow). */
 const RANGES = new Set(["slider", "spinbutton", "progressbar", "meter"]);
+/** Roles mirrored as a native range (when the node has no children): a screen reader adjusts those itself. */
+const ADJUSTABLE = new Set(["slider"]);
 /** Roles read as their text content rather than a label. */
 const TEXTS = new Set(["text", "heading", "status", "alert", "tooltip"]);
 
@@ -105,6 +113,18 @@ export class A11yMirror {
       e.preventDefault();
       this.#send({ kind: "a11y", action: "activate", path });
     });
+    // A screen reader adjusted a mirrored range: one step, and back to the middle.
+    const adjusted = (e: Event) => {
+      const el = e.target as HTMLInputElement | null;
+      if (!el || el.tagName !== "INPUT" || el.type !== "range") return;
+      const path = pathOf(el);
+      const v = Number(el.value);
+      el.value = "1";
+      if (path === null || !Number.isFinite(v) || v === 1) return;
+      this.#send({ kind: "a11y", action: v > 1 ? "increment" : "decrement", path });
+    };
+    on("input", adjusted);
+    on("change", adjusted);
     // A screen reader moved focus onto an element: the UI's focus follows it.
     on("focusin", (e) => {
       const path = pathOf(e.target);
@@ -116,6 +136,11 @@ export class A11yMirror {
   /** The tree as last mirrored. */
   get tree(): A11yTree {
     return this.#tree;
+  }
+
+  /** Whether an event target is one of the mirror's elements (its keys are the game's, not a field's). */
+  owns(target: EventTarget | null): boolean {
+    return target instanceof Node && this.root.contains(target);
   }
 
   /** The element mirroring the node at `path`, if it is in the tree. */
@@ -133,6 +158,7 @@ export class A11yMirror {
     const doc = this.root.ownerDocument;
     this.#place();
     const byPath = new Map(tree.nodes.map((n) => [n.path, n]));
+    const parents = new Set(tree.nodes.map((n) => n.parent));
     // Remove what left the tree.
     for (const [path, el] of this.#elements) {
       if (!byPath.has(path)) {
@@ -142,8 +168,17 @@ export class A11yMirror {
     }
     for (const node of tree.nodes) {
       let el = this.#elements.get(node.path);
+      // A childless slider is a native range a screen reader adjusts; anything else a div.
+      const range = ADJUSTABLE.has(node.role) && !parents.has(node.path);
+      if (el && (el.tagName === "INPUT") !== range) {
+        el.remove();
+        el = undefined;
+      }
       if (!el) {
-        el = doc.createElement("div");
+        el = doc.createElement(range ? "input" : "div");
+        if (el instanceof HTMLInputElement) {
+          Object.assign(el, { type: "range", min: "0", max: "2", step: "1", value: "1" });
+        }
         el.dataset.ogPath = node.path;
         Object.assign(el.style, NODE);
         this.#elements.set(node.path, el);
@@ -296,6 +331,8 @@ const NODE: Partial<CSSStyleDeclaration> = {
   outline: "none",
   fontSize: "1px",
   whiteSpace: "nowrap",
+  appearance: "none",
+  boxSizing: "border-box",
 };
 
 /** A live region: read, never seen. */

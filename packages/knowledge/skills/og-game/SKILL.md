@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, streaming groups, effects, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/ (glTF and MagicaVoxel models), the og.load loaders, streaming groups, sprites, texture arrays and drop shadows, skeletal and stepped animation, effects and physical materials, looks (the frame's art direction as data: og.Stylise, og.MaterialStyle, presets), tone mapping, exposure, environment maps, shadows and antialiasing, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls) and its queries, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -14,7 +14,7 @@ next for each part.
 | Skill | Read it for | Its modules (`reference/<module>.md`) |
 |---|---|---|
 | **og-core** | the rules every line obeys: TypeScript only, the fixed tick, Results, archetype views, reflection | math, reflect, world, system, rng |
-| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, terrain, shaders, physics, performance | game, transform, input, load, stream, render, physics, atmosphere, anim, tilemap, terrain |
+| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, terrain, shaders, physics, performance, looks, light and shadows | game, transform, input, load, stream, render, physics, atmosphere, anim, tilemap, terrain |
 | **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, `og polish` (§5 there: the one list of what it scores), shipping | commands, probe |
 | **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
 | **og-ui** | screens and HUDs: templates, widgets, focus, phones, skins and motion | ui |
@@ -34,7 +34,7 @@ in this table owns it and the other points there.
 |---|---|
 | `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, `publish` settings |
 | `src/main.ts` | The game entry: its default export is `og.game({...})` |
-| `assets/` | Source assets: glTF models, PNG/JPEG textures, WAV sounds, TTF/OTF fonts, `.ogt` scenes, and `<file>.ogt` import settings |
+| `assets/` | Source assets: glTF and `.vox` models, PNG/JPEG textures, WAV sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
 | `cooked/` | `og cook` output (`.ogb` blobs and `.cook.ogt`); never committed, the only thing the runtime reads |
 | `tests/*.og.ts` | Playtest scripts `og test` runs headless |
 | `dist/` | `og build` output |
@@ -132,6 +132,13 @@ registered schema and refuses a model path that does not exist.
   size that is not, pixel art (`kind pixel`) and fonts stay RGBA8.
 - Declare the characters a font must show (`chars`) rather than cooking a
   whole CJK charset: the full set is several times the size of the font.
+- MagicaVoxel `.vox` files are models: the cook meshes every model of the
+  file (greedy quads, flat-shaded, the palette as vertex colours) and its
+  scene graph into a glTF, z-up turned y-up, one voxel one metre, the pivot
+  at the model's centre, with one white rough material your
+  `og.MaterialStyle` or own material replaces. Load and place it as any
+  glTF: `og.load.gltf(world, "models/hut.vox")`, or a scene's
+  `model "models/hut.vox"`. The `voxel-worlds` look (§15) suits them.
 - Reusable production assets come through the platform's asset catalog into
   `assets/`; record each file's licence next to it.
 
@@ -188,6 +195,18 @@ group is evicted to make room for a higher one. `og.stream.status`,
 and the probe's `dump_stream` say where each group is. `og build --publish`
 ships each group as its own file, fetched only when the group loads.
 
+There is no unload call for a single asset: memory comes back when a
+group unloads (its trigger lets go, or `og.stream.release(world, "boss")`
+after `og.stream.request`). Keep the handles you have; they wait and come
+back with the group, never load them again. To let a kept asset go, stop
+using it (`og.Environment.map` or `PostEffects.lut` to 0, another look).
+`StreamStatus` (`og.stream.status(world, "harbour")`) has the group's
+`state`, `trigger`, `memory`, `kept`, `loads` and `reason`; `StreamBudget`
+has `budget`, `used` (kept bytes included), `kept` and `peak`. At most one
+group is put in place per tick boundary, and a group larger than the whole
+budget fails. A chunked sound (og-audio §5) streams on its own and cannot
+join a group.
+
 ## 7. Input
 
 `world.resource(og.Input)` is the keyboard, the mouse and the first touch
@@ -217,6 +236,18 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   frame at its transform, its scale multiplying the size (so squash and
   stretch is a tween of `og.Transform.scale`). `og.render.sprite` stays for
   one-tick, immediate drawing (HUDs, debug).
+- **Pixel sprites in a 3D set** stand on the ground with `og.Sprite.dropShadow`
+  (or `SpriteDesc.dropShadow`): 0.5 casts the sprite's shape, darkened and
+  flattened onto the ground plane (y 0) along the sun, the first
+  `og.DirectionalLight`, as a 3D model's shadow would fall. It needs a
+  perspective camera over the xz ground (a 2D camera sees the plane edge
+  on), draws nothing with the sun below the horizon, and set geometry in
+  front hides it. `shadow` is the soft blob under the feet instead; the
+  `pixel-3d-hybrid` look (§15) wants both.
+
+  ```ts
+  world.insert(hero, og.Sprite, { texture: tex, width: 1, height: 1.5, anchor: { x: 0.5, y: 0 }, dropShadow: 0.5, shadow: 0.3 });
+  ```
 - **Sprite sheets** are `.ogt` files of `type flipbook` next to the PNG
   (grid or named frames, or an Aseprite / TexturePacker JSON `atlas`; clips
   with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`).
@@ -232,6 +263,27 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   included. A flipbook with `array true` cooks its frames into an array
   (frame n is layer n, one size); a 2D emitter's `array "<id>" random` (or
   `life <cycles>`, `fps <n>`) draws its particles from the layers.
+
+  ```text
+  type texture-array
+  version 1
+  ---
+  kind pixel                 # color (default), normal, linear or pixel
+  layer "tiles/grass.png"    # 1 to 256 layers, all one size
+  layer "tiles/dirt.png"
+  ```
+
+  ```ts
+  const tiles = must(og.load.textureArray(world, "tiles/ground.ogt"));   // TextureArrayInfo: array, width, height, layers, bytes
+  world.insert(cell, og.Sprite, { array: tiles.array, arrayLayer: 1, width: 1, height: 1 });
+  ```
+
+  `og.Sprite.arrayLayer` past the last layer draws the last, while
+  `SpriteDesc.arrayLayer` past it is refused. An array sheet's
+  `FlipbookInfo.array` is its array (its `texture` is 0). Emitters take
+  arrays in sprite mode only (`render sprite <layer>`), with `round true` to
+  fade each particle to a round edge; materials and terrain layers do not
+  sample arrays.
 - **Tilemaps**: a tileset `.ogt` (`type tileset`: grid, `solid` tiles,
   `collide` rects, animated tiles, `terrain` auto-tiling rules) and a map:
   a Tiled `.tmj`, an LDtk `.ldtk` or a hand-written `.ogt` of `type tilemap`
@@ -260,7 +312,10 @@ Skinned glTF models animate through `og.anim` (`reference/anim.md`):
 `og.load.animation(world, "models/walker.glb")` answers the rig's skeleton
 and clips; on the instantiated model's entity, `og.Skeleton { asset }` poses
 it and `og.AnimationPlayer { clip, speed, loop, fade }` plays a clip
-(changing `clip` cross-fades over `fade`). `og.AnimationGraph` runs a blend
+(changing `clip` cross-fades over `fade`; `stepFps` holds each pose for
+1/stepFps seconds: 12 is stop motion on twos, 8 on threes, for clay and
+puppet looks, while events and root motion stay smooth).
+`og.AnimationGraph` runs a blend
 tree with layered state machines registered by `og.anim.graph` (parameters
 such as speed pick the motion), `og.IkChain` turns a chain of bones to a
 target after the clips, `og.Blendshapes` weighs morph targets, and
@@ -290,6 +345,14 @@ source's distance scaled by the leg ratio (so root motion matches its
 stride), and its legs are solved so planted feet stay on the ground
 (`footIk`, on by default). The fx-showcase `retarget` station is the
 pattern.
+
+**Compression** shrinks a model's clips in the bundle (not in memory: they
+are rebuilt at load). In the same `animation` block, `compress true`
+quantises rotations to 48 bits and the rest to 16 and drops the keyframes
+interpolation rebuilds within `tolerance` (default 0.0001: about 0.1 mm
+and 0.01°); a channel 16 bits cannot hold within it stays exact. Turn it on
+for a game with many clips; leave it off while a clip's motion is still
+being judged.
 
 ## 10. Effects
 
@@ -327,7 +390,15 @@ Every effect is off until the game turns it on, as data:
   with `thickness`, `ior` and `attenuationColor` for glass and water that
   refract what is behind them, `iridescence` for soap film and oil,
   `anisotropy` for brushed metal; a glTF's `KHR_materials_*` extensions
-  load into them. A non-uniform `scale` shades correctly.
+  load into them. A non-uniform `scale` shades correctly. Set `sheenColor`
+  with `sheen` (black is no sheen); `thickness` is in the mesh's units and
+  `attenuationDistance` 0 absorbs nothing. A transmissive material refracts
+  only what was drawn before it (not other glass or water), and unlit and
+  toon materials ignore the physical fields:
+
+  ```ts
+  const amber = og.render.standardMaterial(world, { color: { r: 1, g: 1, b: 1 }, roughness: 0.02, transmission: 1, thickness: 1, ior: 1.5, attenuationColor: { r: 0.95, g: 0.45, b: 0.08 }, attenuationDistance: 0.35 });
+  ```
 - **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
@@ -476,8 +547,20 @@ dissolve, wind-swayed grass and a ripple on the walking walker.
 
 `og.RigidBody`, `og.Collider` and `og.Velocity` on an entity make it a body
 in the profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and
-sensors arrive as events, and `og.physics` answers ray, shape and overlap
-queries. Beyond rigid bodies, all are components over the same simulation,
+sensors arrive as events, and `og.physics` answers queries:
+
+```ts
+const hit = og.physics.raycast(world, { origin: eye, direction: { x: 0, y: 0, z: -1 }, maxDistance: 30, filter: { mask: 0b10, exclude: player } });
+if (hit.ok && hit.value) { /* hit.value.entity, distance, point, normal */ }
+const under = og.physics.shapeCast(world, { shape: { shape: SHAPE_SPHERE, radius: 0.4 }, position: feet, direction: { x: 0, y: -1, z: 0 }, maxDistance: 2 });
+const near = og.physics.overlap(world, { shape: { shape: SHAPE_BOX, size: { x: 4, y: 2, z: 4 } }, position: door });   // entities, by id
+```
+
+Inside a system the queries see the colliders as they were at the start of
+the tick (`og.physics.queries` records them before the game's systems), so
+the answer does not depend on system order; `QueryFilter.includeSensors`
+adds sensors. The step itself runs on the lanes (§14) with the same result
+as one thread. Beyond rigid bodies, all are components over the same simulation,
 deterministic and part of snapshots (`reference/physics.md`):
 
 - `og.Joint` — fixed, hinge (`JOINT_REVOLUTE`, limits, a velocity or
@@ -550,13 +633,136 @@ Point and spot lights are clustered (Forward+): a pixel shades only the
 lights whose `distance` reaches it, so a few hundred lamps, torches or
 neon signs cost little; keep each `distance` as short as the look allows.
 Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
-and the first two in view with `castShadow` cast shadows (shadows are the
-expensive part).
+and up to `RenderCapabilities.maxShadowedLights` with `castShadow` (8 on
+the full tier, 4 on WebGL2) cast shadows (shadows are the expensive part;
+§16).
+Engine work spreads over the cores on the lanes: physics from about 500
+bodies, skinning, extraction and culling, with results identical to one
+thread, so world hashes and replays do not change. Game systems stay on
+the engine thread. On the web the lanes need cross-origin isolation
+(`publish { isolation preferred }`, the default, in `project.ogt`; og-build
+§7); without it the same game runs on one thread.
 Simulated matter is paid for per point on the CPU every tick: a 3D fluid's
 particles (about 1 ms per 1,000 at two substeps) and a self-colliding
 cloth's points (about 1 ms per 1,000) are the ones to count (§13).
 
-## 15. Where to look things up
+## 15. Looks: the frame's art direction as data
+
+A **look** is an `.ogt` of `type look` under `assets/looks/` that sets the
+whole treatment of the frame at once: the resources `RenderSettings`,
+`PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky` and `Environment`
+(one block each, fields by name), the UI `skin` and the `antialias`.
+Choosing one for a premise is og-taste §1 and §12; this is the mechanism.
+
+```text
+type look
+version 1
+---
+name "Harbour"
+extends "anime-cel-3d"           # a built-in preset (templates/looks/<slug>.ogt) or another look's id
+skin "skins/harbour/skin.ogt"
+Stylise {
+  ink true
+  inkWidth 1.5
+}
+MaterialStyle {
+  shadowTint "#3b3566"           # sRGB written, stored linear
+  shadowTintAmount 0.6
+}
+```
+
+```ts
+export default og.game({ look: "looks/harbour.ogt", start, systems });   // GameDesc.look: applied after the first scene, before start
+
+const flashback = must(og.load.look(world, "looks/flashback.ogt"));      // at any tick
+must(og.render.applyLook(world, flashback));
+og.render.look(world)?.name;                                              // the look last applied (LookInfo)
+```
+
+- Applying a look replaces each resource it names **whole** (the fields it
+  sets, the rest their defaults; `PostEffects.flash` and `shakeTrauma`
+  keep theirs) and leaves the others alone, then configures the UI with
+  its skin. Write per-game tweaks in `start` after it, or in the look. A
+  system that applies one declares those resources among its writes.
+- `extends` flattens at cook time, field by field (a field written wins);
+  `assets/looks/<slug>.ogt` of the game's own replaces the preset of that
+  slug for every look that extends it. The cook refuses an unknown field,
+  a value out of range and an asset not in the bundle, naming the line.
+- `og.load.lookInfo` (and `og.render.look`) answer `LookInfo`: `name`,
+  `extends`, `resources`, `skin`, `antialias`. A look's `antialias` (tier,
+  off, msaa4 or taa) is the renderer's when `GameDesc.render` names none.
+- **`og.Stylise`** moves the frame away from the photographic, every
+  primitive off at zero: the pixel grid (`pixelHeight`, `pixelUpscale`,
+  `pixelSnap`), fewer tones or a fixed palette through a dither
+  (`posterize`, `palette` from `og.load.palette` of a `.hex` or `.gpl`,
+  `dither`, `ditherStrength`), `halftone`, `hatching`, painterly
+  smoothing (`paintRadius`, `paintEdgeDarkening`, `paintBleed`,
+  `paintCanvas`), `ink` lines (with `inkDepth` for silhouettes and
+  creases), `depthBands`, and early-3D `vertexSnap`, `affineTexturing`
+  and `depthBits`. The UI and screen sprites stay unstylised.
+- **`og.MaterialStyle`** sets every lit material that leaves the field at
+  its default: `toon` (with a `gradientMap`), `shadowTint` and
+  `shadowTintAmount`, `rimIntensity`, `outlineWidth` (with
+  `outlineDistance` to thin lines with depth) and `flatShading`. Unlit and
+  shader materials, sprites and the UI are untouched.
+- Built-in assets a look may name without owning a copy:
+  `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` for
+  `Stylise.paintCanvas`, and `"@palettes/lcd2"`, `"@palettes/handheld4"`,
+  `"@palettes/dusk16"`, `"@palettes/bright32"`, `"@palettes/1bit"` for
+  `Stylise.palette`.
+- `RenderCapabilities.stylise` (`og.render.capabilities(world)`) names the
+  primitive groups this device draws; a look using another still applies,
+  without that primitive. A look in a streaming group applies once the
+  group is resident (§6).
+
+## 16. Light, exposure, shadows and antialiasing
+
+- **Tone mapping and exposure** (`og.RenderSettings`): `toneMapping` is
+  `aces` (the default), `agx` (bright saturated lights go to white instead
+  of shifting hue: neon, fire, magic) or `none`; `toneMapped false` clamps
+  so 2D colours come out as authored. `exposure` multiplies every camera's
+  `Camera.exposure`. `autoExposure` meters each frame to middle grey;
+  `adaptSpeedUp` and `adaptSpeedDown` (EV per second of game time, so a
+  replay adapts the same) make it adapt like an eye: 1 up and 3 down,
+  walking out of a cave into sun.
+- **Environment maps** light PBR materials from a photographed sky: an
+  `.ogt` of `type environment` beside an equirectangular `.hdr` or `.exr`
+  (`source "studio.hdr"`, `size 128`, `intensity`, `rotation` in degrees,
+  `samples`), prefiltered at cook time. Set it on `og.Environment`:
+
+  ```ts
+  const env = must(world.resource(og.Environment));
+  env.map = must(og.load.environment(world, "env/studio.ogt"));
+  env.rotation = 40;          // degrees about +Y; light and background turn together
+  env.background = true;      // draw it behind the scene (Camera.background and og.Sky give way)
+  ```
+
+  `intensity` replaces `RenderSettings.environmentIntensity` while a map is
+  set; `backgroundIntensity` dims the background alone;
+  `StandardMaterialDesc.envMapIntensity` scales it per material. A look's
+  `Environment` block sets it too.
+- **Shadows**: the sun (`og.DirectionalLight`) casts three cascades;
+  `shadowSoftness` (0.01–0.05) widens the penumbra with the distance from
+  caster to receiver, as a real sun's does, and `cascadeBlend` (0.1–0.2)
+  hides the seams between cascades. Point and spot lights with
+  `castShadow` cast cube shadows on the full tier and paraboloid ones on
+  WebGL2.
+- **Antialiasing and renderer options** are `GameDesc.render`, read once
+  when the renderer attaches:
+
+  ```ts
+  og.game({ render: { antialias: "taa", taaHistory: "catmullRom", taaSharpen: 0.3, pointShadows: "auto", shadowMapSize: 2048 }, ... });
+  ```
+
+  `antialias`: `tier` (TAA on WebGPU, Metal and Vulkan, 4x MSAA on WebGL2),
+  `taa` (any tier, converges over about 8 frames: fast motion, thin
+  geometry), `msaa4`, `fxaa` (one cheap pass after tone mapping; pixel and
+  low-resolution looks), `off` (pixel art). `taaHistory: "catmullRom"`
+  stays sharper under camera motion and `taaSharpen` (0–1) restores
+  detail TAA softens. `RenderCapabilities.antialias` says what the device
+  resolved it to.
+
+## 17. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges

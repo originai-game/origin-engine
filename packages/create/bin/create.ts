@@ -2,14 +2,22 @@
 // `npm create @origingame/game` (and `bun create`): scaffolds the Origin
 // Engine project template (templates/game) into a directory, naming the game.
 //
-//   create [dir] [--name "Name"] [--id slug] [--archetype runner|match3|...] [--force]
+//   create [dir] [--name "Name"] [--id slug] [--archetype runner|match3|...]
+//          [--premise "one line"] [--look <slug>] [--force]
 //
 // The template comes from ./template/ in the published package (prepack:
 // scripts/pack-template.ts) or ../../templates/game in the engine repository;
 // an archetype (a complete small game to start from) from ./archetypes/<name>/
 // or ../../templates/archetypes/<name>/.
+//
+// Every game gets its look, `assets/looks/<id>.ogt`, named by GameDesc.look
+// in the entry: it extends the style catalogue's preset given by --look, or
+// the one whose premise best matches --premise (asked for on a terminal when
+// neither is given), else the template's own. The catalogue is
+// ./looks/catalogue.json in the published package (prepack) or
+// ../../knowledge/looks/catalogue.json in the engine repository.
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,6 +41,24 @@ export interface CreateOptions {
   readonly archetype?: string;
   /** The template directory; found next to this file when omitted. */
   readonly template?: string;
+  /** A style catalogue slug the game's look extends (og-taste §12). */
+  readonly look?: string;
+  /** The game's premise in a line: the look extends the catalogue style that fits it best, unless `look` is given. */
+  readonly premise?: string;
+  /** The catalogue file; found next to this file when omitted. */
+  readonly catalogue?: string;
+}
+
+/** The game's look as written. */
+export interface CreatedLook {
+  /** The look file, relative to the game (`assets/looks/<id>.ogt`). */
+  readonly file: string;
+  /** Its asset id, as GameDesc.look names it (`looks/<id>.ogt`). */
+  readonly id: string;
+  /** The catalogue slug it extends; null for a look that extends no preset. */
+  readonly extends: string | null;
+  /** How the preset was chosen. */
+  readonly chosen: "flag" | "premise" | "template" | "none";
 }
 
 export interface Created {
@@ -40,6 +66,76 @@ export interface Created {
   readonly name: string;
   readonly id: string;
   readonly files: readonly string[];
+  readonly look: CreatedLook;
+  /** What the game's author should know, such as reference frames a look will move. */
+  readonly notes: readonly string[];
+}
+
+/** A style catalogue entry: the fields create reads (packages/knowledge/looks/catalogue.json). */
+export interface Style {
+  readonly slug: string;
+  readonly name: string;
+  readonly category: string;
+  readonly descriptor: string;
+  readonly premise: Readonly<Record<string, string>>;
+  readonly look: { readonly presetReady: boolean; readonly support: string; readonly missing: readonly string[] };
+  readonly skin: string;
+}
+
+/** The style catalogue this copy of the package reads. */
+export function catalogueFile(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [join(here, "..", "looks", "catalogue.json"), join(here, "..", "..", "knowledge", "looks", "catalogue.json")]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`no style catalogue next to ${here}: expected ../looks/catalogue.json (published package) or ../../knowledge/looks/catalogue.json (engine repository)`);
+}
+
+export function readCatalogue(file = catalogueFile()): Style[] {
+  return (JSON.parse(readFileSync(file, "utf8")) as { styles: Style[] }).styles;
+}
+
+const STOP = new Set(["the", "and", "for", "with", "about", "into", "from", "that", "this", "game", "games", "player", "players", "where", "who", "your", "you", "its", "set", "lot", "very", "like", "one", "two", "all", "any", "out", "their", "them", "has", "have", "are", "was", "but", "not", "own"]);
+const SPELLING: Readonly<Record<string, string>> = { cozy: "cosy", color: "colour", colors: "colours", gray: "grey", scifi: "sci", "sci-fi": "sci", watercolour: "watercolor", "8-bit": "8bit", "16-bit": "16bit", "1-bit": "1bit" };
+
+/** Lowercase words, spelling unified and a plural's s dropped: `Cozy Platformers` -> cosy, platformer. */
+export function words(text: string): string[] {
+  const spelt = (w: string) => SPELLING[w] ?? w;
+  return (text.toLowerCase().match(/[a-z0-9]+(?:-[a-z0-9]+)*/g) ?? [])
+    .flatMap((w) => (SPELLING[w] ? [SPELLING[w]!] : w.includes("-") ? [w, ...w.split("-").map(spelt)] : [spelt(w)]))
+    .map((w) => (w.length > 4 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w))
+    .filter((w) => w.length >= 3 && !STOP.has(w));
+}
+
+/**
+ * The catalogue style whose premise fits a game's premise best: each word of
+ * the premise found in a style's genre counts 3, in its mood 2, in its era
+ * or audience 1, in its name or descriptor 1. Ties go to the style whose
+ * look the engine draws whole (support `full`), then to catalogue order.
+ * Null when no word matches any style. Only styles with a preset are chosen.
+ */
+export function pickStyle(premise: string, styles: readonly Style[]): { style: Style; score: number } | null {
+  const asked = new Set(words(premise));
+  if (asked.size === 0) return null;
+  const weights: [(s: Style) => string, number][] = [
+    [(s) => s.premise.genre ?? "", 3],
+    [(s) => s.premise.mood ?? "", 2],
+    [(s) => s.premise.era ?? "", 1],
+    [(s) => s.premise.audience ?? "", 1],
+    [(s) => `${s.name} ${s.descriptor}`, 1],
+  ];
+  let best: { style: Style; score: number; full: boolean } | null = null;
+  for (const style of styles) {
+    if (!style.look.presetReady) continue;
+    let score = 0;
+    for (const [field, weight] of weights) {
+      const have = new Set(words(field(style)));
+      for (const w of asked) if (have.has(w)) score += weight;
+    }
+    const full = style.look.support === "full";
+    if (score > 0 && (!best || score > best.score || (score === best.score && full && !best.full))) best = { style, score, full };
+  }
+  return best && { style: best.style, score: best.score };
 }
 
 /** `My Game!` -> `my-game`. */
@@ -102,6 +198,109 @@ function files(root: string, at = root): string[] {
   return out;
 }
 
+/** The entry file a project manifest names (`entry "src/main.ts"`). */
+function entryOf(dir: string): string | undefined {
+  const m = /^entry[ \t]+"([^"]+)"/m.exec(readFileSync(join(dir, "project.ogt"), "utf8"));
+  return m?.[1];
+}
+
+const LOOK_KEY = /^([ \t]*)look:[ \t]*"looks\/([^"]+)\.ogt",?[ \t]*$/m;
+
+/** A look file's `extends` and its lines after `---` without the header comment, `name` and `extends`. */
+function lookBody(text: string): { extends: string | null; body: string[] } {
+  const lines = text.split("\n");
+  const at = lines.indexOf("---");
+  const rest = at < 0 ? lines : lines.slice(at + 1);
+  const ext = /^extends[ \t]+"([^"]+)"/m.exec(rest.join("\n"))?.[1] ?? null;
+  // The header comment goes (create writes its own); comments inside stay.
+  let first = 0;
+  while (first < rest.length && (rest[first]!.trim() === "" || rest[first]!.startsWith("#"))) first++;
+  const body = rest.slice(first).filter((l) => !/^(name|extends)[ \t]/.test(l));
+  while (body.length > 0 && body[body.length - 1]!.trim() === "") body.pop();
+  return { extends: ext, body };
+}
+
+/** The game's look file. */
+function lookText(name: string, style: Style | undefined, slug: string | null, id: string, body: readonly string[]): string {
+  const head = [
+    "type look",
+    "version 1",
+    "---",
+    `# The look of ${name} (og-taste §12): the frame's art direction as data.`,
+    "# GameDesc.look in the entry names it; it is applied after the first scene",
+    "# spawns and before start runs, so start may still change any of it.",
+  ];
+  if (slug && style) {
+    head.push(
+      `# It extends the style catalogue's ${slug} preset (${style.name}),`,
+      style.look.support === "full" ? "# whose primitives all draw today." : `# support ${style.look.support}: ${style.look.missing.join("; ")}.`,
+      `# The style's UI skin pack is ${style.skin}: copy templates/ui-kit/assets/skins/${style.skin}`,
+      `# to assets/skins/${id}/ and add \`skin "skins/${id}/skin.ogt"\` to dress the UI.`,
+    );
+  } else if (slug) head.push(`# It extends ${slug}.`);
+  else head.push("# It extends no preset yet: the frame is the engine's defaults plus the lines below.");
+  head.push(
+    "# A block below (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog,",
+    "# Sky, Environment) wins over the preset field by field. For another",
+    "# style, set `extends` to another catalogue slug and run og cook.",
+    `name ${ogtString(name)}`,
+  );
+  if (slug) head.push(`extends ${ogtString(slug)}`);
+  return `${[...head, ...body].join("\n")}\n`;
+}
+
+/** The README section that tells the game's author where the look is and how to change it. */
+function lookReadme(look: CreatedLook, style: Style | undefined, entry: string, references: boolean): string {
+  const how = look.chosen === "premise" ? ", chosen from the game's premise" : look.chosen === "flag" ? ", chosen with `--look`" : "";
+  const lines = [
+    "",
+    "## The look",
+    "",
+    "The game's art direction is data, in one file a reader can diff:",
+    `\`${look.file}\` (an \`.ogt\` of \`type look\`), named by`,
+    `\`look: "${look.id}"\` in the \`og.game({...})\` of \`${entry}\`. It is applied`,
+    "after the first scene spawns and before `start` runs, and sets tone",
+    "mapping and exposure, the post stack, the stylisation (`Stylise`),",
+    "material defaults (`MaterialStyle`: toon, outlines, flat shading), fog,",
+    "sky, the environment map and the UI skin.",
+    "",
+  ];
+  if (look.extends && style) {
+    lines.push(`It extends \`${look.extends}\`${how}: "${style.name}" in the style`, `catalogue. ${style.descriptor} Its UI skin pack is \`${style.skin}\`.`, "");
+  } else if (look.extends) lines.push(`It extends \`${look.extends}\`${how}.`, "");
+  else lines.push("It extends no preset yet: the frame is the engine's defaults plus what", "the file sets.", "");
+  lines.push(
+    "To change it:",
+    "",
+    "- **Another style**: set `extends \"<slug>\"` to another entry of the style",
+    "  catalogue (the og-taste skill's §12 lists all 37 with the premises each",
+    "  fits and three checks to hold the frames to), then `og cook`.",
+    "- **Tune it**: add a block after `extends`; a field written there wins",
+    "  over the preset's, field by field:",
+    "",
+    "  ```text",
+    "  RenderSettings {",
+    "    toneMapping agx",
+    "    exposure 1.1",
+    "  }",
+    "  ```",
+    "",
+    "- **Switch at a tick** (a flashback, an area's mood): `og.load.look` a",
+    "  second look file and `og.render.applyLook(world, look)`.",
+    "- **Check it**: `og run --headless --commands \"1:screenshot:look.png;1.1:quit\"`",
+    "  and read the frame against the style's checks.",
+  );
+  if (references) {
+    lines.push(
+      "",
+      "The frames in `references/` show the look they were recorded with: after",
+      "changing the look, record them again with `OG_FX_CAPTURE=1 og test .` and",
+      "read the new frames before committing them.",
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 /** Scaffold the template into `options.dir`. Throws with the fix on refusal. */
 export function create(options: CreateOptions): Created {
   const dir = resolve(options.dir);
@@ -116,6 +315,7 @@ export function create(options: CreateOptions): Created {
       throw new Error(`${dir} is not empty; pick an empty directory, or pass --force to write the template over it`);
     }
   }
+  const choice = chooseStyle(options);
   const template = options.template ?? templateDir(options.archetype);
   const list = files(template);
   const written: string[] = [];
@@ -134,15 +334,101 @@ export function create(options: CreateOptions): Created {
     pkg.name = id;
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   }
-  return { dir, name, id, files: written };
+  const { look, notes } = writeLook(dir, name, id, choice, written);
+  return { dir, name, id, files: written, look, notes };
 }
 
-const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--archetype name] [--force]
+/**
+ * The game's look: `assets/looks/<id>.ogt`, carrying the template's own look
+ * (the file its entry names) with the preset `options.look` or the premise
+ * chose, and the entry's GameDesc.look pointed at it (inserted after
+ * `og.game({` when the template names none).
+ */
+/** The preset `--look` names or the premise fits; throws for a slug the catalogue has no preset for. */
+function chooseStyle(options: CreateOptions): { styles: Style[]; style: Style | undefined; chosen: CreatedLook["chosen"]; notes: string[] } {
+  const styles = readCatalogue(options.catalogue);
+  if (options.look !== undefined) {
+    const style = styles.find((s) => s.slug === options.look);
+    if (!style || !style.look.presetReady) {
+      throw new Error(`no look preset '${options.look}': choose one of the style catalogue's slugs (og-taste §12): ${styles.filter((s) => s.look.presetReady).map((s) => s.slug).join(", ")}`);
+    }
+    return { styles, style, chosen: "flag", notes: [] };
+  }
+  if (options.premise !== undefined && options.premise.trim() !== "") {
+    const pick = pickStyle(options.premise, styles);
+    if (pick) return { styles, style: pick.style, chosen: "premise", notes: [] };
+    return { styles, style: undefined, chosen: "none", notes: [`no catalogue style matched the premise "${options.premise}"; the look keeps the template's (og-taste §1 chooses one by genre, mood, era and audience: pass --look <slug>)`] };
+  }
+  return { styles, style: undefined, chosen: "none", notes: [] };
+}
+
+function writeLook(dir: string, name: string, id: string, choice: ReturnType<typeof chooseStyle>, written: string[]): { look: CreatedLook; notes: string[] } {
+  const { styles, notes } = choice;
+  let { style, chosen } = choice;
+
+  const entry = entryOf(dir) ?? "src/main.ts";
+  const entryPath = join(dir, entry);
+  const source = existsSync(entryPath) ? readFileSync(entryPath, "utf8") : undefined;
+  const named = source === undefined ? undefined : LOOK_KEY.exec(source);
+  const file = `assets/looks/${id}.ogt`;
+  const lookId = `looks/${id}.ogt`;
+  let base: { extends: string | null; body: string[] } = { extends: null, body: [] };
+  if (named) {
+    const old = join(dir, "assets", "looks", `${named[2]}.ogt`);
+    if (existsSync(old)) {
+      base = lookBody(readFileSync(old, "utf8"));
+      if (`assets/looks/${named[2]}.ogt` !== file) {
+        rmSync(old);
+        const listed = written.indexOf(`assets/looks/${named[2]}.ogt`);
+        if (listed >= 0) written.splice(listed, 1);
+      }
+    }
+  }
+  let slug: string | null = style?.slug ?? base.extends;
+  if (!style && slug) {
+    style = styles.find((s) => s.slug === slug);
+    if (style) chosen = "template";
+  }
+  mkdirSync(join(dir, "assets", "looks"), { recursive: true });
+  writeFileSync(join(dir, file), lookText(name, style, slug, id, base.body));
+  if (!written.includes(file)) written.push(file);
+
+  if (source !== undefined) {
+    let next: string | undefined;
+    if (named) next = source.replace(LOOK_KEY, `${named[1]}look: "${lookId}",`);
+    else {
+      const game = /^([ \t]*)export default og\.game\(\{[ \t]*$/m.exec(source);
+      if (game) {
+        const at = game.index + game[0].length;
+        next = `${source.slice(0, at)}\n${game[1]}  // The art direction as data (assets/${lookId}; og-taste §12).\n${game[1]}  look: "${lookId}",${source.slice(at)}`;
+      }
+    }
+    if (next !== undefined) writeFileSync(entryPath, next);
+    else notes.push(`${entry} has no \`export default og.game({\` line: add \`look: "${lookId}"\` to the game's desc yourself`);
+  }
+
+  const references = existsSync(join(dir, "references"));
+  if (references && slug !== base.extends) {
+    notes.push(`the frames in references/ show the archetype's own look; with ${slug} they will differ: record them again with \`OG_FX_CAPTURE=1 og test .\``);
+  }
+  if (style && style.look.support !== "full") notes.push(`${style.slug} is \`${style.look.support}\`: ${style.look.missing.join("; ")} (og-taste §12)`);
+  const look: CreatedLook = { file, id: lookId, extends: slug, chosen };
+  const readme = join(dir, "README.md");
+  const section = lookReadme(look, style, entry, references);
+  writeFileSync(readme, existsSync(readme) ? `${readFileSync(readme, "utf8").replace(/\n*$/, "\n")}${section}` : `# ${name}\n${section}`);
+  if (!written.includes("README.md")) written.push("README.md");
+  return { look, notes };
+}
+
+const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--archetype name] [--premise "one line"] [--look slug] [--force]
 
 Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --name   the game's display name (default: from the id or the directory)
   --id     the game's id, lowercase-hyphen (default: from the name)
   --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person) instead of the template
+  --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match (asked for on a terminal when neither this nor --look is given)
+  --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel
+  --no-prompt  never ask for the premise
   --force  write into a directory that is not empty`;
 
 function main(argv: string[]): number {
@@ -151,6 +437,9 @@ function main(argv: string[]): number {
   let id: string | undefined;
   let force = false;
   let archetype: string | undefined;
+  let premise: string | undefined;
+  let look: string | undefined;
+  let ask = true;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     const value = () => {
@@ -162,6 +451,9 @@ function main(argv: string[]): number {
     else if (a === "--id") id = value();
     else if (a === "--force") force = true;
     else if (a === "--archetype") archetype = value();
+    else if (a === "--premise") premise = value();
+    else if (a === "--look") look = value();
+    else if (a === "--no-prompt") ask = false;
     else if (a === "-h" || a === "--help") {
       console.log(USAGE);
       return 0;
@@ -169,9 +461,22 @@ function main(argv: string[]): number {
     else if (dir === undefined) dir = a;
     else throw new Error(`one directory only, got '${dir}' and '${a}'. ${USAGE}`);
   }
-  const made = create({ dir: dir ?? (id ?? (name ? slug(name) : "origin-game")), ...(name ? { name } : {}), ...(id ? { id } : {}), ...(archetype ? { archetype } : {}), force });
+  if (ask && premise === undefined && look === undefined && process.stdin.isTTY && process.stdout.isTTY && typeof globalThis.prompt === "function") {
+    premise = globalThis.prompt("What is the game, in one line (genre, mood, setting)? It picks the look; Enter keeps the template's:") ?? undefined;
+  }
+  const made = create({
+    dir: dir ?? (id ?? (name ? slug(name) : "origin-game")),
+    ...(name ? { name } : {}),
+    ...(id ? { id } : {}),
+    ...(archetype ? { archetype } : {}),
+    ...(premise ? { premise } : {}),
+    ...(look ? { look } : {}),
+    force,
+  });
   const shown = relative(process.cwd(), made.dir) || ".";
+  const style = made.look.extends ? `extends ${made.look.extends}${made.look.chosen === "premise" ? " (from the premise)" : made.look.chosen === "flag" ? " (--look)" : ""}` : "extends no preset";
   console.log(`Created ${made.name} (${made.id}) in ${shown}: ${made.files.length} files.
+Look: ${made.look.file}, ${style}; README.md says how to change it.${made.notes.map((n) => `\nNote: ${n}`).join("")}
 
 Next:
   cd ${shown}

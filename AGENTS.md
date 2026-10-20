@@ -62,16 +62,21 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   into the checkout's `target/` and lets cargo's lock serialise; nobody sets
   `CARGO_TARGET_DIR=target/agent-*` or copies the tree to build "in
   isolation".
-- **Parallel rounds reuse persistent worktrees.** A round that must build
-  beside another takes `scripts/worktree.sh <name>`: it creates
-  `/Volumes/app/origin-engine-<name>` on branch `<name>` from main once and
-  reuses it (branch, changes and `target/` as they are) every time after,
-  so only the first build there is cold, and sccache (`.cargo/config.toml`)
-  serves that one the main checkout's dependencies. Never `git worktree add`
-  a fresh one per round, and never delete a worktree's `target/` (nor the
-  main one's): a stale crate is cleaned with `cargo clean -p <crate>`,
-  never wholesale. A worktree is removed only when its stream of work is
-  over for good.
+- **Parallel rounds reuse persistent worktrees: the lane pool.** A stream
+  that must build beside another takes a lane, `scripts/lane.sh take
+  lane-N <stream>`: a persistent worktree `/Volumes/app/origin-engine-lane-N`
+  (made once by `scripts/worktree.sh`, its `target/` kept warm across
+  streams) switched to a new branch `<stream>` from main. After the merge,
+  `scripts/lane.sh free lane-N` puts it back on main for the next stream.
+  Only a lane's first build is cold, and sccache (`.cargo/config.toml`)
+  serves that one the main checkout's dependencies. Never `git worktree
+  add` a fresh one per round, never remove a lane to free disk, and never
+  delete a worktree's `target/` (nor the main one's): a stale crate is
+  cleaned with `cargo clean -p <crate>`, never wholesale. `scripts/lane.sh
+  --list` shows every lane and the branch it carries. One more lane,
+  `origin-engine-measure`, carries no stream: the wave-end measurements
+  (`--all`, web-reference, the lavapipe captures) run there pinned at a
+  commit, so main never waits for them.
 - **One gate at a time, on the whole machine.** `scripts/check.sh` holds
   `~/.cache/og-gate/og-gate.lock` and then `target/og-gate.lock` (a release
   `build.sh` holds the target's); a second one, in any worktree, waits
