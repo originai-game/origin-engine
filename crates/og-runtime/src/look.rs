@@ -11,6 +11,13 @@
 //! as always (`super::fx` maps `Stylise` and `MaterialStyle` into the
 //! scene). A snapshot carries the resources; [`LookState::applied`] is only
 //! what `og.render.look` answers.
+//!
+//! A palette or a look in a streaming group's pack is let go when the
+//! group unloads (`super::stream`): the palette leaves the renderer and
+//! Stylise.palette quantises to none until the group is resident again,
+//! when it is added back ([`resolve`]); the look's values go and applying
+//! it is refused until then. One the frame still uses (the stylisation's
+//! palette, the look last applied) is kept, with a warning naming it.
 
 use super::engine::Engine;
 use og_cook::look::{ANIMATED_FIELDS, LookFile};
@@ -26,6 +33,9 @@ pub(crate) struct LoadedLook {
     pub values: Vec<(String, Map<String, Value>)>,
     /// The UI skin's load index.
     pub skin: Option<usize>,
+    /// False once its streaming group unloaded it (its values are gone
+    /// until the group is resident again).
+    pub resident: bool,
 }
 
 /// The looks and palettes an engine loaded.
@@ -35,13 +45,30 @@ pub(crate) struct LookState {
     pub by_path: BTreeMap<String, usize>,
     /// The look last applied.
     pub applied: Option<usize>,
-    /// Palettes by load index (`og.load.palette`).
-    pub palettes: Vec<og_render::PaletteHandle>,
+    /// Palettes by load index (`og.load.palette`): the asset id and the
+    /// renderer's palette (`None` while its streaming group is not resident).
+    pub palettes: Vec<(String, Option<og_render::PaletteHandle>)>,
     pub palette_by_path: BTreeMap<String, usize>,
 }
 
 fn handle_value(i: usize) -> Value {
     json!(super::assets::handle(i) as f64)
+}
+
+/// Reads a cooked palette and adds it to the renderer.
+fn add_palette(eng: &Engine, id: &str) -> Result<og_render::PaletteHandle, String> {
+    let colors = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(id)?;
+        bundle
+            .palette(id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    Ok(eng
+        .render
+        .borrow_mut()
+        .scene
+        .add_palette(og_render::Palette { colors }))
 }
 
 /// `og.load.palette`: a cooked `.hex` or `.gpl` palette added to the
@@ -51,17 +78,10 @@ pub(crate) fn load_palette(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.render.borrow().fx.look.palette_by_path.get(&id) {
         return Ok(i);
     }
-    let colors = {
-        let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
-        bundle
-            .palette(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?
-    };
+    let h = add_palette(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
-    let h = rs.scene.add_palette(og_render::Palette { colors });
     let state = &mut rs.fx.look;
-    state.palettes.push(h);
+    state.palettes.push((id.clone(), Some(h)));
     let i = state.palettes.len() - 1;
     state.palette_by_path.insert(id, i);
     Ok(i)
@@ -105,13 +125,11 @@ fn field_value(eng: &Engine, decl: &og_api::host::FieldDecl, v: &[Ogt]) -> Resul
     })
 }
 
-/// `og.load.look`: the look's load index, the assets it names loaded
-/// (once per path).
-pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
-    if let Some(&i) = eng.render.borrow().fx.look.by_path.get(&id) {
-        return Ok(i);
-    }
+/// What a look's blob holds, read with the assets it names loaded.
+type LookParts = (LookFile, Vec<(String, Map<String, Value>)>, Option<usize>);
+
+fn read(eng: &Engine, id: &str) -> Result<LookParts, String> {
+    let id = id.to_string();
     let file = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
@@ -148,6 +166,17 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
         .map(|s| super::modules::load_skin(eng, s))
         .transpose()
         .map_err(|e| format!("{id}: skin: {e}"))?;
+    Ok((file, values, skin))
+}
+
+/// `og.load.look`: the look's load index, the assets it names loaded
+/// (once per path).
+pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(&i) = eng.render.borrow().fx.look.by_path.get(&id) {
+        return Ok(i);
+    }
+    let (file, values, skin) = read(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
     let state = &mut rs.fx.look;
     state.looks.push(LoadedLook {
@@ -155,10 +184,47 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
         file,
         values,
         skin,
+        resident: true,
     });
     let i = state.looks.len() - 1;
     state.by_path.insert(id, i);
     Ok(i)
+}
+
+/// At a tick boundary: adds back the palettes and reads again the looks
+/// whose streaming group is resident again after an unload let them go.
+pub(crate) fn resolve(eng: &Engine) {
+    let palettes: Vec<(usize, String)> = {
+        let rs = eng.render.borrow();
+        let palettes = rs.fx.look.palettes.iter().enumerate();
+        palettes
+            .filter(|(_, (_, h))| h.is_none())
+            .map(|(i, (id, _))| (i, id.clone()))
+            .collect()
+    };
+    let looks: Vec<(usize, String)> = {
+        let rs = eng.render.borrow();
+        let looks = rs.fx.look.looks.iter().enumerate();
+        looks
+            .filter(|(_, l)| !l.resident)
+            .map(|(i, l)| (i, l.id.clone()))
+            .collect()
+    };
+    for (i, id) in palettes {
+        if let Ok(h) = add_palette(eng, &id) {
+            eng.render.borrow_mut().fx.look.palettes[i].1 = Some(h);
+        }
+    }
+    for (i, id) in looks {
+        if let Ok((file, values, skin)) = read(eng, &id) {
+            let mut rs = eng.render.borrow_mut();
+            let look = &mut rs.fx.look.looks[i];
+            look.file = file;
+            look.values = values;
+            look.skin = skin;
+            look.resident = true;
+        }
+    }
 }
 
 /// `og.render.applyLook`: every resource the look names replaced whole
@@ -173,6 +239,12 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
             .looks
             .get(index)
             .ok_or("that look is not loaded in this world")?;
+        if !look.resident {
+            return Err(format!(
+                "{}: its streaming group is not resident (the look loads with it)",
+                look.id
+            ));
+        }
         (look.values.clone(), look.skin)
     };
     for (resource, fields) in &values {

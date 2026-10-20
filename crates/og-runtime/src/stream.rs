@@ -20,9 +20,17 @@
 //!   handle.
 //!
 //! An unloaded group puts its stand-ins back and frees what its assets took
-//! on the GPU and in the audio bank. Every change of a group's state sends
-//! og.StreamEvent at the start of the next tick; the probe's `dump_stream`
-//! lists the budget, what is used and the peak, and every group.
+//! on the GPU and in the audio bank. The environment maps, texture arrays,
+//! palettes and looks loaded from its pack have no stand-in: they are let
+//! go (removed from the renderer, their handles pending) and come back when
+//! the group is resident again ([`resolve`]). One the frame still uses (the
+//! map og.Environment lights it with, the palette Stylise quantises to, an
+//! array a sprite draws from, the look last applied) is never freed under
+//! the frame: it is kept, with a warning naming it, and let go at the first
+//! tick boundary the frame no longer uses it. Every change of a group's
+//! state sends og.StreamEvent at the start of the next tick; the probe's
+//! `dump_stream` lists the budget, what is used and the peak, every group,
+//! and what each keeps.
 
 use super::engine::{Engine, engine, hooks};
 use super::{ok, ok_void, refuse};
@@ -123,6 +131,16 @@ enum Slot {
     },
 }
 
+/// A loaded asset of a group with no stand-in, by its load index: let go
+/// when the group unloads, added again when it is resident.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Held {
+    Environment(usize),
+    TextureArray(usize),
+    Palette(usize),
+    Look(usize),
+}
+
 impl Slot {
     fn id(&self) -> &str {
         match self {
@@ -139,6 +157,9 @@ pub(crate) struct Streams {
     groups: Vec<Group>,
     /// Per group name, its loaded assets and whether each is upgraded.
     slots: BTreeMap<String, Vec<(Slot, bool)>>,
+    /// Assets of unloaded groups the frame still used when their group
+    /// unloaded: (group, asset, its id), let go once unused.
+    retained: Vec<(String, Held, String)>,
     peak: u64,
     log: Vec<Value>,
 }
@@ -266,6 +287,7 @@ pub(crate) fn update(eng: &Engine) {
         return;
     }
     let tick = tick_of(eng);
+    retry_retained(eng);
     let cam = camera(eng);
     // Each volume group's box, in its entity's space (the camera inside it).
     let volumes: BTreeMap<String, bool> = {
@@ -698,8 +720,14 @@ fn release(eng: &Engine, group: &str) {
     h.release_stream(&pack, &textures);
 }
 
-/// Puts a group's stand-ins back and drops its pack (the host's too).
+/// Puts a group's stand-ins back and drops its pack (the host's too), then
+/// lets go of its assets without a stand-in.
 fn downgrade(eng: &Engine, group: &str) {
+    put_stand_ins_back(eng, group);
+    release_held(eng, group);
+}
+
+fn put_stand_ins_back(eng: &Engine, group: &str) {
     release(eng, group);
     let link = og_audio::link(eng.id);
     let mut a = eng.assets.borrow_mut();
@@ -742,6 +770,156 @@ fn downgrade(eng: &Engine, group: &str) {
         }
         *up = false;
     }
+}
+
+// ── assets without a stand-in ───────────────────────────────────────────
+
+/// Every environment map, texture array, palette and look loaded from
+/// `group`'s pack that the renderer still holds.
+fn held_of(eng: &Engine, group: &str) -> Vec<(Held, String)> {
+    let loaded: Vec<(Held, String)> = {
+        let rs = eng.render.borrow();
+        let maps = rs.env.maps.iter().enumerate();
+        let maps = maps.filter(|(_, (_, h))| h.is_some());
+        let arrays = rs.texture_arrays.iter().enumerate();
+        let arrays = arrays.filter(|(_, a)| a.handle.is_some());
+        let palettes = rs.fx.look.palettes.iter().enumerate();
+        let palettes = palettes.filter(|(_, (_, h))| h.is_some());
+        let looks = rs.fx.look.looks.iter().enumerate();
+        let looks = looks.filter(|(_, l)| l.resident);
+        maps.map(|(i, (id, _))| (Held::Environment(i), id.clone()))
+            .chain(arrays.map(|(i, a)| (Held::TextureArray(i), a.id.clone())))
+            .chain(palettes.map(|(i, (id, _))| (Held::Palette(i), id.clone())))
+            .chain(looks.map(|(i, l)| (Held::Look(i), l.id.clone())))
+            .collect()
+    };
+    let a = eng.assets.borrow();
+    loaded
+        .into_iter()
+        .filter(|(_, id)| a.group_of(id).as_deref() == Some(group))
+        .collect()
+}
+
+/// Why the frame still needs `held` at tick boundary `tick` (`None`: it
+/// does not): what the last frame drew with, and the sprites queued for
+/// the next one.
+fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'static str> {
+    match held {
+        Held::Environment(i) => {
+            let h = rs.env.maps.get(i)?.1?;
+            (rs.scene.environment_map.map(|m| m.map) == Some(h))
+                .then_some("og.Environment.map lights the frame with it")
+        }
+        Held::TextureArray(i) => {
+            let h = rs.texture_arrays.get(i)?.handle?;
+            // The queue is cleared lazily: one older than the last tick is stale.
+            let queued = rs.texts_tick + 1 >= tick;
+            let drawn = rs.scene.sprite_arrays.iter().any(|s| s.array == h)
+                || queued
+                    && rs
+                        .fx
+                        .sprites
+                        .iter()
+                        .any(|q| q.array.map(|a| a.0) == Some(h));
+            drawn.then_some("a sprite draws from it")
+        }
+        Held::Palette(i) => {
+            let h = rs.fx.look.palettes.get(i)?.1?;
+            (rs.scene.stylise.quantize.and_then(|q| q.palette) == Some(h))
+                .then_some("Stylise.palette quantises the frame to it")
+        }
+        Held::Look(i) => (rs.fx.look.applied == Some(i)).then_some("it is the look applied"),
+    }
+}
+
+/// Lets `held` go: out of the renderer, its handle pending.
+fn free(rs: &mut super::extract::RenderState, held: Held) {
+    match held {
+        Held::Environment(i) => {
+            if let Some(h) = rs.env.maps.get_mut(i).and_then(|m| m.1.take()) {
+                rs.scene.remove_environment_map(h);
+            }
+        }
+        Held::TextureArray(i) => {
+            if let Some(h) = rs.texture_arrays.get_mut(i).and_then(|a| a.handle.take()) {
+                rs.scene.remove_texture_array(h);
+            }
+        }
+        Held::Palette(i) => {
+            if let Some(h) = rs.fx.look.palettes.get_mut(i).and_then(|p| p.1.take()) {
+                rs.scene.remove_palette(h);
+            }
+        }
+        Held::Look(i) => {
+            if let Some(l) = rs.fx.look.looks.get_mut(i) {
+                l.values = Vec::new();
+                l.resident = false;
+            }
+        }
+    }
+}
+
+/// The unloaded `group`'s environment maps, texture arrays, palettes and
+/// looks: freed, or kept with a warning while the frame uses them.
+fn release_held(eng: &Engine, group: &str) {
+    let tick = tick_of(eng);
+    for (held, id) in held_of(eng, group) {
+        let why = {
+            let mut rs = eng.render.borrow_mut();
+            match in_use(&rs, held, tick) {
+                Some(why) => why,
+                None => {
+                    free(&mut rs, held);
+                    continue;
+                }
+            }
+        };
+        let mut a = eng.assets.borrow_mut();
+        if a.stream.retained.iter().any(|(_, h, _)| *h == held) {
+            continue;
+        }
+        a.stream
+            .retained
+            .push((group.to_string(), held, id.clone()));
+        drop(a);
+        eng.state.borrow_mut().log.push(json!({
+            "tick": tick,
+            "warning": true,
+            "text": format!(
+                "streaming group '{group}' unloaded, but {id} is kept: {why}; it is let go once the frame stops using it"
+            ),
+        }));
+    }
+}
+
+/// At a tick boundary: the kept assets the frame no longer uses are let
+/// go; those whose group is resident again stay as they are.
+fn retry_retained(eng: &Engine) {
+    let tick = tick_of(eng);
+    let retained = std::mem::take(&mut eng.assets.borrow_mut().stream.retained);
+    let mut keep = Vec::new();
+    for (group, held, id) in retained {
+        if eng.assets.borrow().stream.resident(&group) {
+            continue;
+        }
+        let mut rs = eng.render.borrow_mut();
+        if in_use(&rs, held, tick).is_some() {
+            keep.push((group, held, id));
+        } else {
+            free(&mut rs, held);
+        }
+    }
+    eng.assets.borrow_mut().stream.retained.extend(keep);
+}
+
+/// At a tick boundary: the environment maps, texture arrays, palettes and
+/// looks a resident group's pack holds that are not in the renderer (their
+/// group unloaded them, or they were loaded before it was resident) are
+/// added again under their handles.
+pub(crate) fn resolve(eng: &Engine) {
+    super::environment::resolve(eng);
+    super::assets::resolve_texture_arrays(eng);
+    super::look::resolve(eng);
 }
 
 // ── the loads' side ─────────────────────────────────────────────────────
@@ -917,6 +1095,13 @@ pub(crate) fn dump(engine_id: u32) -> Value {
                 j["trigger"] = trigger_json(&g.desc.trigger);
                 j["file"] = json!(g.desc.file);
                 j["slots"] = json!(s.slots.get(&g.desc.name).map_or(0, Vec::len));
+                j["retained"] = json!(
+                    s.retained
+                        .iter()
+                        .filter(|(group, ..)| *group == g.desc.name)
+                        .map(|(.., id)| id.as_str())
+                        .collect::<Vec<_>>()
+                );
                 j
             })
             .collect::<Vec<_>>()
