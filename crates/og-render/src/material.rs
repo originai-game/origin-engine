@@ -369,6 +369,38 @@ impl StandardMaterial {
         .map(TextureHandle::from_slot)
     }
 
+    /// Clears every texture slot that names `slot` (a removed texture's,
+    /// [`TextureHandle::slot`]); true when one did.
+    pub(crate) fn forget_texture(&mut self, slot: u32) -> bool {
+        let mut forgot = false;
+        for s in [
+            &mut self.map,
+            &mut self.metalnessMap,
+            &mut self.roughnessMap,
+            &mut self.normalMap,
+            &mut self.emissiveMap,
+            &mut self.aoMap,
+            &mut self.gradientMap,
+            &mut self.dissolveMap,
+            &mut self.clearcoatMap,
+            &mut self.clearcoatRoughnessMap,
+            &mut self.clearcoatNormalMap,
+            &mut self.sheenColorMap,
+            &mut self.sheenRoughnessMap,
+            &mut self.transmissionMap,
+            &mut self.thicknessMap,
+            &mut self.iridescenceMap,
+            &mut self.iridescenceThicknessMap,
+            &mut self.anisotropyMap,
+        ] {
+            if *s == slot {
+                *s = 0;
+                forgot = true;
+            }
+        }
+        forgot
+    }
+
     /// The texture slots in binding order (map, metalness, roughness,
     /// normal, emissive, ao, gradient, dissolve), as handles.
     pub(crate) fn textures(&self) -> [Option<TextureHandle>; 8] {

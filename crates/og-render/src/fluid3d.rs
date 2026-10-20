@@ -248,13 +248,11 @@ impl Fluid3dRenderer {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("fluid 3d"),
-            source: wgpu::ShaderSource::Wgsl(
-                format!("{shared_wgsl}{}", include_str!("../shaders/fluid3d.wgsl")).into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(fluid_source(shared_wgsl).into()),
         });
         let blur_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("fluid 3d blur"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/fluid3d_blur.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(FLUID_BLUR_WGSL.into()),
         });
         let sphere_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("fluid 3d spheres"),
@@ -307,7 +305,7 @@ impl Fluid3dRenderer {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             })
         };
         let depth = sphere(
@@ -581,3 +579,12 @@ impl Fluid3dRenderer {
         1
     }
 }
+
+/// The 3D fluid's module after `shared` (the frame group, the light
+/// tables and the lighting), as the renderer compiles it.
+pub(crate) fn fluid_source(shared: &str) -> String {
+    format!("{shared}{}", include_str!("../shaders/fluid3d.wgsl"))
+}
+
+/// The 3D fluid's blur module.
+pub(crate) const FLUID_BLUR_WGSL: &str = include_str!("../shaders/fluid3d_blur.wgsl");

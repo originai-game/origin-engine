@@ -329,11 +329,7 @@ impl PhysicalPipelines {
                 sampler_entry(5, wgpu::SamplerBindingType::Filtering),
             ],
         });
-        let pack_module = crate::shader(
-            device,
-            "pack",
-            include_str!("../shaders/pack.wgsl").to_string(),
-        );
+        let pack_module = crate::shader(device, "pack", PACK_WGSL.to_string());
         let pack_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pack"),
             layout: Some(&layout("pack", &[&pack_layout])),
@@ -357,7 +353,7 @@ impl PhysicalPipelines {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         });
         let empty_pack = device
             .create_texture(&wgpu::TextureDescriptor {
@@ -474,6 +470,9 @@ impl PhysicalPipelines {
         })
     }
 }
+
+/// The texture pack pass's module (`crate::shaders` validates it).
+pub(crate) const PACK_WGSL: &str = include_str!("../shaders/pack.wgsl");
 
 #[cfg(test)]
 mod tests {

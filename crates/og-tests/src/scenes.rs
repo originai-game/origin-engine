@@ -182,6 +182,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "gltf-reference" => g.scene = spike_gltf_scene()?,
         // 20,000 low-poly spheres submitted one by one: two batches in all.
         "spheres-20k" => g.scene = sphere_field(20_000),
+        // The same field with every sphere bobbing each frame (the bench's
+        // sphere field, tools/bench/spheres): the renderer's per-instance
+        // cost when every transform changes. Perf only (no reference).
+        "spheres-20k-moving" => {
+            g.scene = sphere_field(20_000);
+            g.update = Some(bob_spheres);
+        }
         // A 400 m field with pillars from 3 m to 190 m: shadows in every cascade.
         "cascades-200m" => g.scene = cascades_200m(true),
         // Night: seven point and spot lights, the first two shadowed.
@@ -1160,6 +1167,17 @@ fn spike_gltf_scene() -> Result<RenderScene, String> {
         .collect();
     layout(&mut scene, &parts, 25, 3.0);
     Ok(scene)
+}
+
+/// Moves every instance of the sphere field up or down on its own phase.
+fn bob_spheres(scene: &mut RenderScene, frame: u32) {
+    let t = frame as f32 / 60.0;
+    for (i, inst) in scene.instances.iter_mut().enumerate() {
+        let speed = 1.0 + (i % 7) as f32 * 0.25;
+        let phase = (i as f32 * 0.37) % std::f32::consts::TAU;
+        let dy = (t * speed + phase).sin() - ((t - 1.0 / 60.0) * speed + phase).sin();
+        inst.transform.w_axis.y += dy * 0.5;
+    }
 }
 
 fn sphere_field(count: u32) -> RenderScene {

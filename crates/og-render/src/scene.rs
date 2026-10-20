@@ -228,19 +228,85 @@ impl Default for Material {
     }
 }
 
+/// A handle's slot is its low 24 bits; the top 8 are the slot's generation.
+const INDEX_BITS: u32 = 24;
+const INDEX_MASK: u32 = (1 << INDEX_BITS) - 1;
+
+/// Which slots of one kind of resource hold one, and their generations:
+/// `remove_*` empties a slot and moves its generation on, and the next
+/// `add_*` of the kind fills it again (last freed first), so handles are
+/// reused without an old one reaching the new resource.
+#[derive(Debug, Default)]
+struct Slots {
+    generation: Vec<u8>,
+    removed: Vec<bool>,
+    free: Vec<u32>,
+    /// Whether any slot of the kind was ever removed (no check is needed
+    /// before).
+    any_removed: bool,
+}
+
+impl Slots {
+    /// The slot to fill: a freed one, or a new one at `len` (the kind's
+    /// length). Returns the slot, its generation and whether it was reused.
+    fn take(&mut self, len: usize, reuse: bool) -> (usize, u8, bool) {
+        if reuse && let Some(i) = self.free.pop() {
+            let i = i as usize;
+            self.removed[i] = false;
+            return (i, self.generation[i], true);
+        }
+        debug_assert_eq!(len, self.generation.len());
+        self.generation.push(0);
+        self.removed.push(false);
+        (len, 0, false)
+    }
+
+    fn live(&self, index: usize, generation: u8) -> bool {
+        index < self.generation.len()
+            && self.generation[index] == generation
+            && !self.removed[index]
+    }
+
+    /// Empties a live slot; `reuse`: a later add may fill it.
+    fn remove(&mut self, index: usize, reuse: bool) {
+        self.removed[index] = true;
+        self.generation[index] = self.generation[index].wrapping_add(1);
+        self.any_removed = true;
+        if reuse {
+            self.free.push(index as u32);
+        }
+    }
+
+    fn generation(&self, index: usize) -> u8 {
+        self.generation.get(index).copied().unwrap_or(0)
+    }
+}
+
 macro_rules! handle {
     ($(#[$doc:meta])* $name:ident) => {
         $(#[$doc])*
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name(u32);
         impl $name {
-            /// The position of the resource in its scene, in insertion order.
+            /// The position of the resource in its scene: its slot, in
+            /// insertion order (a slot freed by a `remove_*` is reused).
             pub fn index(self) -> usize {
-                self.0 as usize
+                (self.0 & INDEX_MASK) as usize
+            }
+            /// How many times the slot was emptied before this handle was
+            /// given (wrapping at 256): a handle of a removed resource no
+            /// longer matches its slot.
+            pub fn generation(self) -> u8 {
+                (self.0 >> INDEX_BITS) as u8
             }
             #[allow(dead_code)]
             pub(crate) fn from_index(index: usize) -> Self {
                 $name(index as u32)
+            }
+            #[allow(dead_code)]
+            pub(crate) fn from_parts(index: usize, generation: u8) -> Self {
+                debug_assert!(index as u32 <= INDEX_MASK);
+                $name(index as u32 | (generation as u32) << INDEX_BITS)
             }
         }
     };
@@ -1073,6 +1139,11 @@ pub struct RenderScene {
     pub trail_layers: Vec<(u64, i32)>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
+    /// Live slots and generations of the removable kinds.
+    mesh_slots: Slots,
+    texture_slots: Slots,
+    material_slots: Slots,
+    font_slots: Slots,
 }
 
 impl Default for RenderScene {
@@ -1147,6 +1218,10 @@ impl RenderScene {
             tile_layers: Vec::new(),
             trail_layers: Vec::new(),
             texture_filters: Vec::new(),
+            mesh_slots: Slots::default(),
+            texture_slots: Slots::default(),
+            material_slots: Slots::default(),
+            font_slots: Slots::default(),
         }
     }
 
@@ -1155,7 +1230,7 @@ impl RenderScene {
     /// a handle of another scene.
     pub fn set_texture_filter(&mut self, texture: TextureHandle, filter: TextureFilter) -> bool {
         let i = texture.index();
-        if i >= self.textures.len() {
+        if !self.texture_slots.live(i, texture.generation()) {
             return false;
         }
         if self.texture_filters.len() <= i {
@@ -1177,7 +1252,8 @@ impl RenderScene {
     /// drawn posed by [`RenderScene::skinned_instances`]. The skin must have
     /// one entry per vertex ([`crate::RenderError::InvalidData`] at upload).
     pub fn add_skinned_mesh(&mut self, mesh: MeshData, skin: SkinData) -> MeshHandle {
-        let h = self.add_mesh(mesh);
+        // A new slot: the renderer sets a skin up once, for a new mesh.
+        let h = self.push_mesh(mesh, false);
         self.skins[h.index()] = Some(skin);
         h
     }
@@ -1188,6 +1264,9 @@ impl RenderScene {
     /// without a skin stays in its bind pose). Checked at upload. Set them
     /// before the mesh's first frame; `false` for a handle of another scene.
     pub fn set_morph_targets(&mut self, mesh: MeshHandle, targets: MorphTargets) -> bool {
+        if !self.mesh_slots.live(mesh.index(), mesh.generation()) {
+            return false;
+        }
         match self.morphs.get_mut(mesh.index()) {
             Some(m) => {
                 *m = Some(targets);
@@ -1436,11 +1515,45 @@ impl RenderScene {
     }
 
     pub fn add_mesh(&mut self, mesh: MeshData) -> MeshHandle {
-        self.meshes.push(mesh);
-        self.skins.push(None);
-        self.morphs.push(None);
-        self.mesh_revisions.push(0);
-        MeshHandle(self.meshes.len() as u32 - 1)
+        self.push_mesh(mesh, true)
+    }
+
+    fn push_mesh(&mut self, mesh: MeshData, reuse: bool) -> MeshHandle {
+        let (i, generation, reused) = self.mesh_slots.take(self.meshes.len(), reuse);
+        if reused {
+            self.meshes[i] = mesh;
+            self.mesh_revisions[i] += 1;
+        } else {
+            self.meshes.push(mesh);
+            self.skins.push(None);
+            self.morphs.push(None);
+            self.mesh_revisions.push(0);
+        }
+        MeshHandle::from_parts(i, generation)
+    }
+
+    /// Removes a mesh: the renderer frees its buffers before the next frame
+    /// and a later [`RenderScene::add_mesh`] reuses the slot under a new
+    /// generation, so this handle (and every copy of it) is refused from
+    /// now on: by `set_mesh` and the other setters, and as an instance's
+    /// mesh ([`crate::RenderError::InvalidHandle`]). A skinned or morphed
+    /// mesh's slot is not reused (its skin and blendshape data stay with
+    /// the renderer). False for a handle that is not live.
+    pub fn remove_mesh(&mut self, handle: MeshHandle) -> bool {
+        let i = handle.index();
+        if !self.mesh_slots.live(i, handle.generation()) {
+            return false;
+        }
+        let reuse = self.skins[i].is_none() && self.morphs[i].is_none();
+        self.meshes[i] = MeshData::default();
+        self.mesh_revisions[i] += 1;
+        self.mesh_slots.remove(i, reuse);
+        true
+    }
+
+    /// Whether `handle` names a mesh of this scene that was not removed.
+    pub fn contains_mesh(&self, handle: MeshHandle) -> bool {
+        self.mesh_slots.live(handle.index(), handle.generation())
     }
 
     /// Replaces a mesh's vertices and indices (cloth, generated geometry);
@@ -1448,7 +1561,10 @@ impl RenderScene {
     /// the sizes match. False for a bad handle or a skinned or morphed mesh.
     pub fn set_mesh(&mut self, handle: MeshHandle, mesh: MeshData) -> bool {
         let i = handle.index();
-        if i >= self.meshes.len() || self.skins[i].is_some() || self.morphs[i].is_some() {
+        if !self.mesh_slots.live(i, handle.generation())
+            || self.skins[i].is_some()
+            || self.morphs[i].is_some()
+        {
             return false;
         }
         self.meshes[i] = mesh;
@@ -1462,9 +1578,7 @@ impl RenderScene {
 
     /// Adds an RGBA8 texture (mips generated on the GPU when asked).
     pub fn add_texture(&mut self, texture: TextureData) -> TextureHandle {
-        self.textures.push(TextureSource::Rgba(texture));
-        self.texture_revisions.push(0);
-        TextureHandle(self.textures.len() as u32 - 1)
+        self.add_texture_source(TextureSource::Rgba(texture))
     }
 
     /// Replaces a texture (a streamed texture over its placeholder, or back):
@@ -1482,7 +1596,7 @@ impl RenderScene {
 
     fn replace_texture(&mut self, handle: TextureHandle, source: TextureSource) -> bool {
         let i = handle.index();
-        if i >= self.textures.len() {
+        if !self.texture_slots.live(i, handle.generation()) {
             return false;
         }
         self.textures[i] = source;
@@ -1498,32 +1612,135 @@ impl RenderScene {
     /// [`crate::RenderInfo::texture_formats`]. Checked (and refused with
     /// [`crate::RenderError::InvalidData`] or `Unsupported`) when uploaded.
     pub fn add_texture_upload(&mut self, upload: TextureUpload) -> TextureHandle {
-        self.textures.push(TextureSource::Encoded(upload));
-        self.texture_revisions.push(0);
-        TextureHandle(self.textures.len() as u32 - 1)
+        self.add_texture_source(TextureSource::Encoded(upload))
     }
 
     /// Adds a texture of either kind ([`TextureSource`]).
     pub fn add_texture_source(&mut self, source: TextureSource) -> TextureHandle {
-        self.textures.push(source);
-        self.texture_revisions.push(0);
-        TextureHandle(self.textures.len() as u32 - 1)
+        let (i, generation, reused) = self.texture_slots.take(self.textures.len(), true);
+        if reused {
+            self.textures[i] = source;
+            self.texture_revisions[i] += 1;
+            if let Some(f) = self.texture_filters.get_mut(i) {
+                *f = TextureFilter::Linear;
+            }
+        } else {
+            self.textures.push(source);
+            self.texture_revisions.push(0);
+        }
+        TextureHandle::from_parts(i, generation)
+    }
+
+    /// Removes a texture: the renderer frees it before the next frame and a
+    /// later add reuses the slot under a new generation. Every material
+    /// slot that sampled it is cleared (those materials draw without it from
+    /// the next frame), and so is the decal atlas; a sprite or a font
+    /// atlas still naming it is refused at the next frame
+    /// ([`crate::RenderError::InvalidHandle`]): remove the font first.
+    /// False for a handle that is not live.
+    pub fn remove_texture(&mut self, handle: TextureHandle) -> bool {
+        let i = handle.index();
+        if !self.texture_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.textures[i] = TextureSource::Rgba(TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![0; 4],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        self.texture_revisions[i] += 1;
+        if let Some(f) = self.texture_filters.get_mut(i) {
+            *f = TextureFilter::Linear;
+        }
+        let slot = handle.slot();
+        for (m, revision) in self
+            .materials
+            .iter_mut()
+            .zip(self.material_revisions.iter_mut())
+        {
+            if m.forget_texture(slot) {
+                *revision += 1;
+            }
+        }
+        for m in self.gltf_materials.iter_mut().flatten() {
+            for t in [
+                &mut m.base_color_texture,
+                &mut m.metallic_roughness_texture,
+                &mut m.normal_texture,
+                &mut m.emissive_texture,
+            ] {
+                if *t == Some(handle) {
+                    *t = None;
+                }
+            }
+        }
+        if self.decal_atlas == Some(handle) {
+            self.decal_atlas = None;
+        }
+        self.texture_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a texture of this scene that was not removed.
+    pub fn contains_texture(&self, handle: TextureHandle) -> bool {
+        self.texture_slots.live(handle.index(), handle.generation())
     }
 
     /// Adds a glTF-shaped material (drawn as its [`StandardMaterial`] form).
     pub fn add_material(&mut self, material: Material) -> MaterialHandle {
-        self.materials.push(StandardMaterial::from(&material));
-        self.gltf_materials.push(Some(material));
-        self.material_revisions.push(0);
-        MaterialHandle(self.materials.len() as u32 - 1)
+        let standard = StandardMaterial::from(&material);
+        self.push_material(standard, Some(material))
     }
 
     /// Adds a three.js-style standard material.
     pub fn add_standard_material(&mut self, material: StandardMaterial) -> MaterialHandle {
-        self.materials.push(material);
-        self.gltf_materials.push(None);
-        self.material_revisions.push(0);
-        MaterialHandle(self.materials.len() as u32 - 1)
+        self.push_material(material, None)
+    }
+
+    fn push_material(
+        &mut self,
+        material: StandardMaterial,
+        gltf: Option<Material>,
+    ) -> MaterialHandle {
+        let (i, generation, reused) = self.material_slots.take(self.materials.len(), true);
+        if reused {
+            self.materials[i] = material;
+            self.gltf_materials[i] = gltf;
+            self.material_revisions[i] += 1;
+        } else {
+            self.materials.push(material);
+            self.gltf_materials.push(gltf);
+            self.material_revisions.push(0);
+        }
+        MaterialHandle::from_parts(i, generation)
+    }
+
+    /// Removes a material: the renderer frees its bind groups before the
+    /// next frame and a later add reuses the slot under a new generation;
+    /// an instance still drawing with this handle is refused
+    /// ([`crate::RenderError::InvalidHandle`]). Its material shader and
+    /// parameters go with it. False for a handle that is not live.
+    pub fn remove_material(&mut self, handle: MaterialHandle) -> bool {
+        let i = handle.index();
+        if !self.material_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.materials[i] = StandardMaterial::default();
+        self.gltf_materials[i] = None;
+        if let Some(s) = self.material_shaders.get_mut(i) {
+            *s = None;
+        }
+        self.material_revisions[i] += 1;
+        self.material_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a material of this scene that was not removed.
+    pub fn contains_material(&self, handle: MaterialHandle) -> bool {
+        self.material_slots
+            .live(handle.index(), handle.generation())
     }
 
     /// Replaces a material with a glTF-shaped one; the renderer re-uploads it
@@ -1531,7 +1748,7 @@ impl RenderScene {
     /// of another scene.
     pub fn set_material(&mut self, handle: MaterialHandle, material: Material) -> bool {
         let i = handle.index();
-        if i >= self.materials.len() {
+        if !self.material_slots.live(i, handle.generation()) {
             return false;
         }
         self.materials[i] = StandardMaterial::from(&material);
@@ -1548,7 +1765,7 @@ impl RenderScene {
         material: StandardMaterial,
     ) -> bool {
         let i = handle.index();
-        if i >= self.materials.len() {
+        if !self.material_slots.live(i, handle.generation()) {
             return false;
         }
         self.materials[i] = material;
@@ -1568,9 +1785,38 @@ impl RenderScene {
 
     /// Adds an MSDF font whose atlas is a texture of this scene.
     pub fn add_font(&mut self, font: MsdfFont) -> FontHandle {
-        self.fonts.push(font);
-        self.font_revisions.push(0);
-        FontHandle(self.fonts.len() as u32 - 1)
+        let (i, generation, reused) = self.font_slots.take(self.fonts.len(), true);
+        if reused {
+            self.fonts[i] = font;
+            self.font_revisions[i] += 1;
+        } else {
+            self.fonts.push(font);
+            self.font_revisions.push(0);
+        }
+        FontHandle::from_parts(i, generation)
+    }
+
+    /// Removes a font (its glyph table; its atlas is a texture of its own,
+    /// removed with [`RenderScene::remove_texture`] after): a later add
+    /// reuses the slot under a new generation, and text still set in this
+    /// font is refused at the next frame ([`crate::RenderError::InvalidHandle`]).
+    /// False for a handle that is not live.
+    pub fn remove_font(&mut self, handle: FontHandle) -> bool {
+        let i = handle.index();
+        if !self.font_slots.live(i, handle.generation()) {
+            return false;
+        }
+        let f = &mut self.fonts[i];
+        f.glyphs = Vec::new();
+        f.kerning = Vec::new();
+        self.font_revisions[i] += 1;
+        self.font_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a font of this scene that was not removed.
+    pub fn contains_font(&self, handle: FontHandle) -> bool {
+        self.font_slots.live(handle.index(), handle.generation())
     }
 
     /// Replaces a font's glyph table, kerning or atlas (glyphs rendered at
@@ -1578,7 +1824,7 @@ impl RenderScene {
     /// table from the next frame. False for a bad handle.
     pub fn set_font(&mut self, handle: FontHandle, font: MsdfFont) -> bool {
         let i = handle.index();
-        if i >= self.fonts.len() {
+        if !self.font_slots.live(i, handle.generation()) {
             return false;
         }
         self.fonts[i] = font;
@@ -1596,16 +1842,86 @@ impl RenderScene {
     }
 
     pub fn font(&self, handle: FontHandle) -> Option<&MsdfFont> {
+        if !self.contains_font(handle) {
+            return None;
+        }
         self.fonts.get(handle.index())
+    }
+
+    /// Every per-frame reference to a removed mesh, material, texture or
+    /// font: instances, skinned instances, sprites, texts and the overlay's
+    /// (nothing to look at until something was removed).
+    pub(crate) fn stale_handle(&self) -> Option<String> {
+        let (m, t, mat, f) = (
+            &self.mesh_slots,
+            &self.texture_slots,
+            &self.material_slots,
+            &self.font_slots,
+        );
+        if !(m.any_removed || t.any_removed || mat.any_removed || f.any_removed) {
+            return None;
+        }
+        let draws = self
+            .instances
+            .iter()
+            .map(|i| (i.mesh, i.material))
+            .chain(self.skinned_instances.iter().map(|i| (i.mesh, i.material)));
+        for (k, (mesh, material)) in draws.enumerate() {
+            if !m.live(mesh.index(), mesh.generation()) {
+                return Some(format!("instance {k}: mesh {} was removed", mesh.index()));
+            }
+            if !mat.live(material.index(), material.generation()) {
+                return Some(format!(
+                    "instance {k}: material {} was removed",
+                    material.index()
+                ));
+            }
+        }
+        let overlay = self.overlay.as_ref();
+        let sprites = self
+            .sprites
+            .iter()
+            .chain(overlay.into_iter().flat_map(|o| o.sprites.iter()));
+        for (k, s) in sprites.enumerate() {
+            if let Some(h) = s.texture
+                && !t.live(h.index(), h.generation())
+            {
+                return Some(format!("sprite {k}: texture {} was removed", h.index()));
+            }
+        }
+        let texts = self
+            .texts
+            .iter()
+            .chain(overlay.into_iter().flat_map(|o| o.texts.iter()));
+        for (k, text) in texts.enumerate() {
+            if !f.live(text.font.index(), text.font.generation()) {
+                return Some(format!("text {k}: font {} was removed", text.font.index()));
+            }
+        }
+        for (k, font) in self.fonts.iter().enumerate() {
+            if f.live(k, f.generation(k)) && !t.live(font.atlas.index(), font.atlas.generation()) {
+                return Some(format!(
+                    "font {k}: its atlas texture {} was removed",
+                    font.atlas.index()
+                ));
+            }
+        }
+        None
     }
 
     /// The handle of the scene's `index`-th mesh (meshes are numbered in
     /// the order they were added).
     pub fn mesh_handle(&self, index: usize) -> Option<MeshHandle> {
-        (index < self.meshes.len()).then(|| MeshHandle::from_index(index))
+        let generation = self.mesh_slots.generation(index);
+        self.mesh_slots
+            .live(index, generation)
+            .then(|| MeshHandle::from_parts(index, generation))
     }
 
     pub fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
+        if !self.contains_mesh(handle) {
+            return None;
+        }
         self.meshes.get(handle.index())
     }
 
@@ -1661,7 +1977,9 @@ impl RenderScene {
         shader: Option<ShaderHandle>,
     ) -> bool {
         let i = material.index();
-        if i >= self.materials.len() || shader.is_some_and(|s| s.index() >= self.shaders.len()) {
+        if !self.material_slots.live(i, material.generation())
+            || shader.is_some_and(|s| s.index() >= self.shaders.len())
+        {
             return false;
         }
         if self.material_shaders.len() <= i {
@@ -1719,8 +2037,17 @@ impl RenderScene {
     }
 
     /// Every material's handle, in insertion order (tools that edit all of them).
+    /// Every live material's handle, in slot order.
     pub fn material_handles(&self) -> impl Iterator<Item = MaterialHandle> + use<> {
-        (0..self.materials.len()).map(MaterialHandle::from_index)
+        let live: Vec<MaterialHandle> = (0..self.materials.len())
+            .filter_map(|i| {
+                let generation = self.material_slots.generation(i);
+                self.material_slots
+                    .live(i, generation)
+                    .then(|| MaterialHandle::from_parts(i, generation))
+            })
+            .collect();
+        live.into_iter()
     }
 
     pub fn material_count(&self) -> usize {

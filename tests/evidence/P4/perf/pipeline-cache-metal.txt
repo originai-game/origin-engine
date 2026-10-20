@@ -1,0 +1,3 @@
+showcase: setup+first=2915.4ms gltf-reference: setup+first=236.7ms materials-physical: setup+first=710.9ms 
+showcase: setup+first=207.8ms gltf-reference: setup+first=299.0ms materials-physical: setup+first=275.8ms 
+showcase: setup+first=278.8ms gltf-reference: setup+first=205.1ms materials-physical: setup+first=248.0ms 

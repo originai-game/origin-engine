@@ -1,0 +1,64 @@
+# bun tools/bench/profile-spheres.ts --count 20000 --frames 200 --names at bd193d1 (after), Chrome for Testing 150, WebGPU, lanes on, load 57
+# the engine Worker's samples over 100 frames; writeBuffer is the instance upload waiting on the GPU (Chrome's queue throttles a GPU-bound frame there)
+self (busy 488.1 ms):
+    257.8 ms  52.8 %  writeBuffer
+     37.3 ms   7.6 %  <og_render::Renderer>::render
+     32.9 ms   6.7 %  og_runtime::extract::extract
+     25.5 ms   5.2 %  <glam::f32::scalar::mat4::Mat4 as core::ops::arith::Mul>::mul
+     16.7 ms   3.4 %  <og_runtime::extract::Hierarchy>::refresh
+     15.9 ms   3.3 %  <og_runtime::extract::Hierarchy>::world_of
+     14.4 ms   3.0 %  <og_render::scene::RenderScene>::add_instance
+     10.0 ms   2.1 %  (anonymous)
+      4.9 ms   1.0 %  postMessage
+      4.4 ms   0.9 %  memcmp
+      3.6 ms   0.7 %  core::slice::sort::stable::drift::sort::<usize, <[usize]>::sort_by_key<(og_render::scene::MeshHandle, og_render[
+      3.2 ms   0.7 %  <dlmalloc::dlmalloc::Dlmalloc<dlmalloc::sys::System>>::malloc
+      2.7 ms   0.6 %  <og_render::upload::DirtyUpload>::write
+      2.6 ms   0.5 %  decodeText
+      2.5 ms   0.5 %  <alloc::string::String as core::clone::Clone>::clone
+      2.4 ms   0.5 %  <alloc::collections::btree::map::BTreeMap<alloc::string::String, serde_json::value::Value>>::ins
+      2.2 ms   0.4 %  __wbindgen_malloc
+      2.1 ms   0.4 %  <og_ecs::registry::Registry>::id_of::<og_core::rng::Rng>
+      1.8 ms   0.4 %  __wbg_set_base_array_layer_2435ba92c80346ae
+      1.7 ms   0.3 %  getCurrentTexture
+      1.6 ms   0.3 %  <og_render::post::FrameGraph>::try_view
+      1.6 ms   0.3 %  <dlmalloc::dlmalloc::Dlmalloc<dlmalloc::sys::System>>::insert_large_chunk
+      1.5 ms   0.3 %  og_query_archetypes multivalue shim
+      1.5 ms   0.3 %  decode
+      1.5 ms   0.3 %  createView
+      1.5 ms   0.3 %  (garbage collector)
+      1.4 ms   0.3 %  <&mut <serde_json::value::Value as core::fmt::Display>::fmt::WriterFormatter as core::io::writ
+      1.3 ms   0.3 %  beginRenderPass
+      1.2 ms   0.3 %  <dlmalloc::dlmalloc::Dlmalloc<dlmalloc::sys::System>>::free
+      1.2 ms   0.2 %  On.self.onmessage
+inclusive:
+    488.1 ms 100.0 %  (root)
+    465.1 ms  95.3 %  On.self.onmessage
+    459.0 ms  94.0 %  frame
+    458.7 ms  94.0 %  og_engine_frame
+    457.5 ms  93.7 %  js-to-wasm:i:
+    457.2 ms  93.7 %  og_runtime::engine::frame
+    457.2 ms  93.7 %  og_runtime::og_engine_frame
+    457.2 ms  93.7 %  og_engine_frame multivalue shim
+    324.5 ms  66.5 %  <og_host_web::canvas::CanvasBackend as og_runtime::extract::RenderBackend>::render
+    324.0 ms  66.4 %  <og_render::Renderer>::render
+    281.8 ms  57.7 %  wasm-to-js
+    278.3 ms  57.0 %  (anonymous)
+    267.5 ms  54.8 %  <og_render::cull_gpu::GpuCulling>::encode
+    258.1 ms  52.9 %  <wgpu::backend::webgpu::webgpu_sys::gen_GpuQueue::GpuQueue>::write_buffer_with_f64_and_u8_slice_and_f64_and_f64::__wbg_writeBuffer
+    258.1 ms  52.9 %  <wgpu::backend::webgpu::WebQueue as wgpu::dispatch::QueueInterface>::write_buffer
+    258.0 ms  52.9 %  __wbg_writeBuffer_f4bb3f54adfe1330
+    257.8 ms  52.8 %  writeBuffer
+    251.5 ms  51.5 %  <wgpu::api::queue::Queue>::write_buffer
+    103.9 ms  21.3 %  og_runtime::extract::extract
+     40.5 ms   8.3 %  <og_runtime::extract::Hierarchy>::world_of
+     25.7 ms   5.3 %  <og_ecs::world::World>::step
+     25.7 ms   5.3 %  <og_probe::probe::Probe>::frame
+     25.5 ms   5.2 %  <glam::f32::scalar::mat4::Mat4 as core::ops::arith::Mul>::mul
+     17.1 ms   3.5 %  <og_runtime::extract::Hierarchy>::refresh
+     15.8 ms   3.2 %  handleError
+     14.9 ms   3.1 %  og_runtime::engine::assemble::{closure#11}
+     14.4 ms   3.0 %  <og_render::scene::RenderScene>::add_instance
+     14.3 ms   2.9 %  <js_sys::Function<_>>::apply::__wbg_apply_a910804df6e1e433 externref shim
+     14.3 ms   2.9 %  <og_host_web::WebHooks as og_runtime::engine::Hooks>::dispatch
+     14.2 ms   2.9 %  __wbg_apply_a910804df6e1e433

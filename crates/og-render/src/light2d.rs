@@ -6,7 +6,7 @@ use crate::HDR_FORMAT;
 use crate::effects::{Light2d, MAX_LIGHTS_2D, MAX_OCCLUDERS_2D, Occluder2d};
 use glam::{Mat4, Vec3};
 
-const LIGHT2D_WGSL: &str = include_str!("../shaders/light2d.wgsl");
+pub(crate) const LIGHT2D_WGSL: &str = include_str!("../shaders/light2d.wgsl");
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -112,7 +112,7 @@ impl Light2dRenderer {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         });
         Light2dRenderer {
             pipeline,

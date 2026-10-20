@@ -20,7 +20,7 @@ impl MipGenerator {
     pub(crate) fn new(device: &wgpu::Device) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("mipmap"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/mipmap.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(MIPMAP_WGSL.into()),
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("mipmap"),
@@ -102,7 +102,7 @@ impl MipGenerator {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             })
         });
     }
@@ -162,3 +162,6 @@ impl MipGenerator {
         }
     }
 }
+
+/// The mip generator's module (`crate::shaders` validates it).
+pub(crate) const MIPMAP_WGSL: &str = include_str!("../shaders/mipmap.wgsl");

@@ -159,6 +159,8 @@ pub(crate) struct RenderState {
     pub env: super::environment::EnvState,
     /// The terrains loaded (`super::terrain`).
     pub terrain: super::terrain::TerrainState,
+    /// The last frame's hierarchy, kept for its allocations.
+    pub hierarchy: Hierarchy,
 }
 
 impl RenderState {
@@ -189,6 +191,7 @@ impl RenderState {
             atmo: Default::default(),
             env: Default::default(),
             terrain: Default::default(),
+            hierarchy: Hierarchy::default(),
         }
     }
 }
@@ -223,19 +226,57 @@ pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> 
 
 /// Local transforms and parents of every entity with `og.Transform`, for
 /// composing world matrices.
+///
+/// Dense by entity index (an entity's slot holds its bits, so a stale or
+/// unknown entity is told apart), read from the columns without decoding a
+/// row: extraction asks it for every drawn entity on every frame, so a
+/// lookup is an index, not a tree walk (owed row 50: 20,000 meshes spent
+/// most of their frame in the maps this replaced).
+#[derive(Default)]
 pub struct Hierarchy {
-    local: BTreeMap<u64, Mat4>,
+    /// Per entity index: the entity's bits, its local matrix and its world
+    /// matrix once composed.
+    slots: Vec<Slot>,
+    /// Parents by child bits (only entities with `og.Parent`).
     parent: BTreeMap<u64, u64>,
-    world: BTreeMap<u64, Mat4>,
+    /// World matrices of chain members without `og.Transform` (no slot).
+    loose: BTreeMap<u64, Mat4>,
 }
+
+#[derive(Clone, Copy)]
+struct Slot {
+    bits: u64,
+    /// Whether the entity has `og.Transform` this frame.
+    local_set: bool,
+    world_set: bool,
+    local: Mat4,
+    world: Mat4,
+}
+
+const EMPTY_SLOT: Slot = Slot {
+    bits: 0,
+    local_set: false,
+    world_set: false,
+    local: Mat4::IDENTITY,
+    world: Mat4::IDENTITY,
+};
 
 impl Hierarchy {
     pub(crate) fn of(world: &World) -> Hierarchy {
-        let mut h = Hierarchy {
-            local: BTreeMap::new(),
-            parent: BTreeMap::new(),
-            world: BTreeMap::new(),
-        };
+        let mut h = Hierarchy::default();
+        h.refresh(world);
+        h
+    }
+
+    /// Reads the world's transforms and parents again, keeping the
+    /// allocations of the last frame.
+    pub(crate) fn refresh(&mut self, world: &World) {
+        for s in &mut self.slots {
+            s.local_set = false;
+            s.world_set = false;
+        }
+        self.parent.clear();
+        self.loose.clear();
         if let Ok(tid) = world.id_by_name("og.Transform") {
             let fields = ["position", "quaternion", "scale"];
             let refs: Vec<_> = fields
@@ -256,10 +297,14 @@ impl Hierarchy {
                         continue;
                     };
                     for (i, e) in a.entities().iter().enumerate() {
-                        h.local.insert(
-                            e.to_bits(),
-                            Mat4::from_scale_rotation_translation(s[i], r[i], p[i]),
-                        );
+                        let index = e.index() as usize;
+                        if index >= self.slots.len() {
+                            self.slots.resize(index + 1, EMPTY_SLOT);
+                        }
+                        let slot = &mut self.slots[index];
+                        slot.bits = e.to_bits();
+                        slot.local_set = true;
+                        slot.local = Mat4::from_scale_rotation_translation(s[i], r[i], p[i]);
                     }
                 }
             }
@@ -275,19 +320,49 @@ impl Hierarchy {
                 for a in all {
                     if let Ok(p) = a.read::<u64>(field) {
                         for (e, parent) in a.entities().iter().zip(p.iter()) {
-                            h.parent.insert(e.to_bits(), *parent);
+                            self.parent.insert(e.to_bits(), *parent);
                         }
                     }
                 }
             }
         }
-        h
+    }
+
+    /// The slot of the entity `e` (bits), when it has `og.Transform`.
+    fn slot(&mut self, e: u64) -> Option<&mut Slot> {
+        let index = Entity::from_bits(e).index() as usize;
+        self.slots
+            .get_mut(index)
+            .filter(|s| s.local_set && s.bits == e)
+    }
+
+    fn cached(&mut self, e: u64) -> Option<Mat4> {
+        match self.slot(e) {
+            Some(s) => s.world_set.then_some(s.world),
+            None => self.loose.get(&e).copied(),
+        }
     }
 
     /// The world matrix of an entity: its local transform after its parents'.
     pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
-        if let Some(m) = self.world.get(&e) {
-            return *m;
+        if let Some(m) = self.cached(e) {
+            return m;
+        }
+        if !self.parent.contains_key(&e) {
+            // A root: the chain below of one entity, without its vector.
+            let mut m = Mat4::IDENTITY;
+            match self.slot(e) {
+                Some(s) => {
+                    m *= s.local;
+                    s.world = m;
+                    s.world_set = true;
+                }
+                None => {
+                    m *= Mat4::IDENTITY;
+                    self.loose.insert(e, m);
+                }
+            }
+            return m;
         }
         let mut chain = vec![e];
         let mut cur = e;
@@ -299,13 +374,22 @@ impl Hierarchy {
             cur = p;
         }
         let mut m = Mat4::IDENTITY;
-        for id in chain.iter().rev() {
-            if let Some(w) = self.world.get(id) {
-                m = *w;
+        for &id in chain.iter().rev() {
+            if let Some(w) = self.cached(id) {
+                m = w;
                 continue;
             }
-            m *= self.local.get(id).copied().unwrap_or(Mat4::IDENTITY);
-            self.world.insert(*id, m);
+            match self.slot(id) {
+                Some(s) => {
+                    m *= s.local;
+                    s.world = m;
+                    s.world_set = true;
+                }
+                None => {
+                    m *= Mat4::IDENTITY;
+                    self.loose.insert(id, m);
+                }
+            }
         }
         m
     }
@@ -324,17 +408,102 @@ fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
         return Vec::new();
     };
     // The bytes are read serially (the world is one thread's); decoding them
-    // is a lane per row, the rows staying in entity order.
+    // is a lane per row natively, the rows staying in entity order.
     let cells: Vec<(u64, Vec<u8>)> = all
         .flat_map(|a| a.entities().to_vec())
         .filter_map(|e| Some((e.to_bits(), world.get_bytes(e, id).ok()?)))
         .collect();
+    if cfg!(target_arch = "wasm32") {
+        // A row's decode is allocations (a JSON map per row), and the lanes
+        // wasm has one allocator behind one lock: 20,000 og.Mesh rows split
+        // over eight Workers spent 116 ms of a 137 ms frame waiting for the
+        // lanes (owed row 50, tests/evidence/P4/perf/).
+        return cells.iter().map(|(e, b)| (*e, layout.decode(b))).collect();
+    }
     og_lanes::map(og_lanes::Site::Extract, &cells, ROW_GRAIN, |(e, bytes)| {
         (*e, layout.decode(bytes))
     })
 }
 
-/// Rows per lane task when decoding a component's rows: a row decodes in
+/// One `og.Mesh` as extraction reads it.
+struct MeshRow {
+    entity: u64,
+    /// Indices into `RenderState::geometries` and `::materials`.
+    geometry: usize,
+    material: usize,
+    visible: bool,
+    flash: f32,
+    flash_color: Vec3,
+}
+
+/// A handle field's index, as the JSON rows read it (`as_f64`, then the
+/// low 32 bits).
+fn handle_index(bits: u64) -> usize {
+    ((bits as f64) as u64 & 0xffff_ffff) as usize
+}
+
+/// The `og.Mesh` rows in query order, read straight from the columns (a
+/// mesh field decoded to JSON per row cost about a microsecond natively and
+/// several on wasm: owed row 50); the JSON rows when the columns are not
+/// the IDL's.
+fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
+    let columnar = || -> Option<Vec<MeshRow>> {
+        let id = world.id_by_name(&layout.schema).ok()?;
+        let field = |n: &str| world.field_by_id(id, n).ok();
+        let (g, m, v, f, c) = (
+            field("geometry")?,
+            field("material")?,
+            field("visible")?,
+            field("flash")?,
+            field("flashColor")?,
+        );
+        let q = QueryDesc {
+            read: vec![layout.schema.clone()],
+            ..QueryDesc::default()
+        };
+        let mut out = Vec::new();
+        for a in world.query(&q).ok()? {
+            let (g, m, v, f, c) = (
+                a.read::<u64>(g).ok()?,
+                a.read::<u64>(m).ok()?,
+                a.read::<og_core::reflect::Bool8>(v).ok()?,
+                a.read::<f32>(f).ok()?,
+                a.read::<Vec3>(c).ok()?,
+            );
+            out.reserve(a.len());
+            for (i, e) in a.entities().iter().enumerate() {
+                out.push(MeshRow {
+                    entity: e.to_bits(),
+                    geometry: handle_index(g[i]),
+                    material: handle_index(m[i]),
+                    visible: v[i].get(),
+                    flash: f[i],
+                    flash_color: c[i],
+                });
+            }
+        }
+        Some(out)
+    };
+    if let Some(rows) = columnar() {
+        return rows;
+    }
+    rows(world, layout)
+        .into_iter()
+        .map(|(e, v)| {
+            let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
+            MeshRow {
+                entity: e,
+                geometry: index("geometry"),
+                material: index("material"),
+                visible: on(&v, "visible", true),
+                flash: v["flash"].as_f64().unwrap_or(0.0) as f32,
+                flash_color: color(&v["flashColor"], 1.0),
+            }
+        })
+        .collect()
+}
+
+/// Rows per lane task when decoding a component's rows natively: a row decodes in
 /// about 0.6 us, so a task is a few hundred microseconds of work and a
 /// component splits from 1,024 rows (500 rows stay serial).
 const ROW_GRAIN: usize = 512;
@@ -365,7 +534,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let layouts = &rs.draw;
     let camera = resource(world, rs.camera.as_ref());
     let settings = resource(world, rs.settings.as_ref());
-    let mut h = Hierarchy::of(world);
+    let mut h = std::mem::take(&mut rs.hierarchy);
+    h.refresh(world);
     rs.atmo.palettes.clear();
     let scene = &mut rs.scene;
     let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
@@ -486,20 +656,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mesh_rows = layouts
         .mesh
         .as_ref()
-        .map(|m| rows(world, m))
+        .map(|m| mesh_rows(world, m))
         .unwrap_or_default();
     let (geometries, materials) = (geometries.clone(), materials.clone());
     // Flashing meshes draw through a flash copy of their material.
     let mut flashed: BTreeMap<u64, MaterialHandle> = BTreeMap::new();
-    for (e, v) in &mesh_rows {
-        let amount = v["flash"].as_f64().unwrap_or(0.0) as f32;
-        if amount > 0.0 {
-            let mi = (v["material"].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
-            if let Some(m) =
-                super::feel::flash_material(rs, mi, amount, color(&v["flashColor"], 1.0))
-            {
-                flashed.insert(*e, m);
-            }
+    for r in &mesh_rows {
+        if r.flash > 0.0
+            && let Some(m) = super::feel::flash_material(rs, r.material, r.flash, r.flash_color)
+        {
+            flashed.insert(r.entity, m);
         }
     }
     for (e, asset, parts) in model_parts {
@@ -515,19 +681,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let scene = &mut rs.scene;
     // Meshes.
     {
-        for (e, v) in mesh_rows {
-            if !on(&v, "visible", true) {
+        scene.instances.reserve(mesh_rows.len());
+        keys.reserve(mesh_rows.len());
+        for r in mesh_rows {
+            if !r.visible {
                 continue;
             }
-            let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
-            let (Some(&g), Some(&m)) = (
-                geometries.get(index("geometry")),
-                materials.get(index("material")),
-            ) else {
+            let (Some(&g), Some(&m)) = (geometries.get(r.geometry), materials.get(r.material))
+            else {
                 continue;
             };
+            let e = r.entity;
             let w = h.world_of(e);
-            scene.add_instance(g, flashed.get(&e).copied().unwrap_or(m), w);
+            let m = if flashed.is_empty() {
+                m
+            } else {
+                flashed.get(&e).copied().unwrap_or(m)
+            };
+            scene.add_instance(g, m, w);
             keys.push((e, 0));
         }
     }
@@ -664,6 +835,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 
     // The UI, over everything else, in the overlay.
     super::modules::emit(rs);
+    rs.hierarchy = h;
 }
 
 /// A cooked font as one `MsdfFont` per atlas page (Render's question 1: the

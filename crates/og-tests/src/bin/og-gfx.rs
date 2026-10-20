@@ -14,6 +14,8 @@
 //! the CPU on every tier, `gpu` on the GPU on the full tier whatever the
 //! scene's size, `auto` (the default) on the GPU from
 //! `og_render::GPU_CULLING_MIN_INSTANCES` instances.
+//! `OG_GFX_PIPELINE_CACHE=DIR` keeps compiled pipelines in DIR across runs
+//! where the backend can (Vulkan; `RenderInfo::pipeline_cache`).
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
@@ -23,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 fn main() {
+    og_render::set_pipeline_cache_dir(std::env::var_os("OG_GFX_PIPELINE_CACHE").map(Into::into));
     let mut args = std::env::args().skip(1);
     let (mut names, mut out, mut frames, mut capture, mut costs) =
         (Vec::new(), None, 0u32, None, false);
@@ -199,6 +202,9 @@ fn run(
         stats.glyphs,
         stats.sprite_draws
     );
+    if info.pipeline_cache {
+        line.push_str(" pipeline_cache");
+    }
     if stats.gpu_culling {
         let _ = write!(
             line,

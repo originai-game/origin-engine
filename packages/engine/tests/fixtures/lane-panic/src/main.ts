@@ -1,6 +1,7 @@
 // A crowd for the lanes: 2,304 boxes under a camera and a light, so every
-// frame's extraction decodes enough og.Mesh rows (two of its 512-row grains)
-// to split across the lanes pool when the page boots the lanes variant
+// frame's CPU frustum cull tests enough bounds (two of its 1,024-bound
+// grains; under GPU culling's 16,384 instances) to split across the lanes
+// pool when the page boots the lanes variant
 // (docs/web-export.md §Lanes). tests/web/lane-panic.ts injects a panic into
 // one of those lanes and checks that the page reports it.
 import { og, type World } from "@origingame/engine";

@@ -50,7 +50,53 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
 - **Not run here**: the vulkan-cpu (lavapipe container) references, the
   phone paths of `--device`, the Three.js comparison and the native
   device latency tests remain as the rounds left them (row 47 and the
-  culling round's terrain-grass note still stand).
+  culling round's terrain-grass note still stand; the note is resolved in
+  the P4 perf round).
+
+## Phase 4, perf round (2026-10-20)
+
+Branch `r-perf` from main at 5dc3aa0. Evidence: `tests/evidence/P4/perf/`.
+
+- **Owed row 50, the per-instance cost** (dedf817, 3bec9d9, ef3ee89): a
+  CPU profile of the engine Worker found 85 % of the sphere field's frame in
+  `og_lanes::wait_for`: extraction decoded every og.Mesh row to JSON on the
+  lanes, and the lanes wasm's Workers serialised on its one allocator (the
+  step near 4,096 spheres is og_lanes splitting at 2 x 512 x 8). og.Mesh and
+  og.Transform are now read from their columns, the hierarchy is dense and
+  reused, and the wasm decodes JSON rows serially. Chrome, 20,000 spheres:
+  174 ms (137.6 ms reproduced) to 5.96 ms on WebGPU and 5.79 ms on WebGL2
+  at load 33 to 62 (4.1 ms at load 14); the §7 reference scene now meets
+  1.5x on both tiers (WebGPU 2.04x, WebGL2 1.54x against InstancedMesh).
+  The field is 0.31x of three.js's WebGPU InstancedMesh and 0.48x of
+  WebGL2's: it is GPU-bound now, in the lit pass's per-vertex and
+  per-fragment cost (`threejs-spheres.md`), which stays owed in og-render's
+  README. Guards: og-runtime `tests/extract_cost.rs` (in the gate: linear,
+  under 40 ms in dev, no og.Mesh row on the lanes; perf
+  `extract-spheres-20k`) and og-tests' perf `spheres-20k-moving`;
+  `tools/bench/profile-spheres.ts`, `packages/engine/bench/spheres.ts`.
+- **Instance upload dirty tracking** (12749c1): only changed 4 KiB blocks
+  are written, both culling paths, `FrameStats::instance_upload_bytes`.
+- **Resources can be removed** (db105bd): `remove_mesh/texture/material/
+  font`, generation-tagged handles, slots reused; the runtime unloads a
+  streaming group's model textures through `remove_texture`.
+- **Shaders** (912e333, 8779ca8, bd193d1): every WGSL module of both tiers
+  validated by naga and translated to MSL, SPIR-V or GLSL ES 3.0 in the
+  gate; a Vulkan pipeline cache across runs (`OG_PIPELINE_CACHE`); lavapipe
+  keeps no pipelines in it and Metal and the browsers have none in wgpu, so
+  first frames are unchanged there (`shaders-and-pipeline-cache.md`).
+- **Cluster build in compute**: measured, not kept (CPU build 38 to 53 us
+  for 256 lights; the cheapest compute build 97 to 134 us of CPU and 279 to
+  385 us of GPU; `clusters-compute.md`).
+- **Depth prepass every frame**: measured, kept on demand (spheres-20k
+  +66 %); design §2.6 changed (38d4d21, `prepass.md`).
+- **vulkan-cpu terrain-grass** (5d9a04e): a stale reference since 1ced372;
+  re-recorded in the og-lavapipe container, every other vulkan-cpu scene
+  passes (`terrain-grass/`).
+- **Lanes tests** (69953d4): lanes.test.ts no longer expects the
+  extraction site to split; lane-panic.ts injects its fault at the cull site.
+- **Frames**: every og-gfx frame on Metal is byte-identical to main's
+  og-render (51 of 51); one reference re-recorded (vulkan-cpu
+  terrain-grass).
 
 ## Phase 4, web host and tools round (2026-10-20)
 
@@ -458,7 +504,9 @@ the streaming round left. Evidence is in `tests/evidence/P3/culling/`,
     taken before the review fixes cut the GPU path's fixed per-frame cost;
     it has not been measured again.
   - `vulkan-cpu` `terrain-grass` fails at RMSE 0.01488, on main as well as
-    here. It predates this round.
+    here. It predates this round. *Resolved in the P4 perf round (5d9a04e):
+    a stale reference; 1ced372 changed the scatter and re-recorded only
+    metal's (`tests/evidence/P4/perf/terrain-grass/`).*
 
 ## Phase 3, streaming round (2026-10-19)
 
@@ -1484,7 +1532,7 @@ resource only the owner can give.
 | 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, which keeps its own reference by design: compute-only particle collision, MSAA against TAA) | P2 showcase | S | engine, phase 2 | open |
 | 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | done, 718fb43 (polish contrast 100, lowest 4.65:1; UI sounds 3 of 3 on the phone; `crates/og-ui/tests/pack_contrast.rs`) |
 | 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | done, 868d1b2 |
-| 50 | The engine's render cost per instance of one mesh: 20,000 moving spheres take 174 ms a frame on WebGPU and WebGL2 (extraction plus og-render; the tick 0.3 ms), doubling near 4,096 instances and about 8.7 us an instance beyond (`tests/evidence/P4/web-host-tools/threejs-comparison.md`; the spike drew the same field in 4.6 ms) | P4 web host | M | engine, phase 4 | open |
+| 50 | The engine's render cost per instance of one mesh: 20,000 moving spheres take 174 ms a frame on WebGPU and WebGL2 (extraction plus og-render; the tick 0.3 ms), doubling near 4,096 instances and about 8.7 us an instance beyond (`tests/evidence/P4/web-host-tools/threejs-comparison.md`; the spike drew the same field in 4.6 ms) | P4 web host | M | engine, phase 4 | done dedf817: extraction decoded every og.Mesh row to JSON on the lanes, and the lanes wasm's Workers waited on one allocator (85 % of the frame in og_lanes::wait_for); og.Mesh and og.Transform are read from their columns, the wasm decodes rows serially. The field's frame went from 137.6 to about 4 ms; what remains against three.js is the lit pass's GPU cost per instance (P4 perf round, `tests/evidence/P4/perf/`) |
 
 ## 0. Rules that shape the plan
 

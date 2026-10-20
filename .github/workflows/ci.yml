@@ -127,7 +127,7 @@ jobs:
       - name: System packages
         run: sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers
       - name: Perf suite
-        run: cargo test -p og-tests --release -- --ignored perf
+        run: cargo test -p og-tests -p og-runtime --release -- --ignored perf
       - name: Upload perf evidence
         if: always()
         uses: actions/upload-artifact@v4

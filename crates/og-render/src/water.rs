@@ -271,13 +271,7 @@ impl WaterRenderer {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("water"),
-            source: wgpu::ShaderSource::Wgsl(
-                format!(
-                    "{frame_wgsl}{lighting_wgsl}{}",
-                    include_str!("../shaders/water.wgsl")
-                )
-                .into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(water_source(frame_wgsl, lighting_wgsl).into()),
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water"),
@@ -663,4 +657,12 @@ pub(crate) fn water_2d_strips(waters: &[Water2d], frame: &mut crate::ribbons::Ri
             count: frame.vertices.len() as u32 - first,
         });
     }
+}
+
+/// The water module after the frame group and the lighting.
+pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
+    format!(
+        "{frame_wgsl}{lighting_wgsl}{}",
+        include_str!("../shaders/water.wgsl")
+    )
 }

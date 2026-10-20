@@ -1,0 +1,6 @@
+off: showcase: setup+first=19482.5ms gltf-reference: setup+first=3186.1ms materials-physical: setup+first=4039.2ms 
+cache: showcase: setup+first=22509.9ms gltf-reference: setup+first=3263.5ms materials-physical: setup+first=3920.5ms 
+off: showcase: setup+first=19261.4ms gltf-reference: setup+first=3090.3ms materials-physical: setup+first=3898.3ms 
+cache: showcase: setup+first=19356.7ms gltf-reference: setup+first=3198.0ms materials-physical: setup+first=3826.6ms 
+off: showcase: setup+first=19760.3ms gltf-reference: setup+first=3139.6ms materials-physical: setup+first=3878.3ms 
+cache: showcase: setup+first=22813.4ms gltf-reference: setup+first=3558.0ms materials-physical: setup+first=4175.3ms 

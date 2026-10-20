@@ -38,9 +38,9 @@ use glam::{Mat4, Vec4};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-const CULL_WGSL: &str = include_str!("../shaders/cull.wgsl");
+pub(crate) const CULL_WGSL: &str = include_str!("../shaders/cull.wgsl");
 const HIZ_WGSL: &str = include_str!("../shaders/hiz.wgsl");
-const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
+pub(crate) const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
 
 /// Passes one frame may cull: three cascades, twelve local light faces,
 /// the planar reflection, the occluders and the camera (the size of
@@ -224,6 +224,10 @@ pub(crate) struct GpuCulling {
     view_group: wgpu::BindGroup,
     params: [wgpu::Buffer; 2],
     pub instances: wgpu::Buffer,
+    /// What the input region of `instances` holds, written by changes only.
+    upload: crate::upload::DirtyUpload,
+    /// Bytes of transforms the last `encode` wrote.
+    pub uploaded: u64,
     batches: wgpu::Buffer,
     scan: wgpu::Buffer,
     pub args: wgpu::Buffer,
@@ -304,7 +308,7 @@ fn buffer(
 }
 
 /// The pyramid's base: the farthest of a pixel's samples.
-fn hiz_source(multisampled: bool) -> String {
+pub(crate) fn hiz_source(multisampled: bool) -> String {
     let decl = if multisampled {
         "@group(0) @binding(2) var depth_in: texture_depth_multisampled_2d;\n\
          fn farthest_sample(xy: vec2<u32>) -> f32 {\n\
@@ -361,7 +365,7 @@ impl GpuCulling {
                 module,
                 entry_point: Some(entry),
                 compilation_options: Default::default(),
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             })
         };
         let hiz_base_layout = [false, true].map(|multisampled| {
@@ -452,6 +456,8 @@ impl GpuCulling {
             view_group,
             params,
             instances: buffer(device, "culled instances", 0, Self::instance_usage()),
+            upload: Default::default(),
+            uploaded: 0,
             batches: buffer(device, "cull batches", 0, Self::storage_usage()),
             scan: buffer(device, "cull scan", 0, Self::storage_usage()),
             args: buffer(device, "cull draws", 0, Self::args_usage()),
@@ -730,7 +736,7 @@ impl GpuCulling {
                     module: &module,
                     entry_point: Some("base"),
                     compilation_options: Default::default(),
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
             ));
         }
@@ -778,7 +784,7 @@ impl GpuCulling {
                     },
                     fragment: None,
                     multiview_mask: None,
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             });
     }
@@ -861,7 +867,7 @@ impl GpuCulling {
         // visible last frame).
         let blocks = n.div_ceil(WORKGROUP);
         let args_words = CountLayout::words(p, b);
-        Self::grow(
+        let instances_replaced = Self::grow(
             device,
             &mut self.instances,
             &mut self.groups,
@@ -922,8 +928,14 @@ impl GpuCulling {
             });
         }
 
-        // Uploads.
-        queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(transforms));
+        // Uploads: of the transforms, only the blocks that changed (the
+        // compute writes its outputs after them, never over them).
+        if instances_replaced {
+            self.upload.invalidate();
+        }
+        self.uploaded = self
+            .upload
+            .write(queue, &self.instances, bytemuck::cast_slice(transforms));
         let table: Vec<BatchGpu> = batches
             .iter()
             .map(|x| {

@@ -617,7 +617,7 @@ impl ScatterRenderer {
                         ],
                     }),
                     multiview_mask: None,
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             }
             ScatterPass::Shadow => device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -651,7 +651,7 @@ impl ScatterRenderer {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             }),
         };
         self.pipelines.insert((side, kind), p);

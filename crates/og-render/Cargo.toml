@@ -27,8 +27,9 @@ gltf = { workspace = true, optional = true }
 
 [dev-dependencies]
 # tests/webgl2.rs: the WGSL to GLSL ES 3.0 translation wgpu's GL backend runs
-# in the browser (wgpu's own naga, with the GLSL writer).
-naga = { version = "30.0.1", features = ["wgsl-in", "glsl-out"] }
+# in the browser (wgpu's own naga, with the GLSL writer); tests/shaders.rs:
+# every module translated as the Metal and Vulkan backends do.
+naga = { version = "30.0.1", features = ["wgsl-in", "glsl-out", "msl-out", "spv-out"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = { workspace = true, features = ["metal", "vulkan"] }

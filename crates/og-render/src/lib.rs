@@ -47,11 +47,15 @@ mod mips;
 mod overlay;
 pub mod particles;
 mod particles_gpu;
+mod pipeline_cache;
+pub use pipeline_cache::set_pipeline_cache_dir;
 mod physical;
 mod post;
 mod ribbons;
 mod scatter;
 mod scene;
+mod shaders;
+pub use shaders::{ShaderSource, shader_sources};
 mod shadows;
 pub mod shapes;
 mod skin;
@@ -61,6 +65,7 @@ mod terrain;
 mod terrain_tiles;
 mod texture;
 mod texture_array;
+mod upload;
 mod water;
 mod weather;
 
@@ -236,6 +241,32 @@ pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
+}
+/// The scattered copies' lit module with the light tables `tables`.
+fn scatter_lit_source(tables: clusters::LightTables) -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
+        tables.wgsl(),
+        particles_gpu::NOISE_WGSL,
+        include_str!("../shaders/scatter_common.wgsl"),
+        include_str!("../shaders/scatter.wgsl")
+    )
+}
+
+/// The scattered copies' shadow module.
+fn scatter_shadow_source() -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{}",
+        particles_gpu::NOISE_WGSL,
+        include_str!("../shaders/scatter_common.wgsl"),
+        include_str!("../shaders/scatter_shadow.wgsl")
+    )
+}
+
+/// What the 3D fluid's module starts with: the frame group, the light
+/// tables `tables` and the lighting.
+fn fluid_shared_source(tables: clusters::LightTables) -> String {
+    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", tables.wgsl())
 }
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
@@ -496,6 +527,9 @@ pub struct RenderInfo {
     /// The encoding each kind of texture should be uploaded in, and every
     /// encoding this device accepts.
     pub texture_formats: TextureFormats,
+    /// Compiled pipelines are kept across runs ([`set_pipeline_cache_dir`]
+    /// was given a directory and the backend has a cache: Vulkan).
+    pub pipeline_cache: bool,
 }
 
 impl RenderInfo {
@@ -643,6 +677,10 @@ pub struct FrameStats {
     pub scatter_draws: u32,
     pub scatter_copies: u32,
     pub scatter_built: u32,
+    /// Bytes of instance transforms written to the GPU this frame: only the
+    /// 4 KiB blocks that changed since the last frame (0 for a scene that
+    /// stood still).
+    pub instance_upload_bytes: u64,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
@@ -1082,6 +1120,8 @@ pub struct Renderer {
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
     instance_buffer: wgpu::Buffer,
+    /// What `instance_buffer` holds, so a frame writes only what changed.
+    instance_upload: upload::DirtyUpload,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
     /// The overlay's glass: its passes, and its textures for the output's size.
@@ -1090,6 +1130,8 @@ pub struct Renderer {
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
+    /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
+    pipeline_disk: Option<pipeline_cache::DiskCache>,
     /// Where particles simulate ([`RenderDesc::particles`]).
     desc_particles: ParticleSimulation,
     /// Where instances are culled ([`RenderDesc::culling`]), whether the
@@ -1286,7 +1328,7 @@ fn hdr_pipeline_with(
             })],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 
@@ -1437,7 +1479,7 @@ fn prepass_pipeline(
             ],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 
@@ -1511,7 +1553,7 @@ fn shadow_pipeline(
             })],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 
@@ -1654,9 +1696,13 @@ impl Renderer {
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
         let cascades = desc.shadow_cascades.clamp(1, MAX_CASCADES);
-        let (features, texture_formats) =
+        let (mut features, texture_formats) =
             TextureFormats::choose(adapter.features(), desc.texture_compression);
-        let info = RenderInfo {
+        let cache_dir = pipeline_cache::dir();
+        if cache_dir.is_some() && adapter.features().contains(wgpu::Features::PIPELINE_CACHE) {
+            features |= wgpu::Features::PIPELINE_CACHE;
+        }
+        let mut info = RenderInfo {
             adapter: adapter_info.name.clone(),
             backend: adapter_info.backend,
             device_type: adapter_info.device_type,
@@ -1667,6 +1713,7 @@ impl Renderer {
             shadowed_lights: shadows::shadowed_lights(tier) as u32,
             point_shadows: desc.point_shadows.resolve(tier),
             texture_formats,
+            pipeline_cache: false,
         };
         log::info!(
             "og-render: {} ({:?}, {:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
@@ -1689,6 +1736,10 @@ impl Renderer {
             })
             .await
             .map_err(|e| RenderError::NoDevice(e.to_string()))?;
+        // Before any pipeline is made: every one is made with the cache.
+        let pipeline_disk =
+            cache_dir.and_then(|dir| pipeline_cache::DiskCache::open(&device, &adapter_info, dir));
+        info.pipeline_cache = pipeline_disk.is_some();
         // No uncaptured-error handler on purpose: wgpu-core's default (native
         // and WebGL2) panics on a validation error, which is how the web host
         // ends the Worker and shows the shell's crash card and how native
@@ -1954,7 +2005,7 @@ impl Renderer {
         let fluid3d = fluid3d::Fluid3dRenderer::new(
             &device,
             &frame_layout,
-            &format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", light_tables.wgsl()),
+            &fluid_shared_source(light_tables),
             samples,
         );
         let additive = wgpu::BlendState {
@@ -2024,7 +2075,7 @@ impl Renderer {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(&device).as_ref(),
         });
         let ribbon_buffers = [Some(ribbons::RIBBON_LAYOUT)];
         let ribbon_state = |blend| HdrPipeline {
@@ -2105,19 +2156,8 @@ impl Renderer {
                 frame_layout: &frame_layout,
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
-                lit_wgsl: format!(
-                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
-                    light_tables.wgsl(),
-                    particles_gpu::NOISE_WGSL,
-                    include_str!("../shaders/scatter_common.wgsl"),
-                    include_str!("../shaders/scatter.wgsl")
-                ),
-                shadow_wgsl: format!(
-                    "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{}",
-                    particles_gpu::NOISE_WGSL,
-                    include_str!("../shaders/scatter_common.wgsl"),
-                    include_str!("../shaders/scatter_shadow.wgsl")
-                ),
+                lit_wgsl: scatter_lit_source(light_tables),
+                shadow_wgsl: scatter_shadow_source(),
                 samples,
             },
         );
@@ -2238,12 +2278,14 @@ impl Renderer {
             default_normal,
             white_sprite_group,
             instance_buffer,
+            instance_upload: upload::DirtyUpload::default(),
             sprite_buffer,
             overlay,
             glass,
             glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
+            pipeline_disk,
             desc_particles: desc.particles,
             desc_culling: desc.culling,
             indirect,
@@ -3633,6 +3675,9 @@ impl Renderer {
         scene: &RenderScene,
         target: &RenderTarget,
     ) -> Result<FrameStats, RenderError> {
+        if let Some(stale) = scene.stale_handle() {
+            return Err(RenderError::InvalidHandle(stale));
+        }
         self.sync(scene)?;
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
@@ -4234,13 +4279,23 @@ impl Renderer {
         } else {
             &transforms[..]
         };
-        grow_and_write(
+        // Only the blocks that changed since the last frame are written
+        // (a buffer just replaced is written whole).
+        let instance_bytes: &[u8] = bytemuck::cast_slice(cpu_instances);
+        if grow(
             &self.device,
-            &self.queue,
             &mut self.instance_buffer,
             "instances",
-            bytemuck::cast_slice(cpu_instances),
-        );
+            instance_bytes.len() as u64,
+        ) {
+            self.instance_upload.invalidate();
+        }
+        let mut instance_upload_bytes =
+            self.instance_upload
+                .write(&self.queue, &self.instance_buffer, instance_bytes);
+        if gpu_cull && let Some(gc) = &self.gpu_cull {
+            instance_upload_bytes += gc.uploaded;
+        }
         if object_motion {
             let prev: Vec<[[f32; 4]; 4]> = origins
                 .iter()
@@ -4766,6 +4821,7 @@ impl Renderer {
 
         let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
+            instance_upload_bytes,
             terrain_tiles: self.terrain.resident,
             terrain_uploads: self.terrain.uploads,
             scatter_built: self.scatter.built,
@@ -5981,6 +6037,13 @@ impl Renderer {
         }
         self.prev_view_proj = Some(cam.view_proj);
         self.frame_index += 1;
+        // The first frame made the scene's pipelines: keep them now, not
+        // only when the renderer is dropped (a killed process never is).
+        if self.frame_index == 1
+            && let Some(cache) = &mut self.pipeline_disk
+        {
+            cache.save();
+        }
         Ok(stats)
     }
 
@@ -6168,6 +6231,21 @@ fn sprite_bind_group(
     )
 }
 
+/// Replaces `buffer` (a vertex buffer) with a larger one when `len` bytes
+/// do not fit; true when it did.
+fn grow(device: &wgpu::Device, buffer: &mut wgpu::Buffer, label: &str, len: u64) -> bool {
+    if len <= buffer.size() {
+        return false;
+    }
+    *buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size: len.next_power_of_two(),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    true
+}
+
 /// Writes `bytes` at the start of `buffer`, replacing it with a larger one first if needed.
 fn grow_and_write(
     device: &wgpu::Device,
@@ -6176,14 +6254,7 @@ fn grow_and_write(
     label: &str,
     bytes: &[u8],
 ) {
-    if bytes.len() as u64 > buffer.size() {
-        *buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (bytes.len() as u64).next_power_of_two(),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-    }
+    grow(device, buffer, label, bytes.len() as u64);
     if !bytes.is_empty() {
         queue.write_buffer(buffer, 0, bytes);
     }

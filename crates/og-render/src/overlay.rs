@@ -258,7 +258,7 @@ impl OverlayRenderer {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("overlay"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/overlay.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(OVERLAY_WGSL.into()),
         });
         let buffers = [Some(OVERLAY_LAYOUT)];
         let pipeline = |label: &str, fs: &str, format: wgpu::TextureFormat| {
@@ -285,7 +285,7 @@ impl OverlayRenderer {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             })
         };
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -333,3 +333,6 @@ pub(crate) fn run_textures(
         }
     })
 }
+
+/// The overlay's module (`crate::shaders` validates it).
+pub(crate) const OVERLAY_WGSL: &str = include_str!("../shaders/overlay.wgsl");

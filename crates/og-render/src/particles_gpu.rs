@@ -314,9 +314,7 @@ impl ParticleRenderer {
         let sim = compute.then(|| {
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("particle sim"),
-                source: wgpu::ShaderSource::Wgsl(
-                    format!("{NOISE_WGSL}{COMMON_WGSL}{SIM_WGSL}").into(),
-                ),
+                source: wgpu::ShaderSource::Wgsl(sim_source().into()),
             });
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("particle sim"),
@@ -330,7 +328,7 @@ impl ParticleRenderer {
                     module: &module,
                     entry_point: Some(entry),
                     compilation_options: Default::default(),
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             };
             (pipeline("simulate"), pipeline("clear"))
@@ -345,9 +343,7 @@ impl ParticleRenderer {
         });
         let draw_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("particles"),
-            source: wgpu::ShaderSource::Wgsl(
-                format!("{frame_wgsl}{NOISE_WGSL}{COMMON_WGSL}{DRAW_WGSL}").into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(draw_source(frame_wgsl).into()),
         });
         let draw_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("particles"),
@@ -864,4 +860,14 @@ fn push_sprites(
             e.glow,
         ));
     }
+}
+
+/// The particle simulation's module (compute: full tier only).
+pub(crate) fn sim_source() -> String {
+    format!("{NOISE_WGSL}{COMMON_WGSL}{SIM_WGSL}")
+}
+
+/// The particle draw module after the frame group.
+pub(crate) fn draw_source(frame_wgsl: &str) -> String {
+    format!("{frame_wgsl}{NOISE_WGSL}{COMMON_WGSL}{DRAW_WGSL}")
 }

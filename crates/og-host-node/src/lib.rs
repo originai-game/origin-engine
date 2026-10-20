@@ -444,6 +444,15 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
             ..og_render::RenderDesc::default()
         },
     );
+    // Compiled pipelines kept across runs where the backend can (Vulkan):
+    // OG_PIPELINE_CACHE names the directory, `off` keeps none; by default
+    // ~/.cache/origin-engine/pipelines.
+    og_render::set_pipeline_cache_dir(match std::env::var("OG_PIPELINE_CACHE") {
+        Ok(v) if v == "off" => None,
+        Ok(v) if !v.is_empty() => Some(v.into()),
+        _ => std::env::var_os("HOME")
+            .map(|h| std::path::PathBuf::from(h).join(".cache/origin-engine/pipelines")),
+    });
     let answer = og_render::Renderer::new_blocking(&desc)
         .map_err(|e| e.to_string())
         .and_then(|renderer| {

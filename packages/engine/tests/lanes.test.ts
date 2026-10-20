@@ -6,7 +6,10 @@
 // extraction and the frustum cull reach the pixels, the physics step the
 // world hash). A replay from the tick-60 snapshot with lanes switched at run
 // time (lanes:<on|off>) reaches tick 180's hash and frame again. The on run
-// split animation, extraction and the cull (dump_lanes counts each site);
+// split animation and the cull (dump_lanes counts each site), and never the
+// extraction site: the crowd's og.Mesh rows are read from their columns
+// (owed row 50, tests/evidence/P4/perf/), so nothing in the scene is decoded
+// row by row in two grains' worth;
 // both runs cull on the CPU (OG_GFX_CULLING=cpu), since GPU culling never
 // reaches the CPU cull.
 import { expect, test } from "bun:test";
@@ -59,9 +62,11 @@ test("lanes on and off give the same world hashes, the same pixels and the same 
   expect(on.lanes.parallelCalls).toBeGreaterThan(0);
   expect(off.lanes.parallelCalls).toBe(0);
   // Each lane site of the enlarged scene split at least once, not only one of them.
-  for (const site of ["anim", "extract", "cull"] as const) {
+  for (const site of ["anim", "cull"] as const) {
     expect([site, on.lanes.sites[site].calls > 0]).toEqual([site, true]);
   }
+  // 2,000 more og.Mesh entities and no row of them decoded on the lanes.
+  expect(on.lanes.sites.extract.calls).toBe(0);
   // The scene moves, so equal frames are not one still picture.
   expect(new Set(on.checkpoints.map((p) => p.frame)).size).toBe(3);
   expect(new Set(on.checkpoints.map((p) => p.hash)).size).toBe(3);
