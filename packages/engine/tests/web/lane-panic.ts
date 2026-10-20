@@ -1,16 +1,17 @@
 // A Rust panic inside a lane, in headless Chrome: the page must show the
 // crash, not hang (docs/web-export.md §Errors). The lane-panic fixture
-// (2,304 boxes, so every frame's extraction splits across the lanes pool) is
+// (2,304 boxes, so every frame's CPU frustum cull splits across the lanes
+// pool; extraction reads og.Mesh from its columns and never splits) is
 // built with `og build --publish`'s web half and served with its COOP/COEP,
 // so the page boots the lanes variant; after a tap on the gate the test asks
 // the engine Worker (over the DevTools protocol, the Worker's own `fault`
-// call: og_web_lanes_fault) to make the next extraction item panic. That
+// call: og_web_lanes_fault) to make the next cull item panic. That
 // item runs on a pool Worker, whose wasm aborts there; the engine thread,
 // waiting at the lane boundary (og-lanes), is woken by the recorded panic
 // and panics in turn, so the engine Worker traps and reports a structured
 // crash. Checked: the shell's crash reaches the page within
 // CRASH_DEADLINE_MS of the fault, `__runtime_probe__.error` is
-// `{ kind: "panic", lane: "extract", tick, message, location }`, and the
+// `{ kind: "panic", lane: "cull", tick, message, location }`, and the
 // error card shows the panic's line. The same build served without
 // isolation runs single-threaded: the same fault panics on the engine
 // thread and is reported with `lane: null`.
@@ -107,7 +108,7 @@ try {
       // The Worker's own `fault` call, as the shell would send it.
       const armed = await browser.send<{ result: { value?: unknown } }>(
         "Runtime.evaluate",
-        { expression: `self.onmessage({ data: { type: "call", id: 1e9, method: "fault", args: ["extract"] } }), "sent"`, returnByValue: true },
+        { expression: `self.onmessage({ data: { type: "call", id: 1e9, method: "fault", args: ["cull"] } }), "sent"`, returnByValue: true },
         session,
       );
       const t0 = performance.now();
@@ -121,14 +122,14 @@ try {
       const ms = Math.round(performance.now() - t0);
       check(error !== null && ms <= CRASH_DEADLINE_MS, `${label}: the page has the crash ${ms} ms after the fault (deadline ${CRASH_DEADLINE_MS} ms)`, { error, ms });
       check(error?.kind === "panic", `${label}: __runtime_probe__.error is a panic`, error);
-      check(/a fault injected at the extract site/.test(error?.message ?? ""), `${label}: with the panic's message`, error?.message);
+      check(/a fault injected at the cull site/.test(error?.message ?? ""), `${label}: with the panic's message`, error?.message);
       check(typeof error?.tick === "number" && error.tick > 30, `${label}: and the tick it happened at`, error?.tick);
       check(/og-lanes\/src\/lib\.rs:\d+:\d+/.test(error?.location ?? ""), `${label}: and where`, error?.location);
-      check(isolate ? error?.lane === "extract" : error?.lane === null, `${label}: ${isolate ? "inside a lane (extract)" : "on the engine thread (lane null)"}`, error?.lane);
+      check(isolate ? error?.lane === "cull" : error?.lane === null, `${label}: ${isolate ? "inside a lane (cull)" : "on the engine thread (lane null)"}`, error?.lane);
       const card = await page
         .until<{ title: string; text: string }>("(() => { const c = document.getElementById('og-error'); return c && !c.hidden && { title: c.querySelector('h1').textContent, text: c.querySelector('p').textContent }; })()", 5_000)
         .catch(() => null);
-      check(!!card && /panic at tick \d+/.test(card.text) && (isolate ? /in a lane \(extract\)/.test(card.text) : !/in a lane/.test(card.text)), `${label}: the error card shows the panic`, card);
+      check(!!card && /panic at tick \d+/.test(card.text) && (isolate ? /in a lane \(cull\)/.test(card.text) : !/in a lane/.test(card.text)), `${label}: the error card shows the panic`, card);
       const shot = `lane-panic-${isolate ? "lanes" : "single"}.png`;
       writeFileSync(join(out, shot), await page.screenshot());
       // A later probe call is refused at once, not left waiting.

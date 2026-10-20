@@ -142,7 +142,10 @@ What runs on lanes (`crates/og-lanes`, `og_lanes::map`, `for_each_mut` and
 and the report counts the parallel calls and items per site: `anim`,
 `extract`, `cull`, `physics`): the animation graph's evaluation and
 skinning palettes per character (og-anim, 64 skeletons a task),
-extraction's per-row decoding (og-runtime, 512 rows a task) and frustum
+extraction's per-row decoding natively (og-runtime, 512 rows a task, for
+the components it decodes as rows: og.Mesh and og.Transform are read from
+their columns; in the wasm a row's decode is allocations behind one
+allocator lock, so the wasm decodes serially) and frustum
 culling per view (og-render, 1024 bounds a task; scheduling only: the
 recording stays on the engine thread, on the web the engine Worker), and
 rapier's solver natively (its `parallel` feature, bit for bit what the
@@ -213,7 +216,7 @@ location, tick, site) and rings it; the engine thread then panics with
 that line, traps, and the Worker reports the crash with the lane's report
 (§Errors), within a frame or two of the panic rather than never
 (`packages/engine/tests/web/lane-panic.ts`: on the page within 5 s, with
-`lane: "extract"`; og-lanes' unit tests for the latch). Anything else
+`lane: "cull"`; og-lanes' unit tests for the latch). Anything else
 that stops a playing Worker's frames is caught by the shell's frame
 deadline (§Errors, `hang`). The API is the same either way. The mode is reported: the ready message's `lanes`
 (`{ on, threads, why }`, `why` saying why it is off), a log line
@@ -294,7 +297,7 @@ the engine runs) and on the error card:
   world was running, and the lanes site when it happened inside a lane,
   else `lane: null`) before the wasm traps, and the Worker reads it back
   (`og_web_panic`) when the trap reaches it. The card's line is `panic at
-  tick 412 in a lane (extract): <message> (<location>)`.
+  tick 412 in a lane (cull): <message> (<location>)`.
 - `error`: a failing system (its message names the tick and the system),
   a trap without a recorded panic, an uncaught error in the Worker; `tick`
   is the last tick a frame reached.
