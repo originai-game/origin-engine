@@ -195,13 +195,29 @@ const SS_ZLIB: u32 = 3;
 /// data format descriptor, the orientation when given, then the level
 /// (stored plain, Zstandard or zlib).
 fn ktx2_cube(vk: u32, size: u32, level: &[u8], ss: u32, orientation: Option<&str>) -> Vec<u8> {
-    let stored = match ss {
-        SS_ZSTD => {
-            ruzstd::encoding::compress_to_vec(level, ruzstd::encoding::CompressionLevel::Fastest)
-        }
-        SS_ZLIB => miniz_oxide::deflate::compress_to_vec_zlib(level, 6),
-        _ => level.to_vec(),
-    };
+    ktx2_chain(vk, size, &[level.to_vec()], ss, orientation)
+}
+
+/// [`ktx2_cube`] with a mip chain: `levels[k]` the six faces of level k,
+/// stored smallest first as KTX2 lays them out.
+fn ktx2_chain(
+    vk: u32,
+    size: u32,
+    levels: &[Vec<u8>],
+    ss: u32,
+    orientation: Option<&str>,
+) -> Vec<u8> {
+    let stored: Vec<Vec<u8>> = levels
+        .iter()
+        .map(|level| match ss {
+            SS_ZSTD => ruzstd::encoding::compress_to_vec(
+                &level[..],
+                ruzstd::encoding::CompressionLevel::Fastest,
+            ),
+            SS_ZLIB => miniz_oxide::deflate::compress_to_vec_zlib(level, 6),
+            _ => level.clone(),
+        })
+        .collect();
     let type_size: u32 = match vk {
         90 | 97 => 2,
         143 | 144 => 1,
@@ -230,11 +246,21 @@ fn ktx2_cube(vk: u32, size: u32, level: &[u8], ss: u32, orientation: Option<&str
             kvd.push(0);
         }
     }
-    let dfd_at = 80 + 24;
+    let dfd_at = 80 + 24 * levels.len();
     let kvd_at = dfd_at + dfd.len();
     let mut data_at = kvd_at + kvd.len();
-    while data_at % 16 != 0 {
+    while !data_at.is_multiple_of(16) {
         data_at += 1;
+    }
+    // The smallest level first; each level 16-aligned.
+    let mut offsets = vec![0usize; levels.len()];
+    let mut at = data_at;
+    for k in (0..levels.len()).rev() {
+        offsets[k] = at;
+        at += stored[k].len();
+        while !at.is_multiple_of(16) {
+            at += 1;
+        }
     }
     let mut out = og_cook::ktx2::IDENTIFIER.to_vec();
     for v in [
@@ -245,7 +271,7 @@ fn ktx2_cube(vk: u32, size: u32, level: &[u8], ss: u32, orientation: Option<&str
         0,
         0,
         6,
-        1,
+        levels.len() as u32,
         ss,
         dfd_at as u32,
         dfd.len() as u32,
@@ -256,13 +282,21 @@ fn ktx2_cube(vk: u32, size: u32, level: &[u8], ss: u32, orientation: Option<&str
     }
     out.extend(0u64.to_le_bytes());
     out.extend(0u64.to_le_bytes());
-    for v in [data_at as u64, stored.len() as u64, level.len() as u64] {
-        out.extend(v.to_le_bytes());
+    for k in 0..levels.len() {
+        for v in [
+            offsets[k] as u64,
+            stored[k].len() as u64,
+            levels[k].len() as u64,
+        ] {
+            out.extend(v.to_le_bytes());
+        }
     }
     out.extend(&dfd);
     out.extend(&kvd);
-    out.resize(data_at, 0);
-    out.extend(&stored);
+    for k in (0..levels.len()).rev() {
+        out.resize(offsets[k], 0);
+        out.extend(&stored[k]);
+    }
     out
 }
 
@@ -615,4 +649,137 @@ fn cube_sources_are_refused_by_what_is_wrong() {
     let both = format!("{head}source \"c.ktx2\"\nfaces \"f.hdr\"\n");
     let e = cook_err("both", &both, &[("e/c.ktx2", &rgba8), ("e/f.hdr", &face)]);
     assert!(e.contains("a source or six faces, not both"), "{e}");
+}
+
+/// A KTX2 cube whose own mip chain is already prefiltered, with
+/// `prefiltered true`, is taken as it is: the bake's own five RGB9E5 levels
+/// of the studio written as a chain cook back to the same map texel for
+/// texel (filtering them again would blur every level past the first), with
+/// the irradiance projected from level 0; a source that cannot be a chain
+/// is refused by what is wrong.
+#[test]
+fn a_prefiltered_ktx2_chain_is_taken_as_it_is() {
+    let hdr = og_tests::scenes::asset("env/studio.hdr")
+        .unwrap()
+        .into_owned();
+    let img = image::load_from_memory(&hdr).unwrap().to_rgb32f();
+    let desc = og_render::bake::BakeDesc {
+        size: 32,
+        intensity: 1.0,
+        rotation_degrees: 0.0,
+        samples: 64,
+    };
+    let baked = og_render::bake::bake(
+        &og_render::bake::Equirect {
+            width: img.width(),
+            height: img.height(),
+            rgb: img.as_raw(),
+        },
+        &desc,
+    )
+    .unwrap();
+    let mut levels = Vec::new();
+    let mut at = 0;
+    for m in 0..og_render::ENVIRONMENT_MAP_LEVELS {
+        let count = 6 * ((32u32 >> m) as usize).pow(2);
+        levels.push(
+            baked.texels[at..at + count]
+                .iter()
+                .flat_map(|t| t.to_le_bytes())
+                .collect::<Vec<u8>>(),
+        );
+        at += count;
+    }
+    let chain = ktx2_chain(123, 32, &levels, SS_ZSTD, Some("rd"));
+    let head = "type environment\nversion 1\n---\nsource \"chain.ktx2\"\n";
+    let root = project(
+        "prefiltered",
+        &[
+            ("env/chain.ktx2", &chain),
+            (
+                "env/chain.ogt",
+                format!("{head}prefiltered true\n").as_bytes(),
+            ),
+            ("env/again.ktx2", &chain),
+            (
+                "env/again.ogt",
+                "type environment\nversion 1\n---\nsource \"again.ktx2\"\nsize 32\nsamples 64\n"
+                    .as_bytes(),
+            ),
+        ],
+    );
+    let report = cook(&root);
+    let notes: Vec<String> = report.assets.iter().flat_map(|a| a.notes.clone()).collect();
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.contains("its 5 prefiltered levels taken as they are")),
+        "{notes:?}"
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let taken = bundle.load_environment("env/chain.ogt").unwrap();
+    assert_eq!(taken.texels, baked.texels, "the chain is the map's levels");
+    for n in [
+        glam::Vec3::Y,
+        glam::Vec3::X,
+        -glam::Vec3::Z,
+        glam::Vec3::NEG_Y,
+    ] {
+        let (a, b) = (
+            og_render::bake::irradiance(&taken, n),
+            og_render::bake::irradiance(&baked, n),
+        );
+        assert!(
+            (a - b).abs().max_element() <= 0.005 * b.max_element(),
+            "irradiance {a} {b}"
+        );
+    }
+    // Without prefiltered true the cook resamples level 0 and filters it
+    // again: the rougher levels are the radiance filtered twice over.
+    let again = bundle.load_environment("env/again.ogt").unwrap();
+    let level0 = 6 * 32 * 32;
+    assert_ne!(again.texels[level0..], baked.texels[level0..]);
+
+    let cook_err = |name: &str, text: &str, files: &[(&str, &[u8])]| -> String {
+        let mut all: Vec<(&str, &[u8])> = vec![("e/x.ogt", text.as_bytes())];
+        all.extend_from_slice(files);
+        let root = project(name, &all);
+        let report = cook_project(&root, &CookOptions::default()).expect("cook runs");
+        report.errors().join("\n")
+    };
+    let head = "type environment\nversion 1\n---\n";
+    let one = ktx2_chain(123, 32, &levels[..1], SS_NONE, None);
+    let e = cook_err(
+        "one-level",
+        &format!("{head}source \"c.ktx2\"\nprefiltered true\n"),
+        &[("e/c.ktx2", &one)],
+    );
+    assert!(
+        e.contains("has one level") && e.contains("mip chain"),
+        "{e}"
+    );
+    let e = cook_err(
+        "prefiltered-size",
+        &format!("{head}source \"c.ktx2\"\nprefiltered true\nsize 64\n"),
+        &[("e/c.ktx2", &chain)],
+    );
+    assert!(e.contains("size 64") && e.contains("32²"), "{e}");
+    let e = cook_err(
+        "prefiltered-samples",
+        &format!("{head}source \"c.ktx2\"\nprefiltered true\nsamples 64\n"),
+        &[("e/c.ktx2", &chain)],
+    );
+    assert!(e.contains("samples is the cook's prefilter"), "{e}");
+    let e = cook_err(
+        "prefiltered-hdr",
+        &format!("{head}source \"studio.hdr\"\nprefiltered true\n"),
+        &[("e/studio.hdr", &hdr)],
+    );
+    assert!(e.contains("prefiltered true takes a KTX2 cube map"), "{e}");
+    let e = cook_err(
+        "prefiltered-word",
+        &format!("{head}source \"c.ktx2\"\nprefiltered yes\n"),
+        &[("e/c.ktx2", &chain)],
+    );
+    assert!(e.contains("'prefiltered' takes true or false"), "{e}");
 }

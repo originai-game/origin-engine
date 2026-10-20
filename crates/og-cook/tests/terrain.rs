@@ -337,6 +337,146 @@ fn refusals_name_the_fix() {
     assert!(e.contains("not under assets/: textures/none.png"), "{e}");
 }
 
+/// A terrain whose layers sample two texture arrays (`layers`,
+/// `layerNormals`) cooks their ids and each layer's layers (its place by
+/// default, or `albedoLayer` / `normalLayer`), loads them back, and keeps
+/// the arrays out of the layers' own textures; the arrays cook as texture
+/// arrays of their own. Mixing a layer's own maps with arrays, a layer index
+/// without its array, an array that is not an .ogt, and an array that is
+/// not an asset are refused by what is wrong.
+#[test]
+fn terrain_layers_from_texture_arrays() {
+    let height = png16(4, 4, |x, y| (x * 1000 + y * 300) as u16);
+    let tile = |c: [u8; 4]| rgba(8, 8, move |_, _| c);
+    let arrays = r#"type terrain
+version 1
+---
+heightmap "h.png"
+layers "tiles.ogt"
+layerNormals "tiles-n.ogt"
+layer {
+  tile 3
+}
+layer {
+  albedoLayer 2
+  normalLayer 0
+  slope 30 90
+}
+layer {
+  normalLayer 1
+}
+"#;
+    let files: Vec<(&str, Vec<u8>)> = vec![
+        ("t/x.ogt", arrays.as_bytes().to_vec()),
+        ("t/h.png", height.clone()),
+        ("t/a.png", tile([40, 160, 40, 255])),
+        ("t/b.png", tile([120, 120, 120, 255])),
+        ("t/c.png", tile([200, 190, 150, 255])),
+        ("t/n.png", tile([128, 128, 255, 255])),
+        (
+            "t/tiles.ogt",
+            b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\nlayer \"c.png\"\n".to_vec(),
+        ),
+        (
+            "t/tiles-n.ogt",
+            b"type texture-array\nversion 1\n---\nkind normal\nlayer \"n.png\"\nlayer \"n.png\"\n".to_vec(),
+        ),
+    ];
+    let borrowed: Vec<(&str, &[u8])> = files.iter().map(|(p, b)| (*p, b.as_slice())).collect();
+    let root = project("arrays", &borrowed);
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let t = bundle.load_terrain("t/x.ogt").unwrap();
+    assert_eq!(t.albedo_array.as_deref(), Some("t/tiles.ogt"));
+    assert_eq!(t.normal_array.as_deref(), Some("t/tiles-n.ogt"));
+    let picked: Vec<(Option<u32>, Option<u32>)> = t
+        .layers
+        .iter()
+        .map(|l| (l.layer.albedo_layer, l.layer.normal_layer))
+        .collect();
+    assert_eq!(
+        picked,
+        vec![(Some(0), Some(0)), (Some(2), Some(0)), (Some(2), Some(1))],
+        "each layer's place by default"
+    );
+    assert!(
+        t.layers
+            .iter()
+            .all(|l| l.albedo.is_none() && l.normal.is_none())
+    );
+    assert_eq!(t.layers[0].layer.tile, 3.0);
+    assert_eq!(t.layers[1].layer.slope, [30.0, 90.0]);
+    assert_eq!(
+        bundle
+            .load_texture_array("t/tiles.ogt")
+            .unwrap()
+            .layers
+            .len(),
+        3
+    );
+
+    // A terrain of separate textures has no arrays and no layers of them.
+    let plain =
+        "type terrain\nversion 1\n---\nheightmap \"h.png\"\nlayer {\n  albedo \"t/a.png\"\n}\n";
+    let root = project(
+        "arrays-plain",
+        &[
+            ("t/x.ogt", plain.as_bytes()),
+            ("t/h.png", &height),
+            ("t/a.png", &files[2].1),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let t = bundle.load_terrain("t/x.ogt").unwrap();
+    assert_eq!(
+        (t.albedo_array.as_ref(), t.normal_array.as_ref()),
+        (None, None)
+    );
+    assert_eq!(t.layers[0].albedo.as_deref(), Some("t/a.png"));
+    assert_eq!(
+        (
+            t.layers[0].layer.albedo_layer,
+            t.layers[0].layer.normal_layer
+        ),
+        (None, None)
+    );
+
+    let cook_err = |name: &str, text: &str| -> String {
+        let mut all = borrowed.clone();
+        all[0] = ("t/x.ogt", text.as_bytes());
+        let root = project(name, &all);
+        let report = cook_project(&root, &CookOptions::default()).expect("cook runs");
+        report.errors().join("\n")
+    };
+    let head = "type terrain\nversion 1\n---\nheightmap \"h.png\"\n";
+    let e = cook_err(
+        "arrays-mixed",
+        &format!("{head}layers \"tiles.ogt\"\nlayer {{\n  albedo \"a.png\"\n}}\n"),
+    );
+    assert!(
+        e.contains("albedoLayer and normalLayer, not 'albedo'"),
+        "{e}"
+    );
+    let e = cook_err(
+        "arrays-orphan",
+        &format!("{head}layers \"tiles.ogt\"\nlayer {{\n  normalLayer 1\n}}\n"),
+    );
+    assert!(
+        e.contains("'normalLayer' picks a layer of the terrain's layerNormals"),
+        "{e}"
+    );
+    let e = cook_err("arrays-png", &format!("{head}layers \"a.png\"\n"));
+    assert!(e.contains("layers names a texture array"), "{e}");
+    let e = cook_err("arrays-none", &format!("{head}layers \"gone.ogt\"\n"));
+    assert!(e.contains("not under assets/: gone.ogt"), "{e}");
+    let e = cook_err(
+        "arrays-index",
+        &format!("{head}layers \"tiles.ogt\"\nlayer {{\n  albedoLayer 1.5\n}}\n"),
+    );
+    assert!(e.contains("'albedoLayer' is a whole layer number"), "{e}");
+}
+
 /// A terrain with a gentle ramp (about 17 degrees) beside a cliff (about
 /// 63 degrees): its navmesh, baked with a 40 degree limit, walks the ramp
 /// and the plateau above it but not the cliff's face.

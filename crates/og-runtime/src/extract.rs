@@ -437,6 +437,9 @@ struct MeshRow {
     visible: bool,
     flash: f32,
     flash_color: Vec3,
+    /// `materialLayer`: the texture-array layer its material reads (-1:
+    /// the material's own).
+    layer: i32,
 }
 
 /// A handle field's index, as the JSON rows read it (`as_f64`, then the
@@ -460,6 +463,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
             field("flash")?,
             field("flashColor")?,
         );
+        let l = field("materialLayer")?;
         let q = QueryDesc {
             read: vec![layout.schema.clone()],
             ..QueryDesc::default()
@@ -473,6 +477,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                 a.read::<f32>(f).ok()?,
                 a.read::<Vec3>(c).ok()?,
             );
+            let l = a.read::<i32>(l).ok()?;
             out.reserve(a.len());
             for (i, e) in a.entities().iter().enumerate() {
                 out.push(MeshRow {
@@ -482,6 +487,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                     visible: v[i].get(),
                     flash: f[i],
                     flash_color: c[i],
+                    layer: l[i],
                 });
             }
         }
@@ -501,6 +507,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                 visible: on(&v, "visible", true),
                 flash: v["flash"].as_f64().unwrap_or(0.0) as f32,
                 flash_color: color(&v["flashColor"], 1.0),
+                layer: v["materialLayer"].as_f64().unwrap_or(-1.0) as i32,
             }
         })
         .collect()
@@ -703,7 +710,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             } else {
                 flashed.get(&e).copied().unwrap_or(m)
             };
-            scene.add_instance(g, m, w);
+            scene.instances.push(og_render::Instance {
+                mesh: g,
+                material: m,
+                transform: w,
+                material_layer: u32::try_from(r.layer).ok(),
+            });
             keys.push((e, 0));
         }
     }

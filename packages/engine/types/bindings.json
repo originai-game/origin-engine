@@ -722,6 +722,12 @@
             "g": 1,
             "b": 1
           }
+        },
+        {
+          "name": "materialLayer",
+          "column": "i32",
+          "default": -1,
+          "tunable": true
         }
       ]
     },

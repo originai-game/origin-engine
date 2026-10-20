@@ -2338,6 +2338,11 @@ pub struct CookedTerrain {
     /// The lowest and highest height (metres above the origin).
     pub range: (f32, f32),
     pub layers: Vec<CookedTerrainLayer>,
+    /// The texture arrays the layers' albedos and normal maps come from
+    /// (`layers`, `layerNormals`: asset ids, loaded by the host); each
+    /// layer's `albedo_layer` and `normal_layer` name its layers of them.
+    pub albedo_array: Option<String>,
+    pub normal_array: Option<String>,
     pub height_blend: f32,
     pub lod: og_render::TerrainLod,
     pub cast_shadows: bool,
@@ -2605,6 +2610,8 @@ impl Bundle {
                     slope_fade: l.slope_fade,
                     altitude: [l.altitude_min, l.altitude_max],
                     altitude_fade: l.altitude_fade,
+                    albedo_layer: (l.albedo_layer != format::NONE).then_some(l.albedo_layer),
+                    normal_layer: (l.normal_layer != format::NONE).then_some(l.normal_layer),
                 },
             });
         }
@@ -2613,6 +2620,8 @@ impl Bundle {
             layout,
             range: (m.height_min, m.height_max),
             layers: out,
+            albedo_array: text(m.albedo_array_at, m.albedo_array_len)?,
+            normal_array: text(m.normal_array_at, m.normal_array_len)?,
             height_blend: m.height_blend,
             lod: og_render::TerrainLod {
                 spacing: m.lod_spacing,

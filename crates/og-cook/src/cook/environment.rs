@@ -17,7 +17,16 @@
 //! intensity 1           # multiplies the image
 //! rotation 0            # turns it about +y, degrees (what was at +x moves towards -z)
 //! samples 256           # GGX samples per texel of each prefiltered level (16 to 4096)
+//! prefiltered false     # true: a KTX2 cube's own mip chain is the prefiltered levels
 //! ```
+//!
+//! `prefiltered true` takes a KTX2 cube map whose mip chain is already
+//! GGX-prefiltered (cmgen's, IBLBaker's, the glTF IBL sampler's: level `k`
+//! of `L` at roughness `k / (L - 1)`) as it is, instead of filtering its
+//! radiance again (`og_render::bake::from_prefiltered`): the map's level `m`
+//! (roughness `m / 4`) reads the file at lod `m / 4 · (L - 1)`, a chain of
+//! five levels texel for texel; `size` is the file's face size (another is
+//! refused) and `samples` does not apply.
 //!
 //! The images are read beside the environment file (or, failing that,
 //! under `assets/`); they are part of the environment, not assets of their
@@ -38,13 +47,14 @@ use std::path::{Path, PathBuf};
 
 pub(super) const ENVIRONMENT_TYPE: &str = "environment";
 
-const KEYS: [&str; 6] = [
+const KEYS: [&str; 7] = [
     "source",
     "faces",
     "size",
     "intensity",
     "rotation",
     "samples",
+    "prefiltered",
 ];
 
 /// What an environment bakes from.
@@ -82,10 +92,13 @@ fn assets_root(s: &Source) -> PathBuf {
 /// An environment file's settings, read and checked.
 pub(super) struct EnvironmentDoc {
     pub source: EnvironmentSource,
-    pub size: u32,
+    /// The size given (`None`: 128, or a prefiltered file's own).
+    pub size: Option<u32>,
     pub intensity: f32,
     pub rotation: f32,
     pub samples: u32,
+    /// The KTX2's own mip chain is the prefiltered levels.
+    pub prefiltered: bool,
 }
 
 fn number(doc: &Document, key: &str, default: f32) -> Result<f32, String> {
@@ -163,6 +176,34 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
             );
         }
     };
+    let prefiltered = match doc.body.get("prefiltered") {
+        None => false,
+        Some(e) => match e.values.as_slice() {
+            [v] => v
+                .as_bool()
+                .ok_or_else(|| format!("line {}: 'prefiltered' takes true or false", e.line))?,
+            _ => {
+                return Err(format!(
+                    "line {}: 'prefiltered' takes true or false",
+                    e.line
+                ));
+            }
+        },
+    };
+    if prefiltered {
+        if !matches!(source, EnvironmentSource::Ktx2(_)) {
+            return Err(
+                "prefiltered true takes a KTX2 cube map whose mip chain is already prefiltered: source \"<file>.ktx2\""
+                    .into(),
+            );
+        }
+        if let Some(e) = doc.body.get("samples") {
+            return Err(format!(
+                "line {}: samples is the cook's prefilter; prefiltered true takes the file's levels as they are",
+                e.line
+            ));
+        }
+    }
     let size = number(&doc, "size", 128.0)?;
     let (lo, hi) = (
         og_render::ENVIRONMENT_MAP_MIN_SIZE,
@@ -184,10 +225,11 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
     }
     Ok(EnvironmentDoc {
         source,
-        size: size as u32,
+        size: doc.body.get("size").map(|_| size as u32),
         intensity,
         rotation: number(&doc, "rotation", 0.0)?,
         samples: samples as u32,
+        prefiltered,
     })
 }
 
@@ -233,8 +275,8 @@ pub(super) fn cook_environment(
         ))),
         None => Ok(()),
     };
-    let desc = og_render::bake::BakeDesc {
-        size: doc.size,
+    let mut desc = og_render::bake::BakeDesc {
+        size: doc.size.unwrap_or(128),
         intensity: doc.intensity,
         rotation_degrees: doc.rotation,
         samples: doc.samples,
@@ -262,6 +304,42 @@ pub(super) fn cook_environment(
             )
             .map_err(|e| CookError(format!("{source}: {e}")))?;
             (map, width, height, format!("{source} {width} × {height}"))
+        }
+        EnvironmentSource::Ktx2(source) if doc.prefiltered => {
+            let cube = super::cube_source::read_ktx2_cube_levels(&read(source)?)
+                .map_err(|e| CookError(format!("{source}: {e}")))?;
+            let n = cube.size;
+            if cube.levels.len() < 2 {
+                return Err(CookError(format!(
+                    "{source} has one level: prefiltered true takes the file's own mip chain (at least two levels); without it the cook prefilters level 0"
+                )));
+            }
+            if let Some(size) = doc.size
+                && size != n
+            {
+                return Err(CookError(format!(
+                    "size {size}: {source}'s faces are {n}², and a prefiltered chain is taken at its own size (leave size out)"
+                )));
+            }
+            desc.size = n;
+            let map = og_render::bake::from_prefiltered(
+                &og_render::bake::PrefilteredCube {
+                    size: n,
+                    levels: &cube.levels,
+                },
+                &desc,
+            )
+            .map_err(|e| CookError(format!("{source}: {e}")))?;
+            (
+                map,
+                n,
+                n,
+                format!(
+                    "{source} (a {} cube map of 6 × {n}², its {} prefiltered levels taken as they are)",
+                    cube.format,
+                    cube.levels.len()
+                ),
+            )
         }
         EnvironmentSource::Ktx2(source) => {
             let cube = super::cube_source::read_ktx2_cube(&read(source)?)
@@ -326,7 +404,8 @@ pub(super) fn cook_environment(
         source_height: height,
         intensity: doc.intensity,
         rotation: doc.rotation,
-        samples: doc.samples,
+        // 0: the file's own prefiltered levels, no samples taken.
+        samples: if doc.prefiltered { 0 } else { doc.samples },
     };
     let sh: Vec<format::EnvironmentShRow> = map
         .irradiance
@@ -356,12 +435,16 @@ pub(super) fn cook_environment(
     )
     .raw("texels", packed.clone(), 16);
     let note = format!(
-        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd), {} samples a texel",
+        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}",
         map.size,
         og_render::ENVIRONMENT_MAP_LEVELS,
         texels.len() / 1024,
         packed.len() / 1024,
-        doc.samples
+        if doc.prefiltered {
+            String::new()
+        } else {
+            format!(", {} samples a texel", doc.samples)
+        }
     );
     Ok((w.finish(), vec![note]))
 }

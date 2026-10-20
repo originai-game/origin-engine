@@ -188,7 +188,10 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
   if (k < n_instances()) {
     let bi = batch_of(k);
     let b = batches[bi];
-    let m = instances[k];
+    // An array-map material's instance carries its layer in m[0].w (0 in
+    // an affine transform; pbr_array.wgsl): the box takes the transform.
+    var m = instances[k];
+    m[0].w = 0.0;
     let center = (m * vec4<f32>(b.bounds.xyz, 1.0)).xyz;
     let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
     // The CPU path's sphere, widened by its rounding.
