@@ -36,6 +36,7 @@
     "bin",
     "dist/web",
     "dist/web-publish",
+    "dist/web-publish-2d",
     "vendor"
   ],
   "engines": {

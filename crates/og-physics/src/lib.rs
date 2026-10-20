@@ -970,6 +970,8 @@ pub fn overlap(world: &World, physics: &PhysicsSystem, desc: &OverlapDesc) -> Re
 /// A controller's component after its move.
 pub(crate) enum ControlOut {
     Character(CharacterController),
+    /// Only a 2D world moves a platformer controller.
+    #[cfg_attr(not(feature = "physics2d"), allow(dead_code))]
     Platformer(PlatformerController),
 }
 

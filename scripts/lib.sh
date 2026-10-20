@@ -45,6 +45,13 @@ og_wasm_lanes_crates() {
   awk '{ sub(/#.*/, "") } NF >= 4 && $3 == "publish" && $4 == "lanes" { print $1 }' "$OG_ROOT/scripts/wasm-crates.txt"
 }
 
+# og_wasm_variants CRATE: "NAME FEATURES" for each `variant` line of
+# scripts/wasm-crates.txt naming CRATE (the publish variants per game
+# profile); nothing when the crate has none (one publish variant, as before).
+og_wasm_variants() {
+  awk -v c="$1" '{ sub(/#.*/, "") } NF >= 4 && $1 == "variant" && $3 == c { print $2, $4 }' "$OG_ROOT/scripts/wasm-crates.txt"
+}
+
 # og_lock_version PACKAGE: the version Cargo.lock pins for a crates.io package.
 og_lock_version() {
   awk -v p="$1" '

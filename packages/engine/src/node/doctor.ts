@@ -29,6 +29,9 @@ const wasm = join(pkg, "dist", "web", "origin-engine_bg.wasm");
 report.wasm = existsSync(wasm) ? { ok: true, path: wasm, bytes: statSync(wasm).size } : { ok: false, path: wasm };
 const publishWasm = join(pkg, "dist", "web-publish", "origin-engine_bg.wasm");
 report.publishWasm = existsSync(publishWasm) ? { ok: true, path: publishWasm, bytes: statSync(publishWasm).size } : { ok: false, path: publishWasm };
+// The 2D publish variant: what `og build --publish` ships for a 2d game (docs/web-export.md §Variants).
+const publishWasm2d = join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm");
+report.publishWasm2d = existsSync(publishWasm2d) ? { ok: true, path: publishWasm2d, bytes: statSync(publishWasm2d).size } : { ok: false, path: publishWasm2d };
 // The lanes variant (wasm atomics): `og build` ships it beside the publish wasm
 // for cross-origin isolated pages (docs/web-export.md §Lanes).
 const lanesWasm = join(pkg, "dist", "web-publish", "origin-engine-lanes_bg.wasm");

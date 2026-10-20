@@ -13,7 +13,10 @@
 //   play.js                    the shell, bundled (minified with --publish)
 //   game.js                    the engine Worker: startWorker(game), the runtime, the game
 //   audio-worklet.js           the AudioWorklet the shell loads on the first gesture
-//   origin-engine.js, origin-engine_bg.wasm   the web host (dist/web, or dist/web-publish with --publish)
+//   origin-engine.js, origin-engine_bg.wasm   the web host: dist/web (every member, both physics
+//                              profiles), or with --publish the variant of the game's profile:
+//                              dist/web-publish (3D) or dist/web-publish-2d (2D), each with only
+//                              its profile's physics (docs/web-export.md §Variants)
 //   origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/
 //                              (--publish, isolation not "off") the lanes variant: wasm atomics,
 //                              rayon on a pool of Workers when the page is cross-origin isolated
@@ -147,6 +150,14 @@ export interface BuildManifest {
   readonly entry: "index.html";
   readonly worker: "game.js";
   readonly wasm: "origin-engine_bg.wasm";
+  /**
+   * Which engine module `wasm` is (docs/web-export.md §Variants): `full`
+   * (a dev build: every member, both physics profiles), or the publish
+   * variant of the game's profile, `3d` or `2d`, which has only that
+   * profile's physics. The lanes variant, when there is one, is `full`'s
+   * physics with the publish members.
+   */
+  readonly variant: "full" | "3d" | "2d";
   /**
    * The lanes variant (docs/web-export.md §Lanes): the same engine built with
    * wasm atomics, which the shell boots instead when the page is cross-origin
@@ -300,17 +311,21 @@ function compressedSize(bytes: Uint8Array): { size: number; codec: SizeRow["code
   return out;
 }
 
-/** The probe build and members the copied web host serves: its own hello, under bun. */
-async function probeOf(glue: string, wasm: string): Promise<{ build: string; members: string[] } | null> {
-  const key = `probe:${sha256(new Uint8Array(readFileSync(glue)))}:${sha256(new Uint8Array(readFileSync(wasm)))}`;
+/**
+ * The probe build and members the copied web host serves: its own hello,
+ * under bun, from an engine of the game's profile (a publish variant has
+ * only that profile's physics).
+ */
+async function probeOf(glue: string, wasm: string, profile: "2d" | "3d"): Promise<{ build: string; members: string[] } | null> {
+  const key = `probe:${profile}:${sha256(new Uint8Array(readFileSync(glue)))}:${sha256(new Uint8Array(readFileSync(wasm)))}`;
   const hit = cacheGet(key) as { build: string; members: string[] } | undefined;
   if (hit) return hit;
-  const probe = await probeOfUncached(glue, wasm);
+  const probe = await probeOfUncached(glue, wasm, profile);
   if (probe) cachePut(key, probe);
   return probe;
 }
 
-async function probeOfUncached(glue: string, wasm: string): Promise<{ build: string; members: string[] } | null> {
+async function probeOfUncached(glue: string, wasm: string, profile: "2d" | "3d"): Promise<{ build: string; members: string[] } | null> {
   const script = `
     const glue = await import(${JSON.stringify(pathToFileURL(glue).href)});
     const { loadWebHost } = await import(${JSON.stringify(pathToFileURL(join(here, "..", "web", "host.ts")).href)});
@@ -318,7 +333,7 @@ async function probeOfUncached(glue: string, wasm: string): Promise<{ build: str
     const { createEngine } = await import(${JSON.stringify(pathToFileURL(join(here, "..", "runtime.ts")).href)});
     const { readFileSync } = await import("node:fs");
     await loadWebHost(glue, readFileSync(${JSON.stringify(wasm)}));
-    const e = createEngine(og.game({}), {});
+    const e = createEngine(og.game({}), { profile: ${JSON.stringify(profile)} });
     if (!e.ok) throw new Error(e.reason);
     const hello = JSON.parse(e.value.call(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "hello", params: {} }))).result;
     console.log(JSON.stringify({ build: hello.build, members: hello.members }));
@@ -475,9 +490,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const p = settings.publish;
   const cooked = join(project, "cooked");
   if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; run \`og cook ${project}\` first`);
+  // The engine module: a dev build takes the full one; a publish build the
+  // variant of the game's profile, which a player downloads alone. The lanes
+  // variant stays in dist/web-publish.
+  const variant: BuildManifest["variant"] = publish ? settings.profile : "full";
   const host = join(ENGINE_ROOT, "dist", publish ? "web-publish" : "web");
+  const engineDir = variant === "2d" ? join(ENGINE_ROOT, "dist", "web-publish-2d") : host;
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) {
-    if (!existsSync(join(host, f))) return fail(`${join(host, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)`);
+    if (!existsSync(join(engineDir, f))) return fail(`${join(engineDir, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)${variant === "2d" ? "; a 2d game ships the 2D publish variant, dist/web-publish-2d" : ""}`);
   }
   const vendor = join(ENGINE_ROOT, "vendor", "basis");
   if (!existsSync(join(vendor, "basis_transcoder.wasm"))) return fail(`${vendor} is missing the Basis transcoder`);
@@ -502,7 +522,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     if (typeof text !== "string") return fail(`bundling ${file}: ${text.error}`);
     writeFileSync(join(out, file), text);
   }
-  for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(host, f), join(out, f));
+  for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(engineDir, f), join(out, f));
   // The lanes variant needs cross-origin isolation, which only a build that declares it can get.
   const missingLanes = publish && p.isolation !== "off" ? LANES_FILES.filter((f) => !existsSync(join(host, f))) : [];
   const lanes = publish && p.isolation !== "off" && missingLanes.length === 0;
@@ -595,7 +615,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     version = identity(fileRows());
   }
 
-  const probe = await probeOf(join(out, "origin-engine.js"), join(out, "origin-engine_bg.wasm"));
+  const probe = await probeOf(join(out, "origin-engine.js"), join(out, "origin-engine_bg.wasm"), settings.profile);
   const rows = fileRows();
   const manifest: BuildManifest = {
     format: 1,
@@ -605,6 +625,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     entry: "index.html",
     worker: "game.js",
     wasm: "origin-engine_bg.wasm",
+    variant,
     lanes: lanes ? { glue: "origin-engine-lanes.js", wasm: "origin-engine-lanes_bg.wasm" } : null,
     probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
     crossOriginIsolation: p.isolation,
