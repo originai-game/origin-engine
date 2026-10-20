@@ -323,6 +323,10 @@ pub(crate) struct State {
     /// The world has had a typed-text stream (`og.TextInput`): key presses
     /// type nothing from then on.
     pub typed_stream: bool,
+    /// The presses counted into double and triple clicks in text controls.
+    pub click: crate::edit::Click,
+    /// Each text control's undo history, by key.
+    pub histories: BTreeMap<u64, crate::edit::History>,
     pub hover_ticks: u32,
     pub pointer: Vec2,
     /// The press that focused a field: where it landed, to place the caret.
@@ -717,7 +721,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 7;
+const STATE_VERSION: u32 = 8;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// the flag on, its contrast preference takes the high-contrast variant
@@ -1803,13 +1807,17 @@ impl Ui {
     }
 
     /// A one-line text field: a press focuses it (caret at the press, a
-    /// drag selects), typed text replaces the selection at the caret,
-    /// Backspace/Delete/←/→/Home/End edit (Shift extends the selection;
-    /// Ctrl or Cmd with A selects all, with C copies and with X cuts, for
-    /// the host's clipboard), an input method's composition shows
-    /// underlined at the caret until it commits, Enter submits and Escape
-    /// leaves. The text scrolls to keep the caret in view; the caret blinks
-    /// by the tick (steady under reduced motion).
+    /// drag selects and scrolls the text past the field's edge, a double
+    /// click selects a word and a triple click everything), typed text
+    /// replaces the selection at the caret, Backspace/Delete/←/→/Home/End
+    /// edit (Shift extends the selection; Alt or Ctrl moves and deletes by
+    /// words, Ctrl+Home/End goes to the ends; Ctrl or Cmd with A selects
+    /// all, with C copies and with X cuts, for the host's clipboard, with Z
+    /// undoes and with Shift+Z or Y redoes, from a history of the last 100
+    /// steps with typing grouped by words), an input method's composition
+    /// shows underlined at the caret until it commits, Enter submits and
+    /// Escape leaves. The text scrolls to keep the caret in view; the caret
+    /// blinks by the tick (steady under reduced motion).
     pub fn text_field(
         &mut self,
         id: impl Into<Id>,
@@ -1898,9 +1906,10 @@ impl Ui {
 
     /// A multi-line text area: [`Ui::text_field`]'s editing, with Enter
     /// starting a new line, ↑ and ↓ moving between lines (and Home and End
-    /// to a line's ends), the text wrapped between words at the area's
-    /// width and scrolled to keep the caret's line in view. `rows` lines
-    /// show at once.
+    /// to a line's ends), a triple click selecting the line between its
+    /// breaks, the text wrapped between words at the area's width and
+    /// scrolled to keep the caret's line in view (a drag above or below it
+    /// scrolls it, faster the further out). `rows` lines show at once.
     pub fn text_area(
         &mut self,
         id: impl Into<Id>,
@@ -3912,6 +3921,37 @@ impl Ui {
         f32_(&mut b, pinch.center.x);
         f32_(&mut b, pinch.center.y);
         f32_(&mut b, pinch.spread);
+        let c = &s.click;
+        u64_(&mut b, c.tick);
+        f32_(&mut b, c.at.x);
+        f32_(&mut b, c.at.y);
+        b.push(c.count);
+        b.push(u8::from(c.moved));
+        u32_(&mut b, c.origin.0 as u32);
+        u32_(&mut b, c.origin.1 as u32);
+        let text = |b: &mut Vec<u8>, t: &str| {
+            u32_(b, t.len() as u32);
+            b.extend_from_slice(t.as_bytes());
+        };
+        u32_(&mut b, s.histories.len() as u32);
+        for (k, h) in &s.histories {
+            u64_(&mut b, *k);
+            u64_(&mut b, h.seen);
+            u64_(&mut b, h.used);
+            b.push(u8::from(h.open));
+            for stack in [&h.undo, &h.redo] {
+                u32_(&mut b, stack.len() as u32);
+                for c in stack {
+                    u32_(&mut b, c.at as u32);
+                    text(&mut b, &c.removed);
+                    text(&mut b, &c.inserted);
+                    b.push(c.kind as u8);
+                    for v in [c.before.0, c.before.1, c.after.0, c.after.1] {
+                        u32_(&mut b, v as u32);
+                    }
+                }
+            }
+        }
         b
     }
 
@@ -4214,6 +4254,42 @@ impl Reader<'_> {
             spread: self.f32()?,
         };
         s.pinch = on.then_some(pinch);
+        s.click = crate::edit::Click {
+            tick: self.u64()?,
+            at: Vec2::new(self.f32()?, self.f32()?),
+            count: self.u8()?,
+            moved: self.u8()? != 0,
+            origin: (self.u32()? as usize, self.u32()? as usize),
+        };
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let mut h = crate::edit::History {
+                seen: self.u64()?,
+                used: self.u64()?,
+                open: self.u8()? != 0,
+                ..Default::default()
+            };
+            for redo in [false, true] {
+                let n = self.u32()?;
+                let mut stack = Vec::new();
+                for _ in 0..n {
+                    stack.push(crate::edit::Change {
+                        at: self.u32()? as usize,
+                        removed: self.string()?,
+                        inserted: self.string()?,
+                        kind: crate::edit::EditKind::from_u8(self.u8()?),
+                        before: (self.u32()? as usize, self.u32()? as usize),
+                        after: (self.u32()? as usize, self.u32()? as usize),
+                    });
+                }
+                if redo {
+                    h.redo = stack;
+                } else {
+                    h.undo = stack;
+                }
+            }
+            s.histories.insert(k, h);
+        }
         Some(s)
     }
 }
