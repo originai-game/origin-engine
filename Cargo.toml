@@ -10,7 +10,7 @@ rust-version = "1.99"
 [workspace.dependencies]
 wgpu = { version = "30.0.1", default-features = false, features = ["wgsl"] }
 glam = { version = "0.34.1", features = ["bytemuck", "scalar-math"] }
-gltf = { version = "1.4.1", features = ["import", "utils", "KHR_materials_emissive_strength"] }
+gltf = { version = "1.4.1", features = ["import", "utils", "KHR_materials_emissive_strength", "extensions"] }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
 bytemuck = { version = "1.25.2", features = ["derive"] }
 pollster = "1.0.1"

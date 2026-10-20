@@ -19,6 +19,20 @@ fn webgl2_failures(name: &str, source: &str) -> Vec<String> {
     )
     .validate(&module)
     .unwrap_or_else(|e| panic!("{name}: {e:?}"));
+    // Pipeline-overridable constants (the lit shaders' EFFECTS) are
+    // resolved before translation, as wgpu does; with the code they gate on.
+    let mut constants = naga::back::PipelineConstants::default();
+    if module
+        .overrides
+        .iter()
+        .any(|(_, o)| o.name.as_deref() == Some("EFFECTS"))
+    {
+        constants.insert("EFFECTS".to_string(), 1.0);
+    }
+    let (module, info) =
+        naga::back::pipeline_constants::process_overrides(&module, &info, None, &constants)
+            .unwrap_or_else(|e| panic!("{name}: {e:?}"));
+    let (module, info) = (module.as_ref(), info.as_ref());
     let options = glsl::Options {
         version: glsl::Version::Embedded {
             version: 300,
@@ -46,8 +60,8 @@ fn webgl2_failures(name: &str, source: &str) -> Vec<String> {
         let mut out = String::new();
         let result = glsl::Writer::new(
             &mut out,
-            &module,
-            &info,
+            module,
+            info,
             &options,
             &pipeline,
             naga::proc::BoundsCheckPolicies::default(),
@@ -73,4 +87,34 @@ fn the_overlay_and_glass_shaders_translate_to_glsl_es_300() {
         .flat_map(|(name, source)| webgl2_failures(name, source))
         .collect();
     assert!(failures.is_empty(), "{failures:#?}");
+}
+
+/// The physical lit shader (`physical.rs`) on the WebGL2 tier: it
+/// translates, and its static and skinned pipelines sample at most the
+/// sixteen textures a WebGL2 pipeline has across its groups (wgpu's GL
+/// backend binds every group's textures to one set of units), with the
+/// texture joint palette the tier uses. The pack pass translates too.
+#[test]
+fn the_physical_shaders_translate_and_fit_webgl2s_texture_units() {
+    let builtin = og_render::MaterialShader {
+        name: "built-in".into(),
+        code: String::new(),
+        params: Vec::new(),
+    };
+    let source = og_render::physical_module_source(&builtin, false);
+    let failures = webgl2_failures("physical", &source);
+    assert!(failures.is_empty(), "{failures:#?}");
+    let pack = webgl2_failures("pack.wgsl", include_str!("../shaders/pack.wgsl"));
+    assert!(pack.is_empty(), "{pack:#?}");
+    let module = naga::front::wgsl::parse_str(&source).expect("parses");
+    let textures = module
+        .global_variables
+        .iter()
+        .filter(|(_, g)| matches!(module.types[g.ty].inner, naga::TypeInner::Image { .. }))
+        .count();
+    assert!(
+        textures <= 16,
+        "{textures} textures in the physical module: WebGL2 has 16 per pipeline"
+    );
+    assert_eq!(textures, 14, "frame 5, material 5, effects 3, skin 1");
 }
