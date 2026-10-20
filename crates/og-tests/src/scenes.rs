@@ -65,6 +65,7 @@ pub const SCENES: &[&str] = &[
     "atmosphere-moon",
     "materials",
     "skinned-hooks",
+    "materials-physical",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -314,6 +315,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // emissive, normal maps, clearcoat, alpha mask and blend,
         // double-sided, unlit, a non-uniformly scaled ellipsoid).
         "materials" => g.scene = crate::p2_scenes::materials_scene(),
+        // Every MeshPhysicalMaterial lobe (clearcoat maps, sheen,
+        // iridescence, anisotropy) and transmission in front of textured
+        // geometry.
+        "materials-physical" => g.scene = crate::physical_scenes::physical_scene(),
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
