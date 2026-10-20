@@ -10,7 +10,7 @@ engine's own CC0 / OFL assets.
 | `assets/models/*.vox`, `*.vox.ogt` | CC0 1.0 | self-made: the hero, the lantern, a tree, a boulder, the far side's pine and arch, voxel by voxel in `tools/make-assets.ts` |
 | `assets/models/slime.glb` | CC0 1.0 | self-made: the slime's voxels meshed into a skinned glTF with two clips by `tools/make-assets.ts` |
 | `assets/textures/*.png` | CC0 1.0 | self-made: tileable grass, path, rock and moss, a spark and the far side's banner, `tools/make-assets.ts` |
-| `assets/sprites/faces/*.png`, `assets/sprites/faces-sheet.png` | CC0 1.0 | self-made: the slimes' expression bubbles, `tools/make-assets.ts` |
+| `assets/sprites/faces/*.png` | CC0 1.0 | self-made: the slimes' expression bubbles, `tools/make-assets.ts` |
 | `assets/terrain/vale.png`, `vale-control.png` | CC0 1.0 | self-made: the valley's 16-bit height field and splat map, `tools/make-assets.ts` |
 | `assets/env/dusk.hdr` | CC0 1.0 | self-made: a 64 x 32 synthetic dusk sky, `tools/make-assets.ts` |
 | `assets/music/dusk.wav` (not committed) | CC0 1.0 | self-made: the 4-minute music, synthesised by `tools/make-assets.ts` |
