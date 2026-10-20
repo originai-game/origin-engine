@@ -20,25 +20,50 @@ reflect-string (6996a8e1), ui-text (167579c6) and render-style (e36fbf1f,
 then the coordinator's 767ecf84). The round sections below have each. The
 wave's end is being measured in the `origin-engine-measure` worktree.
 
-**Wave-end figures: pending.** Every bullet marked pending is filled from
-that run.
+**Wave-end figures** (the `--all` and web-reference runs at 767ecf84 in
+the measure worktree, logs not in the repository, stated here once; the
+web-reference and lavapipe bullets are completed after the WebGL2 outline
+fix below lands).
 
-- **`scripts/check.sh --all`**: pending. The last on record is 9 of 9 in
+- **`scripts/check.sh --all`** at 767ecf84: 8 of 9 steps, failed at
+  bun-test (fmt 3 s, clippy 46 s, wasm-build 554 s with the shipping
+  `wasm` profile, test 309 s with nextest 805 passed and 12 skipped,
+  wasm-opt 169 s, size-gate 54 s, drift 45 s, determinism 427 s,
+  bun-test 203 s). The one failure was the slow reload test
+  (`reload-asset.test.ts`): it asked for more than 2,000 plain-red pixels
+  of the edited hull and found 1,898, the same count on main, because
+  project.ogt's seed now applies to the template (api-runtime) and moves
+  its frame; the test asks for a hull-sized count since 7deac5d7 and
+  passes. Nothing else failed. The last whole run before it: 9 of 9 in
   886 s at efb3bdc (the section below).
 - **`scripts/check.sh functional`**, each wave 7 merge: cook-vox 5 of 5 in
   219 s, api-runtime 5 of 5 in 161 s, reflect-string 5 of 5 in 227 s,
   ui-text 5 of 5 in 184 s, render-style 5 of 5 in 147 s. The lane on the
   cook fix: 5 of 5 in 117 s (the section below).
-- **`scripts/check.sh web-reference`**: pending. Recorded on `metal` since
-  the last run on record (efb3bdc) and never run in the browser tiers:
-  render-style's og-tests frames, the nine looks frames re-recorded at
-  767ecf84 and Lantern Vale's seven (row 67), besides row 54's.
-- **Wasm** (brotli -q 11, per download, the shipping `wasm` profile):
-  pending. Last measured at efb3bdc (lanes 3,403,984 B, 81.2 % of 4 MiB);
-  since then cook round four, stylisation round four, the 52-byte
-  instance, `og.physics.stats`, `str(N)` fields and the wave's runtime and
-  renderer changes.
-- **Determinism**: pending for the builds. Physics lanes round three ran
+- **`scripts/check.sh web-reference`** at 767ecf84: failed in 457 s, on
+  one thing. WebGPU passed everything against `metal`: og-tests gfx 83
+  scenes (38 s), the fx-showcase stations and the looks station's 37
+  frames, the og-ui kit frames, third-person, Ember Vale, a11y 26 of 26.
+  WebGL2 passed the same (gfx 83 scenes in 60 s, a11y 26 of 26) except
+  30 of the 37 looks frames, which fail against `metal` at RMSE 0.0104 to
+  0.0461 and up to 3.1 % outliers; the seven that pass are the presets
+  without ink or material outlines, and a diff of heavy-ink-shadows is
+  all edges (the lantern's emissive sphere carries a solid outline on
+  WebGL2 and none on `metal`). Before wave 7 all 37 passed on both tiers.
+  The cause is render-style's object id in the prepass, which the WebGL2
+  (lean) path carries differently; the fix is in flight on
+  `render-style-2`, after which web-reference runs again and this bullet
+  takes its figures.
+- **Wasm** (brotli -q 11, per download, the shipping `wasm` profile) at
+  767ecf84: lanes 3,496,803 B (83.4 % of 4 MiB, the largest download), 3D
+  publish 3,075,241 B (73.3 %), 2D publish 2,909,811 B (69.4 %). Against
+  efb3bdc (lanes 3,403,984 B, 81.2 %): +93 kB on lanes, +88 kB on 3D
+  publish, +88 kB on 2D publish, the cost of cook round four, stylisation
+  round four, the 52-byte instance, `og.physics.stats`, `str(N)` fields
+  and the wave's runtime and renderer changes. The budget holds; the
+  growth is a target to pursue, not a reason to hold a merge.
+- **Determinism**: passed in the `--all` above (427 s at 767ecf84: every
+  build agrees). Physics lanes round three ran
   the determinism tool's physics scenarios natively at b748cd40: physics
   18126409214070009362 with lanes off, on four and eight threads and with
   every pass split on four and eight (`tests/evidence/P4/physics-3/
@@ -47,8 +72,9 @@ that run.
   spheres-20k baselines (6.675 to 5.245 ms, spheres-20k-moving 7.759 to
   5.276 ms) by the perf test's method with the release og-gfx; the perf
   lane itself did not run on its branch.
-- **vulkan-cpu**: pending. No stream of the wave re-recorded a lavapipe
-  frame: row 67 (render-style and Lantern Vale) on top of row 54.
+- **vulkan-cpu**: the lavapipe pass runs after the WebGL2 outline fix
+  lands; until then row 67 (render-style and Lantern Vale) is open on top
+  of row 54.
 - **Not run here**: the phone paths of `--device`, the three.js
   comparison (row 51), the lanes wasm's physics step in Chrome (row 52),
   the native device latency tests (row 40).
