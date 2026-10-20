@@ -368,9 +368,19 @@ pub fn report() -> Report {
     }
 }
 
-/// Whether a call of `len` items splits: lanes on, and at least `tasks`
-/// grains of items (`None`: one grain for every pool thread).
-fn parallel(site: Site, len: usize, grain: usize, tasks: Option<usize>) -> bool {
+/// How many items a call needs to split, given the pool's threads.
+#[derive(Clone, Copy)]
+enum Least {
+    /// At least this many grains of items (at least two).
+    Grains(usize, usize),
+    /// A grain for every pool thread.
+    GrainEach(usize),
+    /// At least this many items.
+    Items(usize),
+}
+
+/// Whether a call of `len` items splits: lanes on, and at least `from`.
+fn parallel(site: Site, len: usize, from: Least) -> bool {
     if !SWITCH.load(Ordering::Relaxed) {
         return false;
     }
@@ -378,8 +388,12 @@ fn parallel(site: Site, len: usize, grain: usize, tasks: Option<usize>) -> bool 
     if threads <= 1 || !why.is_empty() {
         return false;
     }
-    let tasks = tasks.unwrap_or(threads as usize).max(2);
-    if len < grain.max(1).saturating_mul(tasks) {
+    let least = match from {
+        Least::Grains(grain, tasks) => grain.max(1).saturating_mul(tasks.max(2)),
+        Least::GrainEach(grain) => grain.max(1).saturating_mul(threads.max(2) as usize),
+        Least::Items(n) => n.max(2),
+    };
+    if len < least {
         return false;
     }
     count(site, len);
@@ -401,7 +415,7 @@ where
         fault(site);
         f(t)
     };
-    if parallel(site, items.len(), grain, Some(2)) {
+    if parallel(site, items.len(), Least::Grains(grain, 2)) {
         imp::map(items, grain.max(1), f)
     } else {
         items.iter().map(f).collect()
@@ -418,7 +432,7 @@ where
         fault(site);
         f(t)
     };
-    if parallel(site, items.len(), grain, Some(2)) {
+    if parallel(site, items.len(), Least::Grains(grain, 2)) {
         imp::for_each_mut(items, grain.max(1), f)
     } else {
         items.iter_mut().for_each(f)
@@ -435,7 +449,7 @@ where
         fault(site);
         f(i, t)
     };
-    if parallel(site, items.len(), grain, Some(2)) {
+    if parallel(site, items.len(), Least::Grains(grain, 2)) {
         imp::for_each_indexed(items, grain.max(1), f)
     } else {
         items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
@@ -459,7 +473,28 @@ pub fn install<R: Send>(
     grain: usize,
     f: impl FnOnce(bool) -> R + Send,
 ) -> R {
-    if parallel(site, items, grain, None) {
+    install_if(site, items, Least::GrainEach(grain), f)
+}
+
+/// [`install`] from `from` items whatever the pool's threads (at least
+/// two): for a caller that measured where its library pays for each
+/// thread count (og-physics's `pool_bodies`, read with [`threads`]).
+pub fn install_from<R: Send>(
+    site: Site,
+    items: usize,
+    from: usize,
+    f: impl FnOnce(bool) -> R + Send,
+) -> R {
+    install_if(site, items, Least::Items(from), f)
+}
+
+fn install_if<R: Send>(
+    site: Site,
+    items: usize,
+    from: Least,
+    f: impl FnOnce(bool) -> R + Send,
+) -> R {
+    if parallel(site, items, from) {
         imp::install(move || {
             fault(site);
             f(true)
@@ -981,6 +1016,12 @@ mod tests {
         } else {
             assert_eq!((threads, after), (1, before));
         }
+
+        // `install_from`: from that many items exactly, whatever the threads.
+        let at = |items: usize| install_from(Site::Physics, items, 777, |pooled| pooled);
+        assert!(!at(776));
+        assert_eq!(at(777), on);
+        assert_eq!(physics_calls().calls, after.calls + u64::from(on));
     }
 
     /// `serial`: work outside the helpers runs on the calling thread, rayon
