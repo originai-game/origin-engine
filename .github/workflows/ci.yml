@@ -44,6 +44,9 @@ jobs:
       # (LLVM 20.1.2) misses two of them by RMSE 0.0003 (docs/ci.md §CI).
       # The host's unused SDKs are mounted to be emptied (provision).
       image: debian:trixie
+      # An init as PID 1 reaps orphans, as on a machine: og dev's signal
+      # test waits for the game it started to be gone, not a zombie.
+      options: --init
       volumes:
         - /usr/share/dotnet:/host/dotnet
         - /usr/local/lib/android:/host/android
@@ -93,11 +96,6 @@ jobs:
           cache-key: functional-trixie
       - name: Functional lane
         run: scripts/check.sh functional
-        env:
-          OG_GFX_CAPTURE: sprites-array # TEMPORARY: the missing vulkan-cpu reference, read below
-      - name: TEMPORARY sprites-array frame
-        if: always()
-        run: base64 -w0 crates/og-tests/references/vulkan-cpu/sprites-array.png; echo; sha256sum crates/og-tests/references/vulkan-cpu/sprites-array.png
       - name: Disk
         if: always()
         run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true
