@@ -1,0 +1,1 @@
+sprites-array: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=4 batches=0 instances=0 culled=0 triangles=0 shadow_passes=0 shadow_casters=0 lights=0 sprites=23 glyphs=0 sprite_draws=3 setup+first=426.4ms
