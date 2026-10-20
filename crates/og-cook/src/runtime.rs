@@ -1672,6 +1672,7 @@ impl CookedAnimation {
         let clips = table::<ClipRow>(blob, "clips")?;
         let channels = table::<ChannelRow>(blob, "channels")?;
         let samples = blob.table::<f32>("samples", 0)?.into_owned();
+        let packed = blob.table::<u16>("packed", 0)?.into_owned();
         let events = table::<EventRow>(blob, "events")?;
         let streams = table::<SkinStreamRow>(blob, "skin_streams")?;
         let skin_data = blob.raw("skin_data")?;
@@ -1730,11 +1731,8 @@ impl CookedAnimation {
             for ch in rows {
                 let path = og_anim::ChannelPath::from_code(ch.path)
                     .ok_or_else(|| bad(format!("channel path {}", ch.path)))?;
-                let n = (c.frames * ch.lanes) as usize;
-                let at = ch.sample_offset as usize;
-                let data = samples
-                    .get(at..at + n)
-                    .ok_or_else(|| bad("channel samples out of range".into()))?;
+                let data = crate::anim_codec::decode(ch, c.frames, &samples, &packed)
+                    .map_err(|e| bad(format!("clip channel: {e}")))?;
                 let node_name = skeleton
                     .nodes
                     .get(ch.node as usize)
@@ -1746,7 +1744,7 @@ impl CookedAnimation {
                     path,
                     step: ch.interpolation == format::interpolation::STEP,
                     lanes: ch.lanes,
-                    samples: data.to_vec(),
+                    samples: data,
                 });
             }
             let evs = events
@@ -1813,36 +1811,59 @@ impl CookedAnimation {
         }
         let mut out_morphs = Vec::with_capacity(morphs.len());
         for m in &morphs {
-            let (n, k) = (m.vertex_count as usize, m.target_count as usize);
+            let (n, k, moved) = (
+                m.vertex_count as usize,
+                m.target_count as usize,
+                m.moved as usize,
+            );
             let stride = if m.normals != 0 { 24 } else { 12 };
-            let raw = meshopt_codec::decode_vertex_buffer(
-                &morph_data[slice(morph_data, m.data_offset, m.data_size)?],
-                n * k,
-                stride,
-            )
-            .map_err(|e| bad(format!("morph stream: {e}")))?;
+            let decode = |o: u32, l: u32, stride: usize| -> Result<Vec<u8>, LoadError> {
+                if moved == 0 {
+                    return Ok(Vec::new());
+                }
+                meshopt_codec::decode_vertex_buffer(
+                    &morph_data[slice(morph_data, o, l)?],
+                    moved,
+                    stride,
+                )
+                .map_err(|e| bad(format!("morph stream: {e}")))
+            };
+            let raw = decode(m.data_offset, m.data_size, stride)?;
+            let index = decode(m.index_offset, m.index_size, 4)?;
             let f: Vec<f32> = raw
                 .as_chunks::<4>()
                 .0
                 .iter()
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect();
-            let lanes = stride / 4;
-            let at = |t: usize, v: usize, o: usize| {
-                let i = (t * n + v) * lanes + o;
-                Vec3::new(f[i], f[i + 1], f[i + 2])
-            };
-            let positions = (0..k)
-                .map(|t| (0..n).map(|v| at(t, v, 0)).collect())
+            let index: Vec<usize> = index
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|b| u32::from_le_bytes(*b) as usize)
                 .collect();
-            let normals = (m.normals != 0).then(|| {
-                (0..k)
-                    .map(|t| (0..n).map(|v| at(t, v, 3)).collect())
-                    .collect()
-            });
+            let lanes = stride / 4;
             let rows = targets
                 .get(m.target_first as usize..m.target_first as usize + k)
                 .ok_or_else(|| bad("morph targets out of range".into()))?;
+            let mut positions = vec![vec![Vec3::ZERO; n]; k];
+            let mut normals = (m.normals != 0).then(|| vec![vec![Vec3::ZERO; n]; k]);
+            for (t, row) in rows.iter().enumerate() {
+                let (first, count) = (row.moved_first as usize, row.moved_count as usize);
+                if first + count > moved {
+                    return Err(bad("morph target's moved vertices out of range".into()));
+                }
+                for (e, &v) in index.iter().enumerate().skip(first).take(count) {
+                    if v >= n {
+                        return Err(bad(format!("morph vertex {v} of {n}")));
+                    }
+                    let at = e * lanes;
+                    positions[t][v] = Vec3::new(f[at], f[at + 1], f[at + 2]);
+                    if let Some(normals) = normals.as_mut() {
+                        normals[t][v] = Vec3::new(f[at + 3], f[at + 4], f[at + 5]);
+                    }
+                }
+            }
             out_morphs.push(MorphTargets {
                 primitive: m.primitive as usize,
                 mesh: m.mesh as usize,

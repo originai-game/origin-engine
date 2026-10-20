@@ -10,7 +10,7 @@
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
-mod anim;
+pub mod anim;
 mod audio;
 mod e6;
 mod flipbook;

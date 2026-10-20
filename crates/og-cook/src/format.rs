@@ -21,7 +21,7 @@
 //! | UI skin (`og.UiSkin`, an `.ogt` of `type skin`) | [`SkinMeta`] | `text` (the validated skin file) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
 //! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
-//! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
+//! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `packed` (u16: quantised keys, `crate::anim_codec`), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams of the moved vertices' deltas and indices), `strings` |
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
 //! | tilemap (`og.Tilemap`, an `.ogt` of `type tilemap`, a Tiled `.tmj`, an LDtk `.ldtk`) | [`TilemapMeta`] | `layers` [`MapLayerRow`], `cells` (u32 per cell, layer after layer), `objects` [`MapObjectRow`], `props` [`MapPropRow`], `tilesets` [`MapTilesetRow`], `strings` |
 //! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
@@ -36,7 +36,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r3");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r4");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -519,14 +519,24 @@ pub mod interpolation {
 }
 
 row!(
-    /// One channel: `frames × lanes` floats of `samples` from `sample_offset`.
-    ChannelRow, "og.AnimChannel", 1 {
+    /// One channel of a clip's `frames` samples, held as its `codec` says
+    /// (`crate::anim_codec`): `frames × lanes` floats of `samples` from
+    /// `sample_offset` (f32), one sample there (constant), or `keys`
+    /// quantised keys in `packed` from `packed_offset` with their per-lane
+    /// range in `samples` (quantised; the loader rebuilds every frame).
+    ChannelRow, "og.AnimChannel", 2 {
         node: u32,
         path: u32,
         /// The source sampler; STEP channels hold each sample, the others interpolate.
         interpolation: u32,
         lanes: u32,
         sample_offset: u32,
+        /// `crate::anim_codec::codec`: 0 f32, 1 constant, 2 quantised.
+        codec: u32,
+        /// Kept keys: `frames` for f32, 1 for constant.
+        keys: u32,
+        /// Quantised: the first u16 of `packed`.
+        packed_offset: u32,
     }
 );
 
@@ -555,11 +565,16 @@ row!(
 );
 
 row!(
-    /// The morph targets of one model primitive: per target (in glTF order),
-    /// per cooked vertex, the position delta `f32 x 3` then, when
-    /// `normals` is 1, the normal delta `f32 x 3`; one meshopt stream of
-    /// `target_count × vertex_count` elements in `morph_data`.
-    MorphRow, "og.AnimMorph", 1 {
+    /// The morph targets of one model primitive, sparse: per target (in
+    /// glTF order) only the cooked vertices it moves (a position or normal
+    /// delta with any bit set), each the position delta `f32 x 3` then,
+    /// when `normals` is 1, the normal delta `f32 x 3`; one meshopt stream
+    /// of every target's moved vertices in `morph_data`
+    /// (`data_offset`/`data_size`, `moved` elements), and their vertex
+    /// indices (u32, ascending per target) as one meshopt stream at stride
+    /// 4 (`index_offset`/`index_size`). A vertex a target does not list
+    /// has a zero delta.
+    MorphRow, "og.AnimMorph", 2 {
         primitive: u32,
         mesh: u32,
         vertex_count: u32,
@@ -568,16 +583,23 @@ row!(
         normals: u32,
         data_offset: u32,
         data_size: u32,
+        /// Moved vertices over every target (the streams' element count).
+        moved: u32,
+        index_offset: u32,
+        index_size: u32,
     }
 );
 
 row!(
-    /// A morph target's name (glTF `mesh.extras.targetNames`; empty when unnamed)
-    /// and its default weight (`mesh.weights`).
-    TargetRow, "og.AnimTarget", 1 {
+    /// A morph target's name (glTF `mesh.extras.targetNames`; empty when
+    /// unnamed), its default weight (`mesh.weights`) and its range of its
+    /// morph's moved vertices (`moved_first`, `moved_count`).
+    TargetRow, "og.AnimTarget", 2 {
         name_offset: u32,
         name_len: u32,
         default_weight: f32,
+        moved_first: u32,
+        moved_count: u32,
     }
 );
 
