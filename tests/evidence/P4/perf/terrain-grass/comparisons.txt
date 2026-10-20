@@ -1,0 +1,6 @@
+vk-ref.png                   vs metal-before-1ced372.png     rmse=0.00537 max=132 outliers=0.017%
+vk-ref.png                   vs metal-head.png               rmse=0.01499 max=136 outliers=0.466%
+terrain-grass-head.png       vs metal-head.png               rmse=0.00714 max=132 outliers=0.055%
+terrain-grass-head.png       vs metal-before-1ced372.png     rmse=0.01579 max=136 outliers=0.512%
+terrain-grass-head.png       vs vk-ref.png                   rmse=0.01488 max=136 outliers=0.498%
+metal-before-1ced372.png     vs metal-head.png               rmse=0.01416 max=136 outliers=0.460%
