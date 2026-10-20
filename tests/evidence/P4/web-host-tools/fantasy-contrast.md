@@ -103,3 +103,18 @@ WebGL2 title and dawn pass against metal (RMSE 0.0013, 0.0007; 0.0043,
 their sheets and were recorded on metal (`OG_UI_CAPTURE=1 og test
 templates/ui-kit`, only those two sheets kept); the other 27 suites pass
 unchanged. vulkan-cpu: see the section below.
+
+## vulkan-cpu
+
+The two fantasy sheets re-recorded in the `og-lavapipe` image (llvmpipe,
+linux/amd64 under emulation, with bun copied in from `og-test:bun143`),
+the addon from `cargo zigbuild --release --target
+x86_64-unknown-linux-gnu.2.31 -p og-host-node` as
+`packages/engine/native/origin-engine.linux-x64.node`, and only the two
+playtests run (`OG_UI_CAPTURE=1 bun packages/engine/src/node/playtest-run.ts
+--file templates/ui-kit/tests/skin-fantasy[-phone].og.ts --entry
+templates/ui-kit/.og/game.native.js --root templates/ui-kit`; 220 s and
+628 s). Each sheet moved from its old vulkan-cpu reference by RMSE 0.0167
+(desktop) and 0.0334 (phone), and sits within RMSE 0.0010 and 0.0011 of
+the new metal sheet, as the old pair did. Ember Vale has no vulkan-cpu
+references (owed row 47).
