@@ -1,0 +1,24 @@
+type look
+version 1
+---
+# Over the base: a 180-line pixel grid, six tones dithered into a palette,
+# toon materials with outlines, a vignette.
+extends "looks/base.ogt"
+RenderSettings {
+  exposure 0.8
+}
+Stylise {
+  pixelHeight 180
+  posterize 6
+  dither bayer4
+  palette "palettes/dusk.hex"
+}
+MaterialStyle {
+  toon true
+  outlineWidth 2
+  shadowTintAmount 0.5
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.5
+}

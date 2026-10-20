@@ -31,6 +31,8 @@
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids) |
+//! | look (`og.Look`, an `.ogt` of `type look`) | [`LookMeta`] | `text` (the canonical, flattened look: `extends` resolved and listed, colours linear) |
+//! | palette (`og.Palette`, a `.hex` or `.gpl` file) | [`PaletteMeta`] | `rgb` (`count` sRGB colours, 3 bytes each, in file order) |
 //! | environment map (`og.EnvironmentMap`, an `.ogt` of `type environment`, phase 4) | [`EnvironmentMeta`] | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, face after face, zlib), `irradiance` [`EnvironmentShRow`] (nine order-2 harmonics of the irradiance over pi) |
 //! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
@@ -944,6 +946,42 @@ impl BlobKind for Rig {
     const NAME: &'static str = "og.Rig";
     fn schemas() -> Vec<Schema> {
         vec![RigMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a look blob (an `.ogt` of `type look`).
+    LookMeta, "og.Look", 1 {
+        /// Bytes of the canonical look text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The look blob: `text` holds the look the cook flattened and checked
+/// against the resources' reflected schema (`crate::look::LookFile`),
+/// parsed again at load, where the assets it names are loaded.
+pub struct Look;
+impl BlobKind for Look {
+    const NAME: &'static str = "og.Look";
+    fn schemas() -> Vec<Schema> {
+        vec![LookMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a palette blob (a `.hex` or `.gpl` file).
+    PaletteMeta, "og.Palette", 1 {
+        /// Colours in `rgb`.
+        count: u32,
+    }
+);
+
+/// The palette blob: `rgb` holds `count` sRGB colours, three bytes each.
+pub struct Palette;
+impl BlobKind for Palette {
+    const NAME: &'static str = "og.Palette";
+    fn schemas() -> Vec<Schema> {
+        vec![PaletteMeta::schema()]
     }
 }
 

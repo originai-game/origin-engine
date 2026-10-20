@@ -80,6 +80,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
 
   skills(rules, files, problems);
   coherence(files, problems);
+  looks(roots, files, problems);
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
 }
@@ -88,7 +89,7 @@ function packageJson(roots: Roots, problems: string[]): void {
   const p = JSON.parse(readFileSync(join(roots.pkg, "package.json"), "utf8")) as { name?: string; version?: string; files?: string[]; scripts?: Record<string, string> };
   if (p.name !== "@origingame/engine-knowledge") problems.push(`package.json: name is ${p.name}; the package is @origingame/engine-knowledge (design §9)`);
   if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(p.version ?? "")) problems.push(`package.json: version ${p.version} is not semver`);
-  for (const f of ["wiki", "skills", "scaffold", "rules", "knowledge.json"]) {
+  for (const f of ["wiki", "skills", "looks", "scaffold", "rules", "knowledge.json"]) {
     if (!p.files?.some((x) => x === f || x === `${f}/`)) problems.push(`package.json: files does not publish ${f}`);
   }
   if (!p.scripts?.test) problems.push("package.json: no test script, so scripts/check.sh bun-test would skip the package");
@@ -278,6 +279,107 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
       else if (!have.has(m[1]!)) problems.push(`skills/${skill}/SKILL.md: refers to ${target === skill ? "its own" : target} §${m[1]}, which ${target === skill ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
     }
   }
+}
+
+/** A style catalogue entry (looks/catalogue.json; og-taste §12). */
+interface Style {
+  slug: string;
+  name: string;
+  category: string;
+  descriptor: string;
+  checks: string[];
+  premise: Record<string, string>;
+  look: { preset: string; presetReady: boolean; support: string; primitives: string[]; missing: string[] };
+  skin: string;
+  palette: { size: string; rules: string };
+  assets: Record<string, string>;
+  artBible: { direction: string; avoid: string[] };
+}
+
+/** What `look.support` may say: full (every primitive draws), partial or planned (`missing` names what is still to land), content (the look is authored art). */
+export const SUPPORT = ["full", "partial", "planned", "content"] as const;
+/** The placeholders the art-bible template may use. */
+export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "skin", "avoid", "game", "slug", "checks"] as const;
+const PREMISE = ["genre", "mood", "era", "audience"];
+const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlinePx", "textureDensity"];
+
+/**
+ * The style catalogue (looks/catalogue.json, mounted beside og-taste): each
+ * style complete (three checks, the premise, palette, asset specs, an art
+ * bible direction), its preset path `templates/looks/<slug>.ogt` (a
+ * `type look` file when presetReady), its support honest (`missing` names
+ * the primitives a style that is not `full` lacks, and is empty for one
+ * that is), every `Resource.field` it names a member of the generated API,
+ * og-taste naming every slug, and no text phrased as an imitation.
+ */
+function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+  const path = join(roots.pkg, "looks", "catalogue.json");
+  const at = "looks/catalogue.json";
+  if (!existsSync(path)) {
+    problems.push(`${at}: missing; og-taste §12 reads the style catalogue from it`);
+    return;
+  }
+  let cat: { schemaVersion?: number; categories?: Record<string, string>; skins?: string[]; artBibleTemplate?: string; styles?: Style[] };
+  try {
+    cat = JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    problems.push(`${at}: not JSON (${(e as Error).message})`);
+    return;
+  }
+  if (cat.schemaVersion !== 1) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 1`);
+  const categories = Object.keys(cat.categories ?? {});
+  const skins = cat.skins ?? [];
+  for (const m of (cat.artBibleTemplate ?? "").matchAll(/\{(\w+)\}/g)) {
+    if (!(BIBLE_FIELDS as readonly string[]).includes(m[1]!)) problems.push(`${at}: artBibleTemplate uses {${m[1]}}, which is none of ${BIBLE_FIELDS.join(", ")}`);
+  }
+  if (!cat.artBibleTemplate) problems.push(`${at}: no artBibleTemplate`);
+  const schemaPath = join(roots.engine, "schema", "api.schema.json");
+  const defs = existsSync(schemaPath) ? ((JSON.parse(readFileSync(schemaPath, "utf8")) as { $defs?: Record<string, { properties?: Record<string, unknown> }> }).$defs ?? {}) : undefined;
+  const repo = join(roots.pkg, "..", "..");
+  const taste = files.find((f) => f.path === "game/skills/og-taste/SKILL.md");
+  const tasteText = taste && isText(taste.bytes) ? decoder.decode(taste.bytes) : "";
+  const seen = new Set<string>();
+  const text = (s: unknown) => typeof s === "string" && s.trim().length > 0;
+  for (const [i, s] of (cat.styles ?? []).entries()) {
+    const id = `${at}: ${s.slug ?? `styles[${i}]`}`;
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(s.slug ?? "")) problems.push(`${id}: slug is not lowercase-hyphen`);
+    if (seen.has(s.slug)) problems.push(`${id}: a second style with this slug`);
+    seen.add(s.slug);
+    for (const k of ["name", "descriptor", "skin"] as const) if (!text(s[k])) problems.push(`${id}: no ${k}`);
+    if (!categories.includes(s.category)) problems.push(`${id}: category ${s.category} is none of ${categories.join(", ")}`);
+    if (!skins.includes(s.skin)) problems.push(`${id}: skin ${s.skin} is none of the packs (${skins.join(", ")})`);
+    if (!Array.isArray(s.checks) || s.checks.length !== 3 || !s.checks.every(text)) problems.push(`${id}: needs exactly three checks a critic can judge on a frame`);
+    for (const k of PREMISE) if (!text(s.premise?.[k])) problems.push(`${id}: premise has no ${k}`);
+    for (const k of ASSET_SPECS) if (!text(s.assets?.[k])) problems.push(`${id}: assets has no ${k}`);
+    if (!text(s.palette?.size) || !text(s.palette?.rules)) problems.push(`${id}: palette needs a size and rules`);
+    if (!text(s.artBible?.direction) || !Array.isArray(s.artBible?.avoid) || s.artBible.avoid.length === 0) problems.push(`${id}: artBible needs a direction and what to avoid`);
+    const look = s.look;
+    if (!look) {
+      problems.push(`${id}: no look`);
+      continue;
+    }
+    if (look.preset !== `templates/looks/${s.slug}.ogt`) problems.push(`${id}: look.preset is ${look.preset}, expected templates/looks/${s.slug}.ogt`);
+    if (!(SUPPORT as readonly string[]).includes(look.support)) problems.push(`${id}: look.support ${look.support} is none of ${SUPPORT.join(", ")}`);
+    const missing = look.missing ?? [];
+    if (look.support === "full" && missing.length > 0) problems.push(`${id}: support full, yet it names missing primitives`);
+    if (look.support !== "full" && !missing.some(text)) problems.push(`${id}: support ${look.support} must name what is missing (the primitive or the authored art)`);
+    if (!Array.isArray(look.primitives) || look.primitives.length === 0) problems.push(`${id}: look.primitives names none`);
+    if (defs) {
+      for (const p of look.primitives ?? []) {
+        const m = /^([A-Z]\w*)\.(\w+)$/.exec(p);
+        if (m && !defs[m[1]!]?.properties?.[m[2]!]) problems.push(`${id}: names ${p}, which the generated API does not have`);
+      }
+    }
+    const preset = join(repo, look.preset);
+    if (look.presetReady) {
+      if (existsSync(join(repo, "templates")) && !existsSync(preset)) problems.push(`${id}: presetReady, but ${look.preset} does not exist`);
+      else if (existsSync(preset) && !/^type look\s*$/m.test(readFileSync(preset, "utf8"))) problems.push(`${id}: ${look.preset} is not an .ogt of type look`);
+    }
+    if (tasteText && !tasteText.includes(`\`${s.slug}\``)) problems.push(`skills/og-taste/SKILL.md: the style catalogue (§12) does not list \`${s.slug}\``);
+    const all = JSON.stringify(s);
+    if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
+  }
+  if (seen.size === 0) problems.push(`${at}: no styles`);
 }
 
 export function bundle(roots: Roots = defaultRoots()): { schemaVersion: 1; files: Record<string, string> } {

@@ -10,6 +10,7 @@
 //! | [`meshopt_codec`] | `runtime` | pure-Rust meshoptimizer vertex and index decoders |
 //! | [`qoa`] | `runtime` | the QOA audio codec |
 //! | [`fx`] | `runtime` | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
+//! | [`look`] | `runtime` (resolution and validation: `cook`) | looks (`.ogt` of `type look`): the text, merging over a base, hex colours, `.hex`/`.gpl` palettes |
 //! | [`shader`] | `runtime` (validation: `cook`) | material shaders (`.ogt` of `type shader`): parsing, the cooked text, naga compilation for every back end |
 //! | `cook` (skins) | `cook` | UI skins (`.ogt` of `type skin`), validated with og-ui's parser |
 //! | [`cook`] | `cook` | [`cook::cook_project`], options, the report, the importers |
@@ -25,6 +26,8 @@ pub mod format;
 pub mod fx;
 #[cfg(feature = "runtime")]
 pub mod ktx2;
+#[cfg(feature = "runtime")]
+pub mod look;
 #[cfg(feature = "runtime")]
 pub mod meshopt_codec;
 #[cfg(feature = "runtime")]
