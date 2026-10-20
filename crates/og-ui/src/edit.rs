@@ -492,6 +492,8 @@ impl Ui {
             });
         };
         let mut click = self.state.click;
+        // A drag past the edge scrolled the text this tick: it owns the scroll.
+        let mut autoscrolled = false;
         {
             let m = &self.fonts.for_text(d.role, value).metrics;
             let mut scroll = self.state.edit_scroll;
@@ -558,6 +560,7 @@ impl Ui {
                             let most = (content - inner.height).max(0.0);
                             scroll = (scroll + speed(over)).clamp(0.0, most);
                             p.y = p.y.clamp(inner.y, (inner.bottom() - 0.01).max(inner.y));
+                            autoscrolled = true;
                         }
                     } else {
                         let over = if p.x < inner.x {
@@ -573,6 +576,7 @@ impl Ui {
                             let most = (width - room).max(0.0);
                             scroll = (scroll + speed(over)).clamp(0.0, most);
                             p.x = p.x.clamp(inner.x, inner.right());
+                            autoscrolled = true;
                         }
                     }
                     self.state.edit_scroll = scroll;
@@ -796,8 +800,11 @@ impl Ui {
                     }
                 }
             }
-            // Keep the caret in view: horizontally in a field, by lines in an area.
-            if let Some(inner) = d.inner {
+            // Keep the caret in view: horizontally in a field, by lines in an
+            // area (not while a drag past the edge scrolls it).
+            if let Some(inner) = d.inner
+                && !(autoscrolled && self.input.keys.is_empty() && self.input.text.is_empty())
+            {
                 let mut shown = chars.clone();
                 let comp: Vec<char> = composition.chars().collect();
                 let at = caret.min(shown.len());

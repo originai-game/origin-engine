@@ -136,8 +136,8 @@ impl Fonts {
     /// every character; else the skin's `fallback` when it has a character
     /// the role's lacks; else the first font, in the same order, that can
     /// draw it with the characters its file renders at run time (`font {
-    /// runtime true }`); else the mixed font when no one font can draw it
-    /// all; else the role's.
+    /// runtime true }`); else (no one font draws it all) the mixed font,
+    /// so only the characters no font has are missing.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
         let f = self.get(role);
         let cooked = |font: &UiFont| {
@@ -179,10 +179,9 @@ impl Fonts {
         if let Some(c) = others().find(|c| drawable(c)) {
             return c;
         }
-        match mixed {
-            Some(m) if drawable(m) => m,
-            _ => f,
-        }
+        // No one font draws it all: each run from the font that has it, so
+        // only what no font has is missing.
+        mixed.unwrap_or(f)
     }
 
     /// Makes each role's mixed font ([`Fonts::for_text`]): the role's font

@@ -112,6 +112,18 @@ fn each_run_takes_the_first_font_that_has_it() {
         + f.cjk.metrics.measure("原点 ", 16.0)
         + f.latin.metrics.measure("42", 16.0);
     assert!((w - parts).abs() < 1e-3, "{w} vs {parts} run by run");
+    // No one face draws "原点 ☃" (the snowman is in none, the role's face
+    // draws none of it): still a run per face, so only the snowman is missing.
+    let mut cjk_only = Fonts {
+        body: f.latin.clone(),
+        fallbacks: vec![f.cjk.clone()],
+        ..Fonts::default()
+    };
+    cjk_only.link();
+    let m = &cjk_only.for_text(FontRole::Body, "原点 ☃").metrics;
+    assert!(m.is_mixed());
+    assert_eq!(runs(m, "原点 ☃"), [1, 1, 1, 1]);
+    assert!(m.measure("原点", 16.0) > 0.0);
     // Without linking (a Fonts made by hand), one font for the label as before.
     let unlinked = Fonts {
         body: f.latin.clone(),
