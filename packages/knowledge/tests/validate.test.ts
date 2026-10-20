@@ -194,3 +194,17 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
     ].sort(),
   );
 });
+
+test("every og.* name and Type.field a skill writes exists in the generated API", () => {
+  const p = added((r) =>
+    edit(
+      join(r.pkg, "skills/og-game/SKILL.md"),
+      (s) =>
+        `${s}\nCall \`og.render.applyLooks(world, look)\`, set \`og.Sprite.shadowy\`, read \`og.Wobble\` and \`SpriteDesc.dropShadows\`; \`og.load.look\`, \`og.Stylise.paintCanvas\`, \`GameDesc.look\` and \`away.og.ts\` are fine.\n\n\`\`\`ts\nog.ui.textAreaz(world, {});\n\`\`\`\n`,
+    ),
+  );
+  const why = "which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts";
+  expect(p.sort()).toEqual(
+    ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz"].map((n) => `skills/og-game/SKILL.md: names \`${n}\`, ${why}`).sort(),
+  );
+});

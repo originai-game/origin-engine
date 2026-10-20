@@ -12,7 +12,13 @@ knowledge packs (`packages/game-knowledge/production` of OriginGame):
 `bun run test` validates the package against the platform's rules
 (`rules/platform.json`, transcribed from the platform by
 `bun scripts/sync-rules.ts <origingame checkout>`; each rule names its
-source) and runs the tests in `tests/`. `bun scripts/validate.ts --bundle`
+source) and runs the tests in `tests/`. It also holds the skills to the IDL: every
+`og.*` name a skill writes (`og.render.applyLook`, `og.Sprite.array`,
+code blocks included) and every `Type.field` of a struct, desc, component,
+resource or event (`SpriteDesc.dropShadow`) must exist in
+`packages/engine/schema/api.schema.json`; the few `og.` names that are not
+API (a store key, an engine-owned component the dumps show) are listed
+with their reason in `NOT_API`. `bun scripts/validate.ts --bundle`
 prints the text payload in the platform's `readProductionBundle` shape
 (`{ schemaVersion: 1, files }`).
 
