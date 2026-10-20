@@ -77,6 +77,16 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `build.sh` holds the target's); a second one, in any worktree, waits
   (`scripts/lock.sh`, `docs/ci.md`). Never bypass it to run gates beside each
   other: they are slower together than in a queue.
+- **Parallel agents write code; one place runs the gate.** When several
+  agents work at once (worktrees), none of them runs `scripts/check.sh`, a
+  test lane, `og test`, web-reference or a reference capture: the machine
+  measured a load average past 100 with three worktree gates and a lavapipe
+  container beside each other, and every one of them then fails on
+  timeouts. An agent's loop is `cargo check -p <crate>` and the unit tests
+  of the crate it edits, run one at a time; it commits on its branch and
+  reports. The coordinator (the one session that merges into main) is the
+  only runner of the gate, the review and the reference captures, once per
+  merge, serially. The same applies to a human beside running agents.
 - **One profile per lane.** Everything in the gate that runs native code
   (tests, `og` for drift, cook, the addon the bun tests load) is the `dev`
   profile, whose heavy dependencies are already optimised per package in
