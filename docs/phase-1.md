@@ -83,11 +83,24 @@ here:
   shadows, stepped animation), 9 `content`; og-taste §1 names a start
   look per pack.
 
-Left out: `vulkan-cpu` references for the eight stylise scenes and the 37
-looks frames (recorded on Metal here; the container capture is the wave's
-end), the browser tiers of the looks station, an engine canvas texture,
-a true blue-noise texture (interleaved-gradient noise stands in), depth
-edges in the ink pass.
+Tiers: the eight stylise scenes match `metal` on WebGPU and WebGL2 at
+RMSE ≤ 0.00016 (web-reference's og-tests run, no browser reference of
+their own). On `vulkan-cpu` (the og-lavapipe-bun image, og-gfx and the
+addon cross-built with zigbuild) the eight scenes and the 37 looks frames
+were recorded as references of their own: most sit within RMSE 0.01 of
+`metal`, and the quantised looks differ by design, since a dither or ink
+threshold flips whole pixels where llvmpipe's shading differs by a step
+(`stylise-pixel` RMSE 0.022, 3.8 % outliers; `looks-detailed-doodle`
+0.045, 15 %; `looks-8bit-pixel`, `looks-topdown-tile-pixel` 0.015; the
+median looks frame 0.0057). web-reference's first fx-showcase WebGPU run
+failed once on a deferred capture answering null beside a cross-build;
+`tests/web/reference.ts` now asks again, as the web's capture contract
+says, and the run passes.
+
+Left out: the browser tiers of the looks station (the station's playtest
+runs natively and on lavapipe), an engine canvas texture, a true
+blue-noise texture (interleaved-gradient noise stands in), depth edges in
+the ink pass.
 
 ## Phase 4, perf round (2026-10-20)
 

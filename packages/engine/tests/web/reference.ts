@@ -215,7 +215,15 @@ try {
         tick = answer.tick ?? tick + 1;
       }
       globalThis.__og_shots__ = shots;
-      shots.push(await shell.probe("capture", { width: ${WIDTH}, height: ${HEIGHT} }));
+      // The web's capture is deferred: null means the frame's readback has
+      // not landed yet, ask again (docs/web-export.md); the clock is held,
+      // so no tick passes between the asks.
+      let shot = await shell.probe("capture", { width: ${WIDTH}, height: ${HEIGHT} });
+      for (let again = 0; !shot && again < 240; again++) {
+        await new Promise((r) => setTimeout(r, 16));
+        shot = await shell.probe("capture", { width: ${WIDTH}, height: ${HEIGHT} });
+      }
+      shots.push(shot);
     }
     globalThis.__og_shots__ = shots;
     return tick;
