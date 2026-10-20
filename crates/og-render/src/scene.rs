@@ -10,8 +10,8 @@
 
 use crate::effects::{
     AmbientOcclusion, CameraShake, ChromaticAberration, ColorGrading, ColorLut, Decal,
-    DepthOfField, FilmGrain, Glow, GodRays, Light2d, Lighting2d, LutHandle, MotionBlur, Occluder2d,
-    Outline, ScreenFlash, SpriteFx, Vignette,
+    DepthOfField, FilmGrain, Glow, GodRays, Light2d, Lighting2d, MotionBlur, Occluder2d, Outline,
+    ScreenFlash, SpriteFx, Vignette,
 };
 use crate::material::StandardMaterial;
 use crate::particles::{EmitterHandle, ParticleEmitter, ParticleSystem};
@@ -359,14 +359,19 @@ handle!(
     TextureArrayHandle
 );
 handle!(
+    /// A colour LUT added to a [`RenderScene`] ([`RenderScene::add_lut`]).
+    LutHandle
+);
+handle!(
     /// A colour palette added to a [`RenderScene`] for
     /// [`crate::Stylise`]'s quantisation ([`RenderScene::add_palette`]).
     PaletteHandle
 );
 
 /// A sprite drawn from a layer of a texture array instead of its texture
-/// ([`RenderScene::sprite_arrays`]): a sheet of same-sized frames batched
-/// into one draw whichever frame each sprite shows.
+/// ([`RenderScene::sprite_arrays`], [`Overlay::sprite_arrays`]): a sheet of
+/// same-sized frames batched into one draw whichever frame each sprite
+/// shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SpriteArray {
     /// The index in [`RenderScene::sprites`].
@@ -976,6 +981,10 @@ impl Text {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Overlay {
     pub sprites: Vec<Sprite>,
+    /// Overlay sprites drawn from a layer of a texture array instead of
+    /// their texture ([`SpriteArray::sprite`] indexes [`Overlay::sprites`]):
+    /// one draw per array whichever layer each shows, as in the world.
+    pub sprite_arrays: Vec<SpriteArray>,
     pub texts: Vec<Text>,
     /// Glass panels: the frame under each, blurred ([`Glass`]).
     pub glass: Vec<Glass>,
@@ -998,6 +1007,7 @@ impl Overlay {
     pub fn new(width: f32, height: f32, scale: f32) -> Overlay {
         Overlay {
             sprites: Vec::new(),
+            sprite_arrays: Vec::new(),
             texts: Vec::new(),
             glass: Vec::new(),
             width,
@@ -1068,6 +1078,8 @@ pub struct RenderScene {
     morphs: Vec<Option<MorphTargets>>,
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
+    /// Per LUT slot, bumped when it is filled again or emptied.
+    lut_revisions: Vec<u64>,
     palettes: Vec<crate::Palette>,
     /// Per palette, environment map and texture array: how many times its
     /// slot was refilled or emptied (the renderer uploads or frees it again).
@@ -1181,6 +1193,7 @@ pub struct RenderScene {
     environment_map_slots: Slots,
     texture_array_slots: Slots,
     palette_slots: Slots,
+    lut_slots: Slots,
 }
 
 impl Default for RenderScene {
@@ -1219,6 +1232,7 @@ impl RenderScene {
             morphs: Vec::new(),
             emitters: Vec::new(),
             luts: Vec::new(),
+            lut_revisions: Vec::new(),
             palettes: Vec::new(),
             palette_revisions: Vec::new(),
             environment_maps: Vec::new(),
@@ -1267,6 +1281,7 @@ impl RenderScene {
             environment_map_slots: Slots::default(),
             texture_array_slots: Slots::default(),
             palette_slots: Slots::default(),
+            lut_slots: Slots::default(),
         }
     }
 
@@ -1487,10 +1502,58 @@ impl RenderScene {
         self.emitters.get(handle.index())
     }
 
-    /// Adds a 32³ colour grading table ([`ColorLut`]).
+    /// Adds a 32³ colour grading table ([`ColorLut`]). A slot freed by
+    /// [`RenderScene::remove_lut`] is reused under a new generation.
     pub fn add_lut(&mut self, lut: ColorLut) -> LutHandle {
-        self.luts.push(lut);
-        LutHandle(self.luts.len() as u32 - 1)
+        let (i, generation, reused) = self.lut_slots.take(self.luts.len(), true);
+        if reused {
+            self.luts[i] = lut;
+            self.lut_revisions[i] += 1;
+        } else {
+            self.luts.push(lut);
+            self.lut_revisions.push(0);
+        }
+        LutHandle::from_parts(i, generation)
+    }
+
+    /// Removes a colour LUT: the renderer frees its 3D texture before the
+    /// next frame and a later add reuses the slot under a new generation.
+    /// A frame whose colour grading still names it is refused
+    /// ([`crate::RenderError::InvalidHandle`]). False for a handle that is
+    /// not live.
+    pub fn remove_lut(&mut self, handle: LutHandle) -> bool {
+        let i = handle.index();
+        if !self.lut_slots.live(i, handle.generation()) {
+            return false;
+        }
+        self.luts[i] = ColorLut {
+            size: 0,
+            rgba: Vec::new(),
+        };
+        self.lut_revisions[i] += 1;
+        self.lut_slots.remove(i, true);
+        true
+    }
+
+    /// Whether `handle` names a LUT of this scene that was not removed.
+    pub fn contains_lut(&self, handle: LutHandle) -> bool {
+        self.lut_slots.live(handle.index(), handle.generation())
+    }
+
+    /// A live LUT.
+    pub fn lut(&self, handle: LutHandle) -> Option<&ColorLut> {
+        self.contains_lut(handle)
+            .then(|| &self.luts[handle.index()])
+    }
+
+    pub(crate) fn lut_revisions(&self) -> &[u64] {
+        &self.lut_revisions
+    }
+
+    /// Whether slot `index` holds a live LUT.
+    pub(crate) fn lut_live(&self, index: usize) -> bool {
+        let g = self.lut_slots.generation(index);
+        self.lut_slots.live(index, g)
     }
 
     /// Adds a prefiltered environment map (an asset; og-cook's `type
@@ -2081,10 +2144,11 @@ impl RenderScene {
     }
 
     /// Every per-frame reference to a removed mesh, material, texture,
-    /// font, environment map, texture array or palette: instances, skinned
-    /// instances, sprites (and the arrays they draw from), texts, the
-    /// overlay's, the environment map and the stylisation's palette
-    /// (nothing to look at until something was removed).
+    /// font, environment map, texture array, palette or LUT: instances,
+    /// skinned instances, sprites (and the arrays they draw from), texts,
+    /// the overlay's, the environment map, the colour grading's LUT and the
+    /// stylisation's palette (nothing to look at until something was
+    /// removed).
     pub(crate) fn stale_handle(&self) -> Option<String> {
         let (m, t, mat, f) = (
             &self.mesh_slots,
@@ -2098,7 +2162,8 @@ impl RenderScene {
             || f.any_removed
             || self.environment_map_slots.any_removed
             || self.texture_array_slots.any_removed
-            || self.palette_slots.any_removed)
+            || self.palette_slots.any_removed
+            || self.lut_slots.any_removed)
         {
             return None;
         }
@@ -2106,6 +2171,14 @@ impl RenderScene {
             && !self.contains_environment_map(e.map)
         {
             return Some(format!("the environment map {} was removed", e.map.index()));
+        }
+        if let Some(g) = self.post.color_grading
+            && !self.contains_lut(g.lut)
+        {
+            return Some(format!(
+                "the colour grading's lut {} was removed",
+                g.lut.index()
+            ));
         }
         if let Some(p) = self.stylise.quantize.and_then(|q| q.palette)
             && !self.contains_palette(p)
@@ -2119,6 +2192,15 @@ impl RenderScene {
             if !self.contains_texture_array(s.array) {
                 return Some(format!(
                     "sprite {}: texture array {} was removed",
+                    s.sprite,
+                    s.array.index()
+                ));
+            }
+        }
+        for s in self.overlay.iter().flat_map(|o| &o.sprite_arrays) {
+            if !self.contains_texture_array(s.array) {
+                return Some(format!(
+                    "overlay sprite {}: texture array {} was removed",
                     s.sprite,
                     s.array.index()
                 ));

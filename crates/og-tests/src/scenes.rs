@@ -82,6 +82,7 @@ pub const SCENES: &[&str] = &[
     "stylise-retro",
     "stylise-material",
     "sprites-array",
+    "sprites-array-fx",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -296,6 +297,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // three-layer smooth array (linear, mipmapped) added, around one
         // plain textured sprite; one draw per array and blend.
         "sprites-array" => g.scene = sprite_array_scene(),
+        // Texture arrays through every sprite path: glowing array sprites
+        // (the glow pass), two 2D particle emitters drawing from arrays
+        // (layers by age, and at random with the soft dot's round edge,
+        // glowing), and overlay sprites from an array beside a plain one.
+        "sprites-array-fx" => {
+            g.scene = sprite_array_fx_scene();
+            g.frames = 60;
+            g.update = Some(fx::tick_update);
+        }
         // MSDF text at several sizes, rotated, Latin and CJK.
         "text-msdf" => g.scene = text_scene()?,
         // E4: a 256x256 tilemap with four layers (one animated, one at half
@@ -932,6 +942,172 @@ pub fn flipbook_frame(frame: u32) -> TextureData {
     t
 }
 
+/// Layer `k` of the `sprites-array` smooth array: a soft disc, orange,
+/// green or blue.
+fn glow_layer(k: usize) -> og_render::TextureSource {
+    og_render::TextureSource::Rgba(texture(64, ColorSpace::Srgb, |u, v| {
+        let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
+        let a = ((1.0 - d) * 2.0).clamp(0.0, 1.0);
+        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k];
+        [rgb[0], rgb[1], rgb[2], (a * 255.0) as u8]
+    }))
+}
+
+/// The `sprites-array-fx` scene (see [`build`]): the `sprites-array`
+/// flipbook and smooth arrays through the paths that scene leaves out.
+/// Top: four flipbook sprites glowing (PostEffects glow) over a dim plain
+/// strip. Bottom left: a fountain of round, glowing, added particles whose
+/// layers of the smooth array are picked at random; bottom right: a
+/// sprite-mode emitter stepping each particle through the flipbook's eight
+/// layers over its life. Top left of the screen: four overlay sprites of
+/// the flipbook's layers 0, 2, 4 and 6 (one draw) beside a plain one.
+pub fn sprite_array_fx_scene() -> RenderScene {
+    use og_render::{
+        Burst, EmitterShape, Glow, Overlay, ParticleBlend, ParticleEmitter, ParticleRender,
+        ParticleSystem, SheetMode, SpriteArray, SpriteFx, SpriteSheet, TextureArrayData,
+        TextureFilter, TextureSource,
+    };
+    let mut scene = RenderScene::new();
+    let flipbook = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..8)
+                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
+                .collect(),
+        })
+        .expect("eight frames of one size");
+    scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
+    let glows = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..3).map(glow_layer).collect(),
+        })
+        .expect("three layers of one size");
+    let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
+        let on = ((u * 4.0) as u32 + (v * 4.0) as u32).is_multiple_of(2);
+        if on {
+            [120, 120, 130, 255]
+        } else {
+            [40, 40, 50, 255]
+        }
+    }));
+    // The strip under the glowing row.
+    scene.add_sprite(Sprite {
+        texture: Some(plain),
+        position: Vec3::new(0.0, 2.5, 0.0),
+        size: Vec2::new(14.0, 1.2),
+        layer: 0,
+        ..Default::default()
+    });
+    // Four glowing flipbook sprites: one draw, and one glow draw.
+    for (n, k) in [1u32, 3, 5, 7].into_iter().enumerate() {
+        let i = scene.sprites.len() as u32;
+        scene.add_sprite(Sprite {
+            position: Vec3::new(-4.5 + n as f32 * 3.0, 2.5, 0.0),
+            size: Vec2::splat(2.0),
+            layer: 1,
+            ..Default::default()
+        });
+        scene.sprite_arrays.push(SpriteArray {
+            sprite: i,
+            array: flipbook,
+            layer: k,
+        });
+        scene.sprite_fx.push(SpriteFx {
+            sprite: i,
+            glow: 0.25 + n as f32 * 0.25,
+            ..Default::default()
+        });
+    }
+    // Round, glowing, added particles from the smooth array, a random layer each.
+    let motes = scene.add_emitter(ParticleEmitter {
+        max_particles: 96,
+        shape: EmitterShape::Cone {
+            angle_degrees: 40.0,
+            radius: 0.3,
+        },
+        rate: 30.0,
+        bursts: vec![Burst::once(0.0, 12)],
+        lifetime: [1.4, 2.0],
+        speed: [3.0, 4.5],
+        size: [0.5, 0.9],
+        gravity: Vec3::new(0.0, -3.0, 0.0),
+        array: Some(glows),
+        round: true,
+        sheet: SpriteSheet {
+            mode: SheetMode::Random,
+            ..Default::default()
+        },
+        blend: ParticleBlend::Additive,
+        render: ParticleRender::Sprite { layer: 2 },
+        glow: 0.6,
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        1,
+        motes,
+        Mat4::from_translation(Vec3::new(-4.0, -4.5, 0.0)),
+        5,
+        0,
+    ));
+    // The flipbook's eight layers over each particle's life, alpha blended.
+    let wheels = scene.add_emitter(ParticleEmitter {
+        max_particles: 64,
+        shape: EmitterShape::Cone {
+            angle_degrees: 45.0,
+            radius: 0.2,
+        },
+        rate: 6.0,
+        bursts: vec![Burst::once(0.0, 6)],
+        lifetime: [2.0, 2.0],
+        speed: [3.0, 4.0],
+        size: [1.0, 1.0],
+        gravity: Vec3::new(0.0, -2.5, 0.0),
+        array: Some(flipbook),
+        sheet: SpriteSheet {
+            mode: SheetMode::OverLife { cycles: 1.0 },
+            ..Default::default()
+        },
+        blend: ParticleBlend::Alpha,
+        render: ParticleRender::Sprite { layer: 2 },
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        2,
+        wheels,
+        Mat4::from_translation(Vec3::new(4.0, -4.5, 0.0)),
+        6,
+        0,
+    ));
+    // The overlay: four flipbook layers (one draw) and a plain sprite.
+    let mut overlay = Overlay::new(1280.0, 720.0, 0.0);
+    for (n, k) in [0u32, 2, 4, 6].into_iter().enumerate() {
+        let i = overlay.sprites.len() as u32;
+        overlay.sprites.push(Sprite {
+            position: Vec3::new(24.0 + n as f32 * 72.0, 24.0, 0.0),
+            size: Vec2::splat(64.0),
+            anchor: Vec2::ZERO,
+            ..Default::default()
+        });
+        overlay.sprite_arrays.push(SpriteArray {
+            sprite: i,
+            array: flipbook,
+            layer: k,
+        });
+    }
+    overlay.sprites.push(Sprite {
+        texture: Some(plain),
+        position: Vec3::new(24.0 + 4.0 * 72.0, 24.0, 0.0),
+        size: Vec2::splat(64.0),
+        anchor: Vec2::ZERO,
+        ..Default::default()
+    });
+    scene.overlay = Some(overlay);
+    scene.post.glow = Some(Glow { intensity: 0.8 });
+    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
+    scene.post.tonemap = Tonemap::None;
+    scene
+}
+
 /// The `sprites-array` scene (see [`build`]).
 pub fn sprite_array_scene() -> RenderScene {
     use og_render::{
@@ -948,16 +1124,7 @@ pub fn sprite_array_scene() -> RenderScene {
     scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
     let glows = scene
         .add_texture_array(TextureArrayData {
-            layers: (0..3)
-                .map(|k| {
-                    TextureSource::Rgba(texture(64, ColorSpace::Srgb, |u, v| {
-                        let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
-                        let a = ((1.0 - d) * 2.0).clamp(0.0, 1.0);
-                        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k];
-                        [rgb[0], rgb[1], rgb[2], (a * 255.0) as u8]
-                    }))
-                })
-                .collect(),
+            layers: (0..3).map(glow_layer).collect(),
         })
         .expect("three layers of one size");
     let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {

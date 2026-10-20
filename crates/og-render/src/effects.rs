@@ -316,23 +316,7 @@ impl CameraShake {
 // Colour lookup tables.
 // ---------------------------------------------------------------------------
 
-macro_rules! fx_handle {
-    ($(#[$doc:meta])* $name:ident) => {
-        $(#[$doc])*
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-        pub struct $name(pub(crate) u32);
-        impl $name {
-            /// The position of the resource in its scene, in insertion order.
-            pub fn index(self) -> usize {
-                self.0 as usize
-            }
-        }
-    };
-}
-fx_handle!(
-    /// A colour LUT added to a [`crate::RenderScene`].
-    LutHandle
-);
+pub use crate::scene::LutHandle;
 
 /// The LUT side every renderer expects.
 pub const LUT_SIZE: u32 = 32;

@@ -1,11 +1,12 @@
 //! The overlay pass ([`crate::Overlay`]): screen-space sprites and MSDF text
 //! drawn after every post effect into the output, with per-instance clip
-//! rectangles. Sorted like the world's 2D batch (layer, kind, texture or
-//! font; submission order within a run), one instanced draw per run.
+//! rectangles. Sorted like the world's 2D batch (layer, kind, texture,
+//! texture array or font; submission order within a run), one instanced
+//! draw per run.
 
 use crate::RenderError;
 use crate::effects::SpriteBlend;
-use crate::scene::{Overlay, TextureHandle};
+use crate::scene::{Overlay, TextureArrayHandle, TextureHandle};
 use crate::sprites::{FontLayout, RunSource, SpriteRun};
 use glam::Vec2;
 
@@ -20,7 +21,8 @@ pub(crate) struct OverlayInstance {
     clip: [f32; 4],
     /// MSDF text: x the glow's radius in CSS px, y the weight (CSS px of
     /// thickening), z 1 for a glow-only glyph (drawn under the text's fill),
-    /// w unused. Zero for sprites and plain text.
+    /// w unused. Zero for sprites and plain text; a sprite drawn from a
+    /// texture array has its layer in w (`shaders/overlay_array.wgsl`).
     effect: [f32; 4],
     /// The glow's linear RGBA.
     effect_color: [f32; 4],
@@ -60,14 +62,39 @@ fn clip_rect(overlay: &Overlay, clip: Option<u32>, what: &str) -> Result<[f32; 4
 }
 
 /// Sorts an overlay's sprites and texts into runs (the world batch's order).
+/// `array_layers(a)`: the layers of an uploaded texture array (`None`: not
+/// uploaded or removed). A sprite drawn from an array
+/// ([`Overlay::sprite_arrays`]) joins its array's run.
 pub(crate) fn build<'a>(
     overlay: &Overlay,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
+    array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
 ) -> Result<OverlayFrame, RenderError> {
+    let arrays = crate::sprites::array_entries(
+        &overlay.sprite_arrays,
+        overlay.sprites.len(),
+        "overlay sprite",
+        array_layers,
+    )?;
     let mut keyed: Vec<(i32, RunSource, OverlayInstance)> =
         Vec::with_capacity(overlay.sprites.len() + overlay.texts.len() * 8);
     for (i, s) in overlay.sprites.iter().enumerate() {
+        let clip = clip_rect(overlay, s.clip, &format!("sprite {i}"))?;
+        let mut inst = OverlayInstance {
+            position_rotation: [s.position.x, s.position.y, 0.0, s.rotation],
+            size_anchor: [s.size.x, s.size.y, s.anchor.x, s.anchor.y],
+            uv_rect: s.uv_rect,
+            color: s.color,
+            clip,
+            effect: [0.0; 4],
+            effect_color: [0.0; 4],
+        };
+        if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
+            inst.effect[3] = layer as f32;
+            keyed.push((s.layer, RunSource::Array(SpriteBlend::Alpha, array), inst));
+            continue;
+        }
         if let Some(t) = s.texture
             && t.index() >= texture_count
         {
@@ -76,19 +103,10 @@ pub(crate) fn build<'a>(
                 t.index()
             )));
         }
-        let clip = clip_rect(overlay, s.clip, &format!("sprite {i}"))?;
         keyed.push((
             s.layer,
             RunSource::Sprite(SpriteBlend::Alpha, s.texture),
-            OverlayInstance {
-                position_rotation: [s.position.x, s.position.y, 0.0, s.rotation],
-                size_anchor: [s.size.x, s.size.y, s.anchor.x, s.anchor.y],
-                uv_rect: s.uv_rect,
-                color: s.color,
-                clip,
-                effect: [0.0; 4],
-                effect_color: [0.0; 4],
-            },
+            inst,
         ));
     }
     for (i, g) in overlay.glass.iter().enumerate() {
@@ -212,6 +230,11 @@ pub(crate) struct OverlayPipelines {
 pub(crate) struct OverlayRenderer {
     pub output: OverlayPipelines,
     pub linear: Option<OverlayPipelines>,
+    /// Group 0 (the uniform), and the formats of `output` and `linear`:
+    /// what the array sprite variant (src/sprite_array.rs) is made with.
+    pub layout: wgpu::BindGroupLayout,
+    pub output_format: wgpu::TextureFormat,
+    pub linear_format: Option<wgpu::TextureFormat>,
     pub uniform: wgpu::Buffer,
     pub group: wgpu::BindGroup,
     pub buffer: wgpu::Buffer,
@@ -302,6 +325,9 @@ impl OverlayRenderer {
         OverlayRenderer {
             output: pipelines(output_format),
             linear: linear_format.map(pipelines),
+            layout,
+            output_format,
+            linear_format,
             uniform,
             group,
             buffer,
@@ -320,6 +346,14 @@ impl OverlayRenderer {
         };
         [width as f32, height as f32, scale, encode as u32 as f32]
     }
+}
+
+/// The texture arrays of the array runs (for bind groups made before the pass).
+pub(crate) fn run_arrays(frame: &OverlayFrame) -> impl Iterator<Item = TextureArrayHandle> + '_ {
+    frame.runs.iter().filter_map(|r| match r.source {
+        RunSource::Array(_, a) => Some(a),
+        _ => None,
+    })
 }
 
 /// The texture of a sprite run (for bind groups made before the pass).

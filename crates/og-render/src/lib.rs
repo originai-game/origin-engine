@@ -923,7 +923,10 @@ struct SceneCache {
     morph_data: Vec<[f32; 4]>,
     /// Whether `morph_data` changed since it was uploaded.
     morphs_dirty: bool,
-    luts: Vec<wgpu::TextureView>,
+    /// Colour LUTs as 3D textures with the bytes each allocates (`None`:
+    /// removed), and the scene's revision of each when it was uploaded.
+    luts: Vec<Option<(wgpu::TextureView, u64)>>,
+    lut_revisions: Vec<u64>,
     /// Environment maps as cube textures (kept for their views; `None`:
     /// removed), and the scene's revision of each when it was uploaded.
     environment_maps: Vec<Option<GpuEnvironmentMap>>,
@@ -2681,8 +2684,8 @@ impl Renderer {
         Ok(())
     }
 
-    /// GPU bytes of the scene's environment maps, texture arrays and
-    /// palettes (removed ones are freed and count nothing).
+    /// GPU bytes of the scene's environment maps, texture arrays, palettes
+    /// and colour LUTs (removed ones are freed and count nothing).
     fn asset_bytes(&self) -> u64 {
         let maps: u64 = self
             .cache
@@ -2699,7 +2702,8 @@ impl Renderer {
             .map(|a| a.info.bytes)
             .sum();
         let palettes = self.cache.palettes.iter().flatten().count() as u64 * PALETTE_BYTES;
-        maps + arrays + palettes
+        let luts: u64 = self.cache.luts.iter().flatten().map(|l| l.1).sum();
+        maps + arrays + palettes + luts
     }
 
     /// The array sprite pipelines and the bind group of `array` (made on
@@ -2848,12 +2852,28 @@ impl Renderer {
             self.cache.skins.push(skin);
         }
         self.sync_assets(scene)?;
-        for (index, lut) in scene.luts()[self.cache.luts.len()..].iter().enumerate() {
-            lut.validate().map_err(|e| {
-                RenderError::InvalidData(format!("lut {}: {e}", self.cache.luts.len() + index))
-            })?;
-            let view = post::lut_texture(&self.device, &self.queue, lut);
-            self.cache.luts.push(view);
+        let revisions = scene.lut_revisions();
+        for (i, &revision) in revisions.iter().enumerate() {
+            let fresh = i >= self.cache.luts.len();
+            if !fresh && self.cache.lut_revisions[i] == revision {
+                continue;
+            }
+            let gpu = if scene.lut_live(i) {
+                let lut = &scene.luts()[i];
+                lut.validate()
+                    .map_err(|e| RenderError::InvalidData(format!("lut {i}: {e}")))?;
+                let bytes = u64::from(lut.size).pow(3) * 4;
+                Some((post::lut_texture(&self.device, &self.queue, lut), bytes))
+            } else {
+                None
+            };
+            if fresh {
+                self.cache.luts.push(gpu);
+                self.cache.lut_revisions.push(revision);
+            } else {
+                self.cache.luts[i] = gpu;
+                self.cache.lut_revisions[i] = revision;
+            }
         }
         if self.cache.textures.len() < scene.textures().len() {
             // Every texture is checked before any is recorded: an error
@@ -4214,11 +4234,20 @@ impl Renderer {
         self.particles
             .ensure_pipelines(&self.device, &particle_frame, self.samples);
         let fonts = &self.cache.fonts;
+        let arrays = &self.cache.texture_arrays;
+        let array_layers = |a: TextureArrayHandle| {
+            scene
+                .contains_texture_array(a)
+                .then(|| arrays.get(a.index()).and_then(Option::as_ref))
+                .flatten()
+                .map(|g| g.info.layers)
+        };
         let overlay_frame = match &scene.overlay {
             Some(o) => Some(overlay::build(
                 o,
                 |i| fonts.get(i).map(|f| &f.layout),
                 self.cache.textures.len(),
+                array_layers,
             )?),
             None => None,
         };
@@ -4226,6 +4255,21 @@ impl Renderer {
             let textures: Vec<_> = overlay::run_textures(of).collect();
             for t in textures {
                 self.sprite_group(t);
+            }
+            let arrays: Vec<_> = overlay::run_arrays(of).collect();
+            for a in &arrays {
+                self.sprite_array_group(scene, *a);
+            }
+            if !arrays.is_empty() {
+                self.sprite_arrays
+                    .as_mut()
+                    .expect("made with the groups")
+                    .make_overlay(
+                        &self.device,
+                        &self.overlay.layout,
+                        self.overlay.output_format,
+                        self.overlay.linear_format,
+                    );
             }
         }
         // Glass: the tonemap renders into the glass source, which becomes
@@ -4364,11 +4408,17 @@ impl Renderer {
             )));
         }
         let lut_index = post_fx.color_grading.map(|g| g.lut.index());
-        if let Some(i) = lut_index
-            && i >= self.cache.luts.len()
+        if let Some(g) = post_fx.color_grading
+            && !(scene.contains_lut(g.lut)
+                && self
+                    .cache
+                    .luts
+                    .get(g.lut.index())
+                    .is_some_and(Option::is_some))
         {
             return Err(RenderError::InvalidHandle(format!(
-                "colour grading lut {i}"
+                "colour grading lut {}",
+                g.lut.index()
             )));
         }
         let glow = post_fx.glow.is_some() && !sprite_frame.glow_runs.is_empty();
@@ -5330,7 +5380,7 @@ impl Renderer {
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
         let lut_view = match lut_index {
-            Some(i) => &self.cache.luts[i],
+            Some(i) => &self.cache.luts[i].as_ref().expect("checked above").0,
             None => &self.post.identity_lut,
         };
         // Transmissive draws refract a copy of the opaque scene with its
@@ -6550,14 +6600,35 @@ impl Renderer {
                         occlusion_query_set: None,
                         multiview_mask: None,
                     });
-                    pass.set_pipeline(&self.sprite_glow_pipeline);
                     pass.set_bind_group(0, frame_bind_group, &[]);
                     pass.set_bind_group(2, glow_fx_group, &[]);
+                    // Plain sprites first (sorted before arrays), then each array's.
+                    let mut on_array = None;
                     for run in &sprite_frame.glow_runs {
+                        let array = matches!(run.source, RunSource::Array(..));
+                        if on_array != Some(array) {
+                            pass.set_pipeline(match array {
+                                false => &self.sprite_glow_pipeline,
+                                true => {
+                                    &self
+                                        .sprite_arrays
+                                        .as_ref()
+                                        .expect("made before the pass")
+                                        .glow
+                                }
+                            });
+                            on_array = Some(array);
+                        }
                         let group = match run.source {
                             RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
                                 .as_ref()
                                 .expect("made before the pass"),
+                            RunSource::Array(_, a) => {
+                                &self.cache.sprite_array_groups[a.index()]
+                                    .as_ref()
+                                    .expect("made before the pass")
+                                    .0
+                            }
                             _ => &self.white_sprite_group,
                         };
                         pass.set_bind_group(1, group, &[]);
@@ -6664,7 +6735,7 @@ impl Renderer {
                 pass.set_bind_group(0, &self.overlay.group, &[]);
                 let mut bound: Option<u8> = None;
                 for run in &runs[from..to] {
-                    // 0 sprite, 1 MSDF text, 2 glass.
+                    // 0 sprite, 1 MSDF text, 2 glass, 3 a texture array's sprites.
                     let (kind, group) = match run.source {
                         RunSource::Sprite(_, None) => (0u8, &self.white_sprite_group),
                         RunSource::Sprite(_, Some(t)) => (
@@ -6682,15 +6753,27 @@ impl Renderer {
                                 .expect("made with the overlay's glass")
                                 .overlay_group,
                         ),
-                        RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Array(..) => {
-                            unreachable!("the overlay has no strips, fluids or array sprites")
+                        RunSource::Array(_, a) => (
+                            3,
+                            &self.cache.sprite_array_groups[a.index()]
+                                .as_ref()
+                                .expect("made before the pass")
+                                .0,
+                        ),
+                        RunSource::Strip(..) | RunSource::Metaballs(_) => {
+                            unreachable!("the overlay has no strips or fluids")
                         }
                     };
                     if bound != Some(kind) {
                         pass.set_pipeline(match kind {
                             0 => &pipelines.sprite,
                             1 => &pipelines.msdf,
-                            _ => &pipelines.glass,
+                            2 => &pipelines.glass,
+                            _ => self
+                                .sprite_arrays
+                                .as_ref()
+                                .expect("made before the pass")
+                                .overlay(overlay_view.is_some()),
                         });
                         bound = Some(kind);
                     }

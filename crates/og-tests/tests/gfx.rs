@@ -492,6 +492,225 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
     }
 }
 
+/// Texture arrays through every sprite path (`sprites-array-fx`): the
+/// glowing flipbook sprites and the flipbook particles are one run, the
+/// smooth array's particles another, the strip a third, and the overlay's
+/// four array sprites one draw beside its plain one.
+#[test]
+fn sprites_array_fx_match_their_reference_in_one_draw_per_array() {
+    let report = check("sprites-array-fx");
+    let s = report.stats;
+    assert_eq!(s.overlay_sprites, 5);
+    assert_eq!(
+        s.overlay_draws, 2,
+        "the overlay's array run and its plain sprite"
+    );
+    assert_eq!(
+        s.sprite_draws, 5,
+        "the strip, the flipbook (sprites and particles), the motes, and the overlay's two"
+    );
+}
+
+/// Solid layers for array tests: red, green, blue.
+fn rgb_array(scene: &mut RenderScene) -> og_render::TextureArrayHandle {
+    use og_render::{ColorSpace, TextureArrayData, TextureData, TextureSource};
+    let solid = |rgb: [u8; 3]| {
+        TextureSource::Rgba(TextureData {
+            width: 4,
+            height: 4,
+            rgba: [rgb[0], rgb[1], rgb[2], 255].repeat(16),
+            color_space: ColorSpace::Srgb,
+            mips: og_render::Mips::None,
+        })
+    };
+    let array = scene
+        .add_texture_array(TextureArrayData {
+            layers: vec![solid([255, 0, 0]), solid([0, 255, 0]), solid([0, 0, 255])],
+        })
+        .expect("three layers");
+    scene.set_texture_array_filter(array, og_render::TextureFilter::Nearest);
+    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    array
+}
+
+fn pixel(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
+    let i = ((y * img.width + x) * 4) as usize;
+    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
+}
+
+/// An array sprite with a glow lights the glow buffer around it (the
+/// array's glow pipeline), and an overlay sprite draws the layer it names
+/// in screen space; a layer past the array is refused there too. Broken
+/// once by leaving array sprites out of the glow pass: no halo.
+#[test]
+fn array_sprites_glow_and_draw_in_the_overlay() {
+    use og_render::{Glow, Overlay, SpriteArray, SpriteFx};
+    let mut scene = RenderScene::new();
+    let array = rgb_array(&mut scene);
+    scene.add_sprite(Sprite {
+        size: Vec2::splat(2.0),
+        ..Default::default()
+    });
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: 0,
+        array,
+        layer: 1,
+    });
+    scene.post.glow = Some(Glow { intensity: 1.0 });
+    let desc = scenes::base_desc();
+    // Just outside the sprite's right edge (2 of 10 units tall: 72 px each side).
+    let (cx, cy) = (640, 360);
+    let edge = cx + 72 + 12;
+    let (plain, _) = frame(&desc, &scene, 1);
+    assert_eq!(pixel(&plain, cx, cy), [0, 255, 0], "layer 1");
+    assert_eq!(pixel(&plain, edge, cy), [0, 0, 0], "no glow");
+    scene.sprite_fx.push(SpriteFx {
+        sprite: 0,
+        glow: 2.0,
+        ..Default::default()
+    });
+    let (glowing, stats) = frame(&desc, &scene, 1);
+    let halo = pixel(&glowing, edge, cy);
+    assert!(
+        halo[1] > 20 && halo[0] < halo[1] / 4,
+        "the layer's green glows past the edge: {halo:?}"
+    );
+    assert_eq!(stats.sprite_draws, 1);
+
+    let mut overlay = Overlay::new(1280.0, 720.0, 1.0);
+    for (x, layer) in [(100.0, 2u32), (300.0, 0)] {
+        let i = overlay.sprites.len() as u32;
+        overlay.sprites.push(Sprite {
+            position: Vec3::new(x, 100.0, 0.0),
+            size: Vec2::splat(80.0),
+            ..Default::default()
+        });
+        overlay.sprite_arrays.push(SpriteArray {
+            sprite: i,
+            array,
+            layer,
+        });
+    }
+    scene.overlay = Some(overlay);
+    let (img, stats) = frame(&desc, &scene, 1);
+    assert_eq!(pixel(&img, 100, 100), [0, 0, 255], "overlay layer 2");
+    assert_eq!(pixel(&img, 300, 100), [255, 0, 0], "overlay layer 0");
+    assert_eq!(
+        stats.overlay_draws, 1,
+        "one draw for the array's overlay sprites"
+    );
+    scene.overlay.as_mut().unwrap().sprite_arrays[1].layer = 5;
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidData(m)) => assert!(m.contains("layer 5"), "{m}"),
+        other => panic!("an overlay layer past the array: {:?}", other.map(|_| ())),
+    }
+}
+
+/// A sprite-mode emitter with a texture array draws each particle from a
+/// layer: by age (every particle of one burst is the same age, so one
+/// layer shows) or at random (several show), in one draw; `round` gives
+/// them the soft dot's edge (a big particle's corner stays dark); a
+/// billboard emitter with an array is refused. Broken once by drawing the
+/// particles without their array (as untextured soft dots): no layer's
+/// colour shows.
+#[test]
+fn array_particles_take_their_layers_by_age_or_at_random() {
+    use og_render::{
+        Burst, EmitterShape, ParticleEmitter, ParticleRender, ParticleSystem, SheetMode,
+        SpriteSheet,
+    };
+    let run = |mode: SheetMode, round: bool, size: f32, billboard: bool| {
+        let mut scene = RenderScene::new();
+        let array = rgb_array(&mut scene);
+        // Forty small particles over the view, or one big one at the centre.
+        let big = size > 1.0;
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 64,
+            shape: match big {
+                true => EmitterShape::Point,
+                false => EmitterShape::Box {
+                    half_extents: Vec3::new(3.0, 3.0, 0.0),
+                },
+            },
+            rate: 0.0,
+            bursts: vec![Burst::once(0.0, if big { 1 } else { 40 })],
+            looping: false,
+            lifetime: [3.0, 3.0],
+            speed: [0.0, 0.0],
+            size: [size, size],
+            gravity: Vec3::ZERO,
+            array: Some(array),
+            round,
+            sheet: SpriteSheet {
+                mode,
+                ..Default::default()
+            },
+            blend: og_render::ParticleBlend::Alpha,
+            render: if billboard {
+                ParticleRender::Billboard
+            } else {
+                ParticleRender::Sprite { layer: 0 }
+            },
+            ..Default::default()
+        });
+        scene
+            .particles
+            .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 9, 0));
+        let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        // 1.5 s of a 3 s life at 60 ticks a second: the middle layer by age.
+        let mut stats = FrameStats::default();
+        for t in 0..=90 {
+            scene.tick = t;
+            scene.particles[0].tick = t;
+            stats = renderer.render(&scene, &RenderTarget::Offscreen)?;
+        }
+        Ok::<_, RenderError>((renderer.read_offscreen().expect("capture"), stats))
+    };
+    let colours = |img: &RgbaImage| {
+        let mut seen = [0usize; 3];
+        for p in img.pixels.as_chunks::<4>().0 {
+            match [p[0], p[1], p[2]] {
+                [255, 0, 0] => seen[0] += 1,
+                [0, 255, 0] => seen[1] += 1,
+                [0, 0, 255] => seen[2] += 1,
+                _ => {}
+            }
+        }
+        seen
+    };
+    let (img, stats) = run(SheetMode::OverLife { cycles: 1.0 }, false, 0.4, false).expect("frame");
+    let seen = colours(&img);
+    assert!(
+        seen[1] > 1000 && seen[0] == 0 && seen[2] == 0,
+        "by age: every particle on layer 1: {seen:?}"
+    );
+    assert_eq!(stats.sprites, 40);
+    assert_eq!(stats.sprite_draws, 1, "every layer in one draw");
+    let (img, _) = run(SheetMode::Random, false, 0.4, false).expect("frame");
+    let seen = colours(&img);
+    assert!(
+        seen.iter().all(|n| *n > 100),
+        "at random: every layer shows: {seen:?}"
+    );
+    // One big particle at the centre: a round one's corner is dark.
+    let (square, _) = run(SheetMode::OverLife { cycles: 1.0 }, false, 9.0, false).expect("frame");
+    let (round, _) = run(SheetMode::OverLife { cycles: 1.0 }, true, 9.0, false).expect("frame");
+    let corner = |img: &RgbaImage| pixel(img, 640 - 300, 360 - 300);
+    assert_eq!(corner(&square), [0, 255, 0], "a square particle's corner");
+    assert!(
+        corner(&round)[1] < 40,
+        "a round one's: {:?}",
+        corner(&round)
+    );
+    match run(SheetMode::Off, false, 0.4, true) {
+        Err(RenderError::InvalidData(m)) => assert!(m.contains("sprite-mode"), "{m}"),
+        other => panic!("a billboard emitter with an array: {:?}", other.map(|_| ())),
+    }
+}
+
 /// Higher layers draw over lower ones whatever the submission order.
 #[test]
 fn sprite_layers_order_the_draw() {
