@@ -52,6 +52,8 @@ mod post;
 mod ribbons;
 mod scatter;
 mod scene;
+mod shaders;
+pub use shaders::{ShaderSource, shader_sources};
 pub mod shapes;
 mod skin;
 mod sprites;
@@ -224,6 +226,32 @@ fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
+}
+/// The scattered copies' lit module with the light tables `tables`.
+fn scatter_lit_source(tables: clusters::LightTables) -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
+        tables.wgsl(),
+        particles_gpu::NOISE_WGSL,
+        include_str!("../shaders/scatter_common.wgsl"),
+        include_str!("../shaders/scatter.wgsl")
+    )
+}
+
+/// The scattered copies' shadow module.
+fn scatter_shadow_source() -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{}",
+        particles_gpu::NOISE_WGSL,
+        include_str!("../shaders/scatter_common.wgsl"),
+        include_str!("../shaders/scatter_shadow.wgsl")
+    )
+}
+
+/// What the 3D fluid's module starts with: the frame group, the light
+/// tables `tables` and the lighting.
+fn fluid_shared_source(tables: clusters::LightTables) -> String {
+    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", tables.wgsl())
 }
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
@@ -1891,7 +1919,7 @@ impl Renderer {
         let fluid3d = fluid3d::Fluid3dRenderer::new(
             &device,
             &frame_layout,
-            &format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", light_tables.wgsl()),
+            &fluid_shared_source(light_tables),
             samples,
         );
         let additive = wgpu::BlendState {
@@ -2033,19 +2061,8 @@ impl Renderer {
                 frame_layout: &frame_layout,
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
-                lit_wgsl: format!(
-                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{}{}",
-                    light_tables.wgsl(),
-                    particles_gpu::NOISE_WGSL,
-                    include_str!("../shaders/scatter_common.wgsl"),
-                    include_str!("../shaders/scatter.wgsl")
-                ),
-                shadow_wgsl: format!(
-                    "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{}",
-                    particles_gpu::NOISE_WGSL,
-                    include_str!("../shaders/scatter_common.wgsl"),
-                    include_str!("../shaders/scatter_shadow.wgsl")
-                ),
+                lit_wgsl: scatter_lit_source(light_tables),
+                shadow_wgsl: scatter_shadow_source(),
                 samples,
             },
         );

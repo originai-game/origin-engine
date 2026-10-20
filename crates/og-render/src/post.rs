@@ -366,7 +366,7 @@ impl PostPasses {
         let module = |label: &str, body: &str| {
             device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(format!("{FULLSCREEN_WGSL}{body}").into()),
+                source: wgpu::ShaderSource::Wgsl(fullscreen_source(body).into()),
             })
         };
         let post_shader = module("post", POST_WGSL);
@@ -1910,4 +1910,23 @@ pub(crate) fn taa_weight(history_valid: bool) -> f32 {
     } else {
         1.0
     }
+}
+
+/// A post pass's module: the fullscreen vertex stage and `body`.
+pub(crate) fn fullscreen_source(body: &str) -> String {
+    format!("{FULLSCREEN_WGSL}{body}")
+}
+
+/// The post passes' modules by label, as [`PostPasses::new`] compiles them.
+pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
+    [
+        ("post", POST_WGSL),
+        ("luminance", LUMINANCE_WGSL),
+        ("exposure", EXPOSURE_WGSL),
+        ("taa", TAA_WGSL),
+        ("fx post", FXPOST_WGSL),
+    ]
+    .into_iter()
+    .map(|(label, body)| (label, fullscreen_source(body)))
+    .collect()
 }

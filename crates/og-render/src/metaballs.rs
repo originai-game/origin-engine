@@ -176,9 +176,7 @@ impl MetaballRenderer {
     ) -> MetaballRenderer {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("metaballs"),
-            source: wgpu::ShaderSource::Wgsl(
-                format!("{frame_wgsl}{}", include_str!("../shaders/metaballs.wgsl")).into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(metaballs_source(frame_wgsl).into()),
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("metaballs"),
@@ -462,6 +460,11 @@ pub(crate) fn layers(fluids: &[Metaballs]) -> Vec<(usize, i32)> {
             Some((k, fluids[*lead].layer))
         })
         .collect()
+}
+
+/// The metaballs' module after the frame group, as the renderer compiles it.
+pub(crate) fn metaballs_source(frame_wgsl: &str) -> String {
+    format!("{frame_wgsl}{}", include_str!("../shaders/metaballs.wgsl"))
 }
 
 #[cfg(test)]

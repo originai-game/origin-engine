@@ -133,7 +133,7 @@ impl IblGenerator {
     pub fn new(device: &wgpu::Device) -> IblGenerator {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ibl"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ibl.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(IBL_WGSL.into()),
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ibl sampler"),
@@ -546,3 +546,6 @@ impl IblGenerator {
         self.lut_drawn = true;
     }
 }
+
+/// The IBL generator's module (`crate::shaders` validates it).
+pub(crate) const IBL_WGSL: &str = include_str!("../shaders/ibl.wgsl");

@@ -81,7 +81,7 @@ impl GlassPasses {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("glass"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/glass.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(GLASS_WGSL.into()),
         });
         let down = crate::post::fullscreen_pipeline(
             device,
@@ -291,3 +291,6 @@ impl GlassPasses {
 /// The pyramid holds linear light (decoded from the source when it is
 /// encoded) at half precision.
 pub(crate) const PYRAMID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+/// The glass passes' module (`crate::shaders` validates it).
+pub(crate) const GLASS_WGSL: &str = include_str!("../shaders/glass.wgsl");

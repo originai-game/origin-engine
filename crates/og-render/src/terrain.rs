@@ -686,25 +686,15 @@ impl TerrainRenderer {
             label: Some("terrain"),
             entries: &entries,
         });
-        let common = include_str!("../shaders/terrain.wgsl");
         let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("terrain"),
             source: wgpu::ShaderSource::Wgsl(
-                format!(
-                    "{}{}{}{common}{}",
-                    p.frame_wgsl,
-                    p.light_tables_wgsl,
-                    p.lighting_wgsl,
-                    include_str!("../shaders/terrain_lit.wgsl")
-                )
-                .into(),
+                terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl).into(),
             ),
         });
         let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("terrain shadow"),
-            source: wgpu::ShaderSource::Wgsl(
-                format!("{common}{}", include_str!("../shaders/terrain_shadow.wgsl")).into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(terrain_shadow_source().into()),
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
@@ -1554,6 +1544,24 @@ pub(crate) fn draw_levels(
         }
     }
     (calls, triangles)
+}
+
+const TERRAIN_WGSL: &str = include_str!("../shaders/terrain.wgsl");
+
+/// The terrain's lit module after the frame group, the light tables and the lighting.
+pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
+    format!(
+        "{frame}{tables}{lighting}{TERRAIN_WGSL}{}",
+        include_str!("../shaders/terrain_lit.wgsl")
+    )
+}
+
+/// The terrain's shadow module.
+pub(crate) fn terrain_shadow_source() -> String {
+    format!(
+        "{TERRAIN_WGSL}{}",
+        include_str!("../shaders/terrain_shadow.wgsl")
+    )
 }
 
 #[cfg(test)]

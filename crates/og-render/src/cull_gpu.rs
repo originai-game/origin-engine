@@ -38,9 +38,9 @@ use glam::{Mat4, Vec4};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-const CULL_WGSL: &str = include_str!("../shaders/cull.wgsl");
+pub(crate) const CULL_WGSL: &str = include_str!("../shaders/cull.wgsl");
 const HIZ_WGSL: &str = include_str!("../shaders/hiz.wgsl");
-const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
+pub(crate) const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
 
 /// Passes one frame may cull: three cascades, twelve local light faces,
 /// the planar reflection, the occluders and the camera (the size of
@@ -308,7 +308,7 @@ fn buffer(
 }
 
 /// The pyramid's base: the farthest of a pixel's samples.
-fn hiz_source(multisampled: bool) -> String {
+pub(crate) fn hiz_source(multisampled: bool) -> String {
     let decl = if multisampled {
         "@group(0) @binding(2) var depth_in: texture_depth_multisampled_2d;\n\
          fn farthest_sample(xy: vec2<u32>) -> f32 {\n\
