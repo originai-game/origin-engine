@@ -115,9 +115,7 @@ fn dict(b: &[u8], at: &mut usize) -> Result<BTreeMap<String, String>, String> {
 fn string(b: &[u8], at: &mut usize) -> Result<String, String> {
     let n = u32_at(b, *at)? as usize;
     *at += 4;
-    let s = b
-        .get(*at..*at + n)
-        .ok_or("vox: truncated string")?;
+    let s = b.get(*at..*at + n).ok_or("vox: truncated string")?;
     *at += n;
     Ok(String::from_utf8_lossy(s).into_owned())
 }
@@ -181,8 +179,11 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 let size = pending_size.take().ok_or("vox: XYZI without SIZE")?;
                 let mut voxels = Vec::with_capacity(n);
                 for i in 0..n {
-                    let v = body.get(4 + i * 4..8 + i * 4).ok_or("vox: truncated XYZI")?;
-                    if (v[0] as u32) < size[0] && (v[1] as u32) < size[1] && (v[2] as u32) < size[2] {
+                    let v = body
+                        .get(4 + i * 4..8 + i * 4)
+                        .ok_or("vox: truncated XYZI")?;
+                    if (v[0] as u32) < size[0] && (v[1] as u32) < size[1] && (v[2] as u32) < size[2]
+                    {
                         voxels.push([v[0], v[1], v[2], v[3]]);
                     }
                 }
@@ -325,14 +326,26 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
         }
     }
     if nodes.contains_key(&0) {
-        walk(&nodes, 0, [0; 3], IDENTITY, &mut placements, 0, models.len());
+        walk(
+            &nodes,
+            0,
+            [0; 3],
+            IDENTITY,
+            &mut placements,
+            0,
+            models.len(),
+        );
     }
     if placements.is_empty() {
         let mut x = 0i32;
         for (i, m) in models.iter().enumerate() {
             placements.push(Placement {
                 model: i,
-                translation: [x + (m.size[0] / 2) as i32, (m.size[1] / 2) as i32, (m.size[2] / 2) as i32],
+                translation: [
+                    x + (m.size[0] / 2) as i32,
+                    (m.size[1] / 2) as i32,
+                    (m.size[2] / 2) as i32,
+                ],
                 rotation: IDENTITY,
             });
             x += m.size[0] as i32 + 1;
@@ -423,7 +436,11 @@ fn mesh_model(m: &VoxModel) -> Vec<Quad> {
                                 mask[i + ii + dims[u] * (j + jj)] = 0;
                             }
                         }
-                        let face = if dir > 0 { slice as f32 + 1.0 } else { slice as f32 };
+                        let face = if dir > 0 {
+                            slice as f32 + 1.0
+                        } else {
+                            slice as f32
+                        };
                         let corner = |du: f32, dv: f32| {
                             let mut p = [0f32; 3];
                             p[axis] = face;
@@ -436,9 +453,19 @@ fn mesh_model(m: &VoxModel) -> Vec<Quad> {
                         let (wf, hf) = (w as f32, h as f32);
                         // Counter-clockwise seen from outside.
                         let corners = if dir > 0 {
-                            [corner(0.0, 0.0), corner(wf, 0.0), corner(wf, hf), corner(0.0, hf)]
+                            [
+                                corner(0.0, 0.0),
+                                corner(wf, 0.0),
+                                corner(wf, hf),
+                                corner(0.0, hf),
+                            ]
                         } else {
-                            [corner(0.0, 0.0), corner(0.0, hf), corner(wf, hf), corner(wf, 0.0)]
+                            [
+                                corner(0.0, 0.0),
+                                corner(0.0, hf),
+                                corner(wf, hf),
+                                corner(wf, 0.0),
+                            ]
                         };
                         quads.push(Quad {
                             corners,
@@ -508,7 +535,11 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
             // MagicaVoxel (x, y, z) z-up → glTF (x, z, -y) y-up.
             let n = [n[0], n[2], -n[1]];
             for corner in q.corners {
-                let p = turn([corner[0] - pivot[0], corner[1] - pivot[1], corner[2] - pivot[2]]);
+                let p = turn([
+                    corner[0] - pivot[0],
+                    corner[1] - pivot[1],
+                    corner[2] - pivot[2],
+                ]);
                 let p = [p[0], p[2], -p[1]];
                 for i in 0..3 {
                     lo[i] = lo[i].min(p[i]);
@@ -523,7 +554,7 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
             indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
         let mut view = |data: &[u8], target: u32| -> usize {
-            while bin.len() % 4 != 0 {
+            while !bin.len().is_multiple_of(4) {
                 bin.push(0);
             }
             let offset = bin.len();
@@ -586,10 +617,10 @@ pub fn to_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
         "buffers": [{ "byteLength": bin.len() }]
     });
     let mut json_bytes = serde_json::to_vec(&json).map_err(|e| e.to_string())?;
-    while json_bytes.len() % 4 != 0 {
+    while !json_bytes.len().is_multiple_of(4) {
         json_bytes.push(b' ');
     }
-    while bin.len() % 4 != 0 {
+    while !bin.len().is_multiple_of(4) {
         bin.push(0);
     }
     let total = 12 + 8 + json_bytes.len() + 8 + bin.len();
@@ -692,7 +723,11 @@ mod tests {
     fn the_palette_colours_the_vertices_and_the_frame_is_y_up() {
         let mut palette = [[0u8; 4]; 256];
         palette[1] = [255, 0, 0, 255];
-        let bytes = write([1, 1, 3], &[[0, 0, 0, 1], [0, 0, 1, 1], [0, 0, 2, 1]], Some(&palette[1..]));
+        let bytes = write(
+            [1, 1, 3],
+            &[[0, 0, 0, 1], [0, 0, 1, 1], [0, 0, 2, 1]],
+            Some(&palette[1..]),
+        );
         let glb = to_glb(&bytes).unwrap();
         let g = gltf::Gltf::from_slice(&glb).unwrap();
         let blob = g.blob.clone().unwrap();
@@ -701,10 +736,16 @@ mod tests {
         let reader = prim.reader(|_| Some(&blob[..]));
         let pos: Vec<[f32; 3]> = reader.read_positions().unwrap().collect();
         // A column of three voxels stands along y (glTF up), 3 m tall.
-        let (lo, hi) = pos.iter().fold((f32::MAX, f32::MIN), |(l, h), p| (l.min(p[1]), h.max(p[1])));
+        let (lo, hi) = pos
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), p| (l.min(p[1]), h.max(p[1])));
         assert_eq!((lo, hi), (-1.0, 2.0));
         let colors: Vec<[f32; 4]> = reader.read_colors(0).unwrap().into_rgba_f32().collect();
-        assert!(colors.iter().all(|c| c[0] > 0.99 && c[1] < 0.01 && c[2] < 0.01));
+        assert!(
+            colors
+                .iter()
+                .all(|c| c[0] > 0.99 && c[1] < 0.01 && c[2] < 0.01)
+        );
     }
 
     #[test]
