@@ -19,7 +19,7 @@ the world → scene extraction belongs to the layer above.
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile; `remove_mesh`, `remove_texture`, `remove_material`, `remove_font`, `remove_environment_map`, `remove_texture_array`, `remove_palette` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `particle_colliders` (`ParticleCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). The renderer uploads what is new or changed and frees what was removed before the next frame. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette`, `add_lut` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile; `remove_mesh`, `remove_texture`, `remove_material`, `remove_font`, `remove_environment_map`, `remove_texture_array`, `remove_palette`, `remove_lut` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `particle_colliders` (`ParticleCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). The renderer uploads what is new or changed and frees what was removed before the next frame. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
@@ -30,7 +30,7 @@ the world → scene extraction belongs to the layer above.
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, the cook's prefilter. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
-| `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays`: a world sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture. See [The 2D batch](#the-2d-batch-e4). |
+| `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays` for screen sprites): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture, with glow, flash, 2D lighting and blend; `ParticleEmitter::array` draws a 2D emitter's particles from one. See [The 2D batch](#the-2d-batch-e4). |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
@@ -39,7 +39,7 @@ the world → scene extraction belongs to the layer above.
 | `TerrainData`, `TerrainControl`, `TerrainHandle` | A terrain's geometry: `columns` × `rows` heights (m) over a `size` rectangle centred on its origin, row-major from -z and -x, and an optional RGBA8 control map (one channel per layer). `height(local)` (on the triangles the renderer and physics use), `normal(local)`, `range()`, `cell()`, `check()`. See [Terrain](#phase-2-terrain). |
 | `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, its `transform` (rotation, scale and translation from the terrain's own space, centred on the height field at height 0, to the world), up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes` (textures, texture arrays, environment maps and palettes on the GPU; removed ones count nothing), `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights` and `shadowed_lights_dropped`, `particle_collision_skipped`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes` (textures, texture arrays, environment maps, palettes and colour LUTs on the GPU; removed ones count nothing), `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights` and `shadowed_lights_dropped`, `particle_collision_skipped`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
 | `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `texture_formats`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
@@ -51,26 +51,28 @@ the world → scene extraction belongs to the layer above.
 Every resource kind a game streams has a generation-tagged handle: a
 handle's low 24 bits are its slot, the top 8 the slot's generation.
 `remove_mesh`, `remove_texture`, `remove_material`, `remove_font` (the P4
-perf round, db105bd) and `remove_environment_map`, `remove_texture_array`,
-`remove_palette` empty a slot and move its generation on; the renderer
+perf round, db105bd), `remove_environment_map`, `remove_texture_array`,
+`remove_palette` and `remove_lut` (the sprites-arrays round: a streaming
+group's colour LUTs) empty a slot and move its generation on; the renderer
 frees the GPU copy before the next frame (by slot revision: a refilled slot
 is uploaded again, an emptied one dropped), and the next add of the kind
 fills the slot again under the new generation, so an old handle never
 reaches the new resource. A stale handle is refused everywhere: the
 setters (`set_mesh`, `set_material`, `set_font`, `set_texture_filter`,
 `set_texture_array_filter`, ...) return false, the getters (`mesh`,
-`font`, `environment_map_data`, `texture_array`, `palette`) `None`,
+`font`, `environment_map_data`, `texture_array`, `palette`, `lut`) `None`,
 `contains_*` false, and `render` refuses a frame that still names one
 (`RenderError::InvalidHandle`, naming it: an instance's mesh or material, a
-sprite's texture or array, a text's font or a live font's atlas,
-`environment_map`, the stylisation's palette). A removed texture is also
+sprite's or an overlay sprite's texture or array, a 2D emitter's array, a
+text's font or a live font's atlas, `environment_map`, the colour
+grading's LUT, the stylisation's palette). A removed texture is also
 cleared from every material slot and the decal atlas (they draw without
 it). Removing what the frame still uses is the caller's to avoid:
 og-runtime's streaming keeps such a resource, with a warning, until the
 frame stops using it. `FrameStats::texture_bytes` counts textures, arrays
 (padding layers included), environment maps (every level of the six RGB9E5
-faces) and palettes (256 × 1 RGBA8), so a frame after a removal reports
-the freed bytes gone. The image-based light is keyed by the map slot's
+faces), palettes (256 × 1 RGBA8) and LUTs (32³ RGBA8), so a frame after a
+removal reports the freed bytes gone. The image-based light is keyed by the map slot's
 revision, the stylisation's bind group by the palette's, so a refilled
 slot never draws the old resource. Tests: og-tests `tests/removal.rs`.
 
@@ -330,6 +332,8 @@ three times as far as one with 4); og-ui's skins use it for `textGlow`
 and `references/<tier>/text-glow.png`; the cost is
 `tests/evidence/P2/ui/text-glow-cost.md`). The weight stays within the
 field's reach too, so a thin field never fills the glyph's quad.
+`Overlay::sprite_arrays` draws overlay sprites from a layer of a texture
+array, one draw per array (see [The 2D batch](#the-2d-batch-e4)).
 `Overlay::glass` holds glass panels (`Glass`: a rounded rectangle, a blur
 radius, a tint and its share, an opacity, a layer and a clip): a frame with
 any renders its tonemap into a texture of its own (`src/glass.rs`), copies
@@ -447,6 +451,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. | all |
 | `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. | all |
 | `sprites-array` | Sixteen sprites of an eight-layer pixel-art flipbook array (nearest; the second row flipped and turned), six of a three-layer smooth array added over a plain textured strip: one draw per array and blend, three in all. | all |
+| `sprites-array-fx` | The same two arrays through the other paths: four glowing flipbook sprites over a strip (glow pass), a fountain of round, glowing, added particles on random layers of the smooth array, a flipbook emitter stepping each particle through the layers by age, and four overlay sprites of the flipbook's even layers beside a plain one; after 60 ticks. 5 sprite draws (three world, two overlay). | all |
 | `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. | all |
 | `sky-only` | The sky with the sun in view: 2 draws. | all |
 | `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the tier's antialiasing. | all |
@@ -571,23 +576,43 @@ every gfx and effects reference passes unchanged.
 
 **Texture arrays** (`sprite_arrays`, `SpriteArray { sprite, array, layer
 }`): a world sprite draws from a layer of a texture array instead of its
-texture, through a pipeline variant (`shaders/sprite_array.wgsl`, made on
-the first frame that draws one) that samples a `texture_2d_array`. The
-instance carries its layer (location 6 of the sprite instance, which the
-other sprite pipelines do not read), so the run key is (blend, array):
-every sprite of one array is one instanced draw whichever layer it shows,
-where a sheet of separate textures would break the run at each frame. The
-group's view is an explicit `D2Array`; on WebGL2 the GL backend would take
-an array of one layer, or of a multiple of six, for a 2D or cube texture,
-so `add_texture_array` pads it (`gl_safe_array_layers`) and callers still
+texture, through pipeline variants (`shaders/sprite_array.wgsl`, made on
+the first frame that draws one) that sample a `texture_2d_array`: alpha,
+additive and the glow buffer's, one per sprite pipeline. The instance
+carries its layer (location 6 of the sprite instance, which the other
+sprite pipelines do not read), so the run key is (blend, array): every
+sprite of one array is one instanced draw whichever layer it shows, where a
+sheet of separate textures would break the run at each frame. The group's
+view is an explicit `D2Array`; on WebGL2 the GL backend would take an array
+of one layer, or of a multiple of six, for a 2D or cube texture, so
+`add_texture_array` pads it (`gl_safe_array_layers`) and callers still
 address only the layers they gave. A layer past the array's count is
 refused (`InvalidData`). Array sprites take the hit flash, 2D lighting,
-fog and the additive blend; not the glow pass, the soft dot, MSDF or the
-overlay. og-runtime's flipbooks still pack frames as regions of one sheet
-texture (`og.load.flipbook`); `SpriteDesc.array` is how a game draws from
-an array. Tests: og-tests `sprites-array` (an eight-frame pixel-art
-flipbook in two rows and a three-layer smooth array added over a plain
-strip: three draws) and `a_sprite_draws_the_layer_of_its_texture_array`.
+fog, the additive blend, the soft dot and the glow pass (a glowing array
+sprite joins the glow runs by array, sorted after the plain textures, so
+every existing glow run keeps its order). Screen sprites draw from arrays
+too (`Overlay::sprite_arrays`, indexing `Overlay::sprites`): the overlay's
+variant (`shaders/overlay_array.wgsl`, in the output's format and its sRGB
+view's, made on the first frame with one) reads the layer from the overlay
+instance's otherwise unused `effect.w`, one draw per array. 2D particles
+draw from an array when their emitter names one (`ParticleEmitter::array`,
+sprite mode only: a billboard emitter with an array is refused): the
+layers are the sheet's frames, picked by the sheet's mode (`OverLife` and
+`Fps` by age, `Random` per particle; `sheet.frames` limits them, 0 every
+layer), every particle of the array one draw; `ParticleEmitter::round`
+gives sprite particles the soft dot's round edge over their texture or
+layer. MSDF text never samples an array. og-runtime's `og.Sprite { array,
+arrayLayer }`, `SpriteDesc.array` (world or screen), an emitter's `array`
+line and a flipbook sheet with `array true` (its frames cooked into an
+array, frame n drawn as layer n) all come here. Tests: og-tests
+`sprites-array` (an eight-frame pixel-art flipbook in two rows and a
+three-layer smooth array added over a plain strip: three draws; unchanged
+byte for byte by the round that added the other paths), `sprites-array-fx`
+(glowing array sprites, a round glowing emitter on random layers and a
+flipbook emitter by age, four overlay array sprites beside a plain one),
+`a_sprite_draws_the_layer_of_its_texture_array`,
+`array_sprites_glow_and_draw_in_the_overlay` and
+`array_particles_take_their_layers_by_age_or_at_random`.
 
 Tests: `tests/sprites2d.rs` (sort keys across textures within a layer,
 layers still win; tile culling, tiles under their layer's sprites, repeat
@@ -619,7 +644,9 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   planes, boxes, spheres and terrain height fields, which og-runtime fills
   from its og.Collider components; a step from outside a shape to inside
   bounces, as the compute shader's response), soft fade against the scene,
-  local or world space, 2D emitters drawn as sprites. Simulated by compute
+  local or world space, 2D emitters drawn as sprites (from a texture or a
+  texture array's layers, `ParticleEmitter::array`, with `round` for the
+  soft dot's edge). Simulated by compute
   on the full tier and on the CPU elsewhere; without collision both paths
   give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
   and a 600-tick run is deterministic on either.

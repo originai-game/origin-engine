@@ -132,7 +132,8 @@ Branch `r-perf` from main at 5dc3aa0. Evidence: `tests/evidence/P4/perf/`.
   `remove_texture_array` and `remove_palette` the same way, and a group's
   maps, arrays, palettes and looks are let go when it unloads (kept with a
   warning while the frame uses them); `FrameStats::texture_bytes` counts
-  arrays, maps and palettes.*
+  arrays, maps and palettes. The sprites-arrays round adds `remove_lut`, LUTs
+  in groups, and the kept assets' bytes in the stream budget (`kept`).*
 - **Shaders** (912e333, 8779ca8, bd193d1): every WGSL module of both tiers
   validated by naga and translated to MSL, SPIR-V or GLSL ES 3.0 in the
   gate; a Vulkan pipeline cache across runs (`OG_PIPELINE_CACHE`); lavapipe
