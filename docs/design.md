@@ -162,7 +162,8 @@ lighting falls back to a forward tile table built on the CPU).
   depth or normals (on every frame it cost the 20,000-sphere field two
   thirds of its frame and bought nothing: `tests/evidence/P4/perf/prepass.md`);
   PBR metallic-roughness
-  (glTF-compatible), normal, emissive, occlusion, clearcoat later.
+  (glTF-compatible), normal, emissive, occlusion, and three.js's physical
+  lobes (clearcoat, sheen, transmission, iridescence, anisotropy).
 - Cascaded shadow maps for one directional light (opt-in PCSS soft
   shadows and blending across cascade splits); cube faces or two
   dual-paraboloid hemispheres for up to 8 point/spot lights on the full
@@ -177,7 +178,7 @@ lighting falls back to a forward tile table built on the CPU).
 - Stylisation, as data a look composes (`og.Stylise`, `og.MaterialStyle`,
   a `type look` asset): a logical pixel grid scaled up by whole numbers
   with the camera and sprites snapped to it, posterise and palette
-  quantisation through ordered or blue-noise-like dither, halftone,
+  quantisation through ordered or blue-noise dither, halftone,
   cross-hatching, ink lines, painterly (Kuwahara) smoothing with pigment
   pooling, bleed and a canvas, flat depth bands, retro-3D vertex snapping,
   affine texturing and coarse depth, and scene-wide material defaults
@@ -483,6 +484,36 @@ the engine pulls ahead on CPU-bound content further.
 | 2 Mid-size 3D | 4 | skeletal animation + blend trees + IK, rapier + character controller, navmesh, particles, post stack, terrain, decals, UI toolkit on tokens, MSDF text, Tune | all six Discover archetypes rebuilt; one mid-size 3D showcase; perf baselines in CI |
 | 3 Scale | 3 | lanes, GPU-driven culling, streaming, `og run --device`, splats (optional) | the §7 budgets held on the reference scene with lanes on |
 | Platform migration | overlaps 1–2 | §5 executor classes; Player top-level for desktop and creator; `@origingame/engine` in the knowledge pack; Wizard deploys the new artifact; Godot distribution and Three.js substrate retired after the last Game migrates or is archived | `bun deploy/ovh/state.ts` drift closed; `verify-production.sh`; image sizes |
+
+**Phase 4 status (2026-10-21).** Phase 4 took the renderer, text, UI shell,
+cook, streaming and the lanes past phases 1–3 in one wave of streams
+(`docs/phase-1.md`, the Phase 4 sections and the 2026-10-21 main gate).
+Of §2.6, every item listed has landed, each with reference frames on
+`metal` and `vulkan-cpu` and judged in the browser tiers (with the
+WebGL2 tier's reductions §2.6 names): Forward+ with the prepass on
+demand (measured, P4 perf), the physical lobes (P4 materials), PCSS,
+cascade blending and 8 / 4 shadowed point and spot lights (P4 shadows),
+IBL from cooked environment maps (equirectangular, KTX2 cubes, six faces)
+with AgX and adapting exposure (P4 ibl-post, cook three), the stylisation
+primitives as looks (37 presets; P4 look and stylisation rounds two and
+three), CPU particle collision against the scene's colliders, kerned,
+shaped and bidi text with run-time glyphs (P4 UI text), and every WGSL
+module validated and translated per backend in the gate (the wasm ships
+WGSL; P4 perf). Of §7: the wasm budget holds per download, the largest
+the lanes module at 3,320,578 B (79 %; docs/ci.md, before the wave's later
+rounds, which are not measured yet); the reference scene runs at 2.04×
+three.js's InstancedMesh on WebGPU and 1.54× on WebGL2 in Chrome on an M4
+Pro (`tests/evidence/P4/perf/threejs-spheres.md`); hot reload's worst is
+112.8 ms in `og dev` (`tests/evidence/P2/tooling/m4-m5-tooling.md`). Not
+measured: the phone first frames and the TS system on a mid-range Android
+(the owner's devices, phase-1 owed row 40), the probe `capture` budget and
+the executor image's size. Of §12, items 3 to 5 are still the owner's: 3
+is delivered in practice (the 2D profile with rapier2d ships its own
+publish module, owed row 44) but not marked decided; 4 waits on the
+Player's telemetry from the platform; 5 is open (`og run` runs natively
+on macOS and Linux, the package ships `darwin-arm64` and `linux-x64`
+addons, nothing for Windows). Owed row 44's reading of the wasm budget per
+download (§7) is the engine's, written here, and awaits the owner's word.
 
 ## 12. Open decisions (owner)
 
