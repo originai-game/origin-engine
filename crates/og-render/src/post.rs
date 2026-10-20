@@ -140,6 +140,9 @@ pub(crate) struct StyliseUniform {
     pub canvas: [f32; 4],
     pub ink: [f32; 4],
     pub ink_color: [f32; 4],
+    /// x: the camera's far plane (the prepass's sky depth), y: the depth
+    /// step that is an edge (relative), z: the normal turn that is a crease.
+    pub ink_depth: [f32; 4],
 }
 
 #[repr(C)]
@@ -459,7 +462,8 @@ impl PostPasses {
         let post_pl = pipeline_layout("post", &post_layout);
         // The stylisation passes (stylise.wgsl): the source, its sampler,
         // the parameters, the palette, the canvas and its repeating sampler,
-        // the blue-noise tile.
+        // the blue-noise tile, the prepass's view depth and normals (ink on
+        // depth edges; placeholders without a prepass).
         let stylise_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("stylise"),
             entries: &[
@@ -470,6 +474,8 @@ impl PostPasses {
                 layout_entry(4, float_texture(true)),
                 layout_entry(5, sampler_ty),
                 layout_entry(6, float_texture(true)),
+                layout_entry(7, float_texture(false)),
+                layout_entry(8, float_texture(false)),
             ],
         });
         let stylise_pl = pipeline_layout("stylise", &stylise_layout);
@@ -1722,7 +1728,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 } else {
                     ldr_name(i + 1)
                 };
-                g.pass(name, &[read.as_str()], &[write.as_str()])
+                // The lines pass binds the prepass (`Bindings::chain`).
+                let mut reads = vec![read.as_str()];
+                if p == FramePass::Lines && prepass {
+                    reads.extend(["lindepth", "gbuffer"]);
+                }
+                g.pass(name, &reads, &[write.as_str()])
             }
         };
     }
@@ -1953,8 +1964,22 @@ impl FrameGraph {
             })
         });
         let mut chain = HashMap::new();
+        // The lines pass reads the prepass (ink on depth edges) when the
+        // frame has one; the other passes bind placeholders.
+        let prepass_of = |p: FramePass| {
+            let lines = p == FramePass::Lines;
+            (
+                self.try_view("lindepth")
+                    .filter(|_| lines)
+                    .unwrap_or(&passes.far_depth),
+                self.try_view("gbuffer")
+                    .filter(|_| lines)
+                    .unwrap_or(&passes.black),
+            )
+        };
         for (i, p) in chain_passes(frame).into_iter().enumerate() {
             let source = self.view(&ldr_name(i));
+            let (depth, normals) = prepass_of(p);
             let g = if p == FramePass::Fxaa {
                 group(
                     "fxaa",
@@ -1973,6 +1998,8 @@ impl FrameGraph {
                         tex(stylise.1),
                         wgpu::BindingResource::Sampler(&passes.repeat_sampler),
                         tex(&passes.blue_noise),
+                        tex(depth),
+                        tex(normals),
                     ],
                 )
             };

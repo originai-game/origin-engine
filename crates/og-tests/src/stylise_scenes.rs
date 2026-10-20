@@ -19,10 +19,15 @@
 //!   with a warm shadow tint, a rim, outlines that thin with distance, and
 //!   flat facets, over the physical materials scene (no per-material
 //!   stylised fields).
+//! - `stylise-ink-depth`: ink with depth edges over flat, unlit shapes of
+//!   one colour on a floor of the same colour, where luminance finds no
+//!   edge: every line is a silhouette or a crease from the prepass.
 
+use glam::{Mat4, Vec3};
 use og_render::{
-    DepthBands, DitherPattern, Halftone, Hatching, Ink, MaterialStyle, Paint, Palette, PixelScale,
-    Quantize, RenderScene, Retro3d,
+    Background, Camera, DepthBands, DitherPattern, Exposure, Halftone, Hatching, Ink,
+    MaterialStyle, Paint, Palette, PixelScale, Quantize, RenderScene, Retro3d, StandardMaterial,
+    shapes,
 };
 
 /// A 16-colour palette: a dusk ramp from near-black through purples and
@@ -98,6 +103,7 @@ pub fn print_scene() -> RenderScene {
         threshold: 0.12,
         width: 1.5,
         color: [0.02, 0.02, 0.03],
+        depth: 0.0,
     });
     scene
 }
@@ -170,5 +176,53 @@ pub fn material_scene() -> RenderScene {
         outline_distance: 8.0,
         flat_shading: true,
     };
+    scene
+}
+
+pub fn ink_depth_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    // One flat colour everywhere (unlit), so the tone has no edge to ink.
+    let flat = scene.add_standard_material(StandardMaterial::basic(Vec3::new(0.85, 0.62, 0.38)));
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    scene.add_instance(floor, flat, Mat4::IDENTITY);
+    let sphere = scene.add_mesh(shapes::sphere(48, 32));
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.2)));
+    // Silhouettes: a sphere in front of a larger one, both on the floor.
+    scene.add_instance(
+        sphere,
+        flat,
+        Mat4::from_translation(Vec3::new(-1.9, 0.8, -0.4)) * Mat4::from_scale(Vec3::splat(1.6)),
+    );
+    scene.add_instance(
+        sphere,
+        flat,
+        Mat4::from_translation(Vec3::new(-1.0, 0.5, 1.1)),
+    );
+    // Creases: two turned boxes, one on the other.
+    scene.add_instance(
+        cube,
+        flat,
+        Mat4::from_translation(Vec3::new(1.6, 0.6, -0.2)) * Mat4::from_rotation_y(0.6),
+    );
+    scene.add_instance(
+        cube,
+        flat,
+        Mat4::from_translation(Vec3::new(1.6, 1.62, -0.2))
+            * Mat4::from_rotation_y(1.25)
+            * Mat4::from_scale(Vec3::splat(0.7)),
+    );
+    scene.environment.background = Background::Color(Vec3::new(0.85, 0.62, 0.38));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 7.0),
+        target: Vec3::new(0.0, 0.6, 0.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene.stylise.ink = Some(Ink {
+        threshold: 0.15,
+        width: 1.5,
+        color: [0.03, 0.02, 0.04],
+        depth: 1.0,
+    });
     scene
 }

@@ -5497,6 +5497,12 @@
           }
         },
         {
+          "name": "inkDepth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "depthBands",
           "column": "u32",
           "default": 0

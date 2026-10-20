@@ -468,6 +468,7 @@ fn stylise(
                 threshold: f(&s, "inkThreshold", 0.1),
                 width: f(&s, "inkWidth", 1.0),
                 color: rgb(&s["inkColor"], Vec3::new(0.02, 0.02, 0.03)),
+                depth: f(&s, "inkDepth", 0.0),
             });
         }
         let bands = u(&s, "depthBands", 0);
