@@ -691,3 +691,86 @@ fn dev_stopped_by_a_signal_stops_its_game_and_what_it_started() {
         );
     }
 }
+
+/// `og cook --watch` cooks a changed asset by itself and reports its time
+/// against the 300 ms budget; `og cook --report` prints the slowest assets
+/// by their last cook, kept in cooked/.cook-times.ogt across up-to-date
+/// cooks.
+#[test]
+fn cook_watch_times_one_changed_asset_and_report_prints_the_slowest() {
+    use std::io::{BufRead, BufReader, Write};
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("assets/palettes")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    for (name, colours) in [("dusk", "203040\n405060\n"), ("sea", "102030\n")] {
+        std::fs::write(dir.join(format!("assets/palettes/{name}.hex")), colours).unwrap();
+    }
+    std::fs::write(
+        dir.join("assets/grade.cube"),
+        "LUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n",
+    )
+    .unwrap();
+
+    let mut child = og()
+        .arg("cook")
+        .arg(&dir)
+        .args(["--watch", "--json", "--exit-after", "1"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let first: serde_json::Value = serde_json::from_str(&lines.next().unwrap().unwrap()).unwrap();
+    assert_eq!(first["event"], "watching", "{first}");
+    // The first cook is done: one palette changes.
+    let mut f = std::fs::OpenOptions::new()
+        .append(true)
+        .open(dir.join("assets/palettes/sea.hex"))
+        .unwrap();
+    f.write_all(b"aabbcc\n").unwrap();
+    drop(f);
+    let cook: serde_json::Value = serde_json::from_str(&lines.next().unwrap().unwrap()).unwrap();
+    let status = child.wait().unwrap();
+    assert!(status.success(), "{cook}");
+    assert_eq!(cook["event"], "cook");
+    assert_eq!(cook["changed"], serde_json::json!(["palettes/sea.hex"]));
+    let assets = cook["assets"].as_array().unwrap();
+    assert_eq!(assets.len(), 1, "only the changed asset cooks: {cook}");
+    assert_eq!(assets[0]["source"], "palettes/sea.hex");
+    assert!(
+        assets[0]["ms"].as_f64().is_some_and(|ms| ms >= 0.0),
+        "{cook}"
+    );
+    assert_eq!(cook["budgetMs"], 300.0);
+    assert!(cook["withinBudget"].is_boolean() && cook["ms"].as_f64().unwrap() > 0.0);
+
+    // The times survive an up-to-date cook; --report prints them.
+    let times = og_cook::CookTimes::read(&dir.join("cooked"));
+    assert_eq!(times.assets.len(), 3, "{times:?}");
+    let out = og().arg("cook").arg(&dir).arg("--report").output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let printed = text(&out);
+    assert!(printed.contains("the slowest 3 asset(s)"), "{printed}");
+    for (name, _) in times.slowest(3) {
+        assert!(printed.contains(name), "{name}: {printed}");
+    }
+    assert_eq!(og_cook::CookTimes::read(&dir.join("cooked")), times);
+    let md = dir.join("report.md");
+    let out = og()
+        .arg("cook")
+        .arg(&dir)
+        .arg("--report")
+        .arg(&md)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let report = std::fs::read_to_string(&md).unwrap();
+    assert!(report.contains("## The slowest ten") && report.contains("palettes/sea.hex"));
+    let _ = std::fs::remove_dir_all(&dir);
+}

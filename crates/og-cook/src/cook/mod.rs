@@ -218,6 +218,76 @@ pub struct AssetReport {
     pub outputs: Vec<OutputReport>,
     pub notes: Vec<String>,
     pub error: Option<String>,
+    /// What its last cook took, in milliseconds (its outputs' times summed):
+    /// this run's when any output cooked, else the time recorded in
+    /// `cooked/.cook-times.ogt` ([`CookTimes`]; 0 when none is).
+    pub cook_ms: f64,
+}
+
+/// `cooked/.cook-times.ogt`: beside the manifest, the time each asset's
+/// last cook took. The manifest itself holds no times, so the same sources
+/// still cook to byte-identical `cooked/` (§Determinism); this file is the
+/// one that differs, is written only when an asset cooked, and is not
+/// shipped (og build leaves it out).
+pub const COOK_TIMES: &str = ".cook-times.ogt";
+
+/// [`COOK_TIMES`]: per source path, its last cook's milliseconds.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CookTimes {
+    pub assets: BTreeMap<String, f64>,
+}
+
+impl CookTimes {
+    /// Reads `cooked/.cook-times.ogt` (empty when missing or unreadable).
+    pub fn read(cooked: &Path) -> CookTimes {
+        std::fs::read_to_string(cooked.join(COOK_TIMES))
+            .ok()
+            .and_then(|t| CookTimes::parse(&t).ok())
+            .unwrap_or_default()
+    }
+
+    /// Parses the text: `asset "<source>" <ms>` lines.
+    pub fn parse(text: &str) -> Result<CookTimes, String> {
+        let doc = Document::parse(text).map_err(|e| e.to_string())?;
+        if doc.ty != "cook-times" || doc.version != 1 {
+            return Err(format!(
+                "expected a 'cook-times' version 1 document, got '{}' version {}",
+                doc.ty, doc.version
+            ));
+        }
+        let mut assets = BTreeMap::new();
+        for e in doc.body.get_all("asset") {
+            let source = e.string(0).map_err(|x| format!("line {}: {x}", e.line))?;
+            let ms = e.f32(1).map_err(|x| format!("line {}: {x}", e.line))?;
+            assets.insert(source.to_string(), f64::from(ms));
+        }
+        Ok(CookTimes { assets })
+    }
+
+    pub fn to_text(&self) -> String {
+        use og_core::ogt::{Entry, Number, Value};
+        let mut doc = Document::new("cook-times", 1);
+        for (source, ms) in &self.assets {
+            // To the microsecond.
+            let ms = ((ms * 1000.0).round() / 1000.0) as f32;
+            doc.body.push(
+                Entry::new("asset")
+                    .with(Value::String(source.clone()))
+                    .with(Value::Number(
+                        Number::from_f32(ms).unwrap_or_else(|_| Number::from(0u32)),
+                    )),
+            );
+        }
+        doc.to_text().expect("cook times are strings and numbers")
+    }
+
+    /// The `n` slowest assets, slowest first (then by path).
+    pub fn slowest(&self, n: usize) -> Vec<(&str, f64)> {
+        let mut v: Vec<(&str, f64)> = self.assets.iter().map(|(k, v)| (k.as_str(), *v)).collect();
+        v.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(b.0)));
+        v.truncate(n);
+        v
+    }
 }
 
 /// What a cook did.
@@ -293,6 +363,57 @@ impl Report {
         m
     }
 
+    /// The `n` assets whose last cook took longest ([`AssetReport::cook_ms`],
+    /// this run's or the recorded one), slowest first.
+    pub fn slowest(&self, n: usize) -> Vec<&AssetReport> {
+        let mut v: Vec<&AssetReport> = self
+            .assets
+            .iter()
+            .filter(|a| a.error.is_none() && !a.outputs.is_empty())
+            .collect();
+        v.sort_by(|a, b| {
+            b.cook_ms
+                .total_cmp(&a.cook_ms)
+                .then(a.source.cmp(&b.source))
+        });
+        v.truncate(n);
+        v
+    }
+
+    /// The assets cooked in this run with their times, slowest first.
+    pub fn cooked_assets(&self) -> Vec<&AssetReport> {
+        let mut v: Vec<&AssetReport> = self
+            .assets
+            .iter()
+            .filter(|a| a.outputs.iter().any(|o| o.cooked))
+            .collect();
+        v.sort_by(|a, b| {
+            b.cook_ms
+                .total_cmp(&a.cook_ms)
+                .then(a.source.cmp(&b.source))
+        });
+        v
+    }
+
+    /// The slowest ten as a Markdown table (`og cook --report`).
+    pub fn slowest_markdown(&self) -> String {
+        let mut s = String::from(
+            "| # | asset | kind | last cook ms | this run |\n|---:|---|---|---:|---|\n",
+        );
+        for (i, a) in self.slowest(10).iter().enumerate() {
+            let now = a.outputs.iter().any(|o| o.cooked);
+            s.push_str(&format!(
+                "| {} | {} | {} | {:.3} | {} |\n",
+                i + 1,
+                a.source,
+                a.kind,
+                a.cook_ms,
+                if now { "cooked" } else { "up to date" }
+            ));
+        }
+        s
+    }
+
     /// A Markdown summary: per class and per asset sizes, what was cooked.
     pub fn to_markdown(&self) -> String {
         let pct = |a: u64, b: u64| {
@@ -328,6 +449,11 @@ impl Report {
             self.cooked_bytes(),
             pct(self.cooked_bytes(), self.source_bytes())
         ));
+        s.push_str(
+            "## The slowest ten\n\nEach asset's last cook (`cooked/.cook-times.ogt`), its outputs' times summed.\n\n",
+        );
+        s.push_str(&self.slowest_markdown());
+        s.push('\n');
         s.push_str("| asset | output | type | bytes | cooked this run | ms |\n|---|---|---|---:|---|---:|\n");
         for a in &self.assets {
             for o in &a.outputs {
@@ -369,7 +495,7 @@ impl Report {
             .map(|a| {
                 json!({
                     "source": a.source, "kind": a.kind, "source_bytes": a.source_bytes,
-                    "error": a.error, "notes": a.notes,
+                    "error": a.error, "notes": a.notes, "cook_ms": a.cook_ms,
                     "outputs": a.outputs.iter().map(|o| json!({
                         "id": o.id, "file": o.file, "type": o.ty, "bytes": o.bytes,
                         "cooked": o.cooked, "written": o.written, "ms": o.ms
@@ -1255,6 +1381,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             outputs: Vec::new(),
             notes: s.gltf.as_ref().map(|_| Vec::new()).unwrap_or_default(),
             error: s.error.clone(),
+            cook_ms: 0.0,
         })
         .collect();
     for (rel, kind, e) in early_errors {
@@ -1267,6 +1394,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 outputs: Vec::new(),
                 notes: Vec::new(),
                 error: Some(e),
+                cook_ms: 0.0,
             }),
         }
     }
@@ -1433,6 +1561,31 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     if std::fs::read_to_string(&manifest_path).ok().as_deref() != Some(text.as_str()) {
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
+    }
+    // Each asset's cook time: this run's (its outputs' summed) when it
+    // cooked, else the one recorded; written only when one changed.
+    let old_times = CookTimes::read(&cooked_dir);
+    let mut times = CookTimes::default();
+    for r in reports.iter_mut().filter(|r| r.error.is_none()) {
+        let now: Vec<f64> = r
+            .outputs
+            .iter()
+            .filter(|o| o.cooked)
+            .map(|o| o.ms)
+            .collect();
+        r.cook_ms = if now.is_empty() {
+            old_times.assets.get(&r.source).copied().unwrap_or(0.0)
+        } else {
+            now.iter().sum()
+        };
+        if !r.outputs.is_empty() {
+            times.assets.insert(r.source.clone(), r.cook_ms);
+        }
+    }
+    if times != old_times {
+        let path = cooked_dir.join(COOK_TIMES);
+        std::fs::write(&path, times.to_text())
+            .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
     }
     // Across the string tables: every locale has every key, with its arguments.
     let tables: Vec<(&str, &[u8])> = sources

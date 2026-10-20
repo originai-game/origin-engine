@@ -22,7 +22,8 @@ let env = bundle.load_environment("env/studio.ogt")?;                         //
 
 `og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]`
 is a development binary; `og cook` (og-cli) is the user-facing command and
-calls `cook_project`.
+calls `cook_project` (`--report` for the slowest ten, `--watch` to cook each
+change as it is saved: §Cook times).
 
 ## Features
 
@@ -317,6 +318,28 @@ So a material edit in a glTF re-cooks its model blob and nothing else (its
 textures keep their stamps); a texture option change re-cooks textures only;
 a new cooker version re-cooks everything.
 
+### Cook times
+
+Beside the manifest, `cooked/.cook-times.ogt` (type `cook-times`, `asset
+"<source>" <ms>` lines, `CookTimes`) records what each asset's last cook
+took: its outputs' times summed, to the microsecond. An up-to-date asset
+keeps the time of the cook that made it, so the record describes the whole
+bundle however little the last run cooked; the file is written only when
+an asset cooked or went. The manifest itself holds no times, so it stays
+the same bytes for the same sources (§Determinism); the times are the one
+file two cooks write differently, and `og build` leaves them out of the
+export. `Report::slowest(n)` and `AssetReport::cook_ms` read them:
+
+- `og cook --report [out.md]` prints the ten slowest assets by their last
+  cook (and writes the whole report, which leads with the same table, to
+  `out.md`);
+- `og cook --watch [--exit-after N] [--json]` cooks, then cooks again on
+  every change under `assets/` (only what the change reaches), printing
+  each cooked asset with its time and the run's time against the 300 ms
+  reload budget (`--json`: one line per cook, `{"event":"cook","changed",
+  "assets":[{source,ms,outputs}],"ms","withinBudget"}`); `og dev` prints
+  the same lines after its re-cooks.
+
 ## Options
 
 `CookOptions { threads, mesh: MeshOptions, texture: TextureOptions, font: FontSettings, schemas }`.
@@ -359,7 +382,8 @@ font's own (`crates/og-ui/README.md` §Text). The UI kit's Chinese font does.
 
 The same sources, options and **cooker build** give byte-identical `cooked/`
 (the test cooks the template twice, on all cores and on one thread, and
-compares every file). Two caveats the integrator must decide on:
+compares every file but `.cook-times.ogt`, the wall-clock record of §Cook
+times). Two caveats the integrator must decide on:
 
 - The C++ encoders (basisu, meshoptimizer) are compiled by `cc` with the
   profile's optimisation level and clang's default `-ffp-contract=on`. A debug
@@ -391,8 +415,8 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 
 | Test | Asserts |
 |---|---|
-| `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files; cooked ≤ 60 % of the sources; writes the report and the two hashes |
-| `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob and the manifest |
+| `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files (the cook times aside); cooked ≤ 60 % of the sources; writes the report and the two hashes |
+| `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing, each asset reporting its recorded cook time and the slowest ten in order; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob, the manifest and the cook times, where only its time moved (to this run's) |
 | `a_stale_blob_is_refused_with_both_stamps` | an old blob behind a new manifest is refused with the path and both stamps (`og_core::ErrorKind::Schema` through the API); wrong type and unknown ids are refused |
 | `meshes_keep_their_triangles_and_bounds` | per primitive: LOD 0 triangle count equals the source's, decoded vertex bounds within 1 % of the source accessor's, LODs shrink, normals unit length; per model: decoded default-scene bounds within 1 % of og-render's own glTF loader |
 | `textures_decode_close_to_their_sources` | transcoded level 0 against the source pixels: ETC1S ≥ 30 dB (glTF base colour ≥ 27 dB), UASTC ≥ 35–38 dB; a row-flipped decode scores worse (orientation) |
