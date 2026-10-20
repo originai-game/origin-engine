@@ -3,12 +3,11 @@
 //! and the frame uniform the lit shaders read (`shaders/frame.wgsl`).
 
 use crate::scene::{Camera, Light, LightKind, Projection};
+use crate::shadows::{LOCAL_SHADOW_LAYERS, PARABOLOID_SCALE, PointShadows};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 /// The most cascades of the directional light's shadow map (the uniform's array size).
 pub(crate) const CASCADES: usize = 3;
-/// Layers of the local shadow array: six cube faces per shadowed light.
-pub(crate) const LOCAL_SHADOW_LAYERS: usize = 12;
 /// How far the cascade splits lean towards a logarithmic distribution (0 =
 /// uniform, 1 = logarithmic).
 const SPLIT_LAMBDA: f32 = 0.8;
@@ -44,6 +43,9 @@ pub(crate) struct FrameUniform {
     /// The water's caustics: (height, strength, scale, fade), then the
     /// surface's xz rectangle (`water.rs`).
     pub caustics: [[f32; 4]; 2],
+    /// x: the sun's shadow softness (0: hard PCF), y: 1 when point lights'
+    /// shadows are paraboloid hemispheres, z, w: unused.
+    pub shadow: [f32; 4],
 }
 
 /// The camera's matrices for one frame.
@@ -153,6 +155,9 @@ pub(crate) struct Cascade {
     pub depth_bias: f32,
     /// The far end of the camera slice it shades (view depth).
     pub split_far: f32,
+    /// Where it starts to fade into the next cascade (view depth; equal to
+    /// `split_far` without blending).
+    pub blend_start: f32,
 }
 
 /// The camera's projection with its near and far planes moved to `n` and `f`.
@@ -205,6 +210,9 @@ fn slice_sphere(cam: &Camera, aspect: f32, forward: Vec3, n: f32, f: f32) -> (Ve
 /// does not change as the camera turns, with its centre snapped to the shadow
 /// map's texel grid in light space so the texels do not swim. The depth range
 /// reaches towards the light far enough to keep every caster inside `bounds`.
+/// With `blend` (a fraction of each cascade's depth, 0 none) every cascade
+/// after the first also covers that much of the slice before it, where the
+/// lit shaders fade from that cascade into this one.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn fit_cascades(
     cam: &Camera,
@@ -215,6 +223,7 @@ pub(crate) fn fit_cascades(
     max_distance: f32,
     map_size: u32,
     count: usize,
+    blend: f32,
 ) -> Vec<Cascade> {
     let count = count.clamp(1, CASCADES);
     let forward = frame.forward;
@@ -248,8 +257,16 @@ pub(crate) fn fit_cascades(
     let rotation = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, -to_light, up);
     let bounds_ls = rotation.transform_point3(bounds.0);
     let mut cascades = Vec::with_capacity(count);
+    let blend = blend.clamp(0.0, 1.0);
     for i in 0..count {
-        let (center, radius) = slice_sphere(cam, aspect, forward, splits[i], splits[i + 1]);
+        // The slice this cascade shades, reaching back over the blend band
+        // of the one before it.
+        let start = if i > 0 && blend > 0.0 {
+            splits[i] - (splits[i] - splits[i - 1]) * blend
+        } else {
+            splits[i]
+        };
+        let (center, radius) = slice_sphere(cam, aspect, forward, start, splits[i + 1]);
         // Quantize the radius so float noise in the camera never resizes the cascade.
         let step = 2f32.powi(radius.log2().floor() as i32 - 6);
         let radius = (radius / step).ceil() * step;
@@ -277,7 +294,7 @@ pub(crate) fn fit_cascades(
         // harder), the others can be met by moving far enough. Keeping just
         // those planes is a conservative sweep.
         let mut planes = frustum_planes(view_proj).to_vec();
-        let slice = slice_projection(cam, aspect, splits[i], splits[i + 1]) * frame.view;
+        let slice = slice_projection(cam, aspect, start, splits[i + 1]) * frame.view;
         planes.extend(
             frustum_planes(slice)
                 .into_iter()
@@ -289,17 +306,21 @@ pub(crate) fn fit_cascades(
             normal_offset: texel,
             depth_bias: texel / depth_range,
             split_far: splits[i + 1],
+            blend_start: splits[i + 1] - (splits[i + 1] - splits[i]) * blend,
         });
     }
     cascades
 }
 
-/// A shadowed local light: its slot in the local shadow array and one view
-/// per face it renders (six for a point light, one for a spot).
+/// A shadowed local light: its first layer in the local shadow array and
+/// one view per layer it renders (six cube faces or two paraboloid
+/// hemispheres for a point light, one for a spot). A paraboloid layer's
+/// matrix is unused (the projection is not linear); its volume culls.
 pub(crate) struct LocalShadow {
-    pub slot: usize,
+    pub layer: usize,
     pub position: Vec3,
     pub range: f32,
+    pub paraboloid: bool,
     pub faces: Vec<(Mat4, Frustum)>,
 }
 
@@ -312,6 +333,18 @@ const CUBE_FACES: [(Vec3, Vec3); 6] = [
     (Vec3::NEG_Z, Vec3::NEG_Y),
 ];
 
+/// What one paraboloid hemisphere sees: the light's box of `range` cut by
+/// the plane through the light across `axis` (-y: below, +y: above), less
+/// the margin past 90° the map holds.
+fn hemisphere(position: Vec3, range: f32, axis: Vec3) -> Frustum {
+    let margin = range * 0.1;
+    let mut planes = vec![axis.extend(-axis.dot(position) + margin)];
+    for n in [Vec3::X, Vec3::NEG_X, Vec3::Z, Vec3::NEG_Z, -axis] {
+        planes.push(n.extend(-n.dot(position) + range));
+    }
+    Frustum(planes)
+}
+
 fn spot_cone(angle_degrees: f32, penumbra: f32) -> (f32, f32) {
     let outer = angle_degrees.clamp(0.1, 89.0).to_radians();
     let inner = outer * (1.0 - penumbra.clamp(0.0, 1.0));
@@ -323,24 +356,64 @@ fn local_near(range: f32) -> f32 {
     (range * 0.01).max(0.02)
 }
 
+/// The local shadows a frame draws: at most `max_shadowed` lights,
+/// point lights' shadows stored as `point` says (cube or paraboloid).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct LocalShadowBudget {
+    pub max_shadowed: usize,
+    pub point: PointShadows,
+    pub shadow_size: u32,
+}
+
 /// The records of the lights drawn (`kept`: scene indices, from the cluster
-/// build) and their shadow views: the first `MAX_SHADOWED_LIGHTS` of them
-/// with `cast_shadows` get a slot.
+/// build) and their shadow views. Of the kept lights with `cast_shadows`,
+/// the `max_shadowed` most important at `eye` (radiance at the camera, as
+/// the clusters drop lights; ties in scene order) get layers, handed out in
+/// scene order; the rest are counted in the third answer.
 pub(crate) fn local_lights(
     lights: &[Light],
     kept: &[usize],
-    shadow_size: u32,
-) -> (Vec<LightGpu>, Vec<LocalShadow>) {
+    eye: Vec3,
+    budget: LocalShadowBudget,
+) -> (Vec<LightGpu>, Vec<LocalShadow>, u32) {
+    let shadowed: Vec<usize> = (0..kept.len())
+        .filter(|&k| lights[kept[k]].cast_shadows)
+        .collect();
+    let mut chosen = vec![false; kept.len()];
+    if shadowed.len() > budget.max_shadowed {
+        let score = |k: usize| crate::clusters::importance(&lights[kept[k]], eye);
+        let mut by_score = shadowed.clone();
+        by_score.sort_by(|&a, &b| score(b).total_cmp(&score(a)).then(a.cmp(&b)));
+        for &k in &by_score[..budget.max_shadowed] {
+            chosen[k] = true;
+        }
+    } else {
+        for &k in &shadowed {
+            chosen[k] = true;
+        }
+    }
+    let dropped = shadowed.len().saturating_sub(budget.max_shadowed) as u32;
+    let paraboloid = budget.point == PointShadows::Paraboloid;
+    let shadow_size = budget.shadow_size;
     let mut gpu = Vec::with_capacity(kept.len());
-    let mut shadows = Vec::new();
-    for light in kept.iter().map(|&i| &lights[i]) {
+    let mut shadows: Vec<LocalShadow> = Vec::new();
+    let mut next_layer = 0usize;
+    for (k, light) in kept.iter().map(|&i| &lights[i]).enumerate() {
         let range = light.range.max(1e-3);
         let radiance = light.color * light.intensity;
         let mut slot = -1.0;
-        if light.cast_shadows && shadows.len() < crate::scene::MAX_SHADOWED_LIGHTS {
-            slot = shadows.len() as f32;
+        let mut point_paraboloid = false;
+        if chosen[k] {
+            slot = next_layer as f32;
             let near = local_near(range);
-            let faces = match light.kind {
+            let faces: Vec<(Mat4, Frustum)> = match light.kind {
+                LightKind::Point if paraboloid => {
+                    point_paraboloid = true;
+                    [Vec3::NEG_Y, Vec3::Y]
+                        .into_iter()
+                        .map(|axis| (Mat4::IDENTITY, hemisphere(light.position, range, axis)))
+                        .collect()
+                }
                 LightKind::Point => {
                     let proj = glam::camera::rh::proj::directx::perspective(
                         std::f32::consts::FRAC_PI_2,
@@ -385,11 +458,13 @@ pub(crate) fn local_lights(
                 }
             };
             shadows.push(LocalShadow {
-                slot: shadows.len(),
+                layer: next_layer,
                 position: light.position,
                 range,
+                paraboloid: point_paraboloid,
                 faces,
             });
+            next_layer += shadows.last().map_or(0, |s| s.faces.len());
         }
         let (kind, direction, cone) = match light.kind {
             LightKind::Point => (0.0, Vec3::NEG_Y, [-1.0, 1.0]),
@@ -406,15 +481,20 @@ pub(crate) fn local_lights(
                 )
             }
         };
-        // Normal offset per metre of distance: ~1.5 texels of a 90° face; the
-        // depth bias in distance / range.
-        let normal_offset = 3.0 / shadow_size as f32;
+        // Normal offset per metre of distance: ~1.5 texels of a 90° face (a
+        // paraboloid's texels span 4 / (scale × size) radians at its centre,
+        // about 2.2 times a face's); the depth bias in distance / range.
+        let (normal_offset, depth_bias) = if point_paraboloid {
+            (1.5 * 4.0 / (PARABOLOID_SCALE * shadow_size as f32), 0.003)
+        } else {
+            (3.0 / shadow_size as f32, 0.002)
+        };
         gpu.push(LightGpu {
             position_range: light.position.extend(range).to_array(),
             color_kind: radiance.extend(kind).to_array(),
             direction_slot: direction.extend(slot).to_array(),
-            cone: [cone[0], cone[1], normal_offset, 0.002],
+            cone: [cone[0], cone[1], normal_offset, depth_bias],
         });
     }
-    (gpu, shadows)
+    (gpu, shadows, dropped)
 }

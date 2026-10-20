@@ -204,7 +204,7 @@ pub(crate) struct ClusterBuilder {
 }
 
 /// The light's weight when lights must be dropped.
-fn importance(light: &Light, eye: Vec3) -> f32 {
+pub(crate) fn importance(light: &Light, eye: Vec3) -> f32 {
     let d2 = (light.position - eye).length_squared().max(1.0);
     light.color.max_element().max(0.0) * light.intensity.max(0.0) / d2
 }

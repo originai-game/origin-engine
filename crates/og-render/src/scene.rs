@@ -460,6 +460,18 @@ pub struct DirectionalLight {
     /// tenth). The cascades cover the nearer of this and the far side of
     /// `shadow_bounds`, so a smaller distance means sharper shadows.
     pub max_shadow_distance: f32,
+    /// Soft shadows (PCSS): the penumbra's width per metre between caster
+    /// and receiver, the tangent of the sun's apparent radius (the real
+    /// sun's is 0.005). 0, the default, is the hard 1-texel PCF edge;
+    /// 0.01 to 0.05 is a soft sun. Each shadowed pixel then searches the
+    /// cascade for blockers and filters over the penumbra they give
+    /// (16 + 64 texel reads instead of 4).
+    pub shadow_softness: f32,
+    /// The fraction of each cascade's depth over which it fades into the
+    /// next one, hiding the seam where the shadow's resolution changes (0,
+    /// the default: none; 0.1 to 0.2 typical). The next cascade then also
+    /// covers that band, and its pixels read two cascades.
+    pub cascade_blend: f32,
 }
 
 impl Default for DirectionalLight {
@@ -471,6 +483,8 @@ impl Default for DirectionalLight {
             cast_shadows: true,
             shadow_bounds: ShadowBounds::Auto,
             max_shadow_distance: 200.0,
+            shadow_softness: 0.0,
+            cascade_blend: 0.0,
         }
     }
 }
@@ -479,9 +493,7 @@ impl Default for DirectionalLight {
 /// culled: past it the least important are dropped (the radiance at the
 /// camera; `clusters.rs`) and counted in [`crate::FrameStats::lights_dropped`].
 pub const MAX_LIGHTS: usize = 256;
-/// How many local lights can cast shadows in one frame: the first ones in
-/// [`RenderScene::lights`] with `cast_shadows` set.
-pub const MAX_SHADOWED_LIGHTS: usize = 2;
+pub use crate::shadows::{MAX_SHADOWED_LIGHTS, NO_COMPUTE_SHADOWED_LIGHTS};
 
 /// The shape of a local light.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -510,8 +522,12 @@ pub struct Light {
     pub intensity: f32,
     /// The distance at which the light reaches zero.
     pub range: f32,
-    /// Shadows from this light (a cube for a point light, one map for a spot);
-    /// only the first [`MAX_SHADOWED_LIGHTS`] shadowed lights get them.
+    /// Shadows from this light (cube faces or two paraboloid hemispheres for
+    /// a point light, [`crate::PointShadows`]; one map for a spot). Of the
+    /// shadowed lights in view, the tier's [`crate::RenderInfo::shadowed_lights`]
+    /// with the most radiance at the camera get them (8 on the full tier, 4
+    /// on WebGL2); the rest are counted in
+    /// [`crate::FrameStats::shadowed_lights_dropped`].
     pub cast_shadows: bool,
 }
 
