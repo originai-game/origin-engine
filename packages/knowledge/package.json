@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "files": ["wiki", "skills", "scaffold", "rules", "knowledge.json", "scripts", "README.md"],
+  "files": ["wiki", "skills", "looks", "scaffold", "rules", "knowledge.json", "scripts", "README.md"],
   "scripts": {
     "prepack": "bun scripts/pack.ts",
     "validate": "bun scripts/validate.ts",
