@@ -207,7 +207,7 @@ impl IblGenerator {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             })
         };
         const SKY: usize = 0;

@@ -112,7 +112,7 @@ impl Light2dRenderer {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         });
         Light2dRenderer {
             pipeline,

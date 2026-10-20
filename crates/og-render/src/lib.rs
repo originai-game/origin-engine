@@ -47,6 +47,8 @@ mod mips;
 mod overlay;
 pub mod particles;
 mod particles_gpu;
+mod pipeline_cache;
+pub use pipeline_cache::set_pipeline_cache_dir;
 mod physical;
 mod post;
 mod ribbons;
@@ -476,6 +478,9 @@ pub struct RenderInfo {
     /// The encoding each kind of texture should be uploaded in, and every
     /// encoding this device accepts.
     pub texture_formats: TextureFormats,
+    /// Compiled pipelines are kept across runs ([`set_pipeline_cache_dir`]
+    /// was given a directory and the backend has a cache: Vulkan).
+    pub pipeline_cache: bool,
 }
 
 impl RenderInfo {
@@ -1066,6 +1071,8 @@ pub struct Renderer {
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
+    /// Compiled pipelines kept across runs (`pipeline_cache.rs`), when kept.
+    pipeline_disk: Option<pipeline_cache::DiskCache>,
     /// Where particles simulate ([`RenderDesc::particles`]).
     desc_particles: ParticleSimulation,
     /// Where instances are culled ([`RenderDesc::culling`]), whether the
@@ -1262,7 +1269,7 @@ fn hdr_pipeline_with(
             })],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 
@@ -1413,7 +1420,7 @@ fn prepass_pipeline(
             ],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 
@@ -1487,7 +1494,7 @@ fn shadow_pipeline(
             })],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 
@@ -1628,9 +1635,13 @@ impl Renderer {
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
         let cascades = desc.shadow_cascades.clamp(1, MAX_CASCADES);
-        let (features, texture_formats) =
+        let (mut features, texture_formats) =
             TextureFormats::choose(adapter.features(), desc.texture_compression);
-        let info = RenderInfo {
+        let cache_dir = pipeline_cache::dir();
+        if cache_dir.is_some() && adapter.features().contains(wgpu::Features::PIPELINE_CACHE) {
+            features |= wgpu::Features::PIPELINE_CACHE;
+        }
+        let mut info = RenderInfo {
             adapter: adapter_info.name.clone(),
             backend: adapter_info.backend,
             device_type: adapter_info.device_type,
@@ -1639,6 +1650,7 @@ impl Renderer {
             shadow_map_size: shadow_size,
             shadow_cascades: cascades,
             texture_formats,
+            pipeline_cache: false,
         };
         log::info!(
             "og-render: {} ({:?}, {:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
@@ -1661,6 +1673,10 @@ impl Renderer {
             })
             .await
             .map_err(|e| RenderError::NoDevice(e.to_string()))?;
+        // Before any pipeline is made: every one is made with the cache.
+        let pipeline_disk =
+            cache_dir.and_then(|dir| pipeline_cache::DiskCache::open(&device, &adapter_info, dir));
+        info.pipeline_cache = pipeline_disk.is_some();
         // No uncaptured-error handler on purpose: wgpu-core's default (native
         // and WebGL2) panics on a validation error, which is how the web host
         // ends the Worker and shows the shell's crash card and how native
@@ -1989,7 +2005,7 @@ impl Renderer {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(&device).as_ref(),
         });
         let ribbon_buffers = [Some(ribbons::RIBBON_LAYOUT)];
         let ribbon_state = |blend| HdrPipeline {
@@ -2190,6 +2206,7 @@ impl Renderer {
             glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
+            pipeline_disk,
             desc_particles: desc.particles,
             desc_culling: desc.culling,
             indirect,
@@ -5837,6 +5854,13 @@ impl Renderer {
         }
         self.prev_view_proj = Some(cam.view_proj);
         self.frame_index += 1;
+        // The first frame made the scene's pipelines: keep them now, not
+        // only when the renderer is dropped (a killed process never is).
+        if self.frame_index == 1
+            && let Some(cache) = &mut self.pipeline_disk
+        {
+            cache.save();
+        }
         Ok(stats)
     }
 

@@ -365,7 +365,7 @@ impl GpuCulling {
                 module,
                 entry_point: Some(entry),
                 compilation_options: Default::default(),
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             })
         };
         let hiz_base_layout = [false, true].map(|multisampled| {
@@ -736,7 +736,7 @@ impl GpuCulling {
                     module: &module,
                     entry_point: Some("base"),
                     compilation_options: Default::default(),
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
             ));
         }
@@ -784,7 +784,7 @@ impl GpuCulling {
                     },
                     fragment: None,
                     multiview_mask: None,
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             });
     }

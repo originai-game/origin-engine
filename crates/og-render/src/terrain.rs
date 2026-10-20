@@ -764,7 +764,7 @@ impl TerrainRenderer {
                 ],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         });
         // An open surface: both faces cast (the bias in the lit pass keeps
         // its own lit side from shadowing itself).
@@ -791,7 +791,7 @@ impl TerrainRenderer {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         });
         let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("terrain layers"),

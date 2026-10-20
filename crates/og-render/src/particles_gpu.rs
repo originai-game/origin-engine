@@ -328,7 +328,7 @@ impl ParticleRenderer {
                     module: &module,
                     entry_point: Some(entry),
                     compilation_options: Default::default(),
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             };
             (pipeline("simulate"), pipeline("clear"))

@@ -167,7 +167,7 @@ pub(crate) fn fullscreen_pipeline(
             })],
         }),
         multiview_mask: None,
-        cache: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
 

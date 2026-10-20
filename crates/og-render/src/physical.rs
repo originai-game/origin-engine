@@ -353,7 +353,7 @@ impl PhysicalPipelines {
                 })],
             }),
             multiview_mask: None,
-            cache: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         });
         let empty_pack = device
             .create_texture(&wgpu::TextureDescriptor {
