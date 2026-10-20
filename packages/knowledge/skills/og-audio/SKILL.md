@@ -97,6 +97,29 @@ at 1.0 is a mix bug, not loudness.
   `tests/timing.og.ts`).
 - A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
   `playing: false` with the same `fade`.
+- Long tracks stream in chunks: a sound whose cooked file passes 1 MiB
+  (about 27 s of 48 kHz stereo) is cooked in chunks of whole frames, and
+  the engine keeps only from half a second behind each playhead to four
+  seconds ahead (on the web each chunk is fetched as it nears). Set it in
+  the track's import settings:
+
+  ```text
+  # assets/music/theme.wav.ogt
+  type import
+  version 1
+  ---
+  sound {
+    stream true   # true, or false to keep a long track whole
+    chunk 4       # seconds per chunk, 1 to 60
+  }
+  ```
+
+  Nothing changes in code: loops, `startOffset`, crossfades and stems play
+  sample-identical to the whole file, and the world hash is the same.
+  `og.load.soundInfo(world, sound).value.chunks` says how many (0: whole).
+  A chunk that has not arrived plays silence, so start a long track a beat
+  before it must be heard rather than on the first frame of a scene; a
+  chunked sound cannot go in a streaming group (og-game §6).
 
 ## 6. Space, occlusion, priority
 

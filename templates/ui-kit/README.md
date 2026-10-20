@@ -48,7 +48,7 @@ widget (og-ui §2, §3), focus by keyboard, gamepad and several fingers at once
 count-ups, bursts, screen transitions and UI sounds (og-ui §6; og-taste
 §1–§7; og-audio §3), string tables in English, Chinese, Japanese (kinsoku line
 breaking) and Arabic (right to left) (og-i18n §1–§4, §6), and how to prove UI
-from a script with `move_to_text`, `dump_ui` and reference frames (og-ui §7;
+from a script with `move_to_text`, `dump_ui` and reference frames (og-ui §8;
 og-build §1, §3). `og polish .` (2026-10-19): taste 90; feel 62, which reads
 a catalogue as a game: its playtests press through screens and capture them
 still, its `hp` fact is the meter demo's number, not damage, and keyboard and
