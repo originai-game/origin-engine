@@ -323,8 +323,16 @@ the history of a still camera. On metal the still path is byte for byte
 the old frames (the 37 looks frames, `taa`); the moving path moved
 `taa-sharp` (a sliding camera) by RMSE 0.00029, max 4 levels. It did
 not change the WebGL2 looks station's frames (still 30 of 37 apart from
-metal, to four decimals), so that divergence lies elsewhere: open, see
-the AO note below and docs/phase-1.md's wave 7 web-reference entry.
+metal, to four decimals). The browser diagnostics then put the
+divergence in TAA's history loop on WebGL2: with the jitter zeroed and
+the camera still, WebGL2 settles 0.5 to 0.75 px to the side of WebGPU,
+blurred, as a history read with a small sideways offset every frame
+would; with no history (every frame its own) the tiers agree. A still
+camera is therefore decided on the CPU (`still_camera`: the history's
+view-projection and the current one equal to a millionth of each entry)
+and sent in the uniform (`TaaUniform::still`); then every pixel reads
+its own history texel with no reprojection computed on the GPU at all.
+Metal is byte for byte unchanged (the looks frames, every og-gfx scene).
 
 **Ambient occlusion by tier.** `AoMethod::Auto` (the default, and what
 `PostEffects.ao` asks for) is GTAO on the full tier and SSAO on WebGL2 by

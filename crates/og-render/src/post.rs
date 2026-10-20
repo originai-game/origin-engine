@@ -181,6 +181,10 @@ pub(crate) struct TaaUniform {
     pub cur_view_proj: [[f32; 4]; 4],
     pub prev_view_proj: [[f32; 4]; 4],
     pub params: [f32; 4],
+    /// x: 1 when the camera did not move since the history's frame (its
+    /// view-projection bit for bit the same): every pixel reads its own
+    /// history texel, no reprojection computed on the GPU.
+    pub still: [f32; 4],
 }
 
 fn layout_entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {
