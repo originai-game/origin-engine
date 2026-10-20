@@ -401,6 +401,97 @@ fn sprites_20k_match_their_reference_in_a_handful_of_draws() {
     assert_eq!(s.draw_calls, s.sprite_draws + 1, "sprites, then post");
 }
 
+/// Sprites drawn from texture arrays (`RenderScene::sprite_arrays`): the
+/// sixteen flipbook sprites (eight layers, two rows) are one draw, the six
+/// added ones from a second array another, the plain textured strip a
+/// third. Broken once by giving each layer its own run: 8 + 3 + 1 draws.
+#[test]
+fn sprites_array_match_their_reference_in_one_draw_per_array() {
+    let report = check("sprites-array");
+    let s = report.stats;
+    assert_eq!(s.sprites, 23);
+    assert_eq!(
+        s.sprite_draws, 3,
+        "one run per array and blend, and the strip"
+    );
+}
+
+/// A sprite drawn from an array shows the layer it names, sampled with the
+/// array's filter; a layer past the array's count, or an array that was
+/// removed, is refused.
+#[test]
+fn a_sprite_draws_the_layer_of_its_texture_array() {
+    use og_render::{
+        ColorSpace, SpriteArray, TextureArrayData, TextureData, TextureFilter, TextureSource,
+    };
+    let solid = |rgb: [u8; 3]| {
+        TextureSource::Rgba(TextureData {
+            width: 4,
+            height: 4,
+            rgba: [rgb[0], rgb[1], rgb[2], 255].repeat(16),
+            color_space: ColorSpace::Srgb,
+            mips: og_render::Mips::None,
+        })
+    };
+    let mut scene = RenderScene::new();
+    let array = scene
+        .add_texture_array(TextureArrayData {
+            layers: vec![solid([255, 0, 0]), solid([0, 255, 0]), solid([0, 0, 255])],
+        })
+        .expect("three layers");
+    assert!(scene.set_texture_array_filter(array, TextureFilter::Nearest));
+    for (i, (x, layer)) in [(-3.0, 2u32), (3.0, 1)].into_iter().enumerate() {
+        scene.add_sprite(Sprite {
+            position: Vec3::new(x, 0.0, 0.0),
+            size: Vec2::splat(4.0),
+            ..Default::default()
+        });
+        scene.sprite_arrays.push(SpriteArray {
+            sprite: i as u32,
+            array,
+            layer,
+        });
+    }
+    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = scenes::base_desc();
+    let (img, stats) = frame(&desc, &scene, 1);
+    let at = |x: u32| {
+        let i = ((img.height / 2 * img.width + x) * 4) as usize;
+        [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
+    };
+    assert_eq!(
+        at(img.width * 3 / 10),
+        [0, 0, 255],
+        "the left sprite: layer 2"
+    );
+    assert_eq!(
+        at(img.width * 7 / 10),
+        [0, 255, 0],
+        "the right sprite: layer 1"
+    );
+    assert_eq!(stats.sprite_draws, 1, "both layers in one draw");
+
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    scene.sprite_arrays[0].layer = 3;
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidData(m)) => assert!(m.contains("layer 3"), "{m}"),
+        other => panic!("a layer past the array: {:?}", other.map(|_| ())),
+    }
+    scene.sprite_arrays[0].layer = 0;
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame");
+    assert!(scene.remove_texture_array(array));
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidHandle(m)) => {
+            assert!(m.contains("texture array 0 was removed"), "{m}")
+        }
+        other => panic!("a sprite of a removed array: {:?}", other.map(|_| ())),
+    }
+}
+
 /// Higher layers draw over lower ones whatever the submission order.
 #[test]
 fn sprite_layers_order_the_draw() {

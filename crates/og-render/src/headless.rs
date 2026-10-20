@@ -31,15 +31,24 @@ impl Renderer {
     }
 
     /// What the renderer uploaded for a texture array (`None` until a
-    /// frame has synced it, or for a foreign handle).
+    /// frame has synced it, once a frame has freed it after
+    /// `RenderScene::remove_texture_array`, or for a foreign handle).
     pub fn texture_array_info(
         &self,
         handle: crate::TextureArrayHandle,
     ) -> Option<crate::TextureArrayInfo> {
+        self.cache_texture_array(handle).map(|a| a.info)
+    }
+
+    fn cache_texture_array(
+        &self,
+        handle: crate::TextureArrayHandle,
+    ) -> Option<&crate::texture_array::GpuTextureArray> {
         self.cache
             .texture_arrays
-            .get(handle.index())
-            .map(|a| a.info)
+            .get(handle.index())?
+            .as_ref()
+            .filter(|a| a.generation == handle.generation())
     }
 
     /// Level `level` of layer `layer` of an RGBA8 texture array, read back
@@ -51,13 +60,9 @@ impl Renderer {
         layer: u32,
         level: u32,
     ) -> Result<RgbaImage, RenderError> {
-        let gpu = self
-            .cache
-            .texture_arrays
-            .get(handle.index())
-            .ok_or_else(|| {
-                RenderError::InvalidHandle(format!("texture array {}", handle.index()))
-            })?;
+        let gpu = self.cache_texture_array(handle).ok_or_else(|| {
+            RenderError::InvalidHandle(format!("texture array {}", handle.index()))
+        })?;
         let info = gpu.info;
         if info.format != crate::TextureFormat::Rgba8
             || layer >= info.gpu_layers

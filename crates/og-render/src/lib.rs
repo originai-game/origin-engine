@@ -59,6 +59,7 @@ pub use shaders::{ShaderSource, shader_sources};
 mod shadows;
 pub mod shapes;
 mod skin;
+mod sprite_array;
 mod sprites;
 mod stylise;
 mod terrain;
@@ -660,7 +661,10 @@ pub struct FrameStats {
     pub skinned_instances: u32,
     pub joints: u32,
     /// GPU memory of the scene's textures (every mip level, as allocated:
-    /// RGBA8 with its generated chain, or the encoded levels as uploaded).
+    /// RGBA8 with its generated chain, or the encoded levels as uploaded),
+    /// texture arrays (padding layers included), environment maps (every
+    /// level of the six RGB9E5 faces) and palettes (256 x 1 RGBA8 each).
+    /// A removed resource is freed before the frame and counts nothing.
     pub texture_bytes: u64,
     /// Terrain clipmap levels drawn in the main pass, their triangles
     /// (also in `triangles`), and the levels drawn into shadow maps.
@@ -811,8 +815,10 @@ struct GpuFont {
 /// GPU copies of one scene's resources, indexed like the scene's handles.
 #[derive(Default)]
 struct SceneCache {
-    /// The scene's palettes (`add_palette`) as 256 x 1 textures.
-    palettes: Vec<wgpu::TextureView>,
+    /// The scene's palettes (`add_palette`) as 256 x 1 textures (`None`:
+    /// removed), and the scene's revision of each when it was uploaded.
+    palettes: Vec<Option<wgpu::TextureView>>,
+    palette_revisions: Vec<u64>,
     /// The material style the materials were uploaded with.
     material_style: MaterialStyle,
     scene_id: u64,
@@ -852,11 +858,30 @@ struct SceneCache {
     /// Whether `morph_data` changed since it was uploaded.
     morphs_dirty: bool,
     luts: Vec<wgpu::TextureView>,
-    /// Environment maps as cube textures (kept for their views).
-    environment_maps: Vec<(wgpu::Texture, wgpu::TextureView)>,
-    /// Texture arrays, each one 2D-array texture.
-    texture_arrays: Vec<texture_array::GpuTextureArray>,
+    /// Environment maps as cube textures (kept for their views; `None`:
+    /// removed), and the scene's revision of each when it was uploaded.
+    environment_maps: Vec<Option<GpuEnvironmentMap>>,
+    environment_map_revisions: Vec<u64>,
+    /// Texture arrays, each one 2D-array texture (`None`: removed), and
+    /// the scene's revision of each when it was uploaded.
+    texture_arrays: Vec<Option<texture_array::GpuTextureArray>>,
+    texture_array_revisions: Vec<u64>,
+    /// Array sprite bind groups per texture array, made on first use, with
+    /// the filter each was made with.
+    sprite_array_groups: Vec<Option<(wgpu::BindGroup, TextureFilter)>>,
 }
+
+/// An environment map's cube on the GPU.
+struct GpuEnvironmentMap {
+    /// Held for the view.
+    _texture: wgpu::Texture,
+    view: wgpu::TextureView,
+    /// Bytes allocated, every level of every face.
+    bytes: u64,
+}
+
+/// What a palette's 256 x 1 RGBA8 texture allocates.
+const PALETTE_BYTES: u64 = MAX_PALETTE_COLORS as u64 * 4;
 
 /// What the image-based light was last generated from: the sky, or an
 /// environment map of a scene (its id and index), turned and with its
@@ -867,6 +892,9 @@ enum EnvironmentKey {
     Map {
         scene: u64,
         map: usize,
+        /// The scene's revision of the map's slot (a slot refilled after a
+        /// removal is another map).
+        revision: u64,
         rotation: u32,
         background: u32,
     },
@@ -1155,6 +1183,8 @@ pub struct Renderer {
     culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
+    /// The array sprite pipelines, made on the first frame that draws one.
+    sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
 }
 
 fn uniform_entry(binding: u32, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
@@ -2304,6 +2334,7 @@ impl Renderer {
             gpu_cull: None,
             culling_counts: false,
             taa_history: None,
+            sprite_arrays: None,
         })
     }
 
@@ -2401,6 +2432,159 @@ impl Renderer {
             .resize_history(&self.device, width, height, self.info.antialias);
         self.graph.invalidate();
         self.taa_history = None;
+    }
+
+    /// The environment maps, texture arrays and palettes the scene added,
+    /// refilled or removed since the last frame: each slot whose revision
+    /// moved is uploaded again, or freed when the scene removed it.
+    fn sync_assets(&mut self, scene: &RenderScene) -> Result<(), RenderError> {
+        let revisions = scene.environment_map_revisions();
+        for (i, &revision) in revisions.iter().enumerate() {
+            let fresh = i >= self.cache.environment_maps.len();
+            if !fresh && self.cache.environment_map_revisions[i] == revision {
+                continue;
+            }
+            let gpu = if scene.environment_map_slot(i).0 {
+                let map = &scene.environment_maps()[i];
+                map.validate()
+                    .map_err(|e| RenderError::InvalidData(format!("environment map {i}: {e}")))?;
+                let (texture, view) = environment::upload(&self.device, &self.queue, map);
+                Some(GpuEnvironmentMap {
+                    _texture: texture,
+                    view,
+                    bytes: 4 * environment::EnvironmentMapData::texel_count(map.size) as u64,
+                })
+            } else {
+                None
+            };
+            if fresh {
+                self.cache.environment_maps.push(gpu);
+                self.cache.environment_map_revisions.push(revision);
+            } else {
+                self.cache.environment_maps[i] = gpu;
+                self.cache.environment_map_revisions[i] = revision;
+            }
+        }
+        let revisions = scene.texture_array_revisions();
+        for (i, &revision) in revisions.iter().enumerate() {
+            let fresh = i >= self.cache.texture_arrays.len();
+            if !fresh && self.cache.texture_array_revisions[i] == revision {
+                continue;
+            }
+            let (live, generation) = scene.texture_array_slot(i);
+            let gpu = if live {
+                let data = &scene.texture_arrays()[i];
+                let bad = |e: String| RenderError::InvalidData(format!("texture array {i}: {e}"));
+                let info = data.info().map_err(bad)?;
+                if info.format != TextureFormat::Rgba8
+                    && !self.info.texture_formats.supported.contains(&info.format)
+                {
+                    return Err(bad(format!("{} is not supported here", info.format.name())));
+                }
+                let mut gpu =
+                    texture_array::upload(&self.device, &self.queue, data, info).map_err(bad)?;
+                gpu.generation = generation;
+                Some(gpu)
+            } else {
+                None
+            };
+            if fresh {
+                self.cache.texture_arrays.push(gpu);
+                self.cache.texture_array_revisions.push(revision);
+                self.cache.sprite_array_groups.push(None);
+            } else {
+                self.cache.texture_arrays[i] = gpu;
+                self.cache.texture_array_revisions[i] = revision;
+                self.cache.sprite_array_groups[i] = None;
+            }
+        }
+        let revisions = scene.palette_revisions();
+        for (i, &revision) in revisions.iter().enumerate() {
+            let fresh = i >= self.cache.palettes.len();
+            if !fresh && self.cache.palette_revisions[i] == revision {
+                continue;
+            }
+            let view = scene.palette_live(i).then(|| {
+                let palette = &scene.palettes()[i];
+                let mut rgba = vec![0u8; MAX_PALETTE_COLORS * 4];
+                for (k, c) in palette.colors.iter().enumerate() {
+                    rgba[k * 4..k * 4 + 3].copy_from_slice(c);
+                    rgba[k * 4 + 3] = 255;
+                }
+                post::texture_from_rgba8(
+                    &self.device,
+                    &self.queue,
+                    "palette",
+                    MAX_PALETTE_COLORS as u32,
+                    1,
+                    wgpu::TextureFormat::Rgba8UnormSrgb,
+                    &rgba,
+                )
+            });
+            if fresh {
+                self.cache.palettes.push(view);
+                self.cache.palette_revisions.push(revision);
+            } else {
+                self.cache.palettes[i] = view;
+                self.cache.palette_revisions[i] = revision;
+            }
+        }
+        Ok(())
+    }
+
+    /// GPU bytes of the scene's environment maps, texture arrays and
+    /// palettes (removed ones are freed and count nothing).
+    fn asset_bytes(&self) -> u64 {
+        let maps: u64 = self
+            .cache
+            .environment_maps
+            .iter()
+            .flatten()
+            .map(|m| m.bytes)
+            .sum();
+        let arrays: u64 = self
+            .cache
+            .texture_arrays
+            .iter()
+            .flatten()
+            .map(|a| a.info.bytes)
+            .sum();
+        let palettes = self.cache.palettes.iter().flatten().count() as u64 * PALETTE_BYTES;
+        maps + arrays + palettes
+    }
+
+    /// The array sprite pipelines and the bind group of `array` (made on
+    /// first use; again when the array's slot or filter changed).
+    fn sprite_array_group(&mut self, scene: &RenderScene, array: TextureArrayHandle) {
+        if self.sprite_arrays.is_none() {
+            self.sprite_arrays = Some(sprite_array::SpriteArrayPipelines::new(
+                &self.device,
+                &self.frame_layout,
+                &self.sprite_fx_layout,
+                self.samples,
+            ));
+        }
+        let i = array.index();
+        let filter = scene.texture_array_filter(array);
+        if self.cache.sprite_array_groups[i]
+            .as_ref()
+            .is_some_and(|(_, f)| *f == filter)
+        {
+            return;
+        }
+        let Some(gpu) = self.cache.texture_arrays[i].as_ref() else {
+            return;
+        };
+        let sampler = match filter {
+            TextureFilter::Nearest => &self.sprite_sampler_nearest,
+            TextureFilter::Linear => &self.sprite_sampler,
+        };
+        let group = self.sprite_arrays.as_ref().expect("made above").bind_group(
+            &self.device,
+            &gpu.texture,
+            sampler,
+        );
+        self.cache.sprite_array_groups[i] = Some((group, filter));
     }
 
     /// Uploads whatever the scene added (or changed) since the last frame.
@@ -2514,34 +2698,7 @@ impl Renderer {
             };
             self.cache.skins.push(skin);
         }
-        for (index, map) in scene.environment_maps()[self.cache.environment_maps.len()..]
-            .iter()
-            .enumerate()
-        {
-            map.validate().map_err(|e| {
-                RenderError::InvalidData(format!(
-                    "environment map {}: {e}",
-                    self.cache.environment_maps.len() + index
-                ))
-            })?;
-            let gpu = environment::upload(&self.device, &self.queue, map);
-            self.cache.environment_maps.push(gpu);
-        }
-        for (index, data) in scene.texture_arrays()[self.cache.texture_arrays.len()..]
-            .iter()
-            .enumerate()
-        {
-            let at = self.cache.texture_arrays.len() + index;
-            let bad = |e: String| RenderError::InvalidData(format!("texture array {at}: {e}"));
-            let info = data.info().map_err(bad)?;
-            if info.format != TextureFormat::Rgba8
-                && !self.info.texture_formats.supported.contains(&info.format)
-            {
-                return Err(bad(format!("{} is not supported here", info.format.name())));
-            }
-            let gpu = texture_array::upload(&self.device, &self.queue, data, info).map_err(bad)?;
-            self.cache.texture_arrays.push(gpu);
-        }
+        self.sync_assets(scene)?;
         for (index, lut) in scene.luts()[self.cache.luts.len()..].iter().enumerate() {
             lut.validate().map_err(|e| {
                 RenderError::InvalidData(format!("lut {}: {e}", self.cache.luts.len() + index))
@@ -2560,24 +2717,6 @@ impl Renderer {
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("texture upload"),
                 });
-            for index in self.cache.palettes.len()..scene.palettes().len() {
-                let palette = &scene.palettes()[index];
-                let mut rgba = vec![0u8; MAX_PALETTE_COLORS * 4];
-                for (i, c) in palette.colors.iter().enumerate() {
-                    rgba[i * 4..i * 4 + 3].copy_from_slice(c);
-                    rgba[i * 4 + 3] = 255;
-                }
-                let view = post::texture_from_rgba8(
-                    &self.device,
-                    &self.queue,
-                    "palette",
-                    MAX_PALETTE_COLORS as u32,
-                    1,
-                    wgpu::TextureFormat::Rgba8UnormSrgb,
-                    &rgba,
-                );
-                self.cache.palettes.push(view);
-            }
             for index in self.cache.textures.len()..scene.textures().len() {
                 let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
                 self.cache.textures.push(gpu);
@@ -3173,13 +3312,17 @@ impl Renderer {
     /// environment map that replaces it, changed.
     fn ensure_environment(&mut self, scene: &RenderScene) {
         let sky = &scene.environment.sky;
-        let map = scene
-            .environment_map
-            .filter(|m| m.map.index() < self.cache.environment_maps.len());
+        let map = scene.environment_map.filter(|m| {
+            self.cache
+                .environment_maps
+                .get(m.map.index())
+                .is_some_and(Option::is_some)
+        });
         let key = match map {
             Some(m) => EnvironmentKey::Map {
                 scene: scene.id(),
                 map: m.map.index(),
+                revision: self.cache.environment_map_revisions[m.map.index()],
                 rotation: m.rotation.to_bits(),
                 background: m.background_intensity.to_bits(),
             },
@@ -3192,7 +3335,10 @@ impl Renderer {
             Some(m) => self.ibl.generate_map(
                 &self.device,
                 &self.queue,
-                &self.cache.environment_maps[m.map.index()].1,
+                &self.cache.environment_maps[m.map.index()]
+                    .as_ref()
+                    .expect("filtered above")
+                    .view,
                 &scene.environment_maps()[m.map.index()].irradiance,
                 m.rotation,
                 m.background_intensity.max(0.0),
@@ -3972,18 +4118,30 @@ impl Renderer {
                 }),
         );
         let fonts = &self.cache.fonts;
+        let arrays = &self.cache.texture_arrays;
         let sprite_frame = sprites::build(
             scene,
             |i| fonts.get(i).map(|f| &f.layout),
             self.cache.textures.len(),
+            |a| {
+                scene
+                    .contains_texture_array(a)
+                    .then(|| arrays.get(a.index()).and_then(Option::as_ref))
+                    .flatten()
+                    .map(|g| g.info.layers)
+            },
             &particle_frame.sprites,
             |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
             view,
             &layered,
         )?;
         for run in sprite_frame.runs.iter().chain(&sprite_frame.glow_runs) {
-            if let RunSource::Sprite(_, t) = run.source {
-                self.sprite_group(t);
+            match run.source {
+                RunSource::Sprite(_, t) => {
+                    self.sprite_group(t);
+                }
+                RunSource::Array(_, a) => self.sprite_array_group(scene, a),
+                _ => {}
             }
         }
         for s in &particle_frame.systems {
@@ -4855,6 +5013,7 @@ impl Renderer {
             .quantize
             .and_then(|q| q.palette)
             .and_then(|p| self.cache.palettes.get(p.index()))
+            .and_then(Option::as_ref)
             .unwrap_or(&self.default_white);
         let canvas_view = st
             .paint
@@ -4862,10 +5021,12 @@ impl Renderer {
             .and_then(|t| self.cache.textures.get(t.index()))
             .map_or(&self.default_white, |g| &g.view);
         let stylise_key = {
-            let p = st
-                .quantize
-                .and_then(|q| q.palette)
-                .map_or(u64::MAX, |p| p.index() as u64);
+            // The slot's revision too: a palette added in a freed slot is
+            // another texture under the same index.
+            let p = st.quantize.and_then(|q| q.palette).map_or(u64::MAX, |p| {
+                let revision = self.cache.palette_revisions.get(p.index()).copied();
+                p.index() as u64 ^ revision.unwrap_or(0).rotate_left(24)
+            });
             let c = st
                 .paint
                 .and_then(|p| p.canvas)
@@ -5090,12 +5251,7 @@ impl Renderer {
             cluster_lights: cluster_stats.refs,
             cluster_lights_dropped: cluster_stats.refs_dropped,
             texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum::<u64>()
-                + self
-                    .cache
-                    .texture_arrays
-                    .iter()
-                    .map(|a| a.info.bytes)
-                    .sum::<u64>(),
+                + self.asset_bytes(),
             sprites: sprite_frame.sprites,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
@@ -6101,8 +6257,28 @@ impl Renderer {
                             current = None;
                             continue;
                         }
+                        if let RunSource::Array(blend, a) = run.source {
+                            let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
+                            pass.set_pipeline(arrays.pipeline(blend));
+                            let (group, _) = self.cache.sprite_array_groups[a.index()]
+                                .as_ref()
+                                .expect("made before the pass");
+                            pass.set_bind_group(1, group, &[]);
+                            let start = run.first as u64 * SPRITE_STRIDE;
+                            pass.set_vertex_buffer(
+                                0,
+                                self.sprite_buffer
+                                    .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                            );
+                            pass.draw(0..6, 0..run.count);
+                            stats.draw_calls += 1;
+                            current = None;
+                            continue;
+                        }
                         let (msdf, blend, group) = match run.source {
-                            RunSource::Strip(..) | RunSource::Metaballs(_) => {
+                            RunSource::Strip(..)
+                            | RunSource::Metaballs(_)
+                            | RunSource::Array(..) => {
                                 unreachable!("drawn above")
                             }
                             RunSource::Glass => unreachable!("glass is the overlay's only"),
@@ -6290,8 +6466,8 @@ impl Renderer {
                                 .expect("made with the overlay's glass")
                                 .overlay_group,
                         ),
-                        RunSource::Strip(..) | RunSource::Metaballs(_) => {
-                            unreachable!("the overlay has no strips or fluids")
+                        RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Array(..) => {
+                            unreachable!("the overlay has no strips, fluids or array sprites")
                         }
                     };
                     if bound != Some(kind) {

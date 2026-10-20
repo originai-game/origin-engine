@@ -5,7 +5,8 @@
 use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::{
-    FontHandle, Glyph, MsdfFont, RenderScene, Sprite, Text, TextureHandle, TileLayer,
+    FontHandle, Glyph, MsdfFont, RenderScene, Sprite, Text, TextureArrayHandle, TextureHandle,
+    TileLayer,
 };
 use glam::Vec2;
 use std::collections::HashMap;
@@ -23,6 +24,9 @@ pub(crate) struct SpriteInstance {
     /// x: glow strength, y: 1 when 2D lighting applies, z: 1 for a soft dot
     /// (untextured particles).
     fx: [f32; 3],
+    /// The texture array layer an array sprite draws (sprite_array.wgsl;
+    /// the other sprite pipelines do not read it).
+    layer: u32,
 }
 
 pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u64;
@@ -32,6 +36,15 @@ pub(crate) const SPRITE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::Vertex
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3],
 };
+
+/// [`SPRITE_LAYOUT`] with the instance's layer (location 6), for the array
+/// sprite pipelines.
+pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> =
+    wgpu::VertexBufferLayout {
+        array_stride: SPRITE_STRIDE,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Uint32],
+    };
 
 /// What one run draws with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -46,6 +59,8 @@ pub(crate) enum RunSource {
     Metaballs(u8),
     /// The overlay's glass panels (the blur pyramid, src/glass.rs).
     Glass,
+    /// Sprites drawn from layers of a texture array, and their blend.
+    Array(SpriteBlend, TextureArrayHandle),
 }
 
 /// A ribbon run drawn in the sprite order at `layer` (a 2D trail, a 2D
@@ -163,6 +178,7 @@ fn sprite_instance(
             NO_FLASH
         },
         fx: [glow, lit as u32 as f32, soft as u32 as f32],
+        layer: 0,
     }
 }
 
@@ -229,6 +245,7 @@ fn tile_instances(
                     color: layer.color,
                     flash: NO_FLASH,
                     fx: [0.0, 0.0, 0.0],
+                    layer: 0,
                 });
             }
             for a in &c.animated {
@@ -259,12 +276,17 @@ fn tile_instances(
 /// Sorts the scene's sprites, the frame's 2D particles (`extra`: sprite,
 /// blend, glow) and texts into runs, with the tile layers and the layered
 /// strips placed before the sprites of their layer. `font(i)` is the layout
-/// of the scene's font `i`; `lit` says which layers 2D lighting applies to;
-/// `view` culls tile chunks (orthographic cameras).
+/// of the scene's font `i`; `array_layers(a)` the layers of an uploaded
+/// texture array (`None`: not uploaded or removed); `lit` says which layers
+/// 2D lighting applies to; `view` culls tile chunks (orthographic cameras).
+/// A sprite drawn from an array ([`RenderScene::sprite_arrays`]) joins its
+/// array's run and never the glow pass.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     scene: &RenderScene,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
+    array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     extra: &[(Sprite, SpriteBlend, f32)],
     lit: impl Fn(i32) -> bool,
     view: Option<ViewRect>,
@@ -293,6 +315,31 @@ pub(crate) fn build<'a>(
         }
         order.insert(o.sprite, if o.key.is_finite() { o.key } else { 0.0 });
     }
+    // Sprites drawn from texture arrays, by index (the last entry wins).
+    let mut arrays: HashMap<u32, (TextureArrayHandle, u32)> = HashMap::new();
+    for a in &scene.sprite_arrays {
+        if a.sprite as usize >= scene.sprites.len() {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite_arrays: sprite {} of {}",
+                a.sprite,
+                scene.sprites.len()
+            )));
+        }
+        let layers = array_layers(a.array).ok_or_else(|| {
+            RenderError::InvalidHandle(format!(
+                "sprite {}: texture array {}",
+                a.sprite,
+                a.array.index()
+            ))
+        })?;
+        if a.layer >= layers {
+            return Err(RenderError::InvalidData(format!(
+                "sprite {}: layer {} of a texture array of {layers}",
+                a.sprite, a.layer
+            )));
+        }
+        arrays.insert(a.sprite, (a.array, a.layer));
+    }
     let outlines: HashMap<u32, &crate::TextOutline> =
         scene.text_outlines.iter().map(|o| (o.text, o)).collect();
     // (layer, key, source, instance), in submission order.
@@ -317,11 +364,16 @@ pub(crate) fn build<'a>(
             Some(f) => (f.flash, f.glow.max(0.0), f.blend),
             None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha),
         };
-        let inst = sprite_instance(s, flash, glow, lit(s.layer), false);
+        let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
+        let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
+        if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
+            inst.layer = layer;
+            keyed.push((s.layer, key, RunSource::Array(blend, array), inst));
+            continue;
+        }
         if glow > 0.0 {
             glowing.push((s.texture, inst));
         }
-        let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
         keyed.push((s.layer, key, RunSource::Sprite(blend, s.texture), inst));
     }
     for (s, blend, glow) in extra {
@@ -382,6 +434,7 @@ pub(crate) fn build<'a>(
                         color: text.color,
                         flash: outline_color,
                         fx: [outline, 0.0, 0.0],
+                        layer: 0,
                     },
                 ));
             }

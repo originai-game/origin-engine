@@ -328,9 +328,11 @@ pub(crate) fn run_textures(
 ) -> impl Iterator<Item = Option<TextureHandle>> + '_ {
     frame.runs.iter().filter_map(|r| match r.source {
         RunSource::Sprite(_, t) => Some(t),
-        RunSource::Font(_) | RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Glass => {
-            None
-        }
+        RunSource::Font(_)
+        | RunSource::Strip(..)
+        | RunSource::Metaballs(_)
+        | RunSource::Glass
+        | RunSource::Array(..) => None,
     })
 }
 

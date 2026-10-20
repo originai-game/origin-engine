@@ -1,5 +1,7 @@
 //! Resources can be removed (og-render's `RenderScene::remove_mesh`,
-//! `remove_texture`, `remove_material`, `remove_font`): a removed slot is
+//! `remove_texture`, `remove_material`, `remove_font`,
+//! `remove_environment_map`, `remove_texture_array`, `remove_palette`): a
+//! removed slot is
 //! freed on the GPU before the next frame, the next add of its kind reuses
 //! it under a new generation, and an old handle never reaches the new
 //! resource: the setters refuse it and a frame that still draws with it is
@@ -7,12 +9,18 @@
 //! removed texture draws without it, as a material that never had one.
 //! Broken once by keeping a slot's generation when it is emptied: the
 //! reused slot's handle equals the removed one's, so nothing could tell
-//! a stale handle from the new mesh's (the generation check fails).
+//! a stale handle from the new mesh's (the generation check fails). The
+//! environment maps, texture arrays and palettes a streaming group loaded
+//! leave the frame's texture bytes when removed (broken once by summing
+//! the cache's arrays whether or not their slot was emptied: the bytes
+//! stay).
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Camera, ColorSpace, Glyph, MsdfFont, RenderError, RenderScene, RenderTarget,
-    Renderer, RgbaImage, StandardMaterial, Text, TextureData, Tonemap, shapes,
+    Background, Camera, ColorSpace, DitherPattern, ENVIRONMENT_MAP_MIN_SIZE, EnvironmentMap,
+    EnvironmentMapData, Glyph, MAX_PALETTE_COLORS, MsdfFont, Palette, Quantize, RenderError,
+    RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, SpriteArray, StandardMaterial, Text,
+    TextureArrayData, TextureData, TextureSource, Tonemap, rgb9e5, shapes,
 };
 use og_tests::scenes;
 
@@ -161,6 +169,131 @@ fn a_removed_texture_leaves_its_materials_and_a_removed_material_is_refused() {
         center(&draw(&mut renderer, &scene).expect("frame")),
         [255, 0, 0]
     );
+}
+
+/// A small uniform environment map (the smallest size), every texel `rgb`.
+fn environment(rgb: [f32; 3]) -> EnvironmentMapData {
+    let size = ENVIRONMENT_MAP_MIN_SIZE;
+    EnvironmentMapData {
+        size,
+        texels: vec![rgb9e5(rgb); EnvironmentMapData::texel_count(size)],
+        irradiance: [[0.0; 3]; 9],
+    }
+}
+
+fn layers(n: usize) -> TextureArrayData {
+    TextureArrayData {
+        layers: (0..n)
+            .map(|i| TextureSource::Rgba(solid([40 * i as u8, 200, 90, 255], 8)))
+            .collect(),
+    }
+}
+
+#[test]
+fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() {
+    let mut scene = flat_scene();
+    let plane = scene.add_mesh(shapes::plane(4.0, 1.0));
+    let white = scene.add_standard_material(unlit([1.0, 1.0, 1.0], 0));
+    scene.add_instance(plane, white, Mat4::IDENTITY);
+    let env = scene.add_environment_map(environment([0.5, 0.6, 0.7]));
+    let array = scene.add_texture_array(layers(3)).expect("three layers");
+    let palette = scene.add_palette(Palette {
+        colors: vec![[0, 0, 0], [255, 255, 255]],
+    });
+    scene.environment_map = Some(EnvironmentMap::new(env));
+    scene.stylise.quantize = Some(Quantize {
+        posterize: 0,
+        palette: Some(palette),
+        dither: DitherPattern::None,
+        dither_strength: 0.0,
+        dither_scale: 1,
+    });
+    scene.add_sprite(Sprite {
+        position: Vec3::new(0.0, 1.0, 0.0),
+        ..Default::default()
+    });
+    scene.sprite_arrays.push(SpriteArray {
+        sprite: 0,
+        array,
+        layer: 2,
+    });
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let full = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame")
+        .texture_bytes;
+    let env_bytes = 4 * EnvironmentMapData::texel_count(ENVIRONMENT_MAP_MIN_SIZE) as u64;
+    let array_bytes = renderer.texture_array_info(array).expect("uploaded").bytes;
+    let palette_bytes = MAX_PALETTE_COLORS as u64 * 4;
+    assert!(full >= env_bytes + array_bytes + palette_bytes, "{full}");
+
+    // Each one in use is refused by the frame that still names it.
+    assert!(scene.remove_environment_map(env));
+    assert!(!scene.contains_environment_map(env));
+    assert!(!scene.remove_environment_map(env), "removed twice");
+    assert!(scene.environment_map_data(env).is_none());
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidHandle(m)) => {
+            assert!(m.contains("environment map 0 was removed"), "{m}")
+        }
+        other => panic!("a frame lit by a removed map: {:?}", other.map(|_| ())),
+    }
+    scene.environment_map = None;
+    assert!(scene.remove_palette(palette));
+    assert!(scene.palette(palette).is_none());
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidHandle(m)) => assert!(m.contains("palette 0 was removed"), "{m}"),
+        other => panic!(
+            "a frame quantised to a removed palette: {:?}",
+            other.map(|_| ())
+        ),
+    }
+    scene.stylise.quantize = None;
+    assert!(scene.remove_texture_array(array));
+    assert!(!scene.set_texture_array_filter(array, og_render::TextureFilter::Nearest));
+    assert!(scene.texture_array(array).is_none());
+    match renderer.render(&scene, &RenderTarget::Offscreen) {
+        Err(RenderError::InvalidHandle(m)) => {
+            assert!(m.contains("texture array 0 was removed"), "{m}")
+        }
+        other => panic!("a sprite of a removed array: {:?}", other.map(|_| ())),
+    }
+    scene.sprite_arrays.clear();
+
+    // Freed: the frame's bytes drop by exactly what the three took.
+    let after = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("nothing stale is left")
+        .texture_bytes;
+    assert_eq!(full - after, env_bytes + array_bytes + palette_bytes);
+    assert!(renderer.texture_array_info(array).is_none());
+
+    // The slots come back under new generations; the old handles stay stale.
+    let env2 = scene.add_environment_map(environment([0.1, 0.1, 0.1]));
+    let array2 = scene.add_texture_array(layers(2)).expect("two layers");
+    let palette2 = scene.add_palette(Palette {
+        colors: vec![[255, 0, 0]],
+    });
+    assert_eq!(
+        (env2.index(), array2.index(), palette2.index()),
+        (env.index(), array.index(), palette.index())
+    );
+    assert_ne!(env2.generation(), env.generation());
+    assert_ne!(array2.generation(), array.generation());
+    assert_ne!(palette2.generation(), palette.generation());
+    scene.environment_map = Some(EnvironmentMap::new(env));
+    assert!(
+        renderer.render(&scene, &RenderTarget::Offscreen).is_err(),
+        "the old handle does not reach the new map"
+    );
+    scene.environment_map = Some(EnvironmentMap::new(env2));
+    let again = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame")
+        .texture_bytes;
+    let array2_bytes = renderer.texture_array_info(array2).expect("uploaded").bytes;
+    assert_eq!(again, after + env_bytes + array2_bytes + palette_bytes);
+    assert!(renderer.texture_array_info(array).is_none(), "stale handle");
 }
 
 #[test]

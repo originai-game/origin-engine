@@ -34,17 +34,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "flatShading",
 ];
 
-/// A colour palette added to a [`crate::RenderScene`] for
-/// [`Stylise::palette`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct PaletteHandle(pub(crate) u32);
-
-impl PaletteHandle {
-    /// The position of the palette in its scene, in insertion order.
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+pub use crate::scene::PaletteHandle;
 
 /// Up to 256 sRGB colours, in the order the palette file lists them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
