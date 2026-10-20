@@ -1,0 +1,43 @@
+{
+  "tier": "webgl2",
+  "buildMs": 30335,
+  "scenes": {
+    "materials-physical": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 604.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials-physical.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1449
+    },
+    "materials": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 33.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 514
+    }
+  },
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "ms": 2372,
+  "log": []
+}
