@@ -10,7 +10,11 @@
 //! - [`physics_hash`]: the world hashes of og-physics' beyond-rigid-bodies
 //!   scenario (`crates/og-physics/tests/support/beyond.rs`: joints,
 //!   controllers, cars, ropes, cloth with self-collision, water, fluids and
-//!   a fluid group, ragdolls in 3D and 2D), 3D and 2D, after 600 ticks;
+//!   a fluid group, ragdolls in 3D and 2D), 3D and 2D, after 600 ticks, and
+//!   of a pen of 1,000 of the pile's bodies (`tests/support/pile.rs`) after
+//!   300, enough bodies for the step to go to four lanes (og-physics's
+//!   `BODY_GRAIN` a thread), so the host's lanes run steps it on rapier's
+//!   parallel build;
 //! - [`anim_hash`]: the world hash of og-anim's walk scenario
 //!   (`crates/og-anim/tests/support/walk.rs`: graphs, players, root motion,
 //!   blendshapes, IK) after 600 ticks, with every sample of the walk
@@ -30,8 +34,9 @@ use og_core::math::{
 #[path = "../../../crates/og-ecs/tests/support/bouncing_boxes.rs"]
 mod bouncing_boxes;
 
-#[path = "../../../crates/og-physics/tests/support/beyond.rs"]
-mod beyond;
+#[path = "../../../crates/og-physics/tests/support/mod.rs"]
+mod physics_support;
+use physics_support::{beyond, pile};
 
 #[allow(dead_code)]
 #[path = "../../../crates/og-anim/tests/support/mod.rs"]
@@ -134,6 +139,9 @@ pub fn physics_hash() -> u64 {
         beyond::run(&mut w, &p, &cast, 0, 600, profile);
         h.write_u64(w.world_hash());
     }
+    let (mut w, _p) = pile::pen(4 * og_physics::BODY_GRAIN, 11);
+    pile::run(&mut w, 300);
+    h.write_u64(w.world_hash());
     h.finish()
 }
 
