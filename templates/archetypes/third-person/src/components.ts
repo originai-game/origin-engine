@@ -15,8 +15,13 @@ export const Phase = { Title: 0, Play: 1, Over: 2 } as const;
 /** How a run ended (Game.ending). */
 export const Ending = { None: 0, Dawn: 1, Night: 2, Caught: 3 } as const;
 
-/** Sound requests: bits of Game.sfx that the Voices system plays once each. */
-export const Sound = { Step: 1, Jump: 2, Splash: 4, Ignite: 8, Alarm: 16, Grab: 32, Dawn: 64, Night: 128 } as const;
+/**
+ * Sound requests: bits of Game.sfx that the Voices system plays once each.
+ * `Tap` is the touch HUD's stick, Jump and Kindle answering on the ui bus, as
+ * og.ui's own buttons do (og-ui's touch controls play no press sound of their
+ * own).
+ */
+export const Sound = { Step: 1, Jump: 2, Splash: 4, Ignite: 8, Alarm: 16, Grab: 32, Dawn: 64, Night: 128, Tap: 256 } as const;
 
 /** The beacons a run lights. */
 export const BEACONS = 4;
