@@ -28,6 +28,8 @@ module render {
 | [`Side`](#type-Side) | enum | Which faces are drawn, as three.js FrontSide, BackSide and DoubleSide. |
 | [`RenderTier`](#type-RenderTier) | enum | The backend the renderer runs on; the probe's hello reports it. |
 | [`Antialias`](#type-Antialias) | enum | Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved. |
+| [`PointShadows`](#type-PointShadows) | enum | How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved. |
+| [`TaaHistory`](#type-TaaHistory) | enum | How TAA resamples its history each frame, as og-render's TaaHistory. |
 | [`RenderOptions`](#type-RenderOptions) | desc struct | How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer. |
 | [`StandardMaterialDesc`](#type-StandardMaterialDesc) | desc struct | A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names. |
 | [`og.Mesh`](#record-Mesh) | component | Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh. |
@@ -122,7 +124,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2469</sub>
+<sub>`api.ogt` line 2501</sub>
 
 <a id="fn-sprite"></a>
 
@@ -152,7 +154,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2585</sub>
+<sub>`api.ogt` line 2617</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -182,7 +184,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 2749</sub>
+<sub>`api.ogt` line 2781</sub>
 
 <a id="fn-measureText"></a>
 
@@ -212,7 +214,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 2756</sub>
+<sub>`api.ogt` line 2788</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -242,7 +244,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2816</sub>
+<sub>`api.ogt` line 2848</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -272,7 +274,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2823</sub>
+<sub>`api.ogt` line 2855</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -302,7 +304,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2830</sub>
+<sub>`api.ogt` line 2862</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -332,7 +334,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2851</sub>
+<sub>`api.ogt` line 2884</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -364,7 +366,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2858</sub>
+<sub>`api.ogt` line 2891</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -396,7 +398,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2868</sub>
+<sub>`api.ogt` line 2901</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -428,7 +430,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 2876</sub>
+<sub>`api.ogt` line 2909</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -462,7 +464,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 2884</sub>
+<sub>`api.ogt` line 2917</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -490,7 +492,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2893</sub>
+<sub>`api.ogt` line 2926</sub>
 
 <a id="fn-text"></a>
 
@@ -520,7 +522,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2899</sub>
+<sub>`api.ogt` line 2932</sub>
 
 ## Components, resources and events
 
@@ -566,7 +568,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1811</sub>
+<sub>`api.ogt` line 1832</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -584,6 +586,8 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 | `intensity` | `number` | `3` | ≥ 0 | — | tunable | The radiance multiplier, as three.js DirectionalLight.intensity. |
 | `castShadow` | `boolean` | `true` | — | — | — | Cast shadows through three cascades, as three.js Light.castShadow. |
 | `shadowDistance` | `number` | `200` | ≥ 1 | `m` | — | How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper. |
+| `shadowSoftness` | `number` | `0` | 0 … 0.2 | — | tunable | Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel. |
+| `cascadeBlend` | `number` | `0` | 0 … 0.5 | `ratio` | tunable | The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades). |
 
 ```ogt
 component DirectionalLight {
@@ -605,10 +609,21 @@ component DirectionalLight {
     min 1
     unit m
   }
+  field shadowSoftness f32 "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel." {
+    min 0
+    max 0.2
+    tunable true
+  }
+  field cascadeBlend f32 "The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades)." {
+    min 0
+    max 0.5
+    unit ratio
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 1831</sub>
+<sub>`api.ogt` line 1852</sub>
 
 <a id="record-PointLight"></a>
 
@@ -616,7 +631,7 @@ component DirectionalLight {
 
 A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
 
-Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
+Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.
 
 Token `og.PointLight`, registered under the schema name `og.PointLight`; its value type is `PointLight`.
 
@@ -625,12 +640,12 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The light's linear colour. |
 | `intensity` | `number` | `10` | ≥ 0 | — | tunable | The radiance at one metre. |
 | `distance` | `number` | `10` | ≥ 0.01 | `m` | tunable | Where the light reaches zero, as three.js PointLight.distance (never infinite here). |
-| `castShadow` | `boolean` | `false` | — | — | — | Cast cube shadows. |
+| `castShadow` | `boolean` | `false` | — | — | — | Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows). |
 
 ```ogt
 component PointLight {
   doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
+  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first."
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -645,11 +660,11 @@ component PointLight {
     unit m
     tunable true
   }
-  field castShadow bool "Cast cube shadows."
+  field castShadow bool "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows)."
 }
 ```
 
-<sub>`api.ogt` line 1852</sub>
+<sub>`api.ogt` line 1884</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -701,7 +716,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1872</sub>
+<sub>`api.ogt` line 1904</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -771,7 +786,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 1917</sub>
+<sub>`api.ogt` line 1949</sub>
 
 <a id="record-Environment"></a>
 
@@ -811,7 +826,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 1987</sub>
+<sub>`api.ogt` line 2019</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -1048,7 +1063,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2067</sub>
+<sub>`api.ogt` line 2099</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1087,7 +1102,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2242</sub>
+<sub>`api.ogt` line 2274</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1138,7 +1153,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2261</sub>
+<sub>`api.ogt` line 2293</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1169,7 +1184,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2291</sub>
+<sub>`api.ogt` line 2323</sub>
 
 <a id="record-Decal"></a>
 
@@ -1224,7 +1239,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2305</sub>
+<sub>`api.ogt` line 2337</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1255,7 +1270,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2337</sub>
+<sub>`api.ogt` line 2369</sub>
 
 <a id="record-Trail"></a>
 
@@ -1331,7 +1346,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2348</sub>
+<sub>`api.ogt` line 2380</sub>
 
 <a id="record-Beam"></a>
 
@@ -1397,7 +1412,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2396</sub>
+<sub>`api.ogt` line 2428</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1510,7 +1525,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2592</sub>
+<sub>`api.ogt` line 2624</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1558,7 +1573,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2664</sub>
+<sub>`api.ogt` line 2696</sub>
 
 ## Types
 
@@ -1670,22 +1685,72 @@ A string: one of the variants below. The zero value is `"tier"`.
 
 | Variant | Doc |
 |---|---|
-| `"tier"` | The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2. |
+| `"tier"` | The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled. |
 | `"off"` | One sample per pixel. |
-| `"msaa4"` | 4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled. |
-| `"taa"` | Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. |
+| `"msaa4"` | 4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled. |
+| `"taa"` | Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it. |
+| `"fxaa"` | FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture. |
 
 ```ogt
 enum Antialias {
   doc "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved."
-  variant tier "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2."
+  variant tier "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled."
   variant off "One sample per pixel."
-  variant msaa4 "4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled."
-  variant taa "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames."
+  variant msaa4 "4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled."
+  variant taa "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it."
+  variant fxaa "FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture."
 }
 ```
 
 <sub>`api.ogt` line 1621</sub>
+
+<a id="type-PointShadows"></a>
+
+### `PointShadows` (enum)
+
+How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved.
+
+A string: one of the variants below. The zero value is `"auto"`.
+
+| Variant | Doc |
+|---|---|
+| `"auto"` | Cube faces on the full tier, paraboloids on WebGL2. |
+| `"cube"` | Six 90 degree faces: six shadow passes per light. |
+| `"paraboloid"` | Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection). |
+
+```ogt
+enum PointShadows {
+  doc "How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved."
+  variant auto "Cube faces on the full tier, paraboloids on WebGL2."
+  variant cube "Six 90 degree faces: six shadow passes per light."
+  variant paraboloid "Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection)."
+}
+```
+
+<sub>`api.ogt` line 1630</sub>
+
+<a id="type-TaaHistory"></a>
+
+### `TaaHistory` (enum)
+
+How TAA resamples its history each frame, as og-render's TaaHistory.
+
+A string: one of the variants below. The zero value is `"bilinear"`.
+
+| Variant | Doc |
+|---|---|
+| `"bilinear"` | One bilinear tap: cheap, slightly soft while the camera moves. |
+| `"catmullRom"` | A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion. |
+
+```ogt
+enum TaaHistory {
+  doc "How TAA resamples its history each frame, as og-render's TaaHistory."
+  variant bilinear "One bilinear tap: cheap, slightly soft while the camera moves."
+  variant catmullRom "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
+}
+```
+
+<sub>`api.ogt` line 1637</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -1699,6 +1764,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing method. |
 | `shadowMapSize` | `number` | `2048` | 256 … 4096 | — | — | The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB). |
+| `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser). |
+| `taaHistory` | `TaaHistory` | `"bilinear"` | — | — | — | With TAA: how the history is resampled. |
+| `taaSharpen` | `number` | `0` | 0 … 1 | `ratio` | — | With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range. |
 
 ```ogt
 struct RenderOptions {
@@ -1710,10 +1778,17 @@ struct RenderOptions {
     min 256
     max 4096
   }
+  field pointShadows PointShadows "How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser)."
+  field taaHistory TaaHistory "With TAA: how the history is resampled."
+  field taaSharpen f32 "With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range." {
+    min 0
+    max 1
+    unit ratio
+  }
 }
 ```
 
-<sub>`api.ogt` line 1629</sub>
+<sub>`api.ogt` line 1643</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -1969,7 +2044,7 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 1640</sub>
+<sub>`api.ogt` line 1661</sub>
 
 <a id="type-ToneMapping"></a>
 
@@ -1994,7 +2069,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1903</sub>
+<sub>`api.ogt` line 1935</sub>
 
 <a id="type-Lut"></a>
 
@@ -2008,7 +2083,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 1962</sub>
+<sub>`api.ogt` line 1994</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -2022,7 +2097,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`)."
 ```
 
-<sub>`api.ogt` line 1963</sub>
+<sub>`api.ogt` line 1995</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -2036,7 +2111,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 1964</sub>
+<sub>`api.ogt` line 1996</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -2061,7 +2136,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2014</sub>
+<sub>`api.ogt` line 2046</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -2084,7 +2159,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2028</sub>
+<sub>`api.ogt` line 2060</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2107,7 +2182,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2041</sub>
+<sub>`api.ogt` line 2073</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2130,7 +2205,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2054</sub>
+<sub>`api.ogt` line 2086</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2170,7 +2245,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2436</sub>
+<sub>`api.ogt` line 2468</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2201,7 +2276,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2457</sub>
+<sub>`api.ogt` line 2489</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2263,7 +2338,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2476</sub>
+<sub>`api.ogt` line 2508</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2292,7 +2367,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2510</sub>
+<sub>`api.ogt` line 2542</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2315,7 +2390,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2521</sub>
+<sub>`api.ogt` line 2553</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2409,7 +2484,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2528</sub>
+<sub>`api.ogt` line 2560</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -2497,7 +2572,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2691</sub>
+<sub>`api.ogt` line 2723</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -2535,7 +2610,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2763</sub>
+<sub>`api.ogt` line 2795</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -2567,7 +2642,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2783</sub>
+<sub>`api.ogt` line 2815</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -2603,7 +2678,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2798</sub>
+<sub>`api.ogt` line 2830</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -2617,7 +2692,8 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
 | `maxLights` | `number` | `0` | — | — | — | How many point and spot lights one frame draws (MAX_LIGHTS on every tier). |
-| `maxShadowedLights` | `number` | `0` | — | — | — | How many point and spot lights may cast shadows. |
+| `maxShadowedLights` | `number` | `0` | — | — | — | How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs. |
+| `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
 
@@ -2628,13 +2704,14 @@ struct RenderCapabilities {
   field compute bool "Whether compute passes run (GPU culling, GPU particles)."
   field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
   field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
-  field maxShadowedLights u32 "How many point and spot lights may cast shadows."
+  field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs."
+  field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
 }
 ```
 
-<sub>`api.ogt` line 2840</sub>
+<sub>`api.ogt` line 2872</sub>
 
 <a id="type-Shader"></a>
 
@@ -2648,7 +2725,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 2866</sub>
+<sub>`api.ogt` line 2899</sub>
 
 ## Column kinds
 
@@ -2699,7 +2776,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1910</sub>
+<sub>`api.ogt` line 1942</sub>
 
 ```ogt
 column Texture {
@@ -2710,7 +2787,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 1966</sub>
+<sub>`api.ogt` line 1998</sub>
 
 ```ogt
 column Lut {
@@ -2721,7 +2798,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 1973</sub>
+<sub>`api.ogt` line 2005</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -2732,7 +2809,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 1980</sub>
+<sub>`api.ogt` line 2012</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -2743,7 +2820,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2007</sub>
+<sub>`api.ogt` line 2039</sub>
 
 ```ogt
 column AoMethod {
@@ -2754,7 +2831,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2021</sub>
+<sub>`api.ogt` line 2053</sub>
 
 ```ogt
 column DofQuality {
@@ -2765,7 +2842,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2034</sub>
+<sub>`api.ogt` line 2066</sub>
 
 ```ogt
 column SpriteBlend {
@@ -2776,7 +2853,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2047</sub>
+<sub>`api.ogt` line 2079</sub>
 
 ```ogt
 column StripBlend {
@@ -2787,7 +2864,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2060</sub>
+<sub>`api.ogt` line 2092</sub>
 
 ## Constants
 
@@ -2800,10 +2877,10 @@ column StripBlend {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 2837</sub>
+<sub>`api.ogt` line 2869</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 2838</sub>
+<sub>`api.ogt` line 2870</sub>

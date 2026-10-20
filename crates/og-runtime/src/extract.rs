@@ -32,9 +32,15 @@ pub trait RenderBackend {
     fn tier(&self) -> String;
     /// The render target in device pixels.
     fn size(&self) -> (u32, u32);
-    /// What `RenderOptions.antialias` resolved to: `off`, `msaa4` or `taa`.
+    /// What `RenderOptions.antialias` resolved to: `off`, `msaa4`, `taa`
+    /// or `fxaa` ([`antialias_name`]).
     fn antialias(&self) -> String {
         "off".into()
+    }
+    /// What the renderer runs on and resolved its options to (the
+    /// capabilities' shadow limits); `None` for a backend without one.
+    fn info(&self) -> Option<og_render::RenderInfo> {
+        None
     }
     /// The texture encodings the device takes (og-render's
     /// `RenderInfo::texture_formats`): loads transcode to them. `None`: RGBA8.
@@ -524,6 +530,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         light.intensity = f(&v, "intensity", 3.0);
         light.cast_shadows = on(&v, "castShadow", true);
         light.max_shadow_distance = f(&v, "shadowDistance", 200.0);
+        light.shadow_softness = f(&v, "shadowSoftness", 0.0);
+        light.cascade_blend = f(&v, "cascadeBlend", 0.0);
         scene.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
     }
     let mut locals: Vec<(u64, og_render::Light)> = Vec::new();

@@ -1539,17 +1539,19 @@ pub fn og_render_capabilities(world: u32) -> String {
         rs.backend.as_ref().map(|b| {
             let tier = b.tier();
             let (w, h) = b.size();
+            let info = b.info();
             json!({
                 "tier": tier.clone(),
                 "compute": tier != "webgl2",
                 "antialias": b.antialias(),
                 "maxLights": og_render::MAX_LIGHTS,
-                "maxShadowedLights": og_render::MAX_SHADOWED_LIGHTS,
+                "maxShadowedLights": info.as_ref().map_or(0, |i| i.shadowed_lights),
+                "pointShadows": info.as_ref().map_or("cube", |i| crate::point_shadows_name(i.point_shadows)),
                 "width": w, "height": h,
             })
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "width": 0, "height": 0 }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0 }))
         .to_string()
 }
 

@@ -1089,6 +1089,57 @@ pub fn render_options(id: u32) -> Value {
     engine(id).map_or(Value::Null, |e| e.render.borrow().options.clone())
 }
 
+/// `base` with the game's RenderOptions applied (GameDesc.render):
+/// antialias, shadowMapSize, pointShadows, taaHistory and taaSharpen. Both
+/// hosts create their renderer from it, so the options mean the same on
+/// each.
+pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
+    let options = render_options(id);
+    let mut desc = base;
+    desc.antialias = match options["antialias"].as_str().unwrap_or("tier") {
+        "off" => og_render::Antialias::Off,
+        "msaa4" => og_render::Antialias::Msaa4,
+        "taa" => og_render::Antialias::Taa,
+        "fxaa" => og_render::Antialias::Fxaa,
+        _ => og_render::Antialias::Tier,
+    };
+    if let Some(size) = options["shadowMapSize"].as_u64() {
+        desc.shadow_map_size = size.clamp(256, 4096) as u32;
+    }
+    desc.point_shadows = match options["pointShadows"].as_str().unwrap_or("auto") {
+        "cube" => og_render::PointShadows::Cube,
+        "paraboloid" => og_render::PointShadows::Paraboloid,
+        _ => og_render::PointShadows::Auto,
+    };
+    desc.taa_history = match options["taaHistory"].as_str() {
+        Some("catmullRom") => og_render::TaaHistory::CatmullRom,
+        _ => og_render::TaaHistory::Bilinear,
+    };
+    desc.taa_sharpen = options["taaSharpen"]
+        .as_f64()
+        .map_or(0.0, |v| v.clamp(0.0, 1.0) as f32);
+    desc
+}
+
+/// og-render's Antialias by its IDL name (RenderCapabilities.antialias).
+pub fn antialias_name(a: og_render::Antialias) -> &'static str {
+    match a {
+        og_render::Antialias::Msaa4 => "msaa4",
+        og_render::Antialias::Taa => "taa",
+        og_render::Antialias::Fxaa => "fxaa",
+        og_render::Antialias::Off | og_render::Antialias::Tier => "off",
+    }
+}
+
+/// og-render's PointShadows by its IDL name (RenderCapabilities.pointShadows).
+pub fn point_shadows_name(p: og_render::PointShadows) -> &'static str {
+    match p {
+        og_render::PointShadows::Cube => "cube",
+        og_render::PointShadows::Paraboloid => "paraboloid",
+        og_render::PointShadows::Auto => "auto",
+    }
+}
+
 // ── the tick ────────────────────────────────────────────────────────────────
 
 /// At a tick boundary: pending bundles, a scene waiting for its bundle.

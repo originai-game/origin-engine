@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-851 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+853 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -735,6 +735,7 @@ Field units the docs and Tune use.
 | [`Pointers.pressed`](input.md#member-Pointers-pressed) | method | input | `og_pointers_pressed` |
 | [`Pointers.released`](input.md#member-Pointers-released) | method | input | `og_pointers_released` |
 | [`Pointers.start`](input.md#member-Pointers-start) | method | input | `og_pointers_start` |
+| [`PointShadows`](render.md#type-PointShadows) | enum | render | — |
 | [`Presence`](ui.md#type-Presence) | struct | ui | — |
 | [`PROBE_GLOBAL`](probe.md#const-PROBE_GLOBAL) | constant | probe | — |
 | [`PROBE_PROGRAM_MAX_OPERATIONS`](probe.md#const-PROBE_PROGRAM_MAX_OPERATIONS) | constant | probe | — |
@@ -885,6 +886,7 @@ Field units the docs and Tune use.
 | [`SystemDesc`](system.md#type-SystemDesc) | desc struct | system | — |
 | [`SystemDump`](probe.md#type-SystemDump) | struct | probe | — |
 | [`SystemRun`](system.md#type-SystemRun) | callback | system | — |
+| [`TaaHistory`](render.md#type-TaaHistory) | enum | render | — |
 | [`TabsDesc`](ui.md#type-TabsDesc) | desc struct | ui | — |
 | [`TerrainBounds`](terrain.md#type-TerrainBounds) | struct | terrain | — |
 | [`TerrainBrush`](terrain.md#type-TerrainBrush) | desc struct | terrain | — |

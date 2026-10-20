@@ -1620,10 +1620,24 @@ module render {
 
   enum Antialias {
     doc "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved."
-    variant tier "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2."
+    variant tier "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled."
     variant off "One sample per pixel."
-    variant msaa4 "4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled."
-    variant taa "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames."
+    variant msaa4 "4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled."
+    variant taa "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it."
+    variant fxaa "FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture."
+  }
+
+  enum PointShadows {
+    doc "How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved."
+    variant auto "Cube faces on the full tier, paraboloids on WebGL2."
+    variant cube "Six 90 degree faces: six shadow passes per light."
+    variant paraboloid "Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection)."
+  }
+
+  enum TaaHistory {
+    doc "How TAA resamples its history each frame, as og-render's TaaHistory."
+    variant bilinear "One bilinear tap: cheap, slightly soft while the camera moves."
+    variant catmullRom "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
   }
 
   struct RenderOptions {
@@ -1634,6 +1648,13 @@ module render {
       default 2048
       min 256
       max 4096
+    }
+    field pointShadows PointShadows "How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser)."
+    field taaHistory TaaHistory "With TAA: how the history is resampled."
+    field taaSharpen f32 "With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range." {
+      min 0
+      max 1
+      unit ratio
     }
   }
 
@@ -1847,11 +1868,22 @@ module render {
       min 1
       unit m
     }
+    field shadowSoftness f32 "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel." {
+      min 0
+      max 0.2
+      tunable true
+    }
+    field cascadeBlend f32 "The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades)." {
+      min 0
+      max 0.5
+      unit ratio
+      tunable true
+    }
   }
 
   component PointLight {
     doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
+    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first."
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -1866,7 +1898,7 @@ module render {
       unit m
       tunable true
     }
-    field castShadow bool "Cast cube shadows."
+    field castShadow bool "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows)."
   }
 
   component SpotLight {
@@ -2843,7 +2875,8 @@ module render {
     field compute bool "Whether compute passes run (GPU culling, GPU particles)."
     field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
     field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
-    field maxShadowedLights u32 "How many point and spot lights may cast shadows."
+    field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs."
+    field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
   }

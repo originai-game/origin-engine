@@ -731,6 +731,18 @@
           "name": "shadowDistance",
           "column": "f32",
           "default": 200
+        },
+        {
+          "name": "shadowSoftness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "cascadeBlend",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },

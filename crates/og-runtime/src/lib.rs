@@ -62,9 +62,9 @@ pub use atmosphere::{
 };
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
-    ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, begin_bundle, call_rpc,
-    command, create, destroy, frame, render_options, set_render_backend, take_log, take_outputs,
-    view_columns, view_entities, write_resource,
+    ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, antialias_name, begin_bundle,
+    call_rpc, command, create, destroy, frame, point_shadows_name, render_desc, render_options,
+    set_render_backend, take_log, take_outputs, view_columns, view_entities, write_resource,
 };
 pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
