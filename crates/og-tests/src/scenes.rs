@@ -68,6 +68,11 @@ pub const SCENES: &[&str] = &[
     "materials",
     "skinned-hooks",
     "materials-physical",
+    "shadows-soft",
+    "point-shadows-paraboloid",
+    "shadows-local-8",
+    "fxaa",
+    "taa-sharp",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -193,6 +198,50 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Tier;
             g.applies = Applies::NoComputeTier;
+        }
+        // The same geometry with FXAA, on every tier (the GL tier's
+        // alternative to MSAA, what `Tier` picks without multisampled HDR).
+        "fxaa" => {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::Fxaa;
+        }
+        // The same geometry under TAA with the camera sliding sideways:
+        // Catmull-Rom history and a 0.5 sharpening pass, after 16 frames.
+        "taa-sharp" => {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::Taa;
+            g.desc.taa_history = og_render::TaaHistory::CatmullRom;
+            g.desc.taa_sharpen = 0.5;
+            g.frames = 16;
+            g.update = Some(crate::shadow_scenes::pan_thin_geometry);
+            g.applies = Applies::FullTier;
+        }
+        // The sun's soft shadows (PCSS) with cascade blending: contact
+        // shadows sharp, penumbrae widening with the caster's height.
+        "shadows-soft" => g.scene = crate::shadow_scenes::soft_shadows_scene(true),
+        // The same with hard shadows and no blending (evidence only, no reference).
+        "shadows-soft-off" => g.scene = crate::shadow_scenes::soft_shadows_scene(false),
+        // taa-sharp's moving camera with a bilinear history and no
+        // sharpening (evidence only, no reference).
+        "taa-motion" => {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::Taa;
+            g.frames = 16;
+            g.update = Some(crate::shadow_scenes::pan_thin_geometry);
+            g.applies = Applies::FullTier;
+        }
+        // point-spot-lights with the point light's shadow in two paraboloid
+        // hemispheres (WebGL2's default) instead of six cube faces.
+        "point-shadows-paraboloid" => {
+            g.scene = point_spot_lights();
+            g.desc.point_shadows = og_render::PointShadows::Paraboloid;
+        }
+        // Eight shadowed lights (six point, two spot) and two more far
+        // behind whose shadows are left out (the full tier's eight; WebGL2
+        // draws four, its own frame).
+        "shadows-local-8" => {
+            g.scene = crate::shadow_scenes::many_shadowed_lights(true);
+            g.applies = Applies::FullTier;
         }
         // Emissive spheres over a dark ground with bloom.
         "bloom" => {
@@ -476,7 +525,7 @@ pub fn cascades_200m(tall: bool) -> RenderScene {
     scene
 }
 
-fn point_spot_lights() -> RenderScene {
+pub fn point_spot_lights() -> RenderScene {
     let mut scene = RenderScene::new();
     ground(&mut scene, 30.0, 0.5, 0.7);
     let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.6, 3.0, 0.6)));

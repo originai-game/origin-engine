@@ -16,4 +16,5 @@ pub mod ibl_scenes;
 pub mod p2_scenes;
 pub mod physical_scenes;
 pub mod scenes;
+pub mod shadow_scenes;
 pub mod terrain_scenes;
