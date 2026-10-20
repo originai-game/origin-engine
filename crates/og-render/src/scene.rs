@@ -358,6 +358,19 @@ handle!(
     /// ([`RenderScene::add_texture_array`]).
     TextureArrayHandle
 );
+
+impl TextureArrayHandle {
+    /// The handle as a [`crate::StandardMaterial`] texture-array slot
+    /// (`mapArray`, `normalMapArray`): its bits plus one (0 is none).
+    pub fn slot(self) -> u32 {
+        self.0 + 1
+    }
+
+    /// The handle a texture-array slot names (`None` for slot 0).
+    pub fn from_slot(slot: u32) -> Option<TextureArrayHandle> {
+        slot.checked_sub(1).map(TextureArrayHandle)
+    }
+}
 handle!(
     /// A colour LUT added to a [`RenderScene`] ([`RenderScene::add_lut`]).
     LutHandle
@@ -390,6 +403,12 @@ pub struct Instance {
     pub material: MaterialHandle,
     /// Local to world. Normals use the upper 3x3 directly, so keep scale uniform.
     pub transform: Mat4,
+    /// The texture-array layer this instance's material samples
+    /// ([`crate::StandardMaterial::mapArray`] and `normalMapArray`), in
+    /// place of the material's `mapLayer` and `normalMapLayer`: variants of
+    /// one material (tiles, skins) stay one batch, one draw. `None`: the
+    /// material's layers. A material without array maps ignores it.
+    pub material_layer: Option<u32>,
 }
 
 /// How a [`Camera`] projects the world onto the target.
@@ -1660,8 +1679,9 @@ impl RenderScene {
     /// Removes a texture array: the renderer frees it before the next frame
     /// and a later add reuses the slot under a new generation. A sprite
     /// still drawn from it ([`RenderScene::sprite_arrays`]) is refused at
-    /// the next frame ([`crate::RenderError::InvalidHandle`]). False for a
-    /// handle that is not live.
+    /// the next frame ([`crate::RenderError::InvalidHandle`]); a material
+    /// sampling it forgets it (its array maps read as none), as a removed
+    /// texture's. False for a handle that is not live.
     pub fn remove_texture_array(&mut self, handle: crate::TextureArrayHandle) -> bool {
         let i = handle.index();
         if !self.texture_array_slots.live(i, handle.generation()) {
@@ -1673,6 +1693,17 @@ impl RenderScene {
             *f = TextureFilter::Linear;
         }
         self.texture_array_slots.remove(i, true);
+        // Materials sampling it draw without it from now on.
+        let slot = handle.slot();
+        for (m, revision) in self
+            .materials
+            .iter_mut()
+            .zip(self.material_revisions.iter_mut())
+        {
+            if m.forget_texture_array(slot) {
+                *revision += 1;
+            }
+        }
         true
     }
 
@@ -2081,6 +2112,7 @@ impl RenderScene {
             mesh,
             material,
             transform,
+            material_layer: None,
         });
     }
 
@@ -2461,12 +2493,18 @@ pub struct SpriteShadow {
 /// The ground a [`SpriteShadow`] falls on: the plane through the point
 /// at `height` under the sprite's anchor with the normal `normal` (og-runtime
 /// fits it to the terrain under the sprite with [`ShadowGround::fit`], or
-/// takes `SpriteDesc.dropShadowHeight`). The default is the plane y = 0.
-/// A normal steeper than about 70° from up is taken as that steep.
+/// takes `SpriteDesc.dropShadowHeight`), or, with `bend`, the ground's
+/// heights under a grid of the shadow's points. The default is the plane
+/// y = 0. A normal steeper than about 70° from up is taken as that steep.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShadowGround {
     pub height: f32,
     pub normal: Vec3,
+    /// The shadow bent over the ground instead of laid on the plane
+    /// ([`ShadowGround::fit`] sets it where the plane misses the ground
+    /// under the shadow by more than [`SHADOW_BEND_TOLERANCE`]: over a
+    /// hollow or a ridge narrower than the shadow).
+    pub bend: Option<ShadowBend>,
 }
 
 impl Default for ShadowGround {
@@ -2474,8 +2512,37 @@ impl Default for ShadowGround {
         ShadowGround {
             height: 0.0,
             normal: Vec3::Y,
+            bend: None,
         }
     }
+}
+
+/// Rows of a [`ShadowBend`]: points up the sprite's quad, so along the
+/// shadow (four cells).
+pub const SHADOW_BEND_ROWS: usize = 5;
+/// Columns of a [`ShadowBend`]: points across the quad (two cells).
+pub const SHADOW_BEND_COLUMNS: usize = 3;
+/// How far (metres, plus the same share of the sprite's height) the
+/// fitted plane may miss the ground under a grid point before
+/// [`ShadowGround::fit`] bends the shadow.
+pub const SHADOW_BEND_TOLERANCE: f32 = 0.03;
+
+/// A drop shadow bent over uneven ground: the sprite's quad is cut into
+/// 4 × 2 cells (along × across the shadow), and each corner of a cell is
+/// carried down the sun to the ground's height under it, so the shadow
+/// dips into a hollow and climbs over a ridge narrower than itself. The
+/// renderer draws one shadow instance per cell (sprites.rs); the cells
+/// share their corners exactly, so the shadow has no seams. Between the
+/// points the ground is taken as straight: a feature narrower than a cell
+/// (a quarter of the shadow's length, half the sprite's width) is bridged,
+/// and a bump between two points can cover the shadow there.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadowBend {
+    /// `heights[row][column]`: the ground's height (metres) where the sun
+    /// carries the quad's point at (column / 2, row / 4), fractions of its
+    /// width and height from the bottom-left corner as the sprite's anchor
+    /// counts them, down onto the ground.
+    pub heights: [[f32; SHADOW_BEND_COLUMNS]; SHADOW_BEND_ROWS],
 }
 
 impl ShadowGround {
@@ -2484,6 +2551,7 @@ impl ShadowGround {
         ShadowGround {
             height,
             normal: Vec3::Y,
+            bend: None,
         }
     }
 
@@ -2493,9 +2561,12 @@ impl ShadowGround {
     /// along the slope from there to where the shadow's tip falls and
     /// across the slope over the sprite's width, raised where the ground
     /// between bulges above that plane, so no part of the shadow sinks
-    /// into a hill (over a hollow it lies a little above the ground). A
-    /// level plane at the anchor's ground with the sun at or below the
-    /// horizon.
+    /// into a hill. Where that plane misses the ground under a grid of the
+    /// shadow's points by more than [`SHADOW_BEND_TOLERANCE`] (a hollow or
+    /// a ridge narrower than the shadow), the shadow is bent instead
+    /// ([`ShadowBend`]): each point is carried down the sun to the first
+    /// ground it meets. A level plane at the anchor's ground with the sun
+    /// at or below the horizon.
     pub fn fit(
         height_at: impl Fn(f32, f32) -> f32,
         sprite: &crate::Sprite,
@@ -2524,12 +2595,98 @@ impl ShadowGround {
         let gradient = along * (tip - h0) / length
             + across.normalize() * (right - left) / (2.0 * across.length());
         let bulge = (height_at(mid.x, mid.y) - (h0 + tip) * 0.5).max(0.0);
-        ShadowGround {
+        let mut plane = ShadowGround {
             height: h0 + bulge,
             normal: Vec3::new(-gradient.x, 1.0, -gradient.y).normalize(),
-        }
+            bend: None,
+        };
+        plane.bend = plane.bend_over(&height_at, sprite, g);
+        plane
     }
 
+    /// The bend of a shadow whose plane is `self` over `height_at`, under
+    /// the sun's projection `g` (`sprites::shadow_ground`), or `None` where
+    /// the plane lies within the tolerance of the ground at every point.
+    fn bend_over(
+        &self,
+        height_at: &impl Fn(f32, f32) -> f32,
+        sprite: &crate::Sprite,
+        g: [f32; 4],
+    ) -> Option<ShadowBend> {
+        let tall = sprite.size.y.abs().max(0.05);
+        let tolerance = SHADOW_BEND_TOLERANCE * (1.0 + tall);
+        let [rise_x, rise_z] = self.slope();
+        let anchor = sprite.position;
+        let (sin, cos) = sprite.rotation.sin_cos();
+        // Each grid point as the sprite shader stands it, and where it
+        // lands on the plane (sprite.wgsl sloped_shadow).
+        let mut points = [[(Vec3::ZERO, 0.0); SHADOW_BEND_COLUMNS]; SHADOW_BEND_ROWS];
+        let mut misses = false;
+        for (row, line) in points.iter_mut().enumerate() {
+            for (column, point) in line.iter_mut().enumerate() {
+                let c = glam::Vec2::new(
+                    column as f32 / (SHADOW_BEND_COLUMNS - 1) as f32,
+                    row as f32 / (SHADOW_BEND_ROWS - 1) as f32,
+                );
+                let local = (c - sprite.anchor) * sprite.size;
+                let p = Vec3::new(
+                    anchor.x + local.x * cos - local.y * sin,
+                    anchor.y + local.x * sin + local.y * cos,
+                    anchor.z,
+                );
+                // Where it lands on the plane (sprite.wgsl sloped_shadow) ...
+                let above =
+                    p.y - self.height - rise_x * (p.x - anchor.x) - rise_z * (p.z - anchor.z);
+                let t = above / (1.0 + rise_x * g[1] + rise_z * g[2]).max(0.2);
+                let on_plane = p.y - t;
+                *point = (p, on_plane);
+                // The ground under that landing: the plane misses it there.
+                let ground = height_at(p.x + g[1] * t, p.z + g[2] * t);
+                misses |= (ground - on_plane).abs() > tolerance;
+            }
+        }
+        if !misses {
+            return None;
+        }
+        // Bent: each point down to the first ground the sun's ray from it
+        // meets.
+        Some(ShadowBend {
+            heights: points.map(|line| {
+                line.map(|(p, on_plane)| landing(height_at, p, g, tall).unwrap_or(on_plane))
+            }),
+        })
+    }
+}
+
+/// The height of the first ground a ray from `p` down the sun's
+/// projection `g` meets (`p + (g1, -1, g2) t`, t ≥ 0), marched in 48 steps
+/// over three times the sprite's height `tall` (plus a metre) and refined
+/// by bisection; `None` if it meets none there.
+fn landing(height_at: &impl Fn(f32, f32) -> f32, p: Vec3, g: [f32; 4], tall: f32) -> Option<f32> {
+    let above = |t: f32| (p.y - t) - height_at(p.x + g[1] * t, p.z + g[2] * t);
+    if above(0.0) <= 0.0 {
+        return Some(height_at(p.x, p.z));
+    }
+    let steps = 48;
+    let dt = (3.0 * tall + 1.0) / steps as f32;
+    let mut lo = 0.0;
+    for k in 1..=steps {
+        let hi = k as f32 * dt;
+        if above(hi) <= 0.0 {
+            let (mut a, mut b) = (lo, hi);
+            for _ in 0..12 {
+                let m = 0.5 * (a + b);
+                if above(m) > 0.0 { a = m } else { b = m }
+            }
+            let t = 0.5 * (a + b);
+            return Some(p.y - t);
+        }
+        lo = hi;
+    }
+    None
+}
+
+impl ShadowGround {
     /// How the ground rises per metre along x and z (0, 0 for a level
     /// plane, or a normal that is not finite or points down).
     pub fn slope(&self) -> [f32; 2] {

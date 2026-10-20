@@ -9,6 +9,10 @@
 //! - `stylise-print`: cross-hatching and ink lines over the physical
 //!   materials scene (a pencil drawing).
 //! - `stylise-halftone`: halftone dots over the toon scene.
+//! - `stylise-halftone-surface`: the same dots laid on the surfaces (dot
+//!   grids on the three world planes, larger where the tone is darker,
+//!   foreshortened on the floor and wrapping round the forms), with ink on
+//!   luminance and depth edges: a comic print given depth.
 //! - `stylise-paint`: painterly smoothing, edge darkening and bleed over the
 //!   physical materials scene.
 //! - `stylise-bands`: four flat depth bands over the toon scene (layered
@@ -28,8 +32,13 @@
 //!   box to the far sphere), a paper canvas on the surfaces (the grain
 //!   foreshortened on the floor, the sky keeping the screen grain) and
 //!   depth ink with its thresholds set.
+//! - `stylise-object`: the same drawing in object space, with a box
+//!   tilted on two axes and a long beam scaled 4 x 0.4 x 0.5 laid across
+//!   the floor: each instance's strokes and grain run along its own faces
+//!   (square on the beam despite its scale), where world space blends the
+//!   world's planes across a turned face.
 
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DepthBands, DirectionalLight, DitherPattern, Exposure,
     Halftone, Hatching, Ink, MaterialStyle, Paint, Palette, PixelScale, Quantize, RenderScene,
@@ -105,6 +114,7 @@ pub fn print_scene() -> RenderScene {
         angle_degrees: 45.0,
         color: [0.04, 0.035, 0.03],
         space: StyliseSpace::Screen,
+        depth: 0.0,
     });
     scene.stylise.ink = Some(Ink {
         threshold: 0.12,
@@ -124,6 +134,25 @@ pub fn halftone_scene() -> Result<RenderScene, String> {
         angle_degrees: 30.0,
         color: [0.05, 0.02, 0.08],
         space: StyliseSpace::Screen,
+    });
+    Ok(scene)
+}
+
+pub fn halftone_surface_scene() -> Result<RenderScene, String> {
+    let mut scene = crate::fx_scenes::stylised_scene()?;
+    scene.stylise.halftone = Some(Halftone {
+        strength: 1.0,
+        size: 9.0,
+        angle_degrees: 30.0,
+        color: [0.05, 0.02, 0.08],
+        space: StyliseSpace::Surface,
+    });
+    scene.stylise.ink = Some(Ink {
+        threshold: 0.4,
+        width: 1.0,
+        color: [0.02, 0.02, 0.03],
+        depth: 1.0,
+        ..Default::default()
     });
     Ok(scene)
 }
@@ -330,6 +359,7 @@ pub fn surface_scene() -> RenderScene {
         angle_degrees: 30.0,
         color: [0.05, 0.045, 0.04],
         space: StyliseSpace::Surface,
+        depth: 0.0,
     });
     scene.stylise.paint = Some(Paint {
         radius: 0.0,
@@ -350,5 +380,45 @@ pub fn surface_scene() -> RenderScene {
         depth_threshold: 0.03,
         normal_threshold: 0.3,
     });
+    scene
+}
+
+/// `stylise-object`: [`surface_scene`] in object space with a tilted box
+/// and a scaled beam.
+pub fn object_scene() -> RenderScene {
+    let mut scene = surface_scene();
+    let clay = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.8, 0.78, 0.74),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    scene.add_instance(
+        cube,
+        clay,
+        Mat4::from_scale_rotation_translation(
+            Vec3::splat(1.1),
+            Quat::from_rotation_y(-0.5) * Quat::from_rotation_x(0.45) * Quat::from_rotation_z(0.3),
+            Vec3::new(-0.6, 0.85, 2.6),
+        ),
+    );
+    scene.add_instance(
+        cube,
+        clay,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(4.0, 0.4, 0.5),
+            Quat::from_rotation_y(0.35),
+            Vec3::new(-3.6, 0.2, 1.4),
+        ),
+    );
+    for space in [
+        scene.stylise.hatching.as_mut().map(|h| &mut h.space),
+        scene.stylise.paint.as_mut().map(|p| &mut p.canvas_space),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        *space = StyliseSpace::Object;
+    }
     scene
 }

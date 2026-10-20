@@ -35,7 +35,7 @@ import { RD_STATIONS, buildRD, resetRD, showRD, type RDStation } from "./render.
 import { SPH_STATIONS, SPHShow, buildSPH, showSPH, type SPHStation } from "./sph.ts";
 import { PM_STATIONS, buildPM, showPM, type PMStation } from "./physical.ts";
 import { IBL_STATIONS, buildIBL, resetIBL, showIBL, type IBLStation } from "./ibl.ts";
-import { LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
+import { LOOK_PRESETS, LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
 export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS] as const;
@@ -53,6 +53,8 @@ export const Stage = defineComponent("Stage", {
   flash: f64(0),
   /** Ticks since the station was shown (drives the pulses). */
   shown: u32(0),
+  /** The look preset shown on the looks station: 0 none, k + 1 LOOK_PRESETS[k] (the HUD names it). */
+  look: u32(0),
 });
 
 /** Moves an entity on a circle about `centre` (radius, turns per second, phase in turns). */
@@ -116,14 +118,14 @@ export const Blink = defineSystem("Blink", { writes: [og.Blendshapes] }, (q, tim
  * shake), the 2D station's sprites, the fx station's ribbon, and the HUD.
  */
 export const Show = defineSystem("Show", { writes: [Stage, og.PostEffects] }, (q, time, world) => {
-  let s: { station: number; font: Font; crate: Texture; tile: Texture; spark: Texture; dissolve: Material; flash: Material } | null = null;
+  let s: { station: number; look: number; font: Font; crate: Texture; tile: Texture; spark: Texture; dissolve: Material; flash: Material } | null = null;
   for (const a of q.archetypes()) {
     if (a.count === 0) continue;
     const c = a.column(Stage);
     c.shown[0] = c.shown[0]! + 1;
     // The handles are kept as f64 in Stage; they are the engine's branded handles.
     const h = <T>(v: number) => v as unknown as T;
-    s = { station: c.station[0]!, font: h<Font>(c.font[0]!), crate: h<Texture>(c.crate[0]!), tile: h<Texture>(c.tile[0]!), spark: h<Texture>(c.spark[0]!), dissolve: h<Material>(c.dissolve[0]!), flash: h<Material>(c.flash[0]!) };
+    s = { station: c.station[0]!, look: c.look[0]!, font: h<Font>(c.font[0]!), crate: h<Texture>(c.crate[0]!), tile: h<Texture>(c.tile[0]!), spark: h<Texture>(c.spark[0]!), dissolve: h<Material>(c.dissolve[0]!), flash: h<Material>(c.flash[0]!) };
   }
   if (s === null) return;
   const station = STATIONS[s.station] ?? "post";
@@ -155,7 +157,7 @@ export const Show = defineSystem("Show", { writes: [Stage, og.PostEffects] }, (q
     }
     must(og.render.ribbon(world, { points, texture: s.spark, blend: "additive" }));
   }
-  hud(world, s.font, station);
+  hud(world, s.font, station, s.look);
 });
 
 function draw2d(world: World, s: { crate: Texture; tile: Texture; spark: Texture }, t: number): void {
@@ -184,9 +186,13 @@ function draw2d(world: World, s: { crate: Texture; tile: Texture; spark: Texture
   og.render.sprite(world, { texture: s.spark, position: { x: x0 - 1, y: 1.5, z: 0 }, width: 1.6, height: 1.6, layer: 3, color: { r: 0.4, g: 0.8, b: 1.6 }, blend: "additive", glow: 1.5 });
 }
 
-/** The screen-space HUD: a panel, the title and the station, and a og.ui badge. */
-function hud(world: World, font: Font, station: Station): void {
-  og.render.sprite(world, { screen: true, position: { x: 16, y: 16, z: 0 }, width: 300, height: 76, anchor: { x: 0, y: 0 }, color: { r: 0.02, g: 0.02, b: 0.03 }, opacity: 0.72, layer: 0 });
+/**
+ * The screen-space HUD: a panel, the title and the station (on the looks
+ * station, the preset shown: each frame names its look), and a og.ui badge.
+ */
+function hud(world: World, font: Font, station: Station, look: number): void {
+  const looks = station === "looks";
+  og.render.sprite(world, { screen: true, position: { x: 16, y: 16, z: 0 }, width: looks ? 480 : 300, height: 76, anchor: { x: 0, y: 0 }, color: { r: 0.02, g: 0.02, b: 0.03 }, opacity: 0.72, layer: 0 });
   og.render.sprite(world, { screen: true, position: { x: 16, y: 16, z: 0 }, width: 6, height: 76, anchor: { x: 0, y: 0 }, color: { r: 1, g: 0.62, b: 0.08 }, layer: 1 });
   og.render.text(world, { font, text: "Origin Engine effects", position: { x: 34, y: 46, z: 0 }, size: 24, screen: true, layer: 2 });
   const i = STATIONS.indexOf(station);
@@ -199,7 +205,8 @@ function hud(world: World, font: Font, station: Station): void {
   const rd = ap - AP_STATIONS.length;
   const pm = rd - RD_STATIONS.length - SPH_STATIONS.length;
   const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : pm < 0 ? `phase 2 station  ${station}` : (IBL_STATIONS as readonly string[]).includes(station) ? `phase 4 station  ${station}` : `P4 station  ${station}`;
-  og.render.text(world, { font, text: label, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
+  const line = looks ? `${label}  ${LOOK_PRESETS[look - 1] ?? "none"}` : label;
+  og.render.text(world, { font, text: line, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
   og.ui.anchor("Badge", { anchor: "bottomRight" }, () => og.ui.panel("BadgePanel", { padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("BadgeText", "og.ui over the frame", {})));
 }
 
@@ -208,7 +215,7 @@ function hud(world: World, font: Font, station: Station): void {
 /** What a station shows: the camera, the light and the post stack. */
 function show(world: World, station: Station): void {
   const stage = world.find("stage");
-  if (stage !== null) world.set(stage, Stage, { station: STATIONS.indexOf(station), shown: 0 });
+  if (stage !== null) world.set(stage, Stage, { station: STATIONS.indexOf(station), shown: 0, look: 0 });
   const cam = must(world.resource(og.Camera));
   const settings = must(world.resource(og.RenderSettings));
   const post = must(world.resource(og.PostEffects));
@@ -473,7 +480,13 @@ export default og.game({
       const name = (args[0] ?? "post") as Station;
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
-    look: (world, args) => applyLookPreset(world, args[0] ?? "none"),
+    look: (world, args) => {
+      const slug = args[0] ?? "none";
+      applyLookPreset(world, slug);
+      // The HUD names the preset shown (none for an unknown slug, as applied).
+      const stage = world.find("stage");
+      if (stage !== null) world.set(stage, Stage, { look: LOOK_PRESETS.indexOf(slug as (typeof LOOK_PRESETS)[number]) + 1 });
+    },
   },
   commandHelp: { station: { usage: "<name|1-26>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), and the looks station (looks)." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
   facts: (world) => {

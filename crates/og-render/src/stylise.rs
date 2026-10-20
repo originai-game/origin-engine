@@ -13,8 +13,10 @@
 /// The primitive groups this renderer draws, by the names
 /// `RenderCapabilities.stylise` reports: `pixel`, `posterize`, `palette`,
 /// `dither`, `halftone`, `hatching`, `paint`, `ink`, `inkDepth`,
-/// `depthBands`, `retro3d` and `surfaceSpace` (the canvas, hatching and
-/// halftone laid on surfaces, [`StyliseSpace::Surface`]) ([`Stylise`]);
+/// `depthBands`, `retro3d`, `surfaceSpace` (the canvas, hatching and
+/// halftone laid on surfaces, [`StyliseSpace::Surface`]) and `objectSpace`
+/// (laid in each instance's own space, [`StyliseSpace::Object`])
+/// ([`Stylise`]);
 /// `toon`, `shadowTint`, `rim`, `outline`, `outlineDistance` and
 /// `flatShading` ([`MaterialStyle`]).
 pub const STYLISE_DRAWN: &[&str] = &[
@@ -30,6 +32,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "depthBands",
     "retro3d",
     "surfaceSpace",
+    "objectSpace",
     "toon",
     "shadowTint",
     "rim",
@@ -102,6 +105,34 @@ pub enum StyliseSpace {
     /// as the camera moves and wraps round forms. The sky keeps the screen
     /// pattern. The frame runs the prepass.
     Surface,
+    /// On the surfaces as [`StyliseSpace::Surface`], but triplanar in each
+    /// instance's own space: a moving or turning object carries its
+    /// strokes, dots and grain instead of sliding through them. The frame
+    /// runs the prepass and then the object pass (`stylise_object.rs`),
+    /// which draws the opaque mesh instances again into an `Rgba32Uint`
+    /// target holding each pixel's position in its instance's space
+    /// (metres: the mesh position times the instance's axis scales, so
+    /// the pattern keeps its size on a scaled instance) and its normal
+    /// there. Pixels no instance covers (terrain, scattered copies, a
+    /// material shader's moved vertices) keep the world pattern, the sky
+    /// the screen pattern.
+    Object,
+}
+
+impl StyliseSpace {
+    /// Laid on the surfaces (world or object space).
+    pub fn on_surfaces(self) -> bool {
+        self != StyliseSpace::Screen
+    }
+
+    /// The shader's code for the space: 0 screen, 1 world, 2 object.
+    pub(crate) fn code(self) -> f32 {
+        match self {
+            StyliseSpace::Screen => 0.0,
+            StyliseSpace::Surface => 1.0,
+            StyliseSpace::Object => 2.0,
+        }
+    }
 }
 
 /// Halftone dots on a rotated grid.
@@ -129,6 +160,14 @@ pub struct Hatching {
     pub angle_degrees: f32,
     pub color: [f32; 3],
     pub space: StyliseSpace,
+    /// How strongly the depth-normal prepass's silhouettes and creases
+    /// darken the tone the strokes follow, 0 to 1, as [`Ink::depth`] inks
+    /// them: strokes gather along contours and folds that the tone alone
+    /// leaves light. The edges are [`Ink`]'s (`depth_threshold`,
+    /// `normal_threshold`; the outline pass's defaults without ink), found
+    /// within one stroke spacing. 0 is the tone alone; above 0 the frame
+    /// runs the prepass.
+    pub depth: f32,
 }
 
 /// Painterly smoothing, pigment pooling and a canvas.
@@ -160,9 +199,7 @@ pub const DEFAULT_CANVAS_WORLD_SCALE: f32 = 128.0;
 impl Paint {
     /// Whether the canvas is drawn on surfaces (the frame runs the prepass).
     pub fn canvas_on_surfaces(&self) -> bool {
-        self.canvas_space == StyliseSpace::Surface
-            && self.canvas.is_some()
-            && self.canvas_strength > 0.0
+        self.canvas_space.on_surfaces() && self.canvas.is_some() && self.canvas_strength > 0.0
     }
 }
 
@@ -275,13 +312,36 @@ impl Stylise {
     /// Whether a pattern is laid on surfaces: the frame runs the
     /// depth-normal prepass and the paint or lines pass reads it.
     pub fn on_surfaces(&self) -> bool {
-        self.paint.is_some_and(|p| p.canvas_on_surfaces())
+        self.surface_spaces()
+            .iter()
+            .any(|s| s.is_some_and(StyliseSpace::on_surfaces))
+    }
+
+    /// Whether a pattern is laid in object space: the frame runs the
+    /// object pass after the prepass.
+    pub fn in_object_space(&self) -> bool {
+        self.surface_spaces().contains(&Some(StyliseSpace::Object))
+    }
+
+    /// The space of the canvas, the hatching and the halftone where each
+    /// is drawn (`None` where it is not).
+    fn surface_spaces(&self) -> [Option<StyliseSpace>; 3] {
+        [
+            self.paint
+                .filter(|p| p.canvas.is_some() && p.canvas_strength > 0.0)
+                .map(|p| p.canvas_space),
+            self.hatching.filter(|h| h.strength > 0.0).map(|h| h.space),
+            self.halftone.filter(|h| h.strength > 0.0).map(|h| h.space),
+        ]
+    }
+
+    /// Whether a pass reads the depth-normal prepass's edges: ink or
+    /// hatching with `depth` above 0.
+    pub fn depth_edges(&self) -> bool {
+        self.ink.is_some_and(|i| i.depth > 0.0)
             || self
                 .hatching
-                .is_some_and(|h| h.space == StyliseSpace::Surface && h.strength > 0.0)
-            || self
-                .halftone
-                .is_some_and(|h| h.space == StyliseSpace::Surface && h.strength > 0.0)
+                .is_some_and(|h| h.depth > 0.0 && h.strength > 0.0)
     }
 
     /// Whether any primitive is on.
@@ -385,10 +445,25 @@ mod tests {
             angle_degrees: 45.0,
             color: [0.0; 3],
             space: StyliseSpace::Screen,
+            depth: 0.0,
         });
         assert!(!s.on_surfaces(), "screen hatching");
+        assert!(!s.depth_edges(), "hatching on the tone alone");
+        s.hatching.as_mut().unwrap().depth = 0.5;
+        assert!(
+            s.depth_edges(),
+            "hatching from depth edges reads the prepass"
+        );
+        s.hatching.as_mut().unwrap().depth = 0.0;
         s.hatching.as_mut().unwrap().space = StyliseSpace::Surface;
         assert!(s.on_surfaces());
+        assert!(!s.in_object_space(), "world space runs no object pass");
+        s.hatching.as_mut().unwrap().space = StyliseSpace::Object;
+        assert!(s.on_surfaces() && s.in_object_space());
+        s.hatching.as_mut().unwrap().strength = 0.0;
+        assert!(!s.in_object_space(), "only where the pattern draws");
+        s.hatching.as_mut().unwrap().strength = 0.8;
+        s.hatching.as_mut().unwrap().space = StyliseSpace::Surface;
         assert_eq!(
             s.chain_bits(),
             Stylise {

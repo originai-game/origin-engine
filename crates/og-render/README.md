@@ -21,17 +21,17 @@ the world → scene extraction belongs to the layer above.
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
 | `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette`, `add_lut` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile; `remove_mesh`, `remove_texture`, `remove_material`, `remove_font`, `remove_environment_map`, `remove_texture_array`, `remove_palette`, `remove_lut` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `particle_colliders` (`ParticleCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). The renderer uploads what is new or changed and frees what was removed before the next frame. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
-| `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. |
-| `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
+| `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. `mapArray`/`mapLayer` and `normalMapArray`/`normalMapLayer` read the base colour and normal from texture-array layers ([Array maps](#array-maps-materials-and-terrain-layers)). |
+| `Instance` | `(mesh, material, transform, material_layer)`, submitted one by one; batched by (mesh, material). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
 | `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8 on the full tier, `NO_COMPUTE_SHADOWED_LIGHTS` = 4 on WebGL2) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
-| `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, the cook's prefilter. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
+| `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)` and `bake::bake_cube`, the cook's prefilter, and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)`, a cube's own prefiltered mip chain taken as it is. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
 | `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays` for screen sprites): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture, with glow, flash, 2D lighting and blend; `ParticleEmitter::array` draws a 2D emitter's particles from one. See [The 2D batch](#the-2d-batch-e4). |
-| `SpriteShadow`, `ShadowGround`, `SPRITE_SHADOW_LIFT` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` (a plane through `height` under the anchor with a `normal`; the plane y = 0 by default; `ShadowGround::fit` fits one to a terrain under the shadow), faded where the cascades already shadow that ground, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
+| `SpriteShadow`, `ShadowGround`, `ShadowBend`, `SPRITE_SHADOW_LIFT`, `SHADOW_BEND_ROWS`, `SHADOW_BEND_COLUMNS`, `SHADOW_BEND_TOLERANCE` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` (a plane through `height` under the anchor with a `normal`; the plane y = 0 by default; `ShadowGround::fit` fits one to a terrain under the shadow, and bends it, `bend`, over a hollow or ridge the plane misses), faded where the cascades already shadow that ground, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
@@ -66,9 +66,10 @@ setters (`set_mesh`, `set_material`, `set_font`, `set_texture_filter`,
 (`RenderError::InvalidHandle`, naming it: an instance's mesh or material, a
 sprite's or an overlay sprite's texture or array, a 2D emitter's array, a
 text's font or a live font's atlas, `environment_map`, the colour
-grading's LUT, the stylisation's palette). A removed texture is also
-cleared from every material slot and the decal atlas (they draw without
-it). Removing what the frame still uses is the caller's to avoid:
+grading's LUT, the stylisation's palette, a terrain's layer array). A
+removed texture is also cleared from every material slot and the decal
+atlas, a removed texture array from every material's `mapArray` and
+`normalMapArray` (they draw without it). Removing what the frame still uses is the caller's to avoid:
 og-runtime's streaming keeps such a resource, with a warning, until the
 frame stops using it. `FrameStats::texture_bytes` counts textures, arrays
 (padding layers included), environment maps (every level of the six RGB9E5
@@ -463,6 +464,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). | all |
 | `atmosphere-moon` | The night colonnade with a waxing gibbous moon in view. | all |
 | `materials` | Every M6 material feature: metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. | all |
+| `materials-array` | Texture-array maps (round of the cook's owed lines; references to record on metal and vulkan-cpu): eight cubes of one tile material (a four-layer sRGB colour array and a four-layer normal array), seven on their own layers and one on the material's, one batch; a cube of layer 1 as plain 2D textures beside them; two blended panes of one array material (layer 0, and the material's 3); a sphere with only a normal array (orange over the white stand-in). 5 batches, 13 instances. | all |
 | `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its three maps, sheen plain and mapped, iridescence on black and on metal, anisotropy plain and swirled by its map, then clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball in front of a plinth of coloured bars. | all |
 | `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. | all |
 | `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. | all |
@@ -557,7 +559,9 @@ the frame; `Batch::derivatives`): on Metal a shader with a discard
 computes derivatives differently, so there the discard stays. The lean
 pipelines are keyed (side, effects, derivatives), the lean prepass (side,
 derivatives), made at first use: one of each for a typical scene, at most
-12 and 6. Shadow casters that are not skinned, dissolving or hooked read
+12 and 6. Materials with texture-array maps draw through a variant of the
+full lit, prepass and shadow pipelines ([Array
+maps](#array-maps-materials-and-terrain-layers)), never the lean ones. Shadow casters that are not skinned, dissolving or hooked read
 their position alone whatever their material (`shadow.wgsl` `vs_lean` /
 `fs_lean`: the world position the only varying; no extra pipeline).
 spheres-20k on an M4 Pro (dev og-gfx): 7.1 to 4.6 ms a frame, every
@@ -671,6 +675,35 @@ shadow). The sprite vertex shader's slope path moves `sprites-20k` on
 Metal by at most 2/255 on 261 pixels (the compiler's code for the
 standing quad changes with it; no shadow in that scene); every other
 reference is byte-identical.
+
+*Bent over hollows* (stylisation round four): one plane cannot follow a
+hollow or a ridge narrower than the shadow (it floated over the one and
+was lifted over the other). `ShadowGround::bend` (`ShadowBend`) holds the
+ground's heights under a 5 × 3 grid of the sprite's quad (rows up the
+quad, so along the shadow; columns across it), each point carried down
+the sun to the first ground its ray meets (`landing`: marched over three
+sprite heights, then bisected). `ShadowGround::fit` keeps the plane where
+it lies within `SHADOW_BEND_TOLERANCE` (3 cm, plus 3 % of the sprite's
+height) of the ground under every grid point's landing on it, and bends
+otherwise, so og-runtime's terrain shadows bend with no change there. A
+bent shadow is drawn as 4 × 2 instances of the sprite, one per cell
+(`ground.x` 2): the cell's column and row in the two flash bytes a shadow
+never uses, its corners' heights in `ground.w` and `fx`, so the instance
+layout is unchanged again. The vertex shaders (`bent_vertex`, sprite.wgsl;
+the same in sprite_array.wgsl) compute each corner from the whole quad,
+so cells meeting at a corner compute it alike and the shadow has no
+seams, and carry it down the sun to its height; the plane path is the
+round-three code behind an early return (`sprites-20k` byte-identical).
+*Limit*: between grid points the ground is taken as straight, so a
+feature narrower than a cell (a quarter of the shadow's length, half the
+sprite's width) is still bridged, a bump between two points can cover
+the shadow there, and where the ground falls away steeper than the sun
+(the far wall of a deep pit) the cells stretch across the part in the
+ground's own shadow. Tests: `sprites.rs`'s
+`a_shadow_bends_over_a_hollow_narrower_than_itself` (a pit and a ridge,
+the eight cells and their corners), og-tests `sprites-shadow-terrain`,
+which gains a hollow 0.4 m deep and about 1.4 m across and a figure whose
+shadow dips into it (its reference moves).
 
 Tests: `tests/sprites2d.rs` (sort keys across textures within a layer,
 layers still win; tile culling, tiles under their layer's sprites, repeat
@@ -936,6 +969,75 @@ material rows (`og.ModelMaterial` version 2) and adds a material with any
 as a standard material (`CookedModel::standard_material`), one without in
 its glTF shape as before.
 
+## Array maps (materials and terrain layers)
+
+Texture arrays (`add_texture_array`, og-cook's `type texture-array`) are
+sampled by lit materials and terrain layers as well as by sprites, so a
+set of variants (tiles, skins, damage states, a terrain's ground types) is
+one resource, one material and one draw.
+
+**Materials** (`src/material.rs` `ArrayMaps`, `shaders/pbr_array.wgsl`,
+`shaders/shadow_array.wgsl`). `StandardMaterial::mapArray` and
+`normalMapArray` are texture-array slots (`TextureArrayHandle::slot`, 0
+none) with `mapLayer` and `normalMapLayer`; a material with either reads
+its base colour and normal map from the arrays only (`map` and `normalMap`
+are not read; a missing one is a one-layer white or flat-normal array).
+`Instance::material_layer` replaces both layers for one instance, so
+instances of one material on any layers stay one (mesh, material) batch
+and one instanced draw. The layer travels in the instance's transform: an
+affine transform's `m0.w` is 0, and an array-map instance carries its layer
+plus one there (`build_batches`), so culling, sorting, GPU culling's
+compaction and the instance buffer carry it without a new stream (a
+float holds layers exactly to 2^24). The array-map variant's vertex stages
+read it and zero it before the transform is used, so positions are the
+standard path's; GPU culling's `cull.wgsl` zeroes it before boxing an
+instance, as does Stylise's object pass, and array-map materials are
+never occluders (the occluder depth
+pass reads transforms as they are).
+
+One variant of the standard lit, prepass and shadow pipelines draws them,
+made when a scene first draws such a material: its module is the standard
+lit module's own text with bindings 1 and 4 declared `texture_2d_array`,
+every sample of them at the fragment's layers, a flat `layer` varying on
+`VertexOut` and `PrepassOut` (`@location(7)`), and `vs`, `fs`,
+`vs_prepass`, `fs_prepass` renamed `*_standard` with `pbr_array.wgsl`'s in
+their place; the shadow variant renames `vs` and `vs_lean` and appends
+`shadow_array.wgsl`'s. Each rewrite asserts the text it replaces, so a
+change to the standard shaders fails `tests/shaders.rs` instead of drifting.
+The standard builders (`pbr_pipeline`, `prepass_pipeline`,
+`shadow_pipeline`) make the variant's pipelines from those modules and the
+variant's layouts (the material group with two `D2Array` bindings, same
+texture count, so WebGL2's skinned pipeline still fits its sixteen units),
+keyed as the standard ones: a typical scene adds one lit, one prepass and
+one shadow pipeline. A material's array group is a second bind group (its
+standard group stays for shadows with a dissolve, scatter and everything
+else); the layers are in the material uniform's `coat.zw`, 0 for every
+other material, whose uniforms, modules and pipelines are unchanged.
+Skinned instances take their material's layers. Physical materials and
+material shaders keep their 2D path (`StandardMaterial::draws_array_maps`).
+og-runtime: `StandardMaterialDesc.mapArray`, `mapLayer`, `normalMapArray`,
+`normalMapLayer` and `og.Mesh.materialLayer` (-1: the material's); an
+array a material samples stays resident while it does. Tests: the
+material unit tests, `tests/shaders.rs`, og-runtime
+`tests/material_arrays.rs`, og-tests `materials-array`.
+
+**Terrain layers** (`src/terrain.rs`). `Terrain::layer_arrays` names an
+albedo array and a normal array, each `TerrainLayer` its `albedo_layer`
+and `normal_layer` (in its uniform's unused `slope.w` and `altitude.w`).
+Such a terrain binds the two arrays in place of up to eight textures,
+through a variant of the terrain group layout (bindings 5 and 9 as
+`D2Array`, 6 to 8 and 10 to 12 gone) and of its lit, prepass and shadow
+pipelines, made when a terrain first needs it; the variant's modules are
+the standard ones' text with the two arrays declared and `layer_albedo` /
+`layer_normal_map` reading them. Every `TerrainDraw` carries its own
+pipelines and `draw_levels` sets them per terrain, so terrains of either
+kind draw in one pass. A terrain of separate textures uploads, binds and
+draws exactly as before. og-cook's `layers` / `layerNormals` and
+`albedoLayer` / `normalLayer` reach it through og-runtime. Tests: the
+terrain unit test of the variant's source, og-runtime
+`tests/material_arrays.rs`, og-tests `layer_arrays_draw_as_separate_layer_textures`
+(terrain-near both ways, within the arrays' CPU-made mips).
+
 ## Compressed textures at runtime
 
 Owed row 32. The renderer still does not transcode: hosts hand it a
@@ -1001,7 +1103,10 @@ unchanged.
   `height_blend`, normalised (all zero: the first layer). Each is sampled
   over world xz every `tile` m or triplanar (Golus's whiteout normals), its
   normal map applied in the frame of the terrain's normal; samples inside
-  branches use `textureSampleGrad` with the pixel's own derivatives.
+  branches use `textureSampleGrad` with the pixel's own derivatives. The
+  maps are each layer's own textures (up to eight bound), or layers of two
+  texture arrays (`Terrain::layer_arrays`, two bound): [Array
+  maps](#array-maps-materials-and-terrain-layers).
 - **Light.** The `StandardMaterial` lighting from `lighting.wgsl` (shared
   with pbr.wgsl and water.wgsl now): the directional light with cascaded
   shadows, the eight local lights with their shadows, the image-based
@@ -1141,7 +1246,15 @@ solid angle and convolved with the cosine lobe (band factors 1, 2/3, 1/4,
 stored as E/π). Texels are RGB9E5 (`Rgb9e5Ufloat`): 4 bytes a texel
 against RGBA16F's 8, sampled and filtered on every tier (WebGPU core, GL ES
 3.0 core so WebGL2, Metal, Vulkan's mandatory formats); the map is only
-sampled, never a render target. A 128² map is 524 KB before zlib.
+sampled, never a render target. A 128² map is 524 KB before zlib. A KTX2
+cube whose own mips are already GGX-prefiltered (og-cook's `prefiltered
+true`: cmgen's, IBLBaker's, the glTF IBL sampler's, level k of L at
+roughness k / (L − 1)) is not filtered again: `bake::from_prefiltered`
+reads the map's level m at lod m/4 · (L − 1), trilinearly between the
+file's two nearest levels, turned and scaled, and copies a level whose lod
+is a whole level of the map's size texel for texel (a chain of five levels
+from the map's size comes through unchanged); the irradiance is projected
+from level 0 as above.
 
 `RenderScene::add_environment_map` uploads it as a cube; a frame sets
 `environment_map: Some(EnvironmentMap { map, rotation, background_intensity })`.
@@ -1277,7 +1390,62 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   from near to far. The sky keeps the screen pattern. The space is a
   setting, not a pass (`chain_bits` unchanged). og-tests
   `stylise-surface`: a pencil drawing of clay forms (hatching and a paper
-  canvas on the surfaces, depth ink with its thresholds set).
+  canvas on the surfaces, depth ink with its thresholds set);
+  `stylise-halftone-surface`: the toon scene's dots on the surfaces, with
+  ink on luminance and depth edges.
+- **Object space** (`StyliseSpace::Object`; the IDL's `object` of the same
+  three fields, capability `objectSpace`): the surface patterns laid in
+  each mesh instance's own space, so a moving, turning or skinned object
+  carries its strokes, dots and grain. *Chosen: the object-space
+  position, not an instance id.* An id would need every instance's
+  inverse transform where the post passes can read it (storage buffers,
+  which WebGL2 lacks, or a texture of transforms uploaded again) and a
+  free channel in the prepass targets, which has none (normal and
+  velocity, depth, outline). Instead, after the prepass the object pass
+  (`stylise_object.rs`, `stylise_object.wgsl`; inside the prepass's graph
+  pass, which then stores `pre-depth` and also writes `object-space`)
+  draws the prepass's opaque instances again, placed by the lit shader's
+  `lit_place` as every lit and prepass vertex is, against the prepass
+  depth (`LessEqual`, no depth write, a bias of −4 units and −0.5 slope
+  towards the camera) into an `Rgba32Uint` target: xyz the bits of the
+  position in metres along the instance's axes (the mesh position times
+  each model axis's length, so a scaled instance keeps the pattern's
+  size; a skinned one its blended bind pose, so the marks follow the
+  skin), w its normal there (inverse-scaled, two 15-bit octahedral
+  components) with bit 0 set. The paint and lines passes bind it at
+  stylise binding 9 (a zero texel on other frames and passes) and, where
+  the space's code asks (`StyliseUniform::surface` 2, 1 world, 0 screen),
+  lay the triplanar patterns at that position with the world footprint
+  for the octaves (rotation keeps lengths) and no world offset for the
+  canvas. Pixels the pass leaves at 0 keep the world pattern: terrain and
+  scattered copies (not instances) and the vertices a material shader's
+  vertex offset moves (drawn without it, they miss the prepass depth);
+  the sky keeps the screen pattern. *Limits*: alpha-cut holes are not cut
+  in the object pass (a pixel seen through one takes the cut surface's
+  coordinates); neighbouring instances meet with unrelated pattern
+  phases. *Cost*: a second geometry pass of the opaque instances, only on
+  frames a look uses object space; the module (the lit source with the
+  built-in hooks) and its pipelines are made the first such frame. og-tests
+  `tests/stylise_space.rs` (the hatched scene moved with its camera: 0
+  pixels differ in object space, 1.07 % in world space; with the
+  placeholder bound instead the object frames differ as the world ones
+  do) and the scene `stylise-object` (the surface drawing in object space
+  with a box tilted on two axes and a 4 × 0.4 × 0.5 beam: the strokes run
+  along each one's faces, square on the beam).
+- **Hatching from depth** (`Hatching::depth`, the IDL's `hatchingDepth`,
+  0 to 1): the prepass's silhouettes and creases darken the tone the
+  strokes follow (`depth_band`, stylise.wgsl), so the strokes gather along
+  contours and folds as `inkDepth` inks them; with it the frame runs the
+  prepass (`Stylise::depth_edges`), and the weight rides in the uniform's
+  `ink_depth.w`. The edges are `Ink`'s thresholds (the outline pass's
+  defaults without ink) found 1, half and one stroke spacing away
+  (`contour_at`). A silhouette there is a break in the inverse depth,
+  which is affine across a plane in screen space: of two opposite
+  neighbours, d0/d + d0/d' − 2 is 0 on any plane however steeply it
+  recedes and below minus the depth step on the nearer side of a
+  silhouette. The ink's own test (a farther neighbour by the step) would
+  ink a long floor at the stroke spacing's distance; the ink keeps it,
+  byte for byte, at its line width.
 - **Depth bands** (`DepthBands`): an HDR pass after the main pass
   (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
   `near` to `far` into `count` flat layers between two colours; `flatten`
@@ -1317,25 +1485,33 @@ Scenes: `stylise-pixel`, `stylise-palette`, `stylise-print`,
 `stylise-material`, `stylise-ink-depth` (flat unlit shapes of one colour
 where every line is a silhouette or crease) and `sprites-shadow` (og-tests,
 `metal` and `vulkan-cpu` references), `stylise-surface` and
-`sprites-shadow-terrain` (round three; their references are recorded by
-the round's merge), and fx-showcase's `looks` station, one frame per
-preset of `templates/looks/`, which the browser tiers compare too
-(`reference.ts --looks` in `scripts/check.sh web-reference`, every frame
-against `metal`). Every style of the catalogue
-(`packages/knowledge/looks/catalogue.json`) is now `full` or `content`.
+`sprites-shadow-terrain` (round three, `metal`; the latter moves in round
+four with its hollow), `stylise-object` and `stylise-halftone-surface`
+(round four; recorded by the round's merge), and fx-showcase's `looks`
+station, one frame per preset of `templates/looks/`, which the browser
+tiers compare too (`reference.ts --looks` in `scripts/check.sh
+web-reference`, every frame against `metal`). The station's HUD line
+names the preset shown (`P4 station  looks  <slug>`, `none` before a
+look; `look:<slug>` sets it), so each frame identifies itself. Every style
+of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
+`full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
+(`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
+halftone, as its check asks (ink marks painted onto surfaces).
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the
 surfaces, drop shadows on terrain and explicit heights that fade inside
-the cascades' shadow, and `inkDepth`'s thresholds as fields. Still open:
-the surface patterns are triplanar in world space, not in each object's
-own space (a moving object slides through its strokes; the instance id is
-not in the prepass), and the octave fade shows as faint bands on a long
-receding floor (the footprint is measured across the pixel, not along the
-depth gradient); a drop shadow lies on one plane per sprite, so over a
-ridge or a hollow narrower than the shadow it floats a little (never
-sinks: `ShadowGround::fit` lifts it over bulges); no preset uses surface
-space yet (the presets' looks frames are unchanged).
+the cascades' shadow, and `inkDepth`'s thresholds as fields. Round four
+delivered object space (a moving object carries its marks), drop
+shadows bent over hollows and ridges narrower than themselves, hatching
+from depth (`hatchingDepth`), the halftone-on-surface scene, a preset in
+surface space (`inked-comic-3d`) and the looks frames' HUD naming their
+preset. Still open: the octave fade shows as faint bands on a long
+receding floor (the footprint is measured across the pixel, not along
+the depth gradient; `stylise-halftone-surface` shows it on the far
+floor); object space leaves terrain, scattered copies and vertex-offset
+materials in world space and does not cut alpha holes; a bent shadow
+bridges features narrower than a cell of its 4 × 2 grid.
 
 ## What phase 2 owes
 

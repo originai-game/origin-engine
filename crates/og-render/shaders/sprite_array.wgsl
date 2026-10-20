@@ -48,13 +48,28 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
-  let c = corners[vi];
+  var c = corners[vi];
+  var ground_height = s.ground.w;
+  let bent = s.ground.x > 1.5;
+  if (bent) {
+    // A cell of a bent drop shadow (sprite.wgsl bent_corner).
+    let cell = round(s.flash.xy * 255.0);
+    let k = c;
+    c = (cell + k) * vec2<f32>(0.5, 0.25);
+    let bottom = select(s.ground.w, s.fx.x, k.x > 0.5);
+    let top = select(s.fx.z, s.fx.y, k.x > 0.5);
+    ground_height = select(bottom, top, k.y > 0.5);
+  }
   let local = (c - s.size_anchor.zw) * s.size_anchor.xy;
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
   var world = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
-  if (s.ground.x > 0.5) {
+  if (bent) {
+    // Down the sun to the ground's height under this corner.
+    let h = world.y - ground_height;
+    world = vec3<f32>(world.x + s.ground.y * h, ground_height, world.z + s.ground.z * h);
+  } else if (s.ground.x > 0.5) {
     // A drop shadow: down the sun to the level ground or the plane of a
     // slope (sprite.wgsl ground_shadow and sloped_shadow).
     let rise = s.fx.yz;

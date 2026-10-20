@@ -192,8 +192,8 @@ try {
     "the range's input event reached the UI as a decrement: the Master volume went down",
     { before: master?.attrs["aria-valuetext"], after: lowered?.attrs["aria-valuetext"] },
   );
-  const back = await t.eval<{ value: string; now: string | null }>(`(() => { const el = ${range}; return { value: el.value, now: el.getAttribute("aria-valuenow") }; })()`);
-  check(back.value === back.now, "and the range is back at the UI's value (aria-valuenow)", back);
+  const settled = await t.eval<{ value: string; now: string | null }>(`(() => { const el = ${range}; return { value: el.value, now: el.getAttribute("aria-valuenow") }; })()`);
+  check(settled.value === settled.now, "and the range is back at the UI's value (aria-valuenow)", settled);
 
   // A screen reader's click on the mirrored switch.
   const mutePath = mute?.path ?? "";

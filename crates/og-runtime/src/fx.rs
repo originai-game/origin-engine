@@ -451,8 +451,9 @@ fn stylise(
                 dither_scale: u(&s, "ditherScale", 1).max(1),
             });
         }
-        let space = |v: &Value| match variant(v, &["screen", "surface"]) {
+        let space = |v: &Value| match variant(v, &["screen", "surface", "object"]) {
             1 => og_render::StyliseSpace::Surface,
+            2 => og_render::StyliseSpace::Object,
             _ => og_render::StyliseSpace::Screen,
         };
         let halftone = f(&s, "halftone", 0.0);
@@ -474,6 +475,7 @@ fn stylise(
                 angle_degrees: f(&s, "hatchingAngle", 45.0),
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
                 space: space(&s["hatchingSpace"]),
+                depth: f(&s, "hatchingDepth", 0.0),
             });
         }
         let paint = og_render::Paint {
