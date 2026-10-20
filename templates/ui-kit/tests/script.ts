@@ -6,6 +6,7 @@
 export const FRAME_SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
+  "materials",
 ] as const;
 
 const SETTLE: Record<string, number> = { results: 1.6, cutscene: 1.8 };
