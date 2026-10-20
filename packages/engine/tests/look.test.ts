@@ -58,7 +58,7 @@ test("GameDesc.look is flattened over its base and applied before start runs", (
       look: og.render.look(w) as unknown as Info | null,
     };
   });
-  expect(atStart).toBeDefined();
+  expect(atStart).not.toBe(undefined);
   const s = atStart!;
   // The look's own fields.
   expect(s.stylise.pixelHeight).toBe(180);
