@@ -409,12 +409,19 @@ and `--shots title@54,beacon@204,dawn@432` (each at its screenshot's tick,
 `metal` (2026-10-19) title is at RMSE 0.00131, beacon 0.00475 with
 0.060 % outliers, dawn 0.00067. On WebGL2 title (0.00428) and dawn
 (0.00180) are judged against `metal` too; the beacon keeps a WebGL2
-reference by design (RMSE 0.0181 with 0.902 % outliers against `metal`):
-particle collision against the depth buffer runs only with compute
-shaders, so on WebGL2 the ember sparks fall through instead of bouncing
-(the unmatched sparks are 48.5 % of the squared error), and WebGL2's 4×
-MSAA against the full tier's TAA leaves the rest (RMSE 0.0130 without the
-unmatched sparks; docs/phase-1.md, showcase round, Evidence).
+reference by design. Since the shadows-aa round (2026-10-21) the CPU
+particle path bounces off the scene's colliders (og-runtime hands it the
+og.Collider boxes and the terrain's height field), so WebGL2's ember
+sparks bounce on the vale and the plinth as the full tier's do off the
+depth buffer: against main's re-recorded `metal` beacon the WebGL2 frame
+went from RMSE 0.0185 with 0.919 % outliers (sparks falling through) to
+0.0165 with 0.809 %. It stays over 0.01 by design: WebGL2's 4× MSAA
+against the full tier's TAA (RMSE 0.0130 on its own in the showcase
+round's per-spark read; docs/phase-1.md), and sparks that bounce off the
+colliders' exact surfaces rather than off the depth buffer's (with its
+thickness band), so their paths after the first bounce differ. The WebGL2
+beacon was re-recorded (and reproduced at RMSE 0); webgpu's beacon is at
+RMSE 0.00475 against `metal`.
 
 `bun tests/web/archetype-hashes.ts [--webgl]` compares the three
 archetypes' world hashes across hosts: each replay playtest's script runs

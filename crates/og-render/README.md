@@ -222,7 +222,17 @@ hemisphere's centre than a cube face's, and the normal offset and depth
 bias grow with them. On `point-spot-lights` the paraboloid frame is within
 RMSE 0.0023 of the cube one (102 outlier pixels, on shadow edges and the
 ring at the light's height) in 3 passes instead of 7. `Auto` picks cube
-faces on the full tier and paraboloids on WebGL2: @@AUTO@@
+faces on the full tier and paraboloids on WebGL2: measured in Chrome on the M4 Pro (`reference-gfx.ts --time 60`), WebGL2
+draws `point-spot-lights` in 0.50 ms per frame with paraboloids against
+0.70 ms with cube faces, and four shadowed lights of `shadows-local-8` in
+0.60 against 1.09 ms; on WebGPU one point light costs the same either way
+(0.44 against 0.45 ms) and eight lights (six point) 0.60 against 1.33 ms;
+natively on metal 0.4–0.5 against 0.6–0.9 ms and 0.8–1.0 against
+2.2–2.7 ms, most of it the CPU encoding 38 shadow passes instead of 14
+(`tests/evidence/P4/shadows-aa/`). A full-tier frame with a few shadowed
+point lights costs nearly nothing more with cube faces, whose texels are
+finer, so `Auto` keeps them there; a game with many shadowed point lights
+saves about 0.7 ms a frame with `Paraboloid`.
 
 **The sun's soft shadows and cascade blending** (`DirectionalLight::
 shadow_softness`, `cascade_blend`, the IDL's `shadowSoftness` and
@@ -235,14 +245,18 @@ sharp and penumbrae widen with height (`shadows-soft`: penumbra pixels on a
 plain ground 759 hard, 7,073 at softness 0.03). Blending: each cascade's
 last `cascade_blend` of its depth fades into the next, whose fit reaches
 back over that band so its casters are there. Both read with
-`textureLoad` compares, so WebGL2 draws them too. @@SUNCOST@@
+`textureLoad` compares, so WebGL2 draws them too. PCSS costs 0.22 ms on WebGPU (`shadows-soft` 0.64 against
+0.41 ms hard), 0.39 ms on WebGL2 (1.01 against 0.62) and about 0.4 ms on
+metal at 1280×720.
 
 **FXAA** (`Antialias::Fxaa`): FXAA 3.11's quality path (eight edge-search
 steps) over the tonemapped image, which the tonemap writes into an sRGB
 8-bit target the FXAA pass reads and writes to the output before the
 overlay, so the HUD stays sharp. One pass, no history, on any tier; `Tier`
 and `Msaa4` resolve to it where the HDR target cannot be multisampled
-(they resolved to `Off` before). @@FXAACOST@@
+(they resolved to `Off` before). It costs 0.08 ms on WebGPU and WebGL2 (`fxaa`
+0.50 and 0.75 ms against 0.41 and 0.67 ms without antialiasing; WebGL2's
+4× MSAA takes 1.11 ms on the same scene) and about 0.1 ms on metal.
 
 **TAA's history and sharpening** (`RenderDesc::taa_history`,
 `taa_sharpen`; the IDL's `taaHistory` and `taaSharpen`):
@@ -252,7 +266,9 @@ it sharp when the camera moves; `taa_sharpen` adds a pass after TAA into
 its own target (the history stays unsharpened): an unsharp mask over the
 four neighbours clamped to their range. On the thin geometry under a
 camera sliding 2 cm a frame, the mean absolute Laplacian of the luma is
-7.07 bilinear, 7.38 Catmull-Rom, 8.61 with 0.5 sharpening. @@TAACOST@@
+7.07 bilinear, 7.38 Catmull-Rom, 8.61 with 0.5 sharpening. Catmull-Rom and 0.5 sharpening together cost 0.06 ms on
+WebGPU (`taa-sharp` 0.55 against `taa` 0.49 ms) and about 0.1 ms on
+metal.
 
 ## The overlay
 
