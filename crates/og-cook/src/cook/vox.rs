@@ -7,7 +7,9 @@
 //! `RGBA` palette (MagicaVoxel's default palette when the file has none),
 //! and the scene graph (`nTRN` translations, `nGRP`, `nSHP`) so a multi-part
 //! file keeps each part where the editor put it; a file without a graph
-//! places its models side by side along x. Rotations in `nTRN` (the `_r`
+//! places each model at the origin about its pivot, exactly where a graph
+//! of one identity transform puts it (ogt_vox's reading; MagicaVoxel
+//! centres a lone model). Rotations in `nTRN` (the `_r`
 //! frame byte) are applied as the signed axis permutation they encode; one
 //! with a negative determinant mirrors the model, so its triangles' winding
 //! is flipped to stay counter-clockwise from outside.
@@ -25,6 +27,18 @@
 //! voxOrigin }` ([`VoxSettings`]) give the metres per voxel (default 1) and
 //! the origin: `center` (the default) where the editor puts it, `bottom`
 //! the whole file lifted so its lowest voxel stands on y = 0.
+//!
+//! Animation: MagicaVoxel's frames are models swapped in time, an `nSHP`
+//! listing several models each with its `_f` key frame (shown from that
+//! frame to the next key), or, in a file without a graph, several models
+//! (0.98's `PACK` animation: model `i` is frame `i`). Such a file cooks to
+//! a skinned glTF: each animated model skinned whole to a joint of its
+//! own, and per clip a STEP scale channel per joint (1 on the frames its
+//! model shows, 0 elsewhere), so `og.AnimationPlayer` plays it as any
+//! skinned clip. `model { voxFps 8 voxClip walk 0 3 }` gives the frame
+//! rate (default 10) and named frame ranges (default one clip `frames` of
+//! every frame). Not read: `nTRN` key frames (a transform's first frame
+//! places it for the whole animation).
 //!
 //! Greedy meshing: per face direction, per slice, runs of voxels of one
 //! colour merge into rectangles, so a 32³ block of one colour is 12
@@ -47,19 +61,40 @@ pub enum VoxOrigin {
     Bottom,
 }
 
+/// A named range of an animated `.vox`'s frames (`voxClip walk 0 3`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct VoxClip {
+    pub name: String,
+    /// The first frame and the last, both shown.
+    pub first: u32,
+    pub last: u32,
+}
+
 /// A `.vox` file's import settings: `model { voxScale 0.1 voxOrigin bottom }`.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VoxSettings {
     /// Metres per voxel (default 1).
     pub scale: f32,
     pub origin: VoxOrigin,
+    /// An animated file's frames per second (default 10).
+    pub fps: f32,
+    /// An animated file's clips; none: one clip `frames` of every frame.
+    pub clips: Vec<VoxClip>,
 }
+
+/// The frame rate of an animated `.vox` without `voxFps`.
+pub const DEFAULT_FPS: f32 = 10.0;
+
+/// The clip of every frame of an animated `.vox` without `voxClip`.
+pub const DEFAULT_CLIP: &str = "frames";
 
 impl Default for VoxSettings {
     fn default() -> Self {
         VoxSettings {
             scale: 1.0,
             origin: VoxOrigin::Center,
+            fps: DEFAULT_FPS,
+            clips: Vec::new(),
         }
     }
 }
@@ -99,9 +134,54 @@ impl VoxSettings {
                         }
                     };
                 }
+                "voxFps" => {
+                    v.fps = e
+                        .values
+                        .first()
+                        .and_then(|x| x.as_number())
+                        .map(|n| n.as_f32())
+                        .filter(|s| s.is_finite() && (1.0..=120.0).contains(s))
+                        .ok_or_else(|| {
+                            format!(
+                                "line {}: voxFps takes an animated .vox's frames per second, 1 to 120 (default {DEFAULT_FPS})",
+                                e.line
+                            )
+                        })?;
+                }
+                "voxClip" => {
+                    let name = e.values.first().and_then(|x| {
+                        x.as_word()
+                            .map(str::to_string)
+                            .or_else(|| x.as_str().map(str::to_string))
+                    });
+                    let frame = |i: usize| {
+                        e.values
+                            .get(i)
+                            .and_then(|x| x.as_number())
+                            .map(|n| n.as_f64())
+                            .filter(|f| f.fract() == 0.0 && *f >= 0.0 && *f <= u32::MAX as f64)
+                            .map(|f| f as u32)
+                    };
+                    match (name, frame(1), frame(2)) {
+                        (Some(name), Some(first), Some(last))
+                            if first <= last && e.values.len() == 3 =>
+                        {
+                            if v.clips.iter().any(|c| c.name == name) {
+                                return Err(format!("line {}: a second voxClip '{name}'", e.line));
+                            }
+                            v.clips.push(VoxClip { name, first, last });
+                        }
+                        _ => {
+                            return Err(format!(
+                                "line {}: voxClip takes a name and an animated .vox's first and last frame (`voxClip walk 0 3`, both shown)",
+                                e.line
+                            ));
+                        }
+                    }
+                }
                 k => {
                     return Err(format!(
-                        "line {}: unknown model setting '{k}' for a .vox (voxScale, voxOrigin)",
+                        "line {}: unknown model setting '{k}' for a .vox (voxScale, voxOrigin, voxFps, voxClip)",
                         e.line
                     ));
                 }
@@ -165,6 +245,12 @@ pub struct Placement {
     /// A signed axis permutation: output axis `i` takes input axis
     /// `rotation[i].0` with sign `rotation[i].1`.
     pub rotation: [(usize, i32); 3],
+    /// The animation frames this model shows (`None`: every frame, a static
+    /// part): one model of an animated shape (`nSHP` of several models,
+    /// each from its `_f` key frame to the next), or one model of a file
+    /// without a scene graph that holds several (MagicaVoxel 0.98's
+    /// animation, a `PACK` of frames).
+    pub frames: Option<std::ops::Range<u32>>,
 }
 
 /// A parsed `.vox`: its models, palette (256 RGBA, index 0 unused) and
@@ -174,6 +260,9 @@ pub struct VoxFile {
     pub models: Vec<VoxModel>,
     pub palette: [[u8; 4]; 256],
     pub placements: Vec<Placement>,
+    /// Animation frames (0: the file is static): the last key frame of any
+    /// animated shape plus one, or a graph-less file's model count.
+    pub frame_count: u32,
 }
 
 fn u32_at(b: &[u8], at: usize) -> Result<u32, String> {
@@ -208,6 +297,11 @@ fn string(b: &[u8], at: &mut usize) -> Result<String, String> {
 }
 
 const IDENTITY: [(usize, i32); 3] = [(0, 1), (1, 1), (2, 1)];
+
+/// The 4 x 4 identity, column-major.
+const IDENTITY_MAT4: [f32; 16] = [
+    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+];
 
 /// The `_r` byte of an `nTRN` frame: bits 0-1 the input axis of output x,
 /// bits 2-3 of output y (z is the remaining one), bits 4-6 the signs. A
@@ -257,7 +351,8 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
             rotation: [(usize, i32); 3],
         },
         Group(Vec<u32>),
-        Shape(Vec<u32>),
+        /// Its models, each with its `_f` key frame when it has one.
+        Shape(Vec<(u32, Option<u32>)>),
     }
     let mut nodes: BTreeMap<u32, Node> = BTreeMap::new();
     let mut pending_size: Option<[u32; 3]> = None;
@@ -361,9 +456,10 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 p += 4;
                 let mut ms = Vec::new();
                 for _ in 0..n {
-                    ms.push(u32_at(body, p)?);
+                    let model = u32_at(body, p)?;
                     p += 4;
-                    let _attrs = dict(body, &mut p)?;
+                    let attrs = dict(body, &mut p)?;
+                    ms.push((model, attrs.get("_f").and_then(|f| f.parse().ok())));
                 }
                 nodes.insert(node, Node::Shape(ms));
             }
@@ -413,13 +509,36 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     walk(nodes, *c, t, r, out, depth + 1, models);
                 }
             }
+            Some(Node::Shape(ms)) if ms.len() == 1 => {
+                if (ms[0].0 as usize) < models {
+                    out.push(Placement {
+                        model: ms[0].0 as usize,
+                        translation: t,
+                        rotation: r,
+                        frames: None,
+                    });
+                }
+            }
             Some(Node::Shape(ms)) => {
-                for m in ms {
+                // An animated shape: each model from its key frame (`_f`,
+                // else its position in the list) to the next model's; the
+                // last one's end is the file's frame count, set after the
+                // walk.
+                let mut keyed: Vec<(u32, u32)> = ms
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (m, f))| (f.unwrap_or(i as u32), *m))
+                    .collect();
+                keyed.sort();
+                keyed.dedup_by_key(|k| k.0);
+                for (i, (key, m)) in keyed.iter().enumerate() {
+                    let end = keyed.get(i + 1).map_or(u32::MAX, |n| n.0);
                     if (*m as usize) < models {
                         out.push(Placement {
                             model: *m as usize,
                             translation: t,
                             rotation: r,
+                            frames: Some(*key..end),
                         });
                     }
                 }
@@ -438,25 +557,46 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
             models.len(),
         );
     }
+    // Without a graph, every model sits at the origin about its pivot,
+    // exactly as under a graph of one identity transform (ogt_vox's
+    // reading, and MagicaVoxel's: a lone model is centred). Several models
+    // without a graph are MagicaVoxel 0.98's animation (a `PACK` of
+    // frames): model `i` is frame `i`.
     if placements.is_empty() {
-        let mut x = 0i32;
-        for (i, m) in models.iter().enumerate() {
+        let animated = models.len() > 1;
+        for i in 0..models.len() {
             placements.push(Placement {
                 model: i,
-                translation: [
-                    x + (m.size[0] / 2) as i32,
-                    (m.size[1] / 2) as i32,
-                    (m.size[2] / 2) as i32,
-                ],
+                translation: [0; 3],
                 rotation: IDENTITY,
+                frames: animated.then_some(i as u32..i as u32 + 1),
             });
-            x += m.size[0] as i32 + 1;
+        }
+    }
+    let frame_count = placements
+        .iter()
+        .filter_map(|p| p.frames.as_ref())
+        .map(|f| {
+            if f.end == u32::MAX {
+                f.start + 1
+            } else {
+                f.end
+            }
+        })
+        .max()
+        .unwrap_or(0);
+    for p in &mut placements {
+        if let Some(f) = &mut p.frames
+            && f.end == u32::MAX
+        {
+            f.end = frame_count;
         }
     }
     Ok(VoxFile {
         models,
         palette,
         placements,
+        frame_count,
     })
 }
 
@@ -594,21 +734,94 @@ fn linear(c: u8) -> f32 {
     }
 }
 
+/// The glTF binary chunk being written: its bytes, buffer views and
+/// accessors.
+#[derive(Default)]
+struct Bin {
+    bytes: Vec<u8>,
+    views: Vec<serde_json::Value>,
+    accessors: Vec<serde_json::Value>,
+}
+
+impl Bin {
+    /// Appends `data` (4-aligned) as a buffer view and an accessor over it
+    /// (`accessor` gives everything but the view); answers the accessor.
+    fn add(&mut self, data: &[u8], target: Option<u32>, mut accessor: serde_json::Value) -> usize {
+        while !self.bytes.len().is_multiple_of(4) {
+            self.bytes.push(0);
+        }
+        let mut view = serde_json::json!({
+            "buffer": 0, "byteOffset": self.bytes.len(), "byteLength": data.len()
+        });
+        if let Some(t) = target {
+            view["target"] = t.into();
+        }
+        self.bytes.extend_from_slice(data);
+        self.views.push(view);
+        accessor["bufferView"] = (self.views.len() - 1).into();
+        self.accessors.push(accessor);
+        self.accessors.len() - 1
+    }
+}
+
+/// The clips of an animated file: (name, first frame, last frame).
+fn clips_of(file: &VoxFile, settings: &VoxSettings) -> Result<Vec<(String, u32, u32)>, String> {
+    let n = file.frame_count;
+    if n == 0 {
+        return match settings.clips.first() {
+            Some(c) => Err(format!(
+                "voxClip '{}': the file has no animation frames (an animated shape lists several models, each with its `_f` key frame)",
+                c.name
+            )),
+            None => Ok(Vec::new()),
+        };
+    }
+    if settings.clips.is_empty() {
+        return Ok(vec![(DEFAULT_CLIP.to_string(), 0, n - 1)]);
+    }
+    settings
+        .clips
+        .iter()
+        .map(|c| {
+            if c.last >= n {
+                Err(format!(
+                    "voxClip '{}' ends at frame {}; the file has {n} frame(s), 0 to {}",
+                    c.name,
+                    c.last,
+                    n - 1
+                ))
+            } else {
+                Ok((c.name.clone(), c.first, c.last))
+            }
+        })
+        .collect()
+}
+
 /// A `.vox` as a glTF binary: one mesh per placed model under a node at
 /// its translation, each a flat-shaded greedy mesh with vertex colours and
 /// the shared white material, `settings.scale` metres per voxel, its
 /// origin where `settings.origin` says.
+///
+/// An animated file (frames: [`VoxFile::frame_count`]) is a skinned glTF
+/// whose clips swap meshes: each model of an animated shape is skinned
+/// whole to a joint of its own (at its translation, inverse bind the
+/// identity), and each clip is a STEP scale channel per joint, 1 on the
+/// frames the model shows and 0 elsewhere, at `settings.fps` (one key per
+/// frame, and one at the clip's end holding its last frame). The rest pose
+/// is frame 0, and the mesh nodes carry the same scale, so the model drawn
+/// without a skeleton shows frame 0 too.
 pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
     let file = parse(bytes)?;
+    let clips = clips_of(&file, settings)?;
     let scale = settings.scale;
-    let mut bin: Vec<u8> = Vec::new();
-    let mut buffer_views = Vec::new();
-    let mut accessors = Vec::new();
+    let mut bin = Bin::default();
     let mut meshes = Vec::new();
-    // Per placed model: its index, its mesh and its translation (glTF frame, metres).
-    let mut placed: Vec<(usize, usize, [f32; 3])> = Vec::new();
+    // Per placed model: its index, its mesh, its translation (glTF frame,
+    // metres) and the frames it shows (animated only).
+    type Placed = (usize, usize, [f32; 3], Option<std::ops::Range<u32>>);
+    let mut placed: Vec<Placed> = Vec::new();
+    let mut joints = 0u16;
     let mut floor = f32::MAX;
-    let mut quads_total = 0usize;
     let meshed: Vec<Vec<Quad>> = file.models.iter().map(mesh_model).collect();
     for (pi, placement) in file.placements.iter().enumerate() {
         let model = &file.models[placement.model];
@@ -616,7 +829,6 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         if quads.is_empty() {
             continue;
         }
-        quads_total += quads.len();
         // The model's pivot: its centre, floored, as the editor exports.
         let pivot = model.size.map(|s| (s / 2) as f32);
         let mut positions: Vec<[f32; 3]> = Vec::with_capacity(quads.len() * 4);
@@ -664,43 +876,53 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
                 indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
             }
         }
-        let mut view = |data: &[u8], target: u32| -> usize {
-            while !bin.len().is_multiple_of(4) {
-                bin.push(0);
-            }
-            let offset = bin.len();
-            bin.extend_from_slice(data);
-            buffer_views.push(serde_json::json!({
-                "buffer": 0, "byteOffset": offset, "byteLength": data.len(), "target": target
-            }));
-            buffer_views.len() - 1
-        };
-        let pos_view = view(bytemuck::cast_slice(&positions), 34962);
-        let nrm_view = view(bytemuck::cast_slice(&normals), 34962);
-        let col_view = view(bytemuck::cast_slice(&colors), 34962);
-        let idx_view = view(bytemuck::cast_slice(&indices), 34963);
         let count = positions.len();
-        accessors.push(serde_json::json!({
-            "bufferView": pos_view, "componentType": 5126, "count": count, "type": "VEC3",
-            "min": lo, "max": hi
-        }));
-        accessors.push(serde_json::json!({
-            "bufferView": nrm_view, "componentType": 5126, "count": count, "type": "VEC3"
-        }));
-        accessors.push(serde_json::json!({
-            "bufferView": col_view, "componentType": 5126, "count": count, "type": "VEC4"
-        }));
-        accessors.push(serde_json::json!({
-            "bufferView": idx_view, "componentType": 5125, "count": indices.len(), "type": "SCALAR"
-        }));
-        let a = accessors.len() - 4;
+        let pos = bin.add(
+            bytemuck::cast_slice(&positions),
+            Some(34962),
+            serde_json::json!({
+                "componentType": 5126, "count": count, "type": "VEC3", "min": lo, "max": hi
+            }),
+        );
+        let nrm = bin.add(
+            bytemuck::cast_slice(&normals),
+            Some(34962),
+            serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC3" }),
+        );
+        let col = bin.add(
+            bytemuck::cast_slice(&colors),
+            Some(34962),
+            serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC4" }),
+        );
+        let idx = bin.add(
+            bytemuck::cast_slice(&indices),
+            Some(34963),
+            serde_json::json!({ "componentType": 5125, "count": indices.len(), "type": "SCALAR" }),
+        );
+        let mut attributes = serde_json::json!({ "POSITION": pos, "NORMAL": nrm, "COLOR_0": col });
+        if placement.frames.is_some() {
+            // Skinned whole to its own joint.
+            let j: Vec<[u16; 4]> = vec![[joints, 0, 0, 0]; count];
+            let w: Vec<[f32; 4]> = vec![[1.0, 0.0, 0.0, 0.0]; count];
+            attributes["JOINTS_0"] = bin
+                .add(
+                    bytemuck::cast_slice(&j),
+                    Some(34962),
+                    serde_json::json!({ "componentType": 5123, "count": count, "type": "VEC4" }),
+                )
+                .into();
+            attributes["WEIGHTS_0"] = bin
+                .add(
+                    bytemuck::cast_slice(&w),
+                    Some(34962),
+                    serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC4" }),
+                )
+                .into();
+            joints += 1;
+        }
         meshes.push(serde_json::json!({
             "name": format!("vox{pi}"),
-            "primitives": [{
-                "attributes": { "POSITION": a, "NORMAL": a + 1, "COLOR_0": a + 2 },
-                "indices": a + 3,
-                "material": 0
-            }]
+            "primitives": [{ "attributes": attributes, "indices": idx, "material": 0 }]
         }));
         let t = placement.translation;
         let at = [
@@ -709,7 +931,7 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             -(t[1] as f32) * scale,
         ];
         floor = floor.min(at[1] + lo[1]);
-        placed.push((pi, meshes.len() - 1, at));
+        placed.push((pi, meshes.len() - 1, at, placement.frames.clone()));
     }
     if meshes.is_empty() {
         return Err("vox: every model is empty".into());
@@ -719,18 +941,29 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         VoxOrigin::Center => 0.0,
         VoxOrigin::Bottom => -floor,
     };
-    let nodes: Vec<serde_json::Value> = placed
-        .iter()
-        .map(|(pi, mesh, at)| {
-            serde_json::json!({
-                "name": format!("vox{pi}"),
-                "mesh": mesh,
-                "translation": [at[0], at[1] + lift, at[2]]
-            })
-        })
-        .collect();
-    let _ = quads_total;
-    let json = serde_json::json!({
+    let mut nodes: Vec<serde_json::Value> = Vec::new();
+    // Per joint: its node and the frames its model shows.
+    let mut joint_nodes: Vec<(usize, std::ops::Range<u32>)> = Vec::new();
+    for (pi, mesh, at, frames) in &placed {
+        let at = [at[0], at[1] + lift, at[2]];
+        match frames {
+            None => nodes.push(serde_json::json!({
+                "name": format!("vox{pi}"), "mesh": mesh, "translation": at
+            })),
+            Some(f) => {
+                let s = if f.contains(&0) { 1.0 } else { 0.0 };
+                nodes.push(serde_json::json!({
+                    "name": format!("vox{pi}"), "mesh": mesh, "skin": 0,
+                    "translation": at, "scale": [s, s, s]
+                }));
+                nodes.push(serde_json::json!({
+                    "name": format!("vox{pi}-frames"), "translation": at, "scale": [s, s, s]
+                }));
+                joint_nodes.push((nodes.len() - 1, f.clone()));
+            }
+        }
+    }
+    let mut json = serde_json::json!({
         "asset": { "version": "2.0", "generator": "og-cook vox" },
         "scene": 0,
         "scenes": [{ "nodes": (0..nodes.len()).collect::<Vec<_>>() }],
@@ -740,16 +973,69 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             "name": "voxels",
             "pbrMetallicRoughness": { "baseColorFactor": [1.0, 1.0, 1.0, 1.0], "metallicFactor": 0.0, "roughnessFactor": 0.9 }
         }],
-        "accessors": accessors,
-        "bufferViews": buffer_views,
-        "buffers": [{ "byteLength": bin.len() }]
     });
+    if !joint_nodes.is_empty() {
+        let identity: Vec<f32> = (0..joint_nodes.len()).flat_map(|_| IDENTITY_MAT4).collect();
+        let ibm = bin.add(
+            bytemuck::cast_slice(&identity),
+            None,
+            serde_json::json!({ "componentType": 5126, "count": joint_nodes.len(), "type": "MAT4" }),
+        );
+        json["skins"] = serde_json::json!([{
+            "name": "frames",
+            "joints": joint_nodes.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+            "inverseBindMatrices": ibm
+        }]);
+        let mut animations = Vec::new();
+        for (name, first, last) in &clips {
+            // One key per frame, and one at the end holding the last.
+            let len = last - first + 1;
+            let times: Vec<f32> = (0..=len).map(|i| i as f32 / settings.fps).collect();
+            let input = bin.add(
+                bytemuck::cast_slice(&times),
+                None,
+                serde_json::json!({
+                    "componentType": 5126, "count": times.len(), "type": "SCALAR",
+                    "min": [0.0], "max": [times[times.len() - 1]]
+                }),
+            );
+            let mut samplers = Vec::new();
+            let mut channels = Vec::new();
+            for (node, frames) in &joint_nodes {
+                let scales: Vec<[f32; 3]> = (0..=len)
+                    .map(|i| {
+                        let shown = frames.contains(&(first + i.min(len - 1)));
+                        [if shown { 1.0 } else { 0.0 }; 3]
+                    })
+                    .collect();
+                let output = bin.add(
+                    bytemuck::cast_slice(&scales),
+                    None,
+                    serde_json::json!({ "componentType": 5126, "count": scales.len(), "type": "VEC3" }),
+                );
+                channels.push(serde_json::json!({
+                    "sampler": samplers.len(), "target": { "node": node, "path": "scale" }
+                }));
+                samplers.push(serde_json::json!({
+                    "input": input, "output": output, "interpolation": "STEP"
+                }));
+            }
+            animations.push(serde_json::json!({
+                "name": name, "samplers": samplers, "channels": channels
+            }));
+        }
+        json["animations"] = animations.into();
+    }
+    while !bin.bytes.len().is_multiple_of(4) {
+        bin.bytes.push(0);
+    }
+    json["accessors"] = std::mem::take(&mut bin.accessors).into();
+    json["bufferViews"] = std::mem::take(&mut bin.views).into();
+    json["buffers"] = serde_json::json!([{ "byteLength": bin.bytes.len() }]);
+    let bin = bin.bytes;
     let mut json_bytes = serde_json::to_vec(&json).map_err(|e| e.to_string())?;
     while !json_bytes.len().is_multiple_of(4) {
         json_bytes.push(b' ');
-    }
-    while !bin.len().is_multiple_of(4) {
-        bin.push(0);
     }
     let total = 12 + 8 + json_bytes.len() + 8 + bin.len();
     let mut out = Vec::with_capacity(total);
@@ -1150,6 +1436,7 @@ mod tests {
         let tenth = VoxSettings {
             scale: 0.1,
             origin: VoxOrigin::Center,
+            ..VoxSettings::default()
         };
         let small = to_glb(&bytes, &tenth).unwrap();
         let (lo, hi) = height(&small);
@@ -1161,6 +1448,7 @@ mod tests {
         let bottom = VoxSettings {
             scale: 0.1,
             origin: VoxOrigin::Bottom,
+            ..VoxSettings::default()
         };
         let grounded = to_glb(&bytes, &bottom).unwrap();
         let (lo, hi) = height(&grounded);
@@ -1182,6 +1470,7 @@ mod tests {
             &VoxSettings {
                 scale: 1.0,
                 origin: VoxOrigin::Bottom,
+                ..VoxSettings::default()
             },
         )
         .unwrap();
@@ -1214,7 +1503,8 @@ mod tests {
             VoxSettings::parse(Some(&b)).unwrap(),
             VoxSettings {
                 scale: 0.0625,
-                origin: VoxOrigin::Bottom
+                origin: VoxOrigin::Bottom,
+                ..VoxSettings::default()
             }
         );
         for (text, says) in [
@@ -1222,10 +1512,366 @@ mod tests {
             ("voxScale -1", "above 0"),
             ("voxOrigin top", "center"),
             ("voxPivot 1", "unknown model setting 'voxPivot'"),
+            ("voxFps 0", "1 to 120"),
+            ("voxClip walk 3 1", "first and last frame"),
+            ("voxClip walk 0", "first and last frame"),
+            ("voxClip walk 0 1.5", "first and last frame"),
+            (
+                "voxClip walk 0 1\nvoxClip walk 2 3",
+                "line 6: a second voxClip 'walk'",
+            ),
         ] {
             let e = VoxSettings::parse(Some(&block(text))).unwrap_err();
-            assert!(e.contains(says) && e.contains("line 5"), "{text}: {e}");
+            assert!(e.contains(says) && e.contains("line "), "{text}: {e}");
+            if !says.starts_with("line") {
+                assert!(e.contains("line 5"), "{text}: {e}");
+            }
         }
+    }
+
+    #[test]
+    fn frame_rate_and_clips_are_read() {
+        let block = og_core::ogt::Document::parse(
+            "type import\nversion 1\n---\nmodel {\nvoxFps 4\nvoxClip idle 0 1\nvoxClip \"jump high\" 2 5\n}\n",
+        )
+        .unwrap()
+        .body
+        .get("model")
+        .unwrap()
+        .block
+        .clone()
+        .unwrap();
+        let v = VoxSettings::parse(Some(&block)).unwrap();
+        assert_eq!(v.fps, 4.0);
+        let clips: Vec<(&str, u32, u32)> = v
+            .clips
+            .iter()
+            .map(|c| (c.name.as_str(), c.first, c.last))
+            .collect();
+        assert_eq!(clips, vec![("idle", 0, 1), ("jump high", 2, 5)]);
+    }
+
+    fn chunk(out: &mut Vec<u8>, id: &[u8; 4], body: &[u8]) {
+        out.extend_from_slice(id);
+        out.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(body);
+    }
+
+    fn dict_of(b: &mut Vec<u8>, pairs: &[(&str, String)]) {
+        b.extend_from_slice(&(pairs.len() as u32).to_le_bytes());
+        for (k, v) in pairs {
+            for s in [*k, v.as_str()] {
+                b.extend_from_slice(&(s.len() as u32).to_le_bytes());
+                b.extend_from_slice(s.as_bytes());
+            }
+        }
+    }
+
+    /// A `.vox` of several models (each `SIZE`/`XYZI`) and then `graph`'s
+    /// chunks (none: no scene graph).
+    fn write_models(models: &[([u32; 3], Vec<[u8; 4]>)], graph: &[u8]) -> Vec<u8> {
+        let mut children = Vec::new();
+        let mut pack = Vec::new();
+        pack.extend_from_slice(&(models.len() as u32).to_le_bytes());
+        chunk(&mut children, b"PACK", &pack);
+        for (size, voxels) in models {
+            let body: Vec<u8> = size.iter().flat_map(|s| s.to_le_bytes()).collect();
+            chunk(&mut children, b"SIZE", &body);
+            let mut xyzi = (voxels.len() as u32).to_le_bytes().to_vec();
+            for v in voxels {
+                xyzi.extend_from_slice(v);
+            }
+            chunk(&mut children, b"XYZI", &xyzi);
+        }
+        children.extend_from_slice(graph);
+        let mut out = b"VOX ".to_vec();
+        out.extend_from_slice(&150u32.to_le_bytes());
+        out.extend_from_slice(b"MAIN");
+        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&(children.len() as u32).to_le_bytes());
+        out.extend_from_slice(&children);
+        out
+    }
+
+    fn trn(out: &mut Vec<u8>, node: u32, child: u32, t: [i32; 3]) {
+        let mut b = Vec::new();
+        for v in [node, 0, child, u32::MAX, 0, 1] {
+            if v == 0 && b.len() == 4 {
+                dict_of(&mut b, &[]);
+            } else {
+                b.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        dict_of(&mut b, &[("_t", format!("{} {} {}", t[0], t[1], t[2]))]);
+        chunk(out, b"nTRN", &b);
+    }
+
+    fn grp(out: &mut Vec<u8>, node: u32, children: &[u32]) {
+        let mut b = node.to_le_bytes().to_vec();
+        dict_of(&mut b, &[]);
+        b.extend_from_slice(&(children.len() as u32).to_le_bytes());
+        for c in children {
+            b.extend_from_slice(&c.to_le_bytes());
+        }
+        chunk(out, b"nGRP", &b);
+    }
+
+    fn shp(out: &mut Vec<u8>, node: u32, models: &[(u32, Option<u32>)]) {
+        let mut b = node.to_le_bytes().to_vec();
+        dict_of(&mut b, &[]);
+        b.extend_from_slice(&(models.len() as u32).to_le_bytes());
+        for (m, f) in models {
+            b.extend_from_slice(&m.to_le_bytes());
+            match f {
+                Some(f) => dict_of(&mut b, &[("_f", f.to_string())]),
+                None => dict_of(&mut b, &[]),
+            }
+        }
+        chunk(out, b"nSHP", &b);
+    }
+
+    /// A solid box of `size` in colour `c`.
+    fn solid(size: [u32; 3], c: u8) -> Vec<[u8; 4]> {
+        let mut v = Vec::new();
+        for z in 0..size[2] as u8 {
+            for y in 0..size[1] as u8 {
+                for x in 0..size[0] as u8 {
+                    v.push([x, y, z, c]);
+                }
+            }
+        }
+        v
+    }
+
+    /// The world-space bounds of a glTF binary's default scene (node
+    /// translations and scales applied, as the model cook computes them).
+    fn world_bounds(glb: &[u8]) -> (glam::Vec3, glam::Vec3) {
+        let g = gltf::Gltf::from_slice(glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        let (mut lo, mut hi) = (glam::Vec3::MAX, glam::Vec3::MIN);
+        for n in g.document.nodes() {
+            let Some(mesh) = n.mesh() else { continue };
+            let m = glam::Mat4::from_cols_array_2d(&n.transform().matrix());
+            for p in mesh.primitives() {
+                let r = p.reader(|_| Some(&blob[..]));
+                for v in r.read_positions().unwrap() {
+                    let w = m.transform_point3(glam::Vec3::from(v));
+                    lo = lo.min(w);
+                    hi = hi.max(w);
+                }
+            }
+        }
+        (lo, hi)
+    }
+
+    /// A file without a scene graph lands exactly where the same voxels
+    /// under a graph of one transform at the origin land (MagicaVoxel
+    /// centres a lone model; the old reading put its corner at the
+    /// origin), even and odd sizes, with either origin.
+    #[test]
+    fn a_file_without_a_graph_lands_where_a_trivial_graph_puts_it() {
+        for size in [[4, 2, 6], [3, 2, 5], [1, 1, 1]] {
+            let voxels = solid(size, 9);
+            let bare = write(size, &voxels, None);
+            let graphed = write_placed(size, &voxels, &[([0, 0, 0], None)]);
+            for origin in [VoxOrigin::Center, VoxOrigin::Bottom] {
+                let settings = VoxSettings {
+                    scale: 0.5,
+                    origin,
+                    ..VoxSettings::default()
+                };
+                let a = to_glb(&bare, &settings).unwrap();
+                let b = to_glb(&graphed, &settings).unwrap();
+                assert_eq!(world_bounds(&a), world_bounds(&b), "{size:?} {origin:?}");
+                assert_eq!(a, b, "{size:?} {origin:?}: the same glTF");
+            }
+            // Centred: MagicaVoxel's pivot floor(size / 2) at the origin.
+            let (lo, hi) = world_bounds(&to_glb(&bare, &VoxSettings::default()).unwrap());
+            let p = size.map(|s| (s / 2) as f32);
+            let want_lo = glam::Vec3::new(-p[0], -p[2], -(size[1] as f32 - p[1]));
+            assert_eq!(lo, want_lo, "{size:?}");
+            assert_eq!(
+                hi - lo,
+                glam::Vec3::new(size[0] as f32, size[2] as f32, size[1] as f32)
+            );
+        }
+    }
+
+    /// Several models without a graph are MagicaVoxel 0.98's animation: one
+    /// frame each, all at the origin, cooked as a skinned glTF whose clip
+    /// `frames` scales each frame's joint to 1 on its frame and 0 elsewhere.
+    #[test]
+    fn a_pack_without_a_graph_is_the_frames_of_one_clip() {
+        let models = vec![
+            ([2, 2, 2], solid([2, 2, 2], 1)),
+            ([2, 2, 4], solid([2, 2, 4], 2)),
+            ([4, 2, 2], solid([4, 2, 2], 3)),
+        ];
+        let bytes = write_models(&models, &[]);
+        let file = parse(&bytes).unwrap();
+        assert_eq!(file.frame_count, 3);
+        let frames: Vec<_> = file.placements.iter().map(|p| p.frames.clone()).collect();
+        assert_eq!(frames, vec![Some(0..1), Some(1..2), Some(2..3)]);
+        assert!(file.placements.iter().all(|p| p.translation == [0; 3]));
+        let settings = VoxSettings {
+            fps: 5.0,
+            ..VoxSettings::default()
+        };
+        let glb = to_glb(&bytes, &settings).unwrap();
+        let g = gltf::Gltf::from_slice(&glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        let skin = g.document.skins().next().expect("a skin");
+        assert_eq!(skin.joints().count(), 3);
+        // Rest pose and mesh nodes: frame 0 shown, the others folded away.
+        let scales: Vec<[f32; 3]> = g
+            .document
+            .nodes()
+            .map(|n| n.transform().decomposed().2)
+            .collect();
+        assert_eq!(
+            scales,
+            vec![[1.0; 3], [1.0; 3], [0.0; 3], [0.0; 3], [0.0; 3], [0.0; 3]]
+        );
+        assert!(
+            g.document
+                .nodes()
+                .filter(|n| n.mesh().is_some())
+                .all(|n| n.skin().is_some())
+        );
+        let anims: Vec<_> = g.document.animations().collect();
+        assert_eq!(anims.len(), 1);
+        assert_eq!(anims[0].name(), Some(DEFAULT_CLIP));
+        let joints: Vec<usize> = skin.joints().map(|j| j.index()).collect();
+        for (k, ch) in anims[0].channels().enumerate() {
+            assert_eq!(ch.target().node().index(), joints[k]);
+            assert_eq!(ch.target().property(), gltf::animation::Property::Scale);
+            assert_eq!(
+                ch.sampler().interpolation(),
+                gltf::animation::Interpolation::Step
+            );
+            let r = ch.reader(|_| Some(&blob[..]));
+            let times: Vec<f32> = r.read_inputs().unwrap().collect();
+            assert_eq!(times, vec![0.0, 0.2, 0.4, 0.6]);
+            let Some(gltf::animation::util::ReadOutputs::Scales(s)) = r.read_outputs() else {
+                panic!("scale outputs");
+            };
+            let shown: Vec<f32> = s.map(|v| v[0]).collect();
+            // Frame k only; the end key holds the last frame.
+            let mut want = vec![0.0; 4];
+            want[k] = 1.0;
+            want[3] = want[2];
+            assert_eq!(shown, want, "joint {k}");
+        }
+        // Every frame meshes into its own primitive, faces out.
+        assert_eq!(primitives(&glb).len(), 3);
+        assert!(faces_out(&glb));
+    }
+
+    /// An animated shape (an `nSHP` of several models with `_f` key frames)
+    /// shows each model from its key to the next, beside a static part;
+    /// `voxClip` cuts the frames into named clips.
+    #[test]
+    fn an_animated_shape_keys_its_models_and_clips_cut_its_frames() {
+        let models = vec![
+            ([2, 2, 2], solid([2, 2, 2], 1)),
+            ([2, 2, 3], solid([2, 2, 3], 2)),
+            ([6, 6, 1], solid([6, 6, 1], 3)),
+        ];
+        let mut graph = Vec::new();
+        trn(&mut graph, 0, 1, [0, 0, 0]);
+        grp(&mut graph, 1, &[2, 4]);
+        trn(&mut graph, 2, 3, [0, 0, 4]);
+        shp(&mut graph, 3, &[(1, Some(4)), (0, Some(0))]);
+        trn(&mut graph, 4, 5, [0, 0, 0]);
+        shp(&mut graph, 5, &[(2, None)]);
+        let bytes = write_models(&models, &graph);
+        let file = parse(&bytes).unwrap();
+        assert_eq!(file.frame_count, 5);
+        let placed: Vec<_> = file
+            .placements
+            .iter()
+            .map(|p| (p.model, p.translation, p.frames.clone()))
+            .collect();
+        assert_eq!(
+            placed,
+            vec![
+                (0, [0, 0, 4], Some(0..4)),
+                (1, [0, 0, 4], Some(4..5)),
+                (2, [0, 0, 0], None)
+            ]
+        );
+        let settings = VoxSettings {
+            clips: vec![
+                VoxClip {
+                    name: "idle".into(),
+                    first: 0,
+                    last: 3,
+                },
+                VoxClip {
+                    name: "pop".into(),
+                    first: 3,
+                    last: 4,
+                },
+            ],
+            ..VoxSettings::default()
+        };
+        let glb = to_glb(&bytes, &settings).unwrap();
+        let g = gltf::Gltf::from_slice(&glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        // The static part is not skinned.
+        let skinned: Vec<bool> = g
+            .document
+            .nodes()
+            .filter(|n| n.mesh().is_some())
+            .map(|n| n.skin().is_some())
+            .collect();
+        assert_eq!(skinned, vec![true, true, false]);
+        let shown = |anim: &gltf::Animation| -> Vec<Vec<f32>> {
+            anim.channels()
+                .map(|ch| {
+                    let r = ch.reader(|_| Some(&blob[..]));
+                    match r.read_outputs() {
+                        Some(gltf::animation::util::ReadOutputs::Scales(s)) => {
+                            s.map(|v| v[0]).collect()
+                        }
+                        _ => panic!("scale outputs"),
+                    }
+                })
+                .collect()
+        };
+        let anims: Vec<_> = g.document.animations().collect();
+        assert_eq!(anims[0].name(), Some("idle"));
+        assert_eq!(
+            shown(&anims[0]),
+            vec![vec![1.0; 5], vec![0.0; 5]],
+            "idle: model 0 throughout"
+        );
+        assert_eq!(anims[1].name(), Some("pop"));
+        assert_eq!(
+            shown(&anims[1]),
+            vec![vec![1.0, 0.0, 0.0], vec![0.0, 1.0, 1.0]]
+        );
+        // A clip past the last frame, or on a static file, is refused.
+        let past = VoxSettings {
+            clips: vec![VoxClip {
+                name: "far".into(),
+                first: 2,
+                last: 5,
+            }],
+            ..VoxSettings::default()
+        };
+        let e = to_glb(&bytes, &past).unwrap_err();
+        assert!(e.contains("'far'") && e.contains("5 frame(s)"), "{e}");
+        let still = write([1, 1, 1], &[[0, 0, 0, 1]], None);
+        let e = to_glb(&still, &past).unwrap_err();
+        assert!(e.contains("no animation frames"), "{e}");
+        // A static file stays unskinned and without clips.
+        let g = gltf::Gltf::from_slice(&to_glb(&still, &VoxSettings::default()).unwrap()).unwrap();
+        assert_eq!(
+            (g.document.skins().count(), g.document.animations().count()),
+            (0, 0)
+        );
     }
 
     #[test]
