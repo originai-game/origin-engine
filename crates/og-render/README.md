@@ -79,8 +79,10 @@ slot never draws the old resource. Tests: og-tests `tests/removal.rs`.
 
 ## The render graph
 
-A fixed, feature-gated pass sequence per `render` call (not yet a graph
-object; see below). Passes whose feature is off are not recorded.
+A feature-gated pass sequence per `render` call, run on the render graph
+object (`src/graph.rs`, M6: declared targets and passes, data-flow order,
+aliased transients; §What phase 2 owes). Passes whose feature is off are
+not recorded.
 
 1. **Sync.** New meshes, textures (with the **mip pass**: one fullscreen
    triangle per level, linear-space box filter), materials, fonts. When the
@@ -131,8 +133,10 @@ object; see below). Passes whose feature is off are not recorded.
    `spheres-20k` this draws 45 % and 36 % fewer casters with identical
    frames. Three passes into a 2048² `R32Float` array (depth also written as
    colour) with a shared depth buffer, front faces culled.
-4. **Local shadows**: per shadowed light (at most two), six cube faces (point)
-   or one perspective view (spot), each a pass into a 512² `R32Float` array
+4. **Local shadows**: per shadowed light (at most `RenderInfo::shadowed_lights`:
+   8 on the full tier, 4 on WebGL2, since the P4 shadows round), six cube
+   faces or two paraboloid hemispheres (point, by `PointShadows`) or one
+   perspective view (spot), each a pass into a 512² `R32Float` array
    layer storing distance / range, casters culled to the face frustum.
    With terrain, each of its clipmap levels that reaches into the face's
    or cascade's volume is drawn too; with a planar water reflection the
@@ -1363,16 +1367,17 @@ with their mips, chosen per tier and reported in
   scene depth) and costs a second geometry pass: spheres-20k 9.98 to 16.56
   ms (+66 %), city-street +0.3 ms, city-aerial +0.5 ms, showcase within
   noise (`tests/evidence/P4/perf/prepass.md`). Design §2.6 says so.
-- **GL-tier references**: the og-tests scenes (`msaa` among them) have no
-  `gl` / `webgl2` references: native GL needs wgpu's
-  `gles`/`angle` features (Cargo.lock change, ANGLE dylibs on macOS) and was
-  not set up, and og-tests' scenes load assets from disk and read back
-  synchronously, so a browser run would need a wasm harness of its own.
-  The browser runner (`make web-reference`) covers `templates/fx-showcase`
-  on `webgpu` and `webgl2`, which draws every E1 effect, skinning and the
-  overlay.
-- Post: fog.
-- 2D: per-texture filtering (nearest for pixel art), billboards. (Kerning,
+- **GL-tier references**: native GL needs wgpu's `gles`/`angle` features
+  (Cargo.lock change, ANGLE dylibs on macOS) and was not set up, so there
+  is no native `gl` tier. *The browser half is done (phase 2, owed row
+  22):* og-tests-web, a wasm harness of og-tests' scenes, draws them on
+  `webgpu` and `webgl2` in `make web-reference` (56 scenes per tier in the
+  P4 UI shell round's run), judged against `metal` unless the tier keeps a
+  reference by design, beside `templates/fx-showcase`.
+- 2D: billboards (camera-facing world sprites; particles have them).
+  (Fog landed in E5, in the lit, sky, particle, strip and sprite shaders
+  rather than as a post pass (§E5: atmosphere); per-texture filtering is
+  `set_texture_filter`, nearest for pixel art. Kerning,
   shaped placements and glyph tables that grow at run time landed in the
   phase 4 UI text round; shaping and bidi themselves are og-ui's, CJK
   coverage the cook's `runtime true` with og-ui's run-time glyphs.)

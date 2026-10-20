@@ -1066,7 +1066,10 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   inside a lane on the lanes wasm leaves the engine Worker in
   `Atomics.wait` and the page hung without the crash screen (the shell has
   no deadline on a frame or an engine call to notice; docs/web-export.md
-  §Lanes).
+  §Lanes). *The panic resolved in the P4 web host and tools round
+  (a4f0231: a structured crash 9 ms after the fault, and a 15 s frame
+  deadline); ask 11 still waits on the platform, its text now saying the
+  lanes run the physics step on the web too.*
 
 ## Status 2026-10-19, Phase 2, showcase round
 
