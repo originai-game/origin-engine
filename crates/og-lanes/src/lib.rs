@@ -19,9 +19,12 @@
 //! - in the single-threaded wasm, nowhere: every helper runs serially.
 //!
 //! A library built on rayon (rapier's `parallel` build, in og-physics) runs
-//! through [`install`]: on the pool when lanes are on and the call has two
-//! grains of items, otherwise on the calling thread inside a one-thread pool,
-//! so the library finds one thread and never reaches rayon's global pool.
+//! through [`install`] (or [`install_from`]): on the pool when lanes are on
+//! and the call has a grain for every thread (or the caller's number of
+//! items), otherwise on the calling thread inside a one-thread pool, so the
+//! library finds one thread and never reaches rayon's global pool. The
+//! same library's work outside those calls (a physics query) runs through
+//! [`serial`], on the calling thread in that one-thread pool.
 //!
 //! The probe's `lanes:<on|off>` switches them at run time ([`set_enabled`])
 //! and `dump_lanes` reports what the engine got ([`report`]), with the

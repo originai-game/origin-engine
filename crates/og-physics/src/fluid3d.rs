@@ -173,7 +173,7 @@ impl Pairs {
             }
             found
         };
-        let mut parts = crate::lanes::map_ranges(n, search);
+        let mut parts = crate::lanes::map_ranges(n, crate::lanes::now().particles_3d, search);
         let found = if parts.len() == 1 {
             parts.pop().unwrap_or_default()
         } else {
@@ -555,31 +555,36 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
             // particle alone, so by ranges on the lanes from two grains.
             let shared: &[Member<'_>] = members;
             let owner = &owner;
-            crate::lanes::for_each_chunk(&mut positions, &mut velocities, |at, ps, vs| {
-                for (k, (p, v)) in ps.iter_mut().zip(vs.iter_mut()).enumerate() {
-                    let m = &shared[owner[at + k] as usize];
-                    let r_particle = m.fluid.radius.max(0.02) * 0.25;
-                    if let Some((q, normal)) = solids.push_out(*p, r_particle) {
-                        *p = q;
-                        let along = v.dot(normal);
-                        let slide = *v - normal * along;
-                        *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
-                    }
-                    let half = m.fluid.bounds * 0.5;
-                    for k in 0..3 {
-                        if half[k] > 0.0 {
-                            let (lo, hi) = (m.centre[k] - half[k], m.centre[k] + half[k]);
-                            if p[k] < lo {
-                                p[k] = lo;
-                                v[k] = v[k].max(0.0);
-                            } else if p[k] > hi {
-                                p[k] = hi;
-                                v[k] = v[k].min(0.0);
+            crate::lanes::for_each_chunk(
+                &mut positions,
+                &mut velocities,
+                crate::lanes::now().particles_3d,
+                |at, ps, vs| {
+                    for (k, (p, v)) in ps.iter_mut().zip(vs.iter_mut()).enumerate() {
+                        let m = &shared[owner[at + k] as usize];
+                        let r_particle = m.fluid.radius.max(0.02) * 0.25;
+                        if let Some((q, normal)) = solids.push_out(*p, r_particle) {
+                            *p = q;
+                            let along = v.dot(normal);
+                            let slide = *v - normal * along;
+                            *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
+                        }
+                        let half = m.fluid.bounds * 0.5;
+                        for k in 0..3 {
+                            if half[k] > 0.0 {
+                                let (lo, hi) = (m.centre[k] - half[k], m.centre[k] + half[k]);
+                                if p[k] < lo {
+                                    p[k] = lo;
+                                    v[k] = v[k].max(0.0);
+                                } else if p[k] > hi {
+                                    p[k] = hi;
+                                    v[k] = v[k].min(0.0);
+                                }
                             }
                         }
                     }
-                }
-            });
+                },
+            );
         }
         // Back into each member.
         let mut at = 0;

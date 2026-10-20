@@ -28,10 +28,13 @@ pub struct Grains {
     /// The same for fluids, 2D and 3D, each alone or its group's set
     /// (particles × substeps).
     pub fluid_work: usize,
-    /// The particles of one task in a fluid's per-particle passes (the
+    /// The particles of one task in a 2D fluid's per-particle passes (the
     /// neighbour search, the collisions with solids); they split from two
     /// grains.
-    pub particles: usize,
+    pub particles_2d: usize,
+    /// The same in a 3D fluid, whose relaxation (serial, Gauss-Seidel over
+    /// the pairs) weighs more against the passes that split.
+    pub particles_3d: usize,
 }
 
 impl Grains {
@@ -46,10 +49,11 @@ impl Grains {
                 _ => 1500,
             },
             pairs: 512,
-            rope_work: 4096,
-            cloth_work: 8192,
-            fluid_work: 2048,
-            particles: 1024,
+            rope_work: if threads <= 4 { 800 } else { 2400 },
+            cloth_work: if threads <= 4 { 1100 } else { 2000 },
+            fluid_work: 500,
+            particles_2d: 256,
+            particles_3d: 512,
         }
     }
 
@@ -63,7 +67,8 @@ impl Grains {
             rope_work: 1,
             cloth_work: 1,
             fluid_work: 1,
-            particles: 1,
+            particles_2d: 1,
+            particles_3d: 1,
         }
     }
 }
@@ -109,10 +114,10 @@ pub(crate) fn soft_grain(items: usize, work: usize, per_task: usize) -> usize {
     }
 }
 
-/// `0..n` as the ranges of a per-particle pass: [`Grains::particles`]
-/// items each from two grains, one range below.
-pub(crate) fn ranges(n: usize) -> Vec<std::ops::Range<usize>> {
-    let grain = now().particles.max(1);
+/// `0..n` as the ranges of a per-particle pass: `grain` items each from
+/// two grains, one range below.
+pub(crate) fn ranges(n: usize, grain: usize) -> Vec<std::ops::Range<usize>> {
+    let grain = grain.max(1);
     if n < grain.saturating_mul(2) {
         return std::iter::once(0..n).collect();
     }
@@ -126,9 +131,12 @@ pub(crate) fn ranges(n: usize) -> Vec<std::ops::Range<usize>> {
 /// there are several, the results in range order.
 pub(crate) fn map_ranges<R: Send>(
     n: usize,
+    grain: usize,
     f: impl Fn(std::ops::Range<usize>) -> R + Sync + Send,
 ) -> Vec<R> {
-    og_lanes::map(og_lanes::Site::Physics, &ranges(n), 1, |r| f(r.clone()))
+    og_lanes::map(og_lanes::Site::Physics, &ranges(n, grain), 1, |r| {
+        f(r.clone())
+    })
 }
 
 /// `f(first index, positions, velocities)` on the chunks of two parallel
@@ -137,11 +145,12 @@ pub(crate) fn map_ranges<R: Send>(
 pub(crate) fn for_each_chunk<P: Send, V: Send>(
     positions: &mut [P],
     velocities: &mut [V],
+    grain: usize,
     f: impl Fn(usize, &mut [P], &mut [V]) + Sync + Send,
 ) {
     debug_assert_eq!(positions.len(), velocities.len());
     let n = positions.len();
-    let size = ranges(n).first().map_or(1, |r| r.len().max(1));
+    let size = ranges(n, grain).first().map_or(1, |r| r.len().max(1));
     let mut parts: Vec<(usize, &mut [P], &mut [V])> = positions
         .chunks_mut(size)
         .zip(velocities.chunks_mut(size))
@@ -157,9 +166,12 @@ pub(crate) fn for_each_chunk<P: Send, V: Send>(
 /// [`for_each_chunk`] over one slice.
 pub(crate) fn for_each_chunk_of<P: Send>(
     items: &mut [P],
+    grain: usize,
     f: impl Fn(usize, &mut [P]) + Sync + Send,
 ) {
-    let size = ranges(items.len()).first().map_or(1, |r| r.len().max(1));
+    let size = ranges(items.len(), grain)
+        .first()
+        .map_or(1, |r| r.len().max(1));
     let mut parts: Vec<(usize, &mut [P])> = items
         .chunks_mut(size)
         .enumerate()
