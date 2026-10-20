@@ -87,7 +87,10 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
   declares per publication (`goals/play-surface`). Render recording stays on
   the engine Worker: wgpu's web backend objects are not shareable across
   threads. Without isolation the engine runs single-threaded; the API is the
-  same.
+  same. A lane never changes a result: helpers return in item order, and a
+  library that splits across the pool itself (rapier's `parallel` build,
+  bitwise identical on any number of threads) runs there only from a grain
+  of work for every pool thread, on the engine thread below it.
 - **Native host**: the same split (shell = `og`, engine on its own thread,
   lanes via rayon).
 

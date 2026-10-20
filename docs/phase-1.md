@@ -264,6 +264,19 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   repeated on a quiet machine. In Chrome lanes change nothing for this
   scene: nothing crosses the grains and physics is serial on the web. The
   Three.js comparison is an owner measurement and was not done.
+- **Resolved later** (2026-10-21, branch `web-physics-lanes`): rapier runs
+  in parallel in the lanes wasm too (its `parallel` feature under
+  `target_feature = "atomics"`, reaching the Worker pool through a relay
+  Worker, crates/og-lanes/README.md), and the step has a body threshold:
+  `og_lanes::install` goes to the pool only from `og_physics::BODY_GRAIN`
+  (200) bodies for every lane thread, so a small world, the reference
+  scene's included, steps on the engine thread with lanes on, natively and
+  on the web, and no longer pays the pool hop. The whole og-physics step
+  runs inside it and its contact readout splits by pairs; lanes off and on
+  give the same world (tools/wasm-determinism with a 1,000-body pen,
+  og-physics's `tests/pile.rs`, lanes.test.ts's 1,000-box pile).
+  Native timings: `tests/evidence/P4/physics-lanes/`; the browser timing
+  and the lanes wasm's hashes are the coordinator's measurement.
 - **Gate**: not completed on this branch (the main gate at 50eb7f7 above
   passed everything). `OG_GATE_JOBS=2 scripts/check.sh
   --all` at 1f56ad7, 2026-10-19, M4 Pro at load 127 to 237: fmt, clippy,
@@ -283,10 +296,8 @@ and the §7 reference scene measured with lanes off and on. Evidence:
 - **Left**: `og run --device` (another branch this round) must serve a
   build with its `_headers` so a phone gets lanes; the platform's pin bump
   and ask 11 (`docs/platform-asks.md`: keep COOP/COEP on lanes releases,
-  allow `blob:` Workers, check `__runtime_probe__.lanes` on Play); rapier
-  in parallel on the web (its `parallel` feature in the lanes wasm);
-  a physics world too small to split still pays the pool hop natively with
-  lanes on (no body threshold); the crowd has no Chrome measurement; whether
+  allow `blob:` Workers, check `__runtime_probe__.lanes` on Play); the
+  crowd has no Chrome measurement; whether
   the lanes wasm's 0.07 ms a frame over the single-threaded one (mean, same
   serial work) is noise or the atomics build is not separated; a panic
   inside a lane on the lanes wasm leaves the engine Worker in
