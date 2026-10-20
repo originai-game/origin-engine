@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source-path=SCRIPTDIR
 # scripts/sound-presets.sh [og]: the procedural sound-preset library end to
 # end. `og sfx library` writes every preset's `type sfx` .ogt into a scratch
 # project (target/sound-presets/assets/sfx), `og cook` synthesises them into
@@ -42,4 +43,4 @@ sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
   done
   printf '\n  }\n}\n'
 } > "$out"
-og_say "sound-presets: $(ls "$work"/assets/sfx | wc -l | tr -d ' ') presets cooked into $work/cooked; $out"
+og_say "sound-presets: $(find "$work/assets/sfx" -type f | wc -l | tr -d ' ') presets cooked into $work/cooked; $out"

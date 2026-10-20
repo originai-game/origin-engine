@@ -8,6 +8,11 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The gate's path-aware lane skips this file: it spawns og processes for
+// minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
+// `bun run test` run it (OG_GATE_ALL, or no OG_GATE at all).
+const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
+
 declare const Bun: {
   spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(): void };
 };
@@ -28,7 +33,7 @@ export default og.game({ resources: [Score], systems: [Count], start(world) {
 } });
 `;
 
-test("a watched bundle reloads with its new declarations and migrates a changed layout", async () => {
+test.skipIf(SLOW)("a watched bundle reloads with its new declarations and migrates a changed layout", async () => {
   const dir = join(pkg, "tests", `.reload-${process.pid}`);
   mkdirSync(dir, { recursive: true });
   const entry = join(dir, "game.ts");

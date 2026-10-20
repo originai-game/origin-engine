@@ -46,6 +46,10 @@ declare module "node:zlib" {
 declare module "bun:test" {
   type Body = () => unknown | Promise<unknown>;
   export function test(name: string, body: Body, timeout?: number): void;
+  export namespace test {
+    /** The test runs unless `condition` holds (then it is reported skipped). */
+    function skipIf(condition: boolean): (name: string, body: Body, timeout?: number) => void;
+  }
   export function describe(name: string, body: () => void): void;
   export function beforeAll(body: Body): void;
   interface Matchers {

@@ -76,7 +76,8 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `~/.cache/og-gate/og-gate.lock` and then `target/og-gate.lock` (a release
   `build.sh` holds the target's); a second one, in any worktree, waits
   (`scripts/lock.sh`, `docs/ci.md`). Never bypass it to run gates beside each
-  other: they are slower together than in a queue.
+  other: they are slower together than in a queue. The gate runs two steps
+  at once by default (`OG_GATE_JOBS`) and reniced by 10.
 - **Parallel agents write code; one place runs the gate.** When several
   agents work at once (worktrees), none of them runs `scripts/check.sh`, a
   test lane, `og test`, web-reference or a reference capture: the machine
@@ -107,11 +108,12 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
-- **When to run the gate.** During a round, run the path-aware full lane
-  (`scripts/check.sh`, no flag) after a change; it reruns only what the
-  change reaches. Run `scripts/check.sh --all` once, at the end of the
-  round, before the final commit, and put its summary in the report. Never
-  run `--all` after every edit. When a reference frame changes, re-record
+- **When to run the gate.** During a round, the path-aware full lane
+  (`scripts/check.sh`, no flag) runs once per batch of merges on main, by
+  the one session that merges; it reruns only what the batch reaches. Run
+  `scripts/check.sh --all` once, at the end of the round, before the final
+  commit, and put its summary in the report. Never run `--all` after every
+  edit, and never a gate per merge. When a reference frame changes, re-record
   it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx
   references), `--only bun-test` (a template's playtest frames),
   `scripts/check.sh web-reference` (the browser tiers); `--only` adds the

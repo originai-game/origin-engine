@@ -1,4 +1,5 @@
 # shellcheck shell=bash disable=SC2034 # variables are used by the sourcing scripts
+# shellcheck source-path=SCRIPTDIR
 # Shared helpers for scripts/*.sh. Sourced, never executed. Bash 3.2 compatible
 # (the macOS system bash), so no associative arrays or mapfile.
 

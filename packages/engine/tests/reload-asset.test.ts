@@ -11,6 +11,11 @@ import { fileURLToPath } from "node:url";
 import { decodePng } from "../src/node/png.ts";
 import { ogBin } from "./support/og-bin.ts";
 
+// The gate's path-aware lane skips this file: it spawns og processes for
+// minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
+// `bun run test` run it (OG_GATE_ALL, or no OG_GATE at all).
+const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
+
 declare const Bun: {
   spawn(
     cmd: string[],
@@ -48,7 +53,7 @@ function red(png: string): number {
   return n;
 }
 
-test("og dev shows a glTF edit after the reload", async () => {
+test.skipIf(SLOW)("og dev shows a glTF edit after the reload", async () => {
   rmSync(evidence, { recursive: true, force: true });
   mkdirSync(evidence, { recursive: true });
   const created = Bun.spawnSync(["bun", join(repo, "packages", "create", "bin", "create.ts"), game, "--name", "Reload Game"], { cwd: repo, env });

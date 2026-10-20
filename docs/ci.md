@@ -50,7 +50,7 @@ step.
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
-| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware after each change during a round; `--all` once at the end of a round, before its final commit and report (§When to run what); CI job `gate` on every PR and push to main | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
+| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` on every PR and push to main | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 
 Both lanes are path-aware. A step that passes records the working tree it
 passed on in `<target>/og-gate/green/<step>`: a git tree of the whole
@@ -71,8 +71,13 @@ A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
 reason, the tree it rests on and its inputs; `--all` (`scripts/check.sh
 --all`, `scripts/check.sh --all quick`, `scripts/check.sh --all test`) runs
 every step and every test, and so does any run with `CI` set in the
-environment: CI's lanes stay complete. A failed step clears its record. The
-determinism step, bun-test and the non-GPU tests always run.
+environment: CI's lanes stay complete. A failed step clears its record.
+bun-test and the non-GPU tests always run; determinism runs when
+`tools/wasm-determinism` or a crate it links (og-core, og-ecs, og-physics,
+og-anim, og-lanes and what they build on) changed. bun-test's slow
+integration tests (packages/engine's `reload`, `reload-asset` and
+`web-export`: og processes for minutes) run only under `--all` and in CI
+(`OG_GATE_ALL`); a plain `bun run test` in the package runs them too.
 
 wasm-opt and size-gate also keep results by content in
 `target/og-wasm-cache`: a raw module byte-identical to one already
@@ -208,7 +213,10 @@ The steps run concurrently, each as soon as the steps whose outputs it
 reads have passed or been skipped (`step_needs` in the script): test and
 wasm-opt after wasm-build (og-tests::wasm takes wasm-build's og-render
 artifact), size-gate and bun-test after wasm-opt; fmt, clippy, drift,
-determinism and wasm-build start at once. Native cargo builds lock
+determinism and wasm-build start at once, at most `OG_GATE_JOBS` of them
+(2 by default: the native chain beside the wasm chain; 0 lifts the cap).
+The gate renices itself by 10 outside CI, so the editor and the agents
+beside it keep the machine. Native cargo builds lock
 `target/debug` and the wasm32 ones `target/wasm` and
 `target/wasm32-unknown-unknown`, so the two chains overlap, and cargo's
 lock serialises what shares a directory (clippy, test, drift and the
@@ -259,12 +267,20 @@ shell. Setup changes reach future project orbs after landing on `main`.
 
 ## When to run what
 
-The gate costs a round minutes only when it is run too often:
+The gate costs a round minutes only when it is run too often, and a
+machine with several agents cannot carry one per agent (AGENTS.md §Build
+and gate discipline: three worktree gates beside a lavapipe container took
+the load average past 100 and every step past its timeouts):
 
-- **After a change during a round**: `scripts/check.sh` (no flag), the
-  path-aware full lane. It reruns only what the change can reach and takes
-  about 30 s when nothing a step reads changed. `scripts/check.sh quick` is
-  the narrower loop.
+- **While writing code**: `cargo check -p <crate>` and that crate's own
+  tests, one at a time. An agent in a worktree runs nothing else: no lane,
+  no `og test`, no reference capture. `scripts/check.sh quick` (under half
+  a minute warm) is the most a worktree runs, and only when no gate runs
+  elsewhere.
+- **After a batch of merges on main**: `scripts/check.sh` (no flag), the
+  path-aware full lane, by the one session that merges. It reruns only what
+  the batch can reach and takes about 30 s when nothing a step reads
+  changed. Merge several streams, then gate once; never gate per merge.
 - **Once at the end of a round**: `scripts/check.sh --all`, before the
   final commit, with its summary in the report. Never `--all` after every
   edit; never touch files or delete `target/og-gate/` to force a step.

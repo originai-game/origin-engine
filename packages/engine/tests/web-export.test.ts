@@ -10,6 +10,11 @@ import { fileURLToPath } from "node:url";
 import { DEFAULT_PUBLISH, settingsOf, webBuild, type ProjectSettings } from "../src/node/web-build.ts";
 import { ogBin } from "./support/og-bin.ts";
 
+// The gate's path-aware lane skips this file: it spawns og processes for
+// minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
+// `bun run test` run it (OG_GATE_ALL, or no OG_GATE at all).
+const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
+
 declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
 }
@@ -27,11 +32,12 @@ const settings = (publish: Partial<ProjectSettings["publish"]> = {}): ProjectSet
 const read = (dir: string, f: string) => readFileSync(join(dir, f), "utf8");
 
 beforeAll(() => {
+  if (SLOW) return;
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
 });
 
-test("the same inputs give the same bytes, wherever they are written", async () => {
+test.skipIf(SLOW)("the same inputs give the same bytes, wherever they are written", async () => {
   // The project's cooked bundle, when no earlier run left one (a hook's
   // 5 s would not cover a cook).
   if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
@@ -46,7 +52,7 @@ test("the same inputs give the same bytes, wherever they are written", async () 
   expect(read(join(work, "deeper", "b"), "og-build.json")).toBe(read(join(work, "a"), "og-build.json"));
 }, 120_000);
 
-test("og-build.json names every file beside it, with bytes and sha256, and the Player's facts", async () => {
+test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha256, and the Player's facts", async () => {
   const dir = join(work, "a");
   const m = JSON.parse(read(dir, "og-build.json"));
   const hash = (f: string) => {
@@ -95,7 +101,7 @@ test("og-build.json names every file beside it, with bytes and sha256, and the P
   expect(web.icons.map((i: { sizes: string }) => i.sizes)).toEqual(["192x192", "512x512"]);
 }, 60_000);
 
-test("a publish build ships the engine variant of the game's profile (docs/web-export.md §Variants)", async () => {
+test.skipIf(SLOW)("a publish build ships the engine variant of the game's profile (docs/web-export.md §Variants)", async () => {
   const same = (a: string, b: string) => {
     const [x, y] = [new Uint8Array(readFileSync(a)), new Uint8Array(readFileSync(b))];
     return x.length === y.length && x.every((v, i) => v === y[i]);
@@ -118,7 +124,7 @@ test("a publish build ships the engine variant of the game's profile (docs/web-e
   expect(dev.ok && dev.manifest!.variant === "full").toBe(true);
 }, 120_000);
 
-test("publish settings: isolation, the badge and the service worker's version", async () => {
+test.skipIf(SLOW)("publish settings: isolation, the badge and the service worker's version", async () => {
   const off = await webBuild(project, entry, join(work, "off"), true, settings({ isolation: "off", madeWith: false }));
   expect(off.ok).toBe(true);
   expect(existsSync(join(work, "off", "origingame.runtime.json"))).toBe(false);
@@ -146,7 +152,7 @@ test("publish settings: isolation, the badge and the service worker's version", 
   expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(read(join(work, "req"), "index.html"))![1]!).aspect).toBeCloseTo(16 / 9, 6);
 }, 120_000);
 
-test("a project icon must be a square PNG of at least 192 px", async () => {
+test.skipIf(SLOW)("a project icon must be a square PNG of at least 192 px", async () => {
   const copy = join(work, "iconed");
   cpSync(project, copy, { recursive: true });
   writeFileSync(join(copy, "icon.png"), new Uint8Array([1, 2, 3]));
@@ -159,7 +165,7 @@ test("a project icon must be a square PNG of at least 192 px", async () => {
   expect(good.manifest!.icons).toEqual([{ src: "icons/icon.png", sizes: "512x512", type: "image/png", source: "project" }]);
 }, 120_000);
 
-test("og build never replaces the project, an ancestor of it or a directory it did not write", async () => {
+test.skipIf(SLOW)("og build never replaces the project, an ancestor of it or a directory it did not write", async () => {
   const guarded = join(work, "guarded");
   mkdirSync(join(guarded, "notes"), { recursive: true });
   writeFileSync(join(guarded, "project.ogt"), "type project\n");

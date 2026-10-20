@@ -26,6 +26,7 @@ mod terrain;
 mod texture;
 pub mod texture_array;
 pub mod tilemap;
+pub mod vox;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
 use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
@@ -651,7 +652,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     for (rel, path) in &files {
         let kind = match ext(rel).as_str() {
-            "glb" | "gltf" => Kind::Model,
+            "glb" | "gltf" | "vox" => Kind::Model,
             "png" | "jpg" | "jpeg" | "ktx2" => Kind::Texture,
             "wav" => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
@@ -713,8 +714,19 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 continue;
             }
         };
-        let bytes =
+        let mut bytes =
             std::fs::read(path).map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+        // A MagicaVoxel file is a model: meshed into a glTF binary here, so
+        // the rest of the cook sees a .glb.
+        if kind == Kind::Model && ext(rel) == "vox" {
+            match vox::to_glb(&bytes) {
+                Ok(glb) => bytes = glb,
+                Err(e) => {
+                    early_errors.push((rel.clone(), "model", e));
+                    continue;
+                }
+            }
+        }
         sources.push(Source {
             rel: rel.clone(),
             path: path.clone(),

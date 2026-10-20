@@ -189,10 +189,16 @@ wasm_build() {
   for c in "$@"; do args+=(-p "$c"); done
   case "$features" in -*) args+=(--no-default-features); features="${features#-}" ;; esac
   [ -z "$features" ] || args+=(--features "$features")
+  # Every variant but lanes builds into the one wasm32 target directory:
+  # cargo keys each unit by its feature set, so the 3D and 2D variants
+  # coexist there and share every dependency (one wgpu, one naga, one
+  # og-render) instead of compiling them once per variant in a directory
+  # of their own; only the final .wasm is copied out under the variant's
+  # name right after each build. The lanes variant needs its own flags and
+  # a rebuilt std, so it keeps scripts/wasm-lanes.sh's directory.
   case "$variant" in
-    "") ;;
     lanes) cargo=("$OG_ROOT/scripts/wasm-lanes.sh") ;;
-    *) args+=(--target-dir "$OG_TARGET_DIR/wasm-$variant") ;;
+    *) ;;
   esac
   "${cargo[@]}" --profile wasm "${args[@]}" --lib \
       --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
@@ -382,9 +388,17 @@ step_drift() {
   return $SKIP
 }
 
+# The determinism tool and the workspace crates it links (og-core, og-ecs,
+# og-physics, og-anim, og-lanes and what they build on).
+rule_determinism() {
+  echo "tools/wasm-determinism $(og_crate_dirs --manifest-path tools/wasm-determinism/Cargo.toml -e normal | og_words) $RULE_COMMON"
+}
 step_determinism() {
   # Cross-target determinism: the same math digest and world hash on the host
-  # and on wasm32 (scalar and simd128), tools/wasm-determinism/run.sh.
+  # and on wasm32 (scalar and simd128), tools/wasm-determinism/run.sh. Four
+  # builds and five runs (about a minute warm), so it runs only when one of
+  # its inputs changed.
+  if skip_unchanged determinism "determinism" "$(rule_determinism)"; then return $SKIP; fi
   og_need node || return 1
   "$OG_ROOT/tools/wasm-determinism/run.sh"
 }
@@ -454,6 +468,7 @@ step_web_reference() {
   (cd packages/engine && bun tests/web/reference-ui.ts --webgl); h=$?
   # Ember Vale's three frames: tests/frames.og.ts's commands without its
   # screenshots and quit, each shot at its screenshot's tick (60 t).
+  # shellcheck disable=SC2054 # the commas are inside one --shots word
   local tp=(--project templates/archetypes/third-person --out dist/test-reference/third-person
     --script "1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3"
     --shots title@54,beacon@204,dawn@432)
@@ -593,6 +608,10 @@ for a in "$@"; do
 done
 set -- ${args[@]+"${args[@]}"}
 [ -z "${CI:-}" ] || FORCE_ALL=1
+# The slow integration tests (packages/engine's og dev reloads and the web
+# export, two minutes of og processes) run under --all and in CI; the
+# path-aware lane skips them (OG_GATE_ALL, read by the tests).
+[ "$FORCE_ALL" != 1 ] || export OG_GATE_ALL=1
 
 if [ "$ONLY" = 1 ]; then
   [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }
@@ -622,7 +641,11 @@ if [ "$ONLY" = 1 ]; then
   selected=""
   for s in $STEPS; do case "$want" in *" $s "*) selected="$selected${selected:+ }$s" ;; esac; done
 fi
-GATE_JOBS="${OG_GATE_JOBS:-0}"   # steps at once; 0: as many as their inputs allow
+# Two steps at once by default: the native chain (clippy, test, drift) beside
+# the wasm chain (wasm-build, wasm-opt, size-gate, bun-test); 0 lets every
+# step start as soon as its inputs allow, which on a shared machine only
+# adds load (docs/ci.md §Running the gate locally).
+GATE_JOBS="${OG_GATE_JOBS:-2}"   # steps at once; 0: as many as their inputs allow
 case "$GATE_JOBS" in ''|*[!0-9]*) og_err "OG_GATE_JOBS must be a number (0: no cap)"; exit 2 ;; esac
 
 # One gate per machine, then one per target directory: a second one waits
@@ -638,6 +661,9 @@ og_lock_acquire "$OG_TARGET_DIR" "scripts/check.sh ${selected}" || exit 1
 trap 'gate_cancel; og_lock_release' EXIT
 GATE_LOGS="$OG_EVIDENCE_DIR/gate"
 mkdir -p "$GATE_LOGS"
+# The gate's builds and tests yield to the editor, the agents and the
+# browser beside them (not in CI, where the runner is the gate's alone).
+[ -n "${CI:-}" ] || renice -n 10 -p $$ >/dev/null 2>&1 || true
 summary="$OG_EVIDENCE_DIR/check-summary.txt"
 : > "$summary"
 total="$(printf '%s\n' "$selected" | wc -w | tr -d ' ')"
