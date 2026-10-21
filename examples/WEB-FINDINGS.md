@@ -292,8 +292,8 @@ Beside the table:
 
 ## Fixed
 
-The publish-testing round (branch `publish-testing`), on the four below;
-the rest stand.
+The publish-testing round (branch `publish-testing`) fixed these four
+(docs/phase-1.md records the rounds).
 
 6. Fixed: `packages/engine/tests/web/published.ts` runs a script of
    input and capture steps (the playtests' syntax; `--playtest` takes a

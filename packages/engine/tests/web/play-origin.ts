@@ -15,10 +15,6 @@ import { brotliCompressSync, constants } from "node:zlib";
 import type { Page } from "./cdp.ts";
 import { readHeaders, TYPES } from "./serve.ts";
 
-declare module "node:zlib" {
-  export function brotliCompressSync(data: Uint8Array, options?: { params?: Record<number, number> }): Uint8Array;
-  export const constants: { BROTLI_PARAM_QUALITY: number; BROTLI_PARAM_SIZE_HINT: number };
-}
 declare module "node:fs" {
   export function readdirSync(path: string): string[];
 }
