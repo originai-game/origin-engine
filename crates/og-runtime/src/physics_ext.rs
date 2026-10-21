@@ -179,24 +179,21 @@ pub fn og_physics_stats(world: u32) -> String {
     })())
 }
 
-/// The entity's position from its og.Transform (water lives at the top of
-/// the hierarchy, as physics sees it).
+/// The entity's world position, as physics places water (its og.Transform
+/// after its parents', #10).
 fn position_of(eng: &Engine, e: Entity) -> Result<Vec3, String> {
+    use og_physics::{Parent, Transform};
     let w = eng.world()?;
-    let layout = eng
-        .state
-        .borrow()
-        .layouts
-        .get("og.Transform")
-        .cloned()
-        .ok_or("og.Transform is not registered")?;
-    let id = w
-        .id_by_name(&layout.schema)
-        .map_err(|e| e.reason().to_string())?;
-    let bytes = w
-        .get_bytes(e, id)
+    let t = w
+        .get::<Transform>(e)
         .map_err(|_| format!("entity {} has no og.Transform", e.to_bits()))?;
-    Ok(vec3_of(&layout.decode(&bytes)["position"], Vec3::ZERO))
+    let (at, _) = og_physics::world_pose(
+        e,
+        (t.position, t.quaternion),
+        |c| w.get::<Parent>(c).ok().map(|p| Entity::from_bits(p.entity)),
+        |p| w.get::<Transform>(p).ok(),
+    );
+    Ok(at)
 }
 
 pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
@@ -408,17 +405,19 @@ pub(crate) fn schedule_ragdoll_targets(
     engine_id: u32,
     physics: &og_physics::PhysicsSystem,
 ) -> Result<(), String> {
-    use og_physics::{Ragdoll, Transform};
+    use og_physics::{Parent, Ragdoll, Transform};
     let physics = physics.clone();
     world
         .register::<Transform>()
         .and_then(|_| world.register::<Ragdoll>())
+        .and_then(|_| world.register::<Parent>())
         .map_err(|e| e.reason().to_string())?;
     world
         .add_system(
             og_ecs::SystemDesc::new(RAGDOLL_TARGETS)
                 .read::<Ragdoll>()
                 .read::<Transform>()
+                .read::<Parent>()
                 .query(
                     og_ecs::QueryDesc::new()
                         .read::<Ragdoll>()
@@ -451,7 +450,18 @@ pub(crate) fn schedule_ragdoll_targets(
                         let Some(skin) = skeleton.skins.first() else {
                             continue;
                         };
+                        // At the entity's world pose, as og.physics places the ragdoll (#10).
                         let t = ctx.get::<Transform>(e)?;
+                        let (position, quaternion) = og_physics::world_pose(
+                            e,
+                            (t.position, t.quaternion),
+                            |c| {
+                                ctx.get::<Parent>(c)
+                                    .ok()
+                                    .map(|p| Entity::from_bits(p.entity))
+                            },
+                            |p| ctx.get::<Transform>(p).ok(),
+                        );
                         let model = skeleton.model_space(&pose);
                         let targets = kept
                             .rig
@@ -464,10 +474,7 @@ pub(crate) fn schedule_ragdoll_targets(
                                     .and_then(|j| skin.joints.get(j))
                                     .and_then(|&n| model.get(n as usize))
                                     .map_or(b.rest, |m| (m.translation, m.rotation));
-                                (
-                                    t.position + t.quaternion * p,
-                                    (t.quaternion * q).normalize(),
-                                )
+                                (position + quaternion * p, (quaternion * q).normalize())
                             })
                             .collect();
                         physics.set_ragdoll_targets(e, targets);

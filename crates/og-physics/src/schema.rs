@@ -49,6 +49,18 @@ impl Transform {
     }
 }
 
+/// The entity this one's Transform is relative to. Set by SpawnDesc.parent.
+///
+/// The same schema as the engine's `og.Parent`: physics reads it to place
+/// ropes, cloths, fluids, water and ragdolls on child entities at their
+/// world transform (bodies and colliders are roots).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.Parent")]
+pub struct Parent {
+    /// The parent.
+    pub entity: u64,
+}
+
 // ---- components ---------------------------------------------------------------
 
 /// `RigidBody.kind`: moved by the solver; its Transform and Velocity are written back every tick.
