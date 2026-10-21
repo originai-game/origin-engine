@@ -21,7 +21,10 @@ braziers, the imps' chitter, the crypt's drip, the bell) were heard from a
 listener on the camera with distance, pan, distance dulling and occlusion
 behind walls, each read back exactly through `og.AudioPlayback` with
 `get:`; its 2:40 track streamed in 4-second
-chunks on the music bus. A reverb zone: see physics-anim-2.
+chunks on the music bus. Its crypt is an `og.ReverbZone` (a box with a
+1.5 m `fade`, the sfx bus sending 0.55 to a room of 0.92 at damping 0.25;
+§4, §6): a playtest read the zone's `weight` 0 from the door and 1 inside,
+while og.Audio and the bus kept the open air's room 0.5 and send 0.12.
 
 ## 1. Every event sounds
 
@@ -142,9 +145,12 @@ at 1.0 is a mix bug, not loudness.
 
 ## 6. Space, occlusion, priority
 
-- `spatial: true` sources pan and attenuate by their Transform against the
-  `og.AudioListener` (on the camera or the player); `refDistance` 1–3,
-  `maxDistance` 20–50.
+- `spatial: true` sources pan and attenuate by their world transform
+  against the `og.AudioListener` (on the camera or the player);
+  `refDistance` 1–3, `maxDistance` 20–50. A parented source follows its
+  parent: put the footstep or the engine hum on a child entity
+  (`SpawnDesc.parent`) and it is heard where the parent carries it; a
+  listener on a child of the camera rig hears from the rig.
 - `distanceCutoff` (e.g. 2000 Hz) dulls far sounds; `occlude: true` plays a
   source behind a collider at og.Audio's `occlusionGain` through
   `occlusionCutoff`: enemies behind walls sound behind walls.
@@ -155,8 +161,9 @@ at 1.0 is a mix bug, not loudness.
   door). A stone crypt: `room` 0.9, `damping` 0.25, `send` 0.5 on sfx;
   a small wooden room: `room` 0.4, `damping` 0.6. og.Audio and the
   bus's og.AudioBusFx stay the open air's; read `weight` to know where
-  the listener is. It follows the listener's Transform, so put the
-  og.AudioListener where the ears are (the camera, or the player).
+  the listener is. It follows the listener's world transform, so put the
+  og.AudioListener where the ears are (the camera, or the player); a zone
+  on a child of a moving room moves with it.
 - `og.Audio.maxVoices` (32) caps voices; past it the lowest `priority`,
   then the quietest, then the oldest is culled (`SOUND_CULLED`). Give the
   player's own sounds and the music a high priority (200+), ambient props a

@@ -11,7 +11,7 @@ const pad = (button: string, t: number) => `${t}:gamepad:${button};${(t + 0.05).
 export default playtest({
   name: "the d-pad, A, X, Start and B play a dive",
   commands: [
-    pad("down", 0.3),
+    // The title's first item holds the focus when the menu opens (og-ui §4), so A plays at once; no d-pad press first.
     pad("a", 0.4),
     "1.0:get:Game:started.json",
     "1.1:dive:7",

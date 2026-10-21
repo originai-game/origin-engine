@@ -120,8 +120,8 @@ each foe's state.
 ## Layout
 
 `src/layout.ts` the level's numbers (shared with `tools/`);
-`src/components.ts` the state; `src/state.ts` the Game resource as a
-system's copy; `src/world.ts` the stair; `src/anim.ts` the rigs and blend
+`src/components.ts` the state; `src/state.ts` the Game resource's live
+handle (FINDINGS #19's copy gone); `src/world.ts` the stair; `src/anim.ts` the rigs and blend
 trees; `src/hero.ts` the courier; `src/foes.ts` the imps and wardens;
 `src/pickups.ts` sigils, hillwort, waystones, the gate and the bell;
 `src/view.ts` the camera and the listener; `src/fx.ts` the lamp, the

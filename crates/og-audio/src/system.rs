@@ -5,7 +5,7 @@
 
 use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode, fx};
 use crate::schema::{
-    Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT,
+    Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT, Parent,
     ReverbZone, SoundEnded, SoundStarted, Transform, end_reason,
 };
 use crate::sound::SoundBank;
@@ -195,11 +195,13 @@ pub fn retire_link(engine: u32) -> Option<AudioLink> {
 
 /// Registers audio's records (`og.AudioSource`, `og.AudioListener`,
 /// `og.Audio`, `og.SoundStarted`, `og.SoundEnded`, the engine-owned
-/// `og.AudioPlayback` and `og.AudioStream`, and `og.Transform` when absent),
+/// `og.AudioPlayback` and `og.AudioStream`, and `og.Transform` and
+/// `og.Parent` when absent),
 /// inserts the resources, and appends the `og.audio` system to the schedule.
 /// Call it after the game's systems so the system sees the tick's changes.
 pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
     world.register::<Transform>()?;
+    world.register::<Parent>()?;
     world.register::<AudioSource>()?;
     world.register::<AudioListener>()?;
     world.register::<Audio>()?;
@@ -245,6 +247,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             .read::<Audio>()
             .read::<AudioListener>()
             .read::<Transform>()
+            .read::<Parent>()
             .read::<AudioBusFx>()
             .write::<ReverbZone>()
             .write::<AudioSource>()
@@ -273,10 +276,60 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             // 4: bus effects.
             .query(QueryDesc::new().read::<AudioBusFx>())
             // 5: reverb zones.
-            .query(QueryDesc::new().write::<ReverbZone>().read::<Transform>()),
+            .query(QueryDesc::new().write::<ReverbZone>().read::<Transform>())
+            // 6: child entities, whose sources, listeners and zones are
+            // placed down the og.Parent chain.
+            .query(QueryDesc::new().read::<Parent>()),
         move |ctx| run(ctx, &system_link, occluder.as_ref()),
     )?;
     Ok(link)
+}
+
+/// Where entities are in the world this tick: each child's `og.Parent`
+/// (query 6), so a source, listener or zone on a child entity is placed at
+/// its `og.Transform` composed down the chain, as the renderer composes
+/// `og.MatrixWorld` and physics places soft bodies (one helper,
+/// `og_core::math::world_pose`). A function of the tick's transforms alone.
+struct Places {
+    /// Parents by child bits; empty when nothing is parented.
+    parents: BTreeMap<u64, Entity>,
+}
+
+impl Places {
+    fn read(ctx: &SystemContext<'_>) -> Result<Places> {
+        let mut parents = BTreeMap::new();
+        for a in ctx.query(6)? {
+            for &e in a.entities() {
+                let p = ctx.get::<Parent>(e)?;
+                parents.insert(e.to_bits(), Entity::from_bits(p.entity));
+            }
+        }
+        Ok(Places { parents })
+    }
+
+    /// `e`'s transform in the world: its own composed down `og.Parent` (a
+    /// parent without `og.Transform` ends the chain).
+    fn world(&self, ctx: &SystemContext<'_>, e: Entity) -> Result<Transform> {
+        let t = ctx.get::<Transform>(e)?;
+        if self.parents.is_empty() {
+            return Ok(t);
+        }
+        let (position, quaternion, scale) = og_core::math::world_pose(
+            e,
+            (t.position, t.quaternion, t.scale),
+            |c| self.parents.get(&c.to_bits()).copied(),
+            |p| {
+                ctx.get::<Transform>(p)
+                    .ok()
+                    .map(|t| (t.position, t.quaternion, t.scale))
+            },
+        );
+        Ok(Transform {
+            position,
+            quaternion,
+            scale,
+        })
+    }
 }
 
 /// The listener's frame: position, rotation, volume.
@@ -347,6 +400,7 @@ fn distance_cutoff(dist: f32, s: &AudioSource) -> f32 {
 #[allow(clippy::too_many_arguments)]
 fn wanted(
     ctx: &SystemContext<'_>,
+    places: &Places,
     e: Entity,
     s: &AudioSource,
     ear: &Ear,
@@ -363,8 +417,8 @@ fn wanted(
         0.0
     };
     if s.spatial {
-        let p = ctx
-            .get::<Transform>(e)
+        let p = places
+            .world(ctx, e)
             .map(|t| t.position)
             .unwrap_or(Vec3::ZERO);
         let (g, sp) = spatialise(ear, p, s);
@@ -535,6 +589,7 @@ fn standing(priority: u32, gain: f32, newness: u64) -> Standing {
 /// `room` and its bus's send in `chosen` towards its own by its weight.
 fn zones(
     ctx: &SystemContext<'_>,
+    places: &Places,
     ear: Vec3,
     chosen: &mut [Option<AudioBusFx>; BUS_COUNT],
     room: &mut Audio,
@@ -543,7 +598,7 @@ fn zones(
     let mut best: Option<(ReverbZone, f32)> = None;
     for e in entities {
         let z = ctx.get::<ReverbZone>(e)?;
-        let w = z.weight_at(&ctx.get::<Transform>(e)?, ear);
+        let w = z.weight_at(&places.world(ctx, e)?, ear);
         if w.to_bits() != z.weight.to_bits() {
             ctx.set(e, ReverbZone { weight: w, ..z })?;
         }
@@ -601,9 +656,10 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         inverse: Quat::IDENTITY,
         volume: 1.0,
     };
+    let places = Places::read(ctx)?;
     let listener = ctx.query(3)?.flat_map(|a| a.entities().to_vec()).next();
     if let Some(e) = listener {
-        let t = ctx.get::<Transform>(e)?;
+        let t = places.world(ctx, e)?;
         ear.position = t.position;
         ear.inverse = t.quaternion.normalize().inverse();
         ear.volume = ctx.get::<AudioListener>(e)?.volume.max(0.0);
@@ -620,7 +676,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         }
     }
     let mut room = audio;
-    zones(ctx, ear.position, &mut chosen, &mut room)?;
+    zones(ctx, &places, ear.position, &mut chosen, &mut room)?;
     let fx_now = fx_state(&chosen, &room);
     let fx_now_hash = fx_hash(&fx_now);
     if fx_now_hash != stream.fx {
@@ -673,7 +729,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             to_start.push(e);
             continue;
         };
-        let w = wanted(ctx, e, &s, &ear, &audio, occluder, rate, frames);
+        let w = wanted(ctx, &places, e, &s, &ear, &audio, occluder, rate, frames);
         let changed = w.gain != p.gain
             || w.pan != p.pan
             || w.pitch != p.pitch
@@ -744,7 +800,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         let Some((rate, frames)) = bank.info(s.sound) else {
             continue;
         };
-        let w = wanted(ctx, e, &s, &ear, &audio, occluder, rate, frames);
+        let w = wanted(ctx, &places, e, &s, &ear, &audio, occluder, rate, frames);
         let delay = if s.start_at > t0 {
             s.start_at - t0
         } else {

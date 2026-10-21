@@ -614,8 +614,8 @@ Token `og.Mesh`, registered under the schema name `og.Mesh`; its value type is `
 | `castShadow` | `boolean` | `false` | — | — | — | Cast shadows, as three.js Object3D.castShadow. |
 | `receiveShadow` | `boolean` | `false` | — | — | — | Receive shadows, as three.js Object3D.receiveShadow. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
-| `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels). |
-| `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour. |
+| `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash on this mesh only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Carried with its transform to the lit shaders, as og.Model's, so a flashing mesh is one draw with the other meshes of its geometry and material, and the amount is continuous. |
+| `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour, 0 to 1 a channel (8 bits a channel). |
 | `materialLayer` | `number` | `-1` | ≥ -1 | — | tunable | The texture-array layer this mesh's material reads (StandardMaterialDesc.mapArray and normalMapArray), in place of the material's mapLayer and normalMapLayer: one material, one draw, a layer per mesh (a tile set, a crowd's skins). -1 keeps the material's layers; a material without arrays ignores it. |
 
 ```ogt
@@ -629,12 +629,12 @@ component Mesh {
   field visible bool "Whether it is drawn." {
     default true
   }
-  field flash f32 "A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels)." {
+  field flash f32 "A hit flash on this mesh only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Carried with its transform to the lit shaders, as og.Model's, so a flashing mesh is one draw with the other meshes of its geometry and material, and the amount is continuous." {
     min 0
     max 1
     tunable true
   }
-  field flashColor Color "The flash's linear colour." {
+  field flashColor Color "The flash's linear colour, 0 to 1 a channel (8 bits a channel)." {
     default 1 1 1
   }
   field materialLayer i32 "The texture-array layer this mesh's material reads (StandardMaterialDesc.mapArray and normalMapArray), in place of the material's mapLayer and normalMapLayer: one material, one draw, a layer per mesh (a tile set, a crowd's skins). -1 keeps the material's layers; a material without arrays ignores it." {

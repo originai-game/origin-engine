@@ -1910,12 +1910,12 @@ module render {
     field visible bool "Whether it is drawn." {
       default true
     }
-    field flash f32 "A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels)." {
+    field flash f32 "A hit flash on this mesh only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Carried with its transform to the lit shaders, as og.Model's, so a flashing mesh is one draw with the other meshes of its geometry and material, and the amount is continuous." {
       min 0
       max 1
       tunable true
     }
-    field flashColor Color "The flash's linear colour." {
+    field flashColor Color "The flash's linear colour, 0 to 1 a channel (8 bits a channel)." {
       default 1 1 1
     }
     field materialLayer i32 "The texture-array layer this mesh's material reads (StandardMaterialDesc.mapArray and normalMapArray), in place of the material's mapLayer and normalMapLayer: one material, one draw, a layer per mesh (a tile set, a crowd's skins). -1 keeps the material's layers; a material without arrays ignores it." {
@@ -6321,7 +6321,7 @@ module audio {
   skill og-audio
   doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
   doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends."
-  doc "Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z)."
+  doc "Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig."
 
   const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
   const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
@@ -6377,7 +6377,7 @@ module audio {
       min 0
       unit s
     }
-    field spatial bool "Attenuate and pan by the entity's og.Transform relative to the listener."
+    field spatial bool "Attenuate and pan by the entity's world transform (its og.Transform down og.Parent) relative to the listener."
     field refDistance f32 "Full volume up to this distance, as Web Audio's PannerNode.refDistance." {
       default 1
       min 0
@@ -6433,7 +6433,7 @@ module audio {
   }
 
   component AudioListener {
-    doc "Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used."
+    doc "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used."
     field volume f32 "A gain on every spatial source this listener hears." {
       default 1
       min 0
@@ -6596,7 +6596,7 @@ module audio {
 
   component ReverbZone {
     doc "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener."
-    doc "Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener)."
+    doc "Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed at their world transforms (og.Transform down og.Parent): a zone on a child of a moving room moves with it."
     field size Vector3 "The box's full size along the entity's axes, centred on it (times og.Transform.scale)." {
       default 10 4 10
       unit m

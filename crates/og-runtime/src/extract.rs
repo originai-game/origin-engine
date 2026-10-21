@@ -682,15 +682,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .map(|m| mesh_rows(world, m))
         .unwrap_or_default();
     let (geometries, materials) = (geometries.clone(), materials.clone());
-    // Flashing meshes draw through a flash copy of their material.
-    let mut flashed: BTreeMap<u64, MaterialHandle> = BTreeMap::new();
-    for r in &mesh_rows {
-        if r.flash > 0.0
-            && let Some(m) = super::feel::flash_material(rs, r.material, r.flash, r.flash_color)
-        {
-            flashed.insert(r.entity, m);
-        }
-    }
     for (e, asset, parts, look) in model_parts {
         let m = h.world_of(e);
         if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, look, &mut keys) {
@@ -722,17 +713,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             };
             let e = r.entity;
             let w = h.world_of(e);
-            let m = if flashed.is_empty() {
-                m
-            } else {
-                flashed.get(&e).copied().unwrap_or(m)
-            };
+            // A flashing mesh's flash rides in its instance's record, as
+            // og.Model's does: one draw with its unflashed twins (row 85).
             scene.instances.push(og_render::Instance {
                 mesh: g,
                 material: m,
                 transform: w,
                 material_layer: u32::try_from(r.layer).ok(),
-                fx: og_render::InstanceFx::NONE,
+                fx: og_render::InstanceFx {
+                    flash: r.flash,
+                    flash_color: r.flash_color,
+                    ..og_render::InstanceFx::NONE
+                },
             });
             keys.push((e, 0));
         }

@@ -1806,8 +1806,6 @@ pub(crate) struct FeelRender {
     blob: Option<og_render::TextureHandle>,
     /// Per (entity, layer): the map handle, the chunk versions and the chunks.
     tiles: BTreeMap<(u64, usize), TileCache>,
-    /// Flash copies of materials: (material, level, colour bits) -> material.
-    flashes: BTreeMap<(usize, u8, [u32; 3]), og_render::MaterialHandle>,
 }
 
 fn decoded_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Value)> {
@@ -2481,29 +2479,4 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
         scene.camera.position += shift;
         scene.camera.target += shift;
     }
-}
-
-/// A material drawn with a hit flash: a copy of `material` at one of 16
-/// flash levels, made once per (material, level, colour).
-pub(crate) fn flash_material(
-    rs: &mut RenderState,
-    material: usize,
-    amount: f32,
-    color: Vec3,
-) -> Option<og_render::MaterialHandle> {
-    let level = (amount.clamp(0.0, 1.0) * 16.0).round() as u8;
-    let &base = rs.materials.get(material)?;
-    if level == 0 {
-        return Some(base);
-    }
-    let key = (material, level, color.to_array().map(f32::to_bits));
-    if let Some(&m) = rs.feel.flashes.get(&key) {
-        return Some(m);
-    }
-    let mut copy = *rs.scene.standard_material(base)?;
-    copy.flash = f32::from(level) / 16.0;
-    copy.flashColor = color;
-    let m = rs.scene.add_standard_material(copy);
-    rs.feel.flashes.insert(key, m);
-    Some(m)
 }

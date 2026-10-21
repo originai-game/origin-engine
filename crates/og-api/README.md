@@ -209,8 +209,9 @@ the validator refuses a declaration that would repeat one.
 
 `og_api::host` (generated) has one trait per module with callables
 (`WorldApi`, `ProbeApi`, ...; `math` and `time` declare data only) plus
-`Lifecycle` (create, destroy, advance, command, frame, write a resource, set
-the dispatcher), each method named after its binding symbol. `Host` is all of
+`Lifecycle` (create, destroy, advance, command, frame, write a resource,
+a resource's packed layout and its bytes read and written, set the
+dispatcher), each method named after its binding symbol. `Host` is all of
 them. Each host implements every trait in its `src/host.rs` and its generated
 glue calls each method, so a member the IDL gains is a build error on a host
 that lacks it.
@@ -228,6 +229,7 @@ Every binding crosses in one wire form, identical on both hosts:
 | `Fields` | JSON list of `{ name, kind, default, options }`, in declaration order |
 | everything else (structs, lists, maps, options, results, unions, `Value`) | JSON text |
 | `Uint32Array` (`ArchetypeView.entities`) | `Wire::Array`: a copied `Uint32Array` |
+| `Self::Bytes` (the lifecycle's resource bytes, `og_engine_read_resource` and `og_engine_write_resource_bytes`) | a `Uint8Array`: web, wasm-bindgen's `Vec<u8>`; node, a copying `NodeBytes` |
 | `View<C>` (`ArchetypeView.column`) | `Wire::Views`: web, byte offsets into `memory.buffer`; node, one ArrayBuffer per field over the column |
 
 Optional parameters are `Option<..>` / `| undefined`. Exports outside
@@ -254,8 +256,10 @@ view tables. Both hosts depend on it; `og-cli` does not.
   The order is a function of the bundle, so both hosts build the same world.
 - **Systems**: each is one `og_ecs` system whose closure (`Fn + Send`,
   capturing ids only) calls the host's dispatcher with the system's callback
-  id. While it runs, its declared columns are borrowed and published as view
-  records; the JavaScript body's calls back into the host are served from the
+  id. While it runs, its declared columns are published as view records, and
+  a column is borrowed only when the system takes its view (`a.column`),
+  held until the system returns, so `world.get`/`world.set` reach a matched
+  entity until then; the JavaScript body's calls back into the host are served from the
   running system's `SystemContext`. The TypeScript dispatcher refuses an id it
   has no system for, which fails the tick with the system's name.
 - **Views** are stamped. A view handle is valid for the system call it was
@@ -303,7 +307,8 @@ view tables. Both hosts depend on it; `og-cli` does not.
   rows (their flipbook frame, flips, nine-slice pieces, y sort keys, blob
   shadows and afterimages), floating texts and tile layers (chunks cached
   per layer and rebuilt when a chunk's version moves), gives flashing
-  og.Mesh entities a flash copy of their material (16 levels), and applies
+  og.Mesh entities their flash in their instance records (as og.Model's:
+  one draw with their unflashed twins, the amount continuous), and applies
   trauma shake, punch, kick and og.CameraZone clamping to the frame only.
   Presets (`og.tween.squash`, `flash`) hold their impact for the tick they
   start in. Tested through TypeScript in `packages/engine/tests/feel.test.ts`.
