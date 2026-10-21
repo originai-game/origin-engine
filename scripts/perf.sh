@@ -35,7 +35,7 @@ if [ "$measure" = 1 ]; then
 fi
 
 t0="$(date +%s)"
-cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf 2>&1 | tee "$out/perf.log"
+cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf --nocapture 2>&1 | tee "$out/perf.log"
 rc="${PIPESTATUS[0]}"
 og_say "perf: cargo test exited $rc after $(( $(date +%s) - t0 )) s"
 
@@ -50,7 +50,7 @@ if [ "$measure" = 1 ]; then
   git checkout -q -- $dirs
   # shellcheck disable=SC2086
   git clean -q -fd -- $dirs
-  og_say "perf: the measured frame times:"
+  og_say "perf: the measured frame times (each recorded file is in $out/crates/):"
   grep -E '^perf ' "$out/perf.log" || og_say "(none printed)"
 fi
 exit "$rc"

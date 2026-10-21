@@ -43,7 +43,7 @@ jobs:
   quick:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
     container: &container
       # Debian trixie: its Lavapipe is the og-lavapipe image's (LLVM 19.1.7),
       # the Mesa the vulkan-cpu references are recorded with; Ubuntu 24.04's
@@ -91,7 +91,7 @@ jobs:
   functional:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90
     container: *container
     defaults: *defaults
     steps:
@@ -121,7 +121,7 @@ jobs:
   gate:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 240
     container: *container
     defaults: *defaults
     steps:
@@ -169,7 +169,7 @@ jobs:
   perf-nightly:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 240
     container: *container
     defaults: *defaults
     steps:

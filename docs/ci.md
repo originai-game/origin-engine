@@ -221,12 +221,16 @@ and `OG_GATE_JOBS=1` in the gate job (bun-test beside test starved both,
 and twelve render tests and five of the slow integration tests ran out of
 time).
 
-| Job | Runs | When | Timeout |
-|---|---|---|---|
-| `quick` | `shellcheck -x scripts/*.sh`, `scripts/check.sh quick` | every PR | 90 min |
-| `functional` | `scripts/check.sh functional` | every PR | 180 min |
-| `gate` | `shellcheck -x scripts/*.sh`, `scripts/check.sh` (with `CI`: `--all`) | every PR and push to main | 330 min |
-| `perf-nightly` | `scripts/perf.sh --measure` | 03:17 UTC, and by hand | 150 min |
+| Job | Runs | When | Measured (2026-10-21) | Timeout |
+|---|---|---|---|---|
+| `quick` | `shellcheck -x scripts/*.sh`, `scripts/check.sh quick` | every PR | 12–15 min with its cache, 23 min cold | 45 min |
+| `functional` | `scripts/check.sh functional` | every PR | 21–36 min (test 25–30 min of it) | 90 min |
+| `gate` | `shellcheck -x scripts/*.sh`, `scripts/check.sh` (with `CI`: `--all`, one step at a time) | every PR and push to main | 60 min with its cache (gate 56 min: wasm-build 8, test 18, wasm-opt 8, bun-test 15, determinism 4), 94 min with a colder one | 240 min |
+| `perf-nightly` | `scripts/perf.sh --measure` | 03:17 UTC, and by hand | 145 min cold (the release build 47, og-tests' eight perf scenes 95 on Lavapipe) | 240 min |
+
+Every job runs the provisioning first (2–5 min, emptying the SDKs most of
+it); the disk then has 30 GB free, and the gate ends with 12 GB free
+beside a 16 GB `target/`, so it needs the room.
 
 The nightly measures and judges nothing: the committed perf baselines are
 the M4 Pro's (`crates/og-tests/perf/metal-apple-m4-pro/`, ...), a shared
