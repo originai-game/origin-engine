@@ -79,6 +79,12 @@ impl Srgba {
         }
     }
 
+    /// The WCAG contrast ratio of this colour and `other` (1 to 21).
+    pub fn contrast(self, other: Srgba) -> f32 {
+        let (a, b) = (self.luminance(), other.luminance());
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
     /// WCAG relative luminance (0 black – 1 white).
     pub fn luminance(self) -> f32 {
         let c = self.linear();

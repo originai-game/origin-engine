@@ -16,6 +16,8 @@
 //! - transitions advance by anything but ticks, take input while moving, or
 //!   keep drawing once gone;
 //! - a meter's trail jumps instead of following, or differs between runs;
+//! - a meter's label takes one ink over a fill and a track it cannot read
+//!   on both of (a light pack's deep green under a dark ink);
 //! - the dialogue types at the wrong rate, a press does not finish the line,
 //!   or `advanced` fires before the line is shown;
 //! - anchors ignore the safe area; touch controls come out under 44 px;
@@ -689,6 +691,57 @@ fn a_meter_trail_follows_a_drop_by_tick_and_replays_identically() {
         last.len() == 2 || (last[1] - last[2]).abs() < 0.6,
         "it caught up: {last:?}"
     );
+}
+
+#[test]
+fn a_meter_label_takes_the_ink_that_reads_over_the_fill_and_over_the_track() {
+    // The light theme: a deep green fill under the dark ink, a pale track.
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    ui.set_theme(Theme::light());
+    let p = ui.theme().palette;
+    for _ in 0..30 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.meter(
+            "Hp",
+            55.0,
+            100.0,
+            &MeterDesc {
+                label: "55 / 100".into(),
+                width: Some(Size::Fixed(300.0)),
+                ..MeterDesc::default()
+            },
+        );
+        ui.end();
+    }
+    let bar = ui.frame().element("Hp").expect("the meter");
+    let edge = bar.x + bar.width * 0.55;
+    let texts: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text {
+                text, color, clip, ..
+            } if text == "55 / 100" => Some((*color, *clip)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(texts.len(), 2, "one label per side: {texts:?}");
+    let (over_fill, over_track) = (texts[0], texts[1]);
+    assert!(
+        (over_fill.1.x + over_fill.1.width - edge).abs() < 0.5
+            && (over_track.1.x - edge).abs() < 0.5,
+        "split at the fill's edge, {edge}: {texts:?}"
+    );
+    let ink = |c: Srgba| c.linear();
+    assert_eq!(
+        over_fill.0,
+        ink(p.fg_inverse),
+        "the inverse ink on the deep green"
+    );
+    assert_eq!(over_track.0, ink(p.fg), "the ink on the pale track");
+    assert!(p.fg_inverse.contrast(p.success) > p.fg.contrast(p.success));
 }
 
 #[test]
