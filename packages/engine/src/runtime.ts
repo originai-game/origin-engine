@@ -577,6 +577,8 @@ function refresh(r: RecordCopy): boolean {
     const layout = recordLayout(r.world, r.name);
     if (!layout || fetched.length !== layout.size + 4) return false;
     r.layout = layout;
+    // The next world.resource hands out a handle with the new fields.
+    r.handle = null;
   }
   // Into the copy's own buffer: no allocation from one read to the next, and
   // what is written back is memory the runtime made (a host's external

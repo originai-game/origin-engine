@@ -304,9 +304,16 @@ function readsAsText(e: UiDump["elements"][number], byId: Map<string, UiDump["el
 /**
  * The text elements of a frame: the contrast between ink and ground, and the
  * height of the ink's lines. Inside the element's rectangle (inset from its
- * rounded ends), the ground is the median luminance and the ink the 1 % of
- * pixels farthest from it; a rectangle with no ink is not drawn (covered by
- * a transition, faded out) and is left out.
+ * rounded ends), the ground is the median luminance. The ink is measured
+ * over the text's own glyphs, not the rectangle: the glyph pixels are those
+ * at least half-way from the ground to the strongest ink (nearer the text's
+ * colour than the ground's), and the ink is the mean of the farthest
+ * twentieth of them, the glyph cores the eye reads (for a line of text
+ * that fills its rectangle, what its 1 % farthest pixels read); so a short word in a wide label
+ * (kestrel-stair FINDINGS #20: "You" on a 356 px row) reads what its
+ * letters show, not its antialiased edges diluted by the empty rest. A
+ * rectangle with no ink is not drawn (covered by a transition, faded out)
+ * and is left out.
  */
 /**
  * What a dialog's or a tutorial's scrim covers: the elements built before the
@@ -367,26 +374,39 @@ function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set()): Tex
     }
     const ground = median(lum);
     const dev = lum.map((v) => Math.abs(v - ground));
-    const far = pct(dev, 0.99);
-    if (far < 0.01) continue;
-    // The ink: the 1 % farthest, on the side most of them are.
-    let up = 0, down = 0, upSum = 0, downSum = 0;
+    // The strongest ink (a few pixels short of the very farthest, so one
+    // stray pixel does not set it), then the glyphs: every pixel at least
+    // half-way to it, on the side most of them are.
+    const peak = pct(dev, 0.998);
+    if (peak < 0.01) continue;
+    let up = 0, down = 0;
     for (let k = 0; k < lum.length; k++) {
-      if (dev[k]! < far) continue;
-      if (lum[k]! > ground) {
-        up++;
-        upSum += lum[k]!;
-      } else {
-        down++;
-        downSum += lum[k]!;
+      if (dev[k]! < peak / 2) continue;
+      if (lum[k]! > ground) up++;
+      else down++;
+    }
+    const light = up >= down;
+    const glyphs: number[] = [];
+    for (let k = 0; k < lum.length; k++) if (dev[k]! >= peak / 2 && (lum[k]! > ground) === light) glyphs.push(dev[k]!);
+    // Their cores: the farthest twentieth (what the 1 % farthest of a
+    // rectangle a line of text fills reads, the measure before glyphs).
+    const core = pct(glyphs, 0.95);
+    let sum = 0, cores = 0;
+    for (let k = 0; k < lum.length; k++) {
+      if (dev[k]! >= core && dev[k]! >= peak / 2 && (lum[k]! > ground) === light) {
+        sum += lum[k]!;
+        cores++;
       }
     }
-    const ink = up >= down ? upSum / Math.max(1, up) : downSum / Math.max(1, down);
+    const ink = sum / Math.max(1, cores);
+    // The ink's rows, as before for a text that fills its rectangle; a
+    // sparse one's from its glyphs.
+    const far = Math.max(pct(dev, 0.99), peak / 2);
     const contrast = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
     const rows: boolean[] = [];
     for (let y = 0; y < y1 - y0; y++) {
       let any = false;
-      for (let x = 0; x < w && !any; x++) any = dev[y * w + x]! >= far / 4 && (lum[y * w + x]! > ground) === (up >= down);
+      for (let x = 0; x < w && !any; x++) any = dev[y * w + x]! >= far / 4 && (lum[y * w + x]! > ground) === light;
       rows.push(any);
     }
     const runs: number[] = [];

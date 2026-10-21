@@ -162,7 +162,10 @@ export default og.game({
   // (in play it is, and too faint).
   expect(asking!.menu).toBeTrue();
   expect(out.findings.some((f) => f.where.startsWith("screens play") && f.where.includes("Faint"))).toBeTrue();
-  expect(play!.texts).toBe(2);
+  // The score, the caption and the action button's "Fire": a short word on a
+  // wide control, read over its own glyphs (kestrel-stair FINDINGS #20), where
+  // the 1 % farthest pixels of the button left it out as inkless.
+  expect(play!.texts).toBe(3);
   expect(asking!.texts).toBe(4); // the title, the message, Leave and Cancel; not the score or the caption
   expect(out.findings.some((f) => f.where.startsWith("screens asking") && f.where.includes("Faint"))).toBeFalse();
   // Loading: one title in the centre, still a screen (its layer is a modal).

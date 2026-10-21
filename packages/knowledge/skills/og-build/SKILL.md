@@ -137,7 +137,7 @@ every screen that matters.
 
 | Axis | Measure | From | Passes at | Fixed in |
 |---|---|---|---|---|
-| taste | Contrast | each text element's rectangle in a shot: the ground (its median) against its ink (the 1 % farthest pixels) | 4.5:1 | og-taste §3 |
+| taste | Contrast | each text element's rectangle in a shot: the ground (its median) against its ink, read over the text's own glyphs (the pixels at least half-way to the strongest ink; the farthest twentieth of them, the glyph cores) | 4.5:1 | og-taste §3 |
 | taste | Text size | the tallest run of ink rows in each text element, CSS px | 9 px, a 13 px face's capitals | og-taste §4, §10 |
 | taste | HUD occupancy | the union of leaf elements on gameplay shots, touch controls (joystick, d-pad, action buttons) left out; a shot with a dialog or loading layer, a conversation, a list over a quarter of the surface or three texts in the central third is a screen, not gameplay | at most 15 % of the surface and 5 % of the central third | og-taste §2 |
 | taste | Screen transitions | a change of three or more elements with UI motion or a tween in the 20 ticks around it | every change | og-taste §5 |
@@ -157,7 +157,11 @@ dims on purpose and what is mid-transition in the shot (an element whose
 bounds differ on the ticks before and after it: a toast sliding out over
 a dialog, a panel popping in) are left out, and each element is measured
 at the pixels of the surface `dump_ui` reports, so a phone preview
-(390×844 at 3×) is read at its own size. The ink is what the pixels show,
+(390×844 at 3×) is read at its own size. The ink is measured over the
+glyphs, not the rectangle, so a short word in a wide label (a three-letter
+name on a 356 px leaderboard row) reads what its letters show, as a full
+line does, and not its antialiased edges diluted by the empty rest of the
+row. The ink is what the pixels show,
 so it depends on the glyphs' coverage: thin strokes cover few pixels
 whole, and a regular-weight CJK face at body sizes measures lower than
 Latin in the same colours (a 15 px "设置" 3.1:1 where "Settings" reads

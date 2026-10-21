@@ -35,7 +35,7 @@ python3 tools/subset-font.py tools/fonts/NotoSansJP-Regular.otf assets/fonts/Not
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.1:play:0:quick;1.5:key_down:KeyW;3:key_up:KeyW;3.5:screenshot:court.png;3.6:quit"
 og test .                       # the thirteen playtests, the reference frames against references/<tier>/
-og polish .                     # taste 98, feel 79 on metal (og-out/polish/report.md)
+og polish .                     # taste 99, feel 97 on metal (og-out/polish/report.md)
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
 bun run typecheck               # tsc over src, tests and tools
 ```
@@ -91,12 +91,14 @@ SHA-256), from which the committed 79 KB subset is cut.
 | `frames.og.ts` | nine reference frames at 1280 x 720 (`references/metal/`): the title, the intro, the court, a strike, the crypt, the bag, the chapters, the records, the results |
 
 `og polish .` on metal (dev profile, a machine shared with other builds,
-after merging main at f1a31849): taste 98 (contrast 97: the paper pack's
-leaderboard row and the bag's stack count, FINDINGS #20), feel 79 (input
-latency, hit feedback and idle frames 100; sound on input 93; frame time
-0 to 9 between runs: step about 7.5 ms median and 10–30 ms p95, render
-about 2.2 ms, frame p95 11–36 ms with the machine's load; FINDINGS #19
-has what the game's own systems cost and how they were brought down).
+on the runtime-ui-2 branch of wave 11): taste 99 (contrast 98: the bag's
+stack count, 3.4 to 4.0:1 in the paper pack's ink, is the one text under
+4.5:1; "You" on the records row reads 9.9:1 now that the ink is measured
+over the glyphs, FINDINGS #20 fixed), feel 97 (input latency, hit
+feedback and idle frames 100; sound on input 93; frame time 93: step
+about 4.8 ms median and 6.0–7.0 ms p95, render about 2.2 ms, frame p95
+8.5–9.7 ms, with the systems writing the Game resource through its live
+handle since FINDINGS #19 was fixed).
 
 ## Commands (for scripts and agents)
 
