@@ -112,13 +112,55 @@ fn surface_pos(p: vec2<f32>, d: f32) -> vec3<f32> {
   return st.eye.xyz + (st.view_rotation * vec4<f32>(mix(p0, p1, t), 0.0)).xyz;
 }
 
+// How the surface moves under one logical pixel step along screen axis `e`
+// from `p` (at depth `d`, point `at`): xyz the step towards +e in metres,
+// taken to the neighbour on that axis whose depth is nearer `d` (w: +1 or
+// -1, which side), each neighbour rebuilt at its own depth, so a
+// silhouette on one side does not count and a plane receding along the
+// axis gives its foreshortened step.
+fn surface_step(p: vec2<f32>, d: f32, at: vec3<f32>, e: vec2<f32>) -> vec4<f32> {
+  let dp = view_depth(vec2<i32>(p + e));
+  let dm = view_depth(vec2<i32>(p - e));
+  let plus = abs(dp - d) <= abs(dm - d);
+  let side = select(-1.0, 1.0, plus);
+  let q = surface_pos(p + e * side, select(dm, dp, plus));
+  return vec4<f32>((q - at) * side, side);
+}
+
+// `v` no longer than `most`.
+fn at_most(v: vec3<f32>, most: f32) -> vec3<f32> {
+  return v * min(1.0, most / max(length(v), 1e-12));
+}
+
+// The largest stretch of a pixel's footprint over its width across the
+// ray: a floor seen at a grazing angle is cut off there, so its far rows
+// keep the coarsest octave rather than an unbounded one.
+const FOOTPRINT_STRETCH: f32 = 32.0;
+
 // What the patterns in surface space read at a pixel: its point from the
-// surface origin, its world normal and how wide one logical pixel is
-// there (metres). `ok` is false on the sky, which keeps the screen pattern.
+// surface origin, its world normal, how wide one logical pixel's footprint
+// is there (metres) and how the point moves per pixel across and down.
+//
+// The footprint is measured along the depth gradient: the longer of the
+// steps to the neighbours across and down, each at its own depth (a mip
+// level's footprint), never less than the pixel's width across the ray
+// nor more than FOOTPRINT_STRETCH times it. It picks the octave, so the
+// pattern never runs finer than its pixel spacing in any direction:
+// measured across the pixel alone, a long receding floor got an octave
+// too fine along its depth, whose sub-pixel dots and strokes aliased into
+// faint bands as the octaves faded (owed row 55). The steps `dx` and `dy`
+// give the marks' edges and widths in the screen's own directions, so the
+// coarser octave stays crisp across the floor instead of smeared by the
+// footprint along it. `ok` is false on the sky, which keeps the screen
+// pattern.
 struct Surf {
   p: vec3<f32>,
   n: vec3<f32>,
   pixel: f32,
+  dx: vec3<f32>,
+  dy: vec3<f32>,
+  // Which neighbours dx and dy were taken to (+1 or -1 along x and y).
+  side: vec2<f32>,
   ok: bool,
   // p and n are in the instance's own space (object_at).
   obj: bool,
@@ -130,26 +172,81 @@ fn surface_at(p: vec2<f32>) -> Surf {
   var s: Surf;
   s.ok = d > 0.0 && d < st.ink_depth.x * 0.999;
   s.p = surface_pos(p, d);
-  s.pixel = max(length(surface_pos(p + vec2<f32>(1.0, 0.0), d) - s.p), 1e-5);
+  let across = max(length(surface_pos(p + vec2<f32>(1.0, 0.0), d) - s.p), 1e-5);
+  let sx = surface_step(p, d, s.p, vec2<f32>(1.0, 0.0));
+  let sy = surface_step(p, d, s.p, vec2<f32>(0.0, 1.0));
+  s.pixel = clamp(max(length(sx.xyz), length(sy.xyz)), across, across * FOOTPRINT_STRETCH);
+  s.dx = at_most(sx.xyz, s.pixel);
+  s.dy = at_most(sy.xyz, s.pixel);
+  s.side = vec2<f32>(sx.w, sy.w);
   s.n = normal_at(px);
   s.obj = false;
   return s;
 }
 
+// The object pass's texel at `p`: xyz the point's bits, w its normal
+// with bit 0 set (0: no instance there).
+fn object_texel(p: vec2<f32>) -> vec4<u32> {
+  let size = vec2<i32>(textureDimensions(pre_object));
+  return textureLoad(pre_object, clamp(vec2<i32>(p), vec2<i32>(0), size - 1), 0);
+}
+
+// The object-space step to the neighbour `side` along `e` (towards +e),
+// where that neighbour is on the same instance: its length within a
+// factor of two of the world step's (an instance keeps metres along its
+// axes). Else the world step's length along both of the plane's axes is
+// all that is known: (0, 0, 0), and object_at falls back to an isotropic
+// footprint.
+fn object_step(p: vec2<f32>, at: vec3<f32>, e: vec2<f32>, side: f32, world: vec3<f32>) -> vec3<f32> {
+  let o = object_texel(p + e * side);
+  if ((o.w & 1u) == 0u) { return vec3<f32>(0.0); }
+  let v = (bitcast<vec3<f32>>(o.xyz) - at) * side;
+  let l = length(v);
+  let w = length(world);
+  if (l < w * 0.5 || l > w * 2.0) { return vec3<f32>(0.0); }
+  return v;
+}
+
 // The surface in object space: the point and normal the object pass wrote
 // for the instance covering the pixel (metres along its axes, so the
 // world footprint `pixel` holds), or `world` where none does (terrain,
-// scattered copies, a material shader's moved vertices).
+// scattered copies, a material shader's moved vertices). The steps are
+// the instance's own between neighbouring texels on it; where a neighbour
+// is off it (an edge), the footprint's square: `pixel` along every axis.
 fn object_at(p: vec2<f32>, world: Surf) -> Surf {
-  let size = vec2<i32>(textureDimensions(pre_object));
-  let o = textureLoad(pre_object, clamp(vec2<i32>(p), vec2<i32>(0), size - 1), 0);
+  let o = object_texel(p);
   if ((o.w & 1u) == 0u || !world.ok) { return world; }
   var s = world;
   s.p = bitcast<vec3<f32>>(o.xyz);
   let e = vec2<f32>(f32((o.w >> 1u) & 0x7fffu), f32((o.w >> 16u) & 0x7fffu)) / 32767.0;
   s.n = oct_decode(e * 2.0 - 1.0);
   s.obj = true;
+  s.dx = object_step(p, s.p, vec2<f32>(1.0, 0.0), world.side.x, world.dx);
+  s.dy = object_step(p, s.p, vec2<f32>(0.0, 1.0), world.side.y, world.dy);
+  if (dot(s.dx, s.dx) == 0.0 || dot(s.dy, s.dy) == 0.0) {
+    s.dx = vec3<f32>(0.0);
+    s.dy = vec3<f32>(0.0);
+  } else {
+    s.dx = at_most(s.dx, s.pixel);
+    s.dy = at_most(s.dy, s.pixel);
+  }
   return s;
+}
+
+// How a plane's coordinates move per pixel across (xy) and down (zw):
+// the surface's steps seen on the plane facing axis `a`, or `pixel` along
+// each of the plane's axes where the steps are unknown (zero).
+fn plane_steps(s: Surf, a: i32) -> vec4<f32> {
+  if (dot(s.dx, s.dx) == 0.0) {
+    return vec4<f32>(s.pixel, 0.0, 0.0, s.pixel);
+  }
+  return vec4<f32>(plane_uv(s.dx, a), plane_uv(s.dy, a));
+}
+
+// How far a pattern coordinate `d = dot(q, dir)` moves over one screen
+// pixel, at the steepest: a mark one pixel wide in `d` is this wide.
+fn screen_width(dir: vec2<f32>, j: vec4<f32>) -> f32 {
+  return max(length(vec2<f32>(dot(dir, j.xy), dot(dir, j.zw))), 1e-12);
 }
 
 // The triplanar weights of a normal: the planes facing x, y and z.
@@ -400,15 +497,17 @@ fn stroke_on(q: vec2<f32>, angle: f32, spacing: f32, width: f32, aa: f32) -> f32
 }
 
 // The tonal art map on one plane at one octave: the screen hatching's
-// stroke sets and thresholds, laid in metres.
-fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, pixel: f32) -> f32 {
+// stroke sets and thresholds, laid in metres, each stroke one screen pixel
+// wide across itself (`j`: the plane's steps per pixel, plane_steps).
+fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
   let levels = max(st.hatching.z, 1.0);
   var ink = 0.0;
   for (var k = 0.0; k < levels; k += 1.0) {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
     if (t < threshold) {
       let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
-      ink = max(ink, stroke_on(q, turn, spacing, pixel, 0.75 * pixel) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
+      let width = screen_width(vec2<f32>(cos(turn), sin(turn)), j);
+      ink = max(ink, stroke_on(q, turn, spacing, width, 0.75 * width) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
     }
   }
   return ink;
@@ -425,8 +524,9 @@ fn hatch_surface(s: Surf, t: f32) -> f32 {
   for (var a = 0; a < 3; a++) {
     if (w[a] < 0.002) { continue; }
     let q = plane_uv(s.p, a);
-    let fine = hatch_plane(q, t, o.x, s.pixel);
-    let coarse = hatch_plane(q, t, o.x * 2.0, s.pixel);
+    let j = plane_steps(s, a);
+    let fine = hatch_plane(q, t, o.x, j);
+    let coarse = hatch_plane(q, t, o.x * 2.0, j);
     ink += w[a] * mix(fine, coarse, o.y);
   }
   return ink;
@@ -442,13 +542,18 @@ fn dots_screen(p: vec2<f32>, t: f32) -> f32 {
 }
 
 // Dots on a surface plane at one octave: centred on every multiple of
-// `pitch`, so a coarser octave's dots are among a finer one's.
-fn dots_plane(q: vec2<f32>, t: f32, pitch: f32, pixel: f32) -> f32 {
+// `pitch`, so a coarser octave's dots are among a finer one's. The edge
+// is a screen pixel wide along the radius (`j`: the plane's steps per
+// pixel, plane_steps).
+fn dots_plane(q: vec2<f32>, t: f32, pitch: f32, j: vec4<f32>) -> f32 {
   let a = st.halftone.z;
   let r = vec2<f32>(q.x * cos(a) - q.y * sin(a), q.x * sin(a) + q.y * cos(a)) / pitch;
   let cell = fract(r + 0.5) - 0.5;
   let radius = (1.0 - t) * 0.72;
-  let edge = 0.5 * pixel / pitch;
+  // The radius's direction back on the plane (the grid turned by -a).
+  let u = cell / max(length(cell), 1e-6);
+  let along = vec2<f32>(u.x * cos(a) + u.y * sin(a), -u.x * sin(a) + u.y * cos(a));
+  let edge = 0.5 * screen_width(along, j) / pitch;
   return 1.0 - smoothstep(radius - edge, radius + edge, length(cell));
 }
 
@@ -460,7 +565,8 @@ fn dots_surface(s: Surf, t: f32) -> f32 {
   for (var a = 0; a < 3; a++) {
     if (w[a] < 0.002) { continue; }
     let q = plane_uv(s.p, a);
-    cover += w[a] * mix(dots_plane(q, t, o.x, s.pixel), dots_plane(q, t, o.x * 2.0, s.pixel), o.y);
+    let j = plane_steps(s, a);
+    cover += w[a] * mix(dots_plane(q, t, o.x, j), dots_plane(q, t, o.x * 2.0, j), o.y);
   }
   return cover;
 }

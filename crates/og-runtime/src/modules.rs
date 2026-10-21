@@ -264,23 +264,36 @@ impl StateBlock for UiState {
 
 /// The play surface an engine's UI lays out in: what the host set with
 /// [`set_viewport`], else the render target at 1 CSS pixel per device
-/// pixel, else 1280×720.
+/// pixel, else 1280×720; a native host (which sets none) on macOS edits
+/// text with the Mac's keys ([`native_keys`]).
 pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
     if let Some(v) = preview_of(engine_id) {
         return v;
     }
     let Ok(eng) = engine(engine_id) else {
-        return Viewport::default();
+        return native_keys(Viewport::default());
     };
     let Ok(rs) = eng.render.try_borrow() else {
-        return Viewport::default();
+        return native_keys(Viewport::default());
     };
     if let Some(v) = rs.viewport {
         return v;
     }
-    match rs.backend.as_ref().map(|b| b.size()) {
+    native_keys(match rs.backend.as_ref().map(|b| b.size()) {
         Some((w, h)) if w > 0 && h > 0 => Viewport::new(w as f32, h as f32),
         _ => Viewport::default(),
+    })
+}
+
+/// A native host's viewport takes the platform's editing keys: on macOS
+/// Command takes the shortcuts and Option the words, as a Mac text field
+/// does (`Viewport.macKeys`); elsewhere Control. The web host says which
+/// with [`set_viewport`] (the browser's platform), so this is the native
+/// hosts' alone.
+pub(crate) fn native_keys(v: Viewport) -> Viewport {
+    Viewport {
+        mac_keys: cfg!(target_os = "macos"),
+        ..v
     }
 }
 
@@ -300,7 +313,12 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
         high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
         reduced_transparency: viewport["reducedTransparency"].as_bool().unwrap_or(false),
-        mac_keys: viewport["macKeys"].as_bool().unwrap_or(false),
+        // Absent, the platform's own keys (the web host always says; a
+        // native host's surface without a renderer, og-host-node's
+        // og_node_attach_offscreen, leaves it to the platform, as
+        // `native_keys` does for the rendered one).
+        mac_keys: viewport["macKeys"].as_bool().unwrap_or(cfg!(target_os = "macos")),
+        covered: ui_rect(&viewport["covered"]),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
@@ -315,6 +333,7 @@ fn viewport_json(v: &Viewport) -> Value {
         "highContrast": v.high_contrast,
         "reducedTransparency": v.reduced_transparency,
         "macKeys": v.mac_keys,
+        "covered": rect_json(&v.covered),
         "breakpoint": v.breakpoint().name(),
     })
 }
@@ -511,6 +530,16 @@ pub(crate) fn mesh_of(data: &og_render::MeshData) -> MeshDesc {
 
 fn f(v: &Value, k: &str, d: f32) -> f32 {
     v[k].as_f64().map_or(d, |x| x as f32)
+}
+
+/// A `UiRect` (`{ x, y, width, height }`); anything else is the empty one.
+fn ui_rect(v: &Value) -> og_ui::Rect {
+    og_ui::Rect::new(
+        f(v, "x", 0.0),
+        f(v, "y", 0.0),
+        f(v, "width", 0.0),
+        f(v, "height", 0.0),
+    )
 }
 
 fn insets(v: &Value) -> Insets {
@@ -1722,6 +1751,7 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
             height: size_or(&d["height"], Size::fit()),
             over: d["over"].as_bool().unwrap_or(false),
             skin: skin_part(&d["frame"]),
+            instant: d["instant"].as_bool().unwrap_or(false),
         };
         ui.open_anchor(id.as_str(), a)
     });
@@ -2236,6 +2266,7 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
             json!({
                 "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
                 "description": n.description, "value": n.value, "states": n.states,
+                "valueMin": n.value_min, "valueMax": n.value_max, "valueNow": n.value_now,
                 "x": n.x, "y": n.y, "width": n.width, "height": n.height,
             })
         })
@@ -2278,6 +2309,7 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     high_contrast: v["highContrast"].as_bool().unwrap_or(false),
                     reduced_transparency: v["reducedTransparency"].as_bool().unwrap_or(false),
                     mac_keys: v["macKeys"].as_bool().unwrap_or(false),
+                    covered: ui_rect(&v["covered"]),
                 },
             );
         } else {
@@ -2289,4 +2321,31 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
 /// The previewed viewport of an engine, when one is set.
 fn preview_of(engine_id: u32) -> Option<Viewport> {
     PREVIEW.with(|p| p.borrow().get(&engine_id).copied())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A native host sets no viewport: on macOS its text controls take the
+    /// Mac's keys (Command for the shortcuts, Option for words), elsewhere
+    /// Control; one the host set (the web shell's) is kept as it is.
+    #[test]
+    fn a_native_host_edits_with_the_platforms_keys() {
+        let v: Value = serde_json::from_str(&og_ui_viewport(u32::MAX)).expect("json");
+        assert_eq!(
+            v["macKeys"].as_bool(),
+            Some(cfg!(target_os = "macos")),
+            "{v}"
+        );
+        let set = Viewport {
+            mac_keys: false,
+            ..Viewport::new(800.0, 600.0)
+        };
+        PREVIEW.with(|p| p.borrow_mut().insert(u32::MAX - 1, set));
+        assert!(
+            !viewport_of(u32::MAX - 1).mac_keys,
+            "a set viewport is kept"
+        );
+    }
 }

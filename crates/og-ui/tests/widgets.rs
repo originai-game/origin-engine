@@ -9,6 +9,8 @@
 //!   field is being edited (Space must type);
 //! - a dialog lets focus or presses reach what is under it, ignores Back,
 //!   closes while locked, or does not give focus back when it closes;
+//! - a HUD drawn before a dialog takes Back from it (`Ui::back` answering
+//!   while a dialog Back closes is open), so Escape never closes pause;
 //! - a select does not open, choose, or close on a press outside;
 //! - a virtualised list builds rows out of view, cannot reach its last row,
 //!   or does not scroll a keyboard-focused row into view;
@@ -21,6 +23,8 @@
 //! - the dialogue types at the wrong rate, a press does not finish the line,
 //!   or `advanced` fires before the line is shown;
 //! - anchors ignore the safe area; touch controls come out under 44 px;
+//! - an anchored group sits under the host's own control (the web shell's
+//!   Back, `Viewport::covered`) instead of beside it;
 //! - a game accent leaves the token palette's derived tones stale;
 //! - the gamepad stick repeats at the wrong ticks.
 
@@ -367,6 +371,79 @@ fn a_dialog_traps_focus_blocks_what_is_under_it_and_closes_on_back() {
     assert!(
         rig.state.open,
         "focus came back to Open, so Enter opens it again"
+    );
+}
+
+/// A HUD under a pause dialog, as og.ui.racingHud draws: it asks
+/// `Ui::back` before the dialog is built this tick.
+#[derive(Default)]
+struct Paused {
+    open: bool,
+    locked: bool,
+    hud_back: u32,
+    dismissed: u32,
+}
+
+fn hud_under_pause(ui: &mut Ui, s: &mut Paused) {
+    ui.set_navigation(false);
+    if ui.back() {
+        s.hud_back += 1;
+        s.open = true;
+    }
+    let desc = ModalDesc {
+        title: "Paused".into(),
+        locked: s.locked,
+        ..ModalDesc::default()
+    };
+    let m = ui.modal("Pause", s.open, &desc, |ui| {
+        if ui.button("Resume", "Resume", ButtonDesc::default()).clicked {
+            s.open = false;
+        }
+    });
+    if m.dismissed {
+        s.dismissed += 1;
+        s.open = false;
+    }
+}
+
+#[test]
+fn a_hud_never_takes_back_while_a_dialog_is_open() {
+    let mut rig = Rig::new(Paused::default());
+    let b = &mut hud_under_pause;
+    rig.idle(1, b);
+    rig.key(UiKey::Escape, b);
+    assert_eq!(
+        rig.state.hud_back, 1,
+        "no dialog: Back reaches the HUD (it pauses)"
+    );
+    assert!(rig.state.open);
+    rig.idle(30, b);
+    rig.key(UiKey::Escape, b);
+    assert_eq!(
+        rig.state.hud_back, 1,
+        "the HUD asked first, but the open dialog keeps Back"
+    );
+    assert_eq!(rig.state.dismissed, 1, "Escape closed the pause dialog");
+    assert!(!rig.state.open);
+    rig.idle(30, b);
+    rig.step(pad(0, GamepadFrame::B), b);
+    assert_eq!(rig.state.hud_back, 2, "closed again: the pad's B pauses");
+    rig.idle(30, b);
+    rig.step(pad(0, GamepadFrame::B), b);
+    assert_eq!(
+        (rig.state.hud_back, rig.state.dismissed),
+        (2, 2),
+        "the pad's B closes it too"
+    );
+    // A locked dialog does not close on Back, so Back reaches the game.
+    rig.state.locked = true;
+    rig.state.open = true;
+    rig.idle(30, b);
+    rig.key(UiKey::Escape, b);
+    assert_eq!(
+        (rig.state.hud_back, rig.state.dismissed),
+        (3, 2),
+        "under a locked dialog Back is the game's"
     );
 }
 
@@ -778,6 +855,43 @@ fn the_dialogue_types_by_tick_a_press_finishes_and_the_next_press_advances() {
     );
     rig.click("Talk", b);
     assert_eq!(rig.state.1, 1, "the next press advances");
+}
+
+#[test]
+fn anchored_groups_keep_out_of_the_host_control() {
+    let mut rig = Rig::new(());
+    let b = &mut |ui: &mut Ui, _: &mut ()| {
+        for (id, anchor) in [
+            ("Place", Anchor::TopLeft),
+            ("Clock", Anchor::Top),
+            ("Times", Anchor::TopRight),
+        ] {
+            ui.anchor(
+                id,
+                AnchorDesc {
+                    anchor,
+                    ..AnchorDesc::default()
+                },
+                |ui| {
+                    ui.label("Text", "1/8  lap 2/3", LabelDesc::default());
+                },
+            );
+        }
+    };
+    rig.idle(1, b);
+    let at = |rig: &Rig<()>, id: &str| rig.ui.frame().element(id).expect(id).clone();
+    let (place, clock, times) = (at(&rig, "Place"), at(&rig, "Clock"), at(&rig, "Times"));
+    assert!(place.x < 40.0, "no control: the corner itself ({place:?})");
+    // The web shell's Back: 12, 12 to 52, 52 CSS px.
+    rig.vp.covered = Rect::new(12.0, 12.0, 40.0, 40.0);
+    rig.idle(1, b);
+    let moved = at(&rig, "Place");
+    assert!(
+        moved.x >= 52.0 && (moved.y - place.y).abs() < 0.5,
+        "the top-left group moves right of the control, at the same height: {moved:?}"
+    );
+    assert_eq!(at(&rig, "Clock"), clock, "a group clear of it stays");
+    assert_eq!(at(&rig, "Times"), times, "a group clear of it stays");
 }
 
 #[test]
@@ -1571,7 +1685,12 @@ fn two_fingers_scroll_lists_and_pinch_zoom_views() {
             b,
         );
     }
-    rig.idle(1, b);
+    // Held still a tick (lifted, they would fling it on).
+    let up = Vec2::new(0.0, -60.0);
+    rig.step(
+        f.at(&[(0, row3 + up), (1, row3 + Vec2::new(40.0, 0.0) + up)]),
+        b,
+    );
     assert_eq!(
         pos(&rig.ui, "Top/List/Row#3").expect("row 3").y,
         y3 - 60.0,
@@ -2010,4 +2129,138 @@ fn a_grid_lays_out_exactly_its_columns_whatever_its_width() {
     rig.idle(3, b);
     let r = rows(&rig);
     assert!(r[0].len() == 4 && r[0][0].0 == 104.0, "{r:?}");
+}
+
+/// Two fingers lifting off a list fling it with their last velocity, as
+/// one finger's drag does: it runs on after the lift, slows, and stops; a
+/// press stops it, and under reduced motion there is none.
+///
+/// Ways it could fail: the list stops dead where the fingers left it (no
+/// fling after a two-finger scroll), flings the wrong way, never stops, or
+/// flings under reduced motion.
+#[test]
+fn two_fingers_lifting_off_a_list_fling_it() {
+    let run = |reduced: bool| {
+        let mut rig = Rig::new(Gestures::default());
+        if reduced {
+            let mut t = *rig.ui.theme();
+            t.reduced_motion = true;
+            rig.ui.set_theme(t);
+        }
+        let b = &mut gestures;
+        rig.idle(2, b);
+        // The list's content top, from whichever row is in view.
+        let pitch = pos(&rig.ui, "Top/List/Row#1").expect("row 1").y
+            - pos(&rig.ui, "Top/List/Row#0").expect("row 0").y;
+        let height = rig
+            .ui
+            .frame()
+            .element("Top/List/Row#0")
+            .expect("row 0")
+            .height;
+        let row = rig.center("Top/List/Row#3");
+        let mut f = Fingers::new();
+        let pair = |up: f32| {
+            [
+                (0, row - Vec2::new(0.0, up)),
+                (1, row + Vec2::new(40.0, -up)),
+            ]
+        };
+        rig.step(f.at(&pair(0.0)[..1]), b);
+        rig.step(f.at(&pair(0.0)), b);
+        for k in 1..=4 {
+            rig.step(f.at(&pair(10.0 * k as f32)), b);
+        }
+        // (A row the list's top cuts is listed from there: its bottom is its own.)
+        let y = move |rig: &Rig<Gestures>| {
+            (0..20)
+                .find_map(|k| {
+                    let e = rig.ui.frame().element(&format!("Top/List/Row#{k}"))?;
+                    Some(e.y + e.height - height - k as f32 * pitch)
+                })
+                .expect("a row in view")
+        };
+        let held = y(&rig);
+        rig.step(f.lift(1), b);
+        rig.step(f.lift(0), b);
+        let mut ys = vec![held];
+        for _ in 0..240 {
+            rig.idle(1, b);
+            ys.push(y(&rig));
+        }
+        ys
+    };
+    let ys = run(false);
+    assert!(ys[1] < ys[0], "the list runs on up after the lift: {ys:?}");
+    let steps: Vec<f32> = ys.windows(2).map(|w| w[0] - w[1]).collect();
+    assert!(
+        steps[1] > 0.0 && steps[10] < steps[1],
+        "and slows: {steps:?}"
+    );
+    assert_eq!(ys[239], ys[240], "and stops: {ys:?}");
+    let still = run(true);
+    assert!(
+        still.windows(2).all(|w| w[0] == w[1]),
+        "no fling under reduced motion: {still:?}"
+    );
+}
+
+/// A zoom view takes keys once focus (Tab, a pad) is on it: `+` and `=`
+/// zoom in about its centre, `-` out, `0` fits it again, and the arrows pan
+/// it a tenth of its size, ↑ and ↓ included, without moving the focus.
+///
+/// Ways it could fail: Tab skips the view (it takes no focus), a key does
+/// nothing, zooms about the corner, pans the wrong way, an arrow moves the
+/// focus off it, or `0` leaves it zoomed or off centre.
+#[test]
+fn a_focused_zoom_view_takes_keys() {
+    let mut rig = Rig::new(Gestures::default());
+    let b = &mut gestures;
+    rig.idle(2, b);
+    // Shift+Tab from nothing: the last control, the map.
+    rig.step(
+        InputFrame {
+            keys: vec![UiKey::Tab],
+            shift: true,
+            ..InputFrame::default()
+        },
+        b,
+    );
+    assert_eq!(rig.ui.focus_path(0), "Top/Map");
+    let zoom = |rig: &Rig<Gestures>| rig.state.zoom.expect("zoom");
+    rig.key(UiKey::Equal, b);
+    rig.idle(1, b);
+    assert!((zoom(&rig).zoom - 1.25).abs() < 1e-4, "{:?}", zoom(&rig));
+    assert!(
+        (zoom(&rig).center - Vec2::splat(0.5)).length() < 1e-4,
+        "about its centre"
+    );
+    rig.key(UiKey::NumpadAdd, b);
+    rig.key(UiKey::Minus, b);
+    rig.idle(1, b);
+    assert!((zoom(&rig).zoom - 1.25).abs() < 1e-4, "{:?}", zoom(&rig));
+    // ← shows more of the left: the centre moves left a tenth of the view.
+    rig.key(UiKey::Left, b);
+    rig.idle(1, b);
+    let z = zoom(&rig);
+    assert!((z.center.x - (0.5 - 0.1 / 1.25)).abs() < 1e-4, "{z:?}");
+    rig.key(UiKey::Down, b);
+    rig.idle(1, b);
+    let z = zoom(&rig);
+    assert!((z.center.y - (0.5 + 0.1 / 1.25)).abs() < 1e-4, "{z:?}");
+    assert_eq!(rig.ui.focus_path(0), "Top/Map", "the arrows keep the focus");
+    rig.key(UiKey::Up, b);
+    rig.key(UiKey::Right, b);
+    rig.key(UiKey::Digit0, b);
+    rig.idle(1, b);
+    let z = zoom(&rig);
+    assert!(
+        z.zoom == 1.0 && (z.center - Vec2::splat(0.5)).length() < 1e-6,
+        "{z:?}"
+    );
+    // Unfocused, the keys are not its own.
+    rig.key(UiKey::Tab, b);
+    rig.key(UiKey::Equal, b);
+    rig.idle(1, b);
+    assert_eq!(zoom(&rig).zoom, 1.0);
 }

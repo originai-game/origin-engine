@@ -65,9 +65,13 @@ build, publish included, and `world.restore(save)` puts it back, so the
 restored world hashes as the saved one did, on either host. The session
 stays across a restore (input, the player's volumes, the platform's calls,
 the language, scheduled command steps); og.Time takes the saved tick.
-Inside a system the snapshot is the world as that system sees it (its own
-queued spawns and despawns are not in it) and a restore applies when the
-tick ends. A save whose types' fields changed is refused naming them, or
+Inside a system the snapshot is the world in the middle of that tick, as
+that system sees it (its own queued spawns and despawns are not in it),
+and it names the system: the world restored from it completes the tick on
+its next step (the systems after that one, then the engine's, physics
+included) and then goes on tick for tick as the run that saved did, so a
+replay from it matches. Make the snapshot the system's last write of the
+tick. A restore asked for in a system applies when the tick ends. A save whose types' fields changed is refused naming them, or
 mapped by name with `{ migrate: true }`. Only what is in the world is
 saved: progress in module variables is lost. The text is a few tens of
 KiB (11 KiB for a few entities, 25 KiB for a 2D level of 189, 78 KB for a
@@ -77,6 +81,75 @@ text, meta })`, which spreads it over as many keys as it needs and writes
 the slot's manifest last, so a save cut short leaves the last one whole,
 and read it back with `og.platform.loadSlot` (og-game §17, og-platform-sdk
 §2).
+
+### Recording, replaying and ghosts
+
+The engine has no in-game recorder: determinism is the recorder. The same
+world and the same inputs give the same run to the tick, so a game records
+its own inputs and replays them. Three things are called "replay": the
+probe's and playtests' re-runs (`og run --commands`, `--seed`: tests,
+og-build §4), a **watch replay** (the player's run driven again) and a
+**ghost** (a past run drawn beside the player). The last two are game code;
+examples/meridian-loop does both (`src/replay.ts`, `src/tape.ts`,
+`src/tapes.ts`, `src/ghost.ts`; `tests/replay.og.ts` checks the replay
+crosses the line on the race's own ticks).
+
+Watch replay: snapshot the start, tape the inputs, restore and feed the tape.
+
+```ts
+// 1. The start, taken by the FIRST system of a tick (later in a tick, the
+//    restored world skips the rest of that tick and runs a different race).
+r.replayMark = true;                       // saved set: the restored world knows it is a replay
+const snap = world.snapshot();
+r.replayMark = false;
+const asked = snap.ok ? og.platform.saveSlot(world, { slot: "replay", text: snap.value }) : snap;
+if (asked.ok) r.replaySave = asked.value;  // its answer comes on a later tick (og.platform.result)
+
+// 2. Every tick: the intent drives the car only through its quantised code,
+//    live and replayed alike, so the tape reproduces it exactly.
+const code = r.replaying ? codeAt(tape, r.runLen) : encode({ steer, throttle, brake });
+const i = decode(code);                     // steer 33 steps, throttle 17, brake 5: 12 bits
+world.set(car, og.Vehicle, { steer: i.steer, throttle: i.throttle, brake: i.brake });
+if (!r.replaying) putCode(tape, r.runLen, code);   // two characters a tick
+r.runLen += 1;
+
+// 3. At the finish: the tape beside the start.
+og.platform.storeSet(world, { key: "replay.tape", value: { ticks: r.runLen, inputs: tapeText } });
+
+// 4. Watch replay: loadSlot, then world.restore(text) when it answers (it
+//    applies when the tick ends). The next tick sees replayMark set: clear
+//    it, set replaying, read "replay.tape" back, feed it from tick 0.
+```
+
+Keep the tape and the replay's flags in components and resources (a
+restore rolls back everything else). A component has no array field and a
+`str` field holds at most 4,096 bytes, so a tape of a few thousand ticks
+is cut into `str` chunks, one entity each, written through the column's
+bytes by the system that owns them (§4). The start is the whole world:
+triangle-mesh colliders make it large (a 956 m circuit's world is 400 KB),
+so it goes through `saveSlot`, which spreads it over the store's keys.
+Request numbers are not carried across a restore: ask the store again
+after it.
+
+A ghost: record poses, draw a model. While a lap runs, tape the car's pose
+every second tick (position and yaw, pitch, roll: 15 characters); from the
+next lap draw a model with no body where the best lap's car was at the
+same time into its lap, between the two poses around it:
+
+```ts
+if (into % 2 === 0) putPose(cur, into / 2, { ...car.position, ...euler(car.quaternion) });
+const f = into / 2, i0 = Math.floor(f), u = f - i0;
+const a = poseAt(best, i0), b = poseAt(best, i0 + 1);
+world.set(ghost, og.Transform, {
+  position: { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, z: a.z + (b.z - a.z) * u },
+  quaternion: quat(lerpAngle(a.yaw, b.yaw, u), lerpAngle(a.pitch, b.pitch, u), lerpAngle(a.roll, b.roll, u)),
+});
+```
+
+Do not re-drive a second physics body from the tape for a ghost: it takes
+part in the simulation the player drives in (a second og.Vehicle's wheel
+rays land on whatever collider is under them, the player's car included),
+so the player's run is no longer the one taped.
 
 ## 3. Every failure is a value
 
@@ -143,6 +216,19 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   escapes: `set:Prefs.name=""`), a scene gives it one quoted string, and
   snapshots and the world hash carry its bytes, so a name never lives in a
   module variable or as numbers of code points.
+  A `str` holds 1 to 4,096 bytes: a larger capacity typechecks and is
+  refused when the game starts (`a string field holds 1 to 4096 bytes`).
+- A field holds one value: a component has no array or list field. A few
+  values are numbered fields (`p0`..`p7`, as og.CameraRail's rail points);
+  a list is an entity per element with its own component, looped over by
+  a query (a ring of skid marks, the laps of a race); a long record (a
+  lap's taped inputs) is text in `str(4096)` chunks, an entity each.
+- A handle is a 64-bit number (an `og.load` answer, a texture, a sound,
+  a geometry, a material, an entity): keep it in a field of its own kind,
+  `Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()` or
+  `Entity()` (each handle type of the API has its factory), in a
+  component or a resource. A `u32` field refuses one (`4294967298 is not
+  a u32`).
 - Per-entity calls (`world.get`, `world.set`) are for commands, setup and
   the few named entities a system touches (a camera, a listener, the
   player), not for hot loops. A system's `reads` and `writes` borrow
@@ -153,6 +239,14 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   (naming the view), and the entity is read and written through the view's
   arrays at its row (`a.entities`). Take per-entity calls first, views
   after, or keep to one of the two in a system.
+- A system has one query: every component in its `reads` and `writes`
+  together, so an entity matches only when it has all of them (and none of
+  `without`). A component declared only to `world.get` one named entity
+  (the player's car) narrows the loop to entities that also have it, often
+  to none, with no error. `world.query` is refused inside a system, by
+  design (a system reaches only what it declared): loop over each
+  archetype in a system of its own that declares only its components, and
+  pass what crosses between them through a resource.
 - Order systems with `after` and `before` by name; declaration order is the
   default.
 

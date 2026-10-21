@@ -162,6 +162,17 @@ const PLANS: Record<string, Plan> = {
     language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "Español" }, { wait: 400 }, { click: "Done" }],
     translated: "Partida nueva",
   },
+  "meridian-loop": {
+    title: "start",
+    // Time trial, then the three-second countdown.
+    start: [{ click: "start" }, { wait: 3600 }],
+    play: ["KeyW", "KeyW", "KeyW", "KeyA", "KeyW", "KeyW", "KeyD", "KeyW"],
+    // Escape over the racing HUD pauses; Quit to title.
+    quit: [{ key: "Escape" }, { wait: 700 }, { click: "quit" }],
+    board: [{ click: "board" }, { wait: 1500 }, { key: "Escape" }, { wait: 800 }],
+    language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "Deutsch" }, { wait: 400 }, { click: "Done" }],
+    translated: "Zeitfahren",
+  },
   "ui-kit": {
     title: "UI kit",
     start: [{ click: "platformer" }, { wait: 1000 }],

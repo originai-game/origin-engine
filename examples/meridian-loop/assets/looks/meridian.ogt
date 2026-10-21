@@ -1,0 +1,47 @@
+type look
+version 1
+---
+name "Meridian night"
+extends "neon-vector"
+skin "skins/meridian/skin.ogt"
+RenderSettings {
+  bloom true
+  bloomThreshold 0.75
+  bloomKnee 0.4
+  bloomIntensity 0.9
+  toneMapping agx
+  exposure 1.15
+  environmentIntensity 0.35
+}
+MaterialStyle {
+  # The preset's hull outline off: with an outlineDistance it grows without limit near the camera and floods
+  # the frame, and even at a constant width it lays a pale band along the ground's horizon (FINDINGS #7).
+  outlineWidth 0
+  shadowTint "#2a0d4a"
+  shadowTintAmount 0.5
+}
+Fog {
+  enabled true
+  color "#2a0f3d"
+  density 0.0026
+  sunColor "#ff5fb2"
+  sunPower 6
+  sky 0.25
+}
+Sky {
+  enabled true
+  zenith "#05030f"
+  horizon "#6a1d63"
+  ground "#07040e"
+  sunDirection 0.1 0.06 -1
+  sunColor "#ff6f3c"
+  sunSize 9
+  sunIntensity 6
+  glow 1.2
+  glowPower 6
+  stars 0.7
+  brightness 0.8
+}
+PostEffects {
+  vignette true
+}

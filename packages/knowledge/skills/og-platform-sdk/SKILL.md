@@ -101,6 +101,18 @@ trying.
   tick it arrives (the language, Continue's label): a title that waits for
   a later tick, or a screen transition that only starts after the tap,
   still shows its defaults behind the gate.
+- The frame behind the gate is a still of the opening title a few ticks
+  in, held until the tap, so anything on it that moves into place over
+  its first second stands part-way there: the skin's panel entrance and
+  its controls' stagger (about half a second), a transition, a fade the
+  game plays itself. Build the screen the game opens on settled while it
+  is that screen, and let every later screen enter as usual:
+  `og.ui.mainMenu("Title", { ..., instant: !g.leftTitle })` with
+  `g.leftTitle` set once the shown screen is another (examples/kestrel-stair
+  `src/ui.ts`); `og.ui.anchor` and `og.ui.transition` take the same
+  `instant`. A game's own intro on the title (a fade from black, a logo)
+  starts complete on the first tick, or plays after the player's first
+  press.
 - Settings are a pair: a game that calls `saveSettings` also calls
   `loadSettings` on its first tick and, when it answers, applies every
   field it saves, through the same code its settings screen uses. Ask

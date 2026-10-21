@@ -50,6 +50,7 @@ export const NAME_CHARS = 12;
 /** The run: progress, the hero's state for the other systems, the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the skin's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
   naming: bool(false, { doc: "The name dialog is open over the title (a new game)." }),
   paused: bool(false),
   settingsOpen: bool(false),

@@ -98,7 +98,15 @@ pub const SCENES: &[&str] = &[
     "model-flash",
     "shadows-crypt",
     "shadow-flags",
+    "ground-grid",
+    "stylise-outline-ground",
 ];
+
+/// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
+/// both): their content is cooked by og-cook at build time, which the
+/// browser's wasm build of the scenes does not carry.
+#[cfg(not(target_arch = "wasm32"))]
+pub const NATIVE_SCENES: &[&str] = &["vox-keyframes"];
 
 /// Which backend tiers a scene has a reference for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -296,6 +304,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // box and a model that receive beside a box and a model that do
         // not (lit as if unshadowed).
         "shadow-flags" => g.scene = crate::shadow_scenes::shadow_flags_scene()?.scene,
+        // meridian-loop #15: a 1,600 m ground as og.render.planeGeometry
+        // makes it, its grid tile repeated every 10 m by `uvRepeat` 160.
+        "ground-grid" => g.scene = ground_grid(160.0),
+        // meridian-loop #7: neon-vector's outline over a 1,600 m ground
+        // from a chase camera: lined where it ends, never washed.
+        "stylise-outline-ground" => {
+            g.scene = crate::stylise_scenes::outline_ground_scene(1.4, 120.0)
+        }
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the full tier's eight; WebGL2
         // draws four, its own frame).
@@ -494,6 +510,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-object" => g.scene = crate::stylise_scenes::object_scene(),
         "stylise-halftone-surface" => g.scene = crate::stylise_scenes::halftone_surface_scene()?,
         "stylise-outline-voxels" => g.scene = crate::stylise_scenes::outline_voxels_scene(),
+        // Owed row 63: a .vox transform keyed across frames, cooked and
+        // posed at frames 0 and 2 side by side.
+        #[cfg(not(target_arch = "wasm32"))]
+        "vox-keyframes" => g.scene = crate::vox_scenes::keyframes_scene()?,
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
         "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
         // Untonemapped sprites under TAA (its history carries the alpha).
@@ -570,6 +590,81 @@ pub(crate) fn ground(scene: &mut RenderScene, size: f32, cell_m: f32, roughness:
     });
     let mesh = scene.add_mesh(shapes::plane(size, size / (16.0 * cell_m)));
     scene.add_instance(mesh, material, Mat4::IDENTITY);
+}
+
+/// One tile of a ground grid: a dark slate fill with a pale line along its
+/// edges (two texels each side, so tiled copies meet in a four-texel line).
+pub fn grid_tile(size: u32) -> TextureData {
+    let mut rgba = Vec::with_capacity((size * size * 4) as usize);
+    for y in 0..size {
+        for x in 0..size {
+            let edge = |c: u32| c < 2 || c >= size - 2;
+            let px = if edge(x) || edge(y) {
+                [150, 200, 210, 255]
+            } else {
+                [38, 44, 52, 255]
+            };
+            rgba.extend_from_slice(&px);
+        }
+    }
+    TextureData {
+        width: size,
+        height: size,
+        rgba,
+        color_space: ColorSpace::Srgb,
+        mips: Mips::Generate,
+    }
+}
+
+/// A 1,600 m ground built as og.render.planeGeometry builds it (the xy
+/// plane turned -π/2 about x) with its UVs repeated `repeat` times
+/// (`uvRepeat`): at 160 the grid tile lies every 10 m. Red posts stand on
+/// the grid lines every 10 m down the middle, so each cell's length reads
+/// against them.
+pub fn ground_grid(repeat: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let tile = scene.add_texture(grid_tile(128));
+    let ground = scene.add_material(Material {
+        base_color_texture: Some(tile),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let mut plane = shapes::plane_xy(1600.0, 1600.0);
+    shapes::repeat_uv(&mut plane, Vec2::splat(repeat));
+    let plane = scene.add_mesh(plane);
+    scene.add_instance(
+        plane,
+        ground,
+        Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2),
+    );
+    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.4, 2.0, 0.4)));
+    let red = scene.add_material(Material {
+        base_color: [0.8, 0.15, 0.1, 1.0],
+        roughness: 0.6,
+        ..Default::default()
+    });
+    for k in 1..=8 {
+        scene.add_instance(
+            post,
+            red,
+            Mat4::from_translation(Vec3::new(0.0, 1.0, -10.0 * k as f32)),
+        );
+    }
+    scene.camera = Camera {
+        position: Vec3::new(4.0, 6.0, 4.0),
+        target: Vec3::new(0.0, 0.0, -35.0),
+        far: 2000.0,
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    let sun = Vec3::new(0.5, 0.7, 0.3);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 4.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene
 }
 
 /// The 400 m field. `tall` adds the 8 m pillars and the 20 m wall; without

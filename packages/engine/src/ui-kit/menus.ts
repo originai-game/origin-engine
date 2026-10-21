@@ -3,7 +3,7 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { all, fmt, frame, iconOr, menuItems, px, grow, token } from "./util.ts";
+import { all, clock, fmt, frame, iconOr, lapTime, menuItems, px, grow, token } from "./util.ts";
 
 /** The buttons of a menu in a column; answers the chosen id. With `autofocus` its first enabled item takes the focus when the menu appears (og-ui §4: what opens takes the focus). */
 function menuColumn(id: string, items: ReturnType<typeof menuItems>, width: Api.Size, autofocus = false): string | null {
@@ -38,6 +38,7 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
     padding: all(phone ? t.lg : t.xl),
     background: token("materialThick"),
     radius: t.panel,
+    instant: desc.instant ?? false,
   }, () => {
     kit.column("Heading", { gap: t.xs, cross: "center", width: grow() }, () => {
       kit.label("Title", desc.title ?? "", { step: phone ? "displayMd" : "displayLg", font: "display", align: "center", width: grow(), heading: true });
@@ -136,18 +137,31 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
   const items = menuItems(desc.actions, [["retry", "Retry"], ["next", "Next"], ["menu", "Menu"]]);
   let chosen: string | null = null;
   const score = desc.score ?? 0;
+  const time = desc.format === "time";
   // The score counts up over 0.9 s from the opening; "New best" pops in when it lands.
   const landed = open && kit.seconds() - since >= 0.9;
+  // A time is lower-is-better (a best of 0 is none); points higher-is-better.
+  const prior = desc.best ?? 0;
+  const best = time ? (desc.newBest ? (prior > 0 ? Math.min(prior, score) : score) : prior) : Math.max(prior, desc.newBest ? score : 0);
   kit.modal(id, open, { title: desc.title ?? "Level complete", locked: true, width: px(Math.min(phone ? 360 : 420, frame().viewport.width - 32)) }, () => {
     const max = desc.maxStars ?? 3;
     if (max > 0) kit.row("StarRow", { width: grow(), align: "center" }, () => stars("Stars", desc.stars ?? 0, max, since, 44));
     kit.column("ScoreBlock", { width: grow(), cross: "center", gap: t.xxs }, () => {
-      kit.counter("Score", score, { from: 0, durationMs: 900, step: "displayLg", font: "display", align: "center", width: grow() });
-      kit.row("BestRow", { gap: t.sm, cross: "center" }, () => {
-        const best = fmt(Math.max(desc.best ?? 0, desc.newBest ? score : 0));
-        kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", best), { step: "meta", color: token("fgMuted"), nowrap: true });
-        if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", desc.newBestLabel ?? "New best", "accent"));
-      });
+      if (desc.scoreLabel) kit.label("ScoreLabel", desc.scoreLabel, { step: "meta", color: token("fgMuted"), align: "center", width: grow(), nowrap: true });
+      if (time) {
+        // A time counts up as a clock (ease-out cubic over the same 0.9 s), the headline in m:ss.mmm.
+        const k = open ? Math.min(1, Math.max(0, (kit.seconds() - since) / 0.9)) : 1;
+        const shown = score * (1 - (1 - k) ** 3);
+        kit.label("Score", k >= 1 ? lapTime(score) : clock(shown, true), { step: "displayLg", font: "display", align: "center", width: grow(), nowrap: true });
+      } else {
+        kit.counter("Score", score, { from: 0, durationMs: 900, step: "displayLg", font: "display", align: "center", width: grow() });
+      }
+      if (!time || best > 0 || desc.newBest) {
+        kit.row("BestRow", { gap: t.sm, cross: "center" }, () => {
+          if (!time || best > 0) kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", time ? lapTime(best) : fmt(best)), { step: "meta", color: token("fgMuted"), nowrap: true });
+          if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", desc.newBestLabel ?? "New best", "accent"));
+        });
+      }
     });
     const stats = desc.stats ?? [];
     if (stats.length > 0) {

@@ -569,6 +569,30 @@ impl PhysicsApi for NodeHost {
     fn og_physics_vehicle_wheels(&self, world: u32, entity: f64) -> String {
         rt::og_physics_vehicle_wheels(world, entity)
     }
+    fn og_physics_apply_force(
+        &self,
+        world: u32,
+        entity: f64,
+        force: String,
+        point: Option<String>,
+    ) -> String {
+        rt::og_physics_apply_force(world, entity, force, point)
+    }
+    fn og_physics_apply_impulse(
+        &self,
+        world: u32,
+        entity: f64,
+        impulse: String,
+        point: Option<String>,
+    ) -> String {
+        rt::og_physics_apply_impulse(world, entity, impulse, point)
+    }
+    fn og_physics_apply_torque(&self, world: u32, entity: f64, torque: String) -> String {
+        rt::og_physics_apply_torque(world, entity, torque)
+    }
+    fn og_physics_apply_torque_impulse(&self, world: u32, entity: f64, torque: String) -> String {
+        rt::og_physics_apply_torque_impulse(world, entity, torque)
+    }
     fn og_physics_ragdoll_rig_from_skeleton(&self, world: u32, skeleton: f64) -> String {
         rt::og_physics_ragdoll_rig_from_skeleton(world, skeleton)
     }

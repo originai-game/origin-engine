@@ -11,9 +11,31 @@ export class StandInNode extends EventTarget {
   parentElement: StandInElement | null = null;
   readonly ownerDocument: StandInDocument;
   #text = "";
+  readonly #listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
   constructor(doc: StandInDocument) {
     super();
     this.ownerDocument = doc;
+  }
+  override addEventListener(type: string, fn: EventListenerOrEventListenerObject | null): void {
+    if (!fn) return;
+    let set = this.#listeners.get(type);
+    if (!set) this.#listeners.set(type, (set = new Set()));
+    set.add(fn);
+  }
+  override removeEventListener(type: string, fn: EventListenerOrEventListenerObject | null): void {
+    if (fn) this.#listeners.get(type)?.delete(fn);
+  }
+  /** Dispatches at this node, then up its ancestors when the event bubbles (as the mirror's root listens for its elements' `input`). */
+  override dispatchEvent(event: Event): boolean {
+    Object.defineProperty(event, "target", { value: this, configurable: true });
+    for (let n: StandInNode | null = this; n; n = event.bubbles ? n.parentElement : null) {
+      Object.defineProperty(event, "currentTarget", { value: n, configurable: true });
+      for (const fn of [...(n.#listeners.get(event.type) ?? [])]) {
+        if (typeof fn === "function") fn.call(n, event);
+        else fn.handleEvent(event);
+      }
+    }
+    return !event.defaultPrevented;
   }
   get parentNode(): StandInElement | null {
     return this.parentElement;

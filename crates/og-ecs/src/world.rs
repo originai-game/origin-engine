@@ -117,6 +117,9 @@ pub struct World {
     pub(crate) blocks: Vec<Block>,
     /// The wall clock systems are timed with ([`World::set_clock`]).
     pub(crate) clock: Option<fn() -> f64>,
+    /// Restored from a snapshot taken mid-tick: the system the next step
+    /// starts at, completing that tick (world state: a snapshot carries it).
+    pub(crate) resume: Option<usize>,
 }
 
 fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
@@ -155,6 +158,7 @@ impl World {
             by_name: BTreeMap::new(),
             blocks: Vec::new(),
             clock: None,
+            resume: None,
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
@@ -887,15 +891,26 @@ impl World {
     /// `Time`. A system error stops the tick and is returned with the tick and
     /// the system named; the world is left as it was when the system failed
     /// (earlier systems' effects stay; restore a snapshot to undo them).
+    ///
+    /// The first step after restoring a snapshot a system took (format 4)
+    /// completes that snapshot's tick instead: it runs the systems after
+    /// the one that took it, with the tick's events as they were, then
+    /// advances `Time`, as the tick that saved went on.
     pub fn step(&mut self) -> Result<()> {
-        for queue in &mut self.events {
-            let queue = queue.get_mut();
-            queue.current = std::mem::take(&mut queue.pending);
-        }
+        let first = match self.resume.take() {
+            Some(k) => k.min(self.systems.len()),
+            None => {
+                for queue in &mut self.events {
+                    let queue = queue.get_mut();
+                    queue.current = std::mem::take(&mut queue.pending);
+                }
+                0
+            }
+        };
         let tick = self.time().tick;
         LAST_TICK.store(tick, std::sync::atomic::Ordering::Relaxed);
         let mut commands = Vec::new();
-        for i in 0..self.systems.len() {
+        for i in first..self.systems.len() {
             // Archetype sizes change only with a structural change: the
             // counts of a tick without one are the last tick's.
             if self.systems[i].matched_at != Some(self.structural) {

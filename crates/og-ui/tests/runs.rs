@@ -20,6 +20,12 @@
 //! - measured with one font and drawn with another (the runs overlap or
 //!   gap), a missing glyph in a drawn command, a different frame on a
 //!   second build → `a_mixed_label_draws_one_command_per_run`
+//! - a mixed label's runs placed by the role face's extents alone, so a
+//!   taller fallback face rises out of the line box (or each run on a
+//!   baseline of its own) → `a_mixed_labels_runs_share_a_baseline_that_holds_every_face`
+//! - a `[wave]`, `[shake]` or `[pulse]` span that mixes faces drawn still,
+//!   or its runs drawn from the wrong face when they move →
+//!   `a_moving_span_that_mixes_faces_moves`
 
 mod support;
 
@@ -315,4 +321,121 @@ fn a_mixed_label_draws_one_command_per_run() {
     assert!((e.width - (w0 + w1 + f.latin.metrics.measure("42", size))).abs() < 0.5);
     // A second UI built the same way draws the same frame.
     assert_eq!(label_frame(&f, "Score 原点 42").items, frame.items);
+}
+
+/// The text commands of a frame: (text, font, x, baseline).
+fn commands(frame: &UiFrame) -> Vec<(String, og_render::FontHandle, f32, f32)> {
+    frame
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text {
+                text,
+                font,
+                x,
+                baseline,
+                ..
+            } => Some((text.clone(), *font, *x, *baseline)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_mixed_labels_runs_share_a_baseline_that_holds_every_face() {
+    let mut scene = RenderScene::new();
+    let mut f = faces(&mut scene);
+    // The CJK face taller and deeper than the role's (as a CJK or Arabic
+    // face beside a Latin one often is).
+    let (asc, desc) = (1.4, -0.3);
+    f.cjk.metrics = f.cjk.metrics.clone().with_extents(asc, desc);
+    assert!(
+        asc > f.latin.metrics.ascender && desc < f.latin.metrics.descender,
+        "{} {}",
+        f.latin.metrics.ascender,
+        f.latin.metrics.descender
+    );
+    let size = UiDesc::default().theme.type_ramp.body.size;
+    let frame = label_frame(&f, "Score 原点 42");
+    let cmds = commands(&frame);
+    assert_eq!(cmds.len(), 3, "{cmds:?}");
+    let baseline = cmds[0].3;
+    assert!(
+        cmds.iter().all(|c| c.3 == baseline),
+        "one baseline for every run: {cmds:?}"
+    );
+    // The line box is placed around every face's extents: the tall face's
+    // ascender as far over the label's top as its descender under its
+    // bottom (inside both when the line is tall enough).
+    let e = frame.element("Mixed").expect("label");
+    let (top, bottom) = (baseline - asc * size, baseline - desc * size);
+    assert!(
+        ((top - e.y) - (e.y + e.height - bottom)).abs() <= 1.0,
+        "centred: {} above, {} below",
+        top - e.y,
+        e.y + e.height - bottom
+    );
+    // A label the role's face draws whole keeps the role's own placement.
+    let latin = commands(&label_frame(&f, "Score 42"));
+    let m = &f.latin.metrics;
+    let own = e.y + (e.height - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+    assert!((latin[0].3 - own).abs() <= 0.5, "{} vs {own}", latin[0].3);
+    assert!(
+        baseline > latin[0].3,
+        "the taller face moved the baseline down"
+    );
+}
+
+#[test]
+fn a_moving_span_that_mixes_faces_moves() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    let mut ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body: f.latin.clone(),
+            fallbacks: vec![f.cjk.clone(), f.arabic.clone()],
+            ..Fonts::default()
+        },
+        ..UiDesc::default()
+    });
+    let mut ticks = Vec::new();
+    for _ in 0..6 {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+        ui.rich_text("Hint", "[wave]Go 原点[/wave]", RichTextDesc::default());
+        ui.end();
+        ticks.push(commands(ui.frame()));
+    }
+    let (latin, cjk) = (f.latin.handle.unwrap(), f.cjk.handle.unwrap());
+    let last = &ticks[5];
+    // Glyph by glyph, each in its own face.
+    let shown: Vec<(&str, og_render::FontHandle)> =
+        last.iter().map(|c| (c.0.as_str(), c.1)).collect();
+    assert_eq!(
+        shown,
+        [
+            ("G", latin),
+            ("o", latin),
+            (" ", latin),
+            ("原", cjk),
+            ("点", cjk)
+        ],
+        "a command per glyph, each with its run's face"
+    );
+    assert!(
+        last.windows(2).any(|w| w[0].3 != w[1].3),
+        "each glyph its own phase: {last:?}"
+    );
+    assert!(
+        ticks.windows(2).any(|w| w[0][3].3 != w[1][3].3),
+        "the CJK glyphs move between ticks"
+    );
+    // Under reduced motion it is still: a command per face again.
+    let mut t = *ui.theme();
+    t.reduced_motion = true;
+    ui.set_theme(t);
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+    ui.rich_text("Hint", "[wave]Go 原点[/wave]", RichTextDesc::default());
+    ui.end();
+    let still = commands(ui.frame());
+    assert_eq!(still.len(), 2, "{still:?}");
 }

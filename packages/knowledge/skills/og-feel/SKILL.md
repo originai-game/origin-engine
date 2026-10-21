@@ -270,10 +270,11 @@ and never put gameplay on a layer whose parallax is not 1.
 
 ## 12. Controllers by genre
 
-Use `og.PlatformerController` (2D) and `og.CharacterController` (3D)
-instead of moving bodies by hand: they already have coyote time, a jump
-buffer, variable jump height and moving platforms. Tune by feel, starting
-from these (the defaults are the first column):
+Use `og.PlatformerController` (2D), `og.CharacterController` (3D) and
+`og.Vehicle` (cars) instead of moving bodies by hand: the controllers
+already have coyote time, a jump buffer, variable jump height and moving
+platforms, the car its suspension, grip and steering. Tune by feel,
+starting from these (the defaults are the first column):
 
 | `og.PlatformerController` | precise (Celeste-like) | floaty (kid-friendly) | heavy (Castlevania-like) |
 |---|---|---|---|
@@ -300,6 +301,39 @@ from these (the defaults are the first column):
 - Ragdolls: `blendTime` 0.15–0.3 s from the animation to the bones; set
   `weight` 1 on the killing blow's tick, with its hit stop, so the fall
   starts from the hit pose.
+- Cars: `og.Vehicle` on a dynamic chassis whose `og.RigidBody.mass` is the
+  car's (the defaults are a 1,000 kg road car; a car-sized box at density 1
+  weighs a few kilograms and the newtons below would throw it). The
+  suspension and `grip` scale with the mass; `engineForce` (per driven
+  wheel) and `brakeForce` (per wheel) are newtons and do not, so a heavier
+  car takes proportionally more. Measured on flat ground, 60 Hz:
+
+  | `og.Vehicle` | road car (the defaults) | arcade racer | truck | kart |
+  |---|---|---|---|---|
+  | chassis mass (kg), box (m) | 1,000, 1.8 × 0.6 × 4 | 1,000, 1.8 × 0.4 × 4 | 4,000, 2.4 × 1.6 × 6 | 150, 1 × 0.3 × 1.6 |
+  | `centerOfMass` y (m) | 0 | -0.3 | -0.4 | 0 |
+  | `wheelBase` / `track` / `wheelRadius` | 2.6 / 1.6 / 0.4 | 2.6 / 1.6 / 0.4 | 4 / 2 / 0.5 | 1.2 / 1 / 0.15 |
+  | `engineForce` (N a wheel), `drive` | 2,500, rear | 5,200, rear | 3,000, all | 450, rear |
+  | `brakeForce` (N a wheel) | 2,000 | 2,600 | 5,000 | 350 |
+  | `maxSpeed` (m/s) | 40 | 46 | 25 | 22 |
+  | `grip` | 2 (holds the line, slides at full lock) | 0.62 (slides on the throttle) | 2 | 2.5 |
+  | `maxSteer` (rad) | 0.55 | 0.5 | 0.45 | 0.6 |
+  | measured: after 1 s, braking | 4.7 m/s, 8 m/s² | 9.3 m/s, 10.5 m/s² | 2.8 m/s, 5 m/s² | 5 m/s, 10 m/s² |
+
+  `rollInfluence` 0 (the default) keeps every one of them on its wheels at
+  full lock at top speed; rapier's own 0.1 tips the road car onto its roof
+  at full lock above about 20 m/s. For body roll raise it to 0.05 with the
+  centre of mass lowered below the wheel mounts (`og.RigidBody.centerOfMass`).
+  Shorten the lock with speed (a quarter of it at top speed) and ease the
+  wheel to it over 0.1–0.2 s, as a pad's stick does; a little downforce
+  (`og.physics.applyForce(world, car, { x: 0, y: -0.004 * v * v * mass, z: 0 })`
+  every tick with the wheels down) keeps a fast car planted over crests.
+  Smoke, skid marks and the squeal read `og.Vehicle.slip` (the largest of
+  the wheels', 0 gripping to 1) or each wheel's `slip` and `sideSpeed` from
+  `og.physics.vehicleWheels`: start smoke and marks above about 0.2, fade
+  the squeal in with it. Prove it: with the throttle held from rest,
+  `get:car.og.Vehicle.speed` two seconds later reads about 8.9 m/s for the
+  defaults (4.7 after one).
 - Prove it: `0.5:key_down:Space;0.9:dump_entity:hero:apex.json` — the dump
   shows `og.PlatformerController.jumping` and a height within 10 % of
   `jumpHeight` at `timeToApex`. `templates/archetypes/runner`'s courier is a

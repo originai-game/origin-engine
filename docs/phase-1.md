@@ -701,6 +701,362 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, racing-ui: the racing HUD in the game's words, Back under a dialog, a time as a result, texture repeat, the outline on a large ground, the shell's control kept clear (3189ae6a)
+
+Meridian Loop's UI, render, shell and knowledge findings (lane-3): 8, 9,
+10, 13, 15, 7, 18 and 17.
+
+- **#8.** The HUD's words were hard-coded English, unlike the other kit
+  screens; `RacingHudDesc` gains `lapLabel`, `bestLabel`, `pauseLabel`,
+  `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`, and for a time
+  trial `delta`, `splits` (label, time, delta signed with a plain `-`),
+  `racers: 0` to hide the place and `boostMeter: false`; the defaults
+  draw exactly as before. Test `tests/ui-race.test.ts` (a German HUD
+  with no English left, the delta and splits, no place or meter).
+- **#9.** The HUD asked for Back before the pause dialog was built that
+  tick; `og.ui.back()` now answers false while an unlocked dialog or
+  menu was on top last frame (a locked dialog lets Back through). Test
+  `a_hud_never_takes_back_while_a_dialog_is_open`. A game that draws its
+  HUD under pause (Kestrel, the kit's pause screen) now closes pause on
+  Escape: their suites run at the merge.
+- **#10.** `ResultsDesc.format` (`points` or `time`) and `scoreLabel`:
+  with `time` the score counts up as m:ss.mmm, the lower time is the
+  best, a best of 0 shows no best line (the results case of
+  ui-race.test.ts: "1:36.233", "Bestzeit 1:35.100").
+- **#13.** Render warnings were logged with tick 0 and one flag allowed
+  one warning per process; each missing character is named once, on
+  the tick it is first drawn, with the font's asset and its charset
+  (inferred from its glyphs; the charset table moved to
+  `og_cook::format::charset`, one copy); every render warning carries
+  its real tick (`tests/missing_glyphs.rs`).
+- **#15.** A geometry option, not a material one: box, plane and sphere
+  descs gain `uvRepeat` (the material sampler already wraps; a material
+  `repeat` would have been a second path through every lit and shadow
+  shader). New og-tests scene `ground-grid` (a 1,600 m plane, a grid
+  line every 10 m under posts every 10 m; `uvRepeat` 1 draws no lines).
+- **#7.** The outline pass compared a neighbour's depth with the pixel's
+  own, so a ground at a grazing angle read as edge everywhere; when the
+  neighbour and the opposite pixel are the same object facing the same
+  way, the test is against where that plane continues (capped at twice
+  the depth), and the distance term grows a line to at most 4× its
+  width (fxpost.wgsl, pbr_prepass.wgsl). New scene
+  `stylise-outline-ground` (`a_large_ground_keeps_its_outline_only_where_it_ends`;
+  the old shaders turn half the frame cyan). Re-recorded, each against
+  main's shaders on the same tree: fx-showcase
+  `looks-bold-comic-illustration` (457 pixels, RMSE 0.0044: a box's top
+  face seen nearly edge-on is no longer one dark band),
+  `looks-rubber-hose-animation` (237, 0.0082, the same), `post` (160,
+  0.0035: the ground's far edge a one-pixel line instead of 3 to 4
+  rows), og-tests `stylise-outline-voxels` (138, 0.0044: lines across
+  voxel faces seen edge-on gone). `looks-neon-vector` was re-recorded
+  once on a stale addon and put back: the change does not move it.
+- **#18.** New `Viewport.covered`: the shell measures its Back control
+  (the round, icon-only size) and passes it through `Shell.resize`, and
+  og-ui moves any anchored group that would overlap it along its edge,
+  so the racing HUD's place and lap sit to its right
+  (`anchored_groups_keep_out_of_the_host_control`). Untested in a
+  browser; the control's name beside it for the first 4 s is not kept
+  clear.
+- **#17.** og-core §2 gains "Recording, replaying and ghosts" on Meridian
+  Loop's code, og-game §17 points to it.
+
+Not done: the kit's string tables for the racing HUD's words (its CJK
+subsets would be re-made); Meridian Loop does not use the new fields
+yet; the other HUDs' fixed words ("Pause", "Jump", "kills", "moves
+left", "Target").
+
+## Wave 13, vehicle-physics: wheel rays on the chassis's layers, forces and a centre of mass, light snapshots, a mid-tick save that completes its tick (e9eae253)
+
+Meridian Loop's physics and API findings (lane-5): 3 (the blocker), 2,
+1, 16, 11, 12, 4, 5, 6 and 14.
+
+- **#3.** The wheel-ray filter in vehicle3.rs had no collision groups;
+  the rays now use the chassis collider's layers and mask. Test
+  `cars_on_layers_that_do_not_meet_pass_through_each_other` (the second
+  car sat at y 2.05 on the first's roof; both at 0.875 on the road now;
+  a control case keeps cars on meeting layers stacked).
+- **#2.** Four one-shot calls on the pattern of `og.camera.shake`:
+  `og.physics.applyForce` and `applyImpulse` (an optional world point),
+  `applyTorque`, `applyTorqueImpulse`, queued and applied by the tick's
+  physics step in call order (a force lasts one step, an impulse applies
+  at once, a hit stop drops forces and keeps impulses, pending pushes
+  are in snapshots and the hash, refused without an `og.RigidBody`);
+  `og.RigidBody.centerOfMass` (an offset, the inertia the shape's);
+  rapier's raycast car copied into og-physics
+  (`raycast_vehicle.rs`, Apache-2.0, unchanged but for making roll
+  influence and skid info public) so `og.Vehicle.rollInfluence` exposes
+  the controller's own roll setting, default 0 (rapier's 0.1 flips the
+  default car at full lock above about 20 m/s). Tests: forces.rs (6,
+  the 2D profile, the hit stop, the snapshot, a weighted box righting
+  itself) and a vehicles test (0.1 tips the car, 0 or a lowered centre
+  keeps it upright).
+- **#1.** Defaults for a 1,000 kg car: `engineForce` 2,500 N per driven
+  wheel, `maxSpeed` 40, `brakeForce` 2,000 (now newtons per wheel,
+  applied as force × the tick, where it was rapier's per-step impulse
+  cap), `wheelMass` 20; 4.7 m/s after 1 s, about 8 m/s² braking. og-feel
+  §12 gains a vehicle table (road car, arcade racer, truck, kart) and
+  tells authors to set `og.RigidBody.mass`. The reported `maxSpeed`
+  overshoot did not reproduce (20.00 for 20 on flat ground).
+- **#16.** `WheelPose` gains `slip` (1 − rapier's skid info) and
+  `sideSpeed`; `og.Vehicle` a written `slip`, the largest of its
+  wheels'; 0 in 2D.
+- **#11.** The physics save wrote the whole rapier world, triangles
+  included; it now cuts out the geometry of mesh, convex-hull and
+  height-field colliders and stores each one's handle and scale, the
+  decode rebuilding them from the registered asset (a save naming an
+  unregistered mesh is refused, naming it). saves.rs: a 7,200-triangle
+  ground with a hull and a height field, 630,593 bytes before, 12,239
+  now, the same hash and future after the restore.
+- **#12.** The restore completes the tick: a snapshot taken inside a
+  system names that system (snapshot format 4), and after restoring it
+  the next step runs the systems after that one, physics included, with
+  the tick's own events, then ends the tick (deferring the snapshot was
+  impossible, `snapshot()` returns its text at once). Take the snapshot
+  as the system's last write: anything after the call is not in the
+  save (`world.snapshot`/`restore`, og-core §2, og-game §17). Tests:
+  og-ecs snapshot.rs (completion and refusal) and
+  `crates/og-runtime/tests/mid_tick_save.rs` (saved in a system at tick
+  8, restored at tick 3, the same hash at tick 30, `applyImpulse`
+  through the host ABI). Not checked: on the frame that completes a
+  restored tick, UI drawn by systems before the saver is probably
+  missing for that one frame.
+- **#4, #5, #6 (docs).** `str` holds at most 4,096 bytes and there is no
+  array field (numbered fields, an entity per item, or chunked text);
+  handles go in their own field kinds (`Asset()`, `Texture()`,
+  `Sound()`, `Entity()`), never `u32`; a system's query requires every
+  component of its reads and writes, and `world.query` stays refused
+  inside a system by design (a system reaches what it declared). IDL
+  docs and og-core §4.
+- **#14.** `og.Model.visible` (default true); the renderer skips every
+  draw of a hidden model, static or animated
+  (`a_hidden_model_draws_nothing_posed_or_not`).
+
+After the merge: the layouts of `og.RigidBody`, `og.Vehicle` and
+`og.Model` changed, so an existing save holding them needs `{ migrate:
+true }`; the physics save format changed, so physics worlds' hashes
+differ from earlier recorded ones and an older engine refuses a
+format-4 snapshot; `tests/save.test.ts` was edited to the mid-tick
+behaviour; Meridian Loop pins `rollInfluence: 0.1` and `brakeForce`
+156,000 N to keep its tuned handling (not bit-exact: its suite, its
+`LAP1 = 2046` in ghost.og.ts and its frames are checked at the merge).
+
+## Wave 13, ui-five: text editing by grapheme, bounds in the a11y tree, miter joins, the kit on the icon set (e6c445bc)
+
+Rows 59, 60 and 61, on lane-2.
+
+- **Row 59, text editing.** The caret moved by one char and stopped
+  between a base and its accent; arrows, Backspace, Delete, a press and
+  line wrapping now step over a whole grapheme cluster (a base and its
+  marks, an emoji with its tone, a ZWJ family). ← and → were logical
+  everywhere; in a right-to-left run they move the way they point, for
+  single steps and word moves, and a selection collapses to the arrow's
+  side. Under mac keys only Ctrl+A/E worked; Ctrl+F, B, N, P, D, H, K,
+  U and W now do as on a Mac and nothing off one (`UiKey` gains them,
+  plus `=`, `-`, `0` and their keypad versions). The native macOS host
+  edits with mac keys (a script holding Ctrl or Meta edits differently
+  on a Mac than on Linux unless it pins `macKeys` through
+  `og.ui.previewViewport`; the IDL, README and skill say so). A mixed
+  text's runs share one baseline centred on the extents of every face
+  the line uses (labels, fields, text areas, rich spans). A `[wave]`,
+  `[shake]` or `[pulse]` span that mixes faces, runs right to left or is
+  shaped animates glyph by glyph, a shaped run's joined letters moving
+  together. Tests failing on the old code: fields.rs
+  `the_caret_and_backspace_step_by_grapheme_clusters`,
+  `arrows_move_as_they_point_in_right_to_left_runs`,
+  `mac_keys_honour_the_emacs_keys`; runs.rs
+  `a_mixed_labels_runs_share_a_baseline_that_holds_every_face`,
+  `a_moving_span_that_mixes_faces_moves`; og-runtime
+  `a_native_host_edits_with_the_platforms_keys`. Frame moved:
+  `text-mixed-runs` (its Arabic lines up 1 px, the Arabic face's deeper
+  descender). Not done: an emacs kill buffer (Ctrl+Y, Ctrl+T) and fully
+  visual caret movement across a bidi run's edge (the README's owed
+  list).
+- **Row 60, accessibility.** The tree carried no number bounds and the
+  mirror guessed 0 to 100 for values ending in `%`. `A11yNode` gains
+  `valueMin`, `valueMax` and `valueNow` (null for none): a slider its
+  range, a bounded stepper its bounds, an unbounded one its value, a
+  meter 0 to max, a progress 0 to 100; the web mirror writes
+  `aria-valuemin`, `aria-valuemax` and `aria-valuenow`. Tests:
+  `ranges_carry_their_bounds_and_value` (a11y.rs) and
+  `tests/web-a11y-range.test.ts` (its bounds test fails on the old
+  mirror; its reader-adjust test drives the range's `input` and
+  `change`; the stand-in DOM now bubbles events).
+- **Row 61, materials and input.** Every icon stroke was distance
+  minus half its width, so joins came out round; a path's
+  `stroke-linejoin` is honoured (miter to `stroke-miterlimit`, bevel,
+  round) and a set declares a default with a `join` line (og-cook
+  icons.rs; three tests fail on the old code). The kit's screens draw
+  from the icon set (`iconoir.ogt` declares `join round`, gains 8
+  iconoir SVGs and the kit's 17 names, 81 entries; hammer, hexagon,
+  bowling-ball and emoji-talking-angry stand in for sword, gem, bomb
+  and skull); style packs keep their own icons; the materials frame is
+  byte-identical. A two-finger scroll never kept its velocity and now
+  flings on lift, and a float rounding at the scroll clamp that ended
+  every fling early is fixed; the zoom view takes focus and `+`/`=`,
+  `-`, `0` and the arrows (tests `two_fingers_lifting_off_a_list_fling_it`,
+  `a_focused_zoom_view_takes_keys`). Frame moved: `materials` (its quest
+  list flings on to Quest 4 to 6). The glass blur pyramid is left
+  alone (optimisation). The kit's desktop and phone frames on the
+  default skin move with the icon set and are re-recorded by the
+  coordinator at the merge (`OG_UI_CAPTURE=1 og test`), with the cooker
+  version bumped to r5 so a user's icon set re-cooks with its joins.
+
+## Wave 13, templates-title: the archetypes' opening titles drawn finished behind the gate (991f6435)
+
+The web-boot-2 pattern applied to the templates (lane-4): idle, rhythm,
+roguelike, third-person and tower-defense (the five whose title is a
+`mainMenu`) gain `leftTitle` on their `Game` resource and pass
+`instant: !g.leftTitle` (idle's save writes named fields, so the flag
+is not saved). No frame moved: the five record their title between
+0.5 s and 1.0 s, after the entrance, so `title.png` is byte-identical
+in all five (roguelike's `dive` at 0.048 % and third-person's three at
+RMSE ≤ 0.002 differ the same with the change removed: the engine's).
+Tower-defense's title at tick 3 used to be the panel popping in with
+only "Path Guard" drawn and is now the whole title. Not changed:
+match3, runner and topdown draw their titles as text and sprites with
+no panel; the kit opens on its gallery (default skin, no entrance);
+`templates/game`'s menu is a plain column. The og-ui skill's template
+table gained `instant` on its title row.
+
+## Wave 13, web-boot-2: the opening title drawn finished behind the play gate (b5350d48)
+
+The web-boot stream's leftover (lane-5), cut to this one item on
+2026-10-22 (the pipeline warm-up after the tap dropped as optimisation).
+Kestrel plays no fade of its own: its skin's `motion { enter slideUp;
+stagger 40 }` slides the title panel in and staggers its buttons from
+tick 1 over about 30 ticks, and the gate frame is a still from ticks 2
+to 9, so the panel was frozen part-way; Hollowbell (`enter slideDown`)
+and Lantern Vale (`enter scale`, stagger 35) do the same, and no API
+let a game turn a panel's skin entrance off (`og.ui.transition`'s
+`instant` does not reach it). New `instant` field on `AnchorDesc` and
+`MainMenuDesc`: the panel shows finished the first time it is built, no
+entrance, no stagger, its buttons usable at once, and only on that
+first build (a panel that comes back enters normally); og-ui
+`open_anchor`, og-runtime's mapping, the kit's `mainMenu`; the three
+games pass `instant: !g.leftTitle`, so only the opening title is
+affected. Kestrel's tick 1 now shows the whole settled title; the
+games' 25 metal frames are byte-identical. Docs: og-platform-sdk §3
+says what the frame behind the gate is and how a title is built, og-ui
+§6 and web-export §The shell point to it. Test: og-ui
+`an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_it_comes_back`
+(skin.rs; fails with `instant` ignored). One WebGPU run made before the
+scope cut reached the stream: Kestrel's capture behind the gate went
+from RMSE 0.119 to 0.025 against the metal title, the rest being the
+title's slow camera between tick 1 and the reference's tick 72. Not
+done: the archetype templates and the kit build their titles with
+`mainMenu` too and still play the entrance behind the gate (several
+record their title at 0.3 s, so switching them moves references);
+Lantern Vale's first ticks look foggier and brighter while the exposure
+settles (the engine's adaptation, not the game's).
+
+## Wave 13, dogfood-5: Meridian Loop, a night time trial on a neon circuit (7b927dd9)
+
+The fifth dogfood round (lane-3): a fourth game of a genre the three
+did not cover, written from the knowledge package alone, in
+`examples/meridian-loop`. A generated 956 m loop with banked bends and a
+jump over a gap; a car on `og.Vehicle` with keyboard and pad; a lap
+timer with two sector splits, each with its delta against the record;
+the best lap's ghost replayed from recorded poses; a watch-replay that
+saves the world during the countdown, restores it and feeds the
+recorded inputs, reproducing the race tick for tick (laps of 2,046,
+1,859 and 1,841 ticks matched); the record, its ghost, the settings and
+a leaderboard through `og.platform`; English and German; engine audio
+pitched by the revs, a tyre squeal, smoke and skid marks; the title,
+pause, settings, results and leaderboard screens; every asset from
+`tools/make-assets.ts`. 10 playtests and 14 metal frames (10 from
+frames.og.ts, 4 from published.og.ts); 9 of 10 passed on the last full
+run before the merge, `replay`'s lap count failing because its script
+ended at 90 s before the second lap (moved to 110 s and rerun alone:
+two laps, a 1,710-tick record; the suite reruns on main after the
+merge). One WebGPU play through dogfood.ts (its play plan committed):
+boot download 5,288,182 B brotli over 58 files (the engine 3.16 MB,
+cooked 1.70 MB, one music chunk), first frame 696 ms with lanes on, 60
+ticks/s, step p95 2.65 ms, the language back after a reload, the end
+report on Back, no console error.
+
+**Findings (examples/meridian-loop/FINDINGS.md): 18, 1 blocker, 10
+annoyances, 7 nits.** The blocker, #3: `og.Vehicle`'s wheel rays land on
+any collider below them whatever its `layers` and `mask`, so two cars
+that must not touch stand on each other (the ghost is poses, not a
+second car). Physics and API: #2 no force, torque, impulse or
+centre-of-mass control, so the car rolled over at moderate lock; #1
+og-feel §12 has no vehicle row and the vehicle's defaults drive a
+chassis of a few kilograms; #16 WheelPose has no slip; #11
+`world.snapshot()` carries the level's triangle-mesh colliders (400 KB
+of the 512 KiB slot); #12 a snapshot taken inside a system and restored
+skips the rest of that tick, undocumented, and a replay from it
+diverges; #6 a system's query is every component of its reads and
+writes and `world.query` is refused inside a system, neither said; #4 no
+array field and `str` at most 4,096 bytes, unsaid; #5 which column holds
+an asset handle, unsaid; #14 `og.Model` has no `visible`; #15 no
+texture repeat. UI: #8 `racingHud`'s words are English and fixed with no
+place for a time trial's numbers; #9 it takes Back under an open dialog,
+so Escape never closes pause over it; #10 `resultsScreen`'s score is a
+whole number counted up, so a time cannot be the headline; #13 the
+missing-glyph warning always says tick 0, once a process; #7 the
+neon-vector outline washes a large ground plane; #18 the shell's Back
+button covers the HUD's top-left on the published page; #17 nothing in
+the package says how a game records and replays its play or makes a
+ghost. The fixes are the next streams.
+
+## Wave 13, vox-stylise: `.vox` key frames read, stylise's footprint along the depth (ee07a3c1)
+
+Rows 63 and 55, on lane-4.
+
+- **Row 55, stylise in surface space (725b9a4e).** The footprint that
+  picks a pattern's octave and the canvas level was one pixel's width
+  across the view ray; on a floor seen at a low angle the finer
+  octave's marks were smaller than a pixel along the depth, aliased, and
+  the aliasing changed as one octave faded into the next: the moiré arcs
+  on `stylise-halftone-surface`'s far floor. stylise.wgsl now measures
+  the footprint along the depth gradient (the longer of the steps to the
+  neighbouring pixels across and down, each rebuilt at its own depth,
+  a silhouette on one side ignored, capped at 32× the width across the
+  ray), and dot edges and stroke widths follow the two screen-space
+  steps on each projection plane, so marks stay a pixel wide and crisp
+  (object space uses the instance's own steps, an even footprint at
+  instance edges). Re-recorded on metal: `stylise-halftone-surface`
+  (RMSE 0.078 from the old shader: the arcs gone, the dots in even
+  receding rows that flatten to wide ellipses towards the horizon, the
+  tone smooth, the dots near sphere rims a little coarser),
+  `stylise-surface` (0.035) and `stylise-object` (0.044): the hatched
+  floor shadows are legible crossed strokes instead of a dense grey and
+  the far canvas grain is calmer. Every other og-tests scene renders
+  exactly as on main's shader (checked before the scope correction);
+  after the merge, fx-showcase's looks suite moved one frame,
+  `looks-inked-comic-3d` (its floor hatched in surface space: RMSE 0.047,
+  4.98 % outliers, the far floor's moiré gone), re-recorded on metal by
+  the coordinator; the other 36 looks frames are unmoved. Row 55 is
+  closed.
+- **Row 63, `.vox` animation (431d9da1, 900158dc).** The importer read
+  only the first of an `nTRN`'s per-frame dicts, so a part moving
+  across frames stayed put. og-cook now keeps every key sorted by `_f`
+  and held until the next (MagicaVoxel's sampling, as ogt_vox does it;
+  not checked against a file the editor wrote), walks the scene graph
+  once per frame up to the last key, splits each part into runs of one
+  model at one rotation (a rotation change is its own mesh, swapped in
+  like a frame's model), gives a moving part a STEP translation channel
+  on its joint beside the scale channel (a hidden frame holds the nearest
+  shown frame's position), takes `voxOrigin bottom` from the lowest
+  voxel over every frame, and leaves a file static when its keys change
+  nothing: all seven `.vox` files in the repo convert to byte-identical
+  glTF. Tests: two unit tests, the cook test
+  `a_keyed_transform_cooks_to_a_moving_joint` (fails on the old importer:
+  the keyed file cooked as static), and the og-tests scene
+  `vox-keyframes` (it writes a `.vox`, cooks it, samples the clip with
+  og-anim and skins the part as og-runtime does; og-tests gains og-cook
+  and og-anim as native-only dependencies, the scene in a `NATIVE_SCENES`
+  list that `og-gfx --all` includes and the browser set leaves out).
+  Its frame on metal: two copies of a grey slab with a blue post; on
+  the left (frame 0) the red block rests on the slab left of the post,
+  on the right (frame 2) it is lifted clear of the slab right of the
+  post, its shadow on the slab. Not done: a visibility track so a folded
+  frame costs no joint and no draw (a new channel type through og-anim's
+  sampling, blending, graph layers and retargeting, a glTF extension, a
+  schema bump and the runtime skipping hidden draws), a cost matter
+  deferred with the optimisation rows; `_loop` and MagicaVoxel's
+  playback range are still not read (`voxFps` and `voxClip` stand in).
+
 ## Wave 13, no-renderer: a playtest without a renderer passes on its other checks and says so (71c0e9dd)
 
 The engine side of the CPU sandbox decision (lane-1): without a GPU
@@ -4926,15 +5282,15 @@ resource only the owner can give.
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open (round three, 1f0ecdc3, measured natively only; `og.physics.stats` through the web host is unmeasured too) |
 | 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` landed with ci-green (53b876f7) and has not run for real (row 82); wave 7's and waves 8 and 9's runs are recorded in their Main gate sections |
 | 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | closed: wave 11's second wave-end run (e7d6cb5e, `--record og-ui,...`) recorded og-ui's 85 frames on lavapipe and every one is within tolerance of `metal` (worst `kit-desktop-widgets` RMSE 0.0086, 0.159 %), so og-ui keeps no vulkan-cpu copy at all (36b326c3; Main gate, wave 11) |
-| 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
+| 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | closed at 725b9a4e (Wave 13, vox-stylise): the footprint measured along the depth gradient; three stylise frames re-recorded |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 58 | og-ui's cooked-font text frames in the browser tiers (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their fonts, which og-tests-web cannot) | P4 UI text | M | engine, phase 4 | open |
-| 59 | og-ui text, what the UI text, fields and UI four rounds left (og-ui README §What phase 2 owes): the caret and Backspace step by character, not grapheme cluster; a mixed text's runs share the role face's baseline; word moves are logical in right-to-left runs; emacs keys beyond Ctrl+A/E; native hosts on macOS edit with Ctrl; a `[wave]`, `[shake]` or `[pulse]` span that mixes faces is drawn still | P4 UI fields, UI four | M | engine, phase 4 | open |
-| 60 | og-ui accessibility: the slider's and spinbutton's mirror carry no `aria-valuemin`/`-max` (the tree has no bounds); a reader's adjust checked through the native range's `input` event in Chrome, not with VoiceOver itself | P4 UI shell, UI four | S | engine, phase 4 | open |
-| 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | open |
+| 59 | og-ui text, what the UI text, fields and UI four rounds left (og-ui README §What phase 2 owes): the caret and Backspace step by character, not grapheme cluster; a mixed text's runs share the role face's baseline; word moves are logical in right-to-left runs; emacs keys beyond Ctrl+A/E; native hosts on macOS edit with Ctrl; a `[wave]`, `[shake]` or `[pulse]` span that mixes faces is drawn still | P4 UI fields, UI four | M | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five) but for an emacs kill buffer and visual caret movement across a bidi edge, in the og-ui README's owed list |
+| 60 | og-ui accessibility: the slider's and spinbutton's mirror carry no `aria-valuemin`/`-max` (the tree has no bounds); a reader's adjust checked through the native range's `input` event in Chrome, not with VoiceOver itself | P4 UI shell, UI four | S | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five): the tree carries valueMin/valueMax/valueNow, the mirror writes the aria range |
+| 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five) for the joins, the icon set, the fling and the zoom view; the glass blur pyramid's cost deferred with the optimisation rows |
 | 62 | Platform ask 12: the game wizard's style step (a catalogue entry from the premise, the look written, its three checks for the blind critic; `docs/platform-asks.md`) | P4 knowledge 3 | M | platform | open, waiting on the platform |
-| 63 | `.vox` animation, the rest (og-cook README §What phase 2 owes): MagicaVoxel's `nTRN` key frames are not read (a transform's first frame places it throughout, so a part moving across frames does not move), and every folded frame still costs a joint and a draw (its vertices run through the skinning shader at scale 0; a visibility track in og-anim would make a fold free) | W7 cook-vox | M | engine, phase 4 | open |
+| 63 | `.vox` animation, the rest (og-cook README §What phase 2 owes): MagicaVoxel's `nTRN` key frames are not read (a transform's first frame places it throughout, so a part moving across frames does not move), and every folded frame still costs a joint and a draw (its vertices run through the skinning shader at scale 0; a visibility track in og-anim would make a fold free) | W7 cook-vox | M | engine, phase 4 | the key frames closed at 431d9da1 and 900158dc (Wave 13, vox-stylise); the visibility track (a folded frame's joint and draw) deferred with the optimisation rows; `_loop` and the playback range still not read |
 | 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | closed at 3c036fa4 (api-surface round two): the reverse check fails on an undeclared member, with a one-entry allow-list (`World.id`), and found 17 column factories and three constants never exported; the shell crash path tested under bun (tests/web-shell-crash.test.ts); the runtime `Engine` class stays unchecked (the host's lifecycle object) |
 | 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | closed at a2e48f3f and ae9ae608 (api-surface round two): `field name str.48` in IDL records through every generated output, the cooked-scene string load test in og-runtime, the web-host half of the cross-host string test (run by the stream against the measure lane's module at cf5f2b9, and by the full lane since) |
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |

@@ -41,7 +41,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r4");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r5");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -454,6 +454,72 @@ impl BlobKind for SoundChunk {
 }
 
 // ── font ─────────────────────────────────────────────────────────────────
+
+/// The named code point sets a font's `.ogt` takes (`font { charset … }`),
+/// in the order [`charset_words`] names them.
+pub const CHARSET_WORDS: [&str; 8] = [
+    "latin",
+    "ascii",
+    "punct",
+    "cjk-punct",
+    "kana",
+    "hangul",
+    "arabic",
+    "all",
+];
+
+/// The code points a charset word names.
+// A charset is a list of ranges and some charsets are one range: clippy's
+// single_range_in_vec_init reads `vec![a..=b]` as a mistaken `(a..=b).collect()`.
+#[allow(clippy::single_range_in_vec_init)]
+pub fn charset(word: &str) -> Option<Vec<std::ops::RangeInclusive<u32>>> {
+    Some(match word {
+        "ascii" => vec![0x20..=0x7e],
+        "latin" => vec![0x20..=0x7e, 0xa0..=0xff],
+        "punct" => vec![0x2000..=0x206f],
+        "cjk-punct" => vec![0x3000..=0x303f, 0xff00..=0xffef],
+        "kana" => vec![0x3040..=0x30ff],
+        "hangul" => vec![0x1100..=0x11ff, 0x3130..=0x318f, 0xac00..=0xd7af],
+        "arabic" => vec![
+            0x0600..=0x06ff,
+            0x0750..=0x077f,
+            0xfb50..=0xfdff,
+            0xfe70..=0xfeff,
+        ],
+        "all" => vec![0..=0x10ffff],
+        _ => return None,
+    })
+}
+
+/// The charset words a cooked font's glyphs show (its `.ogt`'s
+/// `font { charset … }` as far as the atlas tells: a word whose ranges hold
+/// at least 8 of its glyphs not already named; `latin` over `ascii` when
+/// Latin-1 is there), and how many glyphs no word names (its `chars`). The
+/// cooked blob keeps the glyphs, not the words: what a missing-glyph
+/// warning says of the font.
+pub fn charset_words(codepoints: &[u32]) -> (Vec<&'static str>, usize) {
+    let within =
+        |word: &str, c: u32| charset(word).is_some_and(|r| r.iter().any(|r| r.contains(&c)));
+    let mut named: Vec<&'static str> = Vec::new();
+    let mut left: Vec<u32> = codepoints.to_vec();
+    for word in CHARSET_WORDS {
+        if word == "all" || (word == "ascii" && named.contains(&"latin")) {
+            continue;
+        }
+        let hits = left.iter().filter(|&&c| within(word, c)).count();
+        let enough = if word == "latin" {
+            // Latin-1's upper half, beyond ASCII.
+            left.iter().filter(|&&c| (0xa0..=0xff).contains(&c)).count() >= 8
+        } else {
+            hits >= 8
+        };
+        if enough {
+            named.push(word);
+            left.retain(|&c| !within(word, c));
+        }
+    }
+    (named, left.len())
+}
 
 row!(
     /// The root of a font blob: metrics in em units, the atlas pages' size.

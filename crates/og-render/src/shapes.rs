@@ -61,6 +61,44 @@ pub fn plane(size: f32, uv_repeat: f32) -> MeshData {
     }
 }
 
+/// A rectangle of `width` × `height` in the xy plane facing +z, centred at
+/// the origin, UVs 0..1 with v down (three.js `PlaneGeometry`, what
+/// og.render.planeGeometry makes; turn it -π/2 about x for a floor).
+pub fn plane_xy(width: f32, height: f32) -> MeshData {
+    let (w, h) = (width / 2.0, height / 2.0);
+    let v = |x: f32, y: f32, u: f32, t: f32| Vertex {
+        tangent: [0.0; 4],
+        position: [x, y, 0.0],
+        normal: [0.0, 0.0, 1.0],
+        uv: [u, t],
+        color: [1.0; 4],
+    };
+    MeshData {
+        vertices: vec![
+            v(-w, -h, 0.0, 1.0),
+            v(w, -h, 1.0, 1.0),
+            v(w, h, 1.0, 0.0),
+            v(-w, h, 0.0, 0.0),
+        ],
+        indices: vec![0, 1, 2, 0, 2, 3],
+    }
+}
+
+/// Scales a mesh's UVs by `repeat` along u and v, so a texture runs
+/// `repeat` times across it (three.js `texture.repeat`; og.render's
+/// geometry descs' `uvRepeat`). Material textures sample with repeat
+/// wrapping, so the copies tile: a 1,600 m plane at 160 is a texture every
+/// 10 m.
+pub fn repeat_uv(mesh: &mut MeshData, repeat: glam::Vec2) {
+    if repeat == glam::Vec2::ONE {
+        return;
+    }
+    for v in &mut mesh.vertices {
+        v.uv[0] *= repeat.x;
+        v.uv[1] *= repeat.y;
+    }
+}
+
 /// An axis-aligned box of `size` centred at the origin, with flat normals and
 /// UVs 0..1 on every face (three.js `BoxGeometry`).
 pub fn cuboid(size: Vec3) -> MeshData {

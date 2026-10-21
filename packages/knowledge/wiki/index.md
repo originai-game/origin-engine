@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-902 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+908 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -512,6 +512,10 @@ Field units the docs and Tune use.
 | [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
+| [`og.physics.applyForce`](physics.md#fn-applyForce) | function | physics | `og_physics_apply_force` |
+| [`og.physics.applyImpulse`](physics.md#fn-applyImpulse) | function | physics | `og_physics_apply_impulse` |
+| [`og.physics.applyTorque`](physics.md#fn-applyTorque) | function | physics | `og_physics_apply_torque` |
+| [`og.physics.applyTorqueImpulse`](physics.md#fn-applyTorqueImpulse) | function | physics | `og_physics_apply_torque_impulse` |
 | [`og.physics.clothPoints`](physics.md#fn-clothPoints) | function | physics | `og_physics_cloth_points` |
 | [`og.physics.fluid3dParticles`](physics.md#fn-fluid3dParticles) | function | physics | `og_physics_fluid3d_particles` |
 | [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |
@@ -792,6 +796,7 @@ Field units the docs and Tune use.
 | [`Query.count`](world.md#member-Query-count) | method | world | `og_query_count` |
 | [`QueryDesc`](world.md#type-QueryDesc) | desc struct | world | — |
 | [`QueryFilter`](physics.md#type-QueryFilter) | desc struct | physics | — |
+| [`RaceSplit`](ui.md#type-RaceSplit) | desc struct | ui | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |
 | [`RadioDesc`](ui.md#type-RadioDesc) | desc struct | ui | — |
 | [`RagdollBoneDesc`](physics.md#type-RagdollBoneDesc) | desc struct | physics | — |
@@ -843,6 +848,7 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
+| [`ScoreFormat`](ui.md#type-ScoreFormat) | enum | ui | — |
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |

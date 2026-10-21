@@ -57,10 +57,13 @@ export default playtest({
     const rested = game(run, "rested.json");
     t.equal([rested.hp, rested.saves, rested.savePlace, rested.chaptersReached & 2], [100, 1, 1, 2], "resting restored strength, reached chapter II and saved there");
     // og.platform.saveSlot (FINDINGS #13, fixed): parts of a key's 64 KiB, then the manifest.
-    t.ok(rested.saveBytes > 65536 && rested.saveParts === Math.ceil(rested.saveBytes / 65534), `the world (${rested.saveBytes} characters) went in ${rested.saveParts} parts`);
+    // Since the physics save stopped carrying the level's mesh colliders
+    // (they are assets) the world is about 36 KB and goes in one part;
+    // the parts follow the size either way.
+    t.ok(rested.saveBytes > 0 && rested.saveParts === Math.max(1, Math.ceil(rested.saveBytes / 65534)), `the world (${rested.saveBytes} characters) went in ${rested.saveParts} parts`);
     const calls = run.json<{ calls: Array<{ method: string; args: { key?: string; value?: unknown } }> }>("calls.json").calls;
     const keys = calls.filter((c) => c.method === "store.set").map((c) => c.args.key);
-    t.equal(keys.filter((k) => k?.startsWith("run")), ["run.a0", "run.a1", "run"], `the slot's parts, then its manifest (${keys.join(", ")})`);
+    t.equal(keys.filter((k) => k?.startsWith("run")), [...Array.from({ length: rested.saveParts }, (_, i) => `run.a${i}`), "run"], `the slot's parts, then its manifest (${keys.join(", ")})`);
     const slot = calls.find((c) => c.method === "store.set" && c.args.key === "run")!.args.value as { meta: { place: number }; parts: number };
     t.equal([slot.meta.place, slot.parts], [1, rested.saveParts], "the manifest names its waystone and its parts");
     t.equal(game(run, "quit.json").phase, TITLE, "Rest and quit went to the title");

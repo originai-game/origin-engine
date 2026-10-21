@@ -16,7 +16,7 @@ module camera {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1285</sub>
+<sub>`api.ogt` line 1288</sub>
 
 ## Contents
 
@@ -62,7 +62,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 1621</sub>
+<sub>`api.ogt` line 1624</sub>
 
 <a id="fn-punch"></a>
 
@@ -92,7 +92,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 1628</sub>
+<sub>`api.ogt` line 1631</sub>
 
 <a id="fn-kick"></a>
 
@@ -124,7 +124,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 1635</sub>
+<sub>`api.ogt` line 1638</sub>
 
 ## Components, resources and events
 
@@ -298,7 +298,7 @@ resource Camera {
 }
 ```
 
-<sub>`api.ogt` line 1290</sub>
+<sub>`api.ogt` line 1293</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -325,7 +325,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1403</sub>
+<sub>`api.ogt` line 1406</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -353,7 +353,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>`api.ogt` line 1407</sub>
+<sub>`api.ogt` line 1410</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -383,7 +383,7 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 1412</sub>
+<sub>`api.ogt` line 1415</sub>
 
 <a id="record-OrbitCamera"></a>
 
@@ -491,7 +491,7 @@ component OrbitCamera {
 }
 ```
 
-<sub>`api.ogt` line 1420</sub>
+<sub>`api.ogt` line 1423</sub>
 
 <a id="record-FollowCamera"></a>
 
@@ -529,7 +529,7 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 1494</sub>
+<sub>`api.ogt` line 1497</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -608,7 +608,7 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 1513</sub>
+<sub>`api.ogt` line 1516</sub>
 
 <a id="record-CameraZone"></a>
 
@@ -643,7 +643,7 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 1565</sub>
+<sub>`api.ogt` line 1568</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -708,4 +708,4 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 1581</sub>
+<sub>`api.ogt` line 1584</sub>

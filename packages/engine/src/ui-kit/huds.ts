@@ -1,11 +1,12 @@
 // HUDs: platformer, shooter, puzzle, idle/incremental and racing, each a
 // set of anchored groups over the game in the safe area, plus the touch
 // controls they show on phones and tablets. HUDs turn keyboard and gamepad
-// navigation off (the keys move the player); Back still answers `paused`.
+// navigation off (the keys move the player); Back still answers `paused`,
+// except under an open dialog, which keeps it (og.ui.back).
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { all, capsule, clock, fit, fmt, frame, grow, iconOr, px, token } from "./util.ts";
+import { all, capsule, clock, fit, fmt, frame, grow, iconOr, lapTime, px, token } from "./util.ts";
 
 type Hud = { paused: boolean; action: string | null; moveX: number; moveY: number; held: string[] };
 
@@ -14,8 +15,8 @@ function hud(): Hud {
   return { paused: kit.back(), action: null, moveX: 0, moveY: 0, held: [] };
 }
 
-function pauseButton(out: Hud): void {
-  const r = kit.actionButton("Pause", "Pause", { size: 44, icon: "pause" });
+function pauseButton(out: Hud, label = "Pause"): void {
+  const r = kit.actionButton("Pause", label, { size: 44, icon: "pause" });
   if (r.clicked) out.paused = true;
 }
 
@@ -208,23 +209,59 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
   return out;
 }
 
+/** A delta in seconds, signed with the ASCII minus every pack's charset holds: `-0.412`, `+1.050`. */
+function deltaText(seconds: number): string {
+  const a = Math.abs(seconds);
+  const body = a >= 60 ? lapTime(a) : a.toFixed(3);
+  return `${seconds < 0 ? "-" : "+"}${body}`;
+}
+
+/** A delta's ink: ahead (negative) success, behind danger, even muted. */
+function deltaInk(seconds: number): Api.Paint {
+  return token(seconds < 0 ? "success" : seconds > 0 ? "danger" : "fgMuted");
+}
+
 export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResult {
   const { t, touch, phone } = frame();
   const out = hud();
   const showTouch = (desc.touch ?? false) && touch;
+  const racers = desc.racers ?? 8;
+  const boost = (desc.boostMeter ?? true) ? (desc.boost ?? 0) : null;
+  const boostLabel = desc.boostLabel ?? "Boost";
   kit.anchor(`${id}.place`, { anchor: "topLeft", gap: t.lg }, () => {
-    kit.row("Position", { gap: t.xxs, cross: "end" }, () => {
-      kit.label("Place", `${desc.position ?? 1}`, { step: "displayXl", font: "display", nowrap: true });
-      kit.label("Of", `/${desc.racers ?? 8}`, { step: "xl", font: "mono", color: token("fgMuted"), nowrap: true });
-    });
-    stat("Lap", `${Math.min(desc.lap ?? 1, desc.laps ?? 3)}/${desc.laps ?? 3}`, "lap", "xl3");
+    // A time trial (racers 0) has no place.
+    if (racers > 0) {
+      kit.row("Position", { gap: t.xxs, cross: "end" }, () => {
+        kit.label("Place", `${desc.position ?? 1}`, { step: "displayXl", font: "display", nowrap: true });
+        kit.label("Of", `/${racers}`, { step: "xl", font: "mono", color: token("fgMuted"), nowrap: true });
+      });
+    }
+    stat("Lap", `${Math.min(desc.lap ?? 1, desc.laps ?? 3)}/${desc.laps ?? 3}`, desc.lapLabel ?? "lap", "xl3");
   });
   kit.anchor(`${id}.times`, { anchor: "topRight", direction: "column", cross: "end", gap: t.xxs }, () => {
     kit.row("Top", { gap: t.sm, cross: "center" }, () => {
       kit.label("Time", clock(desc.time ?? 0, true), { step: "xl", font: "mono", nowrap: true });
-      pauseButton(out);
+      pauseButton(out, desc.pauseLabel ?? "Pause");
     });
-    if (desc.best !== null && desc.best !== undefined) kit.label("Best", `Best ${clock(desc.best, true)}`, { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+    const delta = desc.delta ?? null;
+    if (delta !== null) kit.label("Delta", deltaText(delta), { step: "lg", font: "mono", color: deltaInk(delta), nowrap: true });
+    if (desc.best !== null && desc.best !== undefined) {
+      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", clock(desc.best, true)), { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+    }
+    const splits = desc.splits ?? [];
+    if (splits.length > 0) {
+      kit.column("Splits", { gap: 0, cross: "end" }, () => {
+        splits.forEach((sp, i) => {
+          kit.row(kit.idi("Split", i), { gap: t.sm, cross: "center" }, () => {
+            kit.label("Label", sp.label ?? "", { step: "meta", color: token("fgMuted"), nowrap: true });
+            const time = sp.time ?? null;
+            kit.label("Time", time === null ? "-:--.---" : lapTime(time), { step: "meta", font: "mono", color: token(time === null ? "fgSubtle" : "fg"), nowrap: true });
+            const d = sp.delta ?? null;
+            if (d !== null) kit.label("Delta", deltaText(d), { step: "meta", font: "mono", color: deltaInk(d), nowrap: true });
+          });
+        });
+      });
+    }
     if (desc.map) kit.minimap("Map", { ...desc.map, size: phone ? 112 : (desc.map.size ?? 140) });
   });
   kit.anchor(`${id}.dash`, { anchor: showTouch ? "bottom" : "bottomRight", offsetY: showTouch ? -120 : 0, direction: "column", cross: "end", gap: t.xs, width: px(220) }, () => {
@@ -236,16 +273,18 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
       });
     });
     kit.meter("Rev", desc.speed ?? 0, desc.maxSpeed ?? 300, { kind: "accent", width: grow(), height: 6 });
-    kit.meter("Boost", desc.boost ?? 0, 1, { color: token("info"), label: "Boost", width: grow(), segments: 4 });
+    if (boost !== null) kit.meter("Boost", boost, 1, { color: token("info"), label: boostLabel, width: grow(), segments: 4 });
   });
   if (showTouch) {
     kit.anchor("Steer", { anchor: "bottomLeft", gap: t.md }, () => {
-      const l = kit.actionButton("left", "Left", { size: 72 });
-      const r = kit.actionButton("right", "Right", { size: 72 });
+      const l = kit.actionButton("left", desc.leftLabel ?? "Left", { size: 72 });
+      const r = kit.actionButton("right", desc.rightLabel ?? "Right", { size: 72 });
       out.moveX = (r.pressed ? 1 : 0) - (l.pressed ? 1 : 0);
     });
     kit.anchor("Pedals", { anchor: "bottomRight", gap: t.md, cross: "end" }, () => {
-      for (const b of [{ id: "brake", label: "Brake", primary: false }, { id: "boost", label: "Boost", primary: true }]) {
+      const pedals = [{ id: "brake", label: desc.brakeLabel ?? "Brake", primary: false }];
+      if (boost !== null) pedals.push({ id: "boost", label: boostLabel, primary: true });
+      for (const b of pedals) {
         const r = kit.actionButton(b.id, b.label, { primary: b.primary, size: b.primary ? 84 : 64 });
         if (r.pressed) out.held.push(b.id);
         if (r.clicked) out.action = b.id;

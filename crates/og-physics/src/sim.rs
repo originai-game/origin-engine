@@ -11,11 +11,11 @@ use super::{VehicleState, ext};
 use crate::gather::{Body, Scene};
 use crate::schema::*;
 use crate::stats::{Laps, Phase};
-use crate::{OverlapDesc, ShapeDesc};
 use crate::{
-    QueryFilter, RaycastHit, SHAPE_CACHE_LIMIT, ShapeCastDesc, ShapeCastHit, ShapeKey, Shared,
-    StepOut,
+    Hole, QueryFilter, RaycastHit, SHAPE_CACHE_LIMIT, ShapeCastDesc, ShapeCastHit, ShapeKey,
+    Shared, StepOut,
 };
+use crate::{OverlapDesc, ShapeDesc};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
 use og_ecs::Entity;
@@ -141,6 +141,39 @@ fn collider(
         b = b.active_collision_types(rp::ActiveCollisionTypes::all());
     }
     Ok(b)
+}
+
+/// A body's collider with its centre of mass moved by
+/// `og.RigidBody.centerOfMass` (in the entity's frame, scaled like the
+/// collider's offset): the shape's mass properties at the body's mass (or
+/// the collider's density) with their centre shifted, the inertia kept.
+/// Unchanged when the offset is zero.
+fn centred(
+    b: rp::ColliderBuilder,
+    c: &Collider,
+    body: &RigidBody,
+    scale: Vec3,
+    local: rp::Pose,
+) -> Result<rp::ColliderBuilder> {
+    let offset = body.center_of_mass;
+    if offset == Vec3::ZERO {
+        return Ok(b);
+    }
+    if !offset.is_finite() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("og.RigidBody.centerOfMass must be finite, got {offset}"),
+        ));
+    }
+    let mut mp = if body.mass > 0.0 {
+        let mut mp = b.shape.mass_properties(1.0);
+        mp.set_mass(body.mass, true);
+        mp
+    } else {
+        b.shape.mass_properties(c.density)
+    };
+    mp.local_com += local.rotation.inverse() * v(flat(offset * scale));
+    Ok(b.mass_properties(mp))
 }
 
 fn local_pose(c: &Collider, scale: Vec3) -> rp::Pose {
@@ -288,14 +321,11 @@ fn insert_body(
     let (e, body) = (b.entity, &b.body);
     let kind = body_kind(b)?;
     let collider = match &b.collider {
-        Some(c) => Some(collider(
-            c,
-            b.scale,
-            local_pose(c, b.scale),
-            e,
-            body.mass,
-            shared,
-        )?),
+        Some(c) => {
+            let local = local_pose(c, b.scale);
+            let built = collider(c, b.scale, local, e, body.mass, shared)?;
+            Some(centred(built, c, body, b.scale, local)?)
+        }
         None => None,
     };
     let mut builder = rp::RigidBodyBuilder::new(kind)
@@ -372,6 +402,8 @@ fn step_here(
     // kinematic platforms included): how far each body moved this tick.
     let poses = BodyPoses::record(&sim.world);
     let handles = sync(settings, dt, scene, shared, sim)?;
+    let pushes = std::mem::take(&mut shared.pushes);
+    apply_pushes(sim, &handles, &pushes, dt);
     laps.lap(Phase::Sync);
     ext::sync_joints(scene, sim, &handles)?;
     super::vehicles(scene, dt, sim, &handles, &mut out)?;
@@ -1072,4 +1104,160 @@ impl QueryWorld {
         hits.dedup();
         Ok(hits)
     }
+}
+
+// ---- forces and impulses --------------------------------------------------------
+
+/// Applies what game code pushed the bodies with since the last step
+/// (og.physics.applyForce and friends), in the order it asked: a force or
+/// torque over this step (as the impulse it gives in `dt`), an impulse at
+/// once. Only dynamic bodies move; the others ignore it.
+pub(crate) fn apply_pushes(sim: &mut Sim, handles: &Handles<'_>, pushes: &[crate::Push], dt: f32) {
+    use crate::PushKind;
+    for p in pushes {
+        let Some(&h) = handles.get(&p.entity) else {
+            continue;
+        };
+        let rb = &mut sim.world.bodies[h];
+        if !rb.is_dynamic() {
+            continue;
+        }
+        let scale = match p.kind {
+            PushKind::Force | PushKind::Torque => dt,
+            PushKind::Impulse | PushKind::TorqueImpulse => 1.0,
+        };
+        let x = p.vector * scale;
+        match p.kind {
+            PushKind::Force | PushKind::Impulse => match p.point {
+                Some(at) => rb.apply_impulse_at_point(v(flat(x)), v(at), true),
+                None => rb.apply_impulse(v(flat(x)), true),
+            },
+            PushKind::Torque | PushKind::TorqueImpulse => rb.apply_torque_impulse(angvel(x), true),
+        }
+    }
+}
+
+// ---- the saved simulation ------------------------------------------------------
+
+/// Whether a collider's shape is built from a registered asset (a mesh or a
+/// height field), so a save carries its key instead of its geometry.
+fn from_asset(c: &Collider) -> bool {
+    matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
+}
+
+fn asset_key(c: &Collider, scale: Vec3) -> ShapeKey {
+    ShapeKey {
+        shape: c.shape,
+        mesh: c.mesh,
+        scale: scale.abs().to_array().map(f32::to_bits),
+    }
+}
+
+/// `sim`'s bytes without the geometry of its mesh, convex-hull and
+/// height-field colliders: meshes are assets, so a save carries each such
+/// shape's key and [`load`] rebuilds it from the asset. Everything else is
+/// rapier's own serialisation, byte for byte.
+pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
+    use bincode::Options;
+    let codec = || bincode::DefaultOptions::new();
+    let full = codec()
+        .serialize(sim)
+        .expect("a physics world always serializes into memory");
+    let w = &sim.world;
+    // Which colliders' shapes come from assets, by handle.
+    let mut keyed: BTreeMap<(u32, u32), ShapeKey> = BTreeMap::new();
+    for t in sim.bodies.values() {
+        if let Some(c) = t.collider.as_ref().filter(|c| from_asset(c))
+            && let Some(&h) = w.bodies.get(t.handle).and_then(|rb| rb.colliders().first())
+        {
+            keyed.insert(h.into_raw_parts(), asset_key(c, t.scale));
+        }
+    }
+    for t in sim.statics.values() {
+        if from_asset(&t.collider) {
+            keyed.insert(t.handle.into_raw_parts(), asset_key(&t.collider, t.scale));
+        }
+    }
+    if keyed.is_empty() {
+        return (Vec::new(), full);
+    }
+    // The colliders' bytes start after the world's fields before them
+    // (bincode writes a struct's fields one after another).
+    let size = |r: bincode::Result<u64>| r.expect("serialized above") as usize;
+    let start = size(codec().serialized_size(&w.gravity))
+        + size(codec().serialized_size(&w.integration_parameters))
+        + size(codec().serialized_size(&w.islands))
+        + size(codec().serialized_size(&w.broad_phase))
+        + size(codec().serialized_size(&w.narrow_phase))
+        + size(codec().serialized_size(&w.bodies));
+    let end = start + size(codec().serialized_size(&w.colliders));
+    let mut holes = Vec::new();
+    let mut out = Vec::with_capacity(full.len());
+    let mut at = start;
+    out.extend_from_slice(&full[..start]);
+    for (h, c) in w.colliders.iter() {
+        let Some(key) = keyed.get(&h.into_raw_parts()) else {
+            continue;
+        };
+        let shape = codec()
+            .serialize(c.shared_shape())
+            .expect("a shape always serializes into memory");
+        // The shape is the collider's second field: the first match past
+        // the previous collider is it.
+        let Some(found) = full[at..end]
+            .windows(shape.len())
+            .position(|bytes| bytes == shape.as_slice())
+        else {
+            continue;
+        };
+        out.extend_from_slice(&full[at..at + found]);
+        holes.push(Hole {
+            at: out.len() as u64,
+            key: *key,
+        });
+        at += found + shape.len();
+    }
+    out.extend_from_slice(&full[at..]);
+    (holes, out)
+}
+
+/// The simulation [`save`] wrote, its asset shapes rebuilt from the meshes
+/// and height fields registered now (the same shapes a step builds, from
+/// the shape cache when it has them). Refused, naming the handle, for a
+/// mesh no longer registered.
+pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<Sim> {
+    use bincode::Options;
+    let parse = |e: bincode::Error| {
+        Error::new(
+            ErrorKind::Parse,
+            format!("the rapier world does not decode: {e}"),
+        )
+    };
+    let codec = || bincode::DefaultOptions::new().reject_trailing_bytes();
+    if holes.is_empty() {
+        return codec().deserialize(bytes).map_err(parse);
+    }
+    let mut full = Vec::with_capacity(bytes.len());
+    let mut from = 0;
+    for hole in holes {
+        let at = (hole.at as usize).clamp(from, bytes.len());
+        full.extend_from_slice(&bytes[from..at]);
+        from = at;
+        let c = Collider {
+            shape: hole.key.shape,
+            mesh: hole.key.mesh,
+            ..Collider::default()
+        };
+        let scale = Vec3::from_array(hole.key.scale.map(f32::from_bits));
+        let built = shape(&c, scale, shared).map_err(|e| {
+            e.context(
+                "the save's colliders are built from meshes and height fields, which are assets: load or register them before restoring",
+            )
+        })?;
+        bincode::DefaultOptions::new()
+            .serialize_into(&mut full, &built)
+            .map_err(parse)?;
+    }
+    full.extend_from_slice(&bytes[from..]);
+    codec().deserialize(&full).map_err(parse)
 }

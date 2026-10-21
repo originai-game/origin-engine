@@ -54,19 +54,19 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 
 | The game needs | Call | It answers |
 |---|---|---|
-| A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer })` | `selected`: the item id |
+| A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer, instant })` (`instant` while it is the screen the game opens on: §6) | `selected`: the item id |
 | Pause | `og.ui.pauseMenu(id, { open, items })` (Resume, Settings, Quit by default) | `selected`; Back answers `resume` |
 | Settings | `og.ui.settingsScreen(id, { open, settings, languages, onChange, onSave })` | the new `GameSettings`, `changed`, `closed` |
 | A platformer HUD | `og.ui.platformerHud(id, { lives, coins, score, level, timeLeft, touch })` | `paused`, `moveX`, `action: "jump"` |
 | A shooter HUD | `og.ui.shooterHud(id, { health, armor, ammo, reserve, abilities, map, touch })` | `paused`, `action` (ability id, `fire`), stick |
 | A puzzle HUD | `og.ui.puzzleHud(id, { level, score, target, stars, moves, timeLeft })` | `paused` |
 | An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators, tapLabel })` | `action: "tap"` or `"buy:<id>"` |
-| A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, time, best, boost, map, touch })` | `paused`, steering, `held` |
+| A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, racers, time, delta, best, splits, boost, map, touch })` (a time trial: `racers: 0` hides the place, `boostMeter: false` the meter, `delta` and `splits: [{ label, time, delta }]` show its sectors; the words `lapLabel`, `bestLabel`, `pauseLabel`, `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`, `unit` from the string table, og-i18n §2) | `paused`, steering, `held` |
 | Dialogue or a cutscene | `og.ui.cutscene(id, { open, lines, index })` | the next `index`, `finished`, `skipped` |
 | A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
 | An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
 | Level select | `og.ui.levelSelect(id, { levels })` | `chosen`, `closed` |
-| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2) | `selected` (`retry`, `next`, `menu`, `share`) |
+| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, scoreLabel, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2); a time trial passes `format: "time"` with the score and best in seconds: the headline counts up as m:ss.mmm (1:36.233) and the lower time is the best | `selected` (`retry`, `next`, `menu`, `share`) |
 | A leaderboard | `og.ui.leaderboardScreen(id, { scopes, entries, loading, error })` | `scope`, `changed`, `retry`, `closed` |
 | Onboarding | `og.ui.tutorialOverlay(id, { open, steps, index })` (each step names an element id) | the next `index`, `finished`, `skipped` |
 | Loading | `og.ui.loadingScreen(id, { title, progress, tips })` | nothing |
@@ -114,25 +114,31 @@ that keys, pads and touch reach like a button; the result's `link` names
 the one clicked. A typo in a tag stays visible as text and warns.
 
 `textField` and `textArea` edit as a player's system does, with nothing to
-wire. On a Mac (the web shell says so: `Viewport.macKeys`) Cmd+A, C, X, Z
-are the shortcuts, Cmd+←/→ go to the line's ends, Option+←/→ (and
-Option+Backspace or Delete) move by words and Ctrl+A/E go to the line's
-ends; elsewhere Ctrl takes the shortcuts and moves by words. Words are
-Unicode's (UAX #29): `can't` is one, each Chinese character is one, Thai
-moves a cluster at a time. A double click selects a word and a triple
+wire. On a Mac (`Viewport.macKeys`: the web shell sets it from the
+browser's platform, a native host on macOS) Cmd+A, C, X, Z are the
+shortcuts, Cmd+←/→ go to the line's ends, Option+←/→ (and
+Option+Backspace or Delete) move by words, and Ctrl takes the emacs keys
+(A/E the line's ends, F/B a character, N/P a line, D/H delete one, K to
+the paragraph's end, U to its start, W the word before); elsewhere Ctrl
+takes the shortcuts and moves by words. Words are Unicode's (UAX #29):
+`can't` is one, each Chinese character is one, Thai moves a cluster at a
+time. The caret and Backspace step over a whole grapheme cluster (`é`
+typed as e and an accent, an emoji with its skin tone), and ←/→ move as
+they point: in Hebrew or Arabic ← goes on in the text. A double click selects a word and a triple
 click the line, Shift+Z or Y redoes (typing undoes a word at a time, an
 input method's commit at a time), and a drag past an area's edge scrolls
 it. A text the game sets starts the field's undo history again. Script a
 chord with the modifier before the key: `key_down:Meta+ArrowLeft`
-(Command), `key_down:Ctrl+Shift+KeyZ`; native hosts use the non-Mac keys,
-so a script edits the same on every OS (`og.ui.previewViewport` with
-`macKeys: true` tries the Mac's).
+(Command), `key_down:Ctrl+Shift+KeyZ`. A native run on macOS takes the
+Mac's keys, so a script that holds Ctrl or Meta and must edit the same on
+every OS pins them with `og.ui.previewViewport` (`macKeys`).
 
 Scripts: a label mixing scripts (`"Level 3 · 古い水車小屋"`) needs no font
 of its own; which face draws which part is one rule, §7 (Fonts).
 
 Icons: an icon set cooked from SVGs (an `.ogt` of `type icons` naming
-them; the UI kit ships 64 iconoir icons as `icons/iconoir.ogt`) loads with
+them; the UI kit ships 72 iconoir icons as `icons/iconoir.ogt`, also under
+its own names `coin`, `gear`, `fire`…, and every kit screen draws them) loads with
 `og.load.font` and becomes the atlas with `og.ui.configure(world, { icons:
 { font } })`; `og.ui.icon(id, "heart", { size, tint })` and `[icon=heart]`
 then draw crisp distance-field glyphs at any size in their ink. A texture
@@ -141,7 +147,10 @@ icons. Icons sit in `fgMuted` or `fgSubtle` (design language: icons are
 neutral). Sets name their icons differently (iconoir's `coins` and
 `fire-flame`, the skin grids' `coin` and `fire`): an unknown name draws an
 empty slot and warns, so a template that may meet either asks
-`og.ui.hasIcon(name)` first and draws its fallback.
+`og.ui.hasIcon(name)` first and draws its fallback, or names an icon twice
+in its set (`icon "coin" "coins"`). A path's `stroke-linejoin` is kept
+(a miter stays sharp); a set whose SVGs leave it out says `join round` (or
+`miter`, `bevel`) once.
 
 ## 4. Focus: keyboard and gamepad
 
@@ -157,7 +166,9 @@ clicks pressing the control), so the names you give are what a blind
 player hears. The page's `prefers-reduced-motion` and `prefers-contrast:
 more` turn on the reduced-motion and high-contrast themes on top of the
 game's own settings: nothing to wire. A stepper is adjusted as a whole
-(VoiceOver's swipe up or down on it steps it), like a slider.
+(VoiceOver's swipe up or down on it steps it), like a slider, and both
+tell the reader their bounds (a node's `valueMin`, `valueMax`, `valueNow`:
+a slider's `min` and `max`, a stepper's when it has them).
 
 There are no label or role fields to set: a node's `role` comes from the
 widget (button, link, text, heading, image, checkbox, slider, textbox,
@@ -186,7 +197,11 @@ for tests.
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise
-`og.ui.back()` answers true once (open pause on it). A gameplay HUD whose keys
+`og.ui.back()` answers true once (open pause on it). While a dialog or menu
+is open `og.ui.back()` answers false even when asked before the dialog is
+built that tick, so a HUD drawn under pause or the settings never takes the
+Back that closes them (a locked dialog, which Back does not close, lets it
+through). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
 dialogs turn navigation back on while open. What opens takes the focus:
 a dialog (every modal template: pause, settings, shop, results, confirm)
@@ -219,6 +234,13 @@ game uses; a scroll list cuts its rows at the edge per pixel.
 
 Anchored groups sit inside the safe area (notch, home indicator) at
 `topLeft` … `bottomRight` or `center`, inset by the density's gutter.
+They also keep out of the host's own control over the canvas: on a
+published page the web shell's round Back to the Portal sits top left
+(about 12, 12 to 52, 52 CSS px) and says where in
+`og.ui.frameViewport().covered`, so a group it would overlap moves along
+its edge past it (the racing HUD's place and lap to its right). A game
+drawing its own top-left corner reads `covered` the same way; preview it
+with `og.ui.previewViewport(world, { ..., covered: { x: 12, y: 12, width: 40, height: 40 } })`.
 `og.ui.frameViewport().breakpoint` is `phonePortrait`, `phoneLandscape`,
 `tablet` or `desktop`; templates rearrange themselves by it (tabs become a
 select, side panels move under, touch controls appear when `touch` is set).
@@ -227,7 +249,8 @@ Preview a phone headless with a game command that calls
 and `og run --size 1170x2532`.
 
 Gestures the UI owns: one finger presses and drags (a slider, a scroll's
-flick, a drag and drop), two fingers on a scroller scroll it, two on a
+flick, a drag and drop), two fingers on a scroller scroll it (and fling it
+as they lift), two on a
 `zoomView` pinch about their centre and pan it, and an `actionButton` is
 pressed while held and clicked on a tap. There is no swipe, long-press or
 double-tap event: a game that wants one reads `og.Pointers` (`down(id)`,
@@ -239,7 +262,8 @@ artwork to explore:
 const z = og.ui.zoomView("Map", { texture: map, width: { kind: "grow" }, aspect: 16 / 9, maxZoom: 4 });   // ZoomResult: zoom, centerX, centerY (UI state)
 ```
 
-A zoom view is a picture, not a control: keys do not move it. Script two
+Tab (or a pad) reaches a zoom view: `+` and `-` zoom it, `0` fits it
+again, the arrows pan it (they stay its own while it is focused). Script two
 fingers with `touch_start` for the first and `touch:1:down:<x,y>` /
 `touch:1:move:<x,y>` / `touch:1:up` for the second
 (`templates/ui-kit/tests/gestures.og.ts`).
@@ -325,7 +349,11 @@ Skins add the rest themselves: dialog and panel entrances with staggered
 controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `pressSpring 0.55 120` lines of a
 skin's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
 a shake and the error sound on a press of a disabled button. Reduced motion
-keeps every shake still and turns the rest into fades. How long and how
+keeps every shake still and turns the rest into fades. The screen the game
+opens on is built settled (`instant: true` on its `mainMenu`, `anchor` or
+`transition` while it is that screen): the web draws it behind the play
+gate, where an entrance would stand part-way until the tap (og-platform-sdk
+§3). How long and how
 much is og-taste §5 and §6; camera shake is never for UI (og-feel §4).
 
 ## 7. Text: labels, fields, areas, input methods

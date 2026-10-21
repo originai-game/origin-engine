@@ -159,8 +159,9 @@ pub(crate) struct RenderState {
     pub runtime_fonts: BTreeMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
-    /// A frame drew text its fonts lack (warned once).
-    pub missing_warned: bool,
+    /// The characters a frame drew that their fonts lack, each warned of
+    /// once, on the tick it was first drawn.
+    pub missing_warned: std::collections::BTreeSet<char>,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
@@ -198,7 +199,7 @@ impl RenderState {
             ui_pages: BTreeMap::new(),
             runtime_fonts: BTreeMap::new(),
             notes: Vec::new(),
-            missing_warned: false,
+            missing_warned: Default::default(),
             feel: Default::default(),
             atmo: Default::default(),
             env: Default::default(),
@@ -681,9 +682,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .unwrap_or_default();
     // Each model's own tint and flash ride in its instances' records
     // (kestrel-stair #11: a glTF's materials are shared by every instance),
-    // with its shadow flags (on unless the model says otherwise).
+    // with its shadow flags (on unless the model says otherwise). A hidden
+    // model draws nothing (meridian-loop #14).
     let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook)> = model_rows
         .into_iter()
+        .filter(|(_, v)| on(v, "visible", true))
         .filter_map(|(e, v)| {
             let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
             let look = super::fx::ModelLook {
