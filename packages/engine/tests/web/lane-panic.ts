@@ -123,7 +123,10 @@ try {
       check(error !== null && ms <= CRASH_DEADLINE_MS, `${label}: the page has the crash ${ms} ms after the fault (deadline ${CRASH_DEADLINE_MS} ms)`, { error, ms });
       check(error?.kind === "panic", `${label}: __runtime_probe__.error is a panic`, error);
       check(/a fault injected at the cull site/.test(error?.message ?? ""), `${label}: with the panic's message`, error?.message);
-      check(typeof error?.tick === "number" && error.tick > 30, `${label}: and the tick it happened at`, error?.tick);
+      // The fault is armed once the probe's tick is past 30; the cull it
+      // trips may still be tick 30's (the probe counts the tick in
+      // progress), so the crash carries 30 or later.
+      check(typeof error?.tick === "number" && error.tick >= 30, `${label}: and the tick it happened at`, error?.tick);
       check(/og-lanes\/src\/lib\.rs:\d+:\d+/.test(error?.location ?? ""), `${label}: and where`, error?.location);
       check(isolate ? error?.lane === "cull" : error?.lane === null, `${label}: ${isolate ? "inside a lane (cull)" : "on the engine thread (lane null)"}`, error?.lane);
       const card = await page

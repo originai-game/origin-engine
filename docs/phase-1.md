@@ -93,9 +93,32 @@ perf-games. The round sections below have each.
   suites after it) and main was pushed at e3a7ac9d. shadow-flags'
   merge and lane follow, then this wave's `--all` and web-reference.
 
-**Wave-end figures: pending** (with wave 12's: `--all` and
-web-reference in the measure worktree after the shadow-flags merge; no
-lavapipe run and no Chrome benchmarks, both set aside on 2026-10-22).
+**Wave-end figures (waves 12 and 13 so far, the measure worktree at
+d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
+benchmarks, both set aside on 2026-10-22):**
+
+- **`scripts/check.sh --all`**: passed, 9 of 9 steps in 871 s (wasm-build
+  321 s, wasm-opt 330 s, test 315 s, determinism 236 s, bun-test 216 s,
+  size-gate 59 s, drift 14 s, clippy 13 s, fmt 2 s).
+- **Wasm** (brotli): 3D lanes 3,147,276 B (75 % of the 4 MiB budget; raw
+  11,647,595), 2D lanes 2,976,665 (70 %), 3D publish 3,110,573 (74 %), 2D
+  publish 2,941,945 (70 %); a number to read, the budget being deferred
+  work (row 14).
+- **Determinism**: every build agrees (native debug, release with lanes
+  off and on at 4 threads over 1,660 parallel calls, wasm32 scalar, the
+  3D and 2D lanes modules): math 6117185439544271997, physics3d
+  16705304060282334008, physics2d 6277863875895225966, anim
+  6030136770684287795.
+- **`scripts/check.sh web-reference`**: 474 s; every frame passed on both
+  tiers (fx-showcase's five stations and 20 E5 stations, the 37 looks,
+  og-tests' 87 gfx scenes on each tier, og-ui's 16 kit playtests on
+  each, Ember Vale's three, the a11y checks 26 of 26 on each), and one
+  check of the lane-panic harness failed in its single-threaded run:
+  the crash's tick was 30 where the check wanted more than 30, the
+  fault being armed once the probe's tick passes 30 and the cull it trips
+  still tick 30's (the probe counts the tick in progress; the lanes run
+  passed at a later tick). The check accepts 30 or later since this
+  commit; the harness is rerun on the measure build to confirm.
 
 ## Main gate, wave 12 (2026-10-21)
 
