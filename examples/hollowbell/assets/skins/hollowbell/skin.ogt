@@ -14,8 +14,8 @@ scale 1
 palette {
   bg "#1a1726"
   bgSubtle "#211c31"
-  surface "#2b2540"
-  surfaceRaised "#2b2540"
+  surface "#262138"
+  surfaceRaised "#262138"
   surfaceHover "#3a3152"
   materialThick "#221d36f2"
   materialRegular "#221d36e6"

@@ -42,6 +42,7 @@ string "talk.1" "Well now, a bell-keeper, this deep? Mind the beetles: they bite
 string "talk.2" "The gloam dragged a chime into its hall below. Big as a barrel, that one."
 string "talk.3" "I trade in what the hill gives up. Glimmers for goods, as ever."
 string "talk.4" "Then let us trade."
+string "talk.skip" "Skip"
 string "shop.title" "Old Burrow's wares"
 string "shop.currency" "glimmers"
 string "shop.cake" "Honey cake"
