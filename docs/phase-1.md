@@ -7,6 +7,46 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 10 (2026-10-21, 9d220790)
+
+Since the waves 8 and 9 record (3bb57785 and cd6b10ac, the cross-host
+physics floor at 9e7e462b, the wave-end figures at e16e9cec) and the
+vulkan-cpu references of their lavapipe pass (f29ffef9), main took wave
+10's first three streams, each once its branch had merged main:
+physics-3d (bb7c1e81, a fast-forward to its merge with main over its
+work commit 876dd4ea),
+cook-ui-words (a31d6cbe, then the coordinator's topdown combat playtest
+at d5228a31) and ci-green (53b876f7, its head 3816e4a4, then the
+coordinator's 9d220790: the workflow by hand only, roguelike's dive frame
+re-recorded). The round sections below have each. The wave is not over:
+dogfood-3, lanes-per-profile (row 71) and cook-determinism (row 80) are
+still running.
+
+- **`scripts/check.sh functional`**, each merge: physics-3d 5 of 5 in
+  158 s, cook-ui-words 5 of 5 in 138 s, ci-green: pending (the
+  coordinator fills).
+
+**Wave-end figures**: pending, measured once the wave's last streams have
+merged.
+
+- **`scripts/check.sh --all`**: pending.
+- **`scripts/check.sh web-reference`**: pending.
+- **Wasm** (brotli -q 11, the shipping `wasm` profile): pending;
+  lanes-per-profile changes which modules ship (row 71).
+- **Determinism**: pending. Moved by design this wave: physics_hash
+  947364242694612608 to 15539601638348908910 (physics-3d: the 3D
+  scenario's walker stands a skin above the floor; the 2D scenario's world
+  hash unchanged at 12448362945291953010); math_digest,
+  bouncing_boxes_hash and anim_hash unchanged in the stream's runs.
+- **Perf**: pending.
+- **vulkan-cpu**: pending, and the first real run of
+  `scripts/wave-end.sh` (row 82). Copies that predate this wave's metal
+  re-records: og-ui's `widget-set`, `kit-phone-widgets`,
+  `kit-phone-shooter`, `kit-phone-racing` and the ten `kit-skin-*` frames
+  abd2bf9b re-recorded (the palette round and the meter's label),
+  Hollowbell's `title` and `play` (f3bf909e, the hills); the og-ui ones
+  go with row 54's through the `ui` stage.
+
 ## Main gate, waves 8 and 9 (2026-10-21, 517d8c4e)
 
 Since the wave 7 record (731a555d, with the lavapipe pass at 884ad090 and
@@ -316,6 +356,199 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Wave 10, ci-green: CI on GitHub Actions, then off for the build-out (53b876f)
+
+Branch `ci-green`, merging main as it moved (45722335, 9b61c2ad,
+ee24f0c0, bffc91fc, 97d1996f, b1be5af1, 8050347e), head 3816e4a4,
+merged at 53b876f7. Its job was the workflow green on GitHub's runner;
+the repository's owner then took GitHub CI off for the build-out
+(9d220790, below).
+
+- What ran on Actions: three green jobs on a tree merged with main,
+  `quick` in 12.5 min, `functional` 35 min and `gate` 60 min (after one
+  re-run: a particle test crashed with SIGSEGV on the first, row 81); a
+  dispatched gate 94 min and the perf nightly 145 min, both cold. The
+  final head was not run: the account's Actions budget was exhausted.
+- 84b6ba2f, d086425a: every job runs in a `debian:trixie` container with
+  `--init`, whose Lavapipe (LLVM 19.1.7) is the og-lavapipe image's that
+  records the `vulkan-cpu` references; on the runner's own Ubuntu 24.04
+  (LLVM 20.1.2) `atmosphere-night` and `atmosphere-moon` came out at
+  RMSE 0.0105 and 0.0103 (tolerance 0.01). `--init` reaps orphans as a
+  machine does (`og dev`'s signal test saw its stopped game as a zombie
+  under the container's bare PID 1).
+- 1d00b96e: one provisioning action (`.github/actions/provision`: disk,
+  toolchain, a `target/` cache per lane, Lavapipe, ALSA's headers, node,
+  the pinned tools), a functional job beside quick on PRs, uploads that
+  survive the exhausted artifact quota, `scripts/perf.sh` for the nightly
+  (`--measure`: no baseline exists for a shared runner); e2cd6c22 the
+  timeouts from the measured runs (quick 45 min, functional 90, gate 240,
+  perf 240) and perf.sh printing each test's frame time.
+- e13a4b91: no `A && B || C` in the gate scripts (SC2015, which CI's
+  ShellCheck 0.9 failed), and `install-tools.sh` pins ShellCheck 0.11.0.
+- Settings for the two-vCPU runner: a295e7b4 `OG_BUN_TEST_TIMEOUT` (60 s
+  in CI, passed to `bun test --timeout`; render tests took 5 to 25 s on
+  Lavapipe) and `OG_GATE_JOBS=1` in the gate job (bun-test beside test
+  starved both), render.test's untonemapped sprite within one step of 188
+  (Lavapipe's sRGB encode gives 187; 711ecc7e its matcher); 454c7433 the
+  knowledge and create packages pass the timeout too; b364c585
+  `OG_TEST_TIME_SCALE` (3 in CI) for the two tests with long limits of
+  their own (the terrain station's and the chunked music's `og run`s).
+- a23d99e5, the one engine change: an og-tests gfx scene with no
+  reference on the adapter's tier is judged against `metal`'s and says
+  so, frame by frame as og-ui, the templates and the browser tiers do,
+  which the vulkan-cpu copies pruned by f29ffef9 need. 7d677e2f deletes
+  og-ui's stale vulkan-cpu `text-bidi` (it predated a2c5e44b's metal
+  re-record and missed CI's Lavapipe at RMSE 0.02025; judged against
+  `metal` now).
+- ddec5756, a56a2ccb, 3816e4a4: `scripts/wave-end.sh`, the wave's end in
+  one serial run holding both gate locks, stages `gate`, `web`, `cross`,
+  `prepare`, `gfx`, `ui`, `playtests`, `table` (og-ui's GPU tests in the
+  image, `--record og-ui` recording their vulkan-cpu frames; every
+  template, archetype and example with `references/vulkan-cpu/`, the
+  examples included), and `scripts/frames-vs-metal.ts`, its table of
+  every vulkan-cpu frame against `metal`. Only ever run with `--dry-run`
+  (row 82).
+- Docs (cb33649f, 1327549d, e2cd6c22, 3816e4a4): docs/ci.md §CI (the
+  container and why, the provisioning, the jobs with their measured
+  times and timeouts, the nightly as a measurement, the artifact quota),
+  §The wave-end run, §When to run what; AGENTS.md's gate bullets.
+- Not fixed, intermittent in CI: og-cook's
+  `cooking_twice_gives_identical_bytes` failed 2 of 5 runs (the cook's
+  manifest differs between thread counts, row 80) and the particle
+  test's SIGSEGV once (row 81).
+- The decision (the owner, 2026-10-21; 9d220790): GitHub CI is off
+  during the build-out. The workflow runs by hand only
+  (`workflow_dispatch`; push, pull_request and the nightly schedule off),
+  the local gate is the signal (the functional lane per merge, the
+  wave-end run per wave), docs/ci.md §CI says so; the triggers come back
+  when the repository is published (row 83).
+- Frames: no `metal` frame moved on the branch (its one deletion is
+  og-ui's vulkan-cpu `text-bidi`, above). With its merge the coordinator
+  re-recorded roguelike's `dive` on `metal` (9d220790; lampdive's success
+  tone from cook-ui-words, RMSE 0.0146).
+
+Functional lane on the merge: pending (the coordinator fills).
+
+## Wave 10, cook-ui-words: the cook's unread Tiled properties, the templates' words, the badge palette (a31d6cb)
+
+Branch `cook-ui-words` from main at e16e9cec, merged main at 4e6c46f0
+(f29ffef9) and merged at a31d6cbe after physics-3d. Rows 75, 76 and 69.
+
+- 64f79249, row 75: `og cook` warns through `Report.warnings` on every
+  Tiled custom property the importer does not read (a tile layer's other
+  than `autotile`, `collision`, `lit`, `z`, `repeatx` and `repeaty`, or
+  one of those with a value of another type; an embedded tile's other
+  than `solid`; the map's, a group's, an object layer's and an image
+  layer's own; an object's class-typed one), naming the property, where
+  it sits and the names read there, on every cook (an up-to-date map
+  warns again), failing nothing. Test in og-cook `tests/tilemap.rs`;
+  og-game §8 says so and its Tiled table gains the tile's `solid`.
+  f3bf909e: Hollowbell's `tools/make-assets.ts` wrote the far layer's
+  `repeat` = x, which the new warning named; it writes `repeatx` true and
+  the hills fill the sky left of x 333 px where they used to stop (title,
+  play and results re-recorded on `metal`: RMSE 0.0872, 0.0870, 0.0320,
+  every change in the hills' region; README, FINDINGS #2 and #12).
+- 77cb5b0a, row 76: `InventoryDesc.hintLabel` and `countLabel`,
+  `LeaderboardDesc.retryLabel`, `TutorialDesc.skipLabel`, `nextLabel`,
+  `doneLabel` and `stepLabel` ("{step} of {count}", filled by the
+  template), `CutsceneDesc.skipLabel`, each with its English default.
+  `templates/ui-kit` passes them from its five tables, an
+  `offline:<on|off>` command shows the leaderboard's error and Retry, the
+  JP, KR and Arabic subsets re-made by `make-locale-fonts.py`, and the
+  locales playtest asserts each in Chinese with no English left (and the
+  tutorial's defaults in English); og-i18n §2 lists the fields, with its
+  Japanese count corrected to 246.
+- dcd8c31e, row 69: the badge's 16 % tint of its tone mixes as the
+  platform's CSS does (`Srgba::tint_over`: kept translucent, at the alpha
+  whose linear blend has the sRGB mix's luminance) instead of in linear
+  light, where a light ink's tint lifted a dark panel so far that no ink
+  reached 4.5:1 on the pixel pack's. Then the palette: the tones deepened
+  on the light-panel skins (cartoon, fantasy and Ember Vale's copy,
+  paper, pathguard; cartoon's warn #f2a516 at 1.63:1 is #7b5102),
+  lightened on the dark ones (sparkorb's danger, lampdive's success and
+  danger), `accentSoft` more transparent on sparkorb, lampdive and
+  lanebeat; meters, toasts and status dots keep their hues;
+  `make-skins.py` reproduces the packs byte for byte. `pack_contrast.rs`
+  enforces success, warn, danger, info and the accent badge at 4.5:1 in
+  a panel (and on the screen where both are dark or both light) for the
+  seven packs and sparkorb, lampdive, lanebeat and pathguard; the neutral
+  and inverse badges are printed. og-taste §3 and og-ui's README say so.
+- abd2bf9b: a meter's label is drawn twice, clipped at the fill's edge
+  (`Shape::Text` gains a clip frame), each half in whichever of `fg` and
+  `fgInverse` reads better on what it is over: the deepened greens put
+  cartoon's "72 / 100" at 2.3:1, and neon's white sat on bright green at
+  1.3:1. Test in og-ui `tests/widgets.rs`.
+- Frames re-recorded on `metal` (RMSE against main's; the sheets compare
+  per cell, each moved a cell past 0.01): og-ui `widget-set` 0.01137,
+  `kit-phone-widgets` 0.01611, `kit-phone-shooter` 0.01235,
+  `kit-phone-racing` 0.01409, `kit-skin-cartoon` 0.00727 and `-phone`
+  0.00971, `-fantasy` 0.00333 and `-phone` 0.00491, `-neon` 0.00363 and
+  `-phone` 0.00615, `-paper` 0.00319 and `-phone` 0.00473,
+  `kit-skin-pixel-phone` 0.00338, `kit-skin-scifi-phone` 0.00388;
+  Hollowbell's three above. After the merge roguelike's `dive` moved
+  (lampdive's success tone, 0.0146), re-recorded by the coordinator at
+  9d220790 with the ci-green merge. Their vulkan-cpu copies wait for the
+  wave's end (the gate section above).
+- Left out: the archetype skins' buttons and fields (sparkorb primary
+  3.42:1, lampdive's danger button 2.58:1 and placeholder 3.57:1,
+  pathguard primary 3.30:1) and the examples' own skins (Hollowbell
+  danger 4.26:1; Lantern Vale success 3.15, warn 2.72, info 4.07:1), row
+  77; the neutral badge (scifi 2.15:1, neon 2.81:1) and the light packs'
+  badges on a dark stage (about 2:1), row 78; Hollowbell's cutscene
+  "Skip", still English in Chinese (it needs a table key and 过 in its
+  subset), row 79.
+
+Functional lane on the merge: 5 of 5 in 138 s.
+
+## Wave 10, physics-3d: one mover for both controllers, collision layers (bb7c1e8)
+
+Branch `physics-3d` from main at e16e9cec; work commit 876dd4ea, merged
+main (f29ffef9) at bb7c1e81, fast-forwarded. Rows 72 and 73.
+
+- Row 72 measured first, on rapier's character controller with Lantern
+  Vale's capsule (radius 0.3, 1.6 m, 6 m/s): a run stalled to 0 to
+  0.4 m/s for a tick about once a second on one box, on adjacent boxes
+  and on a triangle-mesh floor; the capsule stood 1 mm above the floor
+  instead of its 2 cm skin and crept up 0.1 mm a tick; one placed on the
+  floor sank 9 cm; 0.2 m stairs with 0.3 m treads stopped it at the
+  first step; a 30° slope was climbed at 4.4 m/s across.
+- 876dd4ea: the platformer's move (e86b55a5) becomes
+  `crates/og-physics/src/mover.rs`, one mover for `og.CharacterController`
+  and `og.PlatformerController` in both profiles: exact casts, the skin
+  kept by the controller, lift two skins, move across, settle; walkable
+  slopes at full speed across; a ray just inside an edge for the ground
+  under a shape resting on it; a step tried from `stepHeight` up when the
+  low move is blocked, taken only when it goes further and lands on
+  walkable ground (not a dynamic body) at most `stepHeight` over the
+  ground it stood on; `gravityScale` 0 slides freely. The slope limit's
+  cosine is `og_core::math::cos`, for determinism. The IDL docs of both
+  controllers, og-game's controllers paragraph and the og-physics README
+  (§The controllers' move) say so.
+- `crates/og-physics/tests/character_ground.rs`, 7 tests, each failing on
+  the old controller: full speed every tick with the centre one skin
+  above a box, straight and diagonal; adjacent boxes; a trimesh and a
+  height field; 190 placements standing a skin over the floor; stairs up
+  and down; steps of 0.1 to 0.345 m climbed at `stepHeight` 0.35 and of
+  0.36 to 0.6 m not; a 30° hill both ways at speed and a 50° slope
+  stopping it.
+- Row 73: both controllers' query filters take the collider's collision
+  groups, so `og.Collider.layers` and `mask` decide what blocks them as
+  for bodies; two tests in `tests/controllers.rs`.
+- Determinism: physics_hash 947364242694612608 to 15539601638348908910
+  by design (the 3D walker stands a skin above the floor); the 2D
+  scenario's world hash unchanged at 12448362945291953010 (the shared
+  move leaves the platformer as it was); math_digest, bouncing_boxes_hash
+  and anim_hash unchanged.
+- Frames: moved within tolerance only, none re-recorded (Lantern Vale
+  `far` 0.0055 and `slime` 0.0025, third-person `beacon` 0.0020,
+  fx-showcase `terrain` 0.0065; the runner archetype byte-identical).
+  Every archetype, example and template suite passes after the merge
+  but topdown's combat, which failed on main already: the test sampled
+  the bite's knock-back two ticks into the hit stop; the coordinator's
+  d5228a31 reads it at 0.3 s (12.3 to 11.80 m).
+
+Functional lane on the merge: 5 of 5 in 158 s.
 
 ## Wave 9, ui-runtime: live resource handles, game saves, the templates' words, the pixel pack's labels (517d8c4)
 
@@ -3500,8 +3733,8 @@ resource only the owner can give.
 | 50 | The engine's render cost per instance of one mesh: 20,000 moving spheres take 174 ms a frame on WebGPU and WebGL2 (extraction plus og-render; the tick 0.3 ms), doubling near 4,096 instances and about 8.7 us an instance beyond (`tests/evidence/P4/web-host-tools/threejs-comparison.md`; the spike drew the same field in 4.6 ms) | P4 web host | M | engine, phase 4 | done dedf817: extraction decoded every og.Mesh row to JSON on the lanes, and the lanes wasm's Workers waited on one allocator (85 % of the frame in og_lanes::wait_for); og.Mesh and og.Transform are read from their columns, the wasm decodes rows serially. The field's frame went from 137.6 to about 4 ms; what remains against three.js is the lit pass's GPU cost per instance (P4 perf round, `tests/evidence/P4/perf/`). That remainder (branch `r-lean`, bddb7411): plain materials draw through lean lit, prepass and shadow pipelines (10 interpolated floats instead of 23, only the attributes read, no discard where no screen derivative is taken; og-render README, Lit pipeline variants); natively spheres-20k 7.1 to 4.6 ms a frame on an M4 Pro, the §7 reference scene unchanged, every Metal og-gfx frame byte-identical (`tests/evidence/P4/lean/`); the instance transform stays 64 bytes (a 3x4 would save a quarter of an upload costing 0.04 ms). Then (branch `render-parity`, 038cc380 to 5a96a149, `tests/evidence/P4/parity/`): instances are 52 bytes on the GPU (an affine matrix's columns' xyz and the array-map layer; the projections of the points they move go through `instance.wgsl` `mul_point` so Metal's sums stay the 4x4's), plain meshes can be 16-byte compact vertices (`VertexEncoding::Compact`, opt-in: quantised), the sort and the bounding spheres are kept across frames, wgpu's indirect-call validation is off and objc2 has no debug assertions in the dev profile; every Metal og-gfx frame byte-identical. Natively the dev CPU of spheres-20k went from 4.27 to 1.76 ms (moving 4.27 to 2.96, gltf-reference 3.89 to 0.95), release 1.60 to 1.13 ms; the frame is GPU-bound at 5.4 ms (from 5.6), the GPU bound by the field's 7.3 million triangles, which neither encoding moves natively; the §7 reference scene unchanged. The browser comparison with three.js is to be run again (row 51) |
 | 51 | The three.js comparison (`tools/bench/threejs-compare.ts`) run again after the lean pipelines: before them the 20,000-sphere field was 0.31x of three.js's WebGPU InstancedMesh and 0.48x of WebGL2's, the §7 reference scene 2.04x and 1.54x | P4 lean | S | engine, phase 4 (a wave-end measurement) | open (render parity, 26649d4c, measured natively only: `tests/evidence/P4/parity/`) |
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | open (round three, 1f0ecdc3, measured natively only; `og.physics.stats` through the web host is unmeasured too) |
-| 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` is in flight on `ci-green`; wave 7's run is in progress (Main gate, wave 7: its figures pending) |
-| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | og-tests and the looks frames closed by wave 7's lavapipe pass (9bd0064: copies kept only where they differ from `metal` by design, the rest judged against `metal`); still open for og-ui `text-fields-2`, `text-mixed-runs` and `text-bidi`, which no lavapipe pass has run |
+| 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` landed with ci-green (53b876f7) and has not run for real (row 82); wave 7's and waves 8 and 9's runs are recorded in their Main gate sections |
+| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | og-tests and the looks frames closed by wave 7's lavapipe pass (9bd0064: copies kept only where they differ from `metal` by design, the rest judged against `metal`); still open for og-ui `text-fields-2`, `text-mixed-runs` and `text-bidi`, which no lavapipe pass has run; `scripts/wave-end.sh`'s `ui` stage is what records them (row 82) |
 | 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | open |
@@ -3516,14 +3749,21 @@ resource only the owner can give.
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |
 | 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | closed: vulkan-cpu at 9bd0064 (the lavapipe pass), the browser tiers at cf5f2b9 (web-reference 379 s, every frame; WebGL2 keeps paper-craft and voxel-worlds by design, 95ea28a) |
 | 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | closed at 1a9037a (taa-webgl2, merged f3229ef): wgpu's GL backend read TAA's depth as 0 (a depth texture read with `textureLoad` and no sampler bound stays on linear filtering, which GLSL ES calls incomplete), so every pixel reprojected from the near plane: wrong motion for a moving camera, and near-plane rounding up to 0.025 px at the 2,800 m looks station for a still one, above the own-texel test. The depth is sampled with a nearest sampler now; `taa-sharp` applies on every tier and is WebGL2's moving-camera frame against `metal` (RMSE 0.00028); two og-tests tests pin the still-camera fixed point natively |
-| 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | open |
+| 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | closed at dcd8c31e (cook-ui-words, merged a31d6cbe): the badge's tint mixes as the platform's CSS does (`Srgba::tint_over`) instead of in linear light; the tones deepened on the light-panel skins (cartoon's warn #f2a516, 1.63:1, is #7b5102) and lightened on the dark ones, `accentSoft` more transparent on the archetype skins, `make-skins.py` byte-identical; `pack_contrast.rs` enforces success, warn, danger, info and the accent badge at 4.5:1 for the seven packs and sparkorb, lampdive, lanebeat and pathguard. abd2bf9b draws a meter's label in two inks split at the fill's edge (cartoon's "72 / 100" was 2.3:1, neon's 1.3:1). What it left: rows 77 and 78 |
 | 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
-| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open |
-| 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | open |
-| 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | open |
+| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open; a stream, `lanes-per-profile`, is on it now (wave 10) |
+| 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): measured first (rapier's controller stalled to 0 to 0.4 m/s a tick about once a second on a box, adjacent boxes and a trimesh, stood 1 mm above the floor instead of its 2 cm skin and crept up 0.1 mm a tick, sank 9 cm when placed on the floor, refused 0.2 m stairs, climbed a 30° slope at 4.4 m/s); one mover for both controllers in both profiles (`crates/og-physics/src/mover.rs`), `tests/character_ground.rs` with 7 tests failing on the old controller; physics_hash 947364242694612608 to 15539601638348908910 by design |
+| 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): both controllers' query filters take the collider's collision groups (`og.Collider.layers`/`mask`), two tests in `tests/controllers.rs` |
 | 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed for og-tests, Hollowbell and the looks on vulkan-cpu and for every browser frame (the waves 8 and 9 gate: web-reference 373 s, lavapipe at 517d8c4e); open only for og-ui `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu, with row 54 |
-| 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | open |
-| 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | open |
+| 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | closed at 64f79249 (cook-ui-words, merged a31d6cbe): `og cook` warns through `Report.warnings` on every Tiled custom property it does not read, naming the property, where it sits and the names read there (a test; og-game §8's table gains `solid`); Hollowbell's map tool writes `repeatx` at f3bf909e and the hills repeat (title, play and results re-recorded: 0.0872, 0.0870, 0.0320) |
+| 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | closed at 77cb5b0a (cook-ui-words, merged a31d6cbe): `InventoryDesc.hintLabel`/`countLabel`, `LeaderboardDesc.retryLabel`, `TutorialDesc.skipLabel`/`nextLabel`/`doneLabel`/`stepLabel` ("{step} of {count}"), `CutsceneDesc.skipLabel`; the ui-kit demo passes them from its five tables (an `offline:` command for the leaderboard's error state), its locales playtest asserts them in Chinese, og-i18n §2 lists them. Hollowbell's cutscene "Skip" is row 79 |
+| 77 | Palette round two: the archetype skins' buttons and fields under 4.5:1 (sparkorb's primary button 3.42:1, lampdive's danger button 2.58:1 and its field placeholder 3.57:1, pathguard's primary 3.30:1; row 69's test holds only the status tones and the accent badge), and the examples' own skins, outside `pack_contrast.rs` (Hollowbell's danger 4.26:1; Lantern Vale's success 3.15, warn 2.72, info 4.07:1) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
+| 78 | Badges the palette round left: the neutral badge (scifi 2.15:1, neon 2.81:1; printed by `pack_contrast.rs`, not enforced) and the light packs' badges on a dark stage (about 2:1; the test holds a badge in its panel, and on the screen only where screen and panel are both dark or both light) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
+| 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | open |
+| 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | open; a stream, `cook-determinism`, is on it now (wave 10) |
+| 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open |
+| 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open |
+| 83 | GitHub CI is off during the build-out (the owner's decision, 2026-10-21: the workflow is `workflow_dispatch` only since 9d220790, docs/ci.md §CI); the local gate is the only signal, and ci-green's final head never ran on Actions (the budget exhausted). What turns it back on: the repository published, when the push, pull_request and nightly schedule triggers return to `.github/workflows/ci.yml` (its comment says so); rows 80 and 81 are what would fail it intermittently | W10 ci-green | S | owner | open by decision |
 
 ## 0. Rules that shape the plan
 
