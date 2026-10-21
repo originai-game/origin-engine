@@ -516,6 +516,75 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 13, webgl2-render-2: Lantern Vale's ink, Kestrel's crypt and the exposure's start on WebGL2 (c178e216)
+
+Wave 13's second stream took the web findings that are rendering on the
+WebGL2 tier (examples/WEB-FINDINGS.md #3, #4, #5), on lane-2. Both of the
+coordinator's guesses in the brief were wrong: the crypt had nothing to
+do with the sun or a roof, and the ink was not a GL difference in the ink
+or outline passes.
+
+- **#4, the crypt lit as if roofless (51a291fa).** The crypt's lamp is a
+  small glass box with its shadowed point light inside. The engine
+  ignored `og.Mesh.castShadow`, so the box cast a shadow: on metal and
+  WebGPU the six cube faces stored the box and shut the lamp's light in;
+  on WebGL2 the two paraboloid hemispheres never stored it, so the lamp
+  lit the whole crypt. Forcing the no-compute tier on metal reproduced
+  Chrome's frame exactly (RMSE 0.0456, 7.58 % outliers). `og.Mesh.castShadow`
+  now reaches the renderer (off by default, as in three.js; `og.Model`
+  meshes still always cast). A second defect found on the way: the
+  paraboloid projection was mirrored, so it stored the faces turned
+  towards the light, which is why it missed the box and why it drew a
+  curved shadow band down boxes' lit faces (shadow_pass.wgsl,
+  lighting.wgsl). New og-tests scene `shadows-crypt` (a roofed room, a
+  low sun reaching the floor only through the door, a point light inside
+  a glass box that casts no shadow); it applies on every tier and needs
+  no WebGL2 reference: paraboloids are within RMSE 0.0036 of cube faces
+  (0.0148 before). fx-showcase meshes whose shadows its frames show set
+  `castShadow`, so those frames stayed.
+- **#3, Lantern Vale's ink and sparks (0082ead5).** At boot the engine
+  loaded the game's look to read its antialias setting; loading it
+  pulled in textures the web host cannot decode before the renderer
+  exists, so it failed silently and the web renderer fell back to the
+  tier's method: TAA on WebGPU (the look's own, so nothing showed) and
+  4× MSAA on WebGL2, which leaves the ink and outlines unsoftened. It
+  reads the look file alone now. The sparks (CPU particles on WebGL2) are
+  by design but need no WebGL2 reference either: with TAA the no-compute
+  tier draws lantern 0.0017, slime 0.0026, far 0.0056 from metal. Test in
+  crates/og-runtime/tests/web_findings.rs, failing on the old code.
+- **#5, the exposure's start (441f4e6e), and the WebGPU title and start
+  misses of #3.** Adaptation already stepped per tick; where it started
+  was host-dependent twice over: a streamed terrain had none of its
+  tiles on the first frame it was drawn, so that frame showed no ground
+  and metered 2.5 EV too bright, and the title stayed about 1.5 stops
+  under for two seconds (a terrain now settles its tiles on its first
+  frame, as a capture does); and the web draws a frame at tick 0 where
+  `og run` does not (a tick-0 frame now meters but never seeds the
+  adaptation). Emulating the web's tick-0 frame natively reproduced the
+  web exactly before (title RMSE 0.0310) and matches within 0.0067 after.
+  Test in tests/exposure.rs, failing on the old code.
+- **IDL (c178e216)**: `castShadow`, the adaptation rule on `autoExposure`
+  and `adaptSpeedUp`, and "not applied yet" on `Mesh.receiveShadow` and
+  `GltfDesc.castShadow`/`receiveShadow` (row 87). Re-recorded on metal:
+  Kestrel `crypt` (RMSE 0.0458 from the old reference) and `bag`
+  (0.0274), Lantern Vale `title` (0.1734) and `start` (0.0445), og-tests
+  `point-shadows-paraboloid` (0.0021), `shadows-crypt` new.
+
+**Browser verification (the coordinator, in the measure worktree at
+c178e216 merged with 48133d07, headless Chrome 1280×720).** Every frame
+against `metal`, no WebGL2 reference added: Lantern Vale 7 of 7 on both
+tiers (worst `far` 0.0073; WebGL2's lantern 0.0059 where #3 had 0.0189,
+and WebGL2 now draws within 0.0001 of WebGPU on every frame); Kestrel
+Stair 9 of 9 on both (WebGL2's crypt 0.0033 where #4 had 0.0456 with
+7.56 %, bag 0.0021); og-tests' gfx scenes on both (`shadows-crypt` WebGPU
+0, WebGL2 0.0036; `point-shadows-paraboloid` 0 and 0.00004;
+`point-spot-lights` 0 and 0.0027; WebGL2's `showcase` and `overlay`
+against their own references 0.0081 and 0.0080, as predicted); Ember
+Vale on WebGL2 (title 0.0043, beacon 0.0020 against its WebGL2 reference,
+dawn 0.0019). Lantern Vale keeps no vulkan-cpu copy since 36b326c3, so its
+moved frames are judged on lavapipe at wave 12's end. Native ANGLE stays
+uncommitted (row 70; it also needs `ANGLE_DEFAULT_PLATFORM=metal`).
+
 ## Wave 12, web-dogfood: the three games and the kit published and played in Chrome (ccc462d)
 
 The fourth dogfood round, of the web path the native rounds never
@@ -4460,6 +4529,7 @@ resource only the owner can give.
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | closed at dcdcd17c: the script taps Title after the wipe and opens the chapters; `chapters.png` re-recorded (0.1835) |
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
+| 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | open |
 
 ## 0. Rules that shape the plan
 
