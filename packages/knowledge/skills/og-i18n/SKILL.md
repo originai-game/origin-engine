@@ -17,7 +17,7 @@ type strings
 version 1
 ---
 locale "ja"
-fonts "fonts/NotoSansJP-subset.otf"      # this locale's font chain, first first
+fonts "fonts/NotoSansJP-game.otf"        # this locale's font chain, first first
 string "menu.play" "プレイ"
 string "hud.coins" "{n, plural, other {コイン#枚}}"
 string "results.time" "タイム {time}"
@@ -71,11 +71,42 @@ string "results.time" "タイム {time}"
 
 ## 3. Fonts for every script
 
-- Latin and Cyrillic: the skin's font. Chinese: keep
-  `fonts/NotoSansSC-Regular-subset.ttf` (the template's) as the fallback.
-  Japanese, Korean, Arabic: a subset of Noto Sans JP, KR or Arabic holding
-  exactly the characters your tables use (`templates/ui-kit/tools/make-locale-fonts.py`
-  does it with fontTools), named in that table's `fonts` line.
+- Latin and Cyrillic: the skin's font. Every other script: a subset of a
+  Noto face for that script holding exactly the characters your tables
+  use, named first in that table's `fonts` line.
+- What the engine ships: `fonts/NotoSansSC-Regular-subset.ttf`, in every
+  project (Simplified Chinese: GB2312's 6,763 hanzi, kana and Latin-1,
+  2.5 MB), the source for a Chinese subset and the skins' CJK `fallback`.
+  The ui-kit's `NotoSansJP-subset.otf`, `NotoSansKR-subset.otf` and its
+  Arabic, Hebrew and Devanagari subsets hold only the ui-kit's own strings
+  (the Japanese one 177 characters, 28 of them kanji): they are no source
+  for a game's text. A Japanese, Korean, Traditional Chinese or Arabic
+  game brings the whole Noto face (notofonts, SIL OFL; Noto Sans CJK's
+  Regular `.ttc` holds Japanese as face 0, Korean 1, Simplified 2,
+  Traditional 3) into a folder outside `assets/` (`tools/fonts/`), so the
+  cook never sees it, and records its licence.
+- Make the subset with `templates/ui-kit/tools/subset-font.py`, copied into
+  the project's `tools/`: it reads every `string` of `assets/strings/`
+  (`--locale ja` for one table, `--extra` for what players or playtests
+  type), writes the subset and its import settings (`chars` listing every
+  character) and exits 1 naming each character the source lacks. Run it
+  again after a string changes, then `og cook`:
+
+  ```sh
+  python3 tools/subset-font.py tools/fonts/NotoSansCJK-Regular.ttc assets/fonts/NotoSansJP-game.otf --face 0 --locale ja
+  python3 tools/subset-font.py assets/fonts/NotoSansSC-Regular-subset.ttf assets/fonts/NotoSansSC-game.ttf --locale zh-CN --cjk-only
+  ```
+
+  `--cjk-only` leaves Latin out, so a label mixing scripts takes its Latin
+  from the skin's face run by run; with Latin kept, the whole label is
+  drawn in the subset (og-ui §7 has the rule).
+- Never take Japanese from the Chinese face: it lacks the Japanese forms of
+  common kanji (鐘 鈴 険 続 設 語 楽 効 are not in it) and draws the kanji
+  both scripts share in their Chinese shapes. The fallback chain below is a
+  safety net for a character a subset missed, not a font for a language:
+  a Japanese string that reaches the skin's Chinese `fallback` is drawn in
+  Chinese forms, and one no font has is a box with a warning on the first
+  frame that draws it.
 - Each font's import settings (`<font>.ogt`) list its characters (`chars`)
   or a charset: `ascii`, `latin`, `kana`, `hangul`, `arabic`. A font
   cooked with the `arabic` charset also carries its joining forms and its
