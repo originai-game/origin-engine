@@ -75,12 +75,12 @@ Any container with `interactive: true` reports its response from `close()`.
 | `radio(id, options, &mut usize, RadioDesc)` | `Option#i` rows: a ring, amber with a dot when chosen | the labels |
 | `checkbox(id, &mut bool, label)`, `checkbox_list(id, labels, &mut [bool])` | a box, amber with a tick (two rotated bars) | the label(s) |
 | `chip(id, text, ChipDesc)` | a capsule on `fill`; selected inverts to `fg` | the text |
-| `badge(id, text, Tone)` | a small capsule in a tone (neutral, success, warn, danger, info, accent, inverse) | the text |
+| `badge(id, text, Tone)` | a small capsule in a tone (neutral, success, warn, danger, info, accent, inverse); its ink reads 4.5:1 (`READABLE`) on what it is drawn on: a tone's or the accent's ink on a ground across the scale from the palette's `surface` (a light pack's badge on its dark stage) lightens or darkens towards its own end until it does (`Srgba::readable_on`), the neutral `fgMuted` wherever it does not read on its `fill` (and where no ink of its side could, the fill moves away from it) | the text |
 | `key_value(id, key, value, mono)` | `Key` (fg-muted) and `Value` (end) on one row | both |
 | `divider(id, vertical)`, `spacer(id, Option<Size>)` | a hairline in `border`; empty space | — |
 | `skeleton(id, SkeletonDesc)`, `spinner(id, size)` | the neutral fill with a passing sheen (still under reduced motion); eight dots turning by the tick | — |
 | `icon(id, name, IconDesc)` | an icon of the icon atlas (`set_icons`) by name, tinted: a cell of a texture grid, or an icon set's distance-field glyph fitted to its square (§Icon sets) | the name |
-| `meter(id, value, max, &MeterDesc)` | health (green, warn under 30 %, danger under 15 %), mana (blue hue), xp (purple hue), accent or custom; a drop leaves a pale trail that follows after `fast`, a rise grows over `slow`, by the tick; notches; a label inside | the label |
+| `meter(id, value, max, &MeterDesc)` | health (green, warn under 30 %, danger under 15 %), mana (blue hue), xp (purple hue), accent or custom; a drop leaves a pale trail that follows after `fast`, a rise grows over `slow`, by the tick; notches; a label inside, over the fill and over the track in whichever of `fg` and `fgInverse` reads better there, moved towards its end where neither reaches 4.5:1 (a mid blue or purple) | the label |
 | `cooldown(id, remaining, &CooldownDesc)` | a disc whose amber ring fills clockwise from the top as the cooldown runs out (two rotated half discs), full when ready; a label or icon in the middle | the label |
 | `minimap(id, &MinimapDesc)` | the map texture in a `border-strong` frame, dots for markers (the player amber and ringed), N, a zone label | `Map`, `Zone` |
 | `dialogue(id, &DialogueDesc)` | portrait slot (texture, icon or initial), speaker in `accent-ink`, the line typed at `chars_per_second` by the tick; a press finishes the line, the next answers `advanced` | `Body/Line` shows what is typed |
@@ -337,7 +337,23 @@ into `atlas.png` and the skin file's atlas, slice, soft and ornament-region
 lines, every other line kept; `crates/og-cli/tests/cli.rs` packs
 `tests/fixtures/skin-pack`); `tests/packs.rs` holds each to 4.5:1
 for every ink a template puts on a skinned surface, measured over the frame
-art really under the text.
+art really under the text, and `tests/pack_contrast.rs` holds them and the
+games' own skins (the archetypes' and the examples') to the same bars for
+every button state, field, badge tone, meter label and slot count.
+
+**Badges on either side of the scale.** A palette's status tones and
+accent are made for its panels: deep on a cream panel, light on a dark
+one, and no ink reads 4.5:1 on a dark stage and a cream panel at once. So
+a badge reads its ground (`Ui::behind`, the palette's colours): on the
+palette's own side it draws the palette's ink as it is (the tests hold
+the palette there), and on the other side (a light pack's badge straight
+on its dark screen, a dark pack's on a light card) its ink moves towards
+its own end of the scale until it reads 4.5:1 (`Srgba::readable_on`: a
+deep green lightens, keeping its hue as far as the bar allows; cartoon's
+success read 1.98:1 on its stage before). The neutral badge's ground is
+its own flat `fill`, so `fgMuted` moves wherever it does not read on it
+(neon's 2.81:1), and where no ink of its side could, the fill darkens or
+lightens away from it instead (scifi's mid-blue fill, 2.15:1).
 
 ## Icon sets
 
@@ -814,7 +830,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop |
 | `tests/skin.rs` | a skinned card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default theme emits no skin piece; a skin file names the wrong line (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
 | `tests/packs.rs` | the six packs parse, name only existing assets, and every ink a template draws on a skinned surface is at least 4.5:1 over the frame art under it (and `fg` on a selected tab) |
-| `tests/pack_contrast.rs` | every pack (the six and Ember Vale's copy of fantasy): each button role's label in each state, and `fg`, `fgMuted`, `fgSubtle`, against the draw commands composited over the atlas texels: a label on a panel at 4.5:1, a primary or secondary label at rest or hovered at 7:1; the primary and secondary labels read from a rendered frame at 4.5:1; and, for the packs and the archetypes' skins (sparkorb, lampdive, lanebeat, pathguard), a badge in each status tone and the accent at 4.5:1 in a panel (and on the screen where screen and panel are both dark or both light); prints every row with its ink and ground |
+| `tests/pack_contrast.rs` | every skin (the six packs, Ember Vale's copy of fantasy, the archetypes' sparkorb, lampdive, lanebeat and pathguard, the examples' hollowbell, lantern and kestrel): each button role's label in each state, and `fg`, `fgMuted`, `fgSubtle`, a field's placeholder and text at rest and focused, a stack's count on a bag slot at rest and selected, a meter's label over each kind's fill and its track, against the draw commands composited over the atlas texels: a label on a panel at 4.5:1, a primary or secondary label at rest or hovered at 7:1; the primary and secondary labels read from a rendered frame at 4.5:1; a badge in every tone at 4.5:1 on the screen and in a panel, the status tones and the accent with the palette's own ink in a panel; prints every row with its ink and ground |
 | `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
 | `tests/materials_gfx.rs` | `references/<tier>/materials.png`: a dark card with its edge light, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled; no missing glyph |
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |

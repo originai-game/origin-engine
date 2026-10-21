@@ -134,8 +134,17 @@ neon UI reads as two games.
   also the meters', toasts' and status dots' colours: on a cream panel they
   are deep (the cartoon pack's warn is `#7b5102`, not a bright amber that
   read 1.63:1), on a dark one light (a red under a dark pack's panel is a
-  salmon such as `#ff8080`); a pack whose panels are light on a dark stage
-  holds them in its panels, where its badges sit;
+  salmon such as `#ff8080`). Make them for the panels; a badge placed on
+  the other side of the scale (a light pack's badge straight on its dark
+  stage) moves its own ink towards white or black until it reads there,
+  and the neutral badge does the same on its `fill`, so neither needs a
+  second palette. A game's copied skin is held to the same bars: the
+  engine's `pack_contrast.rs` measures the archetypes' and examples'
+  skins too, and their fixes were value, not hue (pathguard's lantern
+  orange deepened under a cream label, sparkorb's gold to a burnished
+  amber under its cream ink, lampdive's plum fill darkened under its
+  placeholder, Lantern Vale's status colours taken back to the fantasy
+  pack's deep ones);
   it also reads the primary and secondary labels from a rendered frame,
   where thin strokes may never reach their colour: a pixel font's one-pixel
   strokes fall between pixels and took half their ink, so the pixel pack

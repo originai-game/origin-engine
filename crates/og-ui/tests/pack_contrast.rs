@@ -1,16 +1,23 @@
-//! button_contrast.rs for the style packs: every button role's label, in
-//! every state, the three label inks (`fg`, `fgMuted`, `fgSubtle`) and a
-//! text field's placeholder (`fgSubtle` on the field's frame) and typed
-//! text, at rest and focused, and an accent badge (`accentInk` on
-//! `accentSoft`, the results screen's "New best"), as
-//! og-ui draws them with a pack's skin, read against what is really under
-//! them: the frame's draw commands composited in linear light, a skinned
-//! piece as the mean of its atlas texels (the pack's `atlas.png`) times its
-//! tint. Packs: the six of templates/ui-kit and Ember Vale's copy of the
-//! fantasy pack (templates/archetypes/third-person, `ember`).
+//! button_contrast.rs for the style packs and the games' skins: every
+//! button role's label, in every state, the three label inks (`fg`,
+//! `fgMuted`, `fgSubtle`), a text field's placeholder (`fgSubtle` on the
+//! field's frame) and typed text, at rest and focused, a stack's count on
+//! a bag slot, a meter's label over each kind's fill and over its track,
+//! and a badge in every tone, as og-ui draws them with a skin, read against
+//! what is really under them: the frame's draw commands composited in
+//! linear light, a skinned piece as the mean of its atlas texels (the
+//! skin's `atlas.png`) times its tint. Skins: the six packs of
+//! templates/ui-kit, Ember Vale's copy of the fantasy pack
+//! (templates/archetypes/third-person, `ember`), the archetypes' sparkorb,
+//! lampdive, lanebeat and pathguard and the examples' hollowbell, lantern
+//! and kestrel (palette round two, row 77: sparkorb's primary label read
+//! 3.42:1, lampdive's placeholder 3.57:1, pathguard's primary 3.30:1 and
+//! its danger button 2.96:1, Hollowbell's danger badge 4.26:1, Lantern
+//! Vale's success, warn and info badges 3.15, 2.72 and 4.07:1, before
+//! their palettes moved).
 //!
-//! A second test draws every pack's primary and secondary buttons through
-//! og-render with the pack's own cooked fonts and reads each label, in
+//! A third test draws every skin's primary and secondary buttons through
+//! og-render with the skin's own cooked fonts and reads each label, in
 //! every state, from the frame as og polish does: the colours above can be
 //! right while the strokes never take them (the pixel pack's primary
 //! labels, hollowbell FINDINGS #20, fixed).
@@ -75,25 +82,44 @@ fn packs() -> Vec<(String, PathBuf)> {
     out
 }
 
-/// The archetypes' own skins, each a pack recoloured by hand for its game
-/// (ember is in [`packs`]): held to the badge bars only (the tones), their
-/// buttons and fields printed by the first test's rows when added there.
-fn archetype_skins() -> Vec<(String, PathBuf)> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/archetypes");
+/// The games' own skins: the archetypes' (each a pack recoloured by hand
+/// for its game; ember is in [`packs`]) and the three examples' (Hollowbell's
+/// and Lantern Vale's by hand, the Kestrel Stair's written by its
+/// tools/make-assets.ts from the paper pack). Held to every bar the packs
+/// are, the frame reading included (lampdive's DotGothic16 took the pixel
+/// pack's `textWeight body 0.5` and `px_range 8` for it: its pressed
+/// primary label read 3.91:1 in the frame without them).
+fn game_skins() -> Vec<(String, PathBuf)> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     [
-        ("idle", "sparkorb"),
-        ("roguelike", "lampdive"),
-        ("rhythm", "lanebeat"),
-        ("tower-defense", "pathguard"),
+        (
+            "sparkorb",
+            "templates/archetypes/idle/assets/skins/sparkorb",
+        ),
+        (
+            "lampdive",
+            "templates/archetypes/roguelike/assets/skins/lampdive",
+        ),
+        (
+            "lanebeat",
+            "templates/archetypes/rhythm/assets/skins/lanebeat",
+        ),
+        (
+            "pathguard",
+            "templates/archetypes/tower-defense/assets/skins/pathguard",
+        ),
+        ("hollowbell", "examples/hollowbell/assets/skins/hollowbell"),
+        ("lantern", "examples/lantern-vale/assets/skins/lantern"),
+        ("kestrel", "examples/kestrel-stair/assets/skins/kestrel"),
     ]
     .iter()
-    .map(|(archetype, skin)| {
-        (
-            skin.to_string(),
-            root.join(archetype).join("assets/skins").join(skin),
-        )
-    })
+    .map(|(name, dir)| (name.to_string(), root.join(dir)))
     .collect()
+}
+
+/// The packs and the games' skins.
+fn skins() -> Vec<(String, PathBuf)> {
+    packs().into_iter().chain(game_skins()).collect()
 }
 
 fn lin(c: f32) -> f32 {
@@ -245,7 +271,7 @@ fn atlas_handle() -> TextureHandle {
 fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for (name, dir) in packs() {
+    for (name, dir) in skins() {
         let text = std::fs::read_to_string(dir.join("skin.ogt"))
             .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
         let file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -344,7 +370,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     let (ink, fill) = measured(&ui, label, bg, tex, &atlas);
                     let r = ratio(ink, fill);
                     rows.push(format!(
-                        "{name:8} {label:9} {state:7} on the {ground_name:6} {r:6.2}:1  {} on {}",
+                        "{name:10} {label:9} {state:7} on the {ground_name:6} {r:6.2}:1  {} on {}",
                         hex(ink),
                         hex(fill)
                     ));
@@ -406,7 +432,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 let (ink_l, ground) = measured(&ui, "Ink", bg, tex, &atlas);
                 let r = ratio(ink_l, ground);
                 rows.push(format!(
-                    "{name:8} {ink_name:9} label   on the {ground_name:6} {r:6.2}:1  {} on {}",
+                    "{name:10} {ink_name:9} label   on the {ground_name:6} {r:6.2}:1  {} on {}",
                     hex(ink_l),
                     hex(ground)
                 ));
@@ -493,7 +519,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     let r = ratio(ink, fill);
                     let state = if focused { "focused" } else { "rest" };
                     rows.push(format!(
-                        "{name:8} {what:11} {state:7} on the {ground_name:6} {r:6.2}:1  {} on {}",
+                        "{name:10} {what:11} {state:7} on the {ground_name:6} {r:6.2}:1  {} on {}",
                         hex(ink),
                         hex(fill)
                     ));
@@ -505,30 +531,140 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 }
             }
         }
+        // A stack's count on a bag slot (the inventory screen's `fgMuted`
+        // label, xs), in a slot at rest and in the selected one, in a panel.
+        {
+            let mut scene = RenderScene::new();
+            let mut ui = ui_with_font(add_test_font(&mut scene));
+            ui.set_theme(theme);
+            let vp = Viewport::new(800.0, 600.0);
+            for _ in 0..40 {
+                ui.begin(InputFrame::default(), vp);
+                let xs = ui.theme().type_ramp.xs;
+                ui.panel(
+                    "G",
+                    PanelDesc {
+                        background: Some(p.surface),
+                        ..PanelDesc::default()
+                    },
+                    |ui| {
+                        ui.grid(
+                            "Slots",
+                            GridDesc {
+                                count: 2,
+                                columns: 2,
+                                ..GridDesc::default()
+                            },
+                            Some(1),
+                            |ui, k| {
+                                ui.label(
+                                    "Count",
+                                    if k == 0 { "12" } else { "34" },
+                                    LabelDesc {
+                                        step: Some(xs),
+                                        color: Some(p.fg_muted),
+                                        ..LabelDesc::default()
+                                    },
+                                );
+                            },
+                        );
+                    },
+                );
+                ui.end();
+            }
+            for (text, state) in [("12", "rest"), ("34", "selected")] {
+                let (ink, ground) = measured(&ui, text, bg, tex, &atlas);
+                let r = ratio(ink, ground);
+                rows.push(format!(
+                    "{name:10} count     {state:8} on a slot    {r:6.2}:1  {} on {}",
+                    hex(ink),
+                    hex(ground)
+                ));
+                if r < LABEL_BAR {
+                    failing.push(format!(
+                        "{name}: a stack's count on a {state} slot: {r:.2}:1 (under {LABEL_BAR}:1)"
+                    ));
+                }
+            }
+        }
+        // A meter's label (the HUD's "HP 80/100"), in a panel, over its
+        // fill (full: each kind's colour, warn and danger as a health
+        // meter shows them under 30 % and 15 %) and over its track (empty).
+        for (kind_name, kind, value) in [
+            ("health", MeterKind::Health, 1.0),
+            ("warn", MeterKind::Custom(p.warn), 1.0),
+            ("danger", MeterKind::Custom(p.danger), 1.0),
+            ("mana", MeterKind::Mana, 1.0),
+            ("xp", MeterKind::Xp, 1.0),
+            ("accent", MeterKind::Accent, 1.0),
+            ("track", MeterKind::Health, 0.0),
+        ] {
+            let mut scene = RenderScene::new();
+            let mut ui = ui_with_font(add_test_font(&mut scene));
+            ui.set_theme(theme);
+            let vp = Viewport::new(800.0, 600.0);
+            for _ in 0..40 {
+                ui.begin(InputFrame::default(), vp);
+                ui.panel(
+                    "G",
+                    PanelDesc {
+                        background: Some(p.surface),
+                        ..PanelDesc::default()
+                    },
+                    |ui| {
+                        ui.meter(
+                            "M",
+                            value,
+                            1.0,
+                            &MeterDesc {
+                                kind,
+                                label: "HP 80".into(),
+                                width: Some(Size::Fixed(160.0)),
+                                ..MeterDesc::default()
+                            },
+                        )
+                    },
+                );
+                ui.end();
+            }
+            let (ink, fill) = measured(&ui, "HP 80", bg, tex, &atlas);
+            let r = ratio(ink, fill);
+            rows.push(format!(
+                "{name:10} {kind_name:9} meter   in a panel     {r:6.2}:1  {} on {}",
+                hex(ink),
+                hex(fill)
+            ));
+            if r < LABEL_BAR {
+                failing.push(format!(
+                    "{name}: a {kind_name} meter's label: {r:.2}:1 (under {LABEL_BAR}:1)"
+                ));
+            }
+        }
     }
     println!("{}", rows.join("\n"));
     assert!(failing.is_empty(), "{}", failing.join("\n"));
 }
 
 /// A badge in every tone (its tint, its tone's ink), on the screen and in
-/// a panel, for every pack and the archetypes' skins, every row printed.
-/// The status tones (success, warn, danger, info) and the accent hold
-/// 4.5:1 in a panel, and on the screen too where the pack's screen and
-/// panel sit on the same side (both dark or both light): no ink reads
-/// 4.5:1 on a dark stage and on a cream panel at once, and the light packs'
-/// badges sit in their panels. The tones are the colours meters, toasts
-/// and status dots share, so the light packs' are deep (cartoon's warn read
-/// 1.63:1 on its panel at #f2a516, now #7b5102) and the dark packs' light;
-/// the tint mixes as the platform's CSS mixes it (`Srgba::tint_over`: a
-/// linear 16 % lifted a dark ground so far that no ink, white included,
-/// reached 4.5:1 on the pixel pack's panel). The neutral badge (fgMuted on
-/// fill) and the inverse are printed, not held: scifi's and neon's neutral
-/// read under 3:1, a round of their fill.
+/// a panel, for every pack and the games' skins, every row printed. Every
+/// tone holds 4.5:1 on both grounds. In a panel (where a pack's badges
+/// sit) the status tones and the accent hold it with the palette's own
+/// ink: the tones are the colours meters, toasts and status dots share, so
+/// the light packs' are deep (cartoon's warn read 1.63:1 on its panel at
+/// #f2a516, now #7b5102) and the dark packs' light; the tint mixes as the
+/// platform's CSS mixes it (`Srgba::tint_over`: a linear 16 % lifted a dark
+/// ground so far that no ink, white included, reached 4.5:1 on the pixel
+/// pack's panel). On the other side of the scale, a light pack's badge on
+/// its dark stage (cartoon's success read 1.98:1 there, fantasy's danger
+/// 1.54:1), the badge moves its ink (`Srgba::readable_on`); so does the
+/// neutral badge, `fgMuted` on `fill`, whose ground scifi's and neon's mid
+/// fills made 2.15:1 and 2.81:1 (scifi's moves its fill: no ink reaches
+/// 4.5:1 on it from the light side).
 #[test]
-fn every_skin_keeps_its_status_and_accent_badges_at_4_5_to_1() {
+fn every_skin_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for (name, dir) in packs().into_iter().chain(archetype_skins()) {
+    for (name, dir) in skins() {
         let text = std::fs::read_to_string(dir.join("skin.ogt"))
             .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
         let file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -539,32 +675,6 @@ fn every_skin_keeps_its_status_and_accent_badges_at_4_5_to_1() {
         let theme = file.theme(Some(tex), [0; 6]);
         let p = theme.palette;
         let bg = rgb(p.bg);
-        // What a label reads on, bare and in a panel: which sides the
-        // badges are held on.
-        let ground = |panel: Option<Srgba>| {
-            let mut scene = RenderScene::new();
-            let mut ui = ui_with_font(add_test_font(&mut scene));
-            ui.set_theme(theme);
-            for _ in 0..40 {
-                ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-                let label = |ui: &mut Ui| ui.label("L", "Ink", LabelDesc::default());
-                match panel {
-                    Some(bg) => ui.panel(
-                        "G",
-                        PanelDesc {
-                            background: Some(bg),
-                            ..PanelDesc::default()
-                        },
-                        label,
-                    ),
-                    None => label(&mut ui),
-                }
-                ui.end();
-            }
-            measured(&ui, "Ink", bg, tex, &atlas).1
-        };
-        let dark = |c: [f32; 3]| luminance(c) < 0.18;
-        let same_side = dark(ground(None)) == dark(ground(Some(p.surface)));
         // The accent badge is the results screen's "New best" (it read
         // 4.12:1 here in the fantasy pack and 4.03:1 in Lantern Vale's
         // polish frame before accentInk moved).
@@ -601,15 +711,31 @@ fn every_skin_keeps_its_status_and_accent_badges_at_4_5_to_1() {
                 let (ink, ground) = measured(&ui, "Badge", bg, tex, &atlas);
                 let r = ratio(ink, ground);
                 rows.push(format!(
-                    "{name:8} {tone_name:9} badge   on the {ground_name:6} {r:6.2}:1  {} on {}",
+                    "{name:10} {tone_name:9} badge   on the {ground_name:6} {r:6.2}:1  {} on {}",
                     hex(ink),
                     hex(ground)
                 ));
-                let held = !matches!(tone, Tone::Neutral | Tone::Inverse)
-                    && (panel.is_some() || same_side);
-                if held && r < LABEL_BAR {
+                if r < LABEL_BAR {
                     failing.push(format!(
                         "{name}: a {tone_name} badge on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
+                    ));
+                }
+                let own = match tone {
+                    Tone::Success => Some(p.success),
+                    Tone::Warn => Some(p.warn),
+                    Tone::Danger => Some(p.danger),
+                    Tone::Info => Some(p.info),
+                    Tone::Accent => Some(p.accent_ink),
+                    _ => None,
+                };
+                if let Some(own) = own
+                    && panel.is_some()
+                    && hex(ink) != hex(rgb(own))
+                {
+                    failing.push(format!(
+                        "{name}: a {tone_name} badge in a panel needs its ink moved ({} to {}): the palette's tone reads under {LABEL_BAR}:1 there",
+                        hex(rgb(own)),
+                        hex(ink)
                     ));
                 }
             }
@@ -648,7 +774,7 @@ fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-pack-fonts");
     let _ = std::fs::remove_dir_all(&root);
     let mut wanted = Vec::new();
-    for (name, dir) in packs() {
+    for (name, dir) in skins() {
         let file = parse_skin(&std::fs::read_to_string(dir.join("skin.ogt")).expect("skin.ogt"))
             .expect("parses");
         let base = |i: usize| {
@@ -806,7 +932,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
     let fonts = cooked_fonts();
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for ((name, dir), (fname, [body, display])) in packs().into_iter().zip(&fonts) {
+    for ((name, dir), (fname, [body, display])) in skins().into_iter().zip(&fonts) {
         assert_eq!(&name, fname);
         let file = parse_skin(&std::fs::read_to_string(dir.join("skin.ogt")).expect("skin.ogt"))
             .expect("parses");
@@ -929,7 +1055,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                 }
                 let r = frame_contrast(&image.pixels, image.width, &rect)
                     .unwrap_or_else(|| panic!("{name}: no ink in the {id} button, {state}"));
-                rows.push(format!("{name:8} {id:9} {state:7} in the frame {r:6.2}:1"));
+                rows.push(format!("{name:10} {id:9} {state:7} in the frame {r:6.2}:1"));
                 if r < LABEL_BAR {
                     failing.push(format!(
                         "{name}: the {id} button's label, {state}, reads {r:.2}:1 in the frame (under {LABEL_BAR}:1)"
