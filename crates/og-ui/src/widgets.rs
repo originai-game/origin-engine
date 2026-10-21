@@ -11,7 +11,7 @@ use crate::layout::{
     Size, TextAlign, Widget,
 };
 use crate::motion::{TransitionKind, ease_exit, ease_out, fx};
-use crate::style::Srgba;
+use crate::style::{READABLE, Srgba};
 use crate::ui::{Anim, Response, Toast, Ui};
 use og_core::hash::StableHasher;
 use og_render::TextureHandle;
@@ -2011,6 +2011,17 @@ impl Ui {
     }
 
     /// A badge: a small status capsule in its tone (tinted fill, tone ink).
+    ///
+    /// Its ink reads [`READABLE`] on what it is drawn on. The tones and the
+    /// accent are the palette's, made for its panels (where the packs' test
+    /// holds them); on a ground on the other side of the scale from the
+    /// palette's `surface` (a light pack's deep status colours on its dark
+    /// stage) the ink moves towards its own end of the scale until it reads
+    /// there (a deep green lightens on a dark screen; in the cream panel it
+    /// stays deep). The neutral badge's ground is its own flat `fill`, so
+    /// its `fgMuted` moves wherever it does not read on it, and where even
+    /// white or black would not, the fill moves away from the ink instead
+    /// (scifi's mid-blue fill darkens under its pale ink). og-taste §3.
     pub fn badge(&mut self, id: impl Into<Id>, text: &str, tone: Tone) {
         let t = self.theme;
         let p = t.palette;
@@ -2037,14 +2048,38 @@ impl Ui {
                 ..Element::default()
             },
         );
-        if !matches!(tone, Tone::Neutral | Tone::Accent | Tone::Inverse) {
-            let under = self.behind(i);
-            self.nodes[i].el.background = Some(fg.tint_over(under, 0.16));
-        }
+        let under = self.behind(i);
+        let (mut bg, ground) = match tone {
+            // og-render composites the tint in linear light: tint_over
+            // picks the alpha whose blend has the browser's luminance.
+            Tone::Success | Tone::Warn | Tone::Danger | Tone::Info => {
+                (fg.tint_over(under, 0.16), fg.fade(0.16).over(under))
+            }
+            _ => (bg, bg.over_linear(under)),
+        };
+        let dark = |c: Srgba| Srgba::WHITE.contrast(c) > Srgba::BLACK.contrast(c);
+        let moves = match tone {
+            Tone::Neutral => true,
+            _ => dark(ground) != dark(p.surface),
+        };
+        // The ground is an estimate in bytes (the tint's sRGB mix), so a
+        // moved ink aims a little over the bar.
+        let aim = READABLE + 0.1;
+        let fg = match fg.readable_on(ground, aim) {
+            Some(ink) if moves => ink,
+            None if moves => {
+                if let Some(g) = ground.readable_on(fg, aim) {
+                    bg = g;
+                }
+                fg
+            }
+            _ => fg,
+        };
         let mut c = self.text_content(text, t.type_ramp.xs, fg);
         c.wrap = false;
         c.align = TextAlign::Center;
         let n = &mut self.nodes[i];
+        n.el.background = Some(bg);
         n.content = Content::Text(c);
         n.probe_text = text.to_owned();
     }
@@ -2361,14 +2396,20 @@ impl Ui {
         // The label in two inks, each the one of fg and fgInverse that reads
         // on what it is drawn over: the fill left of its edge, the track
         // right of it (a light pack's deep status colours take the inverse).
+        // Where neither reaches the bar (a mid blue or purple hue, a mid
+        // accent), the better one moves on towards its end until it does,
+        // else the other (white cannot read on cartoon's purple; black can).
         let behind = self.behind(i);
         let ink = |under: Srgba| {
             let under = under.over(behind);
-            if p.fg_inverse.contrast(under) > p.fg.contrast(under) {
-                p.fg_inverse
+            let (ink, other) = if p.fg_inverse.contrast(under) > p.fg.contrast(under) {
+                (p.fg_inverse, p.fg)
             } else {
-                p.fg
-            }
+                (p.fg, p.fg_inverse)
+            };
+            ink.readable_on(under, READABLE)
+                .or_else(|| other.readable_on(under, READABLE))
+                .unwrap_or(ink)
         };
         let (fill_ink, track_ink) = (ink(color), ink(p.fill_strong));
         let n = &mut self.nodes[i];

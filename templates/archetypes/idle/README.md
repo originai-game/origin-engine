@@ -63,7 +63,8 @@ og build . --publish         # dist/: the play page as it ships
   shakes and punches it.
 - **og.ui counters on the tokens** (og-ui §2–§6, og-taste §1–§7): the
   engine's neon pack recoloured as `assets/skins/sparkorb` (the orb's gold
-  as the one accent on night violet); the wallet and the rate top left, the
+  as the one accent on night violet: a burnished amber under the buttons'
+  cream labels, the bright gold `accentInk` for gold words and icons); the wallet and the rate top left, the
   stardust (an `og.ui.counter`) and Pause top right, the four generators
   along the bottom (a touch-sized button each, the count of each an
   `og.ui.counter`, the price in gold when it can be paid), the supernova's

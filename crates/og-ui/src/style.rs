@@ -6,6 +6,10 @@ pub use crate::theme::{
     Density, Durations, Hues, Palette, Radius, Space, Spring, Srgba, TypeRamp, TypeStep,
 };
 
+/// The contrast a widget that picks its own ink holds it to on what it is
+/// drawn on (a badge, a meter's label): WCAG's 4.5:1 for body text.
+pub const READABLE: f32 = 4.5;
+
 impl Srgba {
     /// Linear RGBA (straight alpha), what og-render's sprites and text take.
     pub fn linear(self) -> [f32; 4] {
@@ -48,6 +52,23 @@ impl Srgba {
         )
     }
 
+    /// This colour composited over an opaque `below` in linear light, as
+    /// og-render blends it, opaque.
+    pub fn over_linear(self, below: Srgba) -> Srgba {
+        let (t, b) = (self.linear(), below.linear());
+        let a = self.alpha.clamp(0.0, 1.0);
+        let e = |k: usize| {
+            let v = t[k] * a + b[k] * (1.0 - a);
+            let s = if v <= 0.003_130_8 {
+                v * 12.92
+            } else {
+                1.055 * v.powf(1.0 / 2.4) - 0.055
+            };
+            (s.clamp(0.0, 1.0) * 255.0).round() as u8
+        };
+        Srgba::rgb(e(0), e(1), e(2))
+    }
+
     /// This colour at alpha `k` over `below` as a browser composites it (in
     /// sRGB, the platform's `bg-success/16`), kept translucent for og-render,
     /// which composites in linear light: the alpha whose linear blend over
@@ -77,6 +98,44 @@ impl Srgba {
             ],
             alpha: self.alpha,
         }
+    }
+
+    /// This ink, or the least mix of it towards its own end of the scale
+    /// (white for an ink lighter than `ground`, black for a darker one) that
+    /// reads `bar`:1 on the opaque `ground`; `None` when even that end does
+    /// not. Value before hue: the ink lightens or darkens, keeping its hue
+    /// as far as the bar allows. Called with the two swapped, it moves the
+    /// ground away from the ink instead.
+    pub fn readable_on(self, ground: Srgba, bar: f32) -> Option<Srgba> {
+        if self.contrast(ground) >= bar {
+            return Some(self);
+        }
+        let end = if self.luminance() >= ground.luminance() {
+            Srgba::WHITE
+        } else {
+            Srgba::BLACK
+        };
+        if end.contrast(ground) < bar {
+            return None;
+        }
+        // The contrast grows with the mix: the least one at the bar.
+        let (mut lo, mut hi) = (0.0f32, 1.0f32);
+        for _ in 0..16 {
+            let mid = (lo + hi) / 2.0;
+            if self.mix(end, mid).contrast(ground) >= bar {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+        // Rounded to bytes, a step may still sit just under: step on.
+        let mut t = hi;
+        let mut c = self.mix(end, t);
+        while c.contrast(ground) < bar && t < 1.0 {
+            t = (t + 1.0 / 255.0).min(1.0);
+            c = self.mix(end, t);
+        }
+        Some(c)
     }
 
     /// The WCAG contrast ratio of this colour and `other` (1 to 21).
