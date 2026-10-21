@@ -120,6 +120,35 @@ fn system_info_reports_declarations_and_what_each_query_matched() {
 }
 
 #[test]
+fn systems_are_timed_with_the_world_clock() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    // A clock that moves 1.5 ms every time it is read.
+    static READS: AtomicU64 = AtomicU64::new(0);
+    fn clock() -> f64 {
+        READS.fetch_add(1, Ordering::Relaxed) as f64 * 1.5
+    }
+    let mut w = world();
+    w.add_system(SystemDesc::new("idle"), |_| Ok(())).unwrap();
+    w.step().unwrap();
+    let info = w.system_info();
+    assert_eq!((info[0].ms, info[0].runs), (None, 0), "no clock, no times");
+    let hash = w.world_hash();
+    w.set_clock(Some(clock));
+    w.step().unwrap();
+    w.step().unwrap();
+    let info = w.system_info();
+    assert_eq!(info[0].ms, Some(1.5));
+    assert_eq!((info[0].total_ms, info[0].runs), (3.0, 2));
+    let mut plain = world();
+    plain.add_system(SystemDesc::new("idle"), |_| Ok(())).unwrap();
+    for _ in 0..3 {
+        plain.step().unwrap();
+    }
+    assert_ne!(hash, plain.world_hash(), "the clock moved the tick on");
+    assert_eq!(w.world_hash(), plain.world_hash(), "timing never reaches the hash");
+}
+
+#[test]
 fn names_address_entities_and_survive_snapshots() {
     let mut w = world();
     let a = w.spawn((p(),)).unwrap();

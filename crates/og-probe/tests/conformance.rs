@@ -431,12 +431,12 @@ fn every_member_answers_as_protocol_5_says() {
     );
     assert_eq!(
         world["systems"][0],
-        json!({"name": "steer", "matched": 1, "reads": ["og.Input"], "writes": ["Velocity"], "ms": null})
+        json!({"name": "steer", "matched": 1, "reads": ["og.Input"], "writes": ["Velocity"], "ms": null, "totalMs": 0.0, "runs": 0})
     );
     assert_eq!(world["systems"][1]["matched"], json!(1));
     assert_eq!(
         world["systems"][2],
-        json!({"name": "draw", "matched": 0, "reads": [], "writes": ["og.Rng", "Stats"], "ms": null})
+        json!({"name": "draw", "matched": 0, "reads": [], "writes": ["og.Rng", "Stats"], "ms": null, "totalMs": 0.0, "runs": 0})
     );
     for r in ["og.Input", "og.Camera", "Stats"] {
         assert!(

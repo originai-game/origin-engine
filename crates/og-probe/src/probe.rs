@@ -2148,12 +2148,14 @@ impl Probe {
                 .collect()
             })
             .unwrap_or_default();
-        // og-ecs reports every system: its declared access and what its
-        // queries matched when it last ran. The probe reads no clock: ms is null.
+        // og-ecs reports every system: its declared access, what its
+        // queries matched when it last ran and, when the host gave the world
+        // a clock (World::set_clock), the milliseconds of that run (null
+        // without one) and of every timed run summed, with their count.
         let systems: Vec<Value> = world
             .system_info()
             .into_iter()
-            .map(|s| json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": Value::Null}))
+            .map(|s| json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": s.ms, "totalMs": s.total_ms, "runs": s.runs}))
             .collect();
         let resources: Vec<String> = world
             .schemas()

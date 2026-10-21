@@ -68,11 +68,16 @@ pub(crate) struct System {
     pub matched: Vec<usize>,
     /// The tick the system last ran in.
     pub last_tick: Option<u64>,
+    /// Wall-clock milliseconds of its last run, of every run, and the runs
+    /// timed (only while the world has a clock, [`World::set_clock`]).
+    pub ms: Option<f64>,
+    pub total_ms: f64,
+    pub runs: u64,
     pub run: SystemFn,
 }
 
 /// What [`crate::World::system_info`] reports about one system.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SystemInfo {
     pub name: String,
     /// Declared reads that are not also writes, by type name in id order.
@@ -89,6 +94,12 @@ pub struct SystemInfo {
     /// The tick it last ran in (`None` before the first tick). A tick that
     /// failed in an earlier system did not run it.
     pub last_tick: Option<u64>,
+    /// Wall-clock milliseconds of its last run, its commands applied (`None`
+    /// before a run timed with the world's clock, [`World::set_clock`]).
+    pub ms: Option<f64>,
+    /// The milliseconds of every timed run summed, and those runs.
+    pub total_ms: f64,
+    pub runs: u64,
 }
 
 fn ids(world: &World, names: &[String], system: &str) -> Result<Vec<SchemaId>> {
@@ -175,6 +186,9 @@ impl System {
             queries,
             desc_queries: desc.queries,
             last_tick: None,
+            ms: None,
+            total_ms: 0.0,
+            runs: 0,
             run,
         })
     }

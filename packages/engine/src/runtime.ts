@@ -1171,6 +1171,9 @@ export class Engine {
     paused?: boolean;
     quit?: boolean;
     behind?: number;
+    /** Wall milliseconds a tick took (this frame's mean, or the last frame's that ticked) and the last render took. */
+    stepMs?: number;
+    renderMs?: number;
     reason?: string;
     /** The UI's focused text control (web/text-input.ts's TextTarget), or null. */
     text?: { path: string; rect: [number, number, number, number]; multiline: boolean; selection: string; composing: boolean } | null;

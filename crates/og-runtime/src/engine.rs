@@ -841,6 +841,9 @@ pub(crate) fn assemble(
         seed,
     })
     .map_err(err)?;
+    // Systems timed by name for the probe's dump_world and og run --json
+    // (measurement only: nothing in the tick reads it).
+    world.set_clock(Some(rprobe::now_ms));
     let mut layouts = BTreeMap::new();
     let mut resources = vec![Time::NAME.to_string(), Rng::NAME.to_string()];
     let mut warnings = Vec::new();
@@ -1463,7 +1466,10 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    let behind = eng.state.borrow().accumulator_ms;
+    let (behind, step_ms, render_ms) = {
+        let st = eng.state.borrow();
+        (st.accumulator_ms, st.step_ms, st.render_ms)
+    };
     let (text, copy) = text_entry(&eng);
     let a11y = a11y_changed(&eng);
     let probe = eng.probe.borrow();
@@ -1471,10 +1477,12 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // yet, so a host can place an input event within the next tick.
     // `text`: the focused text control (where the page's text target goes,
     // the selection a copy takes), `copy`: text a Ctrl/Cmd+C or X took.
+    // `stepMs`: wall milliseconds a tick took (the mean of this frame's, or
+    // the last frame's that ticked), `renderMs`: the last render's.
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
-        "text": text,
+        "text": text, "stepMs": step_ms, "renderMs": render_ms,
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);
