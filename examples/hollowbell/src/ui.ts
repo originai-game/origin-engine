@@ -54,6 +54,8 @@ export function setName(p: PrefsV, name: string): void {
 export function configureUi(world: World, p: PrefsV): void {
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, {
+    // Toasts at the top centre: the bottom is the talk's dialogue box and the prompts'.
+    toastAnchor: "top",
     reducedMotion: p.reducedMotion,
     contrast: p.highContrast ? "high" : "standard",
     sounds: { press: sound("audio/ui-click.ogt"), success: sound("audio/ui-select.ogt"), open: sound("audio/ui-select.ogt"), close: sound("audio/ui-back.ogt"), error: sound("audio/ui-error.ogt") },

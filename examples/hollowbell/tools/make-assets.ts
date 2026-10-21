@@ -1095,15 +1095,11 @@ function motes(): void {
   writePixel("fx/puff.png", puff);
 }
 
-/** The sky over the village: a gradient 4 wide and 64 tall, stretched behind the far hills. */
+/** The sky over the village: a gradient 1 wide and 64 tall, stretched behind the far hills (the look's dither blends its bands). */
 function sky(): void {
-  const s = new Pix(4, 64);
+  const s = new Pix(1, 64);
   const bands: Colour[] = ["deep", "blue", "blue", "sky", "sky", "ice", "ice", "pale", "sun", "sun"];
-  for (let y = 0; y < 64; y++) {
-    const t = (y / 63) * (bands.length - 1);
-    const i = Math.floor(t);
-    for (let x = 0; x < 4; x++) s.set(x, y, (t - i > 0.5 + ((x + y) % 2) * 0.2 - 0.1 ? bands[Math.min(i + 1, bands.length - 1)] : bands[i])!);
-  }
+  for (let y = 0; y < 64; y++) s.set(0, y, bands[Math.min(bands.length - 1, Math.floor((y / 64) * bands.length))]!);
   writePixel("sprites/sky.png", s);
 }
 
