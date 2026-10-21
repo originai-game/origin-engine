@@ -1487,7 +1487,20 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   `width`/`height` inside the renderer are the scene's. The TAA history
   follows the scene size, the offscreen target and the overlay stay at the
   output's. With `snap`, og-runtime moves the 2D camera and every world
-  sprite by whole logical pixels.
+  sprite by whole logical pixels. *The fit* (`PixelScale::fit`,
+  `PixelFit`): the height decides the scale, `upscale` when `height ×
+  upscale` fits the output's height (a hard request, with the border it
+  implies), else and for 0 the largest that does; the width is the
+  aspect's columns rounded, at most the output's width over the scale, so
+  at most one column gives way to the scale. 240 rows at 1280 × 720 were
+  427 columns, 1281 pixels at 3x, and fell back to 2x inside a 213-pixel
+  border with `upscale` 3 ignored (hollowbell FINDINGS #7); they are 426
+  columns at 3x, a 1-pixel border each side. Every other height of the
+  look presets fits as before at 720p. Tests: `stylise.rs`'s
+  `the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column` (720p,
+  1080p, a phone both ways, every fit inside its output); og-tests
+  `stylise-palette` and `stylise-retro` (240 rows) were re-recorded at
+  3x.
 - **A look change is a cut**: when the primitives that are on change
   between two frames (`Stylise::chain_bits`: a pass added or removed, the
   pixel grid, retro 3D, the material style; not their settings), the

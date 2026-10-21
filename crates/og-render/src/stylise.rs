@@ -53,7 +53,7 @@ pub struct Palette {
 pub const MAX_PALETTE_COLORS: usize = 256;
 
 /// A low-resolution render target scaled up by whole numbers with nearest
-/// filtering.
+/// filtering ([`PixelScale::fit`] places it in the output).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PixelScale {
     /// The logical height in pixels (the width follows the output's aspect).
@@ -62,6 +62,48 @@ pub struct PixelScale {
     pub upscale: u32,
     /// Snap the camera and world sprites to the logical pixel grid.
     pub snap: bool,
+}
+
+/// Where a [`PixelScale`] grid lands in an output: its logical size, the
+/// whole-number scale and the scaled frame's top-left corner (the border
+/// round it is the camera's background).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PixelFit {
+    pub width: u32,
+    pub height: u32,
+    pub upscale: u32,
+    pub offset: (u32, u32),
+}
+
+impl PixelScale {
+    /// The grid in an output of `out` pixels. The height decides the
+    /// scale: `height` rows (at most the output's) at `upscale` when
+    /// `height × upscale` fits the output's height, else (and for 0) at
+    /// the largest whole number that does. The width is the output's
+    /// aspect times the height, rounded, but at most the output's width
+    /// over the scale: the scale wins over the last column. Since the
+    /// scale fits the height, at most one column is dropped (240 rows at
+    /// 1280 × 720 are 426.67 columns, rounded to 427, and 427 × 3 = 1281
+    /// does not fit: 426 columns at 3x, 1278 pixels, a 1-pixel border each
+    /// side, where the grid used to fall back to 2x inside a 213-pixel
+    /// border). Pixels stay square: the scene's aspect is the grid's.
+    pub fn fit(&self, out: (u32, u32)) -> PixelFit {
+        let out = (out.0.max(1), out.1.max(1));
+        let h = self.height.clamp(1, out.1);
+        let largest = out.1 / h;
+        let up = if self.upscale > 0 && self.upscale <= largest {
+            self.upscale
+        } else {
+            largest
+        };
+        let w = ((h as f64 * out.0 as f64 / out.1 as f64).round() as u32).clamp(1, out.0 / up);
+        PixelFit {
+            width: w,
+            height: h,
+            upscale: up,
+            offset: ((out.0 - w * up) / 2, (out.1 - h * up) / 2),
+        }
+    }
 }
 
 /// The threshold pattern quantisation is dithered with.
@@ -390,6 +432,63 @@ impl Stylise {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Hollowbell FINDINGS #7: the grid's fit at 720p, 1080p and a phone in
+    /// both orientations: (columns, rows, scale, offset).
+    #[test]
+    fn the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column() {
+        let fit = |height, upscale, out| {
+            let f = PixelScale {
+                height,
+                upscale,
+                snap: true,
+            }
+            .fit(out);
+            (f.width, f.height, f.upscale, f.offset)
+        };
+        let p720 = (1280, 720);
+        // 240 rows: 426.67 columns round to 427, 427 x 3 = 1281: 426 at 3x,
+        // a 1-pixel border each side (it was 2x in a 213-pixel border).
+        assert_eq!(fit(240, 0, p720), (426, 240, 3, (1, 0)));
+        assert_eq!(fit(240, 3, p720), (426, 240, 3, (1, 0)));
+        // A smaller scale asked for is honoured with the border it implies.
+        assert_eq!(fit(240, 2, p720), (427, 240, 2, (213, 120)));
+        // One the height cannot take falls back to the largest that fits.
+        assert_eq!(fit(240, 4, p720), (426, 240, 3, (1, 0)));
+        // The 16bit-pixel preset's 224 rows fit 3x with columns to spare.
+        assert_eq!(fit(224, 0, p720), (398, 224, 3, (43, 24)));
+        assert_eq!(fit(180, 0, p720), (320, 180, 4, (0, 0)));
+        assert_eq!(fit(2160, 0, p720), (1280, 720, 1, (0, 0)));
+        let p1080 = (1920, 1080);
+        assert_eq!(fit(240, 0, p1080), (427, 240, 4, (106, 60)));
+        assert_eq!(fit(270, 0, p1080), (480, 270, 4, (0, 0)));
+        assert_eq!(fit(360, 0, p1080), (640, 360, 3, (0, 0)));
+        assert_eq!(fit(240, 3, p1080), (427, 240, 3, (319, 180)));
+        // A phone (2532 x 1170), landscape and portrait.
+        assert_eq!(fit(240, 0, (2532, 1170)), (519, 240, 4, (228, 105)));
+        assert_eq!(fit(240, 0, (1170, 2532)), (111, 240, 10, (30, 66)));
+        // Every fit lies inside its output.
+        for out in [
+            p720,
+            p1080,
+            (2532, 1170),
+            (1170, 2532),
+            (1366, 768),
+            (390, 844),
+        ] {
+            for height in [120, 180, 224, 240, 270, 360, 480] {
+                for upscale in 0..6 {
+                    let (w, h, up, (x, y)) = fit(height, upscale, out);
+                    assert!(up >= 1 && w * up + 2 * x <= out.0 && h * up + 2 * y <= out.1);
+                    let ideal = (h as f64 * out.0 as f64 / out.1 as f64).round() as u32;
+                    assert!(
+                        w + 1 >= ideal.min(out.0),
+                        "{out:?} {height} {upscale}: {w} of {ideal}"
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn the_chain_bits_follow_primitives_not_their_settings() {

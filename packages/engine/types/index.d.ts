@@ -3870,13 +3870,13 @@ export declare function StyliseSpace(value?: StyliseSpace, options?: FieldOption
  */
 export interface Stylise {
   /**
-   * The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights.
+   * The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. The height sets the scale (pixelUpscale); the width is the output's aspect times the height, rounded, but at most the output's width over the scale, so the last column gives way rather than the scale: 240 rows at 1280x720 are 426.67 columns, rounded to 427, and 427 x 3 = 1281 does not fit, so the grid is 426 x 240 at 3x (1278 x 720, a 1-pixel border each side). Heights that divide the output's evenly fill it: 180 (4x), 240 (3x) and 360 (2x) at 720p, 270 (4x) and 360 (3x) at 1080p.
    *
    * @range 0..2160
    */
   pixelHeight: number;
   /**
-   * The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it.
+   * The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height (a smaller scale than the largest leaves the border it implies: 240 lines at 2x in 1280x720 draw 854 x 480 in a 213 x 120 border), else the largest that fits; 0 takes the largest that fits (720 / 240 = 3, 1080 / 240 = 4, rounded down). A frame that does not fill the output is centred with Camera.background round it.
    *
    * @range 0..16
    */

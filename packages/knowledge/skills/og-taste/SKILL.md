@@ -324,6 +324,19 @@ Fog {
 }
 ```
 
+**The pixel grid** (`Stylise.pixelHeight`, `pixelUpscale`) scales the
+frame up by a whole number, so pick the height for the output you ship
+at. The height sets the scale: `pixelUpscale` when height × scale fits
+the output's height, else (and for 0) the largest that does. The width
+is the aspect's columns, at most the output's width over the scale, so
+at most the last column gives way, never the scale: 240 lines at 1280 ×
+720 are 426 columns at 3x (1278 × 720, a 1-pixel border each side), at
+1920 × 1080 427 columns at 4x (1708 × 960, a 106/60-pixel border). A
+height that divides the output fills it: 180 (4x), 240 (3x) or 360 (2x)
+at 720p; 270 (4x) or 360 (3x) at 1080p. The `16bit-pixel` preset's 224
+lines draw at 3x inside a 43/24-pixel border at 720p. Size the camera to
+the grid: with 16-pixel tiles, 240 lines are 15 tiles tall.
+
 The engine ships canvases and palettes a look names without the game
 owning a copy: `Stylise.paintCanvas "@canvas/paper"` (also `linen`, a
 woven canvas, and `watercolor`, cold-pressed paper) and `Stylise.palette
