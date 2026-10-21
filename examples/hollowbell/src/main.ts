@@ -27,7 +27,7 @@ function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
   g.mainLook = must(og.load.look(world, "looks/hollowbell.ogt")) as unknown as number;
   g.dawnLook = must(og.load.look(world, "looks/dawn.ogt")) as unknown as number;
-  // One handle on Game for the whole of start, passed down (FINDINGS.md #6).
+  // One handle on Game for the whole of start, passed down (FINDINGS.md #6, fixed: handles are live, this stays as plain practice).
   buildHollow(world, loadArt(world), g);
   spawnVoices(world, g);
   toTitle(world, g);

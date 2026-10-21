@@ -252,7 +252,7 @@ function setClip(fb: { clip: { [i: number]: number }; time: { [i: number]: numbe
   fb.time[i] = 0;
 }
 
-/** For commands: hurt the hero as a touch from x would (`g` is the command's own handle: FINDINGS.md #6). */
+/** For commands: hurt the hero as a touch from x would (`g` is the command's own handle; FINDINGS.md #6 is fixed, handles are live). */
 export function touchHero(world: World, g: GameV, fromX: number): void {
   hurtHero(world, g, must(world.resource(Tuning)), fromX);
 }

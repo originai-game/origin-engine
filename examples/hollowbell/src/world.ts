@@ -110,8 +110,8 @@ export function viewHalfWidth(world: World): number {
 
 /**
  * `g` is the caller's handle on Game, passed down rather than fetched again
- * here: a second world.resource(Game) handle does not see the first one's
- * writes, nor the first this one's (FINDINGS.md #6).
+ * here: one handle per scope reads plainly. (FINDINGS.md #6, fixed: two
+ * handles of one resource now agree, every getter reading the store.)
  */
 export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void {
   const t = must(world.resource(Tuning));
