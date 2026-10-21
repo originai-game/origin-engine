@@ -17,6 +17,9 @@
 // is captured to a WAV. The playtest's checks do not run: `og test` does
 // that. What is measured, and the thresholds, are og-build §5 (the
 // knowledge package's skills); each finding's fix names a skill section.
+// Without a renderer (tier `none`) the screenshots are frames unchecked: the
+// measures that read frames (contrast, text size, HUD) and frame time are
+// n/a, and the frame rows say "no renderer"; every other measure is the same.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
@@ -608,7 +611,10 @@ interface PlaytestMeasures {
   damage: { moments: number; hitStop: number; shake: number; floating: number; sound: number; flash: number; particles: number; facts: string[] };
   idle: { share: number };
   particles: { peakSystems: number; bursts: number };
-  frame: { tier: string; stepMedianMs: number; stepP95Ms: number; renderMedianMs: number; renderP95Ms: number; frameP95Ms: number; frameMaxMs: number };
+  /** `rendered` false: no renderer (tier `none`), so render and frame time were not measured. */
+  frame: { tier: string; rendered: boolean; stepMedianMs: number; stepP95Ms: number; renderMedianMs: number; renderP95Ms: number; frameP95Ms: number; frameMaxMs: number };
+  /** The screenshots taken without a renderer: frames unchecked (contrast, text size and HUD read frames). */
+  unchecked: number;
   audio: ReturnType<typeof audioStats>;
   warnings: string[];
 }
@@ -772,8 +778,10 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     if (sig[i]!.particles) bursts++;
   }
   const step = s.slice(5).map((p) => p.stepMs), render = s.slice(5).map((p) => p.renderMs), total = s.slice(5).map((p) => p.stepMs + p.renderMs);
-  const frame = { tier: rec.tier, stepMedianMs: r2(median(step)), stepP95Ms: r2(pct(step, 0.95)), renderMedianMs: r2(median(render)), renderP95Ms: r2(pct(render, 0.95)), frameP95Ms: r2(pct(total, 0.95)), frameMaxMs: r2(Math.max(0, ...total)) };
-  if (frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures" });
+  const rendered = rec.tier !== "none";
+  const frame = { tier: rec.tier, rendered, stepMedianMs: r2(median(step)), stepP95Ms: r2(pct(step, 0.95)), renderMedianMs: r2(median(render)), renderP95Ms: r2(pct(render, 0.95)), frameP95Ms: r2(pct(total, 0.95)), frameMaxMs: r2(Math.max(0, ...total)) };
+  // Without a renderer there is no frame time to judge: the step alone is not a frame.
+  if (rendered && frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures" });
   const audio = audioStats(rec.wav, rec.rate);
   if (audio.clipped > 0) findings.push({ measure: "audio clipping", where: rec.playtest, detail: `${audio.clipped} samples at full scale (peak ${audio.peak})`, fix: "og-audio §4 (the mix): lower the loud sources or put a limiter on master" });
 
@@ -793,6 +801,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
       idle: { share: idleShare },
       particles: { peakSystems, bursts },
       frame,
+      unchecked: rendered ? 0 : rec.shots.length,
       audio,
       warnings: rec.warnings,
     },
@@ -827,7 +836,8 @@ function scores(ms: PlaytestMeasures[], missingKeys: number, hasLocales: boolean
   const hitFeedback = dm === 0 ? null : Math.round((100 * sum((m) => Math.min(3, [m.damage.hitStop, m.damage.shake, m.damage.floating, m.damage.sound].filter((n) => n > 0).length) / 3 * m.damage.moments)) / dm);
   const gameplay = ms.filter((m) => m.hud.gameplayShots > 0);
   const hud = gameplay.length === 0 ? null : Math.min(...gameplay.map((m) => Math.min(band(m.hud.worstShare, 15, 45), band(m.hud.worstCentre, 5, 30))));
-  const frameTime = ms.length === 0 ? null : Math.min(...ms.map((m) => band(m.frame.frameP95Ms, 8.3, 33.3)));
+  const timed = ms.filter((m) => m.frame.rendered);
+  const frameTime = timed.length === 0 ? null : Math.min(...timed.map((m) => band(m.frame.frameP95Ms, 8.3, 33.3)));
   const idle = ms.length === 0 ? null : Math.round(ms.reduce((n, m) => n + band(m.idle.share, 10, 60), 0) / ms.length);
   const s: Scores = {
     contrast: share(sum((m) => m.contrast.passing), sum((m) => m.contrast.texts)),
@@ -859,6 +869,9 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
   const L: string[] = [];
   L.push(`# og polish: ${project}`, "");
   L.push(`${date}, ${ms.length} playtest(s) on ${[...new Set(ms.map((m) => m.tier))].join(", ")}. Mechanical measures of og-taste and og-feel (og-build §5); a score is 0 to 100, n/a when nothing in the playtests exercises it. The measures cannot judge style: read the frames.`, "");
+  const unchecked = ms.reduce((n, m) => n + m.unchecked, 0);
+  const blind = ms.filter((m) => !m.frame.rendered).length;
+  if (blind > 0) L.push(`No renderer for ${blind} playtest(s): ${unchecked} frame(s) unchecked, so contrast, text size, HUD occupancy and frame time are n/a there; run og polish where there is a renderer (the author's machine, an executor with a GPU) to measure them.`, "");
   L.push("## Scores", "");
   L.push("| | Score | Measure |", "|---|---|---|");
   L.push(`| **Taste** | **${show(sc.taste)}** | mean of the taste rows |`);
@@ -872,7 +885,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
   L.push(`| Input latency | ${show(sc.latency)} | inputs answered, by the median ticks to the answer (0–1: 100) |`);
   L.push(`| Hit feedback | ${show(sc.hitFeedback)} | damage moments with hit stop, shake, floating text or a sound (three of four: 100) |`);
   L.push(`| Idle frames | ${show(sc.idle)} | ticks where nothing new is seen or heard (10 %: 100, 60 %: 0) |`);
-  L.push(`| Frame time | ${show(sc.frameTime)} | p95 step + render (8.3 ms: 100, 33 ms: 0), worst playtest |`);
+  L.push(`| Frame time | ${sc.frameTime === null && ms.length > 0 && ms.every((m) => !m.frame.rendered) ? "n/a (no renderer)" : show(sc.frameTime)} | p95 step + render (8.3 ms: 100, 33 ms: 0), worst playtest${ms.some((m) => !m.frame.rendered) ? "; no renderer: not measured" : ""} |`);
   L.push(`| Sound on input | ${show(sc.inputSound)} | inputs answered by a sound within 6 ticks |`, "");
   L.push("## Fixes", "");
   if (findings.length === 0) L.push("No finding crossed a threshold.", "");
@@ -899,7 +912,8 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
     L.push(`| Damage | ${m.damage.moments} moment(s)${m.damage.facts.length ? ` from ${m.damage.facts.map((f) => `\`${f}\``).join(", ")}` : ""}: hit stop ${m.damage.hitStop}, shake ${m.damage.shake}, floating text ${m.damage.floating}, sound ${m.damage.sound}, tween ${m.damage.flash}, particles ${m.damage.particles} |`);
     L.push(`| Idle | ${m.idle.share} % of ticks |`);
     L.push(`| Particles | peak ${m.particles.peakSystems} system(s), ${m.particles.bursts} burst(s) |`);
-    L.push(`| Frame (${m.frame.tier}) | step ${m.frame.stepMedianMs} ms median, ${m.frame.stepP95Ms} p95; render ${m.frame.renderMedianMs} median, ${m.frame.renderP95Ms} p95; frame p95 ${m.frame.frameP95Ms}, max ${m.frame.frameMaxMs} |`);
+    if (m.frame.rendered) L.push(`| Frame (${m.frame.tier}) | step ${m.frame.stepMedianMs} ms median, ${m.frame.stepP95Ms} p95; render ${m.frame.renderMedianMs} median, ${m.frame.renderP95Ms} p95; frame p95 ${m.frame.frameP95Ms}, max ${m.frame.frameMaxMs} |`);
+    else L.push(`| Frame (no renderer) | step ${m.frame.stepMedianMs} ms median, ${m.frame.stepP95Ms} p95; no renderer: render and frame time not measured; ${m.unchecked} frame(s) unchecked |`);
     L.push(`| Audio | ${m.audio.seconds} s, peak ${m.audio.peak}, RMS ${m.audio.rms}, ${m.audio.clipped} clipped, ${m.audio.silentShare} % silent ticks |`, "");
     const framed = m.shots.filter((s) => s.frame);
     for (const s of framed) L.push(`![${m.playtest} ${s.name}](${s.frame}) `);

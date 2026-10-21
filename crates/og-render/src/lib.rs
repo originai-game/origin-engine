@@ -582,6 +582,34 @@ impl RenderInfo {
     }
 }
 
+/// The environment switch that takes the renderer away: `OG_RENDERER=none`
+/// makes every [`Renderer::new`] and [`Renderer::with_surface`] answer
+/// [`RenderError::NoAdapter`], as on a machine with no usable adapter (the
+/// platform's `engine` and `probe` sandboxes, docs/design.md §5), so the
+/// no-renderer path is testable where a GPU is present (docs/ci.md
+/// §Switches). Any other value, or none, leaves adapters as they are. Read
+/// natively only; the web always has its canvas's adapter.
+pub const RENDERER_SWITCH: &str = "OG_RENDERER";
+
+/// Whether [`RENDERER_SWITCH`] is `none` in this process's environment.
+pub fn renderer_disabled() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        false
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::env::var(RENDERER_SWITCH).is_ok_and(|v| v.trim().eq_ignore_ascii_case("none"))
+    }
+}
+
+/// The error a disabled renderer answers, naming the switch.
+fn disabled_error() -> RenderError {
+    RenderError::NoAdapter(format!(
+        "{RENDERER_SWITCH}=none: this process runs without a renderer"
+    ))
+}
+
 /// Whether an adapter rasterizes on the CPU: wgpu reports a CPU device type,
 /// or its name is one of the software rasterizers (Mesa's lavapipe and
 /// llvmpipe, SwiftShader), which some drivers report as another type.
@@ -1924,6 +1952,9 @@ impl Renderer {
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
     /// On the web, WebGL2 needs a canvas: use [`Renderer::with_surface`].
     pub async fn new(desc: &RenderDesc) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
         let instance = desc.backend.instance();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -1945,6 +1976,9 @@ impl Renderer {
         instance: &wgpu::Instance,
         surface: wgpu::Surface<'static>,
     ) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,

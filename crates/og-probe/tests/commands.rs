@@ -493,11 +493,39 @@ fn teleport_set_frame_and_dump_entity_write_through_the_schema() {
     assert!(log[2].text.contains("no live entity 'ghost'"));
     assert_eq!(h.world.get::<Health>(player).unwrap().hp, 55.0);
 
-    // Without a renderer, screenshot warns.
+    // Without a renderer, a screenshot writes nothing and notes the frame
+    // it did not take (named as it would have been), without a warning.
     let mut bare = build(1, false);
-    bare.probe.schedule(&bare.world, "0:screenshot").unwrap();
+    bare.probe
+        .schedule(
+            &bare.world,
+            "0:screenshot;0:screenshot:menu/a.png:64;0:screenshot:../x.png",
+        )
+        .unwrap();
     bare.probe.pump(&mut bare.world);
-    assert!(bare.probe.take_log()[0].text.contains("no renderer"));
+    assert!(bare.probe.take_outputs().is_empty());
+    let log = bare.probe.take_log();
+    assert_eq!(
+        log.iter()
+            .map(|l| (l.warning, l.text.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (
+                false,
+                "0s screenshot: no renderer, frame unchecked (screenshot-000000.png)"
+            ),
+            (
+                false,
+                "0s screenshot: no renderer, frame unchecked (menu/a.png)"
+            ),
+            (
+                true,
+                "0s screenshot: output path '../x.png' leaves the output directory; write a relative path without '..'"
+            ),
+        ],
+        "a path that leaves the output directory is still refused"
+    );
+    assert!(log[0].text.contains(og_probe::FRAME_UNCHECKED));
 }
 
 #[test]
