@@ -10334,6 +10334,76 @@ export interface AudioBusFx {
 }
 
 /**
+ * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
+ * Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).
+ *
+ * The value of the `ReverbZone` component (token `og.ReverbZone`).
+ */
+export interface ReverbZone {
+  /**
+   * The box's full size along the entity's axes, centred on it (times og.Transform.scale).
+   *
+   * @default { x: 10, y: 4, z: 10 }
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * How far past the volume's surface the zone fades out, linearly; 0 is a hard edge.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * The bus whose reverb send the zone sets.
+   *
+   * @default "sfx"
+   */
+  bus: AudioBus;
+  /**
+   * That bus's send to the reverb inside (its AudioBusFx.reverb outside).
+   *
+   * @default 0.5
+   * @range 0..1
+   * @tunable
+   */
+  send: number;
+  /**
+   * The reverb's room size inside (Audio.reverbRoom outside).
+   *
+   * @default 0.85
+   * @range 0..1
+   * @tunable
+   */
+  room: number;
+  /**
+   * The reverb's damping of high frequencies inside (Audio.reverbDamping outside).
+   *
+   * @default 0.3
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick).
+   *
+   * @range 0..1
+   * @readonly written by the engine
+   */
+  readonly weight: number;
+}
+
+/**
  * A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.
  *
  * The value of the `Music` component (token `og.Music`).
@@ -18261,6 +18331,11 @@ export declare namespace og {
    * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
    */
   const AudioBusFx: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly lowpass: FieldSpec<"f32">; readonly highpass: FieldSpec<"f32">; readonly reverb: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly ratio: FieldSpec<"f32">; readonly attack: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly makeup: FieldSpec<"f32">; readonly duck: FieldSpec<"bool">; readonly duckBus: FieldSpec<"AudioBus">; readonly duckDepth: FieldSpec<"f32">; readonly duckThreshold: FieldSpec<"f32">; readonly duckAttack: FieldSpec<"f32">; readonly duckRelease: FieldSpec<"f32"> }, AudioBusFx>;
+  /**
+   * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
+   * Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).
+   */
+  const ReverbZone: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly bus: FieldSpec<"AudioBus">; readonly send: FieldSpec<"f32">; readonly room: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, ReverbZone>;
   /**
    * A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.
    */

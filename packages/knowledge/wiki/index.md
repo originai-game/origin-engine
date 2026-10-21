@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-891 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+892 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -563,6 +563,7 @@ Field units the docs and Tune use.
 | [`og.render.text`](render.md#fn-text) | function | render | `og_render_text` |
 | [`og.render.updateMaterial`](render.md#fn-updateMaterial) | function | render | `og_render_update_material` |
 | [`og.RenderSettings`](render.md#record-RenderSettings) | resource | render | — |
+| [`og.ReverbZone`](audio.md#record-ReverbZone) | component | audio | — |
 | [`og.RigidBody`](physics.md#record-RigidBody) | component | physics | — |
 | [`og.Rng`](rng.md#record-Rng) | resource | rng | — |
 | [`og.Rope`](physics.md#record-Rope) | component | physics | — |

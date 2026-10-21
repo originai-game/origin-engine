@@ -22,7 +22,7 @@ module stream {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10965</sub>
+<sub>`api.ogt` line 11011</sub>
 
 ## Contents
 
@@ -73,7 +73,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 11035</sub>
+<sub>`api.ogt` line 11081</sub>
 
 <a id="fn-request"></a>
 
@@ -103,7 +103,7 @@ fn request {
 }
 ```
 
-<sub>`api.ogt` line 11042</sub>
+<sub>`api.ogt` line 11088</sub>
 
 <a id="fn-release"></a>
 
@@ -133,7 +133,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 11049</sub>
+<sub>`api.ogt` line 11095</sub>
 
 <a id="fn-budget"></a>
 
@@ -161,7 +161,7 @@ fn budget {
 }
 ```
 
-<sub>`api.ogt` line 11056</sub>
+<sub>`api.ogt` line 11102</sub>
 
 <a id="fn-setBudget"></a>
 
@@ -191,7 +191,7 @@ fn setBudget {
 }
 ```
 
-<sub>`api.ogt` line 11062</sub>
+<sub>`api.ogt` line 11108</sub>
 
 ## Components, resources and events
 
@@ -216,7 +216,7 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 10988</sub>
+<sub>`api.ogt` line 11034</sub>
 
 ## Types
 
@@ -247,7 +247,7 @@ enum StreamState {
 }
 ```
 
-<sub>`api.ogt` line 10973</sub>
+<sub>`api.ogt` line 11019</sub>
 
 <a id="type-StreamStatus"></a>
 
@@ -298,7 +298,7 @@ struct StreamStatus {
 }
 ```
 
-<sub>`api.ogt` line 10994</sub>
+<sub>`api.ogt` line 11040</sub>
 
 <a id="type-StreamBudget"></a>
 
@@ -333,7 +333,7 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 11018</sub>
+<sub>`api.ogt` line 11064</sub>
 
 ## Constants
 
@@ -349,28 +349,28 @@ struct StreamBudget {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 10982</sub>
+<sub>`api.ogt` line 11028</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 10983</sub>
+<sub>`api.ogt` line 11029</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 10984</sub>
+<sub>`api.ogt` line 11030</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 10985</sub>
+<sub>`api.ogt` line 11031</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 10986</sub>
+<sub>`api.ogt` line 11032</sub>

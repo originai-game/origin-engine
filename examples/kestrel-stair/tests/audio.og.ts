@@ -4,9 +4,11 @@
 // from the listener on the camera: loud and nearly centred beside it, quiet,
 // panned and dulled (distanceCutoff) across the terrace. The crypt's drip
 // sounds behind its walls (occlude: the low-pass at og.Audio's
-// occlusionCutoff) until the courier walks in. The crypt is a reverb zone:
-// inside, the effects bus sends 0.55 to the shared reverb in a room of 0.92
-// (0.12 and 0.5 outside), eased over half a second.
+// occlusionCutoff) until the courier walks in. The crypt is a reverb zone
+// (og.ReverbZone, FINDINGS #21 fixed): with the listener inside, the engine
+// eases the shared reverb to the crypt's (the effects bus's send 0.55 in a
+// room of 0.92, against 0.12 and 0.5 outside); the bus and og.Audio keep
+// the open air's.
 import { playtest } from "@origingame/engine/playtest";
 import { game, script, value } from "./lib.ts";
 
@@ -28,12 +30,14 @@ export default playtest({
     "4.4:warp:crypt:1:0",
     "5.4:get:crypt-drip.og.AudioPlayback:walled.json",
     "5.4:get:Game:outside.json",
-    "5.4:get:sfx-bus.og.AudioBusFx:bus-out.json",
+    "5.4:get:crypt-reverb.og.ReverbZone:zone-out.json",
     "5.5:warp:crypt:-8:-3",
     "6.5:get:crypt-drip.og.AudioPlayback:drip-inside.json",
     "6.5:get:Game:inside.json",
+    "6.5:get:crypt-reverb.og.ReverbZone:zone-in.json",
     "6.5:get:sfx-bus.og.AudioBusFx:bus-in.json",
     "6.5:get:og.Audio:room.json",
+    "6.5:listen:crypt.wav:0.8",
     "6.6:quit",
   ),
   check(run, t) {
@@ -56,8 +60,12 @@ export default playtest({
     t.ok(walled.lowpass > 0 && walled.lowpass <= 900, `from the door the drip is behind the crypt's walls (low-pass ${walled.lowpass.toFixed(0)} Hz)`);
     t.ok(inside.lowpass === 0 && inside.gain > walled.gain * 2, `inside it is clear and near (gain ${walled.gain.toFixed(3)}, then ${inside.gain.toFixed(3)})`);
     t.equal([game(run, "outside.json").inCrypt, game(run, "inside.json").inCrypt], [false, true], "the crypt is known as a zone");
-    t.near(value<{ reverb: number }>(run, "bus-out.json").reverb, 0.12, 0.02, "outside, the effects bus sends 0.12 to the reverb");
-    t.near(value<{ reverb: number }>(run, "bus-in.json").reverb, 0.55, 0.03, "inside, 0.55");
-    t.ok(value<{ reverbRoom: number }>(run, "room.json").reverbRoom > 0.85, "in a large room");
+    t.equal(value<{ weight: number }>(run, "zone-out.json").weight, 0, "from the door the listener is outside the crypt's reverb zone");
+    const zone = value<{ weight: number; send: number; room: number }>(run, "zone-in.json");
+    t.equal(zone.weight, 1, `inside, wholly in it (the effects bus sends ${zone.send} to a room of ${zone.room})`);
+    t.near(value<{ reverb: number }>(run, "bus-in.json").reverb, 0.12, 0.001, "the bus keeps the open air's send");
+    t.near(value<{ reverbRoom: number }>(run, "room.json").reverbRoom, 0.5, 0.001, "and og.Audio the open air's room");
+    t.ok(game(run, "inside.json").reverb === 1, "the game reads the zone's weight (the sky dims with it)");
+    t.ok(run.wav("crypt.wav").peak < 1, "the crypt's mix stays under clipping");
   },
 });

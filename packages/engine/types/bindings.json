@@ -3752,6 +3752,64 @@
     },
     {
       "id": 47,
+      "name": "ReverbZone",
+      "schema": "og.ReverbZone",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "size",
+          "column": "Vector3",
+          "default": {
+            "x": 10,
+            "y": 4,
+            "z": 10
+          }
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "fade",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "bus",
+          "column": "AudioBus",
+          "default": "sfx"
+        },
+        {
+          "name": "send",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "room",
+          "column": "f32",
+          "default": 0.85,
+          "tunable": true
+        },
+        {
+          "name": "damping",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 48,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -3799,7 +3857,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -3924,7 +3982,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -4040,7 +4098,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -4087,7 +4145,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -4198,7 +4256,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -4216,7 +4274,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -4245,7 +4303,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",

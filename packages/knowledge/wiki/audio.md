@@ -35,6 +35,7 @@ module audio {
 | [`og.AudioListener`](#record-AudioListener) | component | Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used. |
 | [`og.Audio`](#record-Audio) | resource | Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. |
 | [`og.AudioBusFx`](#record-AudioBusFx) | component | A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through. |
+| [`og.ReverbZone`](#record-ReverbZone) | component | A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener. |
 | [`og.Music`](#record-Music) | component | A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat. |
 | [`og.MusicBeat`](#record-MusicBeat) | event | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
 | [`og.SoundStarted`](#record-SoundStarted) | event | A source started, sent in the tick it happens (systems read it the tick after). |
@@ -72,7 +73,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 6654</sub>
+<sub>`api.ogt` line 6700</sub>
 
 ## Components, resources and events
 
@@ -436,6 +437,77 @@ component AudioBusFx {
 
 <sub>`api.ogt` line 6508</sub>
 
+<a id="record-ReverbZone"></a>
+
+### `og.ReverbZone` (component)
+
+A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
+
+Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).
+
+Token `og.ReverbZone`, registered under the schema name `og.ReverbZone`; its value type is `ReverbZone`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `Vector3` | `{ x: 10, y: 4, z: 10 }` | — | `m` | — | The box's full size along the entity's axes, centred on it (times og.Transform.scale). |
+| `radius` | `number` | `0` | ≥ 0 | `m` | tunable | A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box. |
+| `fade` | `number` | `2` | ≥ 0 | `m` | tunable | How far past the volume's surface the zone fades out, linearly; 0 is a hard edge. |
+| `bus` | `AudioBus` | `"sfx"` | — | — | — | The bus whose reverb send the zone sets. |
+| `send` | `number` | `0.5` | 0 … 1 | — | tunable | That bus's send to the reverb inside (its AudioBusFx.reverb outside). |
+| `room` | `number` | `0.85` | 0 … 1 | — | tunable | The reverb's room size inside (Audio.reverbRoom outside). |
+| `damping` | `number` | `0.3` | 0 … 1 | — | tunable | The reverb's damping of high frequencies inside (Audio.reverbDamping outside). |
+| `weight` | `number` | `0` | 0 … 1 | — | read only | How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick). |
+
+```ogt
+component ReverbZone {
+  doc "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener."
+  doc "Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener)."
+  field size Vector3 "The box's full size along the entity's axes, centred on it (times og.Transform.scale)." {
+    default 10 4 10
+    unit m
+  }
+  field radius f32 "A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box." {
+    min 0
+    unit m
+    tunable true
+  }
+  field fade f32 "How far past the volume's surface the zone fades out, linearly; 0 is a hard edge." {
+    default 2
+    min 0
+    unit m
+    tunable true
+  }
+  field bus AudioBus "The bus whose reverb send the zone sets." {
+    default sfx
+  }
+  field send f32 "That bus's send to the reverb inside (its AudioBusFx.reverb outside)." {
+    default 0.5
+    min 0
+    max 1
+    tunable true
+  }
+  field room f32 "The reverb's room size inside (Audio.reverbRoom outside)." {
+    default 0.85
+    min 0
+    max 1
+    tunable true
+  }
+  field damping f32 "The reverb's damping of high frequencies inside (Audio.reverbDamping outside)." {
+    default 0.3
+    min 0
+    max 1
+    tunable true
+  }
+  field weight f32 "How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick)." {
+    min 0
+    max 1
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 6597</sub>
+
 <a id="record-Music"></a>
 
 ### `og.Music` (component)
@@ -490,7 +562,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 6597</sub>
+<sub>`api.ogt` line 6643</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -517,7 +589,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 6631</sub>
+<sub>`api.ogt` line 6677</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -542,7 +614,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 6639</sub>
+<sub>`api.ogt` line 6685</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -569,7 +641,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 6646</sub>
+<sub>`api.ogt` line 6692</sub>
 
 ## Types
 

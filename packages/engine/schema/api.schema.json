@@ -3344,6 +3344,7 @@
         "AudioListener",
         "Audio",
         "AudioBusFx",
+        "ReverbZone",
         "Music",
         "MusicBeat",
         "SoundStarted",
@@ -19267,6 +19268,78 @@
           "maximum": 5,
           "x-og-unit": "s",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReverbZone": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.\nDeterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The box's full size along the entity's axes, centred on it (times og.Transform.scale).",
+          "default": {
+            "x": 10,
+            "y": 4,
+            "z": 10
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "How far past the volume's surface the zone fades out, linearly; 0 is a hard edge.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "bus": {
+          "$ref": "#/$defs/AudioBus",
+          "description": "The bus whose reverb send the zone sets.",
+          "default": "sfx"
+        },
+        "send": {
+          "type": "number",
+          "description": "That bus's send to the reverb inside (its AudioBusFx.reverb outside).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "room": {
+          "type": "number",
+          "description": "The reverb's room size inside (Audio.reverbRoom outside).",
+          "default": 0.85,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "The reverb's damping of high frequencies inside (Audio.reverbDamping outside).",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "readOnly": true
         }
       },
       "additionalProperties": false
