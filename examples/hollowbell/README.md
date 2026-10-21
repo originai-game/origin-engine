@@ -47,7 +47,7 @@ the texture arrays, the particles, the sounds and the music.
 
 | Area | How | Where |
 |---|---|---|
-| A Tiled map | `maps/hollow.tmj` (96 x 48 cells of 16 px, one cell one metre) over `tiles/hollow.ogt`: far hills on Tiled's `parallaxx`/`parallaxy` and `repeat x`, the cave's back wall, the rock as an auto-tiled blob47 terrain whose solid tiles become merged static colliders, planks, animated torches, and 100-odd objects the game spawns from | `tools/make-assets.ts` `tiledMap`, `src/world.ts` |
+| A Tiled map | `maps/hollow.tmj` (96 x 48 cells of 16 px, one cell one metre) over `tiles/hollow.ogt`: far hills on Tiled's `parallaxx`/`parallaxy` (their `repeat` = x property is not one the cook reads: FINDINGS #2), the cave's back wall, the rock as an auto-tiled blob47 terrain whose solid tiles become merged static colliders, planks, animated torches, and 100-odd objects the game spawns from | `tools/make-assets.ts` `tiledMap`, `src/world.ts` |
 | 2D physics | Wren on `og.PlatformerController` (coyote time, jump buffer, variable height, one-way planks on their own collision layer with Down to drop through, an air jump from the cloak, riding the lift); the lift a kinematic body; stones as dynamic bodies the mallet knocks about; enemies as kinematic sensor bodies; the strike an `og.physics.overlap` of the mallet's box on the enemy and stone layers | `src/hero.ts`, `src/props.ts`, `src/enemies.ts` |
 | Flipbooks | Wren (idle, run with `step` events, jump, fall, attack with its `hit` event, hurt), the beetle (walk, wind-up, dash, hurt), the moth, the mole, the bell (`toll` events); faced with `flipX`, the run's rate matched to the speed | `sprites/*.ogt`, `src/hero.ts`, `src/enemies.ts` |
 | 2D light and shadow | `og.Lighting2D` with the ambient eased per area (daylight in the village, 0.14 in the deep hollow), `og.Light2D` on Wren (wider with the wick), the torches, crystals, lanterns, chimes and the mole's candle; `og.Occluder2D` rocks and `castShadow` enemies; the map's tile layers lit like the sprites (the cave's back wall drawn as it looks in full light, the dark the ambient's), Wren's lantern fading out in daylight (FINDINGS #9, fixed in the engine: the map was tinted and light-pool sprites added over it) | `src/world.ts`, `src/props.ts` |
@@ -81,11 +81,12 @@ the texture arrays, the particles, the sounds and the music.
 | `replay.og.ts` | a session with strikes, a touch, the lift, the gloam's slow motion, a save and the bell, run twice in fresh processes, ends on one world hash |
 | `frames.og.ts` | nine reference frames at 1280 x 720 (`references/metal/`): title, play, a strike, the talk, the shop, pause, the settings in Chinese, the gloam, the results |
 
-`og polish .` on metal (dev profile, a machine busy with other builds):
-taste 99 (contrast 93: the pixel pack's primary button labels, FINDINGS
-#20), feel 92 (input latency, hit feedback and idle frames 100; sound on
-input 88; frame time 72, step about 7 ms median and 10–12 ms p95, render
-about 3.3 ms).
+`og polish .` on metal (dev profile, a machine busy with other builds;
+at 5cc97a90, before wave 9): taste 99 (contrast 93: the pixel pack's
+primary button labels, FINDINGS #20, since fixed in the pack), feel 92
+(input latency, hit feedback and idle frames 100; sound on input 88;
+frame time 72, step about 7 ms median and 10–12 ms p95, render about
+3.3 ms).
 
 ## Commands (for scripts and agents)
 

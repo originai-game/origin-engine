@@ -7,6 +7,54 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, waves 8 and 9 (2026-10-21, 517d8c4e)
+
+Since the wave 7 record (731a555d, with the lavapipe pass at 884ad090 and
+web-reference at 5e50479f) main took, each a fast-forward of its branch
+once the branch had merged main: wave 8's api-surface round two
+(81bb31f0), taa-webgl2 (f3229ef8, then Lantern Vale's skin ink at 402442cc
+and the record at 161bad3b) and wasm-size (bf8dcd16, its record at
+84422979); the second dogfood game, Hollowbell (5cc97a90); and wave 9's
+four streams from Hollowbell's findings, in this order: render-2d
+(6eba0883) with knowledge-2 (5b7539dd, then the coordinator's 48d172f3),
+physics-2d (08a33390, the record at 8b083f00) and ui-runtime (517d8c4e).
+The round sections below have each. The waves' end is being measured at
+517d8c4e in the `origin-engine-measure` worktree.
+
+- **`scripts/check.sh functional`**, each merge: wave 8, api-surface round
+  two 5 of 5 in 142 s, taa-webgl2 5 of 5 in 123 s, wasm-size 5 of 5 in
+  177 s; wave 9, render-2d with knowledge-2 5 of 5 in 97 s (after the
+  grammar line: the first run failed only the knowledge package's new
+  drift check on `lit`), physics-2d 5 of 5 in 165 s, ui-runtime 5 of 5 in
+  147 s.
+
+**Wave-end figures: pending** (the coordinator is measuring at 517d8c4e
+and fills these in).
+
+- **`scripts/check.sh --all`** at 517d8c4e: pending. The last whole run
+  is wave 7's (8 of 9 at 767ecf84, the section below).
+- **`scripts/check.sh web-reference`**: pending. Owed on the browser
+  tiers since: row 74's frames (og-tests `tilemap-lit`, `stylise-palette`,
+  `stylise-retro`, og-ui `screen-layers`).
+- **Wasm** (brotli -q 11, the shipping `wasm` profile): pending. The last
+  figures are wasm-size's after its merge with 161bad3b (lanes 3,464,929 B,
+  82.6 %; its section below); wave 9 added `world.snapshot`/`restore`,
+  the platformer's own casts, lit tile layers and the templates' label
+  fields since.
+- **Determinism**: pending. Physics-2d changed the native tool's physics
+  hash by design: 18126409214070009362 before, 947364242694612608 after
+  (the platformer's own move, then `impulse` growing the component
+  record; its section below); `math_digest`, `bouncing_boxes_hash` and
+  `anim_hash` unchanged there.
+- **Perf**: pending (the perf lane).
+- **vulkan-cpu** (the og-lavapipe image): pending. Owed: row 74's
+  frames; og-ui's `kit-skin-pixel` and `kit-skin-pixel-phone`, whose
+  vulkan-cpu copies (abd61fb8) predate the pixel pack's label weight
+  (ui-runtime re-recorded them on `metal`); row 54's og-ui text frames.
+- **Not run here**: the phone paths of `--device`, the three.js
+  comparison (row 51), the lanes wasm's physics step in Chrome (row 52),
+  the native device latency tests (row 40).
+
 ## Main gate, wave 7 (2026-10-21, 767ecf84)
 
 Since this record's last update (the closure-docs stream, merged at
@@ -226,6 +274,111 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 9, ui-runtime: live resource handles, game saves, the templates' words, the pixel pack's labels (517d8c4)
+
+From Hollowbell's findings; ten of the twenty. Merged main twice
+(0c347445 after render-2d and knowledge-2, 5579bd2d after physics-2d and
+8b083f00) and fast-forwarded.
+
+- df79a7dd, #6 (blocker): a `world.resource()` handle is live: every
+  getter reads the store through `og_world_resource`, the value kept only
+  while no engine call or dispatch happened since, so a loop reading a
+  tuning field costs one call (4.3 µs cold on the dev addon, 0.008 µs
+  warm); og.Time's handle moves with the ticks. Tests in
+  `packages/engine/tests/runtime.test.ts`. Hollowbell keeps one handle
+  per scope as plain practice, its comments marked fixed.
+- cb57ea4c, #1: `world.snapshot()` and `world.restore()`, a game's save
+  of the whole world in every build, publish included, the same on both
+  hosts. The save is text, `og-save:1:` and the base64 of the deflated
+  world snapshot with every type's schema hash and a checksum, a JSON
+  value for og.platform's store (Hollowbell's world 25 KiB, an empty one
+  11 bytes). A restore brings the world back to its hash and keeps the
+  session (input, og.Audio's volumes, the platform's calls and clock
+  shifted with og.Time's jump, the probe's scheduled steps); from a
+  system or a command it applies when the tick ends (the probe's new
+  after-tick hook). A save whose types changed is refused naming the
+  type and the fields that differ (`World::check_snapshot`), or mapped
+  with `{ migrate: true }`. The engine bug it found: a snapshot taken
+  inside a system met the columns that system holds (its typed views
+  stay borrowed while it runs) and the entities its queued spawns had
+  reserved, alive and in no archetype yet; `SystemContext::snapshot`
+  now reads the held columns as they are and writes those entities
+  freed, so the world it restores to is whole (og-ecs
+  `a_system_snapshots_the_world_while_it_holds_its_columns`). Tests:
+  og-ecs `snapshot.rs` and `migrate.rs`, `packages/engine/tests/save.test.ts`.
+  og-game §17 and og-core say how to save progress; docs/design.md
+  updated. Hollowbell keeps its JSON save record by choice
+  (`src/save.ts` says why: a checkpoint game restarts at its lantern,
+  the record survives any change to its types, and a restore would bring
+  back session state Continue would have to reset).
+- 8a7d8702, #11 and #12: `SettingsDesc` gains `title` and a label per
+  tab, slider, toggle, preset and Done; `ShopDesc` `priceLabel`,
+  `buyLabel`, `shortLabel` (Not enough), `ownedLabel` and `emptyLabel`,
+  each with its English default (the rule of `ResultsDesc.bestLabel`).
+  `templates/ui-kit` passes them from its five string tables
+  (`settings.*`, `shop.*`), with the JP, KR and Arabic subsets remade by
+  `make-locale-fonts.py` (which reproduces the committed ones from the
+  sources its README now names), and its locales playtest asserts the
+  settings screen and the shop in Chinese with no English left; og-i18n
+  §2 lists the fields. Hollowbell's shop passes its tables' words and
+  its locales test asserts no English word of the template is left (its
+  Chinese subset re-made); its own settings dialog stays by choice
+  (`src/ui.ts` says why: one page with exactly its settings).
+- 3a78409c, #10: a dialogue box takes the focus on the frame it appears,
+  unless a dialog is open over it, so a cutscene answers Enter, Space
+  and A from its first line (dialogs already did). og-ui `tests/widgets.rs`
+  opens a dialogue over a focused HUD button and a dialog by state;
+  og-ui §4 says what opens takes the focus. Hollowbell's navigate
+  workaround is gone.
+- ad36ce7c and e528effe, #20: the finding's diagnosis was wrong. The
+  label was always drawn in `accentFg`; DotGothic16's one-pixel strokes
+  fell between device pixels at 16 px (its dots 61.5 units of 1000 with
+  a 28-unit side bearing), so no pixel took more than about half the
+  ink. og-ui skins take a `textWeight <role> <device px>` line (the
+  role's glyphs and their shadow thickened through the distance field);
+  the pixel pack has `textWeight body 0.5` with DotGothic16 cooked at
+  `px_range 8` (at 4 the shader allows no thickening at 16 px), and
+  `make-skins.py` still reproduces every pack byte for byte.
+  `pack_contrast.rs` gained a test that draws every pack's primary and
+  secondary buttons through og-render with the pack's own cooked fonts
+  and reads each label in every state from the frame as og polish does:
+  the old pixel pack's primary label measured 3.44, 3.76 and 2.96:1
+  (rest, hovered, pressed), now 9.11, 12.69 and 5.92:1. og-taste §3 says
+  what the test reads and what a copied pack needs. Hollowbell's copy of
+  the pack takes the same two lines at e528effe; its pale-gold accent
+  and 16 px ramp stay as its look.
+- 536f8397, #17, #18, #19 (probe nits): `get`, `dump_entity` and the
+  dumps answer an enum by its variant's name (`set` and `patch` take the
+  name or the index; `entity` keeps numbers for Tune); a step naming a
+  file an earlier step of the same script wrote is written beside it as
+  `<stem>-2.<ext>` with a warning naming both steps; output names
+  starting with `.` are refused, the output directory keeping them for
+  the harness, and a playtest's `store: "keep"` store moved to
+  `<out>/.store/platform.json`. Tests in og-probe `tests/commands.rs`;
+  the IDL's command text at cb57ea4c. Hollowbell's music test reads the
+  bus by name.
+- 7158ad23, #14: the in-repo examples type-check: Hollowbell's and
+  Lantern Vale's `tsconfig.json` map `@origingame/engine` and its
+  playtest module through `paths` to `packages/engine`, with a
+  `host.d.ts`, and `bun run typecheck` runs `tsc`; og-game §2 says how a
+  project type-checks.
+- Frames re-recorded on `metal`: og-ui `kit-skin-pixel` (RMSE 0.01266,
+  0.409 % outliers) and `kit-skin-pixel-phone` (0.00971, 0.310 %) at
+  ad36ce7c; Hollowbell's nine at 1e706a5a and again over main's at
+  517d8c4e, against main's references: title 0.0166, play 0.0080, combat
+  0.0088, gloam 0.0076, shop 0.0221, pause 0.0164, settings-zh 0.0172,
+  results 0.0222, talk 0.0513 (the old reference showed the workaround's
+  focus ring round the box). The Hollowbell, Lantern Vale, ui-kit,
+  fx-showcase and third-person suites pass unchanged after the merge.
+  Owed: the pixel skin frames' vulkan-cpu copies (abd61fb8) predate the
+  label weight; Hollowbell's frames are `metal` only (row 74).
+- Left out: the other templates' English literal words (row 76);
+  Hollowbell keeps its JSON save record and its own settings dialog by
+  choice; no `og check` command (`og` still bundles without
+  type-checking; the knowledge package says to run `tsc`).
+
+Functional lane on the merge: 5 of 5 in 147 s.
+
 ## Wave 9, physics-2d: the platformer's casts, knock-back, the kinematic rule (08a3339)
 
 From Hollowbell's findings (examples/hollowbell/FINDINGS.md), the second
@@ -378,6 +531,49 @@ the skills.
   its FINDINGS #2 says `repeat` was confirmed by `TileLayerInfo`, which
   has no such field. A cook warning on unknown Tiled layer properties:
   row 75.
+
+## Wave 8, dogfood-2: Hollowbell, the second dogfood game (5cc97a9)
+
+Branch `dogfood-2` from main at 5e50479f, merged main (wave 8's three
+streams, to 84422979) as 75183a78, its README and findings rechecked
+there at 5cc97a90 (the playtests and og polish gave the same results) and
+fast-forwarded. An example only: no engine code changed.
+
+- **The game** (c16d6e4c, a9401332, 15430319, 62e7ae58, 86da6e32,
+  3981652f): `examples/hollowbell`, a five-minute 2D pixel-art platformer
+  written from the knowledge package as a game author would, to exercise
+  the engine's 2D half as Lantern Vale did its 3D half: a Tiled map over
+  a blob47 auto-tiled tileset with parallax layers and 100-odd objects,
+  `og.PlatformerController` (one-way planks, an air jump, a kinematic
+  lift), flipbooks with frame events, `og.Lighting2D` with lights and
+  occluders, a look on a pixel grid with the game's own palette and a
+  second look for the results, texture arrays, particles, hit stop and
+  knock-back, `og.Follow2D` and a camera zone, og.ui on a copy of the
+  pixel skin pack in English and Chinese, `str(N)` fields, saves to
+  og.platform's store, streamed music. Every asset is generated by
+  `tools/make-assets.ts` (69 cooked cold in 3.6 s). Thirteen playtests
+  (move, combat, gloam, shop, save, settings, name, win, locales,
+  lighting, music, a two-process replay, frames), nine reference frames
+  on `metal` (title, play, combat, talk, shop, pause, settings-zh, gloam,
+  results); og polish taste 99 (contrast 93: the pixel pack's primary
+  button labels, #20), feel 92 (frame time 72 on a busy machine).
+- **`FINDINGS.md`**: 20 findings, each with its repro and workaround: 3
+  blockers (#6 two `world.resource()` handles disagree, #9
+  `og.Lighting2D` never lights a tilemap, #16 the platformer's run
+  stutters on flat ground), 10 annoyances (#1, #2, #3, #7, #10, #11,
+  #12, #13, #15, #20), 7 nits (#4, #5, #8, #14, #17, #18, #19); top
+  five #9, #16, #6, #1 (no game-side world snapshot), #11 (the settings
+  screen English in every locale) with #12 (the shop's words).
+- **Taken by wave 9**: physics-2d #5, #13, #15, #16; render-2d #7, #8,
+  #9; knowledge-2 #2, #3, #4; ui-runtime #1, #6, #10, #11, #12, #14,
+  #17, #18, #19, #20 (the sections above, and
+  `examples/hollowbell/FINDINGS.md` §After wave 9 for each finding's
+  commit and workaround). Left open: #12's remainder, the other
+  templates' English words (row 76); #2's remainder, a `repeat` layer
+  property the cook does not read (row 75); `og` type-checking a project
+  itself (#14, no `og check`, not a row).
+
+Left out: the frames on the other tiers (row 74).
 
 ## Wave 8, wasm-size: where the lanes module's bytes are, two trims, a report tool (bf8dcd1)
 
@@ -3192,6 +3388,14 @@ Lantern Vale finding is fixed or in one of them
 (`examples/lantern-vale/FINDINGS.md` §After wave 7). Still in flight on an
 unmerged branch, so not a row: `scripts/wave-end.sh` (`ci-green`).
 
+After waves 8 and 9 and the second dogfood game (2026-10-21, 517d8c4e;
+the sections above): row 68 closed (taa-webgl2, 1a9037a9); rows 64 and 65
+were worked by api-surface round two (its section) and still read open
+here; eight new rows (69–76) for what the streams left out and said
+so. Every Hollowbell finding is fixed or in row 75 or 76
+(`examples/hollowbell/FINDINGS.md` §After wave 9). The wave-end
+measurements are pending (Main gate, waves 8 and 9).
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -3276,6 +3480,7 @@ resource only the owner can give.
 | 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | open |
 | 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), and Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu | W9 render-2d | S | engine, phase 4 (a wave-end capture) | open |
 | 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | open |
+| 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | open |
 
 ## 0. Rules that shape the plan
 

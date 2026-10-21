@@ -242,9 +242,10 @@ are in `assets/skins/lampdive/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 
-- og.ui's `settingsScreen` and `resultsScreen` carry English labels of their
-  own, so this game builds its settings dialog and its summary from widgets
-  to keep every string in its tables.
+- og.ui's `settingsScreen` and `resultsScreen` carried English labels of
+  their own when this game was written, so it builds its settings dialog and
+  its summary from widgets to keep every string in its tables (both now take
+  a field for each of their words: og-i18n §2).
 - A handle column (`og.AiAgent.behaviour`, `og.Flipbook.sheet`, …) is two
   `u32` per row (the handle's low and high halves), so a system writing one
   through its column view writes `[i * 2]` and `[i * 2 + 1]`
