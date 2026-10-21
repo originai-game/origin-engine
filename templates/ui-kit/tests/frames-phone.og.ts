@@ -14,7 +14,9 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
+    t.frame(script.files, () => {
+      for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
+    });
     checkFrames(run, t, script.files, "kit-phone-");
   },
 });

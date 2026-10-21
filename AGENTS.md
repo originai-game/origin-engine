@@ -75,7 +75,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   cleaned with `cargo clean -p <crate>`, never wholesale. `scripts/lane.sh
   --list` shows every lane and the branch it carries. One more lane,
   `origin-engine-measure`, carries no stream: the wave-end measurements
-  (`--all`, web-reference, the lavapipe captures) run there pinned at a
+  (`--all`, web-reference) run there pinned at a
   commit, so main never waits for them.
 - **One gate at a time, on the whole machine.** `scripts/check.sh` holds
   `~/.cache/og-gate/og-gate.lock` and then `target/og-gate.lock` (a release
@@ -90,7 +90,14 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   container beside each other, and every one of them then fails on
   timeouts. An agent's loop is `cargo check -p <crate>` and the unit tests
   of the crate it edits, run one at a time; it commits on its branch and
-  reports. The coordinator (the one session that merges into main) is the
+  reports. Nothing broader: no sweep of other projects' reference frames
+  through `og run --commands`, no "every frame unmoved" check across
+  templates and games, no browser runs to confirm a native change, no
+  wasm or release build to measure (the owner's instruction, 2026-10-22:
+  development is what agents are for; the coordinator's functional lane
+  after the merge is the check of every reference frame, and the wave's
+  end measures). A frame an agent re-records is one its change must
+  move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
   only runner of the gate, the review and the reference captures, once per
   merge, serially. The same applies to a human beside running agents.
 - **One profile per lane.** Everything in the gate that runs native code
@@ -119,10 +126,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   test with the GPU reference frames, drift, the packages' tests on the
   native host) and that is what a merge must pass. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
-  end: `scripts/wave-end.sh` (`scripts/check.sh --all`, `scripts/check.sh
-  web-reference`, then the vulkan-cpu frames on lavapipe and their table
-  against metal, serially) once per wave, with its summary in the report,
-  never per merge. A size or
+  end: `scripts/wave-end.sh` (`scripts/check.sh --all`, then
+  `scripts/check.sh web-reference`, serially; the vulkan-cpu frames on
+  lavapipe are set aside with the CPU-only sandbox requirement,
+  2026-10-22) once per wave, with its summary in the report, never per
+  merge. A size or
   frame-time number is a target to pursue there, not a reason to hold a
   functional merge. Never run `--all` after every edit. When a reference frame changes, re-record
   it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx

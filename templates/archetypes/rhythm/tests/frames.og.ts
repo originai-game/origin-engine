@@ -27,7 +27,9 @@ export default playtest({
   ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    for (const f of FILES) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    t.frame(FILES, () => {
+      for (const f of FILES) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    });
     checkFrames(run, t, FILES, "");
   },
 });

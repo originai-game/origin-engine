@@ -1,8 +1,9 @@
 //! `og doctor`: what a game author's loop needs (bun, the engine package,
-//! its native addon, the web host's wasm, and a headless renderer on this
-//! machine: the executor path that needs no E2B sandbox), then, inside the
-//! engine repository, the build toolchain against the repository's pins.
-//! Every problem has one line naming its fix.
+//! its native addon, the web host's wasm), whether this machine has a
+//! headless renderer (reported, not required: without one the playtests'
+//! frames are unchecked), then, inside the engine repository, the build
+//! toolchain against the repository's pins. Every problem has one line
+//! naming its fix.
 //!
 //! Outside the engine repository (an executor: bun, the engine package and
 //! its addon) the Rust and wasm-bindgen checks are skipped, and node is
@@ -198,7 +199,7 @@ fn wasm_bindgen_lock(root: &Path) -> Option<String> {
 }
 
 /// The engine package's checks (`packages/engine/src/node/doctor.ts`): the
-/// addon loads, the wasm is built, a 64x64 frame renders headless.
+/// addon loads, the wasm is built, and whether a 64x64 frame renders headless.
 fn engine_checks(cwd: &Path) -> usize {
     let Some(package) = crate::project::engine_package(Some(cwd)) else {
         println!(
@@ -281,19 +282,26 @@ fn engine_checks(cwd: &Path) -> usize {
             "reinstall @origingame/engine, or in a checkout run `bun run build` in packages/engine",
         );
     }
+    // No renderer is a supported configuration (the platform's engine and
+    // probe sandboxes carry none): reported, never counted as a problem.
     let r = &report["renderer"];
-    line(
-        "renderer",
-        r["ok"].as_bool().unwrap_or(false),
-        match r["ok"].as_bool() {
-            Some(true) => format!(
-                "{} (a 64x64 frame headless in {} ms: og run needs no sandbox here)",
-                r["tier"].as_str().unwrap_or("?"),
-                r["ms"]
-            ),
-            _ => r["reason"].as_str().unwrap_or("no adapter").to_string(),
-        },
-        "a GPU driver with Metal or Vulkan, or Mesa lavapipe (`apt install mesa-vulkan-drivers`) for CPU rendering",
-    );
+    match r["ok"].as_bool() {
+        Some(true) => println!(
+            "ok       {:<13} {} (a 64x64 frame headless in {} ms)",
+            "renderer",
+            r["tier"].as_str().unwrap_or("?"),
+            r["ms"]
+        ),
+        _ => {
+            println!(
+                "none     {:<13} {}",
+                "renderer",
+                r["reason"].as_str().unwrap_or("no adapter")
+            );
+            println!(
+                "         without one: og run, og test and the probe run the same; a screenshot is a frame unchecked and capture answers null; frames are verified where there is a GPU (Metal or Vulkan)"
+            );
+        }
+    }
     problems
 }

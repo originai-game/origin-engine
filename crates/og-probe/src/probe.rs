@@ -37,6 +37,11 @@ pub const MAX_SNAPSHOTS: usize = 16;
 /// The most calls a `screenshot` or `sweep` value waits for a frame that
 /// lands on a later call (the web's readback) before it gives up.
 const MAX_CAPTURE_POLLS: u32 = 120;
+/// What a `screenshot` step logs (not a warning) in a host without a
+/// renderer, followed by ` (<file>)`: the step writes no PNG, and a
+/// playtest reports the frame as unchecked and passes (docs/design.md §5,
+/// the `engine` and `probe` sandboxes carry no renderer).
+pub const FRAME_UNCHECKED: &str = "screenshot: no renderer, frame unchecked";
 /// `hello.engine` unless the host says otherwise.
 pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSION"));
 
@@ -884,10 +889,18 @@ impl Probe {
                         ));
                     }
                 }
-                let capture = self
-                    .capture
-                    .as_mut()
-                    .ok_or("no renderer in this host: nothing to capture")?;
+                // No renderer is a host configuration, not a fault: the
+                // step notes the frame it did not take and the run goes on
+                // exactly as it would with one (rendering never feeds back).
+                let Some(capture) = self.capture.as_mut() else {
+                    let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
+                    self.note(
+                        tick,
+                        false,
+                        format!("{}s {FRAME_UNCHECKED} ({file})", step.at),
+                    );
+                    return Ok(());
+                };
                 let (width, height) = match edge {
                     None => (0, 0),
                     Some(n) => {

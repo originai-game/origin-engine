@@ -57,6 +57,9 @@ export default playtest({
       shown.add(`${d.locale}:${text}`);
     }
     t.equal(shown.size, LOCALES.length, "each locale shows its own mixed string");
-    for (const d of dumps) t.equal(run.png(d.file.replace(".json", ".png")).width, 1280, `${d.file} rendered`);
+    const frames = dumps.map((d) => d.file.replace(".json", ".png"));
+    t.frame(frames, () => {
+      for (const f of frames) t.equal(run.png(f).width, 1280, `${f} rendered`);
+    });
   },
 });

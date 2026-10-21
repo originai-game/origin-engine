@@ -582,6 +582,34 @@ impl RenderInfo {
     }
 }
 
+/// The environment switch that takes the renderer away: `OG_RENDERER=none`
+/// makes every [`Renderer::new`] and [`Renderer::with_surface`] answer
+/// [`RenderError::NoAdapter`], as on a machine with no usable adapter (the
+/// platform's `engine` and `probe` sandboxes, docs/design.md §5), so the
+/// no-renderer path is testable where a GPU is present (docs/ci.md
+/// §Switches). Any other value, or none, leaves adapters as they are. Read
+/// natively only; the web always has its canvas's adapter.
+pub const RENDERER_SWITCH: &str = "OG_RENDERER";
+
+/// Whether [`RENDERER_SWITCH`] is `none` in this process's environment.
+pub fn renderer_disabled() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        false
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::env::var(RENDERER_SWITCH).is_ok_and(|v| v.trim().eq_ignore_ascii_case("none"))
+    }
+}
+
+/// The error a disabled renderer answers, naming the switch.
+fn disabled_error() -> RenderError {
+    RenderError::NoAdapter(format!(
+        "{RENDERER_SWITCH}=none: this process runs without a renderer"
+    ))
+}
+
 /// Whether an adapter rasterizes on the CPU: wgpu reports a CPU device type,
 /// or its name is one of the software rasterizers (Mesa's lavapipe and
 /// llvmpipe, SwiftShader), which some drivers report as another type.
@@ -1062,8 +1090,8 @@ struct Batch {
     /// Drawn with the array-map pipelines ([`GpuMaterial::array`]): its
     /// instances carry their layer in the transform.
     array: bool,
-    /// Drawn into the shadow maps ([`Instance::cast_shadows`]; skinned
-    /// batches always are).
+    /// Drawn into the shadow maps ([`Instance::cast_shadows`],
+    /// [`SkinnedInstance::cast_shadows`]).
     cast: bool,
 }
 
@@ -1924,6 +1952,9 @@ impl Renderer {
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
     /// On the web, WebGL2 needs a canvas: use [`Renderer::with_surface`].
     pub async fn new(desc: &RenderDesc) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
         let instance = desc.backend.instance();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -1945,6 +1976,9 @@ impl Renderer {
         instance: &wgpu::Instance,
         surface: wgpu::Surface<'static>,
     ) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -4380,21 +4414,25 @@ impl Renderer {
         }
         let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
+        // A (mesh, material)'s casters first, its non-casters a batch of
+        // their own (left out of the shadow passes).
         order.sort_by_key(|&i| {
             let s = &scene.skinned_instances[i];
-            (s.mesh, s.material)
+            (s.mesh, s.material, !s.cast_shadows)
         });
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
         let mut spheres = Vec::with_capacity(order.len());
         for &i in &order {
             let s = &scene.skinned_instances[i];
-            let (mesh, material) = (s.mesh.index(), s.material.index());
+            let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
             if self.cache.meshes[mesh].index_count == 0 {
                 continue;
             }
             match batches.last_mut() {
-                Some(b) if b.mesh == mesh && b.material == material => b.count += 1,
+                Some(b) if b.mesh == mesh && b.material == material && b.cast == cast => {
+                    b.count += 1
+                }
                 _ => {
                     let m = &self.cache.materials[material];
                     batches.push(Batch {
@@ -4414,7 +4452,7 @@ impl Renderer {
                         derivatives: m.flat,
                         compact: false,
                         array: m.array.is_some(),
-                        cast: true,
+                        cast,
                     });
                 }
             }
@@ -4448,7 +4486,12 @@ impl Renderer {
                 morph1: [w[4], w[5], w[6], w[7]],
                 look: {
                     let [flash, color, tint] = instances::fx_bits(&s.fx);
-                    [0.0, flash, color, tint]
+                    [
+                        instances::layer_bits(0.0, s.receive_shadows),
+                        flash,
+                        color,
+                        tint,
+                    ]
                 },
             });
         }
@@ -5031,8 +5074,7 @@ impl Renderer {
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
-        let has_casters =
-            batches.iter().any(|b| b.cast) || !skinned_batches.is_empty() || terrain_casters;
+        let has_casters = batches.iter().chain(&skinned_batches).any(|b| b.cast) || terrain_casters;
         let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
@@ -6412,8 +6454,11 @@ impl Renderer {
             };
             let mut draws = 0;
             let mut physical_bound = false;
+            // The shadow layouts put the palette at 2: shadows draw an
+            // array-map material with its standard group, and only casters.
+            let shadow = palette_at == 2;
             for (batch, pipeline) in list.iter().zip(pipelines) {
-                if batch.transparent != transparent {
+                if batch.transparent != transparent || (shadow && !batch.cast) {
                     continue;
                 }
                 let physical = batch.physical && physical_fx.is_some();
@@ -6425,9 +6470,6 @@ impl Renderer {
                     physical_bound = physical;
                 }
                 let m = &self.cache.materials[batch.material];
-                // The shadow layouts put the palette at 2: shadows draw an
-                // array-map material with its standard group.
-                let shadow = palette_at == 2;
                 pass.set_bind_group(
                     material_group,
                     match (&m.physical, &m.array) {
@@ -6517,7 +6559,7 @@ impl Renderer {
             stats.draw_calls += n;
             stats.shadow_casters += skinned_batches
                 .iter()
-                .filter(|b| !b.transparent)
+                .filter(|b| !b.transparent && b.cast)
                 .map(|b| b.count)
                 .sum::<u32>();
             // Terrain levels that reach into the pass's volume.

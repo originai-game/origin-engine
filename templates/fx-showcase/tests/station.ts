@@ -3,7 +3,12 @@
 // (frames.ts' rule), dump the entities its checks read, and run the
 // station's own checks. A second frame half a second earlier lets a check
 // see what moves.
-import { playtest, type PlaytestChecks, type PlaytestRun } from "@origingame/engine/playtest";
+//
+// Without a renderer (tier `none`) the two frames are reported unchecked:
+// a station's checks read its dumped fields first and its frames after, so
+// they run up to their first frame read and stop there, every field check
+// made.
+import { FrameUnchecked, playtest, type PlaytestChecks, type PlaytestRun } from "@origingame/engine/playtest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkFrames, decodePng, outDir, type Image } from "./frames.ts";
@@ -79,19 +84,28 @@ export function stationPlaytest(station: string, wait: number, entities: readonl
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
-      const load = (f: string) => decodePng(readFileSync(join(outDir(), f)));
-      checks({
-        run,
-        t,
-        frame: load(`${station}.png`),
-        before: load(`${station}-before.png`),
-        field: <T,>(entity: string, component: string, field: string): T => {
-          const c = run.json<Dumped>(`${entity}.json`).components;
-          const v = (c[component] ?? c[`og.${component}`])?.[field];
-          if (v === undefined) throw new Error(`${entity} has no ${component}.${field} (it has ${Object.keys(c).join(", ")})`);
-          return v as T;
-        },
-      });
+      const shots = [`${station}.png`, `${station}-before.png`];
+      // With a renderer the frames themselves; without one, images whose every read throws FrameUnchecked.
+      const load = (f: string): Image =>
+        run.rendered
+          ? decodePng(readFileSync(join(outDir(), f)))
+          : (new Proxy({} as Image, {
+              get() {
+                throw new FrameUnchecked(f);
+              },
+            }) as Image);
+      const field = <T,>(entity: string, component: string, field: string): T => {
+        const c = run.json<Dumped>(`${entity}.json`).components;
+        const v = (c[component] ?? c[`og.${component}`])?.[field];
+        if (v === undefined) throw new Error(`${entity} has no ${component}.${field} (it has ${Object.keys(c).join(", ")})`);
+        return v as T;
+      };
+      try {
+        checks({ run, t, frame: load(shots[0]!), before: load(shots[1]!), field });
+      } catch (e) {
+        if (run.rendered || !(e instanceof Error && e.name === "FrameUnchecked")) throw e;
+      }
+      t.frame(shots, () => {});
       checkFrames(run, t, [`${station}.png`], "");
     },
   });

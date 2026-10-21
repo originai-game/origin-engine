@@ -1679,7 +1679,7 @@ module render {
     variant vulkan "Native Vulkan on a GPU."
     variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
     variant metal "Native Metal."
-    variant none "No renderer: frames are not produced and capture refuses."
+    variant none "No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null."
   }
 
   enum Antialias {
@@ -1906,7 +1906,9 @@ module render {
     field geometry Geometry "The geometry."
     field material Material "The material."
     field castShadow bool "Cast shadows, as three.js Object3D.castShadow: drawn into the sun's cascades and the shadowed lights' maps. Off by default: a lamp's own glass around its light, a glow card or a decal-like slab casts none."
-    field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows."
+    field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley." {
+      default true
+    }
     field visible bool "Whether it is drawn." {
       default true
     }
@@ -3391,8 +3393,12 @@ module load {
     doc "How to load a glTF, as three.js GLTFLoader options where they apply."
     desc true
     field scene u32 "Which glTF scene to instantiate."
-    field castShadow bool "Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows."
-    field receiveShadow bool "Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows."
+    field castShadow bool "Whether the models instantiated from it cast shadows: world.instantiate of the handle and a scene's `model` line give their og.Model this castShadow. On when omitted, so a model loaded without a desc casts as it always has; false turns it off for the model (og.Model.castShadow turns it off for one instance). The flags belong to the asset: another og.load.gltf of the same path answers the same handle and sets them again, for the models instantiated after it." {
+      default true
+    }
+    field receiveShadow bool "Whether the models instantiated from it receive shadows (og.Model.receiveShadow, as castShadow): on when omitted; false lights them as if unshadowed by every light." {
+      default true
+    }
   }
 
   struct GltfInfo {
@@ -3460,6 +3466,12 @@ module load {
     }
     field flashColor Color "The flash's linear colour." {
       default 1 1 1
+    }
+    field castShadow bool "Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false)." {
+      default true
+    }
+    field receiveShadow bool "Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table." {
+      default true
     }
   }
 
@@ -10205,7 +10217,7 @@ module commands {
 
   enum CoreAction {
     doc "The actions the engine ships. Arguments follow the action, separated by `:`."
-    variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame."
+    variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked."
     variant listen "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV."
     variant touch_move_to "`touch_move_to:<ui id>`: move the pointer to a UI element."
     variant touch_move "`touch_move:x,y`: move the pointer to CSS pixel coordinates."
@@ -10728,7 +10740,7 @@ module probe {
       returns Hello
     }
     fn capture {
-      doc "The frame of the current tick, rendered offscreen and read back as a PNG."
+      doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
       doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
       doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
       publish true

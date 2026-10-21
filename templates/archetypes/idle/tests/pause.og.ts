@@ -61,6 +61,8 @@ export default playtest({
     const quit = game(run, "quit.json");
     t.equal(quit.phase, TITLE, "Quit went back to the title");
     t.equal(quit.saves, repaused.saves + 1, "and wrote the save there, after the pause's");
-    for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    t.frame(["pause.png", "settings-zh.png", "play-zh.png"], () => {
+      for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    });
   },
 });

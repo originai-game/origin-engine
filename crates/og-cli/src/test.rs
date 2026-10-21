@@ -2,6 +2,11 @@
 //! each playtest script `tests/*.og.ts` through `og run --headless
 //! --commands` in its own process (`packages/engine/src/node/playtest-run.ts`).
 //! Fails when anything fails, and when there was nothing to run.
+//!
+//! Without a renderer (the platform's engine and probe sandboxes,
+//! `OG_RENDERER=none`) a playtest's screenshots are frames unchecked: each
+//! playtest lists its own, the summary counts them, and they never change
+//! the exit status.
 
 use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
@@ -63,6 +68,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         return ExitCode::FAILURE;
     }
     let mut failed = 0;
+    let mut unchecked = 0;
     if !unit.is_empty() {
         println!("og test: bun test ({} file(s))", unit.len());
         match Command::new("bun")
@@ -87,9 +93,13 @@ pub fn run(args: &[&str]) -> ExitCode {
                 return ExitCode::FAILURE;
             }
         };
-        for t in &playtests {
+        // Each playtest's result line, for the frames it left unchecked.
+        let results = std::env::temp_dir().join(format!("og-test-{}", std::process::id()));
+        for (i, t) in playtests.iter().enumerate() {
+            let result = results.join(format!("{i}.json"));
             let mut cmd = project::bun(&package, "src/node/playtest-run.ts");
             cmd.arg("--file").arg(t).arg("--entry").arg(&bundle);
+            cmd.arg("--result").arg(&result);
             if p.manifest {
                 cmd.arg("--root").arg(&p.root);
             }
@@ -101,17 +111,37 @@ pub fn run(args: &[&str]) -> ExitCode {
                 Ok(_) => failed += 1,
                 Err(e) => {
                     eprintln!("og test: {} ({e})", project::NO_BUN);
+                    let _ = std::fs::remove_dir_all(&results);
                     return ExitCode::FAILURE;
                 }
             }
+            unchecked += unchecked_frames(&result);
         }
+        let _ = std::fs::remove_dir_all(&results);
     }
     let total = usize::from(!unit.is_empty()) + playtests.len();
+    let frames = if unchecked > 0 {
+        format!(
+            "; {unchecked} frame(s) unchecked: no renderer here (frames are verified on the author's machine, in the browser-check sandbox or on an executor with a GPU)"
+        )
+    } else {
+        String::new()
+    };
     if failed == 0 {
-        println!("og test: {total} suite(s) passed");
+        println!("og test: {total} suite(s) passed{frames}");
         ExitCode::SUCCESS
     } else {
-        println!("og test: {failed} of {total} suite(s) failed");
+        println!("og test: {failed} of {total} suite(s) failed{frames}");
         ExitCode::FAILURE
     }
+}
+
+/// How many frames a playtest's result line (`playtest-run.ts --result`)
+/// reports unchecked; 0 when it wrote none.
+fn unchecked_frames(result: &Path) -> usize {
+    std::fs::read(result)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .and_then(|v| v["unchecked"].as_array().map(Vec::len))
+        .unwrap_or(0)
 }

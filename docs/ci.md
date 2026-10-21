@@ -187,9 +187,9 @@ it the steps fall back to `cargo test`.
 and its provisioning action were removed on 2026-10-21 (the owner's
 decision: the shared runner was slower than the local gate, billed, and
 added nothing the gate does not cover). The process is the local one: the
-functional lane for every merge, `--all`, web-reference and the lavapipe
-pass (or `scripts/wave-end.sh`) at a wave's end, by the one session that
-merges (AGENTS.md §Build and gate discipline). What the workflow was when
+functional lane for every merge, `--all` and web-reference (or
+`scripts/wave-end.sh`) at a wave's end, by the one session that merges
+(AGENTS.md §Build and gate discipline). What the workflow was when
 it last ran green (every job in a `debian:trixie` container with `--init`
 whose Lavapipe matched the og-lavapipe image, a shared provisioning
 action, quick 12.5 min, functional 35 min, gate 60 min and the perf
@@ -307,9 +307,8 @@ the load average past 100 and every step past its timeouts):
   size, determinism and the browser tiers are not in it: they measure,
   and a measurement is pursued at a wave's end, not held against a merge.
 - **At a wave's end**: `scripts/wave-end.sh`, by the session that runs
-  gates (§The wave-end run): `scripts/check.sh --all`, `scripts/check.sh
-  web-reference` and the vulkan-cpu frames on lavapipe, serially, with the
-  table of every vulkan-cpu frame against metal.
+  gates (§The wave-end run): `scripts/check.sh --all`, then `scripts/check.sh
+  web-reference`, serially.
 - **Once at the end of a round**: `scripts/check.sh --all`, before the
   final commit, with its summary in the report. Never `--all` after every
   edit; never touch files or delete `target/og-gate/` to force a step.
@@ -329,6 +328,18 @@ stages (the `check.sh` runs inside find them held by their parent), so no
 other gate starts in between. Each stage runs even when one before it
 failed; the exit status is non-zero when any did. Logs, the summary and
 the table go to `target/evidence/wave-end/`.
+
+**The vulkan-cpu tier is set aside (2026-10-22).** The CPU-only sandbox
+requirement (a playtest's frames on Mesa lavapipe in a sandbox with no
+GPU) was set aside by the owner to put features first
+(docs/phase-1.md, "The CPU sandbox requirement set aside"; docs/design.md
+§5 and §8). The default run is the `gate` and `web` stages alone; the
+lavapipe stages below (`cross`, `prepare`, `gfx`, `ui`, `playtests`,
+`table`) stay in the script and run only when `--stages` names them. No
+`references/vulkan-cpu/` directory is kept any more (the last 25 copies
+went on 2026-10-22); a tier with no directory is judged against `metal`,
+as every reference harness already does. What follows about those stages
+describes the script as it is, for when the requirement returns.
 
 | Stage | What |
 |---|---|
@@ -471,12 +482,41 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   `SKIPPED: og api check not available yet`; with `required` the same
   situation fails the gate. Flip it in the commit that lands `og api check`.
 
+## Switches in the environment
+
+- `OG_RENDERER=none` takes the renderer away natively: og-render's
+  `Renderer::new` and `with_surface` answer `NoAdapter` ("OG_RENDERER=none:
+  this process runs without a renderer", `og_render::renderer_disabled`),
+  as on a machine with no usable adapter. That is the platform's `engine`
+  and `probe` sandboxes (docs/design.md §5: they carry no renderer), and the
+  switch makes the path testable on a machine with a GPU. Without a
+  renderer the run is the same run: the simulation, the probe, `dump_*`,
+  snapshots and the world hash are identical (rendering never feeds back
+  into simulation; the native host keeps the play surface at `--size`); a
+  `screenshot` step writes no PNG and logs, not as a warning, `<t>s
+  screenshot: no renderer, frame unchecked (<file>)` (og-probe's
+  `FRAME_UNCHECKED`); `hello.tier` is `none` and `capture` answers null.
+  `og run --json` reports `tier: "none"` and the frames in `unchecked`;
+  `og test` runs every playtest check outside `t.frame`, prints one
+  `~ <file>: no renderer, frame unchecked` line per screenshot and the
+  count in its summary, and exits as it would on the other checks alone;
+  `og polish` reports frame time `n/a (no renderer)`; `og doctor` reports
+  the renderer `none`, not as a problem. Any other value, or none, leaves
+  the adapters alone; the web host always has its canvas's. The gfx
+  suites (og-tests, og-ui's reference frames, `og-gfx`) need a renderer and
+  fail under the switch. `packages/engine/tests/no-renderer.test.ts` and
+  og-runtime's `tests/no_renderer.rs` hold the contract; frames are verified
+  where there is a renderer: the author's machine, the browser-check
+  sandbox, an executor with a GPU.
+
 ## Browser reference tiers
 
-og-tests' gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for
-four scenes, §og-tests' gfx scenes in the browser); og-ui's 83 reference
-frames cover `metal` and `vulkan-cpu` (the browser tiers run 76 of them), and the browser tiers are judged
-against `metal` (§og-ui's kit frames in the browser);
+og-tests' gfx references cover `metal` (and `webgl2` for four scenes,
+§og-tests' gfx scenes in the browser; the `vulkan-cpu` copies went with
+the CPU sandbox requirement on 2026-10-22, §The wave-end run); og-ui's 83
+reference frames are `metal`'s (the browser tiers run 76 of them) and the
+browser tiers are judged against `metal` (§og-ui's kit frames in the
+browser);
 fx-showcase's browser tiers
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
 export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
@@ -498,10 +538,9 @@ templates/archetypes/topdown --script "<the frames playtest's commands
 without screenshot and quit>" --shots start@30,crit@131,dash@168,east@216`
 compares (or with `--record` writes) `<project>/references/<tier>/`. What
 each template commits under `references/`: `metal` alone for idle, rhythm,
-roguelike and tower-defense; `metal` and `vulkan-cpu` for match3, runner
-and topdown; `metal` and a WebGL2 `beacon` for third-person (below);
-`metal`, `vulkan-cpu` and one WebGL2 frame (`water`, below) for
-fx-showcase. The UI shell round (2026-10-21) deleted topdown's `webgpu`
+roguelike, tower-defense, match3, runner and topdown; `metal` and a WebGL2
+`beacon` for third-person (below); `metal` and one WebGL2 frame (`water`,
+below) for fx-showcase (every `vulkan-cpu` copy went on 2026-10-22). The UI shell round (2026-10-21) deleted topdown's `webgpu`
 and `webgl2` frames and 47 of fx-showcase's 48: each sits within the
 tolerance of `metal` on its tier (topdown within RMSE 0.00009, three of
 the WebGL2 four RMSE 0; fx-showcase's in
@@ -661,7 +700,9 @@ difference the tier makes by design, never to absorb a defect.
 light is two paraboloid hemispheres on WebGL2 and six cube faces on
 `metal`, which store the same faces since the paraboloids' winding was
 mirrored (the paraboloid frame within RMSE 0.0036 of the cube one
-natively), and the lamp's glass casts no shadow on either. Each tier
+natively), and the lamp's glass casts no shadow on either.
+`shadow-flags` (owed row 87) has none either: per-instance cast and
+receive flags under the sun's cascades alone. Each tier
 takes 30 to 50 s after the module build.
 
 The same module carries og-ui's four reference scenes as `og-ui/<name>`
@@ -763,17 +804,17 @@ git diff --stat tests/                       # see which frames moved
 ```
 
 A scene with no reference on the adapter's tier is compared with
-`references/metal/` and the test prints so (`gfx <scene>: no vulkan-cpu
+`references/metal/` and the test prints so (`gfx <scene>: no <tier>
 reference …; comparing with metal's`), as every other reference harness
-does (§Browser reference tiers); a scene on neither fails. So a scene
-recorded on metal is held on lavapipe in CI at once, and its own
-`vulkan-cpu` frame, when the tier differs by more than the tolerance, is
-recorded at the wave's end (`scripts/wave-end.sh --record gfx/<scene>`).
+does (§Browser reference tiers); a scene on neither fails. A tier keeps a
+reference of its own only for a difference it makes by design (more than
+the tolerance against `metal`); since 2026-10-22 only the browser tiers
+do (the `vulkan-cpu` copies went with the CPU sandbox requirement).
 
 Commit the new references with the change, and describe in the commit what
 each moved frame now shows (AGENTS.md §Validation: a rendering change carries
 a frame that was read and described). Capture on the backend tier the
-reference belongs to; a lavapipe frame never replaces a Metal reference.
+reference belongs to; a frame from another tier never replaces a Metal reference.
 
 ## When the size gate fails
 

@@ -18,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10199</sub>
+<sub>`api.ogt` line 10211</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 10275</sub>
+<sub>`api.ogt` line 10287</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 10283</sub>
+<sub>`api.ogt` line 10295</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 10289</sub>
+<sub>`api.ogt` line 10301</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 10295</sub>
+<sub>`api.ogt` line 10307</sub>
 
 ## Types
 
@@ -167,7 +167,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 
 | Variant | Doc |
 |---|---|
-| `"screenshot"` | `screenshot[:path][:full\|:N]`: capture the next frame. |
+| `"screenshot"` | `screenshot[:path][:full\|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked. |
 | `"listen"` | `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV. |
 | `"touch_move_to"` | `touch_move_to:<ui id>`: move the pointer to a UI element. |
 | `"touch_move"` | `touch_move:x,y`: move the pointer to CSS pixel coordinates. |
@@ -199,7 +199,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 ```ogt
 enum CoreAction {
   doc "The actions the engine ships. Arguments follow the action, separated by `:`."
-  variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame."
+  variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked."
   variant listen "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV."
   variant touch_move_to "`touch_move_to:<ui id>`: move the pointer to a UI element."
   variant touch_move "`touch_move:x,y`: move the pointer to CSS pixel coordinates."
@@ -230,7 +230,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 10206</sub>
+<sub>`api.ogt` line 10218</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -257,7 +257,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 10238</sub>
+<sub>`api.ogt` line 10250</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -281,7 +281,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 10244</sub>
+<sub>`api.ogt` line 10256</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -306,7 +306,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 10251</sub>
+<sub>`api.ogt` line 10263</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -331,7 +331,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 10260</sub>
+<sub>`api.ogt` line 10272</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -354,4 +354,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 10268</sub>
+<sub>`api.ogt` line 10280</sub>

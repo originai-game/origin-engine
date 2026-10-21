@@ -59,8 +59,8 @@ pub struct MorphTargets {
 /// it and its blendshape weights. Instances sharing a (mesh, material) draw
 /// in one instanced call whatever their palettes. The camera culls each one
 /// with its mesh's bind-pose bounding sphere scaled by `bounds_scale` (an
-/// animated pose can leave the bind pose's bounds); shadow passes draw them
-/// all.
+/// animated pose can leave the bind pose's bounds); shadow passes draw
+/// every one that casts.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SkinnedInstance {
     pub mesh: MeshHandle,
@@ -73,10 +73,16 @@ pub struct SkinnedInstance {
     pub bounds_scale: f32,
     /// Its own hit flash and tint ([`crate::InstanceFx`]).
     pub fx: crate::InstanceFx,
+    /// Drawn into the shadow maps, as [`crate::Instance::cast_shadows`]:
+    /// a skinned (mesh, material)'s non-casters are a batch of their own.
+    pub cast_shadows: bool,
+    /// Darkened by the shadow maps, as [`crate::Instance::receive_shadows`].
+    pub receive_shadows: bool,
 }
 
 impl SkinnedInstance {
-    /// An instance posed by palette `palette`, no blendshapes, bounds ×2.
+    /// An instance posed by palette `palette`, no blendshapes, bounds ×2,
+    /// casting and receiving shadows.
     pub fn new(mesh: MeshHandle, material: MaterialHandle, transform: Mat4, palette: u32) -> Self {
         SkinnedInstance {
             mesh,
@@ -86,6 +92,8 @@ impl SkinnedInstance {
             morph_weights: [0.0; MAX_MORPH_TARGETS],
             bounds_scale: 2.0,
             fx: crate::InstanceFx::NONE,
+            cast_shadows: true,
+            receive_shadows: true,
         }
     }
 }
@@ -110,7 +118,8 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 /// `SkinnedInstanceIn`: the transform (its columns' xyz, as
 /// [`crate::instances::GpuTransform::columns`]), (first joint, joint count, first
 /// morph element, morph targets), the eight morph weights and the
-/// instance's look (0, then [`crate::instances::fx_bits`]).
+/// instance's look ([`crate::instances::layer_bits`] of no layer, then
+/// [`crate::instances::fx_bits`]).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct SkinnedInstanceGpu {

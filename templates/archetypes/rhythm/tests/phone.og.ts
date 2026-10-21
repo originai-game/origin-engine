@@ -39,6 +39,6 @@ export default playtest({
     t.ok(hud.elements.every((e) => e.x >= 0 && e.x + e.width <= 390 && e.y + e.height <= 844 - 34), "nothing runs off the sides or under the home bar");
     const pause = el("Pause");
     t.ok(pause !== undefined && pause.width >= 44 && pause.height >= 44, "Pause is touch-sized");
-    t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels");
+    t.frame("play.png", () => t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels"));
   },
 });

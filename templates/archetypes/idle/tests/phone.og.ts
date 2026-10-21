@@ -45,6 +45,6 @@ export default playtest({
     t.equal(buys.length, 4, "four generator buttons");
     t.ok(buys.every((e) => e.width >= 44 && e.height >= 44), "each at least 44 px square");
     t.ok(shop !== undefined && ORB.y < shop.y - 80, "the orb sits well above them");
-    t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels");
+    t.frame("play.png", () => t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels"));
   },
 });

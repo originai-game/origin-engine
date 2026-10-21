@@ -873,9 +873,19 @@ pub(crate) fn skeletons(world: &World, rs: &RenderState) -> std::collections::BT
         .collect()
 }
 
+/// One og.Model's own look and shadow flags, carried by each of its
+/// instances: its tint and flash, `castShadow` and `receiveShadow`.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ModelLook {
+    pub fx: og_render::InstanceFx,
+    pub cast: bool,
+    pub receive: bool,
+}
+
 /// Draws a model posed by og-anim: its skinned primitives as skinned
 /// instances under the entity's palette (and blendshape weights), the rest
-/// as instances, each with the model's own tint and flash (`look`). `false`
+/// as instances, each with the model's own tint, flash and shadow flags
+/// (`look`). `false`
 /// when it cannot (no palette yet, no skin data): the caller draws it at
 /// its bind pose.
 pub(crate) fn posed_model(
@@ -884,7 +894,7 @@ pub(crate) fn posed_model(
     asset: u64,
     world_matrix: Mat4,
     parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
-    look: og_render::InstanceFx,
+    look: ModelLook,
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
     let RenderState {
@@ -913,7 +923,9 @@ pub(crate) fn posed_model(
         match meshes.get(p).copied().flatten() {
             Some(skinned) => {
                 let mut inst = SkinnedInstance::new(skinned, material, world_matrix, palette);
-                inst.fx = look;
+                inst.fx = look.fx;
+                inst.cast_shadows = look.cast;
+                inst.receive_shadows = look.receive;
                 if info.prim_mesh.get(p).copied() == Some(out.mesh) {
                     let n = inst.morph_weights.len().min(out.weights.len());
                     inst.morph_weights[..n].copy_from_slice(&out.weights[..n]);
@@ -926,8 +938,9 @@ pub(crate) fn posed_model(
                     material,
                     transform: world_matrix * local,
                     material_layer: None,
-                    fx: look,
-                    cast_shadows: true,
+                    fx: look.fx,
+                    cast_shadows: look.cast,
+                    receive_shadows: look.receive,
                 });
                 keys.push((entity, k as u32));
             }

@@ -477,3 +477,108 @@ fn fxaa_is_one_pass_on_every_tier() {
     println!("FXAA changed {:.2}% of pixels", frac * 100.0);
     assert!(frac > 0.005 && frac < 0.25, "{frac}");
 }
+
+/// Pixel `i` of `img`.
+fn px(img: &RgbaImage, i: usize) -> &[u8] {
+    &img.pixels[i * 4..i * 4 + 4]
+}
+
+/// shadow-flags (per-instance shadow flags, og.Mesh's and og.Model's
+/// castShadow and receiveShadow): its reference, one pass per cascade.
+#[test]
+fn shadow_flags_matches_its_reference() {
+    let report = check("shadow-flags");
+    assert_eq!(report.stats.shadow_passes, report.info.shadow_cascades);
+}
+
+fn flags_scene() -> shadow_scenes::FlagsScene {
+    shadow_scenes::shadow_flags_scene().expect("trickster.glb")
+}
+
+/// A model's instances cast as their flag says: the trickster added as is
+/// throws its shadow on the ground (gone when its instances cast none),
+/// the one with `cast_shadows` off throws none (there once it casts), and
+/// only casters are drawn into the cascades.
+#[test]
+fn a_model_casts_as_its_instances_say() {
+    let desc = scenes::base_desc();
+    let (base, base_stats) = frame(&desc, &flags_scene().scene, 1);
+    let mut casting = flags_scene();
+    for i in casting.model_no_cast.clone() {
+        casting.scene.instances[i].cast_shadows = true;
+    }
+    let (both, both_stats) = frame(&desc, &casting.scene, 1);
+    let appeared = darker(&both, &base);
+    println!("the second trickster casting: {appeared} pixels shadowed");
+    assert!(appeared > 2_000, "{appeared}");
+    assert!(both_stats.shadow_casters > base_stats.shadow_casters);
+    let mut none = flags_scene();
+    for i in none.model_as_is.clone() {
+        none.scene.instances[i].cast_shadows = false;
+    }
+    let (without, _) = frame(&desc, &none.scene, 1);
+    let gone = darker(&base, &without);
+    println!("the first trickster as added: {gone} pixels of its shadow");
+    assert!(gone > 2_000, "{gone}");
+}
+
+/// A box and a model with `receive_shadows` off, in a wall's shadow, are
+/// lit as if unshadowed: by the sun's cascades and by a shadowed point
+/// light alike, every pixel that moves from their receiving selves gains
+/// light and is drawn as when the wall casts nothing; none darkens. Fails on shaders that read the shadow maps for every instance
+/// (no pixel gains).
+#[test]
+fn surfaces_that_receive_no_shadows_are_lit_as_if_unshadowed() {
+    let desc = scenes::base_desc();
+    for point in [false, true] {
+        let build = |receive_all: bool, wall_casts: bool| {
+            let mut f = flags_scene();
+            if point {
+                f.scene.light.intensity = 0.0;
+                f.scene.light.cast_shadows = false;
+                f.scene.lights = vec![og_render::Light {
+                    position: glam::Vec3::new(6.5, 1.6, -3.0),
+                    color: glam::Vec3::new(1.0, 0.85, 0.6),
+                    intensity: 60.0,
+                    range: 16.0,
+                    cast_shadows: true,
+                    ..Default::default()
+                }];
+            }
+            if receive_all {
+                for i in &mut f.scene.instances {
+                    i.receive_shadows = true;
+                }
+            }
+            f.scene.instances[f.wall].cast_shadows = wall_casts;
+            f.scene
+        };
+        let (flags, _) = frame(&desc, &build(false, true), 1);
+        let (all, _) = frame(&desc, &build(true, true), 1);
+        let (no_wall, _) = frame(&desc, &build(false, false), 1);
+        let light = if point { "point light" } else { "sun" };
+        let mut gained = 0;
+        let mut as_unshadowed = 0;
+        let mut elsewhere = 0;
+        for i in 0..(flags.width * flags.height) as usize {
+            let (f, a) = (px(&flags, i), px(&all, i));
+            if f == a {
+                continue;
+            }
+            if luma(f) >= luma(a) {
+                gained += 1;
+                if (luma(f) - luma(px(&no_wall, i))).abs() <= 2.0 {
+                    as_unshadowed += 1;
+                }
+            } else {
+                elsewhere += 1;
+            }
+        }
+        println!(
+            "{light}: {gained} pixels lit as if unshadowed ({as_unshadowed} as with no wall), {elsewhere} elsewhere moved"
+        );
+        assert!(gained > 1_000, "{light}: {gained}");
+        assert!(as_unshadowed as f64 >= 0.98 * gained as f64, "{light}");
+        assert_eq!(elsewhere, 0, "{light}");
+    }
+}

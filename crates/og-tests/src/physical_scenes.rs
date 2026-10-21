@@ -355,6 +355,7 @@ pub fn array_scene() -> RenderScene {
             material_layer: (i < 7).then_some(i % 4),
             fx: og_render::InstanceFx::NONE,
             cast_shadows: true,
+            receive_shadows: true,
         });
     }
     // Layer 1 as plain 2D textures, beside the array cubes of layer 1.
@@ -389,6 +390,7 @@ pub fn array_scene() -> RenderScene {
             material_layer: layer,
             fx: og_render::InstanceFx::NONE,
             cast_shadows: true,
+            receive_shadows: true,
         });
     }
     let bumpy = scene.add_standard_material(StandardMaterial {

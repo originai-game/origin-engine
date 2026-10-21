@@ -70,6 +70,8 @@ export default playtest({
     t.equal(a.perfect, 8, "bar 2's last two notes were hit at their new times: eight Perfects");
     t.equal(a.miss, 0, "and nothing missed, bar 1 not judged twice");
     t.equal(text(run, "play-zh.json", "Label", "Score"), "得分", "the HUD speaks 简体中文");
-    for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    t.frame(["pause.png", "settings-zh.png", "play-zh.png"], () => {
+      for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    });
   },
 });
