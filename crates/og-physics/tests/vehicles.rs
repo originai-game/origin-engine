@@ -6,7 +6,11 @@
 //! not slow it; the outputs (speed, contacts) are not written; the wheel
 //! poses for drawing are missing or detached from the chassis; the 2D
 //! wheels are left behind when the vehicle is removed (they keep
-//! colliding); a rebuild of the chassis leaves orphaned wheels.
+//! colliding); a rebuild of the chassis leaves orphaned wheels; the wheel
+//! rays stand a car on another whose layers it does not meet (Meridian
+//! Loop's FINDINGS #3); the defaults barely move a car of a car's mass (#1);
+//! a car tips over at full lock with nothing to stop it (#2); a sliding
+//! tyre is not told (#16).
 
 mod support;
 
@@ -25,26 +29,43 @@ fn set(w: &mut World, e: Entity, f: impl FnOnce(&mut Vehicle)) {
     w.insert(e, v).unwrap();
 }
 
+/// A road car as the og.Vehicle doc and og-feel §12 give it: a 1,000 kg
+/// box chassis on the defaults.
 fn car3d(w: &mut World) -> Entity {
+    car_at(
+        w,
+        Vec3::new(0.0, 1.2, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+        Vehicle::default(),
+    )
+}
+
+fn car_at(w: &mut World, p: Vec3, body: RigidBody, collider: Collider, veh: Vehicle) -> Entity {
     let e = spawn_body(
         w,
-        at(0.0, 1.2, 0.0),
+        at(p.x, p.y, p.z),
         RigidBody {
-            mass: 150.0,
-            ..RigidBody::dynamic()
+            mass: 1000.0,
+            ..body
         },
-        Collider::cuboid(Vec3::new(1.8, 0.6, 3.6)),
+        collider,
     );
-    w.insert(
-        e,
-        Vehicle {
-            engine_force: 400.0,
-            brake_force: 60.0,
-            ..Vehicle::default()
-        },
-    )
-    .unwrap();
+    w.insert(e, veh).unwrap();
     e
+}
+
+/// A 4 km flat road whose top is y = 0.
+fn road(w: &mut World) -> Entity {
+    spawn_static(
+        w,
+        at(0.0, -0.5, 0.0),
+        Collider::cuboid(Vec3::new(4000.0, 1.0, 4000.0)),
+    )
+}
+
+fn up(w: &World, e: Entity) -> f32 {
+    (transform(w, e).quaternion * Vec3::Y).y
 }
 
 #[test]
@@ -128,6 +149,8 @@ fn a_2d_car_drives_on_sprung_wheels_and_its_wheels_go_with_it() {
             suspension_travel: 0.2,
             engine_force: 40.0,
             max_speed: 8.0,
+            brake_force: 30.0,
+            wheel_mass: 1.0,
             ..Vehicle::default()
         },
     )
@@ -162,4 +185,145 @@ fn a_2d_car_drives_on_sprung_wheels_and_its_wheels_go_with_it() {
         "on its wheels at {y_before}, without them it sat down to {y_after}"
     );
     let _ = ground;
+}
+
+#[test]
+fn cars_on_layers_that_do_not_meet_pass_through_each_other() {
+    // The road is on layer 1; each car meets only the road, so neither
+    // chassis touches the other and neither car's wheels may stand on the
+    // other. Before the rays honoured the chassis's layers and mask, the
+    // upper car stood on the lower one's roof and both climbed.
+    let (mut w, _) = world(Physics::default(), 1);
+    road(&mut w);
+    let car = |layer| Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)).on_layers(layer, 1);
+    let braked = Vehicle {
+        brake: 1.0,
+        ..Vehicle::default()
+    };
+    let a = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.0, 0.0),
+        RigidBody::dynamic(),
+        car(2),
+        braked,
+    );
+    let b = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.6, 0.0),
+        RigidBody::dynamic(),
+        car(4),
+        braked,
+    );
+    run(&mut w, 120);
+    let (ya, yb) = (transform(&w, a).position.y, transform(&w, b).position.y);
+    assert!((ya - yb).abs() < 0.02, "both on the road: {ya} and {yb}");
+    assert!(ya > 0.5 && ya < 1.0, "on its wheels on the road at {ya}");
+    assert_eq!(vehicle(&w, a).contacts, 4);
+    assert_eq!(vehicle(&w, b).contacts, 4);
+
+    // On layers that meet, the upper car's rays find the lower one's roof.
+    let (mut w, _) = world(Physics::default(), 1);
+    road(&mut w);
+    let lower = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.0, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)).on_layers(2, 1 | 4),
+        braked,
+    );
+    let upper = car_at(
+        &mut w,
+        Vec3::new(0.0, 2.6, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)).on_layers(4, 1 | 2),
+        braked,
+    );
+    run(&mut w, 60);
+    let gap = transform(&w, upper).position.y - transform(&w, lower).position.y;
+    assert!(gap > 0.9, "the upper car stands on the lower one: {gap}");
+}
+
+#[test]
+fn the_defaults_drive_a_car_of_a_thousand_kilograms() {
+    // og-feel §12's numbers: rear drive at 2.5 kN a wheel (5 m/s² off the
+    // line), 2 kN of brake a wheel (8 m/s²), a top speed of 40 m/s. The
+    // old defaults (80 N, 30 N) moved a 1,000 kg car at 0.16 m/s².
+    let (mut w, _) = world(Physics::default(), 1);
+    road(&mut w);
+    let car = car3d(&mut w);
+    run(&mut w, 60);
+    set(&mut w, car, |v| v.throttle = 1.0);
+    run(&mut w, 60);
+    let one = vehicle(&w, car).speed;
+    assert!(one > 4.0 && one < 6.0, "{one} m/s after 1 s");
+    run(&mut w, 540);
+    let ten = vehicle(&w, car).speed;
+    assert!(ten > 25.0 && ten <= 40.0, "{ten} m/s after 10 s");
+    assert!(up(&w, car) > 0.99);
+    set(&mut w, car, |v| {
+        v.throttle = 0.0;
+        v.brake = 1.0;
+    });
+    let mut ticks = 0;
+    while vehicle(&w, car).speed > 0.5 && ticks < 600 {
+        run(&mut w, 1);
+        ticks += 1;
+    }
+    let decel = ten / (ticks as f32 / 60.0);
+    assert!(
+        decel > 6.5 && decel < 10.0,
+        "braked at {decel} m/s² ({ticks} ticks)"
+    );
+}
+
+#[test]
+fn full_lock_at_speed_tips_a_tall_car_only_with_roll_influence_and_a_high_centre_of_mass() {
+    // The default car at 36 m/s, full lock for three seconds: with the
+    // defaults (rollInfluence 0) it slides and stays on its wheels; with
+    // rapier's own 0.1 (what og.Vehicle had, unsettable) it ends on its
+    // roof; with 0.1 and the centre of mass lowered below the wheel
+    // mounts it stays up again.
+    let trial = |roll: f32, centre: f32| {
+        let (mut w, p) = world(Physics::default(), 1);
+        road(&mut w);
+        let car = car_at(
+            &mut w,
+            Vec3::new(0.0, 1.0, 0.0),
+            RigidBody {
+                center_of_mass: Vec3::new(0.0, centre, 0.0),
+                ..RigidBody::dynamic()
+            },
+            Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+            Vehicle {
+                engine_force: 5000.0,
+                roll_influence: roll,
+                ..Vehicle::default()
+            },
+        );
+        set(&mut w, car, |v| v.throttle = 1.0);
+        run(&mut w, 600);
+        assert_eq!(vehicle(&w, car).slip, 0.0, "a straight line slides no tyre");
+        set(&mut w, car, |v| v.steer = 1.0);
+        let (mut lowest, mut slip, mut side) = (1.0f32, 0.0f32, 0.0f32);
+        for _ in 0..180 {
+            run(&mut w, 1);
+            lowest = lowest.min(up(&w, car));
+            slip = slip.max(vehicle(&w, car).slip);
+            for wh in p.vehicle_wheels(car).unwrap() {
+                side = side.max(wh.side_speed);
+                assert!(wh.slip <= vehicle(&w, car).slip + 1e-6, "{wh:?}");
+            }
+        }
+        (lowest, slip, side)
+    };
+    let (lowest, slip, side) = trial(0.0, 0.0);
+    assert!(lowest > 0.95, "the default car leaned to {lowest}");
+    assert!(
+        slip > 0.5 && side > 2.0,
+        "full lock at 36 m/s slides: slip {slip}, {side} m/s"
+    );
+    let (lowest, ..) = trial(0.1, 0.0);
+    assert!(lowest < 0.0, "rollInfluence 0.1 left it upright ({lowest})");
+    let (lowest, ..) = trial(0.1, -0.7);
+    assert!(lowest > 0.95, "the low centre of mass leaned to {lowest}");
 }

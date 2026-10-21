@@ -183,7 +183,7 @@ pub(crate) fn ragdolls(
 #[allow(clippy::duplicate_mod)]
 #[path = "sim.rs"]
 mod sim;
-pub(crate) use sim::{QueryWorld, Sim, step};
+pub(crate) use sim::{QueryWorld, Sim, load, save, step};
 
 #[allow(clippy::duplicate_mod)]
 #[path = "ext.rs"]

@@ -72,6 +72,7 @@ use gather::{Ids, QUERIES, Scene};
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind, Result};
 use og_ecs::{Entity, StateBlock, SystemContext, SystemDesc, World};
+use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -208,11 +209,46 @@ pub struct OverlapDesc {
     pub filter: QueryFilter,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) struct ShapeKey {
     pub shape: u32,
     pub mesh: u64,
     pub scale: [u32; 3],
+}
+
+/// Where a saved simulation's bytes lack an asset shape: at byte `at` of
+/// the cut bytes, the shape `key` names (rebuilt from the registered mesh
+/// or height field when the save is decoded; `sim::save`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct Hole {
+    pub at: u64,
+    pub key: ShapeKey,
+}
+
+/// What a [`Push`] is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum PushKind {
+    /// A force (N) over the next step.
+    Force,
+    /// An impulse (N·s) at once.
+    Impulse,
+    /// A torque (N·m) over the next step.
+    Torque,
+    /// An angular impulse (N·m·s) at once.
+    TorqueImpulse,
+}
+
+/// A force, impulse or torque game code gave a body, applied by the next
+/// step (world state: the `og.physics` state block saves those not yet
+/// applied).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct Push {
+    pub entity: u64,
+    pub kind: PushKind,
+    /// The force, impulse, torque or angular impulse, in world axes.
+    pub vector: Vec3,
+    /// Where a force or impulse acts (world space); `None` at the centre of mass.
+    pub point: Option<Vec3>,
 }
 
 /// What the system keeps between ticks: the simulation of the active
@@ -244,6 +280,9 @@ pub(crate) struct Shared {
     pub ragdoll_targets: BTreeMap<u64, Vec<(Vec3, Quat)>>,
     /// What the last step cost ([`PhysicsSystem::stats`]; not world state).
     pub stats: PhysicsStats,
+    /// Forces and impulses waiting for the next step, in the order given
+    /// (world state, saved with the simulation).
+    pub pushes: Vec<Push>,
 }
 
 /// One bone of a ragdoll rig, in the entity's space at the rest pose.
@@ -267,13 +306,21 @@ pub struct RagdollRig {
     pub bones: Vec<RagdollBone>,
 }
 
-/// A wheel of an `og.Vehicle` as it is now, for drawing.
+/// A wheel of an `og.Vehicle` as it is now, for drawing (and for smoke,
+/// skid marks and a squeal).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WheelPose {
     pub position: Vec3,
     pub quaternion: Quat,
     /// Whether it touches the ground.
     pub contact: bool,
+    /// How much the tyre slides (rapier's skid info turned round): 0 it
+    /// grips, towards 1 it asks for more than its grip holds (0.5: twice
+    /// as much). 0 in the air and in 2D.
+    pub slip: f32,
+    /// How fast the tyre's contact moves sideways over the ground, m/s
+    /// (along the axle; 0 in the air and in 2D).
+    pub side_speed: f32,
 }
 
 /// A cloth's points as the last step left them, row-major.
@@ -335,10 +382,11 @@ struct PhysicsState(Arc<Mutex<Shared>>);
 
 enum Saved {
     Empty,
+    Pushes(Vec<Push>),
     #[cfg(feature = "physics3d")]
-    D3(Box<dim3::Sim>),
+    D3(Box<dim3::Sim>, Vec<Push>),
     #[cfg(feature = "physics2d")]
-    D2(Box<dim2::Sim>),
+    D2(Box<dim2::Sim>, Vec<Push>),
 }
 
 fn codec() -> impl bincode::Options {
@@ -346,24 +394,36 @@ fn codec() -> impl bincode::Options {
     bincode::DefaultOptions::new().reject_trailing_bytes()
 }
 
+/// What follows the profile tag in a saved `og.physics` block: the pushes
+/// not yet applied, then the simulation's bytes without its asset shapes
+/// and where they go (empty with tag 0, no simulation yet).
+type Block = (Vec<Push>, Vec<Hole>, Vec<u8>);
+
 impl StateBlock for PhysicsState {
     fn save(&self, out: &mut Vec<u8>) {
         use bincode::Options;
         let shared = lock(&self.0);
-        let encoded = match () {
+        let pushes = shared.pushes.clone();
+        let block: Option<(u8, Block)> = match () {
             #[cfg(feature = "physics3d")]
             _ if shared.sim3.is_some() => {
-                out.push(PROFILE_3D as u8);
-                codec().serialize_into(&mut *out, shared.sim3.as_deref().unwrap())
+                let (holes, bytes) = dim3::save(shared.sim3.as_deref().unwrap());
+                Some((PROFILE_3D as u8, (pushes, holes, bytes)))
             }
             #[cfg(feature = "physics2d")]
             _ if shared.sim2.is_some() => {
-                out.push(PROFILE_2D as u8);
-                codec().serialize_into(&mut *out, shared.sim2.as_deref().unwrap())
+                let (holes, bytes) = dim2::save(shared.sim2.as_deref().unwrap());
+                Some((PROFILE_2D as u8, (pushes, holes, bytes)))
             }
-            _ => Ok(()),
+            _ if !pushes.is_empty() => Some((0, (pushes, Vec::new(), Vec::new()))),
+            _ => None,
         };
-        encoded.expect("a physics world always serializes into memory");
+        if let Some((tag, block)) = block {
+            out.push(tag);
+            codec()
+                .serialize_into(&mut *out, &block)
+                .expect("a physics world always serializes into memory");
+        }
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
@@ -374,17 +434,25 @@ impl StateBlock for PhysicsState {
                 format!("the rapier world does not decode: {e}"),
             )
         };
-        let saved = match bytes.split_first() {
-            None => Saved::Empty,
+        let Some((&tag, rest)) = bytes.split_first() else {
+            return Ok(Box::new(Saved::Empty));
+        };
+        let (pushes, holes, sim): Block = codec().deserialize(rest).map_err(parse)?;
+        // The asset shapes are rebuilt from the registered meshes, as a
+        // step builds them (outside the step, like a query view).
+        let saved = match tag as u32 {
+            0 => Saved::Pushes(pushes),
             #[cfg(feature = "physics3d")]
-            Some((&tag, rest)) if tag as u32 == PROFILE_3D => {
-                Saved::D3(codec().deserialize(rest).map_err(parse)?)
+            PROFILE_3D => {
+                let sim = outside(|| dim3::load(&sim, &holes, &mut lock(&self.0)))?;
+                Saved::D3(Box::new(sim), pushes)
             }
             #[cfg(feature = "physics2d")]
-            Some((&tag, rest)) if tag as u32 == PROFILE_2D => {
-                Saved::D2(codec().deserialize(rest).map_err(parse)?)
+            PROFILE_2D => {
+                let sim = outside(|| dim2::load(&sim, &holes, &mut lock(&self.0)))?;
+                Saved::D2(Box::new(sim), pushes)
             }
-            Some((tag, _)) => {
+            _ => {
                 return Err(Error::new(
                     ErrorKind::Invalid,
                     format!("a {tag}D physics world; this engine lacks that profile"),
@@ -398,6 +466,7 @@ impl StateBlock for PhysicsState {
         let mut shared = lock(&self.0);
         // The restored colliders are as saved, whatever was registered before.
         shared.stale_meshes.clear();
+        shared.pushes.clear();
         #[cfg(feature = "physics3d")]
         {
             shared.sim3 = None;
@@ -412,10 +481,17 @@ impl StateBlock for PhysicsState {
         });
         match saved {
             None | Some(Saved::Empty) => {}
+            Some(Saved::Pushes(p)) => shared.pushes = p,
             #[cfg(feature = "physics3d")]
-            Some(Saved::D3(sim)) => shared.sim3 = Some(sim),
+            Some(Saved::D3(sim, p)) => {
+                shared.sim3 = Some(sim);
+                shared.pushes = p;
+            }
             #[cfg(feature = "physics2d")]
-            Some(Saved::D2(sim)) => shared.sim2 = Some(sim),
+            Some(Saved::D2(sim, p)) => {
+                shared.sim2 = Some(sim);
+                shared.pushes = p;
+            }
         }
     }
 }
@@ -669,6 +745,57 @@ impl PhysicsSystem {
         #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);
         Ok(())
+    }
+
+    fn push(
+        &self,
+        entity: Entity,
+        kind: PushKind,
+        vector: Vec3,
+        point: Option<Vec3>,
+    ) -> Result<()> {
+        if !vector.is_finite() || point.is_some_and(|p| !p.is_finite()) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("a force, impulse or torque must be finite, got {vector} at {point:?}"),
+            ));
+        }
+        lock(&self.shared).pushes.push(Push {
+            entity: entity.to_bits(),
+            kind,
+            vector,
+            point,
+        });
+        Ok(())
+    }
+
+    /// Pushes the dynamic body of `entity` with `force` (N, world axes)
+    /// over the next step, at `point` (world space) or its centre of mass:
+    /// call it every tick for a steady force (thrust, wind, downforce).
+    /// Applied by the next `og.physics` step, in the order given, and gone
+    /// after it; a hit stop drops it. Other bodies ignore it.
+    pub fn apply_force(&self, entity: Entity, force: Vec3, point: Option<Vec3>) -> Result<()> {
+        self.push(entity, PushKind::Force, force, point)
+    }
+
+    /// Gives the dynamic body of `entity` an `impulse` (N·s, world axes) at
+    /// `point` or its centre of mass: a sudden change of its momentum (a
+    /// kick, a hit, a jump), applied by the next step (after a hit stop
+    /// ends).
+    pub fn apply_impulse(&self, entity: Entity, impulse: Vec3, point: Option<Vec3>) -> Result<()> {
+        self.push(entity, PushKind::Impulse, impulse, point)
+    }
+
+    /// Turns the dynamic body of `entity` with `torque` (N·m about each
+    /// world axis; 2D uses z) over the next step, as [`Self::apply_force`].
+    pub fn apply_torque(&self, entity: Entity, torque: Vec3) -> Result<()> {
+        self.push(entity, PushKind::Torque, torque, None)
+    }
+
+    /// Gives the dynamic body of `entity` an angular impulse (N·m·s about
+    /// each world axis; 2D uses z), as [`Self::apply_impulse`].
+    pub fn apply_torque_impulse(&self, entity: Entity, torque: Vec3) -> Result<()> {
+        self.push(entity, PushKind::TorqueImpulse, torque, None)
     }
 
     /// Removes mesh `handle`; colliders still naming it fail the next step.
@@ -1052,6 +1179,10 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
         for c in ctx.events::<Contact>()? {
             ctx.send(c)?;
         }
+        // A force acts over a step: none passes. Impulses wait for one.
+        lock(shared)
+            .pushes
+            .retain(|p| matches!(p.kind, PushKind::Impulse | PushKind::TorqueImpulse));
         return Ok(());
     }
     let started = stats::now_ms();
