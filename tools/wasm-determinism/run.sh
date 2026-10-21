@@ -11,14 +11,21 @@
 #             scripts/evidence.sh M1 cross-target-determinism <file.md> "..."
 #
 # Builds: host debug, host release, wasm32 release (scalar), wasm32 release
-# with +simd128. The host release runs twice, lanes off (OG_LANES=off) and
+# with +simd128, and the lanes wasm once per physics profile (the 3D and the
+# 2D lanes module's configuration: scripts/wasm-lanes.sh's atomics, shared
+# memory and rebuilt std, og-physics with `physics3d` or `physics2d` alone,
+# so rapier's parallel build; run under node on one lane, since no Worker
+# pool is started: a 2D world on the 2D lanes build, a 3D one on the 3D).
+# Each one-profile build has only its profile's physics hash, compared
+# with every other build's. The host release runs twice, lanes off (OG_LANES=off) and
 # on (OG_LANES=4: the 1,000-body pen's rapier step on four threads,
 # crates/og-lanes, while the beyond scenario's few bodies stay below
 # og-physics's grain and step serially; the walk's few skeletons stay
 # below og-anim's grain, the native lanes test
 # packages/engine/tests/lanes.test.ts splits a crowd), and the lanes run
 # must have run in parallel, so the comparison is never between two serial
-# runs. Needs cargo, the wasm32-unknown-unknown target and node.
+# runs. Needs cargo, the wasm32-unknown-unknown target, rust-src (the lanes
+# builds rebuild std), wasm-bindgen and node.
 # Builds go to $CARGO_TARGET_DIR/wasm-determinism (default target/).
 set -eu -o pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -39,17 +46,25 @@ manifest="$here/Cargo.toml"
 host="$(rustc -vV | awk '$1 == "host:" { print $2 }')"
 results=""
 
-# record NAME OUTPUT: keeps one build's four numbers.
+# The numbers every build prints (src/lib.rs); a one-profile build leaves
+# out the other profile's physics hash.
+KEYS="math_digest bouncing_boxes_hash physics3d_hash physics2d_hash anim_hash"
+# record NAME OUTPUT [SKIP_KEY]: keeps one build's numbers, "-" for SKIP_KEY
+# (the physics hash of the profile the build does not have).
 record() {
-  local digest hash physics anim
-  digest="$(printf '%s\n' "$2" | awk '$1 == "math_digest" { print $2 }')"
-  hash="$(printf '%s\n' "$2" | awk '$1 == "bouncing_boxes_hash" { print $2 }')"
-  physics="$(printf '%s\n' "$2" | awk '$1 == "physics_hash" { print $2 }')"
-  anim="$(printf '%s\n' "$2" | awk '$1 == "anim_hash" { print $2 }')"
-  [ -n "$digest" ] && [ -n "$hash" ] && [ -n "$physics" ] && [ -n "$anim" ] \
-    || { og_err "$1 printed no numbers:"; og_err "$2"; exit 1; }
-  og_say "$(printf '%-28s math_digest %-20s bouncing_boxes_hash %-20s physics_hash %-20s anim_hash %s' "$1" "$digest" "$hash" "$physics" "$anim")"
-  results="$results$1|$digest|$hash|$physics|$anim
+  local key value row="$1" line="$1"
+  for key in $KEYS; do
+    value="$(printf '%s\n' "$2" | awk -v k="$key" '$1 == k { print $2 }')"
+    if [ "$key" = "${3:-}" ]; then
+      [ -z "$value" ] || { og_err "$1 printed $key, which its profile does not have:"; og_err "$2"; exit 1; }
+      value=-
+    fi
+    [ -n "$value" ] || { og_err "$1 printed no $key:"; og_err "$2"; exit 1; }
+    row="$row|$value"
+    line="$line $key $value"
+  done
+  og_say "$line"
+  results="$results$row
 "
 }
 
@@ -77,11 +92,37 @@ for variant in scalar simd128; do
   record "wasm32 $variant (node $(node --version))" "$(node "$here/load.mjs" "$wasm")"
 done
 
-distinct="$(printf '%s' "$results" | cut -d '|' -f 2-5 | sort -u | wc -l | tr -d ' ')"
-digest="$(printf '%s' "$results" | head -n 1 | cut -d '|' -f 2)"
-hash="$(printf '%s' "$results" | head -n 1 | cut -d '|' -f 3)"
-physics="$(printf '%s' "$results" | head -n 1 | cut -d '|' -f 4)"
-anim="$(printf '%s' "$results" | head -n 1 | cut -d '|' -f 5)"
+# The lanes wasm per profile: scripts/wasm-lanes.sh, the one place its flags
+# are, into $out/lanes/wasm-mt (both profiles share std and every
+# dependency but og-physics and this crate), bound by wasm-bindgen as the
+# lanes modules are (og-lanes' rayon on wasm reads the JS global through
+# wasm-bindgen), then run under node through that glue (load.mjs).
+og_need wasm-bindgen || exit 1
+for p in 3d 2d; do
+  CARGO_TARGET_DIR="$out/lanes" "$OG_ROOT/scripts/wasm-lanes.sh" --quiet --locked --release \
+    --manifest-path "$manifest" --lib --no-default-features --features "physics$p"
+  raw="$(CARGO_TARGET_DIR="$out/lanes" "$OG_ROOT/scripts/wasm-lanes.sh" --target-dir)/wasm32-unknown-unknown/release/wasm_determinism.wasm"
+  rm -rf "$out/lanes-$p"
+  wasm-bindgen --target web --out-dir "$out/lanes-$p" --out-name wasm_determinism "$raw"
+  other=physics2d_hash; [ "$p" = 2d ] && other=physics3d_hash
+  record "wasm32 lanes $p (atomics, one lane; node $(node --version))" \
+    "$(node "$here/load.mjs" "$out/lanes-$p/wasm_determinism_bg.wasm" "$out/lanes-$p/wasm_determinism.js")" "$other"
+done
+
+# Each number agrees across every build that has it.
+distinct=1
+n=0
+first="$(printf '%s' "$results" | head -n 1)"
+for key in $KEYS; do
+  n=$((n + 1))
+  values="$(printf '%s' "$results" | cut -d '|' -f $((n + 1)) | grep -vx -- - | sort -u | wc -l | tr -d ' ')"
+  [ "$values" = 1 ] || { distinct="$values"; og_err "$key: the builds disagree"; }
+done
+digest="$(printf '%s' "$first" | cut -d '|' -f 2)"
+hash="$(printf '%s' "$first" | cut -d '|' -f 3)"
+physics3d="$(printf '%s' "$first" | cut -d '|' -f 4)"
+physics2d="$(printf '%s' "$first" | cut -d '|' -f 5)"
+anim="$(printf '%s' "$first" | cut -d '|' -f 6)"
 
 if [ -n "$report" ]; then
   # shellcheck disable=SC2016 # literal backticks
@@ -95,13 +136,16 @@ if [ -n "$report" ]; then
     printf 'The host release runs with lanes off and on (crates/og-lanes: the\n'
     printf "1,000-body pen's rapier step on a four-thread pool, the beyond scenario\n"
     printf "below og-physics's grain; the walk's few skeletons stay below og-anim's\n"
-    printf 'grain, so animation runs serially either way); the wasm builds are\n'
-    printf 'single-threaded, with rapier built without its parallel feature.\n\n'
-    printf '| build | math digest | bouncing boxes world_hash | physics world hashes | anim world hash and retarget |\n|---|---|---|---|---|\n'
-    printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5 }'
+    printf 'grain, so animation runs serially either way); the scalar and simd128\n'
+    printf 'wasm builds are single-threaded, with rapier built without its parallel\n'
+    printf 'feature; the lanes builds (one per physics profile, as the 3D and 2D\n'
+    printf 'lanes modules are built) have it and run on one lane under node, each\n'
+    printf "with its own profile's physics hash only (- for the other).\n\n"
+    printf '| build | math digest | bouncing boxes world_hash | physics 3D world hashes | physics 2D world hash | anim world hash and retarget |\n|---|---|---|---|---|---|\n'
+    printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6 }'
     printf '\n'
     if [ "$distinct" = 1 ]; then
-      printf 'All builds agree: math digest %s, world_hash %s, physics %s, anim %s.\n' "$digest" "$hash" "$physics" "$anim"
+      printf 'All builds agree: math digest %s, world_hash %s, physics 3D %s, physics 2D %s, anim %s.\n' "$digest" "$hash" "$physics3d" "$physics2d" "$anim"
     else
       printf 'The builds DISAGREE.\n'
     fi
@@ -116,4 +160,4 @@ if [ "$distinct" != 1 ]; then
   og_err "FAIL: the builds disagree (see above)"
   exit 1
 fi
-og_say "ok: every build agrees (math_digest $digest, bouncing_boxes_hash $hash, physics_hash $physics, anim_hash $anim)"
+og_say "ok: every build agrees (math_digest $digest, bouncing_boxes_hash $hash, physics3d_hash $physics3d, physics2d_hash $physics2d, anim_hash $anim)"
