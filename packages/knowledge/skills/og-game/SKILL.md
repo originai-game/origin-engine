@@ -425,7 +425,11 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   `og.tilemap.setTile` edits a cell (terrain layers re-tile their
   neighbours, colliders follow); `getTile` answers the tile there (on a
   terrain layer the one auto-tiling chose, -1 when empty), `cellAt` and
-  `cellCenter` convert positions. Layers scroll by their `parallax`;
+  `cellCenter` convert positions. Every collision layer's colliders sit
+  on `og.Tilemap.colliderLayers` unless the layer names its own
+  `colliderLayers` and `colliderMask` (grammar below): a layer of grates
+  on the bit of the platformer's `oneWayLayers` is one-way while the
+  walls on another layer stay solid. Layers scroll by their `parallax`;
   `repeat x` tiles a background (`reference/tilemap.md`). Every line of a
   tileset and a map, and what the cook reads of a Tiled map, is the
   grammar at the end of this section.
@@ -528,6 +532,8 @@ layer walls {
   opacity 1                # (default 1)
   visible true             # (default true)
   collision true           # its tiles' collision becomes static colliders (default false)
+  colliderLayers 4         # those colliders' og.Collider.layers bits (default: og.Tilemap.colliderLayers)
+  colliderMask 3           # the layers they collide with, og.Collider.mask bits (default: every layer)
   lit false                # the layer takes no 2D light (og.Lighting2D); default true: lit like a sprite in the lit range
   repeat x                 # x, y or both: tile the layer endlessly (a background)
   terrain wall             # a terrain layer: cells are 1 (filled) or 0, the terrain picks the tiles
@@ -560,6 +566,7 @@ cook reads of a layer and an object:
 |---|---|---|
 | `autotile` | tile layer custom property (string) | the layer is a terrain layer of that terrain of its tileset; any tile in a cell marks it filled, the terrain picks the drawn tile |
 | `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
+| `colliderLayers`, `colliderMask` | tile layer custom properties (int) | the og.Collider `layers` and `mask` bits of that layer's colliders (default: og.Tilemap.colliderLayers, every layer) |
 | `lit` | tile layer custom property (bool) | false keeps the layer out of og.Lighting2D (a sky or window layer); default true |
 | `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
 | `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y (`repeat` is not a name the cook reads) |
@@ -572,7 +579,7 @@ cook reads of a layer and an object:
 
 `og cook` warns on every custom property it does not read, naming the
 property, its layer, object or tile and the names read there: a tile
-layer's other than the six names above (or one whose value has another
+layer's other than the eight names above (or one whose value has another
 type: a `collision` written as the string "true"), a tile's other than
 `solid`, the map's, a group's, an object layer's or an image layer's own
 (none is imported), and an object's class-typed one (no text to give). A

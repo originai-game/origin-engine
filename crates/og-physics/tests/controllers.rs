@@ -548,7 +548,10 @@ fn a_platformer_shoves_a_light_crate_and_not_a_heavy_one_nor_any_without_push_bo
     // A tonne: friction holds more than pushStrength's 1000 N.
     let (heavy, hero_x) = push_run(1000.0, true);
     assert!(heavy.abs() < 0.05, "a 1000 kg crate went {heavy} m");
-    assert!(hero_x < 1.2, "the hero stopped at the heavy crate, at {hero_x}");
+    assert!(
+        hero_x < 1.2,
+        "the hero stopped at the heavy crate, at {hero_x}"
+    );
     // 100 kg: 1000 N beats its 490 N of friction, slowly.
     let (middle, _) = push_run(100.0, true);
     assert!(

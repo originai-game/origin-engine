@@ -295,7 +295,13 @@ pub(crate) fn platformers(
         let (position, quaternion) = unpose(&new_body, b.position);
         out.moved[k] = Some((position, quaternion, None));
         if p.push_bodies {
-            push(&mut sim.world, &moved.hits, desired / dt, p.push_strength, dt);
+            push(
+                &mut sim.world,
+                &moved.hits,
+                desired / dt,
+                p.push_strength,
+                dt,
+            );
         }
         if let Some(kind) = event {
             out.events.push(CharacterEvent {

@@ -134,3 +134,64 @@ fn map_mistakes_name_their_line() {
     let e = TilemapAsset::parse(&MAP.replace("row 0 1 0 0", "row 0 2 0 0")).unwrap_err();
     assert!(e.to_string().contains("terrain cell"), "{e}");
 }
+
+const LAYERED: &str = r#"type tilemap
+version 1
+---
+size 3 2
+tile 16 16
+tileset "tiles/t.ogt"
+layer walls {
+  collision true
+  row 60 -1 -1
+  row 60 60 60
+}
+layer grates {
+  collision true
+  colliderLayers 4
+  colliderMask 3
+  row -1 61 61
+  row -1 -1 -1
+}
+"#;
+
+#[test]
+fn a_collision_layer_names_its_own_collider_layers_and_mask() {
+    let m = TilemapAsset::parse(LAYERED).unwrap();
+    assert_eq!(
+        (m.layers[0].collider_layers, m.layers[0].collider_mask),
+        (0, 0),
+        "unset: the owner's layers, every layer"
+    );
+    assert_eq!(
+        (m.layers[1].collider_layers, m.layers[1].collider_mask),
+        (4, 3)
+    );
+    let s = MapState::new(&m, &[tileset("empty")]).unwrap();
+    let colliders = og_tilemap::map_colliders(&s, 1);
+    let walls: Vec<_> = colliders.iter().filter(|c| c.rect.min.y < -1.0).collect();
+    let grates: Vec<_> = colliders
+        .iter()
+        .filter(|c| c.rect.min.y >= -1.0 && c.rect.min.x >= 1.0)
+        .collect();
+    assert!(!walls.is_empty() && !grates.is_empty(), "{colliders:?}");
+    for c in &colliders {
+        let grate = m.layers[1].cells
+            [s.asset().width as usize * (-c.rect.max.y) as usize + c.rect.min.x as usize]
+            != 0;
+        let want = if grate { (4, 3) } else { (1, u32::MAX) };
+        assert_eq!((c.layers, c.mask), want, "{c:?}");
+    }
+    // The walls take the owner's layers, whatever they are.
+    assert!(
+        og_tilemap::map_colliders(&s, 8)
+            .iter()
+            .any(|c| (c.layers, c.mask) == (8, u32::MAX))
+    );
+    // Only a collision layer names them.
+    let e = TilemapAsset::parse(
+        &LAYERED.replace("  collision true\n  colliderLayers", "  colliderLayers"),
+    )
+    .unwrap_err();
+    assert!(e.to_string().contains("without `collision true`"), "{e}");
+}

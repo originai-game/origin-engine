@@ -317,7 +317,9 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         // native host's surface without a renderer, og-host-node's
         // og_node_attach_offscreen, leaves it to the platform, as
         // `native_keys` does for the rendered one).
-        mac_keys: viewport["macKeys"].as_bool().unwrap_or(cfg!(target_os = "macos")),
+        mac_keys: viewport["macKeys"]
+            .as_bool()
+            .unwrap_or(cfg!(target_os = "macos")),
         covered: ui_rect(&viewport["covered"]),
     };
     eng.render.borrow_mut().viewport = Some(v);

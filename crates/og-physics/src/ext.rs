@@ -578,7 +578,13 @@ pub(crate) fn characters(
         let (position, quaternion) = unpose(&new_body, b.position);
         out.moved[k] = Some((position, quaternion, None));
         if c.push_bodies {
-            push(&mut sim.world, &moved.hits, desired / dt, c.push_strength, dt);
+            push(
+                &mut sim.world,
+                &moved.hits,
+                desired / dt,
+                c.push_strength,
+                dt,
+            );
         }
         if jumped {
             out.events.push(CharacterEvent {

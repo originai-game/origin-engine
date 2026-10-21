@@ -13873,7 +13873,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The collision layers of those colliders, as bits (Collider.layers).",
+                doc: "The collision layers of those colliders, as bits (Collider.layers), for every collision layer of the map that names none of its own (a map layer's `colliderLayers`, with its `colliderMask`, puts a layer of grates on a one-way layer while the walls stay here).",
                 variants: &[],
                 capacity: 0,
             },

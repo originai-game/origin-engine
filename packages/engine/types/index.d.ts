@@ -9883,7 +9883,7 @@ export interface Tilemap {
    */
   collision: boolean;
   /**
-   * The collision layers of those colliders, as bits (Collider.layers).
+   * The collision layers of those colliders, as bits (Collider.layers), for every collision layer of the map that names none of its own (a map layer's `colliderLayers`, with its `colliderMask`, puts a layer of grates on a one-way layer while the walls stay here).
    *
    * @default 1
    */
@@ -9911,6 +9911,14 @@ export interface TileLayerInfo {
   readonly parallax: Vector2;
   /** Its solid tiles collide. */
   readonly collision: boolean;
+  /**
+   * The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers.
+   */
+  readonly colliderLayers: number;
+  /**
+   * The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer.
+   */
+  readonly colliderMask: number;
   /**
    * The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer.
    */

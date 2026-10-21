@@ -18,8 +18,8 @@ pub use map::{
     cell_center, world_to_cell,
 };
 pub use state::{
-    AnimatedQuad, CHUNK, ChunkQuads, MapState, Rect, TileQuad, animated_frame, chunk_quads,
-    chunks_in, collision_rects, collision_rects_all,
+    AnimatedQuad, CHUNK, ChunkQuads, MapCollider, MapState, Rect, TileQuad, animated_frame,
+    chunk_quads, chunks_in, collision_rects, collision_rects_all, map_colliders,
 };
 pub use tileset::{
     Collision, Filter, Terrain, TerrainMode, TileAnim, TileDef, Tileset, mask, reduce_blob,

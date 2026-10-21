@@ -192,13 +192,7 @@ pub struct CharacterController {
     /// The most force it pushes with: each tick the bodies it walks into
     /// share an impulse of at most this times the tick's length, so a body
     /// whose friction holds more (a heavy crate) does not move.
-    #[reflect(
-        name = "pushStrength",
-        min = 0,
-        unit = "N",
-        default = 1000,
-        tunable
-    )]
+    #[reflect(name = "pushStrength", min = 0, unit = "N", default = 1000, tunable)]
     pub push_strength: f32,
     /// Written: standing on walkable ground after the step.
     pub grounded: bool,
@@ -382,13 +376,7 @@ pub struct PlatformerController {
     /// The most force it pushes with: each tick the bodies it runs into
     /// share an impulse of at most this times the tick's length, so a body
     /// whose friction holds more (a heavy crate) does not move.
-    #[reflect(
-        name = "pushStrength",
-        min = 0,
-        unit = "N",
-        default = 1000,
-        tunable
-    )]
+    #[reflect(name = "pushStrength", min = 0, unit = "N", default = 1000, tunable)]
     pub push_strength: f32,
     /// Written: standing on ground after the step.
     pub grounded: bool,
