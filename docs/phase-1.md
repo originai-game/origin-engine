@@ -32,7 +32,15 @@ perf-games. The round sections below have each.
   at 49 s, 4 checks) and the kit's and Hollowbell's after
   publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
   the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
-  it) and main was pushed there.
+  it) and main was pushed there. The perf-games merge (2b896be5, a
+  fast-forward) failed its lane at bun-functional in the knowledge
+  package's drift check alone: og-game §14 named the engine's systems
+  as `og.ui.end`, which the check read as an API member (prose since
+  5ae8b801; the fourteen project suites after the merge all passed).
+  The web-boot merge (b74c5d47) passed in 184 s (5 of 5: test 172 s,
+  bun-functional 116 s, drift 55 s; the kit's and the three games'
+  suites after it) and main was pushed at e3a7ac9d. shadow-flags'
+  merge and lane follow, then this wave's `--all` and web-reference.
 
 **Wave-end figures: pending** (with wave 12's, once perf-games lands:
 `--all`, web-reference, lavapipe with Kestrel Stair's first run and the
