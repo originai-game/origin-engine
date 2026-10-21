@@ -71,7 +71,7 @@ export function askContinue(world: World, g: GameV): void {
   g.loadRequest = r.ok ? r.value : 0;
 }
 
-export const Saves = defineSystem("Saves", { writes: [Game, Prefs] }, (_q, time, world) => {
+export const Saves = defineSystem("Saves", { writes: [Game, Prefs, og.Audio] }, (_q, time, world) => {
   const g = must(world.resource(Game));
   const p = must(world.resource(Prefs));
   if (g.restored) {

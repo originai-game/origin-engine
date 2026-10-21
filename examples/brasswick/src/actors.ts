@@ -7,7 +7,7 @@
 // Game fields Control wrote (heroX, heroY, heroVY).
 
 import { og, defineSystem } from "@origingame/engine";
-import { Exit, Fx, FxKind, Game, Gear, Hazard, Lamp, Member, Phase, Sfx, Sound, Tick, Tuning } from "./components.ts";
+import { Bits, Exit, Fx, FxKind, Game, Gear, Hazard, Lamp, Member, Phase, Sfx, Sound, Tick, Tuning } from "./components.ts";
 import { effect } from "./feel.ts";
 import { hurtWick } from "./hero.ts";
 
@@ -25,6 +25,24 @@ export const Ticks = defineSystem("Ticks", { reads: [Tuning, Member], writes: [G
   const speed = tuning.value.tickSpeed;
   let hurt = false;
   let stomped: [number, number] | null = null;
+  // A crate, a door or the plate ahead turns a tick round: the overlaps first, engine calls before the
+  // views (og-core §4), from where each tick stood at the start of the tick.
+  const blocked: boolean[] = [];
+  for (const a of q.archetypes()) {
+    const t = a.column(Tick);
+    const pos = a.column(og.Transform).position;
+    for (let i = 0; i < a.count; i++) {
+      const hit = t.dead[i]
+        ? null
+        : og.physics.overlap(world, {
+            shape: { shape: 0, size: { x: 0.2, y: 0.5, z: 1 } },
+            position: { x: pos[i * 3]! + t.dir[i]! * 0.8, y: pos[i * 3 + 1]! + 0.45, z: 0 },
+            filter: { mask: Bits.Crate | Bits.Door | Bits.World },
+          });
+      blocked.push(hit !== null && hit.ok && hit.value.length > 0);
+    }
+  }
+  let k = 0;
   for (const a of q.archetypes()) {
     const t = a.column(Tick);
     const level = a.column(Member).level;
@@ -32,6 +50,7 @@ export const Ticks = defineSystem("Ticks", { reads: [Tuning, Member], writes: [G
     const sprite = a.column(og.Sprite);
     const fb = a.column(og.Flipbook);
     for (let i = 0; i < a.count; i++) {
+      const ahead = blocked[k++]!;
       if (g.reset === 2 && level[i] === g.resetLevel) {
         pos[i * 3] = t.homeX[i]!;
         t.dir[i] = 1;
@@ -48,6 +67,7 @@ export const Ticks = defineSystem("Ticks", { reads: [Tuning, Member], writes: [G
         if (t.deadTicks[i] === 60) sprite.visible[i] = 0;
         continue;
       }
+      if (ahead) t.dir[i] = -t.dir[i]!;
       let x = pos[i * 3]! + t.dir[i]! * speed * time.scaledDt;
       if (x > t.maxX[i]!) {
         x = t.maxX[i]!;
