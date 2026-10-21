@@ -9617,11 +9617,11 @@ export interface SquashDesc {
    */
   readonly entity?: Entity;
   /**
-   * The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump).
+   * The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0.
    *
-   * @default { x: 1.25, y: 0.8 }
+   * @default {}
    */
-  readonly impact?: Vector2;
+  readonly impact?: Partial<Vector3>;
   /**
    * The scale it recovers to.
    *

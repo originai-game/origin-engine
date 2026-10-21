@@ -251,12 +251,12 @@ export const HeroMove = defineSystem(
         if (e.kind === CHARACTER_JUMPED) {
           g.jumps += 1;
           g.sfx |= Sound.Jump;
-          must(og.tween.squash(world, { entity: body, impact: { x: 0.9, y: 1.1 }, duration: 0.12 }));
+          must(og.tween.squash(world, { entity: body, impact: { x: 0.9, y: 1.1, z: 0.9 }, duration: 0.12 })); // FINDINGS #4, fixed: z too
         } else if (e.kind === CHARACTER_LANDED) {
           g.landings += 1;
           g.sfx |= Sound.Land;
           const hard = e.speed < -7;
-          must(og.tween.squash(world, { entity: body, impact: hard ? { x: 1.18, y: 0.8 } : { x: 1.08, y: 0.92 }, duration: hard ? 0.18 : 0.12 }));
+          must(og.tween.squash(world, { entity: body, impact: hard ? { x: 1.18, y: 0.8, z: 1.18 } : { x: 1.08, y: 0.92, z: 1.08 }, duration: hard ? 0.18 : 0.12 }));
           if (hard) must(og.camera.shake(world, 0.15));
         }
       }

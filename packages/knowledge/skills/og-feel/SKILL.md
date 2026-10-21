@@ -114,6 +114,9 @@ and roll grow with trauma squared, so small values stay subtle.
 `og.tween.squash(world, { entity, impact, duration, ease })` sets
 og.Transform.scale to rest × impact on the tick it is called and eases
 back (default backOut, 0.18 s). Keep the area roughly constant: x × y ≈ 1.
+On a 3D model give z too, bulging with x so the volume holds: a hit taken
+is `{ x: 1.15, y: 0.8, z: 1.15 }`. Left out (or 0), z stays at rest, which
+is what a sprite wants.
 
 | Moment | impact (x, y) | duration |
 |---|---|---|

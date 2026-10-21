@@ -994,11 +994,11 @@ pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
             ));
         }
         let target = Target::resolve(&schema, index, entity, "scale").map_err(err)?;
-        let impact = v2(&d["impact"], Vec2::new(1.25, 0.8));
+        let impact = v3(&d["impact"], Vec3::new(1.25, 0.8, 0.0));
         let rest = v3(&d["rest"], Vec3::ONE);
         let tick = 1.0 / eng.state.borrow().rate.max(1) as f32;
         let squash = og_tween::presets::Squash {
-            impact: [impact.x, impact.y],
+            impact: impact.to_array(),
             rest: rest.to_array(),
             duration: f(&d, "duration", 0.18),
             ease: ease_of(&d["ease"], Ease::BackOut)?,

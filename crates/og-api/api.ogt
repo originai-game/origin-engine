@@ -6059,9 +6059,7 @@ module tween {
     doc "Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest."
     desc true
     field entity Entity "The entity."
-    field impact Vector2 "The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump)." {
-      default 1.25 0.8
-    }
+    field impact Partial.Vector3 "The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0."
     field rest Vector3 "The scale it recovers to." {
       default 1 1 1
     }

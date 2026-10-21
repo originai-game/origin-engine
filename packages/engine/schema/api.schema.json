@@ -18470,12 +18470,9 @@
           "default": 0
         },
         "impact": {
-          "$ref": "#/$defs/Vector2",
-          "description": "The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump).",
-          "default": {
-            "x": 1.25,
-            "y": 0.8
-          }
+          "x-og-type": "Partial<Vector3>",
+          "description": "The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0.",
+          "default": {}
         },
         "rest": {
           "$ref": "#/$defs/Vector3",
