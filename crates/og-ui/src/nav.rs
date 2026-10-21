@@ -59,7 +59,21 @@ pub(crate) fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<
 impl Ui {
     /// This tick's intents: queued ones, then the keyboard, then the gamepad.
     pub(crate) fn intents(&mut self, input: &InputFrame) -> Vec<Nav> {
-        let mut out = std::mem::take(&mut self.state.pending);
+        // Moves queued while the focus was on nothing: the first puts it on
+        // the first control (a move from nothing does); the rest, and all of
+        // them once the focus is somewhere, are spent.
+        let mut entered = self.state.focus != 0;
+        let mut out = Vec::new();
+        for (nav, entering) in std::mem::take(&mut self.state.pending) {
+            if entering {
+                if entered {
+                    continue;
+                }
+                entered = true;
+            }
+            // From nothing, Next lands on the first control (Prev would on the last).
+            out.push(if entering { Nav::Next } else { nav });
+        }
         let editing = self.hit(self.state.focus).is_some_and(|h| h.has(HIT_TEXT));
         let lines = self
             .hit(self.state.focus)

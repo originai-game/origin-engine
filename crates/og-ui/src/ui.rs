@@ -374,8 +374,10 @@ pub(crate) struct State {
     pub nav_off: bool,
     /// The stick's held direction (0 none, 1 + Nav index) and since which tick.
     pub stick: (u8, u64),
-    /// Intents queued by `Ui::navigate` for the next frame.
-    pub pending: Vec<Nav>,
+    /// Intents queued by `Ui::navigate` for the next frame, each with
+    /// whether the focus was on nothing when it was queued (then it only
+    /// puts the focus on the first control: `Ui::navigate`).
+    pub pending: Vec<(Nav, bool)>,
     pub anims: BTreeMap<u64, Anim>,
     pub toasts: Vec<Toast>,
     pub next_toast: u32,
@@ -568,6 +570,10 @@ pub struct ButtonDesc {
     pub disabled: bool,
     /// `None`: fit the label.
     pub width: Option<Size>,
+    /// Take the focus when it appears (it was not on screen last frame)
+    /// and no dialog is open: what opens takes the focus, so a title
+    /// menu's first item answers Enter and the pad's A at once.
+    pub autofocus: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -943,9 +949,14 @@ impl Ui {
     }
 
     /// Queues a navigation intent for the next tick (a gamepad the input
-    /// layer does not read yet, a custom binding, a test).
+    /// layer does not read yet, a custom binding, a test). A move queued
+    /// while the focus is on nothing puts it on the first control, whatever
+    /// its direction, and moves no further: every such move queued before
+    /// the focus lands (a game asking each tick until it sees the focus)
+    /// lands on that same first control.
     pub fn navigate(&mut self, nav: Nav) {
-        self.state.pending.push(nav);
+        let entering = self.state.focus == 0 && !matches!(nav, Nav::Activate | Nav::Back);
+        self.state.pending.push((nav, entering));
     }
 
     /// The key of the focused control (0: none).
@@ -1492,6 +1503,16 @@ impl Ui {
         } else {
             self.nav_target(i, false)
         };
+        // What opens takes the focus (as a dialog's first control and a
+        // dialogue box do): appearing, outside a dialog.
+        let key = self.nodes[i].key;
+        if desc.autofocus
+            && !desc.disabled
+            && self.state.scope == 0
+            && !self.state.hits.iter().any(|h| h.key == key)
+        {
+            self.request_focus = key;
+        }
         let p = &t.palette;
         let (bg, fg) = if desc.disabled {
             (Some(p.fill), p.fg_subtle)
@@ -3892,8 +3913,8 @@ impl Ui {
         b.push(s.stick.0);
         u64_(&mut b, s.stick.1);
         u32_(&mut b, s.pending.len() as u32);
-        for n in &s.pending {
-            b.push(n.index());
+        for (n, entering) in &s.pending {
+            b.push(n.index() | if *entering { 0x80 } else { 0 });
         }
         u32_(&mut b, s.anims.len() as u32);
         for (k, a) in &s.anims {
@@ -4212,7 +4233,8 @@ impl Reader<'_> {
         s.focus_return = self.u64()?;
         s.stick = (self.u8()?, self.u64()?);
         for _ in 0..self.u32()? {
-            s.pending.push(Nav::from_index(self.u8()?)?);
+            let i = self.u8()?;
+            s.pending.push((Nav::from_index(i & 0x7f)?, i & 0x80 != 0));
         }
         for _ in 0..self.u32()? {
             let k = self.u64()?;

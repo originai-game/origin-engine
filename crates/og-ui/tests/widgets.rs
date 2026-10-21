@@ -1819,3 +1819,95 @@ fn a_dialogue_or_a_dialog_that_appears_takes_the_focus_so_enter_answers_it() {
         "the dialog the game opened answered Enter"
     );
 }
+
+/// Kestrel-stair FINDINGS #14: a title menu is not a dialog, so its first
+/// item takes the focus itself as it appears (`ButtonDesc::autofocus`), and
+/// Enter answers it on the first press; a move queued while the focus is on
+/// nothing lands on the first item, however many were queued before it did.
+#[test]
+fn a_menu_that_appears_takes_the_focus_and_a_move_from_nothing_lands_on_its_first_item() {
+    #[derive(Default)]
+    struct Title {
+        shown: bool,
+        autofocus: bool,
+        chosen: Vec<&'static str>,
+    }
+    let b = &mut |ui: &mut Ui, s: &mut Title| {
+        if !s.shown {
+            return;
+        }
+        for (k, id) in ["Play", "Chapters", "Settings"].into_iter().enumerate() {
+            let desc = ButtonDesc {
+                autofocus: s.autofocus && k == 0,
+                ..ButtonDesc::default()
+            };
+            if ui.button(id, id, desc).clicked {
+                s.chosen.push(id);
+            }
+        }
+    };
+    let mut rig = Rig::new(Title {
+        shown: true,
+        autofocus: true,
+        ..Title::default()
+    });
+    rig.idle(1, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Play",
+        "the first item took the focus as the menu appeared"
+    );
+    rig.key(UiKey::Enter, b);
+    rig.idle(1, b);
+    assert_eq!(rig.state.chosen, ["Play"], "the first Enter chose it");
+    // Moved on, the focus stays where the player put it: the item asks only as it appears.
+    rig.key(UiKey::Down, b);
+    rig.idle(3, b);
+    assert_eq!(rig.ui.focus_path(0), "Chapters");
+    // The menu leaves and comes back: it takes the focus again.
+    rig.state.shown = false;
+    rig.idle(2, b);
+    assert_eq!(rig.ui.focus_path(0), "");
+    rig.state.shown = true;
+    rig.idle(1, b);
+    assert_eq!(rig.ui.focus_path(0), "Play");
+
+    // Without autofocus, a game asking each tick until the focus lands
+    // queues several moves from nothing: all of them land on the first item.
+    let mut rig = Rig::new(Title {
+        shown: true,
+        ..Title::default()
+    });
+    rig.idle(1, b);
+    assert_eq!(rig.ui.focus_path(0), "");
+    rig.ui.navigate(Nav::Down);
+    rig.ui.navigate(Nav::Down);
+    rig.idle(1, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Play",
+        "two moves from nothing landed on the first item"
+    );
+    rig.ui.navigate(Nav::Prev);
+    rig.idle(1, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Settings",
+        "a move from a focused item moves as asked"
+    );
+    // A move from nothing whatever its direction, then a move queued after it landed.
+    let mut rig = Rig::new(Title {
+        shown: true,
+        ..Title::default()
+    });
+    rig.idle(1, b);
+    rig.ui.navigate(Nav::Prev);
+    rig.idle(1, b);
+    rig.ui.navigate(Nav::Down);
+    rig.idle(1, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Chapters",
+        "from nothing to the first item, then down one"
+    );
+}

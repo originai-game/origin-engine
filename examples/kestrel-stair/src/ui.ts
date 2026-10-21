@@ -517,13 +517,8 @@ export const Ui = defineSystem(
             { id: "settings", label: say(world, "title.settings") },
           ];
           const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer") });
-          // The title menu takes no focus by itself, so Enter, Space and the pad's A would do nothing
-          // until an arrow or Tab (FINDINGS #14): the focus is put on its first item.
-          // (A navigation is applied the tick after it is queued: asked once, not again while it lands.)
-          if (og.ui.focus(0) === "" && !g.settingsOpen && world.tick - g.focusAsked > 3) {
-            og.ui.navigate(world, "next");
-            g.focusAsked = world.tick;
-          }
+          // FINDINGS #14 is fixed: the menu's first item takes the focus as it appears, so Enter,
+          // Space and the pad's A answer at once (the game put it there itself before).
           if (!g.settingsOpen && g.phase === Phase.Title) {
             if (r.selected === "new") startRun(world, g, 0);
             if (r.selected === "continue") continueRun(world, g);

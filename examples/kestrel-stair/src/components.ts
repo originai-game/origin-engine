@@ -144,7 +144,6 @@ export const Game = defineResource("Game", {
   bag: str(160, "", { doc: "The bag's slots: item ids by slot, as JSON (og.ui.inventoryScreen moves them)." }),
   bagMoves: u32(0),
   welcomed: u32(0, { doc: "The loads already welcomed with a toast." }),
-  focusAsked: u32(0, { unit: "ticks", doc: "When the title's focus was last put on its first item (FINDINGS #14)." }),
   a11yUnnamed: u32(0),
   a11yNodes: u32(0),
 });

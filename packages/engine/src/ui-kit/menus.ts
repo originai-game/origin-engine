@@ -5,20 +5,22 @@ import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
 import { all, fmt, frame, iconOr, menuItems, px, grow, token } from "./util.ts";
 
-/** The buttons of a menu in a column; answers the chosen id. */
-function menuColumn(id: string, items: ReturnType<typeof menuItems>, width: Api.Size): string | null {
+/** The buttons of a menu in a column; answers the chosen id. With `autofocus` its first enabled item takes the focus when the menu appears (og-ui §4: what opens takes the focus). */
+function menuColumn(id: string, items: ReturnType<typeof menuItems>, width: Api.Size, autofocus = false): string | null {
   const { t } = frame();
   let chosen: string | null = null;
+  const first = autofocus ? items.findIndex((i) => !i.disabled) : -1;
   kit.column(id, { width, gap: t.sm, cross: "stretch" }, () => {
-    for (const item of items) {
+    items.forEach((item, k) => {
       const r = kit.button(item.id, item.label, {
         variant: item.primary ? "primary" : "secondary",
         size: "large",
         disabled: item.disabled,
         width: grow(),
+        autofocus: k === first,
       }) as Api.Response;
       if (r.clicked) chosen = item.id;
-    }
+    });
   });
   return chosen;
 }
@@ -41,7 +43,8 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
       kit.label("Title", desc.title ?? "", { step: phone ? "displayMd" : "displayLg", font: "display", align: "center", width: grow(), heading: true });
       if (desc.subtitle) kit.label("Subtitle", desc.subtitle, { color: token("fgMuted"), align: "center", width: grow() });
     });
-    chosen = menuColumn("Items", items, grow());
+    // A title menu is not a dialog, so it takes the focus itself: Enter and the pad's A answer at once.
+    chosen = menuColumn("Items", items, grow(), true);
     if (desc.footer) kit.label("Footer", desc.footer, { step: "meta", color: token("fgSubtle"), align: "center", width: grow() });
   });
   if (chosen !== null) desc.onSelect?.(chosen);

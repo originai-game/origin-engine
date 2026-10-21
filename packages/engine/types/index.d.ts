@@ -12061,6 +12061,12 @@ export interface ButtonDesc {
    * @default null
    */
   readonly width?: Size | null;
+  /**
+   * Take the focus when it appears (it was not on screen the tick before) and no dialog is open: what opens takes the focus (og-ui §4), so a menu's first item answers Enter and the pad's A from its first tick. og.ui.mainMenu's first item has it.
+   *
+   * @default false
+   */
+  readonly autofocus?: boolean;
 }
 
 /**
@@ -19188,7 +19194,7 @@ export declare namespace og {
      */
     function dismissToast(world: World, toastId: number): void;
     /**
-     * Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command.
+     * Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. A move queued while the focus is on nothing puts the focus on the first control, whatever its direction, and no further: moves asked again before the focus lands (each tick until og.ui.focus answers a path) land on that same first control.
      *
      * @param world The world.
      * @param intent The intent.
