@@ -271,7 +271,8 @@ pub(crate) const HIT_OFFSCREEN: u8 = 16;
 pub(crate) const HIT_POINTER: u8 = 32;
 /// A focus scope (dialog backdrop, open menu).
 pub(crate) const HIT_SCOPE: u8 = 64;
-/// A multi-line text control: ↑ and ↓ edit it while it is focused.
+/// ↑ and ↓ are its own while it is focused (a multi-line text control
+/// edits with them, a zoom view pans).
 pub(crate) const HIT_MULTILINE: u8 = 128;
 
 #[derive(Clone, Copy, Debug, PartialEq)]

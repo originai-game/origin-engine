@@ -1571,7 +1571,12 @@ fn two_fingers_scroll_lists_and_pinch_zoom_views() {
             b,
         );
     }
-    rig.idle(1, b);
+    // Held still a tick (lifted, they would fling it on).
+    let up = Vec2::new(0.0, -60.0);
+    rig.step(
+        f.at(&[(0, row3 + up), (1, row3 + Vec2::new(40.0, 0.0) + up)]),
+        b,
+    );
     assert_eq!(
         pos(&rig.ui, "Top/List/Row#3").expect("row 3").y,
         y3 - 60.0,
@@ -2010,4 +2015,138 @@ fn a_grid_lays_out_exactly_its_columns_whatever_its_width() {
     rig.idle(3, b);
     let r = rows(&rig);
     assert!(r[0].len() == 4 && r[0][0].0 == 104.0, "{r:?}");
+}
+
+/// Two fingers lifting off a list fling it with their last velocity, as
+/// one finger's drag does: it runs on after the lift, slows, and stops; a
+/// press stops it, and under reduced motion there is none.
+///
+/// Ways it could fail: the list stops dead where the fingers left it (no
+/// fling after a two-finger scroll), flings the wrong way, never stops, or
+/// flings under reduced motion.
+#[test]
+fn two_fingers_lifting_off_a_list_fling_it() {
+    let run = |reduced: bool| {
+        let mut rig = Rig::new(Gestures::default());
+        if reduced {
+            let mut t = *rig.ui.theme();
+            t.reduced_motion = true;
+            rig.ui.set_theme(t);
+        }
+        let b = &mut gestures;
+        rig.idle(2, b);
+        // The list's content top, from whichever row is in view.
+        let pitch = pos(&rig.ui, "Top/List/Row#1").expect("row 1").y
+            - pos(&rig.ui, "Top/List/Row#0").expect("row 0").y;
+        let height = rig
+            .ui
+            .frame()
+            .element("Top/List/Row#0")
+            .expect("row 0")
+            .height;
+        let row = rig.center("Top/List/Row#3");
+        let mut f = Fingers::new();
+        let pair = |up: f32| {
+            [
+                (0, row - Vec2::new(0.0, up)),
+                (1, row + Vec2::new(40.0, -up)),
+            ]
+        };
+        rig.step(f.at(&pair(0.0)[..1]), b);
+        rig.step(f.at(&pair(0.0)), b);
+        for k in 1..=4 {
+            rig.step(f.at(&pair(10.0 * k as f32)), b);
+        }
+        // (A row the list's top cuts is listed from there: its bottom is its own.)
+        let y = move |rig: &Rig<Gestures>| {
+            (0..20)
+                .find_map(|k| {
+                    let e = rig.ui.frame().element(&format!("Top/List/Row#{k}"))?;
+                    Some(e.y + e.height - height - k as f32 * pitch)
+                })
+                .expect("a row in view")
+        };
+        let held = y(&rig);
+        rig.step(f.lift(1), b);
+        rig.step(f.lift(0), b);
+        let mut ys = vec![held];
+        for _ in 0..240 {
+            rig.idle(1, b);
+            ys.push(y(&rig));
+        }
+        ys
+    };
+    let ys = run(false);
+    assert!(ys[1] < ys[0], "the list runs on up after the lift: {ys:?}");
+    let steps: Vec<f32> = ys.windows(2).map(|w| w[0] - w[1]).collect();
+    assert!(
+        steps[1] > 0.0 && steps[10] < steps[1],
+        "and slows: {steps:?}"
+    );
+    assert_eq!(ys[239], ys[240], "and stops: {ys:?}");
+    let still = run(true);
+    assert!(
+        still.windows(2).all(|w| w[0] == w[1]),
+        "no fling under reduced motion: {still:?}"
+    );
+}
+
+/// A zoom view takes keys once focus (Tab, a pad) is on it: `+` and `=`
+/// zoom in about its centre, `-` out, `0` fits it again, and the arrows pan
+/// it a tenth of its size, ↑ and ↓ included, without moving the focus.
+///
+/// Ways it could fail: Tab skips the view (it takes no focus), a key does
+/// nothing, zooms about the corner, pans the wrong way, an arrow moves the
+/// focus off it, or `0` leaves it zoomed or off centre.
+#[test]
+fn a_focused_zoom_view_takes_keys() {
+    let mut rig = Rig::new(Gestures::default());
+    let b = &mut gestures;
+    rig.idle(2, b);
+    // Shift+Tab from nothing: the last control, the map.
+    rig.step(
+        InputFrame {
+            keys: vec![UiKey::Tab],
+            shift: true,
+            ..InputFrame::default()
+        },
+        b,
+    );
+    assert_eq!(rig.ui.focus_path(0), "Top/Map");
+    let zoom = |rig: &Rig<Gestures>| rig.state.zoom.expect("zoom");
+    rig.key(UiKey::Equal, b);
+    rig.idle(1, b);
+    assert!((zoom(&rig).zoom - 1.25).abs() < 1e-4, "{:?}", zoom(&rig));
+    assert!(
+        (zoom(&rig).center - Vec2::splat(0.5)).length() < 1e-4,
+        "about its centre"
+    );
+    rig.key(UiKey::NumpadAdd, b);
+    rig.key(UiKey::Minus, b);
+    rig.idle(1, b);
+    assert!((zoom(&rig).zoom - 1.25).abs() < 1e-4, "{:?}", zoom(&rig));
+    // ← shows more of the left: the centre moves left a tenth of the view.
+    rig.key(UiKey::Left, b);
+    rig.idle(1, b);
+    let z = zoom(&rig);
+    assert!((z.center.x - (0.5 - 0.1 / 1.25)).abs() < 1e-4, "{z:?}");
+    rig.key(UiKey::Down, b);
+    rig.idle(1, b);
+    let z = zoom(&rig);
+    assert!((z.center.y - (0.5 + 0.1 / 1.25)).abs() < 1e-4, "{z:?}");
+    assert_eq!(rig.ui.focus_path(0), "Top/Map", "the arrows keep the focus");
+    rig.key(UiKey::Up, b);
+    rig.key(UiKey::Right, b);
+    rig.key(UiKey::Digit0, b);
+    rig.idle(1, b);
+    let z = zoom(&rig);
+    assert!(
+        z.zoom == 1.0 && (z.center - Vec2::splat(0.5)).length() < 1e-6,
+        "{z:?}"
+    );
+    // Unfocused, the keys are not its own.
+    rig.key(UiKey::Tab, b);
+    rig.key(UiKey::Equal, b);
+    rig.idle(1, b);
+    assert_eq!(zoom(&rig).zoom, 1.0);
 }

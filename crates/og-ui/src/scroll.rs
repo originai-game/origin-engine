@@ -10,7 +10,11 @@
 //! scroll, which a list of buttons needs: one finger presses a row), a zoom
 //! view ([`Ui::zoom_view`]) pans by it and zooms by the change of their
 //! spread about the centre (pinch). The press the first finger began
-//! presses nothing once the second lands.
+//! presses nothing once the second lands. Two fingers lifting off a
+//! container fling it with their last velocity, as one finger does.
+//!
+//! A zoom view takes focus from keys and pads: `+` and `-` zoom it, `0`
+//! fits it again, the arrows pan it (`Ui::zoom_keys`).
 
 use crate::id::child_key;
 use crate::ui::{HIT_OFFSCREEN, HIT_SCROLL, Ui};
@@ -133,6 +137,47 @@ impl Ui {
         self.set_zoom_state(key, s);
     }
 
+    /// A focused zoom view's keys: `+` (`=` and the keypad's) zooms in a
+    /// step of 1.25 about its centre, `-` out, `0` back to its fit (the
+    /// least zoom, centred); ← → (and a pad's left and right: `adjust`)
+    /// and ↑ ↓ pan it a tenth of its size towards that side.
+    pub(crate) fn zoom_keys(&mut self, key: u64, adjust: i32) {
+        use crate::input::UiKey;
+        let Some(h) = self.hit(key).copied() else {
+            return;
+        };
+        let r = h.full;
+        let mid = Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0);
+        let step = Vec2::new(r.width, r.height) * 0.1;
+        let keys = self.input.keys.clone();
+        if adjust != 0 {
+            self.zoom_by(key, 1.0, mid, Vec2::new(-step.x * adjust as f32, 0.0));
+        }
+        for k in keys {
+            match k {
+                UiKey::Equal | UiKey::NumpadAdd => self.zoom_by(key, 1.25, mid, Vec2::ZERO),
+                UiKey::Minus | UiKey::NumpadSubtract => {
+                    self.zoom_by(key, 1.0 / 1.25, mid, Vec2::ZERO)
+                }
+                UiKey::Digit0 | UiKey::Numpad0 => {
+                    if let Some(s) = self.zoom_state(key) {
+                        self.set_zoom_state(
+                            key,
+                            ZoomState {
+                                zoom: s.min,
+                                center: Vec2::splat(0.5),
+                                ..s
+                            },
+                        );
+                    }
+                }
+                UiKey::Up => self.zoom_by(key, 1.0, mid, Vec2::new(0.0, step.y)),
+                UiKey::Down => self.zoom_by(key, 1.0, mid, Vec2::new(0.0, -step.y)),
+                _ => {}
+            }
+        }
+    }
+
     /// Two touches: track them, and move what is under them. Answers
     /// whether a two-finger gesture holds the pointer this tick.
     fn two_touches(&mut self, input: &crate::input::InputFrame) -> bool {
@@ -141,7 +186,18 @@ impl Ui {
             .filter(|&id| p.down(id))
             .collect();
         if held.len() < 2 {
-            self.state.pinch = None;
+            // Two fingers that scrolled a container fling it as they lift,
+            // as one finger's drag does.
+            if let Some(last) = self.state.pinch.take()
+                && last.key != 0
+                && self.zoom_state(last.key).is_none()
+            {
+                let v = self.state.drag_v;
+                if !self.theme().reduced_motion && v.length() > 1.0 {
+                    self.state.fling = Some((last.key, v));
+                }
+                self.state.drag_v = Vec2::ZERO;
+            }
             return false;
         }
         let (a, b) = (p.position(held[0]), p.position(held[1]));
@@ -160,6 +216,8 @@ impl Ui {
                         self.zoom_by(last.key, k, center, moved);
                     } else {
                         self.scroll_chain_by(last.key, -moved);
+                        // Its velocity, kept for the fling as they lift.
+                        self.state.drag_v = self.state.drag_v * 0.5 - moved * 0.5;
                     }
                 }
                 self.state.pinch = Some(Pinch {
@@ -377,10 +435,12 @@ impl Ui {
                 let response = (crate::theme::SPRING_MOMENTUM.response_ms / 1000.0).max(1e-3);
                 let decay = (1.0 - 1.0 / (self.ticks_per_second() as f32 * response)).max(0.0);
                 let mut next = v * decay;
-                if left.x != 0.0 {
+                // At the content's end on an axis (what the offset could not
+                // take, past a float's rounding of the move), it stops there.
+                if left.x.abs() > 1e-3 {
                     next.x = 0.0;
                 }
-                if left.y != 0.0 {
+                if left.y.abs() > 1e-3 {
                     next.y = 0.0;
                 }
                 self.state.fling = (next.length() >= FLING_STOP).then_some((key, next));
