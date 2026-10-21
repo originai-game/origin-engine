@@ -481,7 +481,14 @@ pub const DRIVE_ALL: u32 = 2;
 /// Object3D.lookAt aims +z). 2D: two
 /// wheel bodies on sprung wheel joints (front at +x), driven by a motor.
 /// The wheels are not entities: og.physics.vehicleWheels gives their poses
-/// for drawing.
+/// for drawing. The defaults drive a road car of about 1,000 kg: give the
+/// chassis that mass (og.RigidBody.mass 1000), since a car-sized box at
+/// the collider's density 1 weighs a few kilograms and the forces, in
+/// newtons, would throw it. The suspension and the grip scale with the
+/// chassis's mass (Bullet's units); the engine and the brakes do not. The
+/// wheel rays meet what the chassis's collider would (its og.Collider
+/// layers and mask), so cars on layers that do not collide pass through
+/// each other.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.Vehicle")]
 pub struct Vehicle {
@@ -524,17 +531,17 @@ pub struct Vehicle {
     /// The suspension's damping.
     #[reflect(name = "suspensionDamping", min = 0, default = 4, tunable)]
     pub suspension_damping: f32,
-    /// The tyres' grip (3D: the friction slip; 2D: the wheels' friction).
+    /// The tyres' grip (3D: the friction slip, how much of the load a tyre holds before it slides; 2D: the wheels' friction).
     #[reflect(min = 0, default = 2, tunable)]
     pub grip: f32,
-    /// The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque).
-    #[reflect(name = "engineForce", min = 0, default = 80, tunable)]
+    /// The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque, N·m).
+    #[reflect(name = "engineForce", min = 0, default = 2500, tunable)]
     pub engine_force: f32,
     /// The top speed: the engine's force fades out towards it (throttle against the motion brakes first).
-    #[reflect(name = "maxSpeed", min = 0, unit = "m/s", default = 20, tunable)]
+    #[reflect(name = "maxSpeed", min = 0, unit = "m/s", default = 40, tunable)]
     pub max_speed: f32,
-    /// The brakes' force at full brake.
-    #[reflect(name = "brakeForce", min = 0, default = 30, tunable)]
+    /// The brakes' force at full brake (3D: per wheel, N, every wheel braking; 2D: the wheels' braking torque).
+    #[reflect(name = "brakeForce", min = 0, default = 2000, tunable)]
     pub brake_force: f32,
     /// The front wheels' largest steering angle (3D).
     #[reflect(
@@ -550,13 +557,19 @@ pub struct Vehicle {
     #[reflect(min = 0, max = 2)]
     pub drive: u32,
     /// The wheels' mass (2D: the wheel bodies; 3D ignores it).
-    #[reflect(name = "wheelMass", min = 0.01, unit = "kg", default = 1, tunable)]
+    #[reflect(name = "wheelMass", min = 0.01, unit = "kg", default = 20, tunable)]
     pub wheel_mass: f32,
+    /// How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering (an arcade car); towards 1 at the road, the roll that tips a tall car over (rapier's own car uses 0.1, which rolls a 1,000 kg car at full lock above about 20 m/s). Raise it a little for body roll, with og.RigidBody.centerOfMass lowered to keep the car on its wheels.
+    #[reflect(name = "rollInfluence", min = 0, max = 1, tunable)]
+    pub roll_influence: f32,
     /// Written: the forward speed (m/s; negative reversing).
     #[reflect(unit = "m/s")]
     pub speed: f32,
     /// Written: how many wheels touch the ground.
     pub contacts: u32,
+    /// Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides (3D; 0 in 2D).
+    #[reflect(min = 0, max = 1)]
+    pub slip: f32,
 }
 
 impl Default for Vehicle {
@@ -574,14 +587,16 @@ impl Default for Vehicle {
             suspension_stiffness: 30.0,
             suspension_damping: 4.0,
             grip: 2.0,
-            engine_force: 80.0,
-            max_speed: 20.0,
-            brake_force: 30.0,
+            engine_force: 2500.0,
+            max_speed: 40.0,
+            brake_force: 2000.0,
             max_steer: 0.55,
             drive: DRIVE_REAR,
-            wheel_mass: 1.0,
+            wheel_mass: 20.0,
+            roll_influence: 0.0,
             speed: 0.0,
             contacts: 0,
+            slip: 0.0,
         }
     }
 }

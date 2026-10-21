@@ -23,7 +23,7 @@ bodies move in the xy plane and rotate about z; a transform keeps its z.
 | Item | What it is |
 |---|---|
 | `install(&mut World, Physics) -> PhysicsSystem` | registers the types, inserts `og.Physics`, schedules `og.physics` at the end of the schedule and adds the `og.physics` state block |
-| `PhysicsSystem` | `set_mesh(handle, MeshDesc)`, `remove_mesh(handle)`, `query(&World) -> PhysicsQuery`, `stats() -> PhysicsStats` |
+| `PhysicsSystem` | `set_mesh(handle, MeshDesc)`, `remove_mesh(handle)`, `query(&World) -> PhysicsQuery`, `stats() -> PhysicsStats`; `apply_force`, `apply_impulse` (each at a world point or the centre of mass), `apply_torque`, `apply_torque_impulse`: queued, applied by the next step in the order given (a force as its impulse over the step, gone after it; a hit stop drops forces and keeps impulses), saved in the state block until then |
 | `PhysicsStats`, `PhaseStats`, `Phase` | what the last step cost: its tick, bodies, threads, whether it ran on the lanes pool, the whole system's ms and each phase's ms and whether it split (`og.physics.stats` in TypeScript; below) |
 | `set_clock(fn() -> f64)` | the wall clock the stats are timed with (`Instant` natively; the web host gives each Worker's `performance.now`) |
 | `Grains`, `grains`, `set_grains`, `pool_bodies` | where the step's work runs on the lanes (below) |
@@ -41,7 +41,7 @@ are `u32` constants in `src/schema.rs`.
 | Record | Kind | Fields |
 |---|---|---|
 | `og.Transform` | component | `position: vec3`, `quaternion: quat`, `scale: vec3` (registered by schema, so the engine's own is adopted) |
-| `og.RigidBody` | component | `kind` (0 dynamic, 1 static, 2 kinematic), `mass` (0: from density), `linear_damping`, `angular_damping`, `gravity_scale`, `lock` (bits: translation x 1, y 2, z 4; rotation x 8, y 16, z 32), `ccd` |
+| `og.RigidBody` | component | `kind` (0 dynamic, 1 static, 2 kinematic), `mass` (0: from density), `linear_damping`, `angular_damping`, `gravity_scale`, `lock` (bits: translation x 1, y 2, z 4; rotation x 8, y 16, z 32), `ccd`, `center_of_mass` (moves the collider's centre of mass, entity frame, scaled; inertia kept) |
 | `og.Collider` | component | `shape` (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh), `size`, `radius`, `height`, `mesh`, `offset`, `rotation`, `friction`, `restitution`, `density`, `sensor`, `layers`, `mask` |
 | `og.Velocity` | component | `linear`, `angular`; written for dynamic bodies; a kinematic body moves by it (below); set it to launch or stop a body |
 | `og.Physics` | resource | `profile`, `gravity`, `substeps` (1–16), `solver_iterations` (1–32), `rest_speed` |
@@ -96,8 +96,15 @@ rapier's sleep: a dynamic body supported with at most 2 mm of overlap and
 slower than `rest_speed` before and after the step keeps its pose and loses
 its residual velocity.
 
-Meshes are assets, not world state: register them again in a fresh engine
-before or after restoring.
+Meshes are assets, not world state: the state block cuts the serialised
+shape of every convex-hull, triangle-mesh and height-field collider out of
+the rapier world's bytes and keeps its key (shape, handle, scale) and
+place instead (`sim::save`), and decoding rebuilds each from the geometry
+registered then (from the shape cache when it holds it) and splices it
+back, so the restored world is rapier's byte for byte (`tests/saves.rs`: a
+7,200-triangle ground, a hull and a height field save to 12 KB instead of
+630 KB). Register them in a fresh engine before restoring: a save naming
+one that is not is refused, naming it.
 
 
 ## The step on the lanes
@@ -248,7 +255,7 @@ reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
 | `og.Joint` | fixed, revolute (limits, velocity or position motor), prismatic, spring, rope and ball joints between a body and another (`other`) or a world point; the second frame keeps the pose it was made in; `value` is written back |
 | `og.CharacterController` | a kinematic capsule moved by `move` after the step, its own move (below): slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies, blocked by what its collider's layers and mask meet; writes `grounded`, `velocity`, `ground` |
 | `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms, an `impulse` the game sets (a knock-back) taken once; its own move (below), blocked by what its collider's layers and mask meet; sends `og.CharacterEvent` |
-| `og.Vehicle` | 3D: rapier's raycast vehicle with a top-speed fade and reverse braking; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing |
+| `og.Vehicle` | 3D: rapier's raycast vehicle (carried in `raycast_vehicle.rs` with its roll influence and skid info public) with a top-speed fade and reverse braking, its wheel rays filtered by the chassis collider's layers and mask, `roll_influence` (0: corners flat), brakes in newtons a wheel, defaults for a 1,000 kg car, `slip` written; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing, with each wheel's `slip` and `side_speed` |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
 | `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |

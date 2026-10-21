@@ -843,6 +843,30 @@ pub fn og_physics_overlap(env: Env, world: u32, desc: Option<String>) -> String 
     <Host as PhysicsApi>::og_physics_overlap(&Host, world, desc)
 }
 
+#[napi(js_name = "og_physics_apply_force")]
+pub fn og_physics_apply_force(env: Env, world: u32, entity: f64, force: String, point: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_apply_force(&Host, world, entity, force, point)
+}
+
+#[napi(js_name = "og_physics_apply_impulse")]
+pub fn og_physics_apply_impulse(env: Env, world: u32, entity: f64, impulse: String, point: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_apply_impulse(&Host, world, entity, impulse, point)
+}
+
+#[napi(js_name = "og_physics_apply_torque")]
+pub fn og_physics_apply_torque(env: Env, world: u32, entity: f64, torque: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_apply_torque(&Host, world, entity, torque)
+}
+
+#[napi(js_name = "og_physics_apply_torque_impulse")]
+pub fn og_physics_apply_torque_impulse(env: Env, world: u32, entity: f64, torque: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_apply_torque_impulse(&Host, world, entity, torque)
+}
+
 #[napi(js_name = "og_physics_set_mesh")]
 pub fn og_physics_set_mesh(env: Env, world: u32, mesh: f64, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

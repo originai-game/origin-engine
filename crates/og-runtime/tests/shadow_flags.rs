@@ -1,4 +1,5 @@
-//! Shadow flags from game code to the renderer (owed row 87): og.Mesh's
+//! Shadow flags from game code to the renderer (owed row 87), and
+//! og.Model's `visible` (meridian-loop FINDINGS #14): og.Mesh's
 //! `receiveShadow`, og.Model's `castShadow` and `receiveShadow`, and
 //! GltfDesc's, through reflection, world.insert/get, world.instantiate and
 //! a cooked scene's text, each reaching the frame's instances
@@ -363,6 +364,66 @@ fn a_posed_models_skinned_instances_carry_its_flags() {
     skinned.sort();
     skinned.dedup();
     assert_eq!(skinned, vec![(false, true), (true, true)]);
+}
+
+/// og.Model.visible (meridian-loop FINDINGS #14: a ghost car could only
+/// be hidden by moving it under the world): a hidden model, static or
+/// posed, draws no instance; shown again, it draws as before.
+#[test]
+fn a_hidden_model_draws_nothing_posed_or_not() {
+    let (engine, seen) = engine();
+    let crate_asset = value(og_load_gltf(engine, "models/crate.vox".into(), None));
+    let still = value(og_world_instantiate(
+        engine,
+        crate_asset.as_f64().unwrap(),
+        None,
+    ))
+    .as_f64()
+    .unwrap();
+    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
+    let clip = anim["clips"].as_array().unwrap()[0]["clip"].clone();
+    let walker_asset = value(og_load_gltf(engine, "models/walker.glb".into(), None));
+    let walker = value(og_world_instantiate(
+        engine,
+        walker_asset.as_f64().unwrap(),
+        None,
+    ))
+    .as_f64()
+    .unwrap();
+    for (name, v) in [
+        ("og.Skeleton", json!({ "asset": anim["skeleton"] })),
+        ("og.AnimationPlayer", json!({ "clip": clip, "loop": true })),
+    ] {
+        value(og_world_insert(
+            engine,
+            walker,
+            name.into(),
+            Some(v.to_string()),
+        ));
+    }
+    for _ in 0..3 {
+        frame(engine);
+    }
+    let shown = (seen.borrow().instances.len(), seen.borrow().skinned.len());
+    assert!(shown.0 > 0 && shown.1 > 0, "{shown:?}");
+    assert_eq!(
+        value(og_world_get(engine, still, "og.Model".into()))["visible"],
+        json!(true)
+    );
+    for e in [still, walker] {
+        let hide = json!({ "visible": false }).to_string();
+        value(og_world_set(engine, e, "og.Model".into(), hide));
+    }
+    frame(engine);
+    assert_eq!(seen.borrow().instances.len(), 0);
+    assert_eq!(seen.borrow().skinned.len(), 0);
+    for e in [still, walker] {
+        let show = json!({ "visible": true }).to_string();
+        value(og_world_set(engine, e, "og.Model".into(), show));
+    }
+    frame(engine);
+    let again = (seen.borrow().instances.len(), seen.borrow().skinned.len());
+    assert_eq!(again, shown);
 }
 
 #[test]

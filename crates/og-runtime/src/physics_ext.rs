@@ -1,5 +1,6 @@
-//! The physics beyond rigid bodies seen from game code (the E5 round): the
-//! readouts of the last step (`og.physics.ropePoints`, `clothPoints`,
+//! The physics beyond rigid bodies seen from game code (the E5 round):
+//! the pushes (`og.physics.applyForce`, `applyImpulse`, `applyTorque`,
+//! `applyTorqueImpulse`), the readouts of the last step (`og.physics.ropePoints`, `clothPoints`,
 //! `fluidParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`), what
 //! the last step cost (`stats`), the ragdoll rig (`setRagdollRig`,
 //! `ragdollRigFromSkeleton`), and drawing a
@@ -8,7 +9,7 @@
 //! og.Ragdoll.blend. Rigs are assets, like meshes: kept by the engine and
 //! given again to a reloaded world's physics.
 
-use super::engine::{Engine, engine};
+use super::engine::{Engine, engine, running};
 use super::extract::RenderState;
 use super::fx::{f, rows};
 use super::{ok, ok_void, parse, refuse};
@@ -68,6 +69,75 @@ fn readout<T>(
     })())
 }
 
+/// A push for `e`'s body, refused for an entity without an og.RigidBody
+/// (inside a system as outside: archetype membership needs no declaration).
+fn push(
+    world: u32,
+    e: f64,
+    value: &str,
+    point: Option<&str>,
+    apply: impl FnOnce(&PhysicsSystem, Entity, Vec3, Option<Vec3>) -> og_core::Result<()>,
+) -> String {
+    let answer = (|| -> Result<(), String> {
+        let eng = engine(world)?;
+        let p = physics(&eng)?;
+        let e = entity(e)?;
+        let has_body = if let Some(f) = running(world) {
+            // SAFETY: the frame is published while its system runs.
+            let ctx = unsafe { f.ctx() };
+            let id = ctx.id_by_name("og.RigidBody").map_err(|e| e.to_string())?;
+            ctx.components_of(e).is_ok_and(|c| c.contains(&id))
+        } else {
+            let w = eng.world()?;
+            let id = w.id_by_name("og.RigidBody").map_err(|e| e.to_string())?;
+            w.components_of(e).is_ok_and(|c| c.contains(&id))
+        };
+        if !has_body {
+            return Err(format!(
+                "entity {} has no og.RigidBody to push",
+                e.to_bits()
+            ));
+        }
+        let vector = vec3_of(&parse(Some(value))?, Vec3::ZERO);
+        let point = match point {
+            Some(p) => Some(vec3_of(&parse(Some(p))?, Vec3::ZERO)),
+            None => None,
+        };
+        apply(&p, e, vector, point).map_err(|e| e.to_string())
+    })();
+    match answer {
+        Ok(()) => ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
+pub fn og_physics_apply_force(world: u32, e: f64, force: String, point: Option<String>) -> String {
+    push(world, e, &force, point.as_deref(), |p, e, v, at| {
+        p.apply_force(e, v, at)
+    })
+}
+
+pub fn og_physics_apply_impulse(
+    world: u32,
+    e: f64,
+    impulse: String,
+    point: Option<String>,
+) -> String {
+    push(world, e, &impulse, point.as_deref(), |p, e, v, at| {
+        p.apply_impulse(e, v, at)
+    })
+}
+
+pub fn og_physics_apply_torque(world: u32, e: f64, torque: String) -> String {
+    push(world, e, &torque, None, |p, e, v, _| p.apply_torque(e, v))
+}
+
+pub fn og_physics_apply_torque_impulse(world: u32, e: f64, torque: String) -> String {
+    push(world, e, &torque, None, |p, e, v, _| {
+        p.apply_torque_impulse(e, v)
+    })
+}
+
 pub fn og_physics_rope_points(world: u32, e: f64) -> String {
     readout(
         world,
@@ -124,7 +194,7 @@ pub fn og_physics_vehicle_wheels(world: u32, e: f64) -> String {
             json!(
             wheels
                 .into_iter()
-                .map(|w| json!({ "position": v3(w.position), "rotation": q4(w.quaternion), "contact": w.contact }))
+                .map(|w| json!({ "position": v3(w.position), "rotation": q4(w.quaternion), "contact": w.contact, "slip": w.slip, "sideSpeed": w.side_speed }))
                 .collect::<Vec<_>>()
         )
         },

@@ -177,12 +177,13 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
         (
             at(0.0, 1.2, -10.0),
             RigidBody {
-                mass: 150.0,
+                mass: 1000.0,
                 ..RigidBody::dynamic()
             },
             Collider::cuboid(Vec3::new(1.8, 0.6, 3.6)),
             Vehicle {
-                engine_force: 300.0,
+                engine_force: 2000.0,
+                max_speed: 20.0,
                 ..Vehicle::default()
             },
         ),
@@ -390,6 +391,8 @@ pub fn scene2d(w: &mut World, physics: &PhysicsSystem) -> Cast {
                 wheel_radius: 0.45,
                 engine_force: 40.0,
                 max_speed: 6.0,
+                brake_force: 30.0,
+                wheel_mass: 1.0,
                 ..Vehicle::default()
             },
         ),

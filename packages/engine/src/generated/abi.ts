@@ -285,6 +285,14 @@ export interface HostAbi<A, V> {
   og_physics_shape_cast(world: number, desc: string | undefined): string;
   /** `og.physics.overlap` */
   og_physics_overlap(world: number, desc: string | undefined): string;
+  /** `og.physics.applyForce` */
+  og_physics_apply_force(world: number, entity: number, force: string, point: string | undefined): string;
+  /** `og.physics.applyImpulse` */
+  og_physics_apply_impulse(world: number, entity: number, impulse: string, point: string | undefined): string;
+  /** `og.physics.applyTorque` */
+  og_physics_apply_torque(world: number, entity: number, torque: string): string;
+  /** `og.physics.applyTorqueImpulse` */
+  og_physics_apply_torque_impulse(world: number, entity: number, torque: string): string;
   /** `og.physics.setMesh` */
   og_physics_set_mesh(world: number, mesh: number, desc: string | undefined): string;
   /** `og.physics.ropePoints` */
@@ -769,6 +777,10 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_raycast",
   "og_physics_shape_cast",
   "og_physics_overlap",
+  "og_physics_apply_force",
+  "og_physics_apply_impulse",
+  "og_physics_apply_torque",
+  "og_physics_apply_torque_impulse",
   "og_physics_set_mesh",
   "og_physics_rope_points",
   "og_physics_cloth_points",

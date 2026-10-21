@@ -18,7 +18,7 @@ module physics {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3690</sub>
+<sub>`api.ogt` line 3696</sub>
 
 ## Contents
 
@@ -44,7 +44,7 @@ module physics {
 | [`PROFILE_3D`](#const-PROFILE_3D) | constant | Physics.profile: rapier3d. |
 | [`og.RigidBody`](#record-RigidBody) | component | A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one. |
 | [`og.Collider`](#record-Collider) | component | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale. |
-| [`og.Velocity`](#record-Velocity) | component | Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body. |
+| [`og.Velocity`](#record-Velocity) | component | Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse. |
 | [`og.Physics`](#record-Physics) | resource | The physics settings of the world. The profile is the project's; the same components serve both profiles. |
 | [`og.CollisionStarted`](#record-CollisionStarted) | event | Two solid colliders started touching during the tick. |
 | [`og.CollisionEnded`](#record-CollisionEnded) | event | Two solid colliders stopped touching, or one of them went away. |
@@ -73,7 +73,7 @@ module physics {
 | [`DRIVE_REAR`](#const-DRIVE_REAR) | constant | `Vehicle.drive`: the rear wheels drive. |
 | [`DRIVE_FRONT`](#const-DRIVE_FRONT) | constant | `Vehicle.drive`: the front wheels drive. |
 | [`DRIVE_ALL`](#const-DRIVE_ALL) | constant | `Vehicle.drive`: every wheel drives. |
-| [`og.Vehicle`](#record-Vehicle) | component | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing. |
+| [`og.Vehicle`](#record-Vehicle) | component | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks. |
 | [`og.Rope`](#record-Rope) | component | A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`. |
 | [`PIN_TOP`](#const-PIN_TOP) | constant | `Cloth.pins` bit: the whole top row is pinned. |
 | [`PIN_TOP_CORNERS`](#const-PIN_TOP_CORNERS) | constant | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
@@ -97,7 +97,11 @@ module physics {
 | [`og.physics.raycast`](#fn-raycast) | function | The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them. |
 | [`og.physics.shapeCast`](#fn-shapeCast) | function | The first collider a shape meets when swept along a direction; the same view of the colliders as raycast. |
 | [`og.physics.overlap`](#fn-overlap) | function | Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast. |
-| [`og.physics.setMesh`](#fn-setMesh) | function | Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state. |
+| [`og.physics.applyForce`](#fn-applyForce) | function | Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash). |
+| [`og.physics.applyImpulse`](#fn-applyImpulse) | function | Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the next physics step (after a hit stop ends). As applyForce otherwise. |
+| [`og.physics.applyTorque`](#fn-applyTorque) | function | Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist. |
+| [`og.physics.applyTorqueImpulse`](#fn-applyTorqueImpulse) | function | Give a dynamic body an angular impulse (N·m·s about each world axis; 2D uses z): its spin changes at once, as applyImpulse. |
+| [`og.physics.setMesh`](#fn-setMesh) | function | Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state: world.snapshot carries a mesh, convex-hull or height-field collider by its handle and scale, not its triangles, and world.restore rebuilds the collider from the geometry registered then (so load or register it before restoring; a save naming one that is not is refused). |
 | [`WheelPose`](#type-WheelPose) | struct | A wheel of an og.Vehicle as the last step left it, for drawing. |
 | [`RagdollBoneDesc`](#type-RagdollBoneDesc) | desc struct | One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`. |
 | [`RagdollRigDesc`](#type-RagdollRigDesc) | desc struct | The bones of a ragdoll, parents first, for og.physics.setRagdollRig; og.physics.ragdollRigFromSkeleton makes one from a model's skeleton. |
@@ -145,7 +149,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4982</sub>
+<sub>`api.ogt` line 5004</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -175,7 +179,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 4989</sub>
+<sub>`api.ogt` line 5011</sub>
 
 <a id="fn-overlap"></a>
 
@@ -205,13 +209,149 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 4996</sub>
+<sub>`api.ogt` line 5018</sub>
+
+<a id="fn-applyForce"></a>
+
+### `og.physics.applyForce`
+
+Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash).
+
+```ts
+og.physics.applyForce(world: World, entity: Entity, force: Vector3, point?: Vector3): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The body's entity (an og.RigidBody). |
+| `force` | `Vector3` | no | The force in newtons (2D uses x and y). |
+| `point` | `Vector3` | yes | Where it acts, in world space; omitted is the centre of mass (no spin). |
+
+**Returns** `Result<void>`: Refused for an entity without an og.RigidBody, or a force or point that is not finite.
+
+Binding symbol `og_physics_apply_force` · publish builds: kept
+
+```ogt
+fn applyForce {
+  doc "Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash)."
+  param world World "The world."
+  param entity Entity "The body's entity (an og.RigidBody)."
+  param force Vector3 "The force in newtons (2D uses x and y)."
+  param point Vector3 "Where it acts, in world space; omitted is the centre of mass (no spin)." {
+    optional true
+  }
+  returns Result.Void "Refused for an entity without an og.RigidBody, or a force or point that is not finite."
+}
+```
+
+<sub>`api.ogt` line 5025</sub>
+
+<a id="fn-applyImpulse"></a>
+
+### `og.physics.applyImpulse`
+
+Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the next physics step (after a hit stop ends). As applyForce otherwise.
+
+```ts
+og.physics.applyImpulse(world: World, entity: Entity, impulse: Vector3, point?: Vector3): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The body's entity (an og.RigidBody). |
+| `impulse` | `Vector3` | no | The impulse in newton-seconds (2D uses x and y). |
+| `point` | `Vector3` | yes | Where it acts, in world space; omitted is the centre of mass. |
+
+**Returns** `Result<void>`: Refused for an entity without an og.RigidBody, or an impulse or point that is not finite.
+
+Binding symbol `og_physics_apply_impulse` · publish builds: kept
+
+```ogt
+fn applyImpulse {
+  doc "Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the next physics step (after a hit stop ends). As applyForce otherwise."
+  param world World "The world."
+  param entity Entity "The body's entity (an og.RigidBody)."
+  param impulse Vector3 "The impulse in newton-seconds (2D uses x and y)."
+  param point Vector3 "Where it acts, in world space; omitted is the centre of mass." {
+    optional true
+  }
+  returns Result.Void "Refused for an entity without an og.RigidBody, or an impulse or point that is not finite."
+}
+```
+
+<sub>`api.ogt` line 5036</sub>
+
+<a id="fn-applyTorque"></a>
+
+### `og.physics.applyTorque`
+
+Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist.
+
+```ts
+og.physics.applyTorque(world: World, entity: Entity, torque: Vector3): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The body's entity (an og.RigidBody). |
+| `torque` | `Vector3` | no | The torque in newton-metres. |
+
+**Returns** `Result<void>`: Refused for an entity without an og.RigidBody, or a torque that is not finite.
+
+Binding symbol `og_physics_apply_torque` · publish builds: kept
+
+```ogt
+fn applyTorque {
+  doc "Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist."
+  param world World "The world."
+  param entity Entity "The body's entity (an og.RigidBody)."
+  param torque Vector3 "The torque in newton-metres."
+  returns Result.Void "Refused for an entity without an og.RigidBody, or a torque that is not finite."
+}
+```
+
+<sub>`api.ogt` line 5047</sub>
+
+<a id="fn-applyTorqueImpulse"></a>
+
+### `og.physics.applyTorqueImpulse`
+
+Give a dynamic body an angular impulse (N·m·s about each world axis; 2D uses z): its spin changes at once, as applyImpulse.
+
+```ts
+og.physics.applyTorqueImpulse(world: World, entity: Entity, torque: Vector3): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The body's entity (an og.RigidBody). |
+| `torque` | `Vector3` | no | The angular impulse in newton-metre-seconds. |
+
+**Returns** `Result<void>`: Refused for an entity without an og.RigidBody, or a value that is not finite.
+
+Binding symbol `og_physics_apply_torque_impulse` · publish builds: kept
+
+```ogt
+fn applyTorqueImpulse {
+  doc "Give a dynamic body an angular impulse (N·m·s about each world axis; 2D uses z): its spin changes at once, as applyImpulse."
+  param world World "The world."
+  param entity Entity "The body's entity (an og.RigidBody)."
+  param torque Vector3 "The angular impulse in newton-metre-seconds."
+  returns Result.Void "Refused for an entity without an og.RigidBody, or a value that is not finite."
+}
+```
+
+<sub>`api.ogt` line 5055</sub>
 
 <a id="fn-setMesh"></a>
 
 ### `og.physics.setMesh`
 
-Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state.
+Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state: world.snapshot carries a mesh, convex-hull or height-field collider by its handle and scale, not its triangles, and world.restore rebuilds the collider from the geometry registered then (so load or register it before restoring; a save naming one that is not is refused).
 
 ```ts
 og.physics.setMesh(world: World, mesh: Geometry, desc?: MeshDesc): Result<void>
@@ -229,7 +369,7 @@ Binding symbol `og_physics_set_mesh` · publish builds: kept
 
 ```ogt
 fn setMesh {
-  doc "Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state."
+  doc "Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state: world.snapshot carries a mesh, convex-hull or height-field collider by its handle and scale, not its triangles, and world.restore rebuilds the collider from the geometry registered then (so load or register it before restoring; a save naming one that is not is refused)."
   param world World "The world."
   param mesh Geometry "The handle colliders name in Collider.mesh."
   param desc MeshDesc "Positions and triangles."
@@ -237,7 +377,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 5003</sub>
+<sub>`api.ogt` line 5063</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -267,7 +407,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 5057</sub>
+<sub>`api.ogt` line 5124</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -297,7 +437,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 5064</sub>
+<sub>`api.ogt` line 5131</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -327,7 +467,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 5071</sub>
+<sub>`api.ogt` line 5138</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -357,7 +497,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 5078</sub>
+<sub>`api.ogt` line 5145</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -391,7 +531,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 5085</sub>
+<sub>`api.ogt` line 5152</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -421,7 +561,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 5094</sub>
+<sub>`api.ogt` line 5161</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -451,7 +591,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 5101</sub>
+<sub>`api.ogt` line 5168</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -483,7 +623,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 5108</sub>
+<sub>`api.ogt` line 5175</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -513,7 +653,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 5116</sub>
+<sub>`api.ogt` line 5183</sub>
 
 <a id="fn-stats"></a>
 
@@ -541,7 +681,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 5144</sub>
+<sub>`api.ogt` line 5211</sub>
 
 ## Components, resources and events
 
@@ -564,6 +704,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies Physics.gravity for this body: 0 floats, 1 is normal. |
 | `lock` | `number` | `0` | 0 … 63 | — | — | Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32). |
 | `ccd` | `number` | `0` | 0 … 1 | — | — | 1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off. |
+| `centerOfMass` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | tunable | Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider. |
 
 ```ogt
 component RigidBody {
@@ -605,10 +746,14 @@ component RigidBody {
     min 0
     max 1
   }
+  field centerOfMass Vector3 "Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider." {
+    unit m
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 3715</sub>
+<sub>`api.ogt` line 3721</sub>
 
 <a id="record-Collider"></a>
 
@@ -695,13 +840,13 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 3756</sub>
+<sub>`api.ogt` line 3766</sub>
 
 <a id="record-Velocity"></a>
 
 ### `og.Velocity` (component)
 
-Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
+Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse.
 
 Token `og.Velocity`, registered under the schema name `og.Velocity`; its value type is `Velocity`.
 
@@ -712,7 +857,7 @@ Token `og.Velocity`, registered under the schema name `og.Velocity`; its value t
 
 ```ogt
 component Velocity {
-  doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body."
+  doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse."
   field linear Vector3 "The linear velocity (2D uses x and y)." {
     unit mps
     tunable true
@@ -724,7 +869,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 3815</sub>
+<sub>`api.ogt` line 3825</sub>
 
 <a id="record-Physics"></a>
 
@@ -778,7 +923,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 3827</sub>
+<sub>`api.ogt` line 3837</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -805,7 +950,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 3861</sub>
+<sub>`api.ogt` line 3871</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -828,7 +973,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 3869</sub>
+<sub>`api.ogt` line 3879</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -851,7 +996,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 3875</sub>
+<sub>`api.ogt` line 3885</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -874,7 +1019,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 3881</sub>
+<sub>`api.ogt` line 3891</sub>
 
 <a id="record-Contact"></a>
 
@@ -899,7 +1044,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 3887</sub>
+<sub>`api.ogt` line 3897</sub>
 
 <a id="record-Joint"></a>
 
@@ -1004,7 +1149,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 3904</sub>
+<sub>`api.ogt` line 3914</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1118,7 +1263,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 3974</sub>
+<sub>`api.ogt` line 3984</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1359,7 +1504,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 4055</sub>
+<sub>`api.ogt` line 4065</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1389,13 +1534,17 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 4248</sub>
+<sub>`api.ogt` line 4258</sub>
 
 <a id="record-Vehicle"></a>
 
 ### `og.Vehicle` (component)
 
-A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing.
+A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
+
+The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.
+
+The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.
 
 Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value type is `Vehicle`.
 
@@ -1412,19 +1561,23 @@ Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value typ
 | `suspensionTravel` | `number` | `0.25` | ≥ 0 | `m` | tunable | How far the suspension compresses or extends from rest. |
 | `suspensionStiffness` | `number` | `30` | ≥ 0 | — | tunable | The suspension's stiffness. |
 | `suspensionDamping` | `number` | `4` | ≥ 0 | — | tunable | The suspension's damping. |
-| `grip` | `number` | `2` | ≥ 0 | — | tunable | The tyres' grip (3D: the friction slip; 2D: the wheels' friction). |
-| `engineForce` | `number` | `80` | ≥ 0 | — | tunable | The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque). |
-| `maxSpeed` | `number` | `20` | ≥ 0 | `mps` | tunable | The top speed: the engine's force fades out towards it (throttle against the motion brakes first). |
-| `brakeForce` | `number` | `30` | ≥ 0 | — | tunable | The brakes' force at full brake. |
+| `grip` | `number` | `2` | ≥ 0 | — | tunable | The tyres' grip (3D: the friction slip, how much of its load a tyre holds before it slides: 2 grips a road car through a bend, below 1 it slides like a drift car; 2D: the wheels' friction). |
+| `engineForce` | `number` | `2500` | ≥ 0 | — | tunable | The engine's force at full throttle (3D: per driven wheel, in newtons: 2,500 on the two rear wheels push 1,000 kg at 5 m/s²; 2D: the motor's torque, N·m). |
+| `maxSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The top speed: the engine's force fades out towards it (throttle against the motion brakes first). |
+| `brakeForce` | `number` | `2000` | ≥ 0 | — | tunable | The brakes' force at full brake (3D: per wheel, in newtons, every wheel braking: 2,000 stop 1,000 kg at 8 m/s²; 2D: the wheels' braking torque). |
 | `maxSteer` | `number` | `0.55` | 0 … 1.2 | `rad` | tunable | The front wheels' largest steering angle (3D). |
 | `drive` | `number` | `0` | 0 … 2 | — | — | DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2. |
-| `wheelMass` | `number` | `1` | ≥ 0.01 | `kg` | tunable | The wheels' mass (2D: the wheel bodies; 3D ignores it). |
+| `wheelMass` | `number` | `20` | ≥ 0.01 | `kg` | tunable | The wheels' mass (2D: the wheel bodies; 3D ignores it). |
+| `rollInfluence` | `number` | `0` | 0 … 1 | — | tunable | How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering (an arcade car); towards 1 at the road, the roll that tips a tall car over (rapier's own car uses 0.1, which rolls a 1,000 kg car at full lock above about 20 m/s). Raise it a little for body roll, with og.RigidBody.centerOfMass lowered to keep the car on its wheels. |
 | `speed` | `number` | `0` | — | `mps` | read only | Written: the forward speed (m/s; negative reversing). |
 | `contacts` | `number` | `0` | — | — | read only | Written: how many wheels touch the ground. |
+| `slip` | `number` | `0` | 0 … 1 | — | read only | Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides; for a squeal's volume or smoke without reading the wheels (3D; 0 in 2D). |
 
 ```ogt
 component Vehicle {
-  doc "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing."
+  doc "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks."
+  doc "The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from."
+  doc "The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other."
   field throttle f32 "The accelerator, -1 (reverse) to 1. Set it every tick." {
     min -1
     max 1
@@ -1482,24 +1635,24 @@ component Vehicle {
     min 0
     tunable true
   }
-  field grip f32 "The tyres' grip (3D: the friction slip; 2D: the wheels' friction)." {
+  field grip f32 "The tyres' grip (3D: the friction slip, how much of its load a tyre holds before it slides: 2 grips a road car through a bend, below 1 it slides like a drift car; 2D: the wheels' friction)." {
     default 2
     min 0
     tunable true
   }
-  field engineForce f32 "The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque)." {
-    default 80
+  field engineForce f32 "The engine's force at full throttle (3D: per driven wheel, in newtons: 2,500 on the two rear wheels push 1,000 kg at 5 m/s²; 2D: the motor's torque, N·m)." {
+    default 2500
     min 0
     tunable true
   }
   field maxSpeed f32 "The top speed: the engine's force fades out towards it (throttle against the motion brakes first)." {
-    default 20
+    default 40
     min 0
     unit mps
     tunable true
   }
-  field brakeForce f32 "The brakes' force at full brake." {
-    default 30
+  field brakeForce f32 "The brakes' force at full brake (3D: per wheel, in newtons, every wheel braking: 2,000 stop 1,000 kg at 8 m/s²; 2D: the wheels' braking torque)." {
+    default 2000
     min 0
     tunable true
   }
@@ -1515,9 +1668,14 @@ component Vehicle {
     max 2
   }
   field wheelMass f32 "The wheels' mass (2D: the wheel bodies; 3D ignores it)." {
-    default 1
+    default 20
     min 0.01
     unit kg
+    tunable true
+  }
+  field rollInfluence f32 "How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering (an arcade car); towards 1 at the road, the roll that tips a tall car over (rapier's own car uses 0.1, which rolls a 1,000 kg car at full lock above about 20 m/s). Raise it a little for body roll, with og.RigidBody.centerOfMass lowered to keep the car on its wheels." {
+    min 0
+    max 1
     tunable true
   }
   field speed f32 "Written: the forward speed (m/s; negative reversing)." {
@@ -1527,10 +1685,15 @@ component Vehicle {
   field contacts u32 "Written: how many wheels touch the ground." {
     readonly true
   }
+  field slip f32 "Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides; for a squeal's volume or smoke without reading the wheels (3D; 0 in 2D)." {
+    min 0
+    max 1
+    readonly true
+  }
 }
 ```
 
-<sub>`api.ogt` line 4264</sub>
+<sub>`api.ogt` line 4274</sub>
 
 <a id="record-Rope"></a>
 
@@ -1619,7 +1782,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 4370</sub>
+<sub>`api.ogt` line 4392</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1725,7 +1888,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 4436</sub>
+<sub>`api.ogt` line 4458</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -1849,7 +2012,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 4512</sub>
+<sub>`api.ogt` line 4534</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2018,7 +2181,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 4601</sub>
+<sub>`api.ogt` line 4623</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2083,7 +2246,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 4727</sub>
+<sub>`api.ogt` line 4749</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2160,7 +2323,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 4770</sub>
+<sub>`api.ogt` line 4792</sub>
 
 <a id="record-Splash"></a>
 
@@ -2191,7 +2354,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 4823</sub>
+<sub>`api.ogt` line 4845</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2259,7 +2422,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 4835</sub>
+<sub>`api.ogt` line 4857</sub>
 
 ## Types
 
@@ -2287,7 +2450,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 4880</sub>
+<sub>`api.ogt` line 4902</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2322,7 +2485,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4888</sub>
+<sub>`api.ogt` line 4910</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2349,7 +2512,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 4904</sub>
+<sub>`api.ogt` line 4926</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2391,7 +2554,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 4914</sub>
+<sub>`api.ogt` line 4936</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2430,7 +2593,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4936</sub>
+<sub>`api.ogt` line 4958</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2457,7 +2620,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 4954</sub>
+<sub>`api.ogt` line 4976</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2487,7 +2650,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4964</sub>
+<sub>`api.ogt` line 4986</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2511,7 +2674,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 4975</sub>
+<sub>`api.ogt` line 4997</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2524,6 +2687,8 @@ A wheel of an og.Vehicle as the last step left it, for drawing.
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The wheel's centre in world space. |
 | `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation (steering and spin) in world space. |
 | `contact` | `boolean` | `false` | — | — | — | Whether it touches the ground. |
+| `slip` | `number` | `0` | 0 … 1 | — | — | How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. Start smoke and skid marks above about 0.2, and fade a squeal in with it. |
+| `sideSpeed` | `number` | `0` | — | `mps` | — | How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness. |
 
 ```ogt
 struct WheelPose {
@@ -2533,10 +2698,17 @@ struct WheelPose {
   }
   field rotation Quaternion "Its rotation (steering and spin) in world space."
   field contact bool "Whether it touches the ground."
+  field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. Start smoke and skid marks above about 0.2, and fade a squeal in with it." {
+    min 0
+    max 1
+  }
+  field sideSpeed f32 "How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness." {
+    unit mps
+  }
 }
 ```
 
-<sub>`api.ogt` line 5011</sub>
+<sub>`api.ogt` line 5071</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2579,7 +2751,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 5020</sub>
+<sub>`api.ogt` line 5087</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2603,7 +2775,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 5042</sub>
+<sub>`api.ogt` line 5109</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2626,7 +2798,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 5049</sub>
+<sub>`api.ogt` line 5116</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -2651,7 +2823,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 5123</sub>
+<sub>`api.ogt` line 5190</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -2682,7 +2854,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 5132</sub>
+<sub>`api.ogt` line 5199</sub>
 
 ## Constants
 
@@ -2733,238 +2905,238 @@ struct PhysicsStats {
 const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
-<sub>`api.ogt` line 3696</sub>
+<sub>`api.ogt` line 3702</sub>
 
 ```ogt
 const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
-<sub>`api.ogt` line 3697</sub>
+<sub>`api.ogt` line 3703</sub>
 
 ```ogt
 const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
-<sub>`api.ogt` line 3698</sub>
+<sub>`api.ogt` line 3704</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>`api.ogt` line 3699</sub>
+<sub>`api.ogt` line 3705</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>`api.ogt` line 3700</sub>
+<sub>`api.ogt` line 3706</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>`api.ogt` line 3701</sub>
+<sub>`api.ogt` line 3707</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>`api.ogt` line 3702</sub>
+<sub>`api.ogt` line 3708</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>`api.ogt` line 3703</sub>
+<sub>`api.ogt` line 3709</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>`api.ogt` line 3704</sub>
+<sub>`api.ogt` line 3710</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>`api.ogt` line 3705</sub>
+<sub>`api.ogt` line 3711</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>`api.ogt` line 3706</sub>
+<sub>`api.ogt` line 3712</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>`api.ogt` line 3707</sub>
+<sub>`api.ogt` line 3713</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>`api.ogt` line 3708</sub>
+<sub>`api.ogt` line 3714</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>`api.ogt` line 3709</sub>
+<sub>`api.ogt` line 3715</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
-<sub>`api.ogt` line 3710</sub>
+<sub>`api.ogt` line 3716</sub>
 
 ```ogt
 const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
-<sub>`api.ogt` line 3711</sub>
+<sub>`api.ogt` line 3717</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>`api.ogt` line 3712</sub>
+<sub>`api.ogt` line 3718</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 3713</sub>
+<sub>`api.ogt` line 3719</sub>
 
 ```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>`api.ogt` line 3894</sub>
+<sub>`api.ogt` line 3904</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 3895</sub>
+<sub>`api.ogt` line 3905</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 3896</sub>
+<sub>`api.ogt` line 3906</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>`api.ogt` line 3897</sub>
+<sub>`api.ogt` line 3907</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>`api.ogt` line 3898</sub>
+<sub>`api.ogt` line 3908</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>`api.ogt` line 3899</sub>
+<sub>`api.ogt` line 3909</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>`api.ogt` line 3900</sub>
+<sub>`api.ogt` line 3910</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>`api.ogt` line 3901</sub>
+<sub>`api.ogt` line 3911</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 3902</sub>
+<sub>`api.ogt` line 3912</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 4241</sub>
+<sub>`api.ogt` line 4251</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 4242</sub>
+<sub>`api.ogt` line 4252</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 4243</sub>
+<sub>`api.ogt` line 4253</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 4244</sub>
+<sub>`api.ogt` line 4254</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 4245</sub>
+<sub>`api.ogt` line 4255</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 4246</sub>
+<sub>`api.ogt` line 4256</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 4260</sub>
+<sub>`api.ogt` line 4270</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 4261</sub>
+<sub>`api.ogt` line 4271</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 4262</sub>
+<sub>`api.ogt` line 4272</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 4431</sub>
+<sub>`api.ogt` line 4453</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 4432</sub>
+<sub>`api.ogt` line 4454</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 4433</sub>
+<sub>`api.ogt` line 4455</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 4434</sub>
+<sub>`api.ogt` line 4456</sub>

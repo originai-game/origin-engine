@@ -1135,6 +1135,17 @@ const under = og.physics.shapeCast(world, { shape: { shape: SHAPE_SPHERE, radius
 const near = og.physics.overlap(world, { shape: { shape: SHAPE_BOX, size: { x: 4, y: 2, z: 4 } }, position: door });   // entities, by id
 ```
 
+Push a dynamic body with `og.physics.applyForce(world, e, force, point?)`
+(newtons over the next step: call it every tick for thrust, wind or a
+car's downforce), `applyImpulse(world, e, impulse, point?)` (newton-seconds
+at once: a kick, a hit, a jump; its velocity changes by impulse / mass),
+`applyTorque` and `applyTorqueImpulse` (about each world axis; 2D uses z).
+A point off the centre of mass spins it too. They apply at the og.physics
+step after the systems, in the order given; a hit stop drops forces and
+keeps impulses for after it; those not yet applied are in snapshots.
+`og.RigidBody.centerOfMass` moves the centre of mass (a roly-poly toy, a
+car that keeps its wheels down).
+
 Inside a system the queries see the colliders as they were at the start of
 the tick (`og.physics.queries` records them before the game's systems), so
 the answer does not depend on system order; `QueryFilter.includeSensors`
@@ -1160,7 +1171,16 @@ deterministic and part of snapshots (`reference/physics.md`):
   `og.CharacterEvent` reports jumps and landings for dust and sounds.
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
-  from `og.physics.vehicleWheels`) or a car on wheel joints (2D).
+  from `og.physics.vehicleWheels`) or a car on wheel joints (2D). Its
+  defaults drive a 1,000 kg road car: set the chassis's
+  `og.RigidBody.mass` (og-feel §12 has the numbers for a racer, a truck
+  and a kart). Its wheel rays meet only what its chassis's og.Collider
+  `layers` and `mask` meet, so a ghost car on its own layer drives through
+  the player's. `rollInfluence` 0 (the default) never tips it over in a
+  bend; `og.RigidBody.centerOfMass` lowers its weight. It writes `speed`,
+  `contacts` and `slip` (the most any tyre slides, 0 to 1); each wheel's
+  `slip` and `sideSpeed` come with its pose, for smoke, skid marks and a
+  squeal.
 - `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`.
   A cloth that folds or piles up (a dropped sheet, a cape on the ground)
   wants `thickness` about its `spacing` so it never passes through
@@ -1407,8 +1427,20 @@ to 64 KiB a key: a record in one key, the world in a slot
   its highest level saves 0.7 %, LZMA 31 % at the cost of a second
   decoder in every build) and not taken.
 
+  Physics carries a triangle-mesh, convex-hull or height-field collider
+  by its geometry's handle and scale, not its triangles (a 956 m
+  circuit's road and walls, 6,700 triangles, were 384 KB of a save
+  before; they are now a few bytes): load the glTF or call
+  `og.physics.setMesh` before restoring, as for every asset, or the
+  restore is refused naming the mesh.
+
   A restore asked for in a system or a command applies when the tick
-  ends; in `start`, at once. A saved type whose fields changed since (a
+  ends; in `start`, at once. A save taken in a system is the middle of
+  its tick: restored, the next step completes that tick (the systems
+  after the saver and the physics step), so a replay from it (the
+  countdown's world restored, the taped inputs fed again) runs the saved
+  race tick for tick. Take it as the system's last write of the tick:
+  what the system does after the call is not in it. A saved type whose fields changed since (a
   release added one) is refused naming the type and fields; pass
   `{ migrate: true }` to map it by field name (new fields take their
   defaults), and keep a saved type's fields stable between releases where

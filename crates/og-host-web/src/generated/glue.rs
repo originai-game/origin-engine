@@ -704,6 +704,26 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_apply_force(world: u32, entity: f64, force: String, point: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_apply_force(&Host, world, entity, force, point)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_apply_impulse(world: u32, entity: f64, impulse: String, point: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_apply_impulse(&Host, world, entity, impulse, point)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_apply_torque(world: u32, entity: f64, torque: String) -> String {
+    <Host as PhysicsApi>::og_physics_apply_torque(&Host, world, entity, torque)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_apply_torque_impulse(world: u32, entity: f64, torque: String) -> String {
+    <Host as PhysicsApi>::og_physics_apply_torque_impulse(&Host, world, entity, torque)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_set_mesh(&Host, world, mesh, desc)
 }

@@ -5,7 +5,8 @@ use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
-pub(crate) use rapier3d::control as ctl;
+#[path = "raycast_vehicle.rs"]
+pub(crate) mod ctl;
 use rapier3d::parry::query::ShapeCastOptions;
 use rapier3d::prelude as rp;
 use std::collections::BTreeMap;
@@ -235,7 +236,7 @@ pub(crate) fn ragdolls(
 #[allow(clippy::duplicate_mod)]
 #[path = "sim.rs"]
 mod sim;
-pub(crate) use sim::{QueryWorld, Sim, step};
+pub(crate) use sim::{QueryWorld, Sim, load, save, step};
 
 #[allow(clippy::duplicate_mod)]
 #[path = "ext.rs"]

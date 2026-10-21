@@ -207,6 +207,7 @@ pub(crate) fn vehicles(
             Vehicle {
                 speed,
                 contacts,
+                slip: 0.0,
                 ..*veh
             },
         ));
@@ -233,6 +234,8 @@ pub(crate) fn wheels(sim: &Sim, entity: u64) -> Option<Vec<WheelPose>> {
                     position: unv(rb.translation()),
                     quaternion: unrot(*rb.rotation()),
                     contact,
+                    slip: 0.0,
+                    side_speed: 0.0,
                 }
             })
             .collect(),

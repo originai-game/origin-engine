@@ -1433,6 +1433,14 @@ export const physics = Object.freeze({
   raycast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_raycast(world.id, json(desc))),
   shapeCast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_shape_cast(world.id, json(desc))),
   overlap: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_overlap(world.id, json(desc))),
+  applyForce: (world: WorldImpl, entity: number, force: unknown, point?: unknown) =>
+    parse(abi().og_physics_apply_force(world.id, entity, JSON.stringify(force), json(point))),
+  applyImpulse: (world: WorldImpl, entity: number, impulse: unknown, point?: unknown) =>
+    parse(abi().og_physics_apply_impulse(world.id, entity, JSON.stringify(impulse), json(point))),
+  applyTorque: (world: WorldImpl, entity: number, torque: unknown) =>
+    parse(abi().og_physics_apply_torque(world.id, entity, JSON.stringify(torque))),
+  applyTorqueImpulse: (world: WorldImpl, entity: number, torque: unknown) =>
+    parse(abi().og_physics_apply_torque_impulse(world.id, entity, JSON.stringify(torque))),
   setMesh: (world: WorldImpl, mesh: number, desc?: unknown) => parse(abi().og_physics_set_mesh(world.id, mesh, json(desc))),
   ropePoints: (world: WorldImpl, entity: number) => parse(abi().og_physics_rope_points(world.id, entity)),
   clothPoints: (world: WorldImpl, entity: number) => parse(abi().og_physics_cloth_points(world.id, entity)),

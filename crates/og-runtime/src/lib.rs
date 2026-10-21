@@ -107,10 +107,11 @@ pub use nav::{
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;
 pub use physics_ext::{
-    og_physics_cloth_points, og_physics_fluid_particles, og_physics_fluid3d_particles,
-    og_physics_ragdoll_pose, og_physics_ragdoll_rig_from_skeleton, og_physics_rope_points,
-    og_physics_set_ragdoll_rig, og_physics_stats, og_physics_vehicle_wheels,
-    og_physics_water_height,
+    og_physics_apply_force, og_physics_apply_impulse, og_physics_apply_torque,
+    og_physics_apply_torque_impulse, og_physics_cloth_points, og_physics_fluid_particles,
+    og_physics_fluid3d_particles, og_physics_ragdoll_pose, og_physics_ragdoll_rig_from_skeleton,
+    og_physics_rope_points, og_physics_set_ragdoll_rig, og_physics_stats,
+    og_physics_vehicle_wheels, og_physics_water_height,
 };
 pub use platform::{
     og_platform_ai_mark, og_platform_answer, og_platform_info, og_platform_leaderboard_around,
