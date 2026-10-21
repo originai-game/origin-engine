@@ -19,7 +19,11 @@ side and a painted second look for the results; Hollowbell
 (`examples/hollowbell`) a 16-bit pixel grid with its own 32-colour palette
 through `Stylise.palette` and a Bayer dither, and the 2D glow. Swapping the
 look at a tick (`og.render.applyLook`) for the results worked the first
-time in both.
+time in both. The Kestrel Stair (`examples/kestrel-stair`, 3D
+third-person) reached taste 98 with a look extending `watercolor-wash`
+(AgX, bloom, a violet shadow tint, a pale fog, the synthetic sky) under
+`og.DayNight`, and `luminous-layered-painting` applied at a tick for the
+ending and the results.
 
 ## 1. Choose a style from the premise
 

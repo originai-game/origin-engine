@@ -12,9 +12,10 @@ next for each part.
 
 ## What works
 
-Two games were written from this package alone: `examples/lantern-vale`
-(a 3D top-down adventure) and `examples/hollowbell` (a 2D platformer).
-What they asked for the documented way worked the first time: a Tiled map
+Three games were written from this package alone: `examples/lantern-vale`
+(a 3D top-down adventure), `examples/hollowbell` (a 2D platformer) and
+`examples/kestrel-stair` (a 3D third-person action-adventure). What they
+asked for the documented way worked the first time: a Tiled map
 with a blob47 auto-tiled terrain, Tiled's parallax and objects with
 properties (§8); flipbook frame events driving footsteps, strikes and a
 bell; texture arrays as world sprites, screen sprites and emitter layers;
@@ -22,9 +23,20 @@ streaming groups of `.vox` models and textures loading as the camera
 neared them (§6); a look applied before `start` and a second one at a tick
 for the results (§15); `og.physics.overlap` on a layer and with sensors;
 a character controller shoving a pile of bodies (§13); a skinned glTF on
-twos (§9). `og cook` took their 47 and 69 assets cold in 8.2 s and 3.6 s,
-under 100 ms after a change, without a warning, and its refusals named
-the line and the fix.
+twos (§9). In The Kestrel Stair: one clip library retargeted at cook time
+onto a Mixamo-named, A-posed character, and at run time
+(`og.anim.retarget`) onto an Unreal-named one (its bones detected) and
+onto one whose bones only a `type rig` file names, all three playing
+through blend trees the first time, the clips' `hit` markers coming
+through both retargets (§9); a slam lunging about a metre by root motion,
+`Skeleton.rootMotion` planar for its length; a navmesh baked from the
+level's glTF (og-ai §1); the 3D character controller over triangle-mesh
+slopes, steps and ledges, refusing a scree too steep (§13); a cape, four
+banners in a gusting wind and a chain with a lamp at its last link (§13);
+`world.snapshot()` and `world.restore()` across a relaunch, bringing back
+93 entities with their cloth, paths and minds (§17). `og cook` took their
+47, 69 and 62 assets cold in 8.2 s, 3.6 s and 8.5 s, about 0.1 s after a
+change, without a warning, and its refusals named the line and the fix.
 
 ## Writing a game from this package
 

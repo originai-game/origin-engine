@@ -12,6 +12,18 @@ resources) the behaviour checks, and handles the commands it raises. The
 API is in `reference/nav.md` and `reference/ai.md`; this skill is how to
 use them.
 
+## What works
+
+The Kestrel Stair (`examples/kestrel-stair`, a 3D third-person action
+game written from this package alone) baked its navmesh from the level's
+glTF with one `model` line (§1), and five agents ran on it: imps on a
+behaviour tree (patrol, chase, a 0.25 s wind-up and a bite, flight when
+hurt) and wardens on a machine (patrol, alert, chase, slam, search), each
+raising the game's commands, with sight occluded by the level,
+`og.Steering` separation and avoidance, and `og.nav.setObstacle` closing
+the summit gate until it rose. Two processes of a full session of chases
+end on one world hash.
+
 ## 1. Pick the navigation
 
 | World | Navigation | How |

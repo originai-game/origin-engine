@@ -15,7 +15,13 @@ Two games written from this package alone (`examples/lantern-vale`,
 track, cooked in 4-second chunks, streams from the title screen under the
 effects' duck, Hollowbell's music streams the same way, flipbook frame
 events put Hollowbell's footsteps, strikes and bell on their exact frames,
-and `og polish` heard a sound on every damage moment.
+and `og polish` heard a sound on every damage moment. In The Kestrel Stair
+(`examples/kestrel-stair`, a 3D third-person game) spatial sources (the
+braziers, the imps' chitter, the crypt's drip, the bell) were heard from a
+listener on the camera with distance, pan, distance dulling and occlusion
+behind walls, each read back exactly through `og.AudioPlayback` with
+`get:`; its 2:40 track streamed in 4-second
+chunks on the music bus. A reverb zone: see physics-anim-2.
 
 ## 1. Every event sounds
 
