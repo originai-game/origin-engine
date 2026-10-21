@@ -805,8 +805,12 @@ Rows 63 and 55, on lane-4.
   `stylise-surface` (0.035) and `stylise-object` (0.044): the hatched
   floor shadows are legible crossed strokes instead of a dense grey and
   the far canvas grain is calmer. Every other og-tests scene renders
-  exactly as on main's shader (checked before the scope correction).
-  Row 55 is closed.
+  exactly as on main's shader (checked before the scope correction);
+  after the merge, fx-showcase's looks suite moved one frame,
+  `looks-inked-comic-3d` (its floor hatched in surface space: RMSE 0.047,
+  4.98 % outliers, the far floor's moiré gone), re-recorded on metal by
+  the coordinator; the other 36 looks frames are unmoved. Row 55 is
+  closed.
 - **Row 63, `.vox` animation (431d9da1, 900158dc).** The importer read
   only the first of an `nTRN`'s per-frame dicts, so a part moving
   across frames stayed put. og-cook now keeps every key sorted by `_f`
