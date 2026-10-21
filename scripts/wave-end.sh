@@ -21,8 +21,9 @@
 #              (scripts/frames-vs-metal.ts), in target/evidence/wave-end/
 #
 # --templates  the projects whose playtests run (directory names under
-#              templates/ or templates/archetypes/; default the ones with
-#              vulkan-cpu frames: fx-showcase ui-kit match3 runner topdown)
+#              templates/, templates/archetypes/ or examples/; default every
+#              one with references/vulkan-cpu/, and ui-kit, whose frames are
+#              og-ui's)
 # --record     what to record on vulkan-cpu instead of compare, a comma list:
 #              <template> (every playtest of it), <template>/<playtest>,
 #              gfx (every og-tests scene), gfx/<scene>, or og-ui (its GPU
@@ -51,7 +52,10 @@ TRIPLE=x86_64-unknown-linux-gnu
 ALL_STAGES="gate web cross prepare gfx ui playtests table"
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
 stages="$ALL_STAGES"
-templates="fx-showcase ui-kit match3 runner topdown"
+templates="ui-kit"
+for d in templates/*/references/vulkan-cpu templates/archetypes/*/references/vulkan-cpu examples/*/references/vulkan-cpu; do
+  [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"
+done
 record=""
 dry=0
 usage() { sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -74,10 +78,11 @@ done
 template_dir() {
   if [ -f "templates/$1/project.ogt" ]; then echo "templates/$1"
   elif [ -f "templates/archetypes/$1/project.ogt" ]; then echo "templates/archetypes/$1"
+  elif [ -f "examples/$1/project.ogt" ]; then echo "examples/$1"
   else return 1; fi
 }
 for t in $templates; do
-  template_dir "$t" >/dev/null || { og_err "wave-end: no template '$t' (templates/<name> or templates/archetypes/<name> with a project.ogt)"; exit 2; }
+  template_dir "$t" >/dev/null || { og_err "wave-end: no project '$t' (templates/<name>, templates/archetypes/<name> or examples/<name> with a project.ogt)"; exit 2; }
 done
 
 OUT="$OG_EVIDENCE_DIR/wave-end"
@@ -228,7 +233,7 @@ stage_table() {
   local t dir args=()
   args+=(--set og-tests-captured "$LAVA/vulkan-cpu" crates/og-tests/references/metal crates/og-tests/references/vulkan-cpu)
   args+=(--set og-ui crates/og-ui/references/vulkan-cpu crates/og-ui/references/metal)
-  for dir in templates/*/references templates/archetypes/*/references; do
+  for dir in templates/*/references templates/archetypes/*/references examples/*/references; do
     [ -d "$dir/vulkan-cpu" ] || continue
     t="$(basename "$(dirname "$dir")")"
     args+=(--set "$t" "$dir/vulkan-cpu" "$dir/metal")
