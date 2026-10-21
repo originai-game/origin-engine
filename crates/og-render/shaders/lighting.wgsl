@@ -175,7 +175,7 @@ fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
     let l = vec3<f32>(to.x, sigma * to.z, -sigma * to.y);
     let d = max(length(l), 1e-6);
     let q = l / d;
-    let ndc = q.xy * (PARABOLOID_SCALE / (1.0 + q.z));
+    let ndc = vec2<f32>(-q.x, q.y) * (PARABOLOID_SCALE / (1.0 + q.z));
     let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
     return pcf(local_shadow_map, uv, layer, d / range - light.cone.w);
   }

@@ -121,6 +121,8 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
       cp "$gate_wasm/bindgen/og_host_web-$1/origin-engine-lanes.js" "$here/dist/$2/"
       cp -R "$gate_wasm/bindgen/og_host_web-$1/snippets" "$here/dist/$2/"
       cp "$gate_wasm/opt/og_host_web-$1.wasm" "$here/dist/$2/origin-engine-lanes_bg.wasm"
+      # The pool Workers start the glue with its single-object init (scripts/rayon-worker.sh).
+      sh "$here/scripts/rayon-worker.sh" "$here/dist/$2"
     elif [ -n "$lanes_expected" ]; then
       echo "build.sh: $gate_wasm/opt/og_host_web-$1.wasm is missing, but scripts/wasm-crates.txt marks og-host-web lanes: dist/$2 would ship single-threaded; run the gate's wasm-build and wasm-opt steps again (docs/ci.md §The lanes wasm)" >&2
       [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
@@ -165,6 +167,8 @@ for v in "physics2d web-publish-2d" "physics3d web-publish"; do
   lanes="$("$root/scripts/wasm-lanes.sh" --target-dir)/wasm32-unknown-unknown/wasm/og_host_web.wasm"
   wasm-bindgen --target web --out-dir "$here/dist/$2" --out-name origin-engine-lanes "$lanes"
   rm -f "$here/dist/$2/origin-engine-lanes"*.d.ts
+  # The pool Workers start the glue with its single-object init (scripts/rayon-worker.sh).
+  sh "$here/scripts/rayon-worker.sh" "$here/dist/$2"
   if command -v wasm-opt >/dev/null 2>&1; then
     "$root/scripts/wasm-opt.sh" --threads "$here/dist/$2/origin-engine-lanes_bg.wasm" "$here/dist/$2/origin-engine-lanes_bg.wasm"
   else

@@ -3113,9 +3113,13 @@ export interface Mesh {
   geometry: Geometry;
   /** The material. */
   material: Material;
-  /** Cast shadows, as three.js Object3D.castShadow. */
+  /**
+   * Cast shadows, as three.js Object3D.castShadow: drawn into the sun's cascades and the shadowed lights' maps. Off by default: a lamp's own glass around its light, a glow card or a decal-like slab casts none.
+   */
   castShadow: boolean;
-  /** Receive shadows, as three.js Object3D.receiveShadow. */
+  /**
+   * Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows.
+   */
   receiveShadow: boolean;
   /**
    * Whether it is drawn.
@@ -3344,11 +3348,11 @@ export interface RenderSettings {
    */
   bloomIntensity: number;
   /**
-   * Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye.
+   * Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks.
    */
   autoExposure: boolean;
   /**
-   * How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure.
+   * How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame (never the wall clock, so a replay and every host adapt the same, however many frames each drew); 0 is instant. Snapshots and probe sweeps carry the adapted exposure.
    *
    * @range 0..100
    * @unit evPerSecond (exposure stops (EV) per second of simulation time)
@@ -5567,13 +5571,13 @@ export interface GltfDesc {
    */
   readonly scene?: number;
   /**
-   * Set Mesh.castShadow on every mesh instantiated from it.
+   * Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows.
    *
    * @default false
    */
   readonly castShadow?: boolean;
   /**
-   * Set Mesh.receiveShadow on every mesh instantiated from it.
+   * Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows.
    *
    * @default false
    */

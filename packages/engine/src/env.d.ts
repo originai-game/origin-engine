@@ -41,6 +41,8 @@ declare module "node:crypto" {
 declare module "node:zlib" {
   export function inflateSync(data: Uint8Array): Uint8Array;
   export function deflateSync(data: Uint8Array, options?: { level?: number }): Uint8Array;
+  export function brotliCompressSync(data: Uint8Array | string, options?: { params?: Record<number, number> }): Uint8Array;
+  export const constants: { BROTLI_PARAM_QUALITY: number; BROTLI_MAX_QUALITY: number; BROTLI_PARAM_SIZE_HINT: number };
 }
 
 declare module "bun:test" {
@@ -52,6 +54,7 @@ declare module "bun:test" {
   }
   export function describe(name: string, body: () => void): void;
   export function beforeAll(body: Body): void;
+  export function afterAll(body: Body): void;
   interface Matchers {
     toBe(value: unknown): void;
     toEqual(value: unknown): void;

@@ -312,19 +312,34 @@ pub(crate) fn info(eng: &Engine, index: usize) -> Result<Value, String> {
 }
 
 /// GameDesc.look's antialias as the renderer's, when GameDesc.render
-/// leaves it out: read before the host attaches the renderer. A look that
-/// cannot load yet is left to `apply` before start, which reports it.
+/// leaves it out: read before the host attaches the renderer, from the
+/// look's blob alone. Loading the look itself loads the textures, skin and
+/// environment map it names, which the web host can only decode once its
+/// renderer is attached (they go to the renderer's encodings), so a boot
+/// that loaded the look left the web's renderer on the tier's method:
+/// Lantern Vale's TAA was 4x MSAA on WebGL2 (and TAA on WebGPU only
+/// because that is the full tier's method), its ink and outlines unblended
+/// (web findings #3). A look whose blob is missing is left to `apply`
+/// before start, which reports it.
 pub(crate) fn boot_antialias(eng: &Engine, path: &str) {
     if eng.render.borrow().options.get("antialias").is_some() {
         return;
     }
-    let Ok(i) = load(eng, path) else {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    let file = {
+        let assets = eng.assets.borrow();
+        let Ok((bytes, bundle)) = assets.blob(&id) else {
+            return;
+        };
+        let Ok(file) = bundle.look(&id, bytes.bytes()) else {
+            return;
+        };
+        file
+    };
+    let Some(aa) = file.antialias else {
         return;
     };
     let mut rs = eng.render.borrow_mut();
-    let Some(aa) = rs.fx.look.looks[i].file.antialias.clone() else {
-        return;
-    };
     if !rs.options.is_object() {
         rs.options = json!({});
     }

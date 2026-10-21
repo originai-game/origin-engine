@@ -1725,6 +1725,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
                 transform: m,
                 material_layer: None,
                 fx,
+                cast_shadows: true,
             });
         }
     }

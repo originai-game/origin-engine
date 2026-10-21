@@ -7,6 +7,38 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 13 (2026-10-21)
+
+Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
+findings (examples/WEB-FINDINGS.md), three streams of four lanes, and two
+more when lanes freed. Merged so far, in order: webgl2-render-2
+(c20d2c3b; findings 3, 4, 5, verified in Chrome on both tiers by the
+coordinator before the merge) and publish-testing (6a81c453; findings 6,
+7, 8, 10). In flight: web-boot (findings 1, 2, 9, 11, 12), shadow-flags
+(row 87), dogfood-5 (a fourth game, a racing time trial), and wave 12's
+perf-games. The round sections below have each.
+
+- **`scripts/check.sh functional`**: the webgl2-render-2 lane
+  (gate 55) and the publish-testing lane (gate 56) both failed at
+  bun-functional on one test, `terrain-stream.test.ts`, whose premise
+  441f4e6e removed: the first frame that draws a streamed terrain now
+  settles every wanted tile, so the streamed run no longer has tiles
+  waiting at the station's first frame; the test expects the settle
+  since e565ede7 and a streaming test whose tiles arrive later is owed
+  (row 88). Every other step passed (test 145 s, drift 37 s), and the
+  games' suites after the merge (fx-showcase, Ember Vale, topdown,
+  Hollowbell, Lantern Vale, Kestrel; Kestrel's `replay` failed once
+  under load at 13 s with "the run wrote no end.json" and passed alone
+  at 49 s, 4 checks) and the kit's and Hollowbell's after
+  publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
+  the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
+  it) and main was pushed there.
+
+**Wave-end figures: pending** (with wave 12's, once perf-games lands:
+`--all`, web-reference, lavapipe with Kestrel Stair's first run and the
+moved Lantern Vale and Kestrel frames, rows 51 and 52's Chrome
+measurements).
+
 ## Main gate, wave 12 (2026-10-21)
 
 Wave 12 started as soon as wave 11's last stream merged (the owner's
@@ -19,8 +51,22 @@ Four of the five coding streams were stopped by the session's rate limit
 for an hour and resumed from where they stopped. The round sections
 below have each.
 
-- **`scripts/check.sh functional`**, each merge: render-audio-3,
-  skins-palette, web-dogfood: pending (the coordinator fills).
+- **`scripts/check.sh functional`**: render-audio-3 (5bedf86b) passed
+  in 168 s (5 of 5 steps; fx-showcase, Kestrel, topdown and Hollowbell's
+  suites after it). skins-palette and web-dogfood were merged as one
+  batch (6c422e09, 4b9bcac6) after the lavapipe pruning (36b326c3), and
+  their lane failed twice before the engine changed: the web dogfood
+  harness read `brotliCompressSync` and `constants` from `node:zlib`,
+  which the package's ambient declaration lacked (fc6fefa9), and then
+  the package's three typechecks, two of them `bun x` of the same
+  typescript at once, raced on its bin under the gate ("Package
+  typescript does not provide a binary named tsc"; they run one after
+  another since 2675f9bc). A kit suite failure beside them (the scifi
+  phone pack's idle cell, 0.636 % outliers) was the stale dev addon of
+  a lane that stopped before its build, not a defect: the sheet passes
+  at skins-palette's own head and on main once rebuilt. The first green
+  lane after render-audio-3 is wave 13's (8a23392a, 94 s), which covers
+  both streams with wave 13's first two merges.
 - **The web findings** (web-dogfood, examples/WEB-FINDINGS.md): 0
   blockers, 7 annoyances, 5 nits; wave 13 takes them.
 
@@ -515,6 +561,145 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Wave 13, publish-testing: the published page under a script, the text entry's name, clean pool Workers and the kit's settings (71d0d574)
+
+Wave 13's third stream took the web findings about what ships and the
+shell (examples/WEB-FINDINGS.md #6, #7, #8, #10), on lane-1.
+
+- **#6, a publish build could not run a playtest's script.** The publish
+  probe keeps hello, tick, state, pick, entity, input and capture and
+  nothing drove a published page with them. New harness
+  `packages/engine/tests/web/published.ts` (`bun tests/web/published.ts
+  --project examples/hollowbell [--webgl] [--no-build]
+  [--no-isolation]`): it runs `og build --publish`, serves the result as
+  the platform opens a release, and plays steps in the playtests' syntax
+  with real Chrome input events (keys, typed text, mouse presses on the
+  controls it finds in the accessibility mirror); `screenshot` is the
+  probe's capture compared with the project's references under
+  og-tests' rule, `state` and `mirror` feed the checks, a reload stands
+  in for a playtest's `then` relaunch, and a command-channel step
+  (`warp`, `show`, `dump_*`) is refused, never skipped. The engine
+  Worker runs on a clock the harness controls (one tick per frame, held
+  while a capture's readback lands), installed through the DevTools
+  protocol before the Worker starts, so the built files are untouched
+  and every capture is of the tick it names. The stand-in play origin
+  and the mirror-driven input moved out of dogfood.ts into
+  `tests/web/play-origin.ts`; the frame comparison into
+  `tests/support/png.ts`, which reference.ts reads too. Hollowbell 13 of
+  13 on WebGPU, WebGL2 and without isolation (the tick-60 frame matches
+  `metal`'s title exactly; a typed name, Begin and a held ArrowRight
+  reach the game; the console clean); the kit 18 of 18 (the gallery
+  frame exact, a saved 简体中文 back after a reload). Run against the old
+  pool helper, the old textarea and the old kit, it failed on each. Not
+  in any `check.sh` lane; og-build §6 and docs/web-export.md say how it
+  runs. Most existing playtests cannot run through `--playtest` (dump
+  and game-command steps), so its two plans live in the harness.
+- **#7, the hidden textarea was `aria-hidden` while focused.** It is
+  hidden only while no field is focused; a focused field's textarea
+  takes its name, placeholder and text from the field's node in the
+  mirror, whose own element hides and whose dialog owns the textarea,
+  so a reader meets one named text box (text-input.ts, a11y.ts,
+  shell.ts). New `tests/web-text-entry.test.ts` drives the real shell
+  against a stand-in Worker and document (`tests/support/dom.ts`),
+  failing 3 of 3 on the old code.
+- **#8, eight deprecated-parameter warnings per lanes page.** New
+  `scripts/rayon-worker.sh` rewrites wasm-bindgen-rayon's
+  `pkg.default(data.module, data.memory)` to the single-object form on
+  both paths build.sh puts a lanes module in dist, and stops the build
+  if the helper has neither form; no version moved (docs/ci.md). A test
+  in `tests/web-export.test.ts` checks the shipped snippets for any
+  positional init call.
+- **#10, the kit never read its saved settings.** `templates/ui-kit/src/main.ts`
+  asks for its settings on the first tick and applies every saved field
+  when the answer arrives, the settings screen through the same code;
+  new playtest `settings-saved.og.ts` (a first run saves Mute and
+  简体中文; a relaunch with the store kept asks on tick 0 and comes back
+  muted with a Chinese menu). og-platform-sdk §3 now says settings are
+  a pair (load on the first tick, apply what you save) with the kit's
+  code as the example, and og-i18n §5 how to restore the language;
+  validate.ts passes. examples/WEB-FINDINGS.md gained a "Fixed" section
+  for the four.
+
+**The coordinator's run (the measure worktree at 5137ee44, after the
+merge):** `bun tests/web/published.ts` on Hollowbell and the kit, both
+tiers: Hollowbell 13 of 13 on WebGPU and on WebGL2 (the engine Worker on
+the harness's clock, the title's New in the mirror behind the gate, a
+real click opening it, the tick-60 title RMSE 0 against `metal`, the
+name dialog's focus in a named text box no aria-hidden hides, "Wren"
+typed, Begin, ArrowRight moving Wren from x 16.5 to 21.0, nothing on the
+console), the kit 18 of 18 on both (Mute, 简体中文 and Done saved once,
+the reload asking the play origin for og.settings and coming back in
+简体中文, the console clean).
+
+## Wave 13, webgl2-render-2: Lantern Vale's ink, Kestrel's crypt and the exposure's start on WebGL2 (c178e216)
+
+Wave 13's second stream took the web findings that are rendering on the
+WebGL2 tier (examples/WEB-FINDINGS.md #3, #4, #5), on lane-2. Both of the
+coordinator's guesses in the brief were wrong: the crypt had nothing to
+do with the sun or a roof, and the ink was not a GL difference in the ink
+or outline passes.
+
+- **#4, the crypt lit as if roofless (51a291fa).** The crypt's lamp is a
+  small glass box with its shadowed point light inside. The engine
+  ignored `og.Mesh.castShadow`, so the box cast a shadow: on metal and
+  WebGPU the six cube faces stored the box and shut the lamp's light in;
+  on WebGL2 the two paraboloid hemispheres never stored it, so the lamp
+  lit the whole crypt. Forcing the no-compute tier on metal reproduced
+  Chrome's frame exactly (RMSE 0.0456, 7.58 % outliers). `og.Mesh.castShadow`
+  now reaches the renderer (off by default, as in three.js; `og.Model`
+  meshes still always cast). A second defect found on the way: the
+  paraboloid projection was mirrored, so it stored the faces turned
+  towards the light, which is why it missed the box and why it drew a
+  curved shadow band down boxes' lit faces (shadow_pass.wgsl,
+  lighting.wgsl). New og-tests scene `shadows-crypt` (a roofed room, a
+  low sun reaching the floor only through the door, a point light inside
+  a glass box that casts no shadow); it applies on every tier and needs
+  no WebGL2 reference: paraboloids are within RMSE 0.0036 of cube faces
+  (0.0148 before). fx-showcase meshes whose shadows its frames show set
+  `castShadow`, so those frames stayed.
+- **#3, Lantern Vale's ink and sparks (0082ead5).** At boot the engine
+  loaded the game's look to read its antialias setting; loading it
+  pulled in textures the web host cannot decode before the renderer
+  exists, so it failed silently and the web renderer fell back to the
+  tier's method: TAA on WebGPU (the look's own, so nothing showed) and
+  4× MSAA on WebGL2, which leaves the ink and outlines unsoftened. It
+  reads the look file alone now. The sparks (CPU particles on WebGL2) are
+  by design but need no WebGL2 reference either: with TAA the no-compute
+  tier draws lantern 0.0017, slime 0.0026, far 0.0056 from metal. Test in
+  crates/og-runtime/tests/web_findings.rs, failing on the old code.
+- **#5, the exposure's start (441f4e6e), and the WebGPU title and start
+  misses of #3.** Adaptation already stepped per tick; where it started
+  was host-dependent twice over: a streamed terrain had none of its
+  tiles on the first frame it was drawn, so that frame showed no ground
+  and metered 2.5 EV too bright, and the title stayed about 1.5 stops
+  under for two seconds (a terrain now settles its tiles on its first
+  frame, as a capture does); and the web draws a frame at tick 0 where
+  `og run` does not (a tick-0 frame now meters but never seeds the
+  adaptation). Emulating the web's tick-0 frame natively reproduced the
+  web exactly before (title RMSE 0.0310) and matches within 0.0067 after.
+  Test in tests/exposure.rs, failing on the old code.
+- **IDL (c178e216)**: `castShadow`, the adaptation rule on `autoExposure`
+  and `adaptSpeedUp`, and "not applied yet" on `Mesh.receiveShadow` and
+  `GltfDesc.castShadow`/`receiveShadow` (row 87). Re-recorded on metal:
+  Kestrel `crypt` (RMSE 0.0458 from the old reference) and `bag`
+  (0.0274), Lantern Vale `title` (0.1734) and `start` (0.0445), og-tests
+  `point-shadows-paraboloid` (0.0021), `shadows-crypt` new.
+
+**Browser verification (the coordinator, in the measure worktree at
+c178e216 merged with 48133d07, headless Chrome 1280×720).** Every frame
+against `metal`, no WebGL2 reference added: Lantern Vale 7 of 7 on both
+tiers (worst `far` 0.0073; WebGL2's lantern 0.0059 where #3 had 0.0189,
+and WebGL2 now draws within 0.0001 of WebGPU on every frame); Kestrel
+Stair 9 of 9 on both (WebGL2's crypt 0.0033 where #4 had 0.0456 with
+7.56 %, bag 0.0021); og-tests' gfx scenes on both (`shadows-crypt` WebGPU
+0, WebGL2 0.0036; `point-shadows-paraboloid` 0 and 0.00004;
+`point-spot-lights` 0 and 0.0027; WebGL2's `showcase` and `overlay`
+against their own references 0.0081 and 0.0080, as predicted); Ember
+Vale on WebGL2 (title 0.0043, beacon 0.0020 against its WebGL2 reference,
+dawn 0.0019). Lantern Vale keeps no vulkan-cpu copy since 36b326c3, so its
+moved frames are judged on lavapipe at wave 12's end. Native ANGLE stays
+uncommitted (row 70; it also needs `ANGLE_DEFAULT_PLATFORM=metal`).
 
 ## Wave 12, web-dogfood: the three games and the kit published and played in Chrome (ccc462d)
 
@@ -4460,6 +4645,8 @@ resource only the owner can give.
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | closed at dcdcd17c: the script taps Title after the wipe and opens the chapters; `chapters.png` re-recorded (0.1835) |
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
+| 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | open |
+| 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | open |
 
 ## 0. Rules that shape the plan
 

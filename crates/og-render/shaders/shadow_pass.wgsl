@@ -36,7 +36,7 @@ fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
   let l = paraboloid_local(world.xyz - shadow_pass.light.xyz, shadow_pass.paraboloid.y);
   let d = max(length(l), 1e-6);
   let q = l / d;
-  let xy = q.xy * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
+  let xy = vec2<f32>(-q.x, q.y) * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
   return vec4<f32>(xy, clamp(d / shadow_pass.light.w, 0.0, 1.0), 1.0);
 }
 
@@ -54,7 +54,7 @@ fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32
     let sigma = shadow_pass.paraboloid.y;
     if (paraboloid_local(to, sigma).z < -PARABOLOID_MARGIN * dist) { discard; }
     let size = shadow_pass.paraboloid.z;
-    let ndc = vec2<f32>(frag.x / size * 2.0 - 1.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
+    let ndc = vec2<f32>(1.0 - frag.x / size * 2.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
     let r2 = dot(ndc, ndc);
     let q = vec3<f32>(2.0 * ndc, 1.0 - r2) / (1.0 + r2);
     let ray = vec3<f32>(q.x, -sigma * q.z, sigma * q.y);

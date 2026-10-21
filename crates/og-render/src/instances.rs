@@ -1,10 +1,10 @@
 //! The frame's instance list, kept across frames: the submitted instances
-//! stably sorted into (mesh, material) runs, each sorted instance's world
-//! bounding sphere and its transform as the GPU reads it.
+//! stably sorted into (mesh, material, caster) runs, each sorted instance's
+//! world bounding sphere and its transform as the GPU reads it.
 //!
 //! A scene usually submits the same instances in the same order frame after
 //! frame, most of them where they were. So the sort is redone only when the
-//! submission's (mesh, material) sequence or a drawn mesh's bounds changed,
+//! submission's (mesh, material, caster) sequence or a drawn mesh's bounds changed,
 //! and a sphere and GPU transform are recomputed only for the instances
 //! whose transform changed (compared bit for bit). Everything kept is what
 //! a fresh build computes, by the same operations, so a frame is the same
@@ -75,11 +75,14 @@ pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
     }
 }
 
-/// One (mesh, material) run of the sorted instances.
+/// One (mesh, material, caster) run of the sorted instances.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Run {
     pub mesh: usize,
     pub material: usize,
+    /// Its instances cast shadows ([`Instance::cast_shadows`]): a run that
+    /// does not is left out of the shadow passes.
+    pub cast: bool,
     pub first: u32,
     pub count: u32,
     /// The run draws its mesh's compact vertices (`compact.rs`): this
@@ -109,8 +112,8 @@ fn run_transform(m: &Mat4, inst: &Instance, run: &Run) -> GpuTransform {
 pub(crate) struct SortedInstances {
     /// The scene they came from (a cache is per scene).
     scene: u64,
-    /// Per submitted instance, its (mesh, material) indices.
-    keys: Vec<(u32, u32)>,
+    /// Per submitted instance, its (mesh, material) indices and caster flag.
+    keys: Vec<(u32, u32, bool)>,
     /// Per drawn mesh the runs were built with: its index, local bounds
     /// and whether it was empty (an empty mesh's instances are dropped).
     meshes: Vec<(usize, MeshInfo)>,
@@ -199,7 +202,8 @@ impl SortedInstances {
         // next), each checked against the scene's resources on the way.
         let mut same = self.scene == scene.id() && self.keys.len() == instances.len();
         self.scene = scene.id();
-        self.keys.resize(instances.len(), (u32::MAX, u32::MAX));
+        self.keys
+            .resize(instances.len(), (u32::MAX, u32::MAX, true));
         for (i, (key, inst)) in self.keys.iter_mut().zip(instances).enumerate() {
             let k = (inst.mesh.index(), inst.material.index());
             if k.0 >= meshes || k.1 >= materials {
@@ -211,7 +215,7 @@ impl SortedInstances {
                     format!("instance {i}: material {}", k.1)
                 }));
             }
-            let k = (k.0 as u32, k.1 as u32);
+            let k = (k.0 as u32, k.1 as u32, inst.cast_shadows);
             if *key != k {
                 *key = k;
                 same = false;
@@ -261,8 +265,12 @@ impl SortedInstances {
     ) -> usize {
         let instances = &scene.instances;
         let mut order: Vec<usize> = (0..instances.len()).collect();
-        // Stable: instances of one batch keep their submission order.
-        order.sort_by_key(|&i| (instances[i].mesh, instances[i].material));
+        // Stable: instances of one batch keep their submission order. A
+        // (mesh, material) pair's casters come first.
+        order.sort_by_key(|&i| {
+            let inst = &instances[i];
+            (inst.mesh, inst.material, !inst.cast_shadows)
+        });
         self.order.clear();
         self.matrices.clear();
         self.spheres.clear();
@@ -271,7 +279,8 @@ impl SortedInstances {
         self.meshes.clear();
         for &i in &order {
             let inst = &instances[i];
-            let (mesh, material) = (inst.mesh.index(), inst.material.index());
+            let (mesh, material, cast) =
+                (inst.mesh.index(), inst.material.index(), inst.cast_shadows);
             let (bounds, empty) = mesh_info(mesh);
             // Sorted by mesh: a mesh's instances are together.
             if self.meshes.last().is_none_or(|&(m, _)| m != mesh) {
@@ -281,10 +290,13 @@ impl SortedInstances {
                 continue;
             }
             match self.runs.last_mut() {
-                Some(r) if r.mesh == mesh && r.material == material => r.count += 1,
+                Some(r) if r.mesh == mesh && r.material == material && r.cast == cast => {
+                    r.count += 1
+                }
                 _ => self.runs.push(Run {
                     mesh,
                     material,
+                    cast,
                     first: self.order.len() as u32,
                     count: 1,
                     dequant: dequant(mesh, material),
@@ -463,6 +475,42 @@ mod tests {
             kept.update(&scene, 2, info, 2, |_, _| None, |_| false),
             Err(RenderError::InvalidHandle(_))
         ));
+    }
+
+    /// Instances that cast no shadow are runs of their own (after the
+    /// casters of their mesh and material, each keeping its submission
+    /// order), and flipping one instance's flag sorts again.
+    #[test]
+    fn non_casters_are_runs_of_their_own() {
+        let mut scene = scene();
+        for (i, inst) in scene.instances.iter_mut().enumerate() {
+            inst.cast_shadows = i % 3 != 0;
+        }
+        let mut kept = SortedInstances::default();
+        let sorted = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
+        assert_same(&sorted, &fresh(&scene));
+        let mut seen = std::collections::HashSet::new();
+        for r in &sorted.runs {
+            assert!(seen.insert((r.mesh, r.material, r.cast)), "one run per key");
+            let members = &sorted.submission[r.first as usize..(r.first + r.count) as usize];
+            assert!(members.windows(2).all(|w| w[0] < w[1]), "submission order");
+            for &i in members {
+                let inst = &scene.instances[i as usize];
+                assert_eq!(
+                    (inst.mesh.index(), inst.material.index(), inst.cast_shadows),
+                    (r.mesh, r.material, r.cast)
+                );
+            }
+        }
+        assert!(sorted.runs.iter().any(|r| !r.cast) && sorted.runs.iter().any(|r| r.cast));
+        kept.restore(sorted.transforms, sorted.spheres);
+        scene.instances[1].cast_shadows = false;
+        let again = kept
+            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .unwrap();
+        assert_same(&again, &fresh(&scene));
     }
 
     /// A run drawing compact vertices carries their dequantisation in its

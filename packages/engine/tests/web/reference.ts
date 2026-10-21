@@ -61,7 +61,7 @@ import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { ogBin } from "../support/og-bin.ts";
-import { decodePng, type Image } from "../support/png.ts";
+import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
 import { encodePng } from "../../src/node/png.ts";
 import { LOOK_COMMANDS, LOOK_FRAMES, LOOK_SHOTS } from "../../../../templates/fx-showcase/tests/looks-script.ts";
 
@@ -115,30 +115,6 @@ const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = look
 const SCRIPT = looks
   ? LOOK_COMMANDS.join(";")
   : opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
-
-/** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`). */
-const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01 };
-function compare(a: Image, b: Image): { outliers: number; rmse: number; diff: Uint8Array } {
-  const n = a.width * a.height;
-  const diff = new Uint8Array(n * 4);
-  let outliers = 0;
-  let sum = 0;
-  for (let p = 0; p < n; p++) {
-    let max = 0;
-    for (let k = 0; k < 3; k++) {
-      const d = Math.abs(a.rgba[p * 4 + k]! - b.rgba[p * 4 + k]!);
-      max = Math.max(max, d);
-      sum += (d / 255) ** 2;
-      diff[p * 4 + k] = Math.min(255, d * 4);
-    }
-    diff[p * 4 + 3] = 255;
-    if (max > TOLERANCE.channel) {
-      outliers++;
-      diff.set([255, 0, 0, 255], p * 4);
-    }
-  }
-  return { outliers: outliers / n, rmse: Math.sqrt(sum / (n * 3)), diff };
-}
 
 /** An n× box filter, rounded (templates/ui-kit/tests/skins.ts `shrink`). */
 function shrink(img: Image, n: number): Image {

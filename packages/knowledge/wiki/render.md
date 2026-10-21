@@ -611,8 +611,8 @@ Token `og.Mesh`, registered under the schema name `og.Mesh`; its value type is `
 |---|---|---|---|---|---|---|
 | `geometry` | `Geometry` | `0` | — | — | — | The geometry. |
 | `material` | `Material` | `0` | — | — | — | The material. |
-| `castShadow` | `boolean` | `false` | — | — | — | Cast shadows, as three.js Object3D.castShadow. |
-| `receiveShadow` | `boolean` | `false` | — | — | — | Receive shadows, as three.js Object3D.receiveShadow. |
+| `castShadow` | `boolean` | `false` | — | — | — | Cast shadows, as three.js Object3D.castShadow: drawn into the sun's cascades and the shadowed lights' maps. Off by default: a lamp's own glass around its light, a glow card or a decal-like slab casts none. |
+| `receiveShadow` | `boolean` | `false` | — | — | — | Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 | `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash on this mesh only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Carried with its transform to the lit shaders, as og.Model's, so a flashing mesh is one draw with the other meshes of its geometry and material, and the amount is continuous. |
 | `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour, 0 to 1 a channel (8 bits a channel). |
@@ -624,8 +624,8 @@ component Mesh {
   doc "The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say."
   field geometry Geometry "The geometry."
   field material Material "The material."
-  field castShadow bool "Cast shadows, as three.js Object3D.castShadow."
-  field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow."
+  field castShadow bool "Cast shadows, as three.js Object3D.castShadow: drawn into the sun's cascades and the shadowed lights' maps. Off by default: a lamp's own glass around its light, a glow card or a decal-like slab casts none."
+  field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows."
   field visible bool "Whether it is drawn." {
     default true
   }
@@ -811,8 +811,8 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `bloomThreshold` | `number` | `1` | ≥ 0 | — | tunable | Brightness after exposure where bloom starts; 1 is display white. |
 | `bloomKnee` | `number` | `0.5` | ≥ 0 | — | — | Softens the threshold over threshold plus or minus knee; 0 is a hard cut. |
 | `bloomIntensity` | `number` | `0.6` | ≥ 0 | — | tunable | How much of the blurred light is added back. |
-| `autoExposure` | `boolean` | `false` | — | — | — | Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye. |
-| `adaptSpeedUp` | `number` | `0` | 0 … 100 | `evPerSecond` | tunable | How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure. |
+| `autoExposure` | `boolean` | `false` | — | — | — | Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks. |
+| `adaptSpeedUp` | `number` | `0` | 0 … 100 | `evPerSecond` | tunable | How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame (never the wall clock, so a replay and every host adapt the same, however many frames each drew); 0 is instant. Snapshots and probe sweeps carry the adapted exposure. |
 | `adaptSpeedDown` | `number` | `0` | 0 … 100 | `evPerSecond` | tunable | How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair. |
 | `toneMapped` | `boolean` | `true` | — | — | — | Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. |
 | `toneMapping` | `ToneMapping` | `"aces"` | — | — | — | Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none. |
@@ -843,8 +843,8 @@ resource RenderSettings {
     min 0
     tunable true
   }
-  field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye."
-  field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time (the ticks, never the wall clock, so a replay adapts the same); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
+  field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks."
+  field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame (never the wall clock, so a replay and every host adapt the same, however many frames each drew); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
     min 0
     max 100
     unit evPerSecond

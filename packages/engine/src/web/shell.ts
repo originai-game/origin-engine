@@ -239,6 +239,7 @@ export class Shell {
       }
       if (m.type === "a11y") {
         this.#a11y?.update((m as unknown as { tree: A11yTree }).tree);
+        this.#text?.relabel();
         return;
       }
       if (m.type === "rpc" && m.frame !== undefined) {
@@ -517,12 +518,13 @@ export class Shell {
     // The UI's text fields take the page's text through a hidden textarea
     // (text-input.ts); its keys still reach the engine, except an input
     // method's while it composes.
-    const text = new TextEntry(canvas, (e) => this.#send(ring, e));
-    this.#text = text;
-    this.#listeners.push(() => text.dispose());
     // The accessibility tree over the canvas; what a screen reader does there reaches the UI as input.
     const mirror = new A11yMirror(canvas, (e) => this.#send(ring, e));
     this.#a11y = mirror;
+    // The textarea is named after the field's node in the mirror (text-input.ts).
+    const text = new TextEntry(canvas, (e) => this.#send(ring, e), mirror);
+    this.#text = text;
+    this.#listeners.push(() => text.dispose());
     this.#listeners.push(() => mirror.dispose());
     // The page's motion, contrast and transparency preferences, followed as the reader changes them.
     for (const [, q] of PAGE_PREFERENCES) {

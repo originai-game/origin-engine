@@ -90,9 +90,9 @@ export function buildRD(kit: RDKit): void {
         const e = must(world.spawn({ name: `plaza-${i}`, position: (gx + gz) % 2 === 0 ? { ...at, y: 1.2 } : { ...at, y: 0.5 } }));
         if ((gx + gz) % 2 === 0) {
           world.set(e, og.Transform, { scale: { x: 0.5, y: 2.4, z: 0.5 } });
-          world.insert(e, og.Mesh, { geometry: k.box, material: stone, receiveShadow: true });
+          world.insert(e, og.Mesh, { geometry: k.box, material: stone, castShadow: true, receiveShadow: true });
         } else {
-          world.insert(e, og.Mesh, { geometry: k.sphere, material: chrome, receiveShadow: true });
+          world.insert(e, og.Mesh, { geometry: k.sphere, material: chrome, castShadow: true, receiveShadow: true });
         }
       }
       // 16 x 16 lights over the 40 m square: every eighth a spot looking

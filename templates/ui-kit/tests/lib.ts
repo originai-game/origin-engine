@@ -19,6 +19,11 @@ export interface DemoState {
   bought: number;
   refused: number;
   saves: number;
+  /** og.settings read back on a launch (src/main.ts followSettings). */
+  loads: number;
+  /** LANGUAGES index (0 en, 1 zh-CN, …). */
+  language: number;
+  muted: boolean;
   masterVolume: number;
   inv0: number;
   inv1: number;

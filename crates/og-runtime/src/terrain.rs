@@ -25,7 +25,7 @@ use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::{TerrainData, TerrainLayer, TerrainLod};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 /// The Geometry handles of terrains' height fields: a range of their own,
@@ -284,6 +284,9 @@ pub(crate) struct TerrainState {
     pub budget: u64,
     /// The next extraction is a capture's: settle the tiles first.
     pub settle: bool,
+    /// The streamed terrains (load indices) a frame drew already: the first
+    /// frame that draws one settles, as a capture does.
+    pub drawn: BTreeSet<usize>,
 }
 
 impl LoadedTerrain {
@@ -940,10 +943,15 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
 /// og.Terrain components into `rs.scene.terrains`: each terrain placed by
 /// its entity's world transform with its layers; og.TerrainScatter
 /// components into `rs.scene.scatters`; then the streamed terrains' tiles.
+/// The first frame that draws a streamed terrain settles its tiles as a
+/// capture does, so no frame draws a terrain before any of its tiles
+/// arrived (web findings #5: Lantern Vale's first frame drew no ground, on
+/// one host at tick 0 and on the other at tick 1, and auto exposure
+/// started from that frame's metering).
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     rs.scene.terrains.clear();
     let layout = rs.draw.terrain.clone();
-    let settle = std::mem::take(&mut rs.terrain.settle) || rs.terrain.resident;
+    let mut settle = std::mem::take(&mut rs.terrain.settle) || rs.terrain.resident;
     let budget = rs.terrain.budget;
     let mut streamed = Vec::new();
     for (e, v) in rows(world, layout.as_ref()) {
@@ -983,6 +991,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
         if !t.edited {
             streamed.push((i, rs.scene.terrains.len() - 1));
+        }
+    }
+    if streamed.iter().any(|(i, _)| !rs.terrain.drawn.contains(i)) {
+        settle = true;
+        for &(i, k) in &streamed {
+            rs.terrain.drawn.insert(i);
+            rs.scene.terrains[k].fade_in = false;
         }
     }
     // og.TerrainScatter: copies over the drawn terrain of the same data,
