@@ -708,9 +708,16 @@ icons) is.
 - `og build [project] [--publish] [--out DIR] [--json]` cooks the project,
   checks project.ogt (above) and writes the directory into `--out`, else
   `publish.out`, else `<project>/dist`; it prints each file's bytes and
-  brotli `-q 11` size (gzip `-9` without the brotli CLI), the probe build
-  and members read from the copied wasm, and the manifest's version;
-  `--json` prints one JSON line instead. The web host comes from
+  brotli `-q 11` size (gzip `-9` without the brotli CLI), then what a
+  player downloads (`downloadsOf` in `src/node/web-build.ts`): the boot of
+  the lanes page and of the single-threaded page (one engine module each,
+  the shell, the Basis transcoder and the cooked first group without the
+  chunks of a chunked sound after its first; the WebGPU and WebGL2 pages
+  fetch the same files) and what comes later (the streaming packs, the
+  sound chunks, the audio worklet on the first gesture, the service worker
+  and icons); the table's `total` is every file and no download. Then the
+  probe build and members read from the copied wasm, and the manifest's
+  version; `--json` prints one JSON line instead (with `downloads`). The web host comes from
   `packages/engine/dist/web` or `dist/web-publish`; a checkout without them
   is told to run `bun run build` in `packages/engine`.
 - `og run` (the native host under bun) supervises the game process: when
