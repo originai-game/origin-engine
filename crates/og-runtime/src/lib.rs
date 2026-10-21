@@ -128,7 +128,10 @@ use serde_json::{Value, json};
 
 /// `{ ok: true, value }` as wire text.
 pub(crate) fn ok(value: Value) -> String {
-    json!({ "ok": true, "value": value }).to_string()
+    // The same text as `json!({ "ok": true, "value": value })`, without
+    // the macro's copy of `value` (serde_json::to_value of a Value, a
+    // sixth of og.world.get).
+    format!(r#"{{"ok":true,"value":{value}}}"#)
 }
 
 /// `{ ok: true }`: a successful `Result<void>`.

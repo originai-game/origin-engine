@@ -168,10 +168,12 @@ impl RecordKind {
 pub struct Layout {
     pub schema: String,
     pub kind: RecordKind,
-    pub fields: Vec<FieldLayout>,
+    /// Shared: a layout is cloned on every record call (`running_record`),
+    /// and copying each field's strings was a tenth of og.world.get.
+    pub fields: std::sync::Arc<Vec<FieldLayout>>,
     /// `(field, byte offset)` by field name, built on the first
     /// [`Layout::slot`] (the fields never change after construction).
-    pub(crate) by_name: std::sync::OnceLock<Vec<(usize, usize)>>,
+    pub(crate) by_name: std::sync::Arc<std::sync::OnceLock<Vec<(usize, usize)>>>,
 }
 
 /// The variants of an IDL enum column (`AudioBus`), from the engine's records.
@@ -251,7 +253,7 @@ impl Layout {
         let layout = Layout {
             schema: schema.to_string(),
             kind,
-            fields: out,
+            fields: out.into(),
             by_name: Default::default(),
         };
         // Defaults must encode: refuse a bad one at declaration.
@@ -302,7 +304,7 @@ impl Layout {
         Ok(Layout {
             schema: decl.schema.to_string(),
             kind,
-            fields,
+            fields: fields.into(),
             by_name: Default::default(),
         })
     }
@@ -331,7 +333,8 @@ impl Layout {
                     doc: f.doc.clone(),
                     variants: f.variants.clone(),
                 })
-                .collect(),
+                .collect::<Vec<_>>()
+                .into(),
             by_name: Default::default(),
         }
     }
@@ -439,7 +442,7 @@ impl Layout {
     pub fn decode(&self, bytes: &[u8]) -> Value {
         let mut map = Map::new();
         let mut at = 0;
-        for f in &self.fields {
+        for f in self.fields.iter() {
             let size = f.ty.size();
             map.insert(f.name.clone(), decode_field(f, &bytes[at..at + size]));
             at += size;

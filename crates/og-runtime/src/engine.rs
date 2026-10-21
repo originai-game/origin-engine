@@ -978,7 +978,7 @@ pub(crate) fn assemble(
                     )
                 })?;
                 let id = world.id_by_name(name).map_err(err)?;
-                for f in &layout.fields {
+                for f in layout.fields.iter() {
                     columns.push(QueryColumn {
                         component: name.clone(),
                         field: world.field_by_id(id, &f.name).map_err(err)?,
@@ -1980,7 +1980,7 @@ pub fn write_resource_bytes(world: u32, resource: &str, bytes: &[u8]) -> String 
             }
             let mut at = 0;
             let mut out = Vec::new();
-            for f in &layout.fields {
+            for f in layout.fields.iter() {
                 let n = f.ty.size();
                 if f.readonly {
                     out.push((at, n));
@@ -2151,7 +2151,7 @@ pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u3
                 .get(name)
                 .ok_or_else(|| format!("'{name}' is not a registered component"))?;
             let id = world.id_by_name(name).map_err(err)?;
-            for f in &layout.fields {
+            for f in layout.fields.iter() {
                 let field = world.field_by_id(id, &f.name).map_err(err)?;
                 let mut b = a.write_bytes(field).map_err(err)?;
                 cols.push((
