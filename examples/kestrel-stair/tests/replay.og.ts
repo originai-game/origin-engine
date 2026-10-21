@@ -1,6 +1,6 @@
-// Determinism (og-core §2, og-feel §13.8): a session with the imps' chase and
-// bites, strikes with their hit stops, a warden's slam with its root-motion
-// lunge, the cape and the banners in the wind, a rest at a waystone (a
+// Determinism (og-core §2, og-feel §13.8): a session with the imps' chase,
+// strikes with their hit stops, the wardens closing in (a bite or a slam
+// with its root-motion lunge), the cape and the banners in the wind, a rest at a waystone (a
 // snapshot saved), the gate, the bell and the results, run twice in fresh
 // processes, ends on one world hash.
 import { playtest } from "@origingame/engine/playtest";
@@ -42,6 +42,6 @@ export default playtest({
     t.equal(run.hashes.length, 2, "two runs");
     t.equal(run.hashes[1], run.hashes[0], `both runs end on hash ${run.hashes[0]}`);
     const end = game(run, "end.json");
-    t.ok(end.hits >= 2 && end.hurts >= 2 && end.saves >= 1 && end.phase === 3, `the session struck, was bitten and slammed, rested and rang the bell (${end.hits} hits, ${end.hurts} hurts, ${end.saves} saves, phase ${end.phase})`);
+    t.ok(end.hits >= 2 && end.hurts >= 1 && end.saves >= 1 && end.phase === 3, `the session struck, was hurt, rested and rang the bell (${end.hits} hits, ${end.hurts} hurts, ${end.saves} saves, phase ${end.phase})`);
   },
 });

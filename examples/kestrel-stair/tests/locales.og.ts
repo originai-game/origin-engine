@@ -3,11 +3,10 @@
 // (CJK only, so the footer's key names keep the skin's Latin face, run by
 // run). The title, the intro, the HUD, the bag, the pause menu, the
 // settings (og.ui.settingsScreen, every word passed from the table) and the
-// results read in Japanese; back in English, the title does too. The
-// templates' own words that have no desc field yet stay English (row 76 of
-// the engine's phase-1 list: the cutscene's and the tutorial's Skip and
-// Next, the tutorial's step count, the bag's hint and Count). And the
-// accessibility tree (og.ui.a11y, counted by the Ui system): no focusable
+// results read in Japanese, the templates' own words too (the cutscene's
+// and the tutorial's Skip, Next and step count, the bag's hint and count:
+// desc fields since wave 10, FINDINGS #18); back in English, the title
+// does too. And the accessibility tree (og.ui.a11y, counted by the Ui system): no focusable
 // control unnamed on any of these screens.
 import { playtest } from "@origingame/engine/playtest";
 import { game, press, script, tap, texts } from "./lib.ts";
@@ -24,7 +23,7 @@ export default playtest({
     "2.2:dump_ui:tutorial.json",
     tap("Skip", 2.3),
     "2.8:dump_ui:hud.json",
-    "2.85:give:herbs:1",
+    "2.85:give:herbs:2",
     press("Tab", 3.0),
     tap("Slots/Cell#4", 3.4),
     "3.8:dump_ui:bag.json",
@@ -55,15 +54,15 @@ export default playtest({
       t.equal(missing, [], `${what} in Japanese (${words.join(" ")})`);
     };
     has("title.json", ["隼の階段", "新しい旅", "章をえらぶ", "記録", "設定"], "the title");
-    has("intro.json", ["院長マレン"], "the intro's speaker");
-    has("tutorial.json", ["体力", "小鬼は噛み、番兵は叩きつぶす。薬草と道標石で回復する。"], "the tutorial's first step");
+    has("intro.json", ["院長マレン", "とばす"], "the intro's speaker and Skip");
+    has("tutorial.json", ["1 / 4", "体力", "小鬼は噛み、番兵は叩きつぶす。薬草と道標石で回復する。", "とばす", "次へ"], "the tutorial's first step, its count, Skip and Next");
     has("hud.json", ["鞄", "一時停止", "0/3"], "the HUD");
-    has("bag.json", ["鞄", "薬草", "苦い葉。体力が40戻る。", "使う"], "the bag");
+    has("bag.json", ["鞄", "薬草", "苦い葉。体力が40戻る。", "数", "使う"], "the bag");
     has("pause.json", ["一時停止", "再開", "設定", "休んで終わる"], "the pause menu");
     has("settings.json", ["設定", "音", "画面", "操作", "言語", "全体", "音楽", "効果音", "完了"], "the settings");
     has("results.json", ["鐘が鳴る", "時間", "紋章", "倒した敵", "もう一度", "タイトル"], "the results");
-    // The templates' words without a desc field (row 76, open): still English.
-    t.ok(texts(run, "intro.json").includes("Skip") && texts(run, "tutorial.json").includes("1 of 4"), "the cutscene's Skip and the tutorial's count stay English (row 76)");
+    const english = ["Skip", "Next", "1 of 4", "Count", "Select an item. Drag it to another slot to move it."];
+    t.equal(["intro.json", "tutorial.json", "bag.json"].flatMap((f) => texts(run, f)).filter((w) => english.includes(w)), [], "no template word is left in English");
     has("title-en.json", ["The Kestrel Stair", "New journey"], "and back in English, the title");
     for (const f of ["a11y-title", "a11y-bag", "a11y-pause", "a11y-settings", "a11y-results"]) {
       const g = game(run, `${f}.json`);

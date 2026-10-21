@@ -314,7 +314,7 @@ function bag(world: World, g: GameV): void {
       icon: id === "letter" ? "map" : id === "herb" ? "leaf" : "gem",
       count: id === "herb" ? g.herbs : 0,
     }));
-  const r = og.ui.inventoryScreen("Bag", { title: say(world, "bag.title"), slots: BAG_SLOTS, columns: 6, items, useLabel: say(world, "bag.use") });
+  const r = og.ui.inventoryScreen("Bag", { title: say(world, "bag.title"), slots: BAG_SLOTS, columns: 6, items, useLabel: say(world, "bag.use"), hintLabel: say(world, "bag.hint"), countLabel: say(world, "bag.count") });
   if (r.moved) {
     const a = slots[r.moved.from] ?? "";
     slots[r.moved.from] = slots[r.moved.to] ?? "";
@@ -386,6 +386,7 @@ function records(world: World, g: GameV): void {
     loading: g.recordsState === 1,
     error: g.recordsState === 3 ? say(world, "records.error") : "",
     empty: say(world, "records.empty"),
+    retryLabel: say(world, "records.retry"),
   });
   if (r.changed) {
     g.recordsScope = r.scope;
@@ -541,7 +542,7 @@ export const Ui = defineSystem(
         if (g.scene !== Scene.None) {
           const lines = g.scene === Scene.Intro ? intro(world) : ending(world);
           og.ui.setNavigation(true);
-          const c = og.ui.cutscene("Story", { open: true, lines, index: g.line, letterbox: true, skippable: true });
+          const c = og.ui.cutscene("Story", { open: true, lines, index: g.line, letterbox: true, skippable: true, skipLabel: say(world, "story.skip") });
           g.line = c.index;
           if (c.finished || c.skipped) {
             const was = g.scene;
@@ -555,7 +556,7 @@ export const Ui = defineSystem(
           }
         } else if (g.tutorial) {
           og.ui.setNavigation(true);
-          const r = og.ui.tutorialOverlay("Tutorial", { open: true, steps: tutorialSteps(world), index: g.tutorialStep });
+          const r = og.ui.tutorialOverlay("Tutorial", { open: true, steps: tutorialSteps(world), index: g.tutorialStep, skipLabel: say(world, "tut.skip"), nextLabel: say(world, "tut.next"), doneLabel: say(world, "tut.done"), stepLabel: say(world, "tut.step") });
           g.tutorialStep = r.index;
           if (r.finished || r.skipped) {
             g.tutorial = false;
