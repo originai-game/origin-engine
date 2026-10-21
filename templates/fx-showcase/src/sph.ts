@@ -93,7 +93,7 @@ function buildBasin(world: World): void {
     for (let j = 0; j < n.z; j++) {
       const e = must(world.spawn({ name: `sph-tile-${i}-${j}`, position: { x: x0 - w / 2 + (i + 0.5) * (w / n.x), y: top / 2, z: -d / 2 + (j + 0.5) * (d / n.z) } }));
       world.set(e, og.Transform, { scale: { x: w / n.x - 0.02, y: top, z: d / n.z - 0.02 } });
-      world.insert(e, og.Mesh, { geometry: k.box, material: tiles[(i + 2 * j) % tiles.length]!, receiveShadow: true });
+      world.insert(e, og.Mesh, { geometry: k.box, material: tiles[(i + 2 * j) % tiles.length]!, castShadow: true, receiveShadow: true });
     }
   }
   // The floor the fluids stand on (the tiles are only drawn).

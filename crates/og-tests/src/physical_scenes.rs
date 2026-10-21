@@ -354,6 +354,7 @@ pub fn array_scene() -> RenderScene {
             transform: Mat4::from_translation(at) * Mat4::from_rotation_y(0.35),
             material_layer: (i < 7).then_some(i % 4),
             fx: og_render::InstanceFx::NONE,
+            cast_shadows: true,
         });
     }
     // Layer 1 as plain 2D textures, beside the array cubes of layer 1.
@@ -387,6 +388,7 @@ pub fn array_scene() -> RenderScene {
                 * Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2),
             material_layer: layer,
             fx: og_render::InstanceFx::NONE,
+            cast_shadows: true,
         });
     }
     let bumpy = scene.add_standard_material(StandardMaterial {

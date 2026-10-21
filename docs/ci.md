@@ -656,7 +656,12 @@ design: `msaa` (no other tier renders it), `showcase` and `overlay` (GPU
 particles take the CPU path without compute; RMSE 0.0107 and 0.0103 against
 `metal`) and `water-3d` (no screen-space reflection march, the sky cubemap
 reflects instead; RMSE 0.0258). A WebGL2 reference is recorded only for a
-difference the tier makes by design, never to absorb a defect. Each tier
+difference the tier makes by design, never to absorb a defect.
+`shadows-crypt` (wave 13, web findings #4) has none: its shadowed point
+light is two paraboloid hemispheres on WebGL2 and six cube faces on
+`metal`, which store the same faces since the paraboloids' winding was
+mirrored (the paraboloid frame within RMSE 0.0036 of the cube one
+natively), and the lamp's glass casts no shadow on either. Each tier
 takes 30 to 50 s after the module build.
 
 The same module carries og-ui's four reference scenes as `og-ui/<name>`

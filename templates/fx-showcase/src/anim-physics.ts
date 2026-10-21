@@ -243,7 +243,7 @@ export function buildAP(world: World, k: Kit, walkerModel: Asset): void {
         // A lane under each, so the feet read against the ground.
         const strip = must(world.spawn({ name: `${w.name}-lane`, position: { x: x - 1, y: 0.005, z: w.z } }));
         world.set(strip, og.Transform, { scale: { x: 12, y: 0.01, z: 0.5 } });
-        world.insert(strip, og.Mesh, { geometry: k.box, material: lane, receiveShadow: true });
+        world.insert(strip, og.Mesh, { geometry: k.box, material: lane, castShadow: true, receiveShadow: true });
         const model = w.model === "models/walker.glb" ? walkerModel : must(og.load.gltf(world, w.model));
         const anim = must(og.load.animation(world, w.model));
         const humanoid = og.anim.humanoid(world, w.name === "rt-strider" ? { skeleton: anim.skeleton, rig: striderRig } : { skeleton: anim.skeleton });
@@ -270,7 +270,7 @@ export function buildAP(world: World, k: Kit, walkerModel: Asset): void {
       ] as const) {
         const e = must(world.spawn({ name, position: { x: cx, y: cy, z: -0.2 } }));
         world.set(e, og.Transform, { scale: { x: w, y: h, z: 0.4 } });
-        world.insert(e, og.Mesh, { geometry: k.box, material: stone, receiveShadow: true });
+        world.insert(e, og.Mesh, { geometry: k.box, material: stone, castShadow: true, receiveShadow: true });
         world.insert(e, og.Collider, { shape: SHAPE_BOX });
       }
       const model = must(og.load.gltf(world, "models/puppet2d.glb"));
@@ -292,7 +292,7 @@ export function buildAP(world: World, k: Kit, walkerModel: Asset): void {
       const red = k.mat({ color: { r: 0.75, g: 0.12, b: 0.1 }, roughness: 0.85, side: "double" });
       const bar = must(world.spawn({ name: "sheet-bar", position: { x: x, y: 1.62, z: 0 } }));
       world.set(bar, og.Transform, { scale: { x: 1.4, y: 0.04, z: 0.04 } });
-      world.insert(bar, og.Mesh, { geometry: k.box, material: k.mat({ color: { r: 0.3, g: 0.22, b: 0.14 }, roughness: 0.6 }) });
+      world.insert(bar, og.Mesh, { geometry: k.box, material: k.mat({ color: { r: 0.3, g: 0.22, b: 0.14 }, roughness: 0.6 }), castShadow: true });
       const sheet = must(world.spawn({ name: "sheet", position: sheetAt(0) }));
       world.insert(sheet, og.Cloth, {
         columns: SHEET.n,
@@ -319,7 +319,7 @@ export function buildAP(world: World, k: Kit, walkerModel: Asset): void {
       const wall = (name: string, cx: number, cy: number, w: number, h: number) => {
         const e = must(world.spawn({ name, position: { x: x + cx, y: cy, z: -0.5 } }));
         world.set(e, og.Transform, { scale: { x: w, y: h, z: 1 } });
-        world.insert(e, og.Mesh, { geometry: k.box, material: stone });
+        world.insert(e, og.Mesh, { geometry: k.box, material: stone, castShadow: true });
         const c = must(world.spawn({ name: `${name}-collider`, position: { x: x + cx, y: cy, z: 0 } }));
         world.insert(c, og.Collider, { shape: SHAPE_BOX, size: { x: w, y: h, z: 4 } });
       };

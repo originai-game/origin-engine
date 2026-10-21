@@ -141,3 +141,49 @@ fn zero_speeds_meter_the_frame_at_once() {
     let auto = run(&mut renderer(), &mut t, 30, 31);
     assert_eq!(zero.pixels, auto.pixels);
 }
+
+/// The adaptation starts at the first ticked frame: a frame of tick 0
+/// (before the first tick: the web shell draws one behind the play gate,
+/// `og run` draws none) meters at once and is never adapted from, so a
+/// host that drew it and one that did not draw the same frames from tick
+/// 1 on (web findings #5: Lantern Vale's title and start were brighter on
+/// the web, adapting from tick 0's frame).
+#[test]
+fn a_frame_before_the_first_tick_does_not_start_the_adaptation() {
+    // Tick 0 sees the scene 16x darker than the ticks after it (as a game's
+    // first frame, before its systems placed the camera, can).
+    let draw = |r: &mut Renderer, s: &mut RenderScene, tick: u64, brightness: f32| {
+        light(s, brightness);
+        s.tick = tick;
+        s.tick_rate = 60.0;
+        r.render(s, &RenderTarget::Offscreen).expect("render");
+    };
+    let (mut og_run, mut web) = (renderer(), renderer());
+    let (mut a, mut b) = (scene(1.0), scene(1.0));
+    draw(&mut web, &mut b, 0, 1.0 / 16.0);
+    draw(&mut web, &mut b, 0, 1.0 / 16.0);
+    for tick in 1..=40 {
+        draw(&mut og_run, &mut a, tick, 1.0);
+        draw(&mut web, &mut b, tick, 1.0);
+        if tick == 1 || tick == 40 {
+            let (fa, fb) = (
+                og_run.read_offscreen().expect("capture"),
+                web.read_offscreen().expect("capture"),
+            );
+            assert_eq!(
+                fa.pixels, fb.pixels,
+                "tick {tick} differs after a tick 0 frame"
+            );
+        }
+    }
+    // A tick 0 frame meters its own view at once.
+    let mut c = scene(1.0);
+    let mut first = renderer();
+    draw(&mut first, &mut c, 0, 1.0);
+    let at_zero = mean_luma(&first.read_offscreen().expect("capture"));
+    let settled = mean_luma(&og_run.read_offscreen().expect("capture"));
+    assert!(
+        (at_zero / settled - 1.0).abs() < 0.01,
+        "tick 0 meters at once: {at_zero:.2} against {settled:.2}"
+    );
+}
