@@ -1,0 +1,12 @@
+# Made by tools/make-assets.ts (about 14 MB): run `bun tools/make-assets.ts` after a clone.
+assets/music/stair.wav
+# Noto Sans JP Regular (4.5 MB, SIL OFL 1.1): fetched by `bun tools/fetch-font.ts`, the source of the Japanese subset.
+tools/fonts/*.otf
+# og cook output: rebuilt from assets/, never committed.
+cooked/
+# og build output.
+dist/
+# og run and og test output, and og's bundled entry.
+og-out/
+.og/
+node_modules/

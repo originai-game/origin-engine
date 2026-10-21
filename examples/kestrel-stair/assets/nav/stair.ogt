@@ -1,0 +1,20 @@
+type navmesh
+version 1
+---
+# The foes' navmesh, baked by og cook from models/stair.glb (tools/level.ts writes this file).
+agent {
+  radius 0.5
+  height 2.6
+  climb 0.3
+  slope 36
+}
+cellSize 0.25
+cellHeight 0.1
+tileSize 32
+model "models/stair.glb" {
+  position 0 0 0
+}
+bounds {
+  min -23 -1 -67
+  max 23 14 45
+}

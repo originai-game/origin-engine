@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "click" (tools/make-assets.ts): og.load.sound(world, "audio/ui-hover.ogt") plays it.
+preset "click"
+seed 3
+pitch 1.4
+length 0.5
+volume 0.25

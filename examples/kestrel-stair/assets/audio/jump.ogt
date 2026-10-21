@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "jump" (tools/make-assets.ts): og.load.sound(world, "audio/jump.ogt") plays it.
+preset "jump"
+seed 5
+pitch 0.8
+length 1
+volume 0.6

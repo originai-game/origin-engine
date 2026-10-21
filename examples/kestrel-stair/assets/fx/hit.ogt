@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# A sword's hit: sparks flung out, stretched along their flight.
+maxParticles 48
+shape point
+spread 180
+rate 0
+burst 0 22
+duration 0.1
+looping false
+lifetime 0.15 0.35
+speed 3 7
+size 0.04 0.08
+colorOverLife {
+  key 0 1 1 0.85 1
+  key 1 1 0.5 0.15 0
+}
+color 4 3 2 1
+gravity 0 -6 0
+drag 3
+align velocity 0.05
+texture "textures/spark.png"
+blend additive

@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "back" (tools/make-assets.ts): og.load.sound(world, "audio/ui-close.ogt") plays it.
+preset "back"
+seed 0
+pitch 1
+length 1
+volume 0.6

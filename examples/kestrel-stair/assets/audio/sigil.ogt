@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "powerup" (tools/make-assets.ts): og.load.sound(world, "audio/sigil.ogt") plays it.
+preset "powerup"
+seed 3
+pitch 1
+length 1
+volume 0.9

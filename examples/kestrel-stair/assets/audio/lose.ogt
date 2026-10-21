@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "death" (tools/make-assets.ts): og.load.sound(world, "audio/lose.ogt") plays it.
+preset "death"
+seed 5
+pitch 0.7
+length 1.6
+volume 1

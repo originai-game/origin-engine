@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "explosion" (tools/make-assets.ts): og.load.sound(world, "audio/slam.ogt") plays it.
+preset "explosion"
+seed 7
+pitch 0.7
+length 1
+volume 1

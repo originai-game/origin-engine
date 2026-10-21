@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "select" (tools/make-assets.ts): og.load.sound(world, "audio/waystone.ogt") plays it.
+preset "select"
+seed 6
+pitch 0.8
+length 1.4
+volume 0.9

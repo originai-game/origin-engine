@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "laser" (tools/make-assets.ts): og.load.sound(world, "audio/alert.ogt") plays it.
+preset "laser"
+seed 5
+pitch 0.5
+length 0.8
+volume 0.6

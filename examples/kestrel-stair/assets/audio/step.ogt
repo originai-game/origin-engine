@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "footstep" (tools/make-assets.ts): og.load.sound(world, "audio/step.ogt") plays it.
+preset "footstep"
+seed 3
+pitch 1
+length 1
+volume 0.8

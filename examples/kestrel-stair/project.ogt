@@ -1,0 +1,18 @@
+type project
+version 1
+---
+name "Kestrel Stair"
+id "kestrel-stair"
+engine "0.0.1"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 23
+scenes {
+  main "scenes/main.ogt"
+}
+scene main
+publish {
+  probe player
+  out "dist"
+}

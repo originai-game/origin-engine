@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# A warden's slam: a ring of dust thrown low across the ground.
+maxParticles 80
+shape cone 85 0.6
+rate 0
+burst 0 50
+duration 0.15
+looping false
+lifetime 0.6 1.1
+speed 2 4.5
+size 0.5 0.9
+sizeOverLife 0 0.5 1 1.6
+colorOverLife {
+  key 0 0.72 0.66 0.56 0.55
+  key 1 0.72 0.66 0.56 0
+}
+gravity 0 -0.5 0
+drag 3
+texture "textures/dust.png"
+blend alpha

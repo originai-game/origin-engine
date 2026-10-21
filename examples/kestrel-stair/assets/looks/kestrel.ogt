@@ -1,0 +1,47 @@
+type look
+version 1
+---
+# The Kestrel Stair: the watercolour-wash preset (pigment pooling at the
+# colour regions' rims, a little bleed, cold-pressed paper) laid on the
+# surfaces so the grain stays put as the third-person camera swings
+# (og-taste §12), a warm late-afternoon light with a violet shadow side,
+# soft bloom on the braziers, a pale distance fog matched to the sky's
+# horizon, the synthetic sky as a soft image light under a strong low sun
+# (src/world.ts sets og.DayNight), and the paper skin.
+name "Kestrel Stair, late afternoon"
+extends "watercolor-wash"
+skin "skins/kestrel/skin.ogt"
+antialias taa
+Stylise {
+  paintRadius 2
+  paintAnisotropy 0.5
+  paintEdgeDarkening 0.7
+  paintBleed 0.5
+  paintCanvas "@canvas/watercolor"
+  paintCanvasStrength 0.5
+  paintCanvasSpace surface
+  paintCanvasWorldScale 96
+}
+MaterialStyle {
+  shadowTint "#5b4f86"
+  shadowTintAmount 0.6
+  rimColor "#ffe2b8"
+  rimIntensity 0.15
+}
+RenderSettings {
+  toneMapping agx
+  exposure 1.0
+  bloom true
+  bloomIntensity 0.35
+  bloomThreshold 1.2
+}
+Environment {
+  map "env/dusk.ogt"
+  intensity 0.45
+}
+Fog {
+  enabled true
+  color "#e9d8bc"
+  density 0.004
+  start 30
+}

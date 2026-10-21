@@ -1,0 +1,107 @@
+type skin
+version 1
+---
+# The Kestrel Stair's skin: the engine's paper style pack (templates/ui-kit/assets/skins/paper), copied and retinted by tools/make-assets.ts.
+name "kestrel"
+base light
+atlas "atlas.png" 384 256
+scale 1
+palette {
+  bg "#efe6d2"
+  bgSubtle "#e4d9c1"
+  surface "#fbf8f0"
+  surfaceRaised "#fbf8f0"
+  surfaceHover "#f3eee2"
+  materialThick "#fbf8f0f5"
+  materialRegular "#fbf8f0eb"
+  materialThin "#fbf8f0dd"
+  fg "#1c1a17"
+  fgMuted "#57524a"
+  fgSubtle "#68635a"
+  fgInverse "#fbf8f0"
+  fill "#efe9dc"
+  fillStrong "#e2dac8"
+  border "#cfc6b2"
+  borderStrong "#1c1a17"
+  accent "#9c2a1d"
+  accentHover "#8f2618"
+  accentActive "#7f2013"
+  accentFg "#fffaf3"
+  accentInk "#9e2c1e"
+  accentSoft "#a02b1a26"
+  focus "#2b5cc8"
+  thumb "#fbf8f0"
+  scrim "#2a261f73"
+  success "#2f7d4a"
+  warn "#a8650f"
+  danger "#8e1d16"
+  info "#2b5cc8"
+  shadow "#2a261f40"
+}
+radius {
+  control 6
+  field 4
+  block 6
+  card 6
+  panel 8
+  sheet 8
+  button 8
+}
+ramp {
+  body 15 22
+  meta 13 18
+  caption 13 18
+  reading 16 25
+  lg 19 26
+  xl 22 30
+  xl2 26 32
+  xl3 30 36
+  displaySm 30 36
+  displayMd 38 44
+  displayLg 48 54
+}
+durations {
+  fast 180
+  base 260
+  slow 420
+}
+fonts {
+  body "InstrumentSans-Regular.ttf"
+  display "Newsreader-SemiBold.ttf"
+  numeric "PTMono-Regular.ttf"
+  fallback "fonts/NotoSansJP-kestrel.otf"
+}
+icons "icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 12 tint
+slice card 104 4 64 64 10 tint
+slice button 172 4 48 48 12 tint
+slice buttonHover 224 4 48 48 12 tint
+slice buttonPressed 276 4 48 48 12 tint
+slice buttonDisabled 328 4 48 48 12 tint
+slice field 4 104 48 48 8 tint
+slice slot 56 104 48 48 8 tint
+slice tooltip 108 104 32 32 8 tint
+slice capsule 144 104 32 32 14 tint
+slice track 180 104 32 16 7 tint
+slice fill 216 104 32 16 7 tint
+soft 252 104 64 64 24
+divider 4 172 128 24 120 18 fg
+flourish 136 172 64 24 22 10 accent 2
+tile 204 172 64 64 64 64 0.6 4 panel card
+shadow panel 0 6 16 0 "#2a261f3a"
+shadow card 0 3 8 0 "#2a261f2e"
+shadow button 0 2 4 0 "#2a261f33"
+shadow capsule 0 2 6 0 "#2a261f33"
+shadow tooltip 0 2 6 0 "#2a261f33"
+press 0.98 0.98 1
+hover -1 1.0
+motion {
+  enter slideUp
+  stagger 40
+  toast slideUp
+  progress 380
+  shake 5
+  pop 0.08
+}

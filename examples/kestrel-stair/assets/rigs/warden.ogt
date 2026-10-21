@@ -1,0 +1,26 @@
+type rig
+version 1
+---
+# The stone warden's bones by their own names (models/warden.glb):
+# no naming scheme detects them, so og.anim.retarget is given this map.
+hips "Waist"
+spine "Belly"
+chest "Breastplate"
+neck "Gorget"
+head "Helm"
+leftShoulder "L_Pauldron"
+leftUpperArm "L_Bracer"
+leftLowerArm "L_Vambrace"
+leftHand "L_Fist"
+rightShoulder "R_Pauldron"
+rightUpperArm "R_Bracer"
+rightLowerArm "R_Vambrace"
+rightHand "R_Fist"
+leftUpperLeg "L_Cuisse"
+leftLowerLeg "L_Greave"
+leftFoot "L_Sabaton"
+leftToes "L_Toecap"
+rightUpperLeg "R_Cuisse"
+rightLowerLeg "R_Greave"
+rightFoot "R_Sabaton"
+rightToes "R_Toecap"
