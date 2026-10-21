@@ -88,14 +88,23 @@ mod native {
         }
 
         /// Writes the cache when it grew (to a temporary file, then renamed).
+        /// The temporary file is this save's own (process id and a counter):
+        /// renderers in other processes, or beside this one, save the same
+        /// key at once, and a shared name let one rename a file another was
+        /// still writing, leaving a torn cache for the next start to hand
+        /// the driver.
         pub fn save(&mut self) {
+            static SAVES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
             let Some(data) = self.cache.get_data() else {
                 return;
             };
             if data.len() == self.written {
                 return;
             }
-            let tmp = self.path.with_extension("tmp");
+            let n = SAVES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let tmp = self
+                .path
+                .with_extension(format!("{}-{n}.tmp", std::process::id()));
             let wrote = self
                 .path
                 .parent()
@@ -104,7 +113,10 @@ mod native {
                 .and_then(|_| std::fs::rename(&tmp, &self.path));
             match wrote {
                 Ok(()) => self.written = data.len(),
-                Err(e) => log::warn!("og-render: pipeline cache {}: {e}", self.path.display()),
+                Err(e) => {
+                    let _ = std::fs::remove_file(&tmp);
+                    log::warn!("og-render: pipeline cache {}: {e}", self.path.display())
+                }
             }
         }
     }
