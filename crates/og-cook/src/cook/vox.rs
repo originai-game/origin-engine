@@ -37,8 +37,12 @@
 //! model shows, 0 elsewhere), so `og.AnimationPlayer` plays it as any
 //! skinned clip. `model { voxFps 8 voxClip walk 0 3 }` gives the frame
 //! rate (default 10) and named frame ranges (default one clip `frames` of
-//! every frame). Not read: `nTRN` key frames (a transform's first frame
-//! places it for the whole animation).
+//! every frame). `nTRN` key frames (an `_f` per frame of a transform, each
+//! held until the next, as ogt_vox samples them) move what is under the
+//! transform: a model whose place changes across frames is skinned to a
+//! joint of its own with a STEP translation channel as well, and a key
+//! that turns it starts a new mesh (a turn is a different set of voxel
+//! faces), swapped in like a frame's model.
 //!
 //! Greedy meshing: per face direction, per slice, runs of voxels of one
 //! colour merge into rectangles, so a 32³ block of one colour is 12
@@ -247,10 +251,15 @@ pub struct Placement {
     pub rotation: [(usize, i32); 3],
     /// The animation frames this model shows (`None`: every frame, a static
     /// part): one model of an animated shape (`nSHP` of several models,
-    /// each from its `_f` key frame to the next), or one model of a file
-    /// without a scene graph that holds several (MagicaVoxel 0.98's
-    /// animation, a `PACK` of frames).
+    /// each from its `_f` key frame to the next), a run of frames over
+    /// which a keyed transform (`nTRN` of several frames) keeps the model
+    /// and its rotation, or one model of a file without a scene graph that
+    /// holds several (MagicaVoxel 0.98's animation, a `PACK` of frames).
     pub frames: Option<std::ops::Range<u32>>,
+    /// Where a keyed transform moves the model over `frames`: its
+    /// translation on each of them (`translation` is the first), or empty
+    /// when it stays put.
+    pub track: Vec<[i32; 3]>,
 }
 
 /// A parsed `.vox`: its models, palette (256 RGBA, index 0 unused) and
@@ -261,7 +270,8 @@ pub struct VoxFile {
     pub palette: [[u8; 4]; 256],
     pub placements: Vec<Placement>,
     /// Animation frames (0: the file is static): the last key frame of any
-    /// animated shape plus one, or a graph-less file's model count.
+    /// animated shape or keyed transform plus one, or a graph-less file's
+    /// model count.
     pub frame_count: u32,
 }
 
@@ -343,12 +353,15 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
             ((c >> 24) & 0xff) as u8,
         ];
     }
+    // A transform's key frame: (frame, translation, rotation).
+    type Key = (u32, [i32; 3], [(usize, i32); 3]);
     // The scene graph, by node id.
     enum Node {
+        /// Its key frames, sorted by frame and at least one: (frame,
+        /// translation, rotation), each holding until the next.
         Transform {
             child: u32,
-            translation: [i32; 3],
-            rotation: [(usize, i32); 3],
+            keys: Vec<Key>,
         },
         Group(Vec<u32>),
         /// Its models, each with its `_f` key frame when it has one.
@@ -405,13 +418,13 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 p += 4;
                 let frames = u32_at(body, p)?;
                 p += 4;
-                let mut translation = [0; 3];
-                let mut rotation = IDENTITY;
+                // Each frame a key: its `_f` (else its place in the list),
+                // `_t` and `_r`; MagicaVoxel holds a key until the next.
+                let mut keys = Vec::new();
                 for f in 0..frames {
                     let d = dict(body, &mut p)?;
-                    if f > 0 {
-                        continue;
-                    }
+                    let mut translation = [0; 3];
+                    let mut rotation = IDENTITY;
                     if let Some(t) = d.get("_t") {
                         let v: Vec<i32> = t.split(' ').filter_map(|s| s.parse().ok()).collect();
                         if v.len() == 3 {
@@ -423,15 +436,16 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     {
                         rotation = rotation_of(r);
                     }
+                    let key = d.get("_f").and_then(|k| k.parse().ok()).unwrap_or(f);
+                    keys.push((key, translation, rotation));
                 }
-                nodes.insert(
-                    node,
-                    Node::Transform {
-                        child,
-                        translation,
-                        rotation,
-                    },
-                );
+                // The first key listed for a frame wins.
+                keys.sort_by_key(|k| k.0);
+                keys.dedup_by_key(|k| k.0);
+                if keys.is_empty() {
+                    keys.push((0, [0; 3], IDENTITY));
+                }
+                nodes.insert(node, Node::Transform { child, keys });
             }
             b"nGRP" => {
                 let mut p = 0;
@@ -474,12 +488,22 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
     }
     // Placements from the graph (root node 0), else side by side.
     let mut placements = Vec::new();
+    // What one shape shows at a frame: per model of the graph's walk (in
+    // walk order, the same at every frame), the model shown (none before an
+    // animated shape's first key) and where.
+    struct Shown {
+        model: Option<usize>,
+        translation: [i32; 3],
+        rotation: [(usize, i32); 3],
+    }
+    #[allow(clippy::too_many_arguments)]
     fn walk(
         nodes: &BTreeMap<u32, Node>,
         id: u32,
         t: [i32; 3],
         r: [(usize, i32); 3],
-        out: &mut Vec<Placement>,
+        frame: u32,
+        out: &mut Vec<Shown>,
         depth: u32,
         models: usize,
     ) {
@@ -487,11 +511,11 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
             return;
         }
         match nodes.get(&id) {
-            Some(Node::Transform {
-                child,
-                translation,
-                rotation,
-            }) => {
+            Some(Node::Transform { child, keys }) => {
+                // The key in force: the last at or before the frame, the
+                // first before any.
+                let k = keys.iter().rev().find(|k| k.0 <= frame).unwrap_or(&keys[0]);
+                let (translation, rotation) = (k.1, k.2);
                 // Compose: this frame's translation is in the parent's frame.
                 let mut tt = t;
                 for i in 0..3 {
@@ -502,28 +526,23 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     (rotation[r[1].0].0, rotation[r[1].0].1 * r[1].1),
                     (rotation[r[2].0].0, rotation[r[2].0].1 * r[2].1),
                 ];
-                walk(nodes, *child, tt, rr, out, depth + 1, models);
+                walk(nodes, *child, tt, rr, frame, out, depth + 1, models);
             }
             Some(Node::Group(children)) => {
                 for c in children {
-                    walk(nodes, *c, t, r, out, depth + 1, models);
+                    walk(nodes, *c, t, r, frame, out, depth + 1, models);
                 }
             }
             Some(Node::Shape(ms)) if ms.len() == 1 => {
-                if (ms[0].0 as usize) < models {
-                    out.push(Placement {
-                        model: ms[0].0 as usize,
-                        translation: t,
-                        rotation: r,
-                        frames: None,
-                    });
-                }
+                out.push(Shown {
+                    model: Some(ms[0].0 as usize).filter(|m| *m < models),
+                    translation: t,
+                    rotation: r,
+                });
             }
             Some(Node::Shape(ms)) => {
                 // An animated shape: each model from its key frame (`_f`,
-                // else its position in the list) to the next model's; the
-                // last one's end is the file's frame count, set after the
-                // walk.
+                // else its position in the list) to the next model's.
                 let mut keyed: Vec<(u32, u32)> = ms
                     .iter()
                     .enumerate()
@@ -531,31 +550,93 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     .collect();
                 keyed.sort();
                 keyed.dedup_by_key(|k| k.0);
-                for (i, (key, m)) in keyed.iter().enumerate() {
-                    let end = keyed.get(i + 1).map_or(u32::MAX, |n| n.0);
-                    if (*m as usize) < models {
-                        out.push(Placement {
-                            model: *m as usize,
-                            translation: t,
-                            rotation: r,
-                            frames: Some(*key..end),
-                        });
-                    }
-                }
+                let model = keyed
+                    .iter()
+                    .rev()
+                    .find(|k| k.0 <= frame)
+                    .map(|k| k.1 as usize)
+                    .filter(|m| *m < models);
+                out.push(Shown {
+                    model,
+                    translation: t,
+                    rotation: r,
+                });
             }
             None => {}
         }
     }
     if nodes.contains_key(&0) {
-        walk(
-            &nodes,
-            0,
-            [0; 3],
-            IDENTITY,
-            &mut placements,
-            0,
-            models.len(),
-        );
+        // The frames: up to the last key of any animated shape or keyed
+        // transform.
+        let last_key = nodes
+            .values()
+            .filter_map(|n| match n {
+                Node::Transform { keys, .. } if keys.len() > 1 => keys.last().map(|k| k.0),
+                Node::Shape(ms) if ms.len() > 1 => ms
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (_, f))| f.unwrap_or(i as u32))
+                    .max(),
+                _ => None,
+            })
+            .max();
+        let frames = last_key.map_or(1, |k| k.saturating_add(1));
+        let mut at: Vec<Vec<Shown>> = Vec::with_capacity(frames as usize);
+        for f in 0..frames {
+            let mut shown = Vec::new();
+            walk(&nodes, 0, [0; 3], IDENTITY, f, &mut shown, 0, models.len());
+            at.push(shown);
+        }
+        for i in 0..at[0].len() {
+            let first = &at[0][i];
+            let still = at.iter().all(|f| {
+                let s = &f[i];
+                s.model == first.model
+                    && s.translation == first.translation
+                    && s.rotation == first.rotation
+            });
+            if still {
+                if let Some(model) = first.model {
+                    placements.push(Placement {
+                        model,
+                        translation: first.translation,
+                        rotation: first.rotation,
+                        frames: None,
+                        track: Vec::new(),
+                    });
+                }
+                continue;
+            }
+            // Runs of frames that show one model at one rotation (a turn is
+            // a mesh of its own); the translation may move within a run.
+            let mut f = 0;
+            while f < frames {
+                let s = &at[f as usize][i];
+                let Some(model) = s.model else {
+                    f += 1;
+                    continue;
+                };
+                let mut end = f + 1;
+                while end < frames {
+                    let n = &at[end as usize][i];
+                    if n.model != Some(model) || n.rotation != s.rotation {
+                        break;
+                    }
+                    end += 1;
+                }
+                let track: Vec<[i32; 3]> =
+                    (f..end).map(|k| at[k as usize][i].translation).collect();
+                let moves = track.iter().any(|t| *t != s.translation);
+                placements.push(Placement {
+                    model,
+                    translation: s.translation,
+                    rotation: s.rotation,
+                    frames: Some(f..end),
+                    track: if moves { track } else { Vec::new() },
+                });
+                f = end;
+            }
+        }
     }
     // Without a graph, every model sits at the origin about its pivot,
     // exactly as under a graph of one identity transform (ogt_vox's
@@ -570,28 +651,16 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 translation: [0; 3],
                 rotation: IDENTITY,
                 frames: animated.then_some(i as u32..i as u32 + 1),
+                track: Vec::new(),
             });
         }
     }
     let frame_count = placements
         .iter()
         .filter_map(|p| p.frames.as_ref())
-        .map(|f| {
-            if f.end == u32::MAX {
-                f.start + 1
-            } else {
-                f.end
-            }
-        })
+        .map(|f| f.end)
         .max()
         .unwrap_or(0);
-    for p in &mut placements {
-        if let Some(f) = &mut p.frames
-            && f.end == u32::MAX
-        {
-            f.end = frame_count;
-        }
-    }
     Ok(VoxFile {
         models,
         palette,
@@ -807,9 +876,12 @@ fn clips_of(file: &VoxFile, settings: &VoxSettings) -> Result<Vec<(String, u32, 
 /// whole to a joint of its own (at its translation, inverse bind the
 /// identity), and each clip is a STEP scale channel per joint, 1 on the
 /// frames the model shows and 0 elsewhere, at `settings.fps` (one key per
-/// frame, and one at the clip's end holding its last frame). The rest pose
-/// is frame 0, and the mesh nodes carry the same scale, so the model drawn
-/// without a skeleton shows frame 0 too.
+/// frame, and one at the clip's end holding its last frame). A model a
+/// keyed transform moves ([`Placement::track`]) also has a STEP translation
+/// channel on its joint, its place on each frame (held from its nearest
+/// shown frame where it is folded away). The rest pose is frame 0, and the
+/// mesh nodes carry the same scale, so the model drawn without a skeleton
+/// shows frame 0 too.
 pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
     let file = parse(bytes)?;
     let clips = clips_of(&file, settings)?;
@@ -817,8 +889,15 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
     let mut bin = Bin::default();
     let mut meshes = Vec::new();
     // Per placed model: its index, its mesh, its translation (glTF frame,
-    // metres) and the frames it shows (animated only).
-    type Placed = (usize, usize, [f32; 3], Option<std::ops::Range<u32>>);
+    // metres), the frames it shows (animated only) and its translation on
+    // each of them (empty: it stays put).
+    type Placed = (
+        usize,
+        usize,
+        [f32; 3],
+        Option<std::ops::Range<u32>>,
+        Vec<[f32; 3]>,
+    );
     let mut placed: Vec<Placed> = Vec::new();
     let mut joints = 0u16;
     let mut floor = f32::MAX;
@@ -924,14 +1003,20 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             "name": format!("vox{pi}"),
             "primitives": [{ "attributes": attributes, "indices": idx, "material": 0 }]
         }));
-        let t = placement.translation;
-        let at = [
-            t[0] as f32 * scale,
-            t[2] as f32 * scale,
-            -(t[1] as f32) * scale,
-        ];
-        floor = floor.min(at[1] + lo[1]);
-        placed.push((pi, meshes.len() - 1, at, placement.frames.clone()));
+        // MagicaVoxel (x, y, z) z-up → glTF (x, z, -y) y-up, in metres.
+        let to_gltf = |t: [i32; 3]| {
+            [
+                t[0] as f32 * scale,
+                t[2] as f32 * scale,
+                -(t[1] as f32) * scale,
+            ]
+        };
+        let at = to_gltf(placement.translation);
+        let track: Vec<[f32; 3]> = placement.track.iter().map(|t| to_gltf(*t)).collect();
+        for p in std::iter::once(&at).chain(&track) {
+            floor = floor.min(p[1] + lo[1]);
+        }
+        placed.push((pi, meshes.len() - 1, at, placement.frames.clone(), track));
     }
     if meshes.is_empty() {
         return Err("vox: every model is empty".into());
@@ -942,9 +1027,11 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         VoxOrigin::Bottom => -floor,
     };
     let mut nodes: Vec<serde_json::Value> = Vec::new();
-    // Per joint: its node and the frames its model shows.
-    let mut joint_nodes: Vec<(usize, std::ops::Range<u32>)> = Vec::new();
-    for (pi, mesh, at, frames) in &placed {
+    // Per joint: its node, the frames its model shows and its translation
+    // on each (lifted; empty: it stays put).
+    type Joint = (usize, std::ops::Range<u32>, Vec<[f32; 3]>);
+    let mut joint_nodes: Vec<Joint> = Vec::new();
+    for (pi, mesh, at, frames, track) in &placed {
         let at = [at[0], at[1] + lift, at[2]];
         match frames {
             None => nodes.push(serde_json::json!({
@@ -959,7 +1046,8 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
                 nodes.push(serde_json::json!({
                     "name": format!("vox{pi}-frames"), "translation": at, "scale": [s, s, s]
                 }));
-                joint_nodes.push((nodes.len() - 1, f.clone()));
+                let track = track.iter().map(|t| [t[0], t[1] + lift, t[2]]).collect();
+                joint_nodes.push((nodes.len() - 1, f.clone(), track));
             }
         }
     }
@@ -983,7 +1071,7 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         );
         json["skins"] = serde_json::json!([{
             "name": "frames",
-            "joints": joint_nodes.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+            "joints": joint_nodes.iter().map(|(n, ..)| *n).collect::<Vec<_>>(),
             "inverseBindMatrices": ibm
         }]);
         let mut animations = Vec::new();
@@ -1001,7 +1089,7 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             );
             let mut samplers = Vec::new();
             let mut channels = Vec::new();
-            for (node, frames) in &joint_nodes {
+            for (node, frames, track) in &joint_nodes {
                 let scales: Vec<[f32; 3]> = (0..=len)
                     .map(|i| {
                         let shown = frames.contains(&(first + i.min(len - 1)));
@@ -1015,6 +1103,29 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
                 );
                 channels.push(serde_json::json!({
                     "sampler": samplers.len(), "target": { "node": node, "path": "scale" }
+                }));
+                samplers.push(serde_json::json!({
+                    "input": input, "output": output, "interpolation": "STEP"
+                }));
+                if track.is_empty() {
+                    continue;
+                }
+                // Where the keyed transform puts the model on each frame;
+                // on a frame it is folded away, where it was or will be
+                // nearest (a fold is not a move).
+                let places: Vec<[f32; 3]> = (0..=len)
+                    .map(|i| {
+                        let f = (first + i.min(len - 1)).clamp(frames.start, frames.end - 1);
+                        track[(f - frames.start) as usize]
+                    })
+                    .collect();
+                let output = bin.add(
+                    bytemuck::cast_slice(&places),
+                    None,
+                    serde_json::json!({ "componentType": 5126, "count": places.len(), "type": "VEC3" }),
+                );
+                channels.push(serde_json::json!({
+                    "sampler": samplers.len(), "target": { "node": node, "path": "translation" }
                 }));
                 samplers.push(serde_json::json!({
                     "input": input, "output": output, "interpolation": "STEP"
@@ -1607,6 +1718,26 @@ mod tests {
         chunk(out, b"nTRN", &b);
     }
 
+    /// An `nTRN` of several frames: per key its `_f`, `_t` and `_r`.
+    fn trn_keys(out: &mut Vec<u8>, node: u32, child: u32, keys: &[(u32, [i32; 3], Option<u8>)]) {
+        let mut b = node.to_le_bytes().to_vec();
+        dict_of(&mut b, &[]);
+        for v in [child, u32::MAX, 0, keys.len() as u32] {
+            b.extend_from_slice(&v.to_le_bytes());
+        }
+        for (f, t, r) in keys {
+            let mut frame = vec![
+                ("_f", f.to_string()),
+                ("_t", format!("{} {} {}", t[0], t[1], t[2])),
+            ];
+            if let Some(r) = r {
+                frame.push(("_r", r.to_string()));
+            }
+            dict_of(&mut b, &frame);
+        }
+        chunk(out, b"nTRN", &b);
+    }
+
     fn grp(out: &mut Vec<u8>, node: u32, children: &[u32]) {
         let mut b = node.to_le_bytes().to_vec();
         dict_of(&mut b, &[]);
@@ -1872,6 +2003,221 @@ mod tests {
             (g.document.skins().count(), g.document.animations().count()),
             (0, 0)
         );
+    }
+
+    /// A file whose transforms carry key frames (owed row 63): a cube
+    /// keyed to move between frames 0 and 2, a bar keyed to turn at frame 1
+    /// and move at frame 2, and a static base. Before the keys were read,
+    /// each transform's first frame placed its model throughout: one
+    /// static file, no clip.
+    fn keyed_file() -> Vec<u8> {
+        let models = vec![
+            ([6, 6, 1], solid([6, 6, 1], 3)),
+            ([2, 2, 2], solid([2, 2, 2], 1)),
+            ([3, 1, 1], solid([3, 1, 1], 2)),
+        ];
+        let mut graph = Vec::new();
+        trn(&mut graph, 0, 1, [0, 0, 0]);
+        grp(&mut graph, 1, &[2, 4, 6]);
+        trn(&mut graph, 2, 3, [0, 0, 0]);
+        shp(&mut graph, 3, &[(0, None)]);
+        // Listed out of order: the keys sort by `_f`.
+        trn_keys(
+            &mut graph,
+            4,
+            5,
+            &[(2, [2, 0, 4], None), (0, [-2, 0, 2], None)],
+        );
+        shp(&mut graph, 5, &[(1, None)]);
+        trn_keys(
+            &mut graph,
+            6,
+            7,
+            &[
+                (0, [0, 3, 1], None),
+                (1, [0, 3, 1], Some(17)),
+                (2, [1, 3, 1], Some(17)),
+            ],
+        );
+        shp(&mut graph, 7, &[(2, None)]);
+        write_models(&models, &graph)
+    }
+
+    #[test]
+    fn keyed_transforms_move_and_turn_what_they_hold() {
+        let bytes = keyed_file();
+        let file = parse(&bytes).unwrap();
+        assert_eq!(file.frame_count, 3, "the last key, frame 2, plus one");
+        let placed: Vec<_> = file
+            .placements
+            .iter()
+            .map(|p| {
+                (
+                    p.model,
+                    p.translation,
+                    p.rotation,
+                    p.frames.clone(),
+                    p.track.clone(),
+                )
+            })
+            .collect();
+        let turned = rotation_of(17);
+        assert_eq!(
+            placed,
+            vec![
+                (0, [0, 0, 0], IDENTITY, None, vec![]),
+                (
+                    1,
+                    [-2, 0, 2],
+                    IDENTITY,
+                    Some(0..3),
+                    vec![[-2, 0, 2], [-2, 0, 2], [2, 0, 4]]
+                ),
+                (2, [0, 3, 1], IDENTITY, Some(0..1), vec![]),
+                (2, [0, 3, 1], turned, Some(1..3), vec![[0, 3, 1], [1, 3, 1]]),
+            ],
+            "the cube moves, the bar is a mesh per turn and moves once turned"
+        );
+        let settings = VoxSettings {
+            clips: vec![
+                VoxClip {
+                    name: "all".into(),
+                    first: 0,
+                    last: 2,
+                },
+                VoxClip {
+                    name: "late".into(),
+                    first: 1,
+                    last: 2,
+                },
+            ],
+            ..VoxSettings::default()
+        };
+        let glb = to_glb(&bytes, &settings).unwrap();
+        let g = gltf::Gltf::from_slice(&glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        let skin = g.document.skins().next().expect("a skin");
+        let joints: Vec<usize> = skin.joints().map(|j| j.index()).collect();
+        assert_eq!(joints.len(), 3, "the cube, the bar and the turned bar");
+        // Per channel: its joint, its path and its values (x scale, or the
+        // translation).
+        type Read = (usize, &'static str, Vec<Vec<f32>>);
+        let read = |anim: &gltf::Animation| -> Vec<Read> {
+            anim.channels()
+                .map(|ch| {
+                    assert_eq!(
+                        ch.sampler().interpolation(),
+                        gltf::animation::Interpolation::Step
+                    );
+                    let joint = joints
+                        .iter()
+                        .position(|j| *j == ch.target().node().index())
+                        .unwrap();
+                    let r = ch.reader(|_| Some(&blob[..]));
+                    match r.read_outputs().unwrap() {
+                        gltf::animation::util::ReadOutputs::Scales(s) => {
+                            (joint, "scale", s.map(|v| vec![v[0]]).collect())
+                        }
+                        gltf::animation::util::ReadOutputs::Translations(t) => {
+                            (joint, "translation", t.map(|v| v.to_vec()).collect())
+                        }
+                        _ => panic!("scale or translation"),
+                    }
+                })
+                .collect()
+        };
+        let anims: Vec<_> = g.document.animations().collect();
+        let v = |x: f32, y: f32, z: f32| vec![x, y, z];
+        // glTF's frame: MagicaVoxel (x, y, z) is (x, z, -y).
+        assert_eq!(
+            read(&anims[0]),
+            vec![
+                (0, "scale", vec![vec![1.0]; 4]),
+                (
+                    0,
+                    "translation",
+                    vec![
+                        v(-2.0, 2.0, 0.0),
+                        v(-2.0, 2.0, 0.0),
+                        v(2.0, 4.0, 0.0),
+                        v(2.0, 4.0, 0.0)
+                    ]
+                ),
+                (1, "scale", vec![vec![1.0], vec![0.0], vec![0.0], vec![0.0]]),
+                (2, "scale", vec![vec![0.0], vec![1.0], vec![1.0], vec![1.0]]),
+                // Folded on frame 0, it waits where frame 1 shows it.
+                (
+                    2,
+                    "translation",
+                    vec![
+                        v(0.0, 1.0, -3.0),
+                        v(0.0, 1.0, -3.0),
+                        v(1.0, 1.0, -3.0),
+                        v(1.0, 1.0, -3.0)
+                    ]
+                ),
+            ]
+        );
+        assert_eq!(
+            read(&anims[1]),
+            vec![
+                (0, "scale", vec![vec![1.0]; 3]),
+                (
+                    0,
+                    "translation",
+                    vec![v(-2.0, 2.0, 0.0), v(2.0, 4.0, 0.0), v(2.0, 4.0, 0.0)]
+                ),
+                (1, "scale", vec![vec![0.0]; 3]),
+                (2, "scale", vec![vec![1.0]; 3]),
+                (
+                    2,
+                    "translation",
+                    vec![v(0.0, 1.0, -3.0), v(1.0, 1.0, -3.0), v(1.0, 1.0, -3.0)]
+                ),
+            ]
+        );
+        // The rest pose is frame 0: the cube's joint and mesh node where
+        // its first key puts it; the base is not skinned.
+        let nodes: Vec<_> = g.document.nodes().collect();
+        assert!(nodes[0].skin().is_none() && nodes[0].mesh().is_some());
+        assert_eq!(nodes[1].transform().decomposed().0, [-2.0, 2.0, 0.0]);
+        assert_eq!(
+            nodes[joints[0]].transform().decomposed().0,
+            [-2.0, 2.0, 0.0]
+        );
+        assert!(faces_out(&glb));
+        // `bottom` lifts by the lowest voxel over every frame and lifts the
+        // track with the nodes: the base's underside, 0 here, stays on 0.
+        let grounded = to_glb(
+            &bytes,
+            &VoxSettings {
+                origin: VoxOrigin::Bottom,
+                ..VoxSettings::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(world_bounds(&grounded).0.y, 0.0);
+    }
+
+    /// Keys that change nothing (the same place on every frame) leave a
+    /// static file: no skin, no clip, the same glTF as one key.
+    #[test]
+    fn keys_that_do_not_move_leave_the_file_static() {
+        let models = vec![([2, 2, 2], solid([2, 2, 2], 1))];
+        let graph = |keys: &[(u32, [i32; 3], Option<u8>)]| {
+            let mut g = Vec::new();
+            trn(&mut g, 0, 1, [0, 0, 0]);
+            grp(&mut g, 1, &[2]);
+            trn_keys(&mut g, 2, 3, keys);
+            shp(&mut g, 3, &[(0, None)]);
+            write_models(&models, &g)
+        };
+        let still = graph(&[(0, [1, 2, 3], None), (4, [1, 2, 3], None)]);
+        let one = graph(&[(0, [1, 2, 3], None)]);
+        let file = parse(&still).unwrap();
+        assert_eq!(file.frame_count, 0);
+        let a = to_glb(&still, &VoxSettings::default()).unwrap();
+        assert_eq!(a, to_glb(&one, &VoxSettings::default()).unwrap());
     }
 
     #[test]
