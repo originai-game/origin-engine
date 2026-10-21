@@ -7531,7 +7531,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "Kind",
-                doc: "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform).",
+                doc: "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform).",
                 variants: &[],
                 capacity: 0,
             },

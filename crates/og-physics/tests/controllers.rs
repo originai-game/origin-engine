@@ -542,3 +542,33 @@ fn an_impulse_knocks_a_platformer_back_once() {
     run(&mut w, 30);
     assert!(platformer(&w, e).velocity.x.abs() < 1e-6);
 }
+
+#[test]
+fn a_platformer_rides_a_platform_moving_by_its_velocity() {
+    let (mut w, _p) = world2d();
+    ground2d(&mut w);
+    let platform = w
+        .spawn((
+            at(0.0, 2.0, 0.0),
+            RigidBody::kinematic(),
+            Collider::cuboid(Vec3::new(3.0, 0.2, 1.0)),
+            Velocity {
+                linear: Vec3::new(2.0, 0.0, 0.0),
+                angular: Vec3::ZERO,
+            },
+        ))
+        .unwrap();
+    let e = hero(&mut w, 0.0, 2.15, PlatformerController::default());
+    run(&mut w, 10);
+    assert_eq!(platformer(&w, e).ground, platform.to_bits());
+    let (x0, p0) = (
+        transform(&w, e).position.x,
+        transform(&w, platform).position.x,
+    );
+    run(&mut w, 60);
+    let moved = transform(&w, platform).position.x - p0;
+    assert!((moved - 2.0).abs() < 1e-3, "the platform moved {moved}");
+    let carried = transform(&w, e).position.x - x0;
+    assert!((carried - 2.0).abs() < 0.05, "carried {carried}");
+    assert!(platformer(&w, e).grounded);
+}

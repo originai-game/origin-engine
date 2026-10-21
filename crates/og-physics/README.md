@@ -42,7 +42,7 @@ are `u32` constants in `src/schema.rs`.
 | `og.Transform` | component | `position: vec3`, `quaternion: quat`, `scale: vec3` (registered by schema, so the engine's own is adopted) |
 | `og.RigidBody` | component | `kind` (0 dynamic, 1 static, 2 kinematic), `mass` (0: from density), `linear_damping`, `angular_damping`, `gravity_scale`, `lock` (bits: translation x 1, y 2, z 4; rotation x 8, y 16, z 32), `ccd` |
 | `og.Collider` | component | `shape` (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh), `size`, `radius`, `height`, `mesh`, `offset`, `rotation`, `friction`, `restitution`, `density`, `sensor`, `layers`, `mask` |
-| `og.Velocity` | component | `linear`, `angular`; written for dynamic bodies, read for kinematic ones, set it to launch or stop a body |
+| `og.Velocity` | component | `linear`, `angular`; written for dynamic bodies; a kinematic body moves by it (below); set it to launch or stop a body |
 | `og.Physics` | resource | `profile`, `gravity`, `substeps` (1–16), `solver_iterations` (1–32), `rest_speed` |
 | `og.CollisionStarted` | event | `a`, `b` (entity ids, a < b), `point`, `normal` (from a to b) |
 | `og.CollisionEnded` | event | `a`, `b` |
@@ -71,8 +71,14 @@ the components, in query order (archetype creation order, then row order):
 - a changed `og.RigidBody`, `og.Collider` or `og.Transform.scale` rebuilds
   that body (it loses its contacts' warm starts);
 - a transform or velocity that game code changed since physics wrote it
-  moves the rapier body (a teleport); kinematic bodies follow their
-  transform and velocity every tick;
+  moves the rapier body (a teleport);
+- a kinematic body takes its velocity every tick, and the step moves it
+  by it: one with a nonzero `og.Velocity` has its transform written back
+  like a dynamic body (a lift, a conveyor, a turning gear need no game
+  code), one without stays where its transform puts it (game code moving
+  it by hand, its velocity zero). Either way it pushes dynamic bodies, and
+  a controller standing on it is carried by how far it moved
+  (`tests/bodies.rs`, `tests/controllers.rs`);
 - a mesh registered with new geometry rebuilds the colliders made from it;
   the same geometry again changes nothing.
 
@@ -165,8 +171,11 @@ six 2D fluids and 24 ragdolls in each profile going limp and recovering,
 each with every pass split by `Grains::always`, with lanes off and with
 the measured grains: one hash and one snapshot), `tests/pile.rs` (a pen at
 `pool_bodies` stepped with lanes on and off), `tools/wasm-determinism`
-(physics_hash 18126409214070009362 before and after rounds two and three,
-natively with lanes off, on four and eight threads and with every pass
+(physics_hash 18126409214070009362 before and after rounds two and three;
+6597690808174327434 once the platformer moved itself, its 2D scenario's
+walker running and landing differently by design, and 947364242694612608
+with `og.PlatformerController.impulse` in its record; the kinematic rule
+leaves it; natively with lanes off, on four and eight threads and with every pass
 split on four and on eight; the wasm's builds hash the same scenarios) and
 `packages/engine/tests/lanes.test.ts` (a 1,000-box pile through the native
 engine with lanes off and on four threads). The lanes wasm itself is

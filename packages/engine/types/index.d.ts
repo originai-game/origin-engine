@@ -5715,7 +5715,7 @@ export declare const BODY_DYNAMIC: 0;
 export declare const BODY_STATIC: 1;
 
 /**
- * RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes.
+ * RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it.
  */
 export declare const BODY_KINEMATIC: 2;
 
@@ -5778,7 +5778,7 @@ export declare const PROFILE_3D: 3;
  */
 export interface RigidBody {
   /**
-   * BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform).
+   * BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform).
    *
    * @range 0..2
    * @label Kind
@@ -5927,7 +5927,7 @@ export interface Collider {
 }
 
 /**
- * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+ * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
  *
  * The value of the `Velocity` component (token `og.Velocity`).
  */
@@ -17562,7 +17562,7 @@ export declare namespace og {
    */
   const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"u32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
-   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
    */
   const Velocity: ComponentType<{ readonly linear: FieldSpec<"Vector3">; readonly angular: FieldSpec<"Vector3"> }, Velocity>;
   /**

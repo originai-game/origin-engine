@@ -2202,7 +2202,7 @@
           "name": "BODY_KINEMATIC",
           "type": "u32",
           "value": 2,
-          "doc": "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
+          "doc": "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
         },
         {
           "name": "LOCK_TRANSLATION_X",
@@ -14009,7 +14009,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform).",
+          "description": "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform).",
           "default": 0,
           "minimum": 0,
           "maximum": 2,
@@ -14192,7 +14192,7 @@
     "Velocity": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.",
+      "description": "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.",
       "type": "object",
       "properties": {
         "linear": {

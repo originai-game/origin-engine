@@ -26,7 +26,7 @@ module physics {
 |---|---|---|
 | [`BODY_DYNAMIC`](#const-BODY_DYNAMIC) | constant | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
 | [`BODY_STATIC`](#const-BODY_STATIC) | constant | RigidBody.kind: never moves; collides with dynamic bodies. |
-| [`BODY_KINEMATIC`](#const-BODY_KINEMATIC) | constant | RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes. |
+| [`BODY_KINEMATIC`](#const-BODY_KINEMATIC) | constant | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
 | [`LOCK_TRANSLATION_X`](#const-LOCK_TRANSLATION_X) | constant | RigidBody.lock bit: no translation along x. |
 | [`LOCK_TRANSLATION_Y`](#const-LOCK_TRANSLATION_Y) | constant | RigidBody.lock bit: no translation along y. |
 | [`LOCK_TRANSLATION_Z`](#const-LOCK_TRANSLATION_Z) | constant | RigidBody.lock bit: no translation along z. |
@@ -44,7 +44,7 @@ module physics {
 | [`PROFILE_3D`](#const-PROFILE_3D) | constant | Physics.profile: rapier3d. |
 | [`og.RigidBody`](#record-RigidBody) | component | A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one. |
 | [`og.Collider`](#record-Collider) | component | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale. |
-| [`og.Velocity`](#record-Velocity) | component | Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body. |
+| [`og.Velocity`](#record-Velocity) | component | Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body. |
 | [`og.Physics`](#record-Physics) | resource | The physics settings of the world. The profile is the project's; the same components serve both profiles. |
 | [`og.CollisionStarted`](#record-CollisionStarted) | event | Two solid colliders started touching during the tick. |
 | [`og.CollisionEnded`](#record-CollisionEnded) | event | Two solid colliders stopped touching, or one of them went away. |
@@ -557,7 +557,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `number` | `0` | 0 … 2 | — | label “Kind” | BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform). |
+| `kind` | `number` | `0` | 0 … 2 | — | label “Kind” | BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform). |
 | `mass` | `number` | `0` | ≥ 0 | `kg` | tunable | Mass; 0 derives it from the collider's density and volume. |
 | `linearDamping` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast linear velocity decays (0: none). |
 | `angularDamping` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast angular velocity decays (0: none). |
@@ -569,7 +569,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 component RigidBody {
   doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
   doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
-  field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform)." {
+  field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform)." {
     min 0
     max 2
     label "Kind"
@@ -701,7 +701,7 @@ component Collider {
 
 ### `og.Velocity` (component)
 
-Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
 
 Token `og.Velocity`, registered under the schema name `og.Velocity`; its value type is `Velocity`.
 
@@ -712,7 +712,7 @@ Token `og.Velocity`, registered under the schema name `og.Velocity`; its value t
 
 ```ogt
 component Velocity {
-  doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body."
+  doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body."
   field linear Vector3 "The linear velocity (2D uses x and y)." {
     unit mps
     tunable true
@@ -2690,7 +2690,7 @@ struct PhysicsStats {
 |---|---|---|---|
 | <a id="const-BODY_DYNAMIC"></a>`BODY_DYNAMIC` | `number` | `0` | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
 | <a id="const-BODY_STATIC"></a>`BODY_STATIC` | `number` | `1` | RigidBody.kind: never moves; collides with dynamic bodies. |
-| <a id="const-BODY_KINEMATIC"></a>`BODY_KINEMATIC` | `number` | `2` | RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes. |
+| <a id="const-BODY_KINEMATIC"></a>`BODY_KINEMATIC` | `number` | `2` | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
 | <a id="const-LOCK_TRANSLATION_X"></a>`LOCK_TRANSLATION_X` | `number` | `1` | RigidBody.lock bit: no translation along x. |
 | <a id="const-LOCK_TRANSLATION_Y"></a>`LOCK_TRANSLATION_Y` | `number` | `2` | RigidBody.lock bit: no translation along y. |
 | <a id="const-LOCK_TRANSLATION_Z"></a>`LOCK_TRANSLATION_Z` | `number` | `4` | RigidBody.lock bit: no translation along z. |
@@ -2742,7 +2742,7 @@ const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodi
 <sub>`api.ogt` line 3645</sub>
 
 ```ogt
-const BODY_KINEMATIC u32 2 "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
+const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
 <sub>`api.ogt` line 3646</sub>

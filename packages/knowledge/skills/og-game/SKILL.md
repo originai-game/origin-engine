@@ -593,7 +593,12 @@ dissolve, wind-swayed grass and a ripple on the walking walker.
 profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and sensors
 arrive as events, and `og.physics` answers queries. `og.Velocity` is
 optional: the step adds it to a dynamic body that has none, and a kinematic
-body moves by it when it has one. `world.set(e, og.Velocity, ...)` refuses on
+body (`BODY_KINEMATIC`) moves by it each tick, its Transform written back:
+a lift is a kinematic body with a Velocity whose system only turns the
+velocity round at the ends, and a PlatformerController standing on it
+rides along. A kinematic body without one stays where its Transform puts
+it (move that by hand), and writing a moving one's Transform teleports it
+there. `world.set(e, og.Velocity, ...)` refuses on
 an entity without one (a body in `start`, before its first step):
 `world.insert` it there, which adds and sets it.
 
