@@ -10,6 +10,17 @@ game a look of its own and keep it consistent. The mechanics are og-ui's
 (skins, motion and sounds are og-ui §6) and the amounts of game feel
 og-feel's; this is the taste.
 
+## What works
+
+Both games written from this package alone reached `og polish`'s taste 99
+from a preset tuned in their own look file: Lantern Vale
+(`examples/lantern-vale`) the anime cel preset with ink, a tinted shadow
+side and a painted second look for the results; Hollowbell
+(`examples/hollowbell`) a 16-bit pixel grid with its own 32-colour palette
+through `Stylise.palette` and a Bayer dither, and the 2D glow. Swapping the
+look at a tick (`og.render.applyLook`) for the results worked the first
+time in both.
+
 ## 1. Choose a style from the premise
 
 Write the premise in one line, then answer four questions:

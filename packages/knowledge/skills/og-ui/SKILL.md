@@ -8,6 +8,15 @@ tick, the engine lays it out, draws it in the platform's design tokens and
 answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `reference/ui.md`; this skill is how to use it well.
 
+## What works
+
+Two games written from this package alone (`examples/lantern-vale`,
+`examples/hollowbell`) used the main menu, pause, cutscene, shop and
+results templates (the results with a localised Best and New best) and a
+text field with input-method composition, and none needed wiring beyond
+its desc; a skin pack copied into the game restyled every screen, and
+`og polish` measured taste 99 for both.
+
 ## 1. The rule of the kit
 
 Every template and widget is **one call per tick, data in, answer out**:

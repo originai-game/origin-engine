@@ -14,6 +14,14 @@ engine ships in TypeScript); sprites, flipbooks, tilemaps and floating text
 are og-game's (§8, §10). This skill is how much of each to use, and how to
 prove it.
 
+## What works
+
+In Hollowbell (`examples/hollowbell`, a 2D platformer written from this
+package alone) `og polish` measured every input answered within a tick and every damage moment with hit stop,
+shake, a number and a sound (feel 92; Lantern Vale, a 3D adventure, 90).
+An `og.CameraZone` held its boss arena, and flipbook frame events put the
+footsteps and the strikes on their exact frames.
+
 ## 1. Answer on the same tick
 
 - Read input in a system and act in **the same tick**: start the jump, the

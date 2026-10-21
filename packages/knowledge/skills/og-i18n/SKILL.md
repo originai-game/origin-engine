@@ -10,6 +10,15 @@ message, and hands og.ui the fonts and the direction for it. The API is in
 `reference/i18n.md`; the platform's `localization` skill covers store
 listings and the catalog's languages.
 
+## What works
+
+Two games written from this package alone (`examples/lantern-vale`,
+`examples/hollowbell`) ship English and Simplified Chinese from string
+tables: `og polish` found no locale gaps in either, the results template
+showed its localised Best and New best, a name was typed partly through an
+input method, and a skin copied without its CJK `fallback` was refused by
+the cook with the line named.
+
 ## 1. One table per locale
 
 ```text
