@@ -176,7 +176,7 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(false);
   og.ui.anchor("Wallet", { anchor: "topLeft", direction: "column", gap: S.xs }, () => {
     capsule("Sparks", () => {
-      og.ui.icon("Icon", "star", { size: 24, tint: { token: "accent" } });
+      og.ui.icon("Icon", "star", { size: 24, tint: { token: "accentInk" } });
       // The sparks change every tick, so they are a label in the locale's words, not a counter
       // (a counter re-counts from where it is on every change); counters show what jumps.
       og.ui.label("Amount", big(world, g.sparks), { step: "xl", font: "display", nowrap: true });
@@ -213,10 +213,10 @@ function hud(world: World, g: GameV): void {
         if (g.refusedSlot === i && g.refusedTick === world.tick - 1) og.ui.shake({ sound: true });
         if (g.milestoneSlot === i && g.milestoneTick === world.tick - 1) og.ui.burst({ count: 10 });
         og.ui.row("Head", { gap: S.xxs, cross: "center" }, () => {
-          og.ui.label("Name", say(world, `gen.${name}`), { step: "body", color: { token: g.selected === i ? "accent" : "fg" }, nowrap: true });
+          og.ui.label("Name", say(world, `gen.${name}`), { step: "body", color: { token: g.selected === i ? "accentInk" : "fg" }, nowrap: true });
           og.ui.counter("Owned", n, { font: "mono", prefix: "×", color: { token: "fgMuted" } });
         });
-        og.ui.label("Cost", big(world, cost), { font: "mono", color: { token: can ? "accent" : "fgMuted" }, nowrap: true });
+        og.ui.label("Cost", big(world, cost), { font: "mono", color: { token: can ? "accentInk" : "fgMuted" }, nowrap: true });
       });
     });
   });
@@ -226,7 +226,7 @@ function hud(world: World, g: GameV): void {
   og.ui.anchor("Nova", { anchor: phone ? "topRight" : "bottomRight", offsetY: phone ? 64 : 0, direction: "column", cross: "center", gap: S.xxs }, () => {
     if (gain >= 1) {
       if (og.ui.actionButton("Supernova", say(world, "hud.nova"), { icon: "bolt", size: 64, primary: true }).clicked) g.confirmNova = true;
-      og.ui.label("Gain", say(world, "hud.novaGain", { n: gain }), { color: { token: "accent" }, nowrap: true });
+      og.ui.label("Gain", say(world, "hud.novaGain", { n: gain }), { color: { token: "accentInk" }, nowrap: true });
     } else if (g.runEarned > 0) {
       og.ui.label("At", say(world, "hud.novaAt", { n: big(world, novaAt(t)) }), { step: "caption", color: { token: "fgMuted" }, nowrap: true });
       og.ui.meter("Progress", Math.min(g.runEarned, novaAt(t)), novaAt(t), { width: px(phone ? 110 : 140) });
@@ -287,7 +287,7 @@ function dialogs(world: World, g: GameV): void {
   }
   let collect = false;
   const w = og.ui.modal("Welcome", g.welcome, { title: say(world, "welcome.title"), width }, () => {
-    og.ui.row("Mark", { width: grow, align: "center" }, () => og.ui.icon("Icon", "clock", { size: 40, tint: { token: "accent" } }));
+    og.ui.row("Mark", { width: grow, align: "center" }, () => og.ui.icon("Icon", "clock", { size: 40, tint: { token: "accentInk" } }));
     og.ui.label("Body", say(world, "welcome.body", { time: duration(world, g.away), n: big(world, g.offline) }), { width: grow, align: "center" });
     og.ui.row("Actions", { width: grow, align: "center" }, () => {
       if (og.ui.button("Collect", say(world, "welcome.collect"), { variant: "primary" }).clicked) collect = true;

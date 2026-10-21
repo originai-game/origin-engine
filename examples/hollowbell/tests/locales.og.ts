@@ -3,7 +3,7 @@
 // the results (og.ui's own words "Best" and "New best" from the tables,
 // ResultsDesc.bestLabel and newBestLabel), and the shop's own "Price" and
 // "Buy" / "Not enough" (ShopDesc.priceLabel, buyLabel, shortLabel:
-// FINDINGS.md #12, fixed).
+// FINDINGS.md #12, fixed), and the talk's own "Skip" (CutsceneDesc.skipLabel).
 import { playtest } from "@origingame/engine/playtest";
 import { press, script, texts } from "./lib.ts";
 
@@ -43,6 +43,7 @@ export default playtest({
     t.ok(pause.includes("已暂停") && pause.includes("继续") && pause.includes("保存并退出"), "the pause menu is Chinese");
     const talk = texts(run, "talk.json");
     t.ok(talk.includes("老洞鼠"), "Old Burrow is 老洞鼠");
+    t.ok(talk.includes("跳过") && !talk.includes("Skip"), "the cutscene's Skip is 跳过 (CutsceneDesc.skipLabel, row 79)");
     const shop = texts(run, "shop.json");
     t.ok(shop.includes("老洞鼠的货摊") && shop.includes("蛾翼斗篷") && shop.includes("6 微光"), "his wares are Chinese");
     t.ok(shop.includes("价格") && (shop.includes("购买") || shop.includes("微光不够")), "the shop template's own Price and Buy are Chinese (FINDINGS.md #12, fixed)");

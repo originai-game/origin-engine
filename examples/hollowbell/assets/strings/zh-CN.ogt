@@ -42,6 +42,7 @@ string "talk.1" "哎呀，守钟人竟下到这么深？小心那些甲虫，它
 string "talk.2" "幽影虫把一枚钟舌拖进了下面的大厅。那家伙有木桶那么大。"
 string "talk.3" "山里出什么，我就收什么。一如既往，微光换货。"
 string "talk.4" "那就做笔交易吧。"
+string "talk.skip" "跳过"
 string "shop.title" "老洞鼠的货摊"
 string "shop.currency" "微光"
 string "shop.cake" "蜂蜜蛋糕"

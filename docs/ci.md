@@ -398,7 +398,14 @@ wasm-bindgen writes `snippets/` (the pool's Worker script) beside
 `origin-engine-lanes.js`; build.sh copies each lanes module with its
 `snippets/` into its profile's directory (`dist/web-publish`,
 `dist/web-publish-2d`), and `scripts/pack.sh` refuses a package without
-either profile's lanes files. In the gate's mode (`OG_GATE=1`) build.sh
+either profile's lanes files. wasm-bindgen-rayon's helper there starts
+each pool Worker with `pkg.default(module, memory)`, the positional form
+the pinned wasm-bindgen's glue warns about once a Worker (eight warnings a
+lanes page, examples/WEB-FINDINGS.md #8), so build.sh rewrites that one
+call to the single-object form, `{ module_or_path, memory }`
+(`packages/engine/scripts/rayon-worker.sh`, which stops the build when the
+helper has neither form), and `tests/web-export.test.ts` checks the
+shipped scripts for a positional init. In the gate's mode (`OG_GATE=1`) build.sh
 exits 1 when `scripts/wasm-crates.txt` marks og-host-web `lanes` and the
 gate left no `og_host_web-lanes.wasm` or no `og_host_web-lanes2d.wasm`.
 
@@ -649,7 +656,12 @@ design: `msaa` (no other tier renders it), `showcase` and `overlay` (GPU
 particles take the CPU path without compute; RMSE 0.0107 and 0.0103 against
 `metal`) and `water-3d` (no screen-space reflection march, the sky cubemap
 reflects instead; RMSE 0.0258). A WebGL2 reference is recorded only for a
-difference the tier makes by design, never to absorb a defect. Each tier
+difference the tier makes by design, never to absorb a defect.
+`shadows-crypt` (wave 13, web findings #4) has none: its shadowed point
+light is two paraboloid hemispheres on WebGL2 and six cube faces on
+`metal`, which store the same faces since the paraboloids' winding was
+mirrored (the paraboloid frame within RMSE 0.0036 of the cube one
+natively), and the lamp's glass casts no shadow on either. Each tier
 takes 30 to 50 s after the module build.
 
 The same module carries og-ui's four reference scenes as `og-ui/<name>`

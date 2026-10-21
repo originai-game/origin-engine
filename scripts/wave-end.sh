@@ -22,8 +22,9 @@
 #
 # --templates  the projects whose playtests run (directory names under
 #              templates/, templates/archetypes/ or examples/; default every
-#              one with references/vulkan-cpu/, and ui-kit, whose frames are
-#              og-ui's)
+#              one with references/metal/ (a project whose lavapipe frames
+#              all match metal has no vulkan-cpu/ directory and still runs),
+#              and ui-kit, whose frames are og-ui's)
 # --record     what to record on vulkan-cpu instead of compare, a comma list:
 #              <template> (every playtest of it), <template>/<playtest>,
 #              gfx (every og-tests scene), gfx/<scene>, or og-ui (its GPU
@@ -53,7 +54,7 @@ ALL_STAGES="gate web cross prepare gfx ui playtests table"
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
 stages="$ALL_STAGES"
 templates="ui-kit"
-for d in templates/*/references/vulkan-cpu templates/archetypes/*/references/vulkan-cpu examples/*/references/vulkan-cpu; do
+for d in templates/*/references/metal templates/archetypes/*/references/metal examples/*/references/metal; do
   [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"
 done
 record=""

@@ -8,7 +8,9 @@
 //! decoded ones in a cache of twice the terrain's tile budget, and hands
 //! the renderer at most [`NEW_PER_FRAME`] new tiles a frame, each after its
 //! parent. A capture settles first: every wanted tile is decoded and shown
-//! at once, so captured frames do not depend on decode timing.
+//! at once, so captured frames do not depend on decode timing. So does the
+//! first frame that draws a terrain (`terrain::extract`): no frame draws a
+//! terrain before its tiles arrived, which auto exposure would meter.
 //!
 //! Nothing here touches the world: the tick reads terrains through
 //! physics' height field and `og.terrain.sample`, never through what is

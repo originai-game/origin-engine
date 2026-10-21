@@ -369,7 +369,7 @@ function build(world: World): void {
   ground(world, fx, { x: 0.18, y: 0.17, z: 0.16 });
   const wallGeo = must(og.render.planeGeometry(world, { width: 14, height: 6 }));
   const wall = must(world.spawn({ name: "wall", position: { x: fx, y: 3, z: -3 } }));
-  world.insert(wall, og.Mesh, { geometry: wallGeo, material: mat({ color: { r: 0.42, g: 0.4, b: 0.38 }, roughness: 0.9 }), receiveShadow: true });
+  world.insert(wall, og.Mesh, { geometry: wallGeo, material: mat({ color: { r: 0.42, g: 0.4, b: 0.38 }, roughness: 0.9 }), castShadow: true, receiveShadow: true });
   const ring = must(og.render.boxGeometry(world, { width: 0.25, height: 0.18, depth: 0.25 }));
   const coal = mat({ color: { r: 0.15, g: 0.1, b: 0.08 }, emissive: { r: 1, g: 0.3, b: 0.05 }, emissiveIntensity: 1.5 });
   for (let k = 0; k < 8; k++) {

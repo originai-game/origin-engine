@@ -1062,6 +1062,9 @@ struct Batch {
     /// Drawn with the array-map pipelines ([`GpuMaterial::array`]): its
     /// instances carry their layer in the transform.
     array: bool,
+    /// Drawn into the shadow maps ([`Instance::cast_shadows`]; skinned
+    /// batches always are).
+    cast: bool,
 }
 
 /// The effect bind groups and what they were made from.
@@ -3951,6 +3954,7 @@ impl Renderer {
                     derivatives: m.flat,
                     compact: r.dequant.is_some(),
                     array: r.array,
+                    cast: r.cast,
                 }
             })
             .collect();
@@ -4410,6 +4414,7 @@ impl Renderer {
                         derivatives: m.flat,
                         compact: false,
                         array: m.array.is_some(),
+                        cast: true,
                     });
                 }
             }
@@ -5026,7 +5031,8 @@ impl Renderer {
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
-        let has_casters = !batches.is_empty() || !skinned_batches.is_empty() || terrain_casters;
+        let has_casters =
+            batches.iter().any(|b| b.cast) || !skinned_batches.is_empty() || terrain_casters;
         let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
@@ -5062,7 +5068,7 @@ impl Renderer {
             .map(|c| {
                 if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum);
-                    indirect_list(&batches, sorted, g, |_| true)
+                    indirect_list(&batches, sorted, g, |b| b.cast)
                 } else {
                     self.cull(
                         &batches,
@@ -5071,7 +5077,7 @@ impl Renderer {
                         &mut origins,
                         &mut cull_inside,
                         &c.frustum,
-                        |_| true,
+                        |b| b.cast,
                     )
                     .0
                 }
@@ -5160,7 +5166,7 @@ impl Renderer {
                 local_frustums[ls.layer + face] = Some(f.clone());
                 let list = if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
-                    indirect_list(&batches, sorted, g, |_| true)
+                    indirect_list(&batches, sorted, g, |b| b.cast)
                 } else {
                     self.cull(
                         &batches,
@@ -5169,7 +5175,7 @@ impl Renderer {
                         &mut origins,
                         &mut cull_inside,
                         f,
-                        |_| true,
+                        |b| b.cast,
                     )
                     .0
                 };

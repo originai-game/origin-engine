@@ -32,10 +32,10 @@ palette {
   focus "#8f2d1f"
   thumb "#f4e8c8"
   scrim "#0d0805cc"
-  success "#3f7a2a"
-  warn "#a86a12"
+  success "#2d5a1e"
+  warn "#704713"
   danger "#6e1b10"
-  info "#2d5c8a"
+  info "#22517f"
   shadow "#000000aa"
   stage "#1a120b"
 }

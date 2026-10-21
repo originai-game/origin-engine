@@ -129,12 +129,21 @@ export class Page {
   readonly contexts = new Map<string, number>();
   /** Out-of-process frames attached to this page (cross-origin iframes): url at attach time by session. */
   readonly children = new Map<string, string>();
+  /** The Workers this page started (and those they started), by session: their type and script URL. */
+  readonly workers = new Map<string, { type: string; url: string }>();
+  /** Runs in each new Worker before its first line (prepareWorkers). */
+  #prepare: ((worker: { type: string; url: string }, session: string) => Promise<void>) | undefined;
 
   constructor(browser: Browser, session: string, log: string[]) {
     this.#browser = browser;
     this.session = session;
     this.log = log;
     browser.on((method, params, s) => {
+      // A Worker started by one of this page's Workers (the lanes pool): held for prepare too.
+      if (s !== undefined && this.workers.has(s) && method === "Target.attachedToTarget") {
+        this.#held(params);
+        return;
+      }
       if (s !== session) return;
       if (method === "Runtime.consoleAPICalled") {
         const args = (params["args"] as Array<{ value?: unknown; description?: string }>) ?? [];
@@ -147,6 +156,7 @@ export class Page {
         const child = params["sessionId"] as string;
         // Frames only: Workers and service workers attach too.
         if (info.type === "iframe" || info.type === "page") this.children.set(child, info.url);
+        else if (this.#prepare) this.#held(params);
         else void browser.send("Runtime.runIfWaitingForDebugger", {}, child).catch(() => {});
         if (info.type === "iframe" || info.type === "page") void browser.send("Runtime.runIfWaitingForDebugger", {}, child).catch(() => {});
       } else if (method === "Runtime.executionContextCreated") {
@@ -158,6 +168,45 @@ export class Page {
 
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     return this.#browser.send<T>(method, params, this.session);
+  }
+
+  /**
+   * Hold every Worker this page starts (and every Worker those start) at
+   * its first line, run `prepare` in it, then let it go: a Worker's own
+   * globals can be set before its script reads them (published.ts installs
+   * its test clock in the engine Worker this way). Call before navigating.
+   */
+  async prepareWorkers(prepare: (worker: { type: string; url: string }, session: string) => Promise<void>): Promise<void> {
+    this.#prepare = prepare;
+    await this.send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
+  }
+
+  /** A Worker attached and waiting: prepare it, hold the Workers it starts, then run it. */
+  #held(params: Record<string, unknown>): void {
+    const info = params["targetInfo"] as { type: string; url: string };
+    const child = params["sessionId"] as string;
+    const worker = { type: info.type, url: info.url };
+    this.workers.set(child, worker);
+    const b = this.#browser;
+    void (async () => {
+      try {
+        await b.send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true }, child).catch(() => {});
+        await this.#prepare?.(worker, child);
+      } finally {
+        await b.send("Runtime.runIfWaitingForDebugger", {}, child).catch(() => {});
+      }
+    })();
+  }
+
+  /** Evaluate an expression (awaiting a Promise) in one of this page's Workers (`workers`). */
+  async evalWorker<T = unknown>(session: string, expression: string): Promise<T> {
+    const r = await this.#browser.send<{ result: { value?: T }; exceptionDetails?: { text: string; exception?: { description?: string } } }>(
+      "Runtime.evaluate",
+      { expression, awaitPromise: true, returnByValue: true },
+      session,
+    );
+    if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
+    return r.result.value as T;
   }
 
   /** Attach to cross-origin frames as they appear (call before navigating to a page that has them). */

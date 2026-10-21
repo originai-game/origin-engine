@@ -7,6 +7,38 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 13 (2026-10-21)
+
+Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
+findings (examples/WEB-FINDINGS.md), three streams of four lanes, and two
+more when lanes freed. Merged so far, in order: webgl2-render-2
+(c20d2c3b; findings 3, 4, 5, verified in Chrome on both tiers by the
+coordinator before the merge) and publish-testing (6a81c453; findings 6,
+7, 8, 10). In flight: web-boot (findings 1, 2, 9, 11, 12), shadow-flags
+(row 87), dogfood-5 (a fourth game, a racing time trial), and wave 12's
+perf-games. The round sections below have each.
+
+- **`scripts/check.sh functional`**: the webgl2-render-2 lane
+  (gate 55) and the publish-testing lane (gate 56) both failed at
+  bun-functional on one test, `terrain-stream.test.ts`, whose premise
+  441f4e6e removed: the first frame that draws a streamed terrain now
+  settles every wanted tile, so the streamed run no longer has tiles
+  waiting at the station's first frame; the test expects the settle
+  since e565ede7 and a streaming test whose tiles arrive later is owed
+  (row 88). Every other step passed (test 145 s, drift 37 s), and the
+  games' suites after the merge (fx-showcase, Ember Vale, topdown,
+  Hollowbell, Lantern Vale, Kestrel; Kestrel's `replay` failed once
+  under load at 13 s with "the run wrote no end.json" and passed alone
+  at 49 s, 4 checks) and the kit's and Hollowbell's after
+  publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
+  the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
+  it) and main was pushed there.
+
+**Wave-end figures: pending** (with wave 12's, once perf-games lands:
+`--all`, web-reference, lavapipe with Kestrel Stair's first run and the
+moved Lantern Vale and Kestrel frames, rows 51 and 52's Chrome
+measurements).
+
 ## Main gate, wave 12 (2026-10-21)
 
 Wave 12 started as soon as wave 11's last stream merged (the owner's
@@ -19,8 +51,22 @@ Four of the five coding streams were stopped by the session's rate limit
 for an hour and resumed from where they stopped. The round sections
 below have each.
 
-- **`scripts/check.sh functional`**, each merge: render-audio-3,
-  skins-palette, web-dogfood: pending (the coordinator fills).
+- **`scripts/check.sh functional`**: render-audio-3 (5bedf86b) passed
+  in 168 s (5 of 5 steps; fx-showcase, Kestrel, topdown and Hollowbell's
+  suites after it). skins-palette and web-dogfood were merged as one
+  batch (6c422e09, 4b9bcac6) after the lavapipe pruning (36b326c3), and
+  their lane failed twice before the engine changed: the web dogfood
+  harness read `brotliCompressSync` and `constants` from `node:zlib`,
+  which the package's ambient declaration lacked (fc6fefa9), and then
+  the package's three typechecks, two of them `bun x` of the same
+  typescript at once, raced on its bin under the gate ("Package
+  typescript does not provide a binary named tsc"; they run one after
+  another since 2675f9bc). A kit suite failure beside them (the scifi
+  phone pack's idle cell, 0.636 % outliers) was the stale dev addon of
+  a lane that stopped before its build, not a defect: the sheet passes
+  at skins-palette's own head and on main once rebuilt. The first green
+  lane after render-audio-3 is wave 13's (8a23392a, 94 s), which covers
+  both streams with wave 13's first two merges.
 - **The web findings** (web-dogfood, examples/WEB-FINDINGS.md): 0
   blockers, 7 annoyances, 5 nits; wave 13 takes them.
 
@@ -112,22 +158,39 @@ the measure worktree, logs not in the repository, stated here once).
   physics-anim-2 did not run the tool on its branch, and nav-ai's crates
   are not in it (its host debug run matched the recorded values).
 - **Perf**: not run (the perf lane).
-- **vulkan-cpu**: the first real run of `scripts/wave-end.sh` (stages
-  cross, prepare, gfx, ui, playtests, table; `--record og-ui`) at
-  15f4e9eb: cross 264 s, gfx 184 s, ui 23 s (og-ui's frames recorded:
-  sample-screen, text-edit and widget-set moved, text-bidi, text-fields-2
-  and text-mixed-runs new) and table 8 s passed; prepare failed in 2 s
-  (the examples' generated assets, gitignored, were not made in the
-  measure worktree: `music/dusk.wav` missing) and the playtests stage,
-  4,417 s, failed Hollowbell's 13 and Lantern Vale's 11 on that and
-  ui-kit's 14 frame suites on vulkan-cpu copies that predate the pixel
-  pack's label weight and this wave's grids (fx-showcase 22, match3 7,
-  runner 8, topdown 7 and ui-kit's other 19 passed). The prepare stage
+- **vulkan-cpu**: two real runs of `scripts/wave-end.sh` (stages cross,
+  prepare, gfx, ui, playtests, table). The first, at 15f4e9eb with
+  `--record og-ui`: cross 264 s, gfx 184 s, ui 23 s and table 8 s passed;
+  prepare failed in 2 s (the examples' generated assets, gitignored, were
+  not made in the measure worktree: `music/dusk.wav` missing) and the
+  playtests stage, 4,417 s, failed Hollowbell's 13 and Lantern Vale's 11
+  on that and ui-kit's 14 frame suites on vulkan-cpu copies that predate
+  the pixel pack's label weight and this wave's grids. The prepare stage
   makes a project's generated assets since the commit after 15f4e9eb,
-  and the run is repeating with `--record og-ui,ui-kit,hollowbell,
-  lantern-vale,kestrel-stair,fx-showcase`; its copies are judged by the
-  reference-frame rule and this bullet takes the result. Row 82's "never
-  run" is closed by the first run; rows 54 and 74 close with the second.
+  and the second run, at e7d6cb5e (the wave 11 record) with `--record
+  og-ui,ui-kit,hollowbell,lantern-vale,kestrel-stair,fx-showcase`, passed
+  every stage: prepare 12 s, gfx 233 s, ui 31 s, playtests 8,964 s (101
+  playtests: fx-showcase 22, Hollowbell 13, Lantern Vale 11, match3 7,
+  runner 8, topdown 7, ui-kit 33), table 9 s. Its table against `metal`
+  (`target/evidence/wave-end/vulkan-cpu-vs-metal.tsv`, 252 frames)
+  judged every copy by the reference-frame rule (36b326c3): kept where
+  lavapipe differs from `metal` by design, fx-showcase 16 of 62 (fifteen
+  looks presets, worst `looks-detailed-doodle` RMSE 0.0451 with 15.0 %
+  outliers, and `moon` 0.0128; was 42), Hollowbell `combat` (0.0123) and
+  `talk` (0.0105; was 8 of 9), og-tests 7 of 79 (`stylise-pixel` 0.0226,
+  `water-underwater` 0.0225, `tilemap-lit` 0.0265, `stylise-palette`
+  0.0116, `atmosphere-night` 0.0131, `atmosphere-moon` 0.0130,
+  `sprites-array` 0.0126; was 11); dropped everywhere else, where every
+  frame is within tolerance of `metal`: og-ui's 85 (the kit's included;
+  worst `kit-desktop-widgets` 0.0086, 0.159 %; was 82 copies), Lantern
+  Vale's 7 (worst `far` 0.0058; was 7), match3's 3, runner's 3 and
+  topdown's 4 (all under 0.0031). Eight lavapipe captures committed under
+  a scratchpad path by d08fdc93 went with them. Kestrel Stair did not run:
+  the script listed only projects that already had a `vulkan-cpu/`
+  directory, which the rule itself empties for a project that matches
+  `metal`; it now lists every project with `references/metal/` (163
+  playtests in 13 projects), and Kestrel joins wave 12's run. Rows 54, 74
+  and 82 are closed.
 
 ## Main gate, wave 10 (2026-10-21, 9d220790)
 
@@ -498,6 +561,145 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Wave 13, publish-testing: the published page under a script, the text entry's name, clean pool Workers and the kit's settings (71d0d574)
+
+Wave 13's third stream took the web findings about what ships and the
+shell (examples/WEB-FINDINGS.md #6, #7, #8, #10), on lane-1.
+
+- **#6, a publish build could not run a playtest's script.** The publish
+  probe keeps hello, tick, state, pick, entity, input and capture and
+  nothing drove a published page with them. New harness
+  `packages/engine/tests/web/published.ts` (`bun tests/web/published.ts
+  --project examples/hollowbell [--webgl] [--no-build]
+  [--no-isolation]`): it runs `og build --publish`, serves the result as
+  the platform opens a release, and plays steps in the playtests' syntax
+  with real Chrome input events (keys, typed text, mouse presses on the
+  controls it finds in the accessibility mirror); `screenshot` is the
+  probe's capture compared with the project's references under
+  og-tests' rule, `state` and `mirror` feed the checks, a reload stands
+  in for a playtest's `then` relaunch, and a command-channel step
+  (`warp`, `show`, `dump_*`) is refused, never skipped. The engine
+  Worker runs on a clock the harness controls (one tick per frame, held
+  while a capture's readback lands), installed through the DevTools
+  protocol before the Worker starts, so the built files are untouched
+  and every capture is of the tick it names. The stand-in play origin
+  and the mirror-driven input moved out of dogfood.ts into
+  `tests/web/play-origin.ts`; the frame comparison into
+  `tests/support/png.ts`, which reference.ts reads too. Hollowbell 13 of
+  13 on WebGPU, WebGL2 and without isolation (the tick-60 frame matches
+  `metal`'s title exactly; a typed name, Begin and a held ArrowRight
+  reach the game; the console clean); the kit 18 of 18 (the gallery
+  frame exact, a saved 简体中文 back after a reload). Run against the old
+  pool helper, the old textarea and the old kit, it failed on each. Not
+  in any `check.sh` lane; og-build §6 and docs/web-export.md say how it
+  runs. Most existing playtests cannot run through `--playtest` (dump
+  and game-command steps), so its two plans live in the harness.
+- **#7, the hidden textarea was `aria-hidden` while focused.** It is
+  hidden only while no field is focused; a focused field's textarea
+  takes its name, placeholder and text from the field's node in the
+  mirror, whose own element hides and whose dialog owns the textarea,
+  so a reader meets one named text box (text-input.ts, a11y.ts,
+  shell.ts). New `tests/web-text-entry.test.ts` drives the real shell
+  against a stand-in Worker and document (`tests/support/dom.ts`),
+  failing 3 of 3 on the old code.
+- **#8, eight deprecated-parameter warnings per lanes page.** New
+  `scripts/rayon-worker.sh` rewrites wasm-bindgen-rayon's
+  `pkg.default(data.module, data.memory)` to the single-object form on
+  both paths build.sh puts a lanes module in dist, and stops the build
+  if the helper has neither form; no version moved (docs/ci.md). A test
+  in `tests/web-export.test.ts` checks the shipped snippets for any
+  positional init call.
+- **#10, the kit never read its saved settings.** `templates/ui-kit/src/main.ts`
+  asks for its settings on the first tick and applies every saved field
+  when the answer arrives, the settings screen through the same code;
+  new playtest `settings-saved.og.ts` (a first run saves Mute and
+  简体中文; a relaunch with the store kept asks on tick 0 and comes back
+  muted with a Chinese menu). og-platform-sdk §3 now says settings are
+  a pair (load on the first tick, apply what you save) with the kit's
+  code as the example, and og-i18n §5 how to restore the language;
+  validate.ts passes. examples/WEB-FINDINGS.md gained a "Fixed" section
+  for the four.
+
+**The coordinator's run (the measure worktree at 5137ee44, after the
+merge):** `bun tests/web/published.ts` on Hollowbell and the kit, both
+tiers: Hollowbell 13 of 13 on WebGPU and on WebGL2 (the engine Worker on
+the harness's clock, the title's New in the mirror behind the gate, a
+real click opening it, the tick-60 title RMSE 0 against `metal`, the
+name dialog's focus in a named text box no aria-hidden hides, "Wren"
+typed, Begin, ArrowRight moving Wren from x 16.5 to 21.0, nothing on the
+console), the kit 18 of 18 on both (Mute, 简体中文 and Done saved once,
+the reload asking the play origin for og.settings and coming back in
+简体中文, the console clean).
+
+## Wave 13, webgl2-render-2: Lantern Vale's ink, Kestrel's crypt and the exposure's start on WebGL2 (c178e216)
+
+Wave 13's second stream took the web findings that are rendering on the
+WebGL2 tier (examples/WEB-FINDINGS.md #3, #4, #5), on lane-2. Both of the
+coordinator's guesses in the brief were wrong: the crypt had nothing to
+do with the sun or a roof, and the ink was not a GL difference in the ink
+or outline passes.
+
+- **#4, the crypt lit as if roofless (51a291fa).** The crypt's lamp is a
+  small glass box with its shadowed point light inside. The engine
+  ignored `og.Mesh.castShadow`, so the box cast a shadow: on metal and
+  WebGPU the six cube faces stored the box and shut the lamp's light in;
+  on WebGL2 the two paraboloid hemispheres never stored it, so the lamp
+  lit the whole crypt. Forcing the no-compute tier on metal reproduced
+  Chrome's frame exactly (RMSE 0.0456, 7.58 % outliers). `og.Mesh.castShadow`
+  now reaches the renderer (off by default, as in three.js; `og.Model`
+  meshes still always cast). A second defect found on the way: the
+  paraboloid projection was mirrored, so it stored the faces turned
+  towards the light, which is why it missed the box and why it drew a
+  curved shadow band down boxes' lit faces (shadow_pass.wgsl,
+  lighting.wgsl). New og-tests scene `shadows-crypt` (a roofed room, a
+  low sun reaching the floor only through the door, a point light inside
+  a glass box that casts no shadow); it applies on every tier and needs
+  no WebGL2 reference: paraboloids are within RMSE 0.0036 of cube faces
+  (0.0148 before). fx-showcase meshes whose shadows its frames show set
+  `castShadow`, so those frames stayed.
+- **#3, Lantern Vale's ink and sparks (0082ead5).** At boot the engine
+  loaded the game's look to read its antialias setting; loading it
+  pulled in textures the web host cannot decode before the renderer
+  exists, so it failed silently and the web renderer fell back to the
+  tier's method: TAA on WebGPU (the look's own, so nothing showed) and
+  4× MSAA on WebGL2, which leaves the ink and outlines unsoftened. It
+  reads the look file alone now. The sparks (CPU particles on WebGL2) are
+  by design but need no WebGL2 reference either: with TAA the no-compute
+  tier draws lantern 0.0017, slime 0.0026, far 0.0056 from metal. Test in
+  crates/og-runtime/tests/web_findings.rs, failing on the old code.
+- **#5, the exposure's start (441f4e6e), and the WebGPU title and start
+  misses of #3.** Adaptation already stepped per tick; where it started
+  was host-dependent twice over: a streamed terrain had none of its
+  tiles on the first frame it was drawn, so that frame showed no ground
+  and metered 2.5 EV too bright, and the title stayed about 1.5 stops
+  under for two seconds (a terrain now settles its tiles on its first
+  frame, as a capture does); and the web draws a frame at tick 0 where
+  `og run` does not (a tick-0 frame now meters but never seeds the
+  adaptation). Emulating the web's tick-0 frame natively reproduced the
+  web exactly before (title RMSE 0.0310) and matches within 0.0067 after.
+  Test in tests/exposure.rs, failing on the old code.
+- **IDL (c178e216)**: `castShadow`, the adaptation rule on `autoExposure`
+  and `adaptSpeedUp`, and "not applied yet" on `Mesh.receiveShadow` and
+  `GltfDesc.castShadow`/`receiveShadow` (row 87). Re-recorded on metal:
+  Kestrel `crypt` (RMSE 0.0458 from the old reference) and `bag`
+  (0.0274), Lantern Vale `title` (0.1734) and `start` (0.0445), og-tests
+  `point-shadows-paraboloid` (0.0021), `shadows-crypt` new.
+
+**Browser verification (the coordinator, in the measure worktree at
+c178e216 merged with 48133d07, headless Chrome 1280×720).** Every frame
+against `metal`, no WebGL2 reference added: Lantern Vale 7 of 7 on both
+tiers (worst `far` 0.0073; WebGL2's lantern 0.0059 where #3 had 0.0189,
+and WebGL2 now draws within 0.0001 of WebGPU on every frame); Kestrel
+Stair 9 of 9 on both (WebGL2's crypt 0.0033 where #4 had 0.0456 with
+7.56 %, bag 0.0021); og-tests' gfx scenes on both (`shadows-crypt` WebGPU
+0, WebGL2 0.0036; `point-shadows-paraboloid` 0 and 0.00004;
+`point-spot-lights` 0 and 0.0027; WebGL2's `showcase` and `overlay`
+against their own references 0.0081 and 0.0080, as predicted); Ember
+Vale on WebGL2 (title 0.0043, beacon 0.0020 against its WebGL2 reference,
+dawn 0.0019). Lantern Vale keeps no vulkan-cpu copy since 36b326c3, so its
+moved frames are judged on lavapipe at wave 12's end. Native ANGLE stays
+uncommitted (row 70; it also needs `ANGLE_DEFAULT_PLATFORM=metal`).
 
 ## Wave 12, web-dogfood: the three games and the kit published and played in Chrome (ccc462d)
 
@@ -4410,7 +4612,7 @@ resource only the owner can give.
 | 51 | The three.js comparison (`tools/bench/threejs-compare.ts`) run again after the lean pipelines: before them the 20,000-sphere field was 0.31x of three.js's WebGPU InstancedMesh and 0.48x of WebGL2's, the §7 reference scene 2.04x and 1.54x | P4 lean | S | engine, phase 4 (a wave-end measurement) | open (render parity, 26649d4c, measured natively only: `tests/evidence/P4/parity/`) |
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | open (round three, 1f0ecdc3, measured natively only; `og.physics.stats` through the web host is unmeasured too) |
 | 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` landed with ci-green (53b876f7) and has not run for real (row 82); wave 7's and waves 8 and 9's runs are recorded in their Main gate sections |
-| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | og-tests and the looks frames closed by wave 7's lavapipe pass (9bd0064: copies kept only where they differ from `metal` by design, the rest judged against `metal`); still open for og-ui `text-fields-2`, `text-mixed-runs` and `text-bidi`, which no lavapipe pass has run; `scripts/wave-end.sh`'s `ui` stage is what records them (row 82), its first real run in progress at wave 11's end (Main gate, wave 11) |
+| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | closed: wave 11's second wave-end run (e7d6cb5e, `--record og-ui,...`) recorded og-ui's 85 frames on lavapipe and every one is within tolerance of `metal` (worst `kit-desktop-widgets` RMSE 0.0086, 0.159 %), so og-ui keeps no vulkan-cpu copy at all (36b326c3; Main gate, wave 11) |
 | 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | open |
@@ -4430,7 +4632,7 @@ resource only the owner can give.
 | 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | closed at 706833d5 (merged 0e77b6b6, on main at c638a46f, recorded at a91e6139): 3D lanes 3,095,052 B (73.8 %), 2D lanes 2,928,498 B (69.8 %); `--all` 9 of 9, web-reference and the web export, player and wire tests passing on the branch |
 | 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): measured first (rapier's controller stalled to 0 to 0.4 m/s a tick about once a second on a box, adjacent boxes and a trimesh, stood 1 mm above the floor instead of its 2 cm skin and crept up 0.1 mm a tick, sank 9 cm when placed on the floor, refused 0.2 m stairs, climbed a 30° slope at 4.4 m/s); one mover for both controllers in both profiles (`crates/og-physics/src/mover.rs`), `tests/character_ground.rs` with 7 tests failing on the old controller; physics_hash 947364242694612608 to 15539601638348908910 by design |
 | 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): both controllers' query filters take the collider's collision groups (`og.Collider.layers`/`mask`), two tests in `tests/controllers.rs` |
-| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed for og-tests, Hollowbell and the looks on vulkan-cpu and for every browser frame (the waves 8 and 9 gate: web-reference 373 s, lavapipe at 517d8c4e); open only for og-ui `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu, with row 54: the wave-end run recording them is in progress at wave 11's end (Main gate, wave 11) |
+| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed: the second wave-end run (e7d6cb5e) recorded `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on lavapipe within tolerance of `metal`; og-ui keeps no vulkan-cpu copy (36b326c3; Main gate, wave 11) |
 | 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | closed at 64f79249 (cook-ui-words, merged a31d6cbe): `og cook` warns through `Report.warnings` on every Tiled custom property it does not read, naming the property, where it sits and the names read there (a test; og-game §8's table gains `solid`); Hollowbell's map tool writes `repeatx` at f3bf909e and the hills repeat (title, play and results re-recorded: 0.0872, 0.0870, 0.0320) |
 | 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | closed at 77cb5b0a (cook-ui-words, merged a31d6cbe): `InventoryDesc.hintLabel`/`countLabel`, `LeaderboardDesc.retryLabel`, `TutorialDesc.skipLabel`/`nextLabel`/`doneLabel`/`stepLabel` ("{step} of {count}"), `CutsceneDesc.skipLabel`; the ui-kit demo passes them from its five tables (an `offline:` command for the leaderboard's error state), its locales playtest asserts them in Chinese, og-i18n §2 lists them. Hollowbell's cutscene "Skip" is row 79 |
 | 77 | Palette round two: the archetype skins' buttons and fields under 4.5:1 (sparkorb's primary button 3.42:1, lampdive's danger button 2.58:1 and its field placeholder 3.57:1, pathguard's primary 3.30:1; row 69's test holds only the status tones and the accent badge), and the examples' own skins, outside `pack_contrast.rs` (Hollowbell's danger 4.26:1; Lantern Vale's success 3.15, warn 2.72, info 4.07:1) | W10 cook-ui-words | S | engine, phase 4 (UI) | closed at 3da271b9 and b358d6a8 (merged 38f6435d): all 14 skins under the packs' rule, every row 4.5:1 or better (primary and secondary labels at rest and hovered 7:1) |
@@ -4438,11 +4640,13 @@ resource only the owner can give.
 | 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | closed at dcdcd17c: `talk.skip`, 跳过, the subset regenerated |
 | 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | closed at 0b245141 (basisu's padding bytes, the vendored one-line fix) with 78b8d0d8's thread-count test; the pipeline cache's torn file at 9ffc36cb |
 | 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open; read by cook-determinism (033182e): no defect in the engine's code, two Vulkan devices on two threads at once on Lavapipe the best reading; if it recurs, run the second 600-tick run after the first there |
-| 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open: the first real run, started at a91e6139, stopped in its cross-build stage (it holds both gate locks for the whole run, and wave 11's merges would have waited); it is in progress at wave 11's end, at the merged tree (Main gate, wave 11) |
+| 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | closed: two real runs at wave 11's end, the first (15f4e9eb) failing prepare and the playtests on the examples' ungenerated assets and stale kit copies, the second (e7d6cb5e, after the prepare stage learned to make them) passing every stage in 9,282 s; its copies judged by the rule in 36b326c3 (Main gate, wave 11) |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | closed at dcdcd17c: the script taps Title after the wipe and opens the chapters; `chapters.png` re-recorded (0.1835) |
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
+| 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | open |
+| 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | open |
 
 ## 0. Rules that shape the plan
 

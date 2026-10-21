@@ -189,6 +189,16 @@ run it again after the fix: the report is the evidence.
 runtime and wasm next to it. `og build . --publish` produces the published
 form: the probe keeps only its player-facing members (hello, tick, state,
 pick, entity, input, capture) and the command channel is gone.
+What ships is still checked by script, through what it keeps: real input
+on the published page and the probe's `tick`, `state` and `capture`. A
+playtest written in input steps (`key_down`, `type`, `touch_move_to` an
+id, `move_to_text`, `touch_start`) and `screenshot` steps runs there as it
+runs under `og test`, each frame compared with the same references; a
+game command (warp, give) has no channel there and is refused, so keep
+the steps a published check needs free of them. The engine runs this on
+the published build of its own games (its `tests/web/published.ts`: the
+boot, the title, a press, a typed name and a frame against the metal
+reference, with a clean console).
 `og run --device chrome .` plays that publish build in a real browser
 (`android[:serial]` over adb, `iphone[:udid]` over safaridriver), passes
 the play gate and writes `og-out/device/report.md`: the first frame against

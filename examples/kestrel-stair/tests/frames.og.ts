@@ -1,9 +1,9 @@
 // Nine reference frames at 1280 x 720, compared with references/<tier>/
 // (tests/frames.ts: og-tests' tolerance): the title over the climb, the
 // intro cutscene, exploring the court, a strike's hit stop on the terrace
-// warden, inside the crypt by the lamp, the bag, the chapters, the records
-// and the results under the summit look. `OG_FX_CAPTURE=1 og test .`
-// records this tier's references.
+// warden, inside the crypt by the lamp, the bag, the four named chapter
+// cards at the title, the records and the results under the summit look.
+// `OG_FX_CAPTURE=1 og test .` records this tier's references.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { hold, press, script, tap } from "./lib.ts";
@@ -45,10 +45,15 @@ export default playtest({
     tap("records", 13.4),
     "15.2:screenshot:records.png",
     press("Escape", 15.4),
-    tap("title", 15.8),
-    "16.8:open:chapters",
-    "18.4:screenshot:chapters.png",
-    "18.5:quit",
+    // The results come back through the 700 ms wipe and stay inert while it
+    // moves: Title is tapped after it (at 15.8 it was not, and the
+    // chapters opened over the results). The four chapters reached, so
+    // every card shows its name; the level select laid out by 18.3.
+    tap("title", 16.6),
+    "17.5:set:Game.chaptersReached=15",
+    "17.6:open:chapters",
+    "19.2:screenshot:chapters.png",
+    "19.3:quit",
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");

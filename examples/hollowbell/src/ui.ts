@@ -218,6 +218,7 @@ function talk(world: World, g: GameV, p: PrefsV): void {
       { speaker: mole, text: say(world, "talk.3"), portrait: "person" },
       { speaker: keeper, text: say(world, "talk.4"), portrait: "music" },
     ],
+    skipLabel: say(world, "talk.skip"),
   });
   if (!g.talking) return;
   // The talk's box takes the focus as it opens, so Enter, Space and the pad's A answer it from the

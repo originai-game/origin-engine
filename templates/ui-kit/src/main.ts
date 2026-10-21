@@ -97,6 +97,10 @@ export const Demo = defineComponent("Demo", {
   sensitivity: f32(1),
   language: u32(0),
   saves: u32(0),
+  // og.platform.loadSettings's request (read on the first tick), 0 once answered.
+  settingsRequest: u32(0),
+  // Settings read back from og.settings (a reload comes back as the player left it).
+  loads: u32(0),
   // Widgets screen.
   tab: u32(0),
   difficulty: u32(1),
@@ -160,7 +164,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false, offline: false };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, settingsRequest: 0, loads: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false, offline: false };
 }
 
 export const ICONS = [
@@ -315,6 +319,60 @@ function settingsOf(d: DemoState): GameSettings {
       { action: "interact", label: "Interact", key: "E" },
     ],
   };
+}
+
+/**
+ * Takes settings into the demo's state: the settings screen's each frame,
+ * and og.settings as the platform kept it (`loaded`), where a field left
+ * out keeps its value and the language is asked for even when the index
+ * matches (the host's locale may be another). The language goes to
+ * og.i18n, contrast and motion to the theme.
+ */
+function takeSettings(world: World, d: DemoState, s: Partial<GameSettings>, loaded: boolean): void {
+  const num = (v: unknown, now: number) => (typeof v === "number" && Number.isFinite(v) ? v : now);
+  const flag = (v: unknown, now: boolean) => (typeof v === "boolean" ? v : now);
+  d.masterVolume = num(s.masterVolume, d.masterVolume);
+  d.musicVolume = num(s.musicVolume, d.musicVolume);
+  d.sfxVolume = num(s.sfxVolume, d.sfxVolume);
+  d.muted = flag(s.muted, d.muted);
+  const quality = QUALITIES.indexOf((s.quality ?? (loaded ? "" : "medium")) as (typeof QUALITIES)[number]);
+  if (quality >= 0 || !loaded) d.quality = Math.max(0, quality);
+  d.showFps = flag(s.showFps, d.showFps);
+  d.vibration = flag(s.vibration, d.vibration);
+  d.invertY = flag(s.invertY, d.invertY);
+  d.sensitivity = num(s.sensitivity, d.sensitivity);
+  const language = LANGUAGES.findIndex((l) => l.code === s.language);
+  if (language >= 0 || !loaded) {
+    const at = Math.max(0, language);
+    if (at !== d.language || loaded) og.i18n.setLocale(world, LANGUAGES[at]!.code);
+    d.language = at;
+  }
+  const contrast = flag(s.highContrast, d.highContrast);
+  const motion = flag(s.reducedMotion, d.reducedMotion);
+  const theme = d.highContrast !== contrast || d.reducedMotion !== motion;
+  d.highContrast = contrast;
+  d.reducedMotion = motion;
+  if (theme) applyTheme(world, d);
+}
+
+/**
+ * og.settings, asked for on the first tick and taken when the platform
+ * answers (og-platform-sdk §2, §3): what the settings screen saved comes
+ * back after a reload or a relaunch. Defaults show until it answers.
+ */
+function followSettings(world: World, tick: number, d: DemoState): void {
+  if (tick === 0) {
+    d.settingsRequest = og.platform.loadSettings(world);
+    return;
+  }
+  if (d.settingsRequest === 0) return;
+  const answer = og.platform.result(world, d.settingsRequest);
+  if (answer === null) return;
+  d.settingsRequest = 0;
+  const saved = answer.ok ? (answer.data as { value?: unknown } | null)?.value : null;
+  if (!saved || typeof saved !== "object") return;
+  takeSettings(world, d, saved as Partial<GameSettings>, true);
+  d.loads += 1;
 }
 
 /** Applies the theme-affecting settings (contrast, motion, the style pack,
@@ -611,6 +669,7 @@ export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo, Typed
     const cols = a.column(Demo) as unknown as Record<string, Float64Array>;
     const d = readRow(cols, 0);
     const before = JSON.stringify(d);
+    followSettings(world, time.tick, d);
     kitFrame(world, time.dt, d);
     if (JSON.stringify(d) !== before) writeRow(cols, 0, d);
   }
@@ -748,23 +807,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
           og.ui.toast(world, "Settings saved", { tone: "success" });
         },
       });
-      const s = r.settings;
-      d.masterVolume = s.masterVolume ?? d.masterVolume;
-      d.musicVolume = s.musicVolume ?? d.musicVolume;
-      d.sfxVolume = s.sfxVolume ?? d.sfxVolume;
-      d.muted = s.muted ?? d.muted;
-      d.quality = Math.max(0, QUALITIES.indexOf(s.quality ?? "medium"));
-      d.showFps = s.showFps ?? d.showFps;
-      d.vibration = s.vibration ?? d.vibration;
-      d.invertY = s.invertY ?? d.invertY;
-      d.sensitivity = s.sensitivity ?? d.sensitivity;
-      const language = Math.max(0, LANGUAGES.findIndex((l) => l.code === s.language));
-      if (language !== d.language) og.i18n.setLocale(world, LANGUAGES[language]!.code);
-      d.language = language;
-      const theme = d.highContrast !== (s.highContrast ?? false) || d.reducedMotion !== (s.reducedMotion ?? false);
-      d.highContrast = s.highContrast ?? d.highContrast;
-      d.reducedMotion = s.reducedMotion ?? d.reducedMotion;
-      if (theme) applyTheme(world, d);
+      takeSettings(world, d, r.settings, false);
       if (r.closed) d.screen = 0;
       break;
     }
@@ -1113,6 +1156,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves, picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
   },
 });
