@@ -28,26 +28,53 @@ The round sections below have each. The waves' end is being measured at
   drift check on `lit`), physics-2d 5 of 5 in 165 s, ui-runtime 5 of 5 in
   147 s.
 
-**Wave-end figures: pending** (the coordinator is measuring at 517d8c4e
-and fills these in).
+**Wave-end figures** (the `--all` and web-reference runs at 517d8c4e in
+the measure worktree, logs not in the repository, stated here once; the
+vulkan-cpu bullet follows its pass).
 
-- **`scripts/check.sh --all`** at 517d8c4e: pending. The last whole run
-  is wave 7's (8 of 9 at 767ecf84, the section below).
-- **`scripts/check.sh web-reference`**: pending. Owed on the browser
-  tiers since: row 74's frames (og-tests `tilemap-lit`, `stylise-palette`,
-  `stylise-retro`, og-ui `screen-layers`).
-- **Wasm** (brotli -q 11, the shipping `wasm` profile): pending. The last
-  figures are wasm-size's after its merge with 161bad3b (lanes 3,464,929 B,
-  82.6 %; its section below); wave 9 added `world.snapshot`/`restore`,
-  the platformer's own casts, lit tile layers and the templates' label
-  fields since.
-- **Determinism**: pending. Physics-2d changed the native tool's physics
-  hash by design: 18126409214070009362 before, 947364242694612608 after
+- **`scripts/check.sh --all`** at 517d8c4e: 8 of 9 steps, failed at
+  bun-test (fmt 1 s, clippy 14 s, wasm-build 246 s with the shipping
+  `wasm` profile, test 185 s with nextest 835 passed and 12 skipped,
+  wasm-opt 191 s, size-gate 48 s, drift 13 s, determinism 162 s, bun-test
+  150 s). The one failure: the cross-host physics scene
+  (`tests/support/physics-hash.ts`) has a kinematic paddle driven by a
+  Velocity, which really sweeps since physics-2d's kinematic rule (the
+  scene always said it sweeps; it never had), and a body it flung left the
+  40 m floor (body 63 at y −34.5 after 600 ticks), failing the settle
+  check; both hosts agreed on the hash. The functional lane had not run
+  the test (its web module was stale). The floor is 200 m across since
+  9e7e462b (body 63 at y 0.35 in both profiles) and the five cross-host
+  tests pass against the fresh module. Nothing else failed. The last
+  whole run before it: wave 7's (8 of 9 at 767ecf84, the section below).
+- **`scripts/check.sh web-reference`**: passed in 373 s at 517d8c4e,
+  every frame on both tiers: og-tests gfx per tier (`tilemap-lit`,
+  `stylise-palette` and `stylise-retro` judged against `metal`,
+  `taa-sharp` on WebGL2 too), the fx-showcase stations and the looks
+  station's 37 (WebGL2's paper-craft and voxel-worlds against their own),
+  the og-ui kit frames (`screen-layers` is an og-ui crate test, not a
+  browser frame), third-person, Ember Vale, a11y. Row 74's browser part is
+  closed by it.
+- **Wasm** (brotli -q 11, the shipping `wasm` profile) at 517d8c4e:
+  lanes 3,476,755 B (82.9 % of 4 MiB, the largest download), 3D publish
+  3,058,677 B (72.9 %), 2D publish 2,895,647 B (69.0 %). Against
+  wasm-size's figures after its merge with 161bad3b (lanes 3,464,929 B,
+  82.6 %): +12 kB on lanes, +10 kB on 3D publish, +13 kB on 2D publish,
+  the cost of `world.snapshot`/`restore`, the platformer's own casts, lit
+  tile layers and the templates' label fields. Under 80 % stays row 71's.
+- **Determinism**: passed in the `--all` above (162 s at 517d8c4e):
+  every build agrees (host debug, host release with lanes off and on four
+  threads, wasm32 scalar and simd128) at math_digest
+  6117185439544271997, bouncing_boxes_hash 15551159556835976588,
+  physics_hash 947364242694612608, anim_hash 6030136770684287795.
+  Physics-2d changed the physics hash by design: 18126409214070009362 before, 947364242694612608 after
   (the platformer's own move, then `impulse` growing the component
   record; its section below); `math_digest`, `bouncing_boxes_hash` and
   `anim_hash` unchanged there.
-- **Perf**: pending (the perf lane).
-- **vulkan-cpu** (the og-lavapipe image): pending. Owed: row 74's
+- **Perf**: not run (the perf lane); Hollowbell's own `og polish` frame
+  time is the only number of the wave, taken on a loaded machine (its
+  README says so).
+- **vulkan-cpu** (the og-lavapipe image): the pass is running at
+  517d8c4e; this bullet takes its result. Owed before it: row 74's
   frames; og-ui's `kit-skin-pixel` and `kit-skin-pixel-phone`, whose
   vulkan-cpu copies (abd61fb8) predate the pixel pack's label weight
   (ui-runtime re-recorded them on `metal`); row 54's og-ui text frames.
