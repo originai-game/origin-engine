@@ -36,7 +36,6 @@ bun tools/make-assets.ts        # once after a clone: every asset, the 11 MB mus
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.2:race;4:drive:auto;20:screenshot:sweeper.png;20.1:quit"
 og test .                       # the ten playtests, the reference frames against references/<tier>/
-og polish .                     # og-out/polish/report.md
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
 bun run typecheck               # tsc over src, tests and tools
 ```
@@ -63,7 +62,7 @@ and the music. The UI skin is the engine's neon pack, copied from
 | og.platform | the record and its ghost in the store at the revision read (a conflict read again, the faster kept); the settings (with the language and the ghost switch); the run's best lap on the `laps` board (seconds, ascending), the top ten and the ten around the player | `src/save.ts`, `tests/save.og.ts`, `tests/lap.og.ts` |
 | Engine audio | a synthesised four-cylinder loop pitched by the revs (rising through each of five gears, dropping at the shift) and loudened by the throttle; a tyre squeal faded in with the slide; knocks, landings, the countdown's beeps, GO, split and lap chimes, the record's fanfare; "Meridian" (57.6 s of synthwave, streamed in 4-second chunks) on the music bus ducked under the effects; a limiter on the master | `tools/audio.ts`, `src/sound.ts`, `tests/audio.og.ts` |
 | Effects | tyre smoke from the rear wheels while sliding (`og.ParticleSystem` start and stop ticks); skid marks, a ring of 28 `og.Decal` streaks laid every 1.1 m of a slide and fading; sparks and a shake on a wall; dust, a shake and a punch on a landing | `src/fx.ts`, `assets/fx/` |
-| A look | `looks/meridian.ogt` extends `neon-vector` (AgX, bloom, a violet fog, a dusk sky with stars, a vignette; the preset's cyan hull outline at a constant 1.5 px, FINDINGS #7) | `tools/make-assets.ts` |
+| A look | `looks/meridian.ogt` extends `neon-vector` (AgX, bloom, a violet fog, a dusk sky with stars, a vignette; the preset's hull outline off, FINDINGS #7) | `tools/make-assets.ts` |
 | og.ui on the neon pack | `mainMenu`, `racingHud` (speed, gear, lap, the lap time, the record, the mini-map with the car and the ghost, touch steering), the sector capsule and the delta, the countdown, `pauseMenu`, `settingsScreen` (every word from the tables), `resultsScreen`, `leaderboardScreen` (honest loading, error and empty states); a wipe between screens; toasts | `src/ui.ts` |
 | Two languages | `strings/en.ogt` and `strings/de.ogt` (German: the longest labels, umlauts in the pack's Latin-1 faces) | `assets/strings/`, `tests/locales.og.ts` |
 
@@ -71,7 +70,7 @@ and the music. The UI skin is the engine's neon pack, copied from
 
 | File | Proves |
 |---|---|
-| `drive.og.ts` | held on the line in the countdown; W answered the next tick; speed from a standing start; the brake; a slide with smoke and a knock on the wall; the jump at speed with a landing; a fall into the gap put back past it, the lap not counted; R |
+| `drive.og.ts` | held on the line in the countdown; W answered the next tick; speed from a standing start; the brake; a slide with smoke and a knock on the wall; the jump at speed with a landing; a fall into the gap put back past it, the lap not counted; R; the pad's trigger and stick |
 | `lap.og.ts` | three autopilot laps: splits in order, laps summing to the race, the record and its sectors, the record and its poses stored, the best lap on the board, the results' times, the leaderboard's row |
 | `ghost.og.ts` | the record's ghost on the second lap where the car was on the first, to the centimetre, at three times into the lap; the ghost switched off |
 | `rerun.og.ts` | Watch replay: the countdown's world restored and the taped inputs driving the same three laps, tick for tick; nothing new on the board |
@@ -80,6 +79,7 @@ and the music. The UI skin is the engine's neon pack, copied from
 | `locales.og.ts` | the title, the leaderboard, the HUD, pause, the settings and the results in German, no English of the game's table left; the racing HUD's own English words (FINDINGS #8); no control unnamed |
 | `replay.og.ts` | a session of slides, the jump, resets, pause and the ghost run twice in fresh processes ends on one world hash |
 | `frames.og.ts` | ten reference frames at 1280 x 720 (`references/metal/`): the title, the jump, a slide, the countdown, the sweeper, the ghost, pause, the results, the leaderboard, the German settings |
+| `published.og.ts` | input and screenshots only (Time trial pressed, the countdown, W held up the start straight, Escape): four frames (`pub-*.png`) the published page is held to as well (`packages/engine/tests/web/published.ts --playtest tests/published.og.ts`) |
 
 ## Commands (for scripts and agents)
 

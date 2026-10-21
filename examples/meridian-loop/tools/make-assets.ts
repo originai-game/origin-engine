@@ -181,8 +181,9 @@ RenderSettings {
   environmentIntensity 0.35
 }
 MaterialStyle {
-  # The preset's cyan hull outline, a constant 1.5 px: with an outlineDistance it grows without limit near the camera and floods the frame (FINDINGS #7).
-  outlineWidth 1.5
+  # The preset's hull outline off: with an outlineDistance it grows without limit near the camera and floods
+  # the frame, and even at a constant width it lays a pale band along the ground's horizon (FINDINGS #7).
+  outlineWidth 0
   shadowTint "#2a0d4a"
   shadowTintAmount 0.5
 }
