@@ -4641,9 +4641,9 @@
    ],
    "properties": [
     {
-     "name": "repeat",
-     "type": "string",
-     "value": "x"
+     "name": "repeatx",
+     "type": "bool",
+     "value": true
     }
    ],
    "parallaxx": 0.4,

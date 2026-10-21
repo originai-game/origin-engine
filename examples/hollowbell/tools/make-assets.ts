@@ -653,8 +653,8 @@ function tiledMap(): object {
     tilewidth: T, tileheight: T, nextlayerid: 7, nextobjectid: objectId + 1,
     tilesets: [{ firstgid: 1, source: "../tiles/hollow.tsx" }],
     layers: [
-      // Tiled's own parallax factors on the far hills.
-      tileLayer("far", far, [prop("repeat", "string", "x")], { parallaxx: 0.4, parallaxy: 1 }),
+      // Tiled's own parallax factors on the far hills, repeating along x.
+      tileLayer("far", far, [prop("repeatx", "bool", true)], { parallaxx: 0.4, parallaxy: 1 }),
       tileLayer("back", back, []),
       tileLayer("rock", rock.map((row) => row.map((v) => (v ? BLOB.indexOf(255) : -1))), [prop("autotile", "string", "rock"), prop("collision", "bool", true)]),
       tileLayer("planks", planks, []),

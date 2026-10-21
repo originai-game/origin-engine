@@ -13,7 +13,8 @@
 // damage:<hp>, heal:<hp>, skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>
 // (a style pack from assets/skins), transition:<none|fade|wipe|iris|dissolve|slide>
 // (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
-// mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens).
+// mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens),
+// offline:<on|off> (the leaderboard's rows fail to load: its error and Retry).
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
@@ -131,6 +132,8 @@ export const Demo = defineComponent("Demo", {
   // Leaderboard.
   scope: u32(0),
   scopeTick: u32(0),
+  // `offline:on`: the rows fail to load (the error and Retry); Retry loads again.
+  offline: bool(),
   // Dialogs.
   confirmed: u32(0),
   level: u32(0),
@@ -157,7 +160,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false, offline: false };
 }
 
 export const ICONS = [
@@ -664,7 +667,16 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       if (r.selected === "settings") d.screen = screenIndex("settings");
       if (r.selected === "quit") d.screen = 0;
       if (screen === "tutorial") {
-        const tut = og.ui.tutorialOverlay("Tutorial", { open: true, steps: TUTORIAL, index: d.step });
+        const tut = og.ui.tutorialOverlay("Tutorial", {
+          open: true,
+          steps: TUTORIAL,
+          index: d.step,
+          // The overlay's own words, from the active table (og-i18n §2).
+          skipLabel: tr(world, "tutorial.skip"),
+          nextLabel: tr(world, "tutorial.next"),
+          doneLabel: tr(world, "tutorial.done"),
+          stepLabel: tr(world, "tutorial.step"),
+        });
         d.step = tut.index;
         if (tut.finished || tut.skipped) {
           d.step = 0;
@@ -813,7 +825,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     }
     case "cutscene": {
-      const r = og.ui.cutscene("Story", { open: true, lines: CUTSCENE, index: d.line });
+      const r = og.ui.cutscene("Story", { open: true, lines: CUTSCENE, index: d.line, skipLabel: tr(world, "cutscene.skip") });
       d.line = r.index;
       if (r.finished || r.skipped) {
         d.line = 0;
@@ -850,7 +862,12 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     }
     case "inventory": {
       const slots = [d.inv0, d.inv1, d.inv2, d.inv3, d.inv4, d.inv5];
-      const r = og.ui.inventoryScreen("Inventory", { slots: 24, items: ITEMS.map((it, i) => ({ ...it, slot: slots[i]! })) });
+      const r = og.ui.inventoryScreen("Inventory", {
+        slots: 24,
+        items: ITEMS.map((it, i) => ({ ...it, slot: slots[i]! })),
+        hintLabel: tr(world, "inventory.hint"),
+        countLabel: tr(world, "inventory.count"),
+      });
       if (r.moved) {
         const from = slots.indexOf(r.moved.from);
         const to = slots.indexOf(r.moved.to);
@@ -894,10 +911,16 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         scopes: ["Today", "This week", "All time"],
         entries: d.scope === 2 ? [] : leaderboard(d.scope),
         loading,
+        error: !loading && d.offline ? tr(world, "leaderboard.error") : "",
         empty: "No scores for all time yet",
+        retryLabel: tr(world, "leaderboard.retry"),
       });
       if (r.changed) {
         d.scope = r.scope;
+        d.scopeTick = tick;
+      }
+      if (r.retry) {
+        d.offline = false;
         d.scopeTick = tick;
       }
       if (r.closed) d.screen = 0;
@@ -1070,6 +1093,7 @@ export default og.game({
       if (d) update(world, { hp: Math.min(100, d.hp + Number(args[0] ?? 10)) });
     },
     mixed: (world, args) => update(world, { mixed: args[0] !== "off" }),
+    offline: (world, args) => update(world, { offline: args[0] !== "off" }),
   },
   commandHelp: {
     show: { usage: "<screen>", doc: "Open a screen of the kit (gallery, widgets, mainMenu, pause, settings, ...)." },
@@ -1082,6 +1106,7 @@ export default og.game({
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
+    offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {
     const d = current(world);

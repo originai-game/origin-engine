@@ -9658,6 +9658,9 @@ module ui {
     field skippable bool "Show Skip." {
       default true
     }
+    field skipLabel String "The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Skip"
+    }
   }
 
   struct CutsceneResult {
@@ -9739,8 +9742,14 @@ module ui {
     }
     field columns u32 "Slots across; 0 fits the width."
     field items List.InventoryItem "The items, by slot."
-    field useLabel String "The detail panel's action; empty hides it." {
+    field useLabel String "The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t)." {
       default "Use"
+    }
+    field hintLabel String "The detail panel while no slot is selected." {
+      default "Select an item. Drag it to another slot to move it."
+    }
+    field countLabel String "The detail panel's count line, beside a stacked item's count." {
+      default "Count"
     }
   }
 
@@ -9841,6 +9850,9 @@ module ui {
     field empty String "Shown when there are no rows." {
       default "No scores yet"
     }
+    field retryLabel String "The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t)." {
+      default "Retry"
+    }
   }
 
   struct LeaderboardResult {
@@ -9865,6 +9877,18 @@ module ui {
     field open bool "Whether it is shown."
     field steps List.TutorialStep "The steps."
     field index u32 "The step shown, from game state."
+    field skipLabel String "The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Skip"
+    }
+    field nextLabel String "The button that shows the next step." {
+      default "Next"
+    }
+    field doneLabel String "That button on the last step." {
+      default "Done"
+    }
+    field stepLabel String "The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it." {
+      default "{step} of {count}"
+    }
   }
 
   struct TutorialResult {

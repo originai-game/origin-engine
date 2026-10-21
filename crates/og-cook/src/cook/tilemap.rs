@@ -405,6 +405,25 @@ fn tiled_props(v: &Value) -> BTreeMap<String, Value> {
         .collect()
 }
 
+/// Tiled's `properties: [{name, type, value}]` as written: each custom
+/// property's name, its Tiled type and its value.
+fn tiled_custom(v: &Value) -> Vec<(&str, &str, &Value)> {
+    v.get("properties")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|p| Some((p.get("name")?.as_str()?, st(p, "type"), p.get("value")?)))
+        .collect()
+}
+
+/// The children of a Tiled layer or tileset under `k`, as a slice.
+fn tiled_list<'a>(v: &'a Value, k: &str) -> &'a [Value] {
+    v.get(k)
+        .and_then(Value::as_array)
+        .map(|a| a.as_slice())
+        .unwrap_or(&[])
+}
+
 fn base64(text: &str) -> Result<Vec<u8>, String> {
     let mut out = Vec::new();
     let mut buf = 0u32;
@@ -756,6 +775,144 @@ fn walk_tiled(
         }
     }
     Ok(())
+}
+
+/// The custom properties a Tiled tile layer reads, each with the JSON
+/// type its value must have (og-game §8's Tiled table).
+const TILED_LAYER_PROPS: &[(&str, &str)] = &[
+    ("autotile", "string"),
+    ("collision", "bool"),
+    ("lit", "bool"),
+    ("z", "int"),
+    ("repeatx", "bool"),
+    ("repeaty", "bool"),
+];
+
+/// The custom properties an embedded Tiled tileset's tile reads.
+const TILED_TILE_PROPS: &[(&str, &str)] = &[("solid", "bool")];
+
+/// Every custom property of a Tiled map that the importer does not read,
+/// each a sentence naming the property, where it is and what is read
+/// there: a map's, a group, object or image layer's, a tile layer's other
+/// than [`TILED_LAYER_PROPS`] (or one of those of the wrong type), an
+/// embedded tileset's or its tiles' other than `solid`, and an object's
+/// whose value is not text (a class). The cook's warnings, never a refusal.
+pub fn tiled_unread(text: &str) -> Vec<String> {
+    let Ok(j) = serde_json::from_str::<Value>(text) else {
+        return Vec::new(); // the cook refuses it by name
+    };
+    let mut out = Vec::new();
+    unread(
+        &mut out,
+        &j,
+        "the map",
+        &[],
+        "a map's own custom properties are not imported",
+    );
+    for t in tiled_list(&j, "tilesets") {
+        if !st(t, "source").is_empty() {
+            continue; // an external tileset's .ogt says what it holds
+        }
+        let what = format!("embedded tileset '{}'", st(t, "name"));
+        unread(
+            &mut out,
+            t,
+            &what,
+            &[],
+            "a tileset's own custom properties are not imported; a tile reads solid",
+        );
+        for tile in tiled_list(t, "tiles") {
+            let what = format!("{what}, tile {}", u(tile, "id").unwrap_or(0));
+            unread(&mut out, tile, &what, TILED_TILE_PROPS, "");
+        }
+    }
+    unread_layers(&mut out, tiled_list(&j, "layers"));
+    out
+}
+
+fn unread_layers(out: &mut Vec<String>, layers: &[Value]) {
+    for l in layers {
+        let name = st(l, "name");
+        match st(l, "type") {
+            "tilelayer" => unread(out, l, &format!("layer '{name}'"), TILED_LAYER_PROPS, ""),
+            "group" => {
+                unread(
+                    out,
+                    l,
+                    &format!("group layer '{name}'"),
+                    &[],
+                    "a group's own custom properties are not imported; set them on its tile layers",
+                );
+                unread_layers(out, tiled_list(l, "layers"));
+            }
+            "objectgroup" => {
+                unread(
+                    out,
+                    l,
+                    &format!("object layer '{name}'"),
+                    &[],
+                    "an object layer's own custom properties are not imported; set them on its objects",
+                );
+                for o in tiled_list(l, "objects") {
+                    for (p, ty, value) in tiled_custom(o) {
+                        if value_text(value).is_none() {
+                            out.push(format!(
+                                "object '{}' in layer '{name}': the custom property '{p}' is a {}, not read (an object's properties are read as text: string, int, float, bool, color, file or object; og-game §8)",
+                                st(o, "name"),
+                                if ty.is_empty() { "class" } else { ty }
+                            ));
+                        }
+                    }
+                }
+            }
+            "imagelayer" => unread(
+                out,
+                l,
+                &format!("image layer '{name}'"),
+                &[],
+                "an image layer is not imported",
+            ),
+            other => unread(
+                out,
+                l,
+                &format!("layer '{name}'"),
+                &[],
+                &format!("a '{other}' layer is not imported"),
+            ),
+        }
+    }
+}
+
+/// The JSON type of a custom property's value, in Tiled's words.
+fn json_kind(v: &Value) -> &'static str {
+    match v {
+        Value::Bool(_) => "bool",
+        Value::Number(n) if n.is_i64() || n.is_u64() => "int",
+        Value::Number(_) => "float",
+        Value::String(_) => "string",
+        _ => "class",
+    }
+}
+
+/// `v`'s custom properties that are not in `known` (or of another type),
+/// each a warning naming `what`; with no `known`, `reads` says why none is.
+fn unread(out: &mut Vec<String>, v: &Value, what: &str, known: &[(&str, &str)], reads: &str) {
+    for (name, _, value) in tiled_custom(v) {
+        let kind = json_kind(value);
+        match known.iter().find(|(n, _)| *n == name) {
+            Some((_, want)) if kind != *want => out.push(format!(
+                "{what}: the custom property '{name}' is a {kind}, not read (it is a {want}; og-game §8)"
+            )),
+            Some(_) => {}
+            None if known.is_empty() => out.push(format!(
+                "{what}: the custom property '{name}' is not read ({reads}; og-game §8)"
+            )),
+            None => out.push(format!(
+                "{what}: the custom property '{name}' is not read (it reads {}; og-game §8)",
+                known.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
+            )),
+        }
+    }
 }
 
 fn tiled_data(l: &Value, name: &str) -> Result<Vec<u32>, String> {

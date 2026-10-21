@@ -104,12 +104,12 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
       const it = sel >= 0 ? bySlot.get(sel) : undefined;
       kit.column("Detail", { width: phone ? grow() : px(200), gap: t.sm }, () => {
         if (!it) {
-          kit.label("Hint", "Select an item. Drag it to another slot to move it.", { step: "meta", color: token("fgMuted"), width: grow() });
+          kit.label("Hint", desc.hintLabel ?? "Select an item. Drag it to another slot to move it.", { step: "meta", color: token("fgMuted"), width: grow() });
           return;
         }
         kit.label("Name", it.name ?? "", { step: "lg", width: grow() });
         if (it.description) kit.label("Description", it.description, { step: "meta", color: token("fgMuted"), width: grow() });
-        if ((it.count ?? 0) > 1) kit.keyValue("Count", "Count", `${it.count}`, true);
+        if ((it.count ?? 0) > 1) kit.keyValue("Count", desc.countLabel ?? "Count", `${it.count}`, true);
         if (desc.useLabel !== "") {
           if ((kit.button("Use", desc.useLabel ?? "Use", { variant: "primary", width: grow() }) as Api.Response).clicked) out.used = it.id ?? null;
         }
@@ -173,7 +173,7 @@ export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): A
     } else if (desc.error) {
       kit.column("Error", { width: grow(), gap: t.md, height, align: "center", cross: "center" }, () => {
         kit.label("Message", desc.error!, { color: token("danger"), align: "center", width: grow() });
-        if ((kit.button("Retry", "Retry", {}) as Api.Response).clicked) out.retry = true;
+        if ((kit.button("Retry", desc.retryLabel ?? "Retry", {}) as Api.Response).clicked) out.retry = true;
       });
     } else if (entries.length === 0) {
       kit.column("Empty", { width: grow(), height, align: "center", cross: "center" }, () => {

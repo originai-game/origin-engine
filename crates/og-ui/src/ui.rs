@@ -3772,7 +3772,9 @@ impl Ui {
                     step,
                     color,
                     font,
+                    clip: within,
                 } => {
+                    let clip = clip.intersect(&within.resolve(&n.rect));
                     let f = self.fonts.for_text(*font, text);
                     if f.handle.is_none() {
                         continue;

@@ -455,13 +455,16 @@ pub(crate) enum Shape {
         uv: [f32; 4],
         color: Srgba,
     },
-    /// One line of text centred in the frame.
+    /// One line of text centred in the frame, drawn only inside `clip`
+    /// (`Frame::FULL`: the whole element; a meter's label is two of these,
+    /// one ink over the fill and one over the track).
     Text {
         frame: Frame,
         text: String,
         step: TypeStep,
         color: Srgba,
         font: FontRole,
+        clip: Frame,
     },
     /// An icon of an icon set (an MTSDF font, `IconAtlas::font`): the
     /// glyph's em square fitted to the frame's shorter side, centred.

@@ -33,10 +33,10 @@ palette {
   focus "#5cb6e8"
   thumb "#ffffff"
   scrim "#07120ccc"
-  success "#2fb85a"
-  warn "#f2a516"
-  danger "#b81f37"
-  info "#2f8ff0"
+  success "#06681b"
+  warn "#7b5102"
+  danger "#ad0e2f"
+  info "#2256af"
   shadow "#0b1a1299"
 }
 radius {

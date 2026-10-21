@@ -340,3 +340,72 @@ fn import_settings_pick_the_ldtk_level_unit_and_solid_values() {
         .join("\n");
     assert!(errors.contains("no level 'Nope'"), "{errors}");
 }
+
+#[test]
+fn a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it() {
+    // The fixture's properties are all read: no warning.
+    let root = project("read", &files());
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(report.warnings, Vec::<String>::new());
+
+    // Hollowbell's far hills: `repeat` = x (the read ones are repeatx and
+    // repeaty), a bool written as a string, a tile's, an object layer's
+    // and an object's class value.
+    let unread = TILED
+        .replace(
+            r#"{ "name": "lit", "type": "bool", "value": false } ]"#,
+            r#"{ "name": "lit", "type": "bool", "value": false }, { "name": "repeat", "type": "string", "value": "x" } ]"#,
+        )
+        .replace(
+            r#"[ { "name": "autotile", "type": "string", "value": "wall" } ]"#,
+            r#"[ { "name": "autotile", "type": "string", "value": "wall" }, { "name": "collision", "type": "string", "value": "true" } ]"#,
+        )
+        .replace(
+            r#""tiles": [ { "id": 1,"#,
+            r#""tiles": [ { "id": 1, "properties": [ { "name": "slippery", "type": "bool", "value": true } ],"#,
+        )
+        .replace(
+            r#"{ "type": "objectgroup", "name": "things", "objects": ["#,
+            r#"{ "type": "objectgroup", "name": "things", "properties": [ { "name": "spawnRate", "type": "float", "value": 2.5 } ], "objects": ["#,
+        )
+        .replace(
+            r#"{ "name": "facing", "type": "string", "value": "down" } ]"#,
+            r#"{ "name": "facing", "type": "string", "value": "down" }, { "name": "stats", "type": "class", "propertytype": "Stats", "value": { "hp": 3 } } ]"#,
+        );
+    assert_ne!(unread, TILED);
+    let mut f = files();
+    f.retain(|(p, _)| *p != "maps/level.tmj");
+    f.push(("maps/level.tmj", unread.into_bytes()));
+    let root = project("unread", &f);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(
+        report.ok(),
+        "a warning fails nothing: {:?}",
+        report.errors()
+    );
+    let known = "it reads autotile, collision, lit, z, repeatx, repeaty; og-game §8";
+    assert_eq!(
+        report.warnings,
+        vec![
+            "assets/maps/level.tmj: embedded tileset 'water', tile 1: the custom property 'slippery' is not read (it reads solid; og-game §8)".to_string(),
+            format!("assets/maps/level.tmj: layer 'ground': the custom property 'repeat' is not read ({known})"),
+            "assets/maps/level.tmj: layer 'walls': the custom property 'collision' is a string, not read (it is a bool; og-game §8)".to_string(),
+            "assets/maps/level.tmj: object layer 'things': the custom property 'spawnRate' is not read (an object layer's own custom properties are not imported; set them on its objects; og-game §8)".to_string(),
+            "assets/maps/level.tmj: object 'spawn' in layer 'things': the custom property 'stats' is a class, not read (an object's properties are read as text: string, int, float, bool, color, file or object; og-game §8)".to_string(),
+        ]
+    );
+    // The same sentences sit on the map's own report.
+    let map = report
+        .assets
+        .iter()
+        .find(|a| a.source == "maps/level.tmj")
+        .unwrap();
+    assert_eq!(
+        map.notes.iter().filter(|n| n.contains("not read")).count(),
+        5
+    );
+    // An up-to-date cook warns again.
+    let again = cook_project(&root, &CookOptions::default()).unwrap();
+    assert_eq!(again.warnings, report.warnings);
+}

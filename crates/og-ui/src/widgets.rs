@@ -2002,6 +2002,9 @@ impl Ui {
             Tone::Neutral => (p.fill, p.fg_muted),
             Tone::Accent => (p.accent_soft, p.accent_ink),
             Tone::Inverse => (p.fg, p.fg_inverse),
+            // The status tones: the tone's own ink on its 16 % tint, mixed as
+            // the platform's CSS mixes it (Srgba::tint_over, once the badge
+            // knows what is behind it), so each pack's tones read 4.5:1.
             other => {
                 let c = self.tone_dot(other);
                 (c.fade(0.16), c)
@@ -2018,6 +2021,10 @@ impl Ui {
                 ..Element::default()
             },
         );
+        if !matches!(tone, Tone::Neutral | Tone::Accent | Tone::Inverse) {
+            let under = self.behind(i);
+            self.nodes[i].el.background = Some(fg.tint_over(under, 0.16));
+        }
         let mut c = self.text_content(text, t.type_ramp.xs, fg);
         c.wrap = false;
         c.align = TextAlign::Center;
@@ -2335,6 +2342,19 @@ impl Ui {
             MeterKind::Accent => p.accent,
             MeterKind::Custom(c) => c,
         };
+        // The label in two inks, each the one of fg and fgInverse that reads
+        // on what it is drawn over: the fill left of its edge, the track
+        // right of it (a light pack's deep status colours take the inverse).
+        let behind = self.behind(i);
+        let ink = |under: Srgba| {
+            let under = under.over(behind);
+            if p.fg_inverse.contrast(under) > p.fg.contrast(under) {
+                p.fg_inverse
+            } else {
+                p.fg
+            }
+        };
+        let (fill_ink, track_ink) = (ink(color), ink(p.fill_strong));
         let n = &mut self.nodes[i];
         let seg = |from: f32, to: f32, c: Srgba| Shape::Rect {
             frame: Frame::left(from, to),
@@ -2369,13 +2389,21 @@ impl Ui {
             }
         }
         if !desc.label.is_empty() {
-            n.shapes.push(Shape::Text {
-                frame: Frame::FULL,
-                text: desc.label.clone(),
-                step: t.type_ramp.caption,
-                color: p.fg,
-                font: FontRole::Mono,
-            });
+            for (clip, color) in [
+                (Frame::left(0.0, main), fill_ink),
+                (Frame::left(main, 1.0), track_ink),
+            ] {
+                if clip.fw > 0.0 {
+                    n.shapes.push(Shape::Text {
+                        frame: Frame::FULL,
+                        text: desc.label.clone(),
+                        step: t.type_ramp.caption,
+                        color,
+                        font: FontRole::Mono,
+                        clip,
+                    });
+                }
+            }
         }
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(format!("{} of {}", value.round(), max.round()));
@@ -2473,6 +2501,7 @@ impl Ui {
                 step: t.type_ramp.lg,
                 color: ink,
                 font: FontRole::Mono,
+                clip: Frame::FULL,
             });
         }
         let n = &mut self.nodes[i];
@@ -2646,6 +2675,7 @@ impl Ui {
             step: t.type_ramp.xs,
             color: p.stage_muted,
             font: FontRole::Body,
+            clip: Frame::FULL,
         });
         self.nodes[i].shapes = shapes;
         if !desc.label.is_empty() {
@@ -2770,6 +2800,7 @@ impl Ui {
                         step: t.type_ramp.display_sm,
                         color: p.fg_muted,
                         font: FontRole::Display,
+                        clip: Frame::FULL,
                     });
                 }
             }
@@ -3083,6 +3114,7 @@ impl Ui {
                 step: t.type_ramp.sm,
                 color: ink,
                 font: FontRole::Body,
+                clip: Frame::FULL,
             }),
         }
         r
