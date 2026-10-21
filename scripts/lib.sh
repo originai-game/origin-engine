@@ -53,6 +53,15 @@ og_wasm_variants() {
   awk -v c="$1" '{ sub(/#.*/, "") } NF >= 4 && $1 == "variant" && $3 == c { print $2, $4 }' "$OG_ROOT/scripts/wasm-crates.txt"
 }
 
+# og_wasm_lanes_variants CRATE: "NAME FEATURES" for each `lanes` line of
+# scripts/wasm-crates.txt naming CRATE (the lanes modules per game profile,
+# in file order: the 2D one first, so the 3D one is cargo's last output in
+# the shared lanes target directory); nothing when the crate has none (one
+# lanes variant with the publish feature, both profiles).
+og_wasm_lanes_variants() {
+  awk -v c="$1" '{ sub(/#.*/, "") } NF >= 4 && $1 == "lanes" && $3 == c { print $2, $4 }' "$OG_ROOT/scripts/wasm-crates.txt"
+}
+
 # og_lock_version PACKAGE: the version Cargo.lock pins for a crates.io package.
 og_lock_version() {
   awk -v p="$1" '

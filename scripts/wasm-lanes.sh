@@ -1,13 +1,15 @@
 #!/bin/sh
-# The one lanes wasm build: the gate's wasm-build step (scripts/check.sh) and
-# packages/engine/scripts/build.sh both run cargo through it, so the lanes
-# module the size gate measures is the one that ships (docs/web-export.md
-# §Lanes).
+# The one lanes wasm build: the gate's wasm-build step (scripts/check.sh),
+# packages/engine/scripts/build.sh and the determinism tool
+# (tools/wasm-determinism/run.sh) all run cargo through it, so the lanes
+# modules the size gate measures are the ones that ship and the ones whose
+# physics the determinism step compares (docs/web-export.md §Lanes).
 #
 #   scripts/wasm-lanes.sh CARGO_BUILD_ARGS...   cargo build ARGS for wasm32 with atomics
 #   scripts/wasm-lanes.sh --target-dir          print the target directory it builds in
 #
-# The lanes variant is the publish engine with wasm atomics: rayon on a pool
+# A lanes variant is a publish engine with wasm atomics (one per physics
+# profile, scripts/wasm-crates.txt `lanes` lines): rayon on a pool
 # of Workers sharing the module's memory (wasm-bindgen-rayon). Shared memory
 # needs std rebuilt with atomics (-Z build-std, hence RUSTC_BOOTSTRAP on the
 # stable toolchain rust-toolchain.toml pins, and its rust-src component), a
@@ -15,7 +17,10 @@
 # commit what the module grows to; the single-threaded module may grow to
 # 4 GiB, so a game past 2 GiB of wasm memory runs out on lanes only), and the TLS symbols wasm-bindgen's
 # thread transform reads. Its own target directory (<target>/wasm-mt) keeps
-# these RUSTFLAGS from invalidating the single-threaded wasm32 build.
+# these RUSTFLAGS from invalidating the single-threaded wasm32 build; the 3D
+# and 2D lanes modules share it (cargo keys each unit by its features, so
+# they share std and every dependency and only og-physics, og-runtime and
+# og-host-web's own units are built once per profile).
 set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 target="${CARGO_TARGET_DIR:-$root/target}"

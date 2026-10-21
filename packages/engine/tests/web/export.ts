@@ -18,6 +18,7 @@
 // isolated but with a Content-Security-Policy of `worker-src 'self'`, which
 // refuses the pool's `blob:` Workers, it falls back to the single-threaded
 // engine within the pool's deadline and says the lanes variant did not start.
+// Both archetypes are 2D games, so their lanes pages run the 2D lanes module.
 //
 //   bun tests/web/export.ts [--out <dir>] [--chrome <path>]
 //
@@ -83,6 +84,14 @@ for (const game of ["runner", "match3"]) {
   });
   check(bad.length === 0 && m.files.length > 10, `${game}: og-build.json lists every file with its bytes and sha256`, bad.map((f) => f.path));
   check(m.build === "publish" && m.probe.build === "publish" && m.probe.members.join(",") === "hello,tick,state,pick,entity,input,capture", `${game}: a publish build with the 7 player probe members`, m.probe);
+  // Both archetypes are 2D: the page boots the 2D lanes module, the one
+  // beside the 2D publish module (owed row 71, docs/web-export.md §Variants).
+  const engineDir = join(pkg, "dist", m.variant === "2d" ? "web-publish-2d" : "web-publish");
+  const same = (f: string) => {
+    const [x, y] = [new Uint8Array(readFileSync(join(dist, f))), new Uint8Array(readFileSync(join(engineDir, f)))];
+    return x.length === y.length && x.every((v, i) => v === y[i]);
+  };
+  check(m.game.profile === "2d" && m.variant === "2d" && m.lanes !== null && same("origin-engine-lanes_bg.wasm") && same("origin-engine-lanes.js"), `${game}: a 2d game ships the 2D lanes module (dist/web-publish-2d)`, { profile: m.game.profile, variant: m.variant, lanes: m.lanes });
 }
 
 const results: Record<string, unknown> = {};
