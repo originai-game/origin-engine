@@ -1818,6 +1818,11 @@ impl Ui {
             2
         };
         self.nodes[i].a11y.value = Some(format!("{:.*}", decimals, *value));
+        self.nodes[i].a11y.range = Some(crate::a11y::A11yRange {
+            min: Some(lo.min(hi)),
+            max: Some(lo.max(hi)),
+            now: *value,
+        });
         r
     }
 
@@ -2498,6 +2503,7 @@ impl Ui {
                 scope: scope_of[i],
                 scroller: scroller_of[i],
             };
+            let range = crate::a11y::range_of(n).filter(|_| !role.is_empty());
             let node = |states: Vec<String>| crate::a11y::A11yNode {
                 path: path.clone(),
                 parent: parent_path.clone(),
@@ -2506,6 +2512,9 @@ impl Ui {
                 description: description.clone(),
                 value: value.clone(),
                 states,
+                value_min: range.and_then(|r| r.min),
+                value_max: range.and_then(|r| r.max),
+                value_now: range.map(|r| r.now),
                 x: r.x,
                 y: r.y,
                 width: r.width,
@@ -2596,6 +2605,7 @@ impl Ui {
                             y: lr.y,
                             width: lr.width,
                             height: lr.height,
+                            ..crate::a11y::A11yNode::default()
                         },
                     ));
                     element_keys.push(child_key(n.key, &l));

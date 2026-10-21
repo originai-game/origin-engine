@@ -1762,6 +1762,11 @@ impl Ui {
             }
         }
         self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
+        self.nodes[spin].a11y.range = Some(crate::a11y::A11yRange {
+            min: bounded.then_some(lo),
+            max: bounded.then_some(hi),
+            now: *value,
+        });
         out
     }
 
@@ -2464,6 +2469,11 @@ impl Ui {
         }
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(format!("{} of {}", value.round(), max.round()));
+        n.a11y.range = Some(crate::a11y::A11yRange {
+            min: Some(0.0),
+            max: Some(max),
+            now: value,
+        });
     }
 
     /// A cooldown: a disc whose amber ring fills clockwise from the top as

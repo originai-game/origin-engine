@@ -10,6 +10,11 @@
 //!   (the placeholder is its description), or a value or state goes stale (a checked
 //!   box not `checked`, a slider's number missing, the chosen tab not
 //!   `selected`);
+//! - a range carries no bounds: a slider's, a stepper's spinbutton's, a
+//!   progress's or a meter's `value_min`, `value_max` or `value_now`
+//!   missing or wrong, a stepper without bounds given some, a control
+//!   that is no range given a value number →
+//!   `ranges_carry_their_bounds_and_value`
 //! - the probe's elements and the tree disagree;
 //! - Tab visits controls in another order than `focus_order`, skips one or
 //!   reaches one the tree does not list; an open dialog's tree lets focus
@@ -523,4 +528,71 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
     ui.end();
     assert_eq!(ui.theme().palette.scrim.alpha, 1.0);
     assert_eq!(*ui.theme(), configured.to_reduced_transparency());
+}
+
+#[test]
+fn ranges_carry_their_bounds_and_value() {
+    let mut ui = Ui::new(UiDesc::default());
+    let mut f = Form {
+        volume: 35.0,
+        count: 4.0,
+        ..Form::default()
+    };
+    tick(&mut ui, &mut f, InputFrame::default());
+    tick(&mut ui, &mut f, InputFrame::default());
+    let tree = ui.a11y().clone();
+    let range = |path: &str| {
+        let n = node(&tree, path);
+        (n.value_min, n.value_max, n.value_now)
+    };
+    assert_eq!(range("Form/Volume"), (Some(0.0), Some(100.0), Some(35.0)));
+    assert_eq!(
+        range("Form/Gain/Slider"),
+        (Some(0.0), Some(1.0), Some(0.5)),
+        "a slider without a range is 0 to 1"
+    );
+    assert_eq!(range("Form/Count"), (Some(0.0), Some(9.0), Some(4.0)));
+    assert_eq!(range("Form/Load"), (Some(0.0), Some(100.0), Some(40.0)));
+    assert_eq!(
+        range("Form/Save"),
+        (None, None, None),
+        "a button is no range"
+    );
+    // A stepper without bounds has a value alone; a meter is 0 to its max.
+    let mut ui = Ui::new(UiDesc::default());
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.column("Hud", Element::column(), |ui| {
+            let mut n = -3.0;
+            ui.stepper("Free", &mut n, StepperDesc::default());
+            ui.meter("Hp", 72.0, 120.0, &MeterDesc::default());
+        });
+        ui.end();
+    }
+    let tree = ui.a11y().clone();
+    let free = node(&tree, "Hud/Free");
+    assert_eq!(
+        (
+            free.role.as_str(),
+            free.value_min,
+            free.value_max,
+            free.value_now
+        ),
+        ("spinbutton", None, None, Some(-3.0))
+    );
+    let hp = node(&tree, "Hud/Hp");
+    assert_eq!(
+        (hp.value_min, hp.value_max, hp.value_now),
+        (Some(0.0), Some(120.0), Some(72.0))
+    );
+    // The digest follows a bound: a host rebuilds its mirror when one moves.
+    let before = tree.digest();
+    let mut moved = tree.clone();
+    moved
+        .nodes
+        .iter_mut()
+        .find(|n| n.path == "Hud/Hp")
+        .unwrap()
+        .value_max = Some(150.0);
+    assert_ne!(moved.digest(), before);
 }
