@@ -7,6 +7,69 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 11 (2026-10-21, ce93d34b)
+
+Since the wave 10 record (a91e6139, then 1ea7b182 deferring wave 10's
+lavapipe pass to this wave's end), main took wave 10's last stream and
+wave 11's four, each once its branch had merged main, in this order:
+
+1. knowledge-3 (9f5084e9, its merge with main; docs, IDL doc text and the
+   regenerated wiki).
+2. lanes-per-profile, wave 10's last (c638a46f, recorded at a91e6139 with
+   the wave 10 figures; row 71 closed). Its functional lane passed at
+   a949527a after two fixes on main: dad31ce2 (`build.sh` takes a lanes or
+   publish2d module the gate has not built yet as a warning under the
+   functional lane's stale-module run, `OG_WASM_STALE=1`, and a stop
+   otherwise) and a949527a (the handle read timing test compares warm
+   against cold reads, an order of magnitude, not a bare microsecond the
+   machine's load can miss).
+3. nav-ai (a7cd639f).
+4. physics-anim-2 (7b1973a7, then 9bc9fc75: the game's strike frame
+   re-recorded on the merged engine and the flash refusal's wording in
+   feel.test).
+5. runtime-ui-2 (ce93d34b, a fast-forward over its merge with main
+   c5f5061c, the game's title and bag frames re-recorded on the merged
+   engine).
+
+The round sections below have each.
+
+- **`scripts/check.sh functional`**, each merge: knowledge-3 5 of 5 in
+  177 s; lanes-per-profile passing at a949527a; nav-ai 5 of 5 in 160 s;
+  physics-anim-2 passing in 93 s at 9bc9fc75 (after the strike frame and
+  the flash wording); runtime-ui-2 at ce93d34b: pending (the coordinator
+  fills).
+- **The Kestrel Stair's findings** (dogfood-3, wave 10): all 21 fixed on
+  main, #16, #17 and #18 by wave 10, the rest by this wave's streams
+  (nav-ai #1, #3, #5, #7, #8, #9; physics-anim-2 #4, #10, #11, #21;
+  runtime-ui-2 #6, #13, #14, #15, #19, #20; knowledge-3 #2, #12). The
+  game's workarounds for #3, #5, #6, #7, #10, #13, #14, #15, #19 and #21
+  are gone in the streams' own commits, and its foes flash (#11) and
+  squash in z (#4). Open: the `chapters` frame still shows the results
+  screen, so #15's named cards are under no reference frame (row 84).
+  `examples/kestrel-stair/FINDINGS.md` §After wave 11 has one line each.
+
+**Wave-end figures: pending.** The coordinator is measuring at the merged
+tree now, in the measure worktree.
+
+- **`scripts/check.sh --all`**: pending.
+- **`scripts/check.sh web-reference`**: pending (the browser tiers owe
+  og-tests `model-flash`, the Kestrel Stair's re-recorded frames and the
+  ui-kit inventory and levels frames this wave moved on metal).
+- **Wasm** (brotli -q 11, the shipping `wasm` profile): pending; this
+  wave added three lifecycle members and a bytes wire type (runtime-ui-2),
+  a 64-byte instance record (physics-anim-2) and `og.ReverbZone`.
+- **Determinism**: pending. Hashes move by design this wave
+  (`world_hash` includes the registered types: physics registers
+  `og.Parent`, audio `og.ReverbZone`, and `og.Model`'s layout grew);
+  physics-anim-2 did not run the tool on its branch, and nav-ai's crates
+  are not in it (its host debug run matched the recorded values).
+- **Perf**: not run (the perf lane).
+- **vulkan-cpu**: pending: the first real run of `scripts/wave-end.sh`
+  (its lavapipe stages, the `ui` stage recording og-ui's frames: rows 54,
+  74 and 82), with this wave's metal re-records (og-tests `model-flash`,
+  the ui-kit inventory and levels frames and the twelve `kit-skin-*`
+  sheets, the Kestrel Stair's frames).
+
 ## Main gate, wave 10 (2026-10-21, 9d220790)
 
 Since the waves 8 and 9 record (3bb57785 and cd6b10ac, the cross-host
@@ -542,6 +605,53 @@ From The Kestrel Stair's findings. Merged at a7cd639f.
 
 Functional lane on the merge: 5 of 5 in 160 s; the Kestrel Stair,
 third-person, topdown and Lantern Vale suites passing after it.
+
+## Wave 11, knowledge-3: the navmesh, behaviour and animation-graph grammars, a clip's markers, the 3D facts (9f5084e)
+
+From The Kestrel Stair's findings (#2, #12). Merged at 9f5084e9 (its
+merge with main), the wave's first.
+
+- 34d32e4e, #2 and #12: og-ai §1 writes every line of a `type navmesh`
+  file with its default (from og-cook's `cook_navmesh`) and the game's
+  glTF-baked one; §2 places each agent at its `og.nav.nearest` point,
+  proved in a playtest; §3 every line of a behaviour (every node, option,
+  operator and og.ai's own keys, from og-ai's parser), the game's warden
+  as the machine. og-game §9 gives a model's whole `animation` import
+  block, how a clip carries its markers (`extras."og.events"` or
+  `event`), root motion, and every line of a `type animgraph` with the
+  third-person hero's graph. Every block cooked (navmesh, behaviour) or
+  registered (`og.anim.graph`) in a scratch project. `scripts/validate.ts`
+  extends wave 9's two-way drift check to the three grammars and the
+  markers: per grammar the names an author chooses, a reader of the keys
+  its parser looks up by name (arms with alternatives, `.get`/`.get_all`,
+  `*_of` lookups, option lists, `BUILTIN_KEYS`) and the skill each lives
+  in; eight tests in `tests/grammar.test.ts`, one per kind of drift. The
+  IDL's pointers at og-ai's and og-anim's READMEs (the ai module's doc,
+  `GraphDesc.text`) and `og.nav.load`'s doc point at the skill sections
+  now; the wiki and types regenerated.
+- d049c598: each skill's What works carries the game's measured 3D
+  facts: og-game the cook-time and run-time retargets onto three rigs
+  through blend trees with markers intact, root motion, the glTF navmesh
+  bake, the controller over triangle meshes, cloth and rope, the snapshot
+  across a relaunch and the cook's times; og-ai (a new What works) the
+  bake and the trees and machines with occluded sight, steering and an
+  obstacle; og-audio, og-build, og-core, og-feel, og-i18n,
+  og-platform-sdk, og-taste and og-ui theirs. Facts only.
+- 6f617ae2: og-game's checklist gains the 3D step (5 of eight: bake the
+  navmesh from the level, load it and check `og.nav.nearest` at every
+  spawn and route point before writing the behaviours), and its mistakes
+  list the habit #7 would have been: every navmesh agent at its
+  `og.nav.nearest` point, with a playtest reading its position and status
+  a few ticks in (og-ai §2).
+- Left as placeholders for the streams still running: a check against a
+  field and restarting a behaviour in og-ai ("see nav-ai", filled by
+  5daa77c8), a reverb zone in og-audio's What works ("see
+  physics-anim-2"), a save slot's helper in og-platform-sdk's ("see
+  runtime-ui-2") and the resource handle's cost in og-game's mistakes
+  list ("see runtime-ui-2", rewritten by 27e245f6); the last three filled
+  from those streams' commits by wave 11's records (records-11).
+
+Functional lane on the merge: 5 of 5 in 177 s.
 
 ## Wave 10, lanes-per-profile: a lanes module per physics profile (0e77b6b)
 
@@ -4014,6 +4124,15 @@ so. Every Hollowbell finding is fixed or in row 75 or 76
 (`examples/hollowbell/FINDINGS.md` §After wave 9). The wave-end
 measurements are pending (Main gate, waves 8 and 9).
 
+After waves 10 and 11 and the third dogfood game (2026-10-21, ce93d34b;
+the sections above): rows 71 (lanes-per-profile), 72 and 73
+(physics-3d), 69, 75 and 76 (cook-ui-words) and 80 (cook-determinism)
+closed; seven new rows for wave 10's left-outs (77–83, 80 closed since)
+and three for wave 11's (84–86). Every Kestrel Stair finding is fixed,
+its `chapters` frame owed in row 84
+(`examples/kestrel-stair/FINDINGS.md` §After wave 11). The wave-end run
+of rows 54, 74 and 82 is in progress (Main gate, wave 11).
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -4076,7 +4195,7 @@ resource only the owner can give.
 | 51 | The three.js comparison (`tools/bench/threejs-compare.ts`) run again after the lean pipelines: before them the 20,000-sphere field was 0.31x of three.js's WebGPU InstancedMesh and 0.48x of WebGL2's, the §7 reference scene 2.04x and 1.54x | P4 lean | S | engine, phase 4 (a wave-end measurement) | open (render parity, 26649d4c, measured natively only: `tests/evidence/P4/parity/`) |
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | open (round three, 1f0ecdc3, measured natively only; `og.physics.stats` through the web host is unmeasured too) |
 | 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` landed with ci-green (53b876f7) and has not run for real (row 82); wave 7's and waves 8 and 9's runs are recorded in their Main gate sections |
-| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | og-tests and the looks frames closed by wave 7's lavapipe pass (9bd0064: copies kept only where they differ from `metal` by design, the rest judged against `metal`); still open for og-ui `text-fields-2`, `text-mixed-runs` and `text-bidi`, which no lavapipe pass has run; `scripts/wave-end.sh`'s `ui` stage is what records them (row 82) |
+| 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | og-tests and the looks frames closed by wave 7's lavapipe pass (9bd0064: copies kept only where they differ from `metal` by design, the rest judged against `metal`); still open for og-ui `text-fields-2`, `text-mixed-runs` and `text-bidi`, which no lavapipe pass has run; `scripts/wave-end.sh`'s `ui` stage is what records them (row 82), its first real run in progress at wave 11's end (Main gate, wave 11) |
 | 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | open |
@@ -4093,10 +4212,10 @@ resource only the owner can give.
 | 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | closed at 1a9037a (taa-webgl2, merged f3229ef): wgpu's GL backend read TAA's depth as 0 (a depth texture read with `textureLoad` and no sampler bound stays on linear filtering, which GLSL ES calls incomplete), so every pixel reprojected from the near plane: wrong motion for a moving camera, and near-plane rounding up to 0.025 px at the 2,800 m looks station for a still one, above the own-texel test. The depth is sampled with a nearest sampler now; `taa-sharp` applies on every tier and is WebGL2's moving-camera frame against `metal` (RMSE 0.00028); two og-tests tests pin the still-camera fixed point natively |
 | 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | closed at dcd8c31e (cook-ui-words, merged a31d6cbe): the badge's tint mixes as the platform's CSS does (`Srgba::tint_over`) instead of in linear light; the tones deepened on the light-panel skins (cartoon's warn #f2a516, 1.63:1, is #7b5102) and lightened on the dark ones, `accentSoft` more transparent on the archetype skins, `make-skins.py` byte-identical; `pack_contrast.rs` enforces success, warn, danger, info and the accent badge at 4.5:1 for the seven packs and sparkorb, lampdive, lanebeat and pathguard. abd2bf9b draws a meter's label in two inks split at the fill's edge (cartoon's "72 / 100" was 2.3:1, neon's 1.3:1). What it left: rows 77 and 78 |
 | 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
-| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | closed at 706833d5 (merged 0e77b6b6): 3D lanes 3,095,052 B (73.8 %), 2D lanes 2,928,498 B (69.8 %); `--all` 9 of 9, web-reference and the web export, player and wire tests passing on the branch |
+| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | closed at 706833d5 (merged 0e77b6b6, on main at c638a46f, recorded at a91e6139): 3D lanes 3,095,052 B (73.8 %), 2D lanes 2,928,498 B (69.8 %); `--all` 9 of 9, web-reference and the web export, player and wire tests passing on the branch |
 | 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): measured first (rapier's controller stalled to 0 to 0.4 m/s a tick about once a second on a box, adjacent boxes and a trimesh, stood 1 mm above the floor instead of its 2 cm skin and crept up 0.1 mm a tick, sank 9 cm when placed on the floor, refused 0.2 m stairs, climbed a 30° slope at 4.4 m/s); one mover for both controllers in both profiles (`crates/og-physics/src/mover.rs`), `tests/character_ground.rs` with 7 tests failing on the old controller; physics_hash 947364242694612608 to 15539601638348908910 by design |
 | 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): both controllers' query filters take the collider's collision groups (`og.Collider.layers`/`mask`), two tests in `tests/controllers.rs` |
-| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed for og-tests, Hollowbell and the looks on vulkan-cpu and for every browser frame (the waves 8 and 9 gate: web-reference 373 s, lavapipe at 517d8c4e); open only for og-ui `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu, with row 54 |
+| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed for og-tests, Hollowbell and the looks on vulkan-cpu and for every browser frame (the waves 8 and 9 gate: web-reference 373 s, lavapipe at 517d8c4e); open only for og-ui `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu, with row 54: the wave-end run recording them is in progress at wave 11's end (Main gate, wave 11) |
 | 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | closed at 64f79249 (cook-ui-words, merged a31d6cbe): `og cook` warns through `Report.warnings` on every Tiled custom property it does not read, naming the property, where it sits and the names read there (a test; og-game §8's table gains `solid`); Hollowbell's map tool writes `repeatx` at f3bf909e and the hills repeat (title, play and results re-recorded: 0.0872, 0.0870, 0.0320) |
 | 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | closed at 77cb5b0a (cook-ui-words, merged a31d6cbe): `InventoryDesc.hintLabel`/`countLabel`, `LeaderboardDesc.retryLabel`, `TutorialDesc.skipLabel`/`nextLabel`/`doneLabel`/`stepLabel` ("{step} of {count}"), `CutsceneDesc.skipLabel`; the ui-kit demo passes them from its five tables (an `offline:` command for the leaderboard's error state), its locales playtest asserts them in Chinese, og-i18n §2 lists them. Hollowbell's cutscene "Skip" is row 79 |
 | 77 | Palette round two: the archetype skins' buttons and fields under 4.5:1 (sparkorb's primary button 3.42:1, lampdive's danger button 2.58:1 and its field placeholder 3.57:1, pathguard's primary 3.30:1; row 69's test holds only the status tones and the accent badge), and the examples' own skins, outside `pack_contrast.rs` (Hollowbell's danger 4.26:1; Lantern Vale's success 3.15, warn 2.72, info 4.07:1) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
@@ -4104,7 +4223,7 @@ resource only the owner can give.
 | 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | open |
 | 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | closed at 0b245141 (basisu's padding bytes, the vendored one-line fix) with 78b8d0d8's thread-count test; the pipeline cache's torn file at 9ffc36cb |
 | 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open; read by cook-determinism (033182e): no defect in the engine's code, two Vulkan devices on two threads at once on Lavapipe the best reading; if it recurs, run the second 600-tick run after the first there |
-| 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open |
+| 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open: the first real run, started at a91e6139, stopped in its cross-build stage (it holds both gate locks for the whole run, and wave 11's merges would have waited); it is in progress at wave 11's end, at the merged tree (Main gate, wave 11) |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | open |
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | open |

@@ -25,8 +25,16 @@ asked for as §4 says. The Kestrel Stair (`examples/kestrel-stair`) keeps
 its whole world at a waystone (`world.snapshot()`, about 78 KB of text, in
 parts under the store's 64 KiB a key) and continues it after a
 `store: "keep"` relaunch, its progress at the revision read with a
-conflict merged, and a won climb on an ascending leaderboard. A save
-slot's helper: see runtime-ui-2.
+conflict merged, and a won climb on an ascending leaderboard. The store's
+limits are the platform's (64 KiB a key, 64 keys and 1 MiB per player and
+game), so the world goes through `og.platform.saveSlot`: its parts
+(`run.a0`, `run.a1`) in whichever of the slot's two banks of keys
+(`<slot>.a0..`, `<slot>.b0..`) the last save did not use, then the
+manifest `run` at the revision read, so a save cut short leaves the
+previous one whole and two devices saving at once get a conflict, not a
+mix; one request a call. Its title reads `og.platform.loadSlot` with
+`metaOnly` for Continue's place and hour, and Continue reads the parts,
+checked against the manifest's length and checksum.
 
 ## 1. Requests, answered later
 

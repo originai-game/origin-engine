@@ -21,7 +21,10 @@ braziers, the imps' chitter, the crypt's drip, the bell) were heard from a
 listener on the camera with distance, pan, distance dulling and occlusion
 behind walls, each read back exactly through `og.AudioPlayback` with
 `get:`; its 2:40 track streamed in 4-second
-chunks on the music bus. A reverb zone: see physics-anim-2.
+chunks on the music bus. Its crypt is an `og.ReverbZone` (a box with a
+1.5 m `fade`, the sfx bus sending 0.55 to a room of 0.92 at damping 0.25;
+§4, §6): a playtest read the zone's `weight` 0 from the door and 1 inside,
+while og.Audio and the bus kept the open air's room 0.5 and send 0.12.
 
 ## 1. Every event sounds
 
