@@ -34,23 +34,37 @@ export function clock(seconds: number): string {
   return `${m}:${r < 10 ? "0" : ""}${r.toFixed(1)}`;
 }
 
-export function bestOf(g: GameV, n: number): { gears: number; stars: number; time: number } {
-  return n === 0 ? { gears: g.best0, stars: g.stars0, time: g.time0 } : n === 1 ? { gears: g.best1, stars: g.stars1, time: g.time1 } : { gears: g.best2, stars: g.stars2, time: g.time2 };
+export interface Best {
+  gears: number;
+  stars: number;
+  time: number;
+  score: number;
 }
 
-function setBest(g: GameV, n: number, gears: number, stars: number, time: number): void {
+export function bestOf(g: GameV, n: number): Best {
+  return n === 0
+    ? { gears: g.best0, stars: g.stars0, time: g.time0, score: g.top0 }
+    : n === 1
+      ? { gears: g.best1, stars: g.stars1, time: g.time1, score: g.top1 }
+      : { gears: g.best2, stars: g.stars2, time: g.time2, score: g.top2 };
+}
+
+function setBest(g: GameV, n: number, b: Best): void {
   if (n === 0) {
-    g.best0 = gears;
-    g.stars0 = stars;
-    g.time0 = time;
+    g.best0 = b.gears;
+    g.stars0 = b.stars;
+    g.time0 = b.time;
+    g.top0 = b.score;
   } else if (n === 1) {
-    g.best1 = gears;
-    g.stars1 = stars;
-    g.time1 = time;
+    g.best1 = b.gears;
+    g.stars1 = b.stars;
+    g.time1 = b.time;
+    g.top1 = b.score;
   } else {
-    g.best2 = gears;
-    g.stars2 = stars;
-    g.time2 = time;
+    g.best2 = b.gears;
+    g.stars2 = b.stars;
+    g.time2 = b.time;
+    g.top2 = b.score;
   }
 }
 
@@ -102,11 +116,13 @@ export function finishLevel(world: World, g: GameV): void {
   g.stars = 1 + (all ? 1 : 0) + (quick ? 1 : 0);
   g.score = g.gears * 100 + Math.max(0, Math.round((par - g.time) * 10)) + (g.deaths === 0 ? 200 : 0);
   const best = bestOf(g, n);
-  const prevScore = best.gears * 100;
-  g.newBest = best.time === 0 || g.gears > best.gears || (g.gears === best.gears && g.time < best.time);
-  void prevScore;
-  if (g.newBest) setBest(g, n, Math.max(best.gears, g.gears), Math.max(best.stars, g.stars), best.time === 0 ? g.time : Math.min(best.time, g.time));
-  else setBest(g, n, best.gears, Math.max(best.stars, g.stars), best.time);
+  g.newBest = g.score > best.score;
+  setBest(g, n, {
+    gears: Math.max(best.gears, g.gears),
+    stars: Math.max(best.stars, g.stars),
+    time: best.time === 0 ? g.time : Math.min(best.time, g.time),
+    score: Math.max(best.score, g.score),
+  });
   g.unlocked = Math.max(g.unlocked, Math.min(LEVELS, n + 2));
   g.phase = Phase.Results;
   g.exiting = 0;
@@ -153,6 +169,8 @@ function levels(world: World, g: GameV): void {
       };
     }),
   });
+  // og.ui.levelSelect closes on Back alone (Escape, the pad's B): a pointer or a finger has no way out
+  // of it, and a button of the game's own drawn beside it is under its modal, inert (FINDINGS.md).
   if (r.chosen !== null && r.chosen < g.unlocked) startLevel(world, g, r.chosen);
   else if (r.closed) g.levelsOpen = false;
 }
@@ -276,7 +294,7 @@ function results(world: World, g: GameV): void {
     open: g.phase === Phase.Results,
     title: say(world, n + 1 < LEVELS ? "results.title" : "results.end", { level: n + 1 }),
     score: g.score,
-    best: Math.max(g.score, 0),
+    best: b.score,
     newBest: g.newBest,
     stars: g.stars,
     maxStars: 3,
@@ -314,12 +332,6 @@ export const Ui = defineSystem(
     const t = must(world.resource(Tuning));
     const pad = must(world.resource(og.Gamepad));
 
-    // Pause: Escape or Back with nothing else open (og.ui.back answers once), or the pad's Start.
-    if (g.phase === Phase.Play && g.exiting === 0) {
-      const back = og.ui.back();
-      if (!g.paused && !g.settingsOpen && (back || (pad.connected(0) && pad.pressed("start", 0)))) g.paused = true;
-      else if (g.paused && !g.settingsOpen && pad.connected(0) && pad.pressed("start", 0)) g.paused = false;
-    } else if (g.phase === Phase.Title && g.levelsOpen && og.ui.back()) g.levelsOpen = false;
     const held = g.phase === Phase.Play && (g.paused || g.settingsOpen);
     og.time.setScale(world, held ? 0 : 1);
     if (g.phase === Phase.Play && !held && g.exiting === 0 && g.hurt === 0) g.time += time.scaledDt;
@@ -335,6 +347,13 @@ export const Ui = defineSystem(
       pause(world, g);
     } else results(world, g);
     settings(world, g, p);
+
+    // Pause: Escape or Back with nothing open (og.ui.back answers once, after the dialogs had theirs), or the pad's Start.
+    if (g.phase === Phase.Play && g.exiting === 0 && !g.settingsOpen) {
+      const start = pad.connected(0) && pad.pressed("start", 0);
+      if (!g.paused && (og.ui.back() || start)) g.paused = true;
+      else if (g.paused && start) g.paused = false;
+    }
 
     // Gameplay keys move Wick: the HUD turns focus navigation off, the dialogs back on (og-ui §4).
     if (g.phase === Phase.Play && !g.paused && !g.settingsOpen) og.ui.setNavigation(false);

@@ -629,9 +629,13 @@ function mapOf(level: Level, index: number): string {
           objs.push({ name: `l${index + 1}-plate-${c}`, kind: "plate", rect: [x, y, 1, 1], props: { opens: `l${index + 1}-${c === "j" ? "gate" : "door"}-${c}` } });
           break;
         case "A":
-        case "B":
-          objs.push({ name: `l${index + 1}-door-${c.toLowerCase()}`, kind: "door", rect: [x, y - 2, 1, 3] });
+        case "B": {
+          // Up to the ceiling over it.
+          let top = y;
+          while (top - 1 > 0 && !solid(at(x, top - 1))) top--;
+          objs.push({ name: `l${index + 1}-door-${c.toLowerCase()}`, kind: "door", rect: [x, top, 1, y - top + 1] });
           break;
+        }
         case "J":
           objs.push({ name: `l${index + 1}-gate-j`, kind: "gate", rect: [x, y - 2, 1, 3] });
           break;

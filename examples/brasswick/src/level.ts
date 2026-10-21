@@ -167,11 +167,11 @@ export function buildVault(world: World, art: Art, g: GameV): void {
           const id = nextId++;
           doorIds.set(o.name, id);
           const e = spawn(world, o.name, p.cx, p.cy);
-          must(world.insert(e, og.Sprite, { texture: art.door, width: 1, height: 3, layer: Draw.map - 1, castShadow: true }));
+          must(world.insert(e, og.Sprite, { texture: art.door, width: 1, height: p.h, layer: Draw.map - 1, castShadow: true }));
           must(world.insert(e, og.RigidBody, { kind: BODY_KINEMATIC }));
           must(world.insert(e, og.Velocity, {}));
-          must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 3, z: 1 }, layers: Bits.Door }));
-          must(world.insert(e, Door, { id, closedY: p.cy, openY: p.cy + 3 }));
+          must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: p.h, z: 1 }, layers: Bits.Door }));
+          must(world.insert(e, Door, { id, closedY: p.cy, openY: p.cy + p.h }));
           member(e);
           break;
         }

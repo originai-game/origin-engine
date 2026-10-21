@@ -27,10 +27,11 @@ interface Progress {
   best: number[];
   stars: number[];
   time: number[];
+  score: number[];
 }
 
 export function progressOf(g: GameV): Progress {
-  return { v: 1, unlocked: g.unlocked, best: [g.best0, g.best1, g.best2], stars: [g.stars0, g.stars1, g.stars2], time: [g.time0, g.time1, g.time2] };
+  return { v: 1, unlocked: g.unlocked, best: [g.best0, g.best1, g.best2], stars: [g.stars0, g.stars1, g.stars2], time: [g.time0, g.time1, g.time2], score: [g.top0, g.top1, g.top2] };
 }
 
 /** Merges a stored record into the run's: the best of each (a record from another device never loses progress). */
@@ -40,6 +41,10 @@ function merge(g: GameV, r: Partial<Progress>): void {
   const best = r.best ?? [];
   const stars = r.stars ?? [];
   const time = r.time ?? [];
+  const score = r.score ?? [];
+  g.top0 = Math.max(g.top0, n(score[0]));
+  g.top1 = Math.max(g.top1, n(score[1]));
+  g.top2 = Math.max(g.top2, n(score[2]));
   g.best0 = Math.max(g.best0, Math.min(GEARS[0], n(best[0])));
   g.best1 = Math.max(g.best1, Math.min(GEARS[1], n(best[1])));
   g.best2 = Math.max(g.best2, Math.min(GEARS[2], n(best[2])));

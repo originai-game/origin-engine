@@ -12,7 +12,7 @@
 //   P  Wick's spawn: the feet at the bottom of the cell
 //   C  a crate (a dynamic box of one cell)
 //   a b j   a pressure plate on the cell's floor (a opens door A, b door B, j the gate J)
-//   A B     a door's bottom cell: the door fills it and the two cells above
+//   A B     a door's bottom cell: the door fills it and the open cells above, up to the ceiling
 //   J       the gate's bottom cell: a slider on a prismatic joint, three cells tall
 //   G  a gear (a collectible)
 //   L  a lamp: a checkpoint, lit when Wick passes it
@@ -63,12 +63,12 @@ function level1(): string[] {
   g.fill(1, 17, 50, 18); // the floor, top at row 17
   g.fill(11, 17, 13, 17, ".").fill(11, 18, 13, 18, "^"); // the spike pit
   g.fill(23, 13, 50, 18); // the ledge, four cells up: a crate's step
-  g.fill(30, 1, 39, 9); // the ceiling over the door's corridor; its right face is the shaft's left wall
+  g.fill(30, 1, 39, 8); // the ceiling over the door's corridor (four cells: Wick hops over a crate under it); its right face is the shaft's left wall
   g.fill(43, 6, 50, 12); // the exit's shelf: the shaft's right wall
-  g.fill(10, 9, 11, 9, "=");
+  g.fill(15, 13, 17, 13, "="); // a grate a crate's step up: the high gear
   g.put("P", [3, 16]).put("C", [20, 16], [28, 12]).put("a", [31, 12]).put("A", [35, 12]);
   g.put("L", [25, 12]).put("E", [47, 5]);
-  g.put("G", [8, 14], [17, 14], [19, 9], [27, 10], [41, 8], [42, 2]);
+  g.put("G", [8, 14], [12, 13], [16, 10], [27, 10], [41, 8], [42, 2]);
   g.put("*", [5, 10], [22, 5], [41, 11]);
   return g.rows();
 }
@@ -81,11 +81,11 @@ function level2(): string[] {
   g.fill(15, 11, 19, 12); // the slab the first crate waits on
   g.fill(22, 1, 26, 13); // over door A, two cells from the slab: room for a crate to tip and fall
   g.fill(44, 1, 48, 13); // over door B
-  g.fill(10, 14, 13, 14, "=").fill(31, 13, 34, 13, "=");
+  g.fill(10, 14, 13, 14, "=").fill(31, 14, 34, 14, "=");
   g.put("P", [2, 16]).put("T", [7, 16], [30, 16]).put("C", [17, 10], [36, 16]);
   g.put("a", [21, 16]).put("A", [24, 16]).put("b", [42, 17]).put("B", [46, 16]);
   g.put("L", [28, 16]).put("V", [39, 16]).put("E", [51, 16]);
-  g.put("G", [6, 13], [12, 12], [16, 9], [32, 11], [36, 13], [43, 14], [49, 12], [52, 13]);
+  g.put("G", [6, 13], [12, 12], [16, 9], [32, 12], [36, 13], [43, 14], [49, 12], [52, 13]);
   g.put("*", [12, 6], [33, 5], [50, 6]);
   return g.rows();
 }
