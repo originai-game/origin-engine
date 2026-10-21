@@ -662,11 +662,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .as_ref()
         .map(|m| rows(world, m))
         .unwrap_or_default();
-    let model_parts: Vec<(u64, u64, Parts)> = model_rows
+    // Each model's own tint and flash ride in its instances' records
+    // (kestrel-stair #11: a glTF's materials are shared by every instance).
+    let model_parts: Vec<(u64, u64, Parts, og_render::InstanceFx)> = model_rows
         .into_iter()
         .filter_map(|(e, v)| {
             let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
-            models.get(&asset).map(|p| (e, asset, p.clone()))
+            let look = og_render::InstanceFx {
+                flash: f(&v, "flash", 0.0),
+                flash_color: color(&v["flashColor"], 1.0),
+                tint: color(&v["tint"], 1.0),
+            };
+            models.get(&asset).map(|p| (e, asset, p.clone(), look))
         })
         .collect();
     let mesh_rows = layouts
@@ -684,13 +691,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             flashed.insert(r.entity, m);
         }
     }
-    for (e, asset, parts) in model_parts {
+    for (e, asset, parts, look) in model_parts {
         let m = h.world_of(e);
-        if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, &mut keys) {
+        if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, look, &mut keys) {
             continue;
         }
         for (k, &(mesh, material, local)) in parts.iter().enumerate() {
-            rs.scene.add_instance(mesh, material, m * local);
+            rs.scene.instances.push(og_render::Instance {
+                mesh,
+                material,
+                transform: m * local,
+                material_layer: None,
+                fx: look,
+            });
             keys.push((e, k as u32));
         }
     }
@@ -719,6 +732,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 material: m,
                 transform: w,
                 material_layer: u32::try_from(r.layer).ok(),
+                fx: og_render::InstanceFx::NONE,
             });
             keys.push((e, 0));
         }

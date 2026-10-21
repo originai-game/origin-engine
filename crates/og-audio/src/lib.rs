@@ -61,7 +61,7 @@ pub use mixer::{Clock, MixStats, Mixer, MixerDesc};
 pub use music::{MUSIC_SYSTEM, next_times};
 pub use schema::{
     Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, Bus, Music,
-    MusicBeat, SoundEnded, SoundStarted, Transform, end_reason,
+    MusicBeat, ReverbZone, SoundEnded, SoundStarted, Transform, end_reason,
 };
 pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
 pub use sound::{

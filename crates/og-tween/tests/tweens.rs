@@ -436,3 +436,37 @@ fn targets_must_be_numeric_fields_and_values_must_fit() {
             .is_err()
     );
 }
+
+/// kestrel-stair #4: a squash's impact has a z for 3D models; 0 (a
+/// sprite's squash) leaves z at rest.
+#[test]
+fn a_squash_scales_z_on_3d_models_and_leaves_it_at_rest_for_sprites() {
+    for (impact, z) in [([1.2, 0.8, 1.2], 3.0 * 1.2), ([1.2, 0.8, 0.0], 3.0)] {
+        let (mut w, t, e) = setup();
+        let squash = presets::Squash {
+            impact,
+            rest: [1.0, 2.0, 3.0],
+            duration: 0.5,
+            ease: Ease::Linear,
+        };
+        t.start(
+            presets::squash(target(&w, e, "position"), &squash),
+            false,
+            0,
+        )
+        .unwrap();
+        steps(&mut w, 1);
+        let p = body(&w, e).position;
+        let first = 1.0 - 1.0 / 30.0;
+        let at = |rest: f32, impacted: f32| impacted + (rest - impacted) * (1.0 - first);
+        assert!((p.x - at(1.0, 1.2)).abs() < 1e-4, "x {}", p.x);
+        assert!((p.y - at(2.0, 1.6)).abs() < 1e-4, "y {}", p.y);
+        assert!(
+            (p.z - at(3.0, z)).abs() < 1e-4,
+            "z {} for impact {impact:?}",
+            p.z
+        );
+        steps(&mut w, 30);
+        assert_eq!(body(&w, e).position, Vec3::new(1.0, 2.0, 3.0));
+    }
+}

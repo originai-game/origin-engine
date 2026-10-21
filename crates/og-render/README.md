@@ -23,7 +23,7 @@ the world → scene extraction belongs to the layer above.
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `VertexEncoding` | How a mesh's vertices are held on the GPU: `Full` (default, `Vertex` as given, 64 bytes) or `Compact` (16 bytes where a plain material draws it; quantised): `RenderScene::set_vertex_encoding(mesh, encoding)`, `vertex_encoding(mesh)`. [Instance and vertex encodings](#instance-and-vertex-encodings). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. `mapArray`/`mapLayer` and `normalMapArray`/`normalMapLayer` read the base colour and normal from texture-array layers ([Array maps](#array-maps-materials-and-terrain-layers)). |
-| `Instance` | `(mesh, material, transform, material_layer)`, submitted one by one; batched by (mesh, material). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). The transform is affine: the GPU holds its columns' xyz and the layer, 52 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
+| `Instance` | `(mesh, material, transform, material_layer, fx)`, submitted one by one; batched by (mesh, material). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same) is this instance's own hit flash and tint: [Instance looks](#instance-looks-the-hit-flash-of-one-instance). The transform is affine: the GPU holds its columns' xyz, the layer and the look, 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
@@ -651,15 +651,40 @@ spheres-20k on an M4 Pro (dev og-gfx): 7.1 to 4.6 ms a frame, every
 Metal `--all` frame byte-identical to the full path's
 (`tests/evidence/P4/lean/`).
 
+### Instance looks: the hit flash of one instance
+
+A glTF model's instances share its materials, so a material's flash
+(`StandardMaterial::flash`) lights every copy. `Instance::fx` and
+`SkinnedInstance::fx` (`InstanceFx`) are one instance's own: `flash` (0
+to 1) mixes its lit colour towards `flash_color` after every other term,
+as the material's flash does, and `tint` multiplies its base colour. They
+ride in the instance record beside the transform (`instances::fx_bits`:
+the flash amount, then each colour 8:8:8 in an integer below 2^24, exact
+in an f32, so GPU culling's compaction copies them unchanged; the tint as
+its distance from white, so a record of zeros is no look), reach the
+fragment as a flat varying, and are applied by `pbr_fs.wgsl`'s
+`lit_fragment` (the full and the lean paths, the array-map variant) and
+`physical.wgsl` on every tier, each behind a branch, so an instance
+without a look shades bit for bit as before. One (mesh, material) is one
+draw whatever its instances show. The runtime fills it from `og.Model`'s
+`tint`, `flash` and `flashColor` (`og.tween.flash` takes an og.Model
+entity: kestrel-stair #11); og.Mesh keeps its 16-level flash copies of its
+material. The og-tests scene `model-flash` (three instances of one glTF
+model, one flashing white and one tinted, and two skinned cylinders of one
+material, one flashing red) holds it on metal.
+
 ### Instance and vertex encodings
 
-**Instances: 52 bytes.** Every instance buffer (the CPU path's, GPU
+**Instances: 64 bytes.** Every instance buffer (the CPU path's, GPU
 culling's regions, the previous transforms of object motion, the
 scattered copies) holds an instance's transform as the x, y and z of its
-four columns and, after them, an array-map instance's layer
-(`instances::GpuTransform`: `Float32x3` attributes 4 to 7 and a `Float32`
-at 8, 13 floats a slot in `cull.wgsl`); a skinned instance holds the
-columns alone before its palette (`skin::SkinnedInstanceGpu`). `instance.wgsl`'s
+four columns and, after them, an array-map instance's layer and the
+instance's look (`instances::GpuTransform`: `Float32x3` attributes 4 to 7
+and a `Float32x4` at 8, pbr.wgsl's `InstanceFxIn`; 16 floats a slot in
+`cull.wgsl`); a skinned instance holds the columns before its palette and
+its look after its morph weights (`skin::SkinnedInstanceGpu`, the look at
+attribute 13). The record was 52 bytes until the look joined it (wave 11):
+every Metal `og-gfx --all` frame stayed byte-identical. `instance.wgsl`'s
 `instance_matrix` rebuilds the 4x4 with the fourth row (0, 0, 0, 1), so
 an `Instance::transform` is affine. The points such a matrix moves have a
 w of 1 the shader compiler can see, and Metal then reorders the sum of the
@@ -1165,7 +1190,7 @@ are not read; a missing one is a one-layer white or flat-normal array).
 `Instance::material_layer` replaces both layers for one instance, so
 instances of one material on any layers stay one (mesh, material) batch
 and one instanced draw. The layer travels beside the instance's
-transform in its 52 bytes (`instances::GpuTransform::layer`: the layer
+transform in its 64 bytes (`instances::GpuTransform::layer`: the layer
 plus one, 0 for every other instance; [Instance and vertex
 encodings](#instance-and-vertex-encodings)), so culling, sorting, GPU
 culling's compaction and the instance buffer carry it without a new

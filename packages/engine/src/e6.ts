@@ -36,6 +36,7 @@ export const ai = Object.freeze({
   parse: (world: W, text: string) => parse(abi().og_ai_parse(world.id, text)),
   get: (world: W, entity: number, key: string) => parse(abi().og_ai_get(world.id, entity, key)),
   set: (world: W, entity: number, key: string, value: unknown) => parse(abi().og_ai_set(world.id, entity, key, JSON.stringify(value))),
+  restart: (world: W, entity: number) => parse(abi().og_ai_restart(world.id, entity)),
   noise: (world: W, desc?: unknown) => parse(abi().og_ai_noise(world.id, json(desc))),
   describe: (world: W, entity: number) => parse(abi().og_ai_describe(world.id, entity)),
 });

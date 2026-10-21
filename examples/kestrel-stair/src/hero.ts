@@ -41,24 +41,16 @@ export function spawnHero(world: World, g: GameV): void {
   must(world.insert(body, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
   must(world.insert(body, og.AnimationGraph, { asset: rig.graph }));
   must(world.insert(body, og.AnimationPlayer, { clip: rig.clips.attack!, loop: false, weight: 0, fade: 0.08 }));
-  // The cape: pinned along the shoulders behind the back, hanging to the knees. A cloth reads
-  // its entity's own Transform as world space (a parent's is not applied: FINDINGS #10), so the
-  // cape's entity is not the body's child: HeroMove puts it at the shoulders every tick, turned
-  // half round so the cloth's x runs from the courier's left shoulder to its right.
+  // The cape: a child of the body, pinned along the shoulders behind the back (its pinned corner
+  // the left shoulder), hanging to the knees, turned half round so the cloth's x runs from the
+  // courier's left shoulder to its right. Its pins follow the body as it walks and turns
+  // (FINDINGS #10, fixed: a cloth on a child entity hangs from its world transform).
   const cape = must(og.render.standardMaterial(world, { map: must(og.load.texture(world, "textures/cape.png")), roughness: 0.9, side: "double", sheen: 0.8, sheenColor: { r: 0.8, g: 0.3, b: 0.25 }, sheenRoughness: 0.6 }));
-  const c = must(world.spawn({ name: "hero-cape", position: capeAt(START.x, START.y, START.z, Math.PI), quaternion: og.transform.fromAxisAngle(UP, Math.PI + Math.PI) }));
+  const c = must(world.spawn({ name: "hero-cape", parent: body, position: { x: 0.24, y: 1.52, z: -0.2 }, quaternion: og.transform.fromAxisAngle(UP, Math.PI) }));
   must(world.insert(c, og.Cloth, { columns: 7, rows: 12, spacing: 0.08, pins: 1, iterations: 10, damping: 0.9, wind: { x: 0, y: 0, z: -0.6 }, gust: 0.5, radius: 0.03, thickness: 0, material: cape }));
   // The strike's sparks.
   const sparks = must(world.spawn({ name: "hero-sparks" }));
   must(world.insert(sparks, og.ParticleSystem, { emitter: must(og.load.emitter(world, "fx/hit.ogt")), seed: 7, visible: false }));
-}
-
-/** Where the cape's pinned corner is for a courier standing at (x, y, z) facing `facing`: its left shoulder, behind. */
-export function capeAt(x: number, y: number, z: number, facing: number): { x: number; y: number; z: number } {
-  const l = { x: 0.24, y: 1.52, z: -0.2 };
-  const c = Math.cos(facing);
-  const s = Math.sin(facing);
-  return { x: x + l.x * c + l.z * s, y: y + l.y, z: z - l.x * s + l.z * c };
 }
 
 function wrap(a: number): number {
@@ -145,8 +137,6 @@ export const HeroMove = defineSystem(
       g.heroX = p.x;
       g.heroY = p.y - FEET;
       g.heroZ = p.z;
-      // The cape's pins follow the shoulders, held or not (FINDINGS #10: the cloth reads its own Transform as world space).
-      must(world.set(entity(world, "hero-cape"), og.Transform, { position: capeAt(g.heroX, g.heroY, g.heroZ, g.facing), quaternion: og.transform.fromAxisAngle(UP, g.facing + Math.PI) }));
       if (dt === 0) return;
       const body = entity(world, "hero-body");
       const cc = must(world.get(hero, og.CharacterController));
@@ -261,12 +251,12 @@ export const HeroMove = defineSystem(
         if (e.kind === CHARACTER_JUMPED) {
           g.jumps += 1;
           g.sfx |= Sound.Jump;
-          must(og.tween.squash(world, { entity: body, impact: { x: 0.9, y: 1.1 }, duration: 0.12 }));
+          must(og.tween.squash(world, { entity: body, impact: { x: 0.9, y: 1.1, z: 0.9 }, duration: 0.12 })); // FINDINGS #4, fixed: z too
         } else if (e.kind === CHARACTER_LANDED) {
           g.landings += 1;
           g.sfx |= Sound.Land;
           const hard = e.speed < -7;
-          must(og.tween.squash(world, { entity: body, impact: hard ? { x: 1.18, y: 0.8 } : { x: 1.08, y: 0.92 }, duration: hard ? 0.18 : 0.12 }));
+          must(og.tween.squash(world, { entity: body, impact: hard ? { x: 1.18, y: 0.8, z: 1.18 } : { x: 1.08, y: 0.92, z: 1.08 }, duration: hard ? 0.18 : 0.12 }));
           if (hard) must(og.camera.shake(world, 0.15));
         }
       }

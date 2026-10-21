@@ -7,7 +7,7 @@
 //! them in the order of query 3.
 
 use crate::StepOut;
-use crate::schema::{BODY_KINEMATIC, Collider, RigidBody, Transform, Velocity};
+use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
     CharacterController, Cloth, Fluid2D, Fluid3D, Joint, PlatformerController, Ragdoll, Rope,
     Vehicle, WaterLine, WaterSurface,
@@ -69,12 +69,13 @@ const Q_SURFACES: usize = 13;
 const Q_LINES: usize = 14;
 const Q_RAGDOLLS: usize = 15;
 const Q_FLUIDS3: usize = 16;
+const Q_PARENTS: usize = 17;
 
 const CHARACTER: &str = CharacterController::NAME;
 const PLATFORMER: &str = PlatformerController::NAME;
 
 /// The system's queries, by index.
-pub(crate) const QUERIES: [QuerySpec; 17] = [
+pub(crate) const QUERIES: [QuerySpec; 18] = [
     // Q_BODIES: every body, its transform written back.
     QuerySpec {
         read: &[RigidBody::NAME],
@@ -177,6 +178,13 @@ pub(crate) const QUERIES: [QuerySpec; 17] = [
         write: &[],
         without: &[],
     },
+    // Q_PARENTS: the parent chains soft bodies on child entities are placed
+    // through (#10 of kestrel-stair's findings).
+    QuerySpec {
+        read: &[Parent::NAME],
+        write: &[],
+        without: &[],
+    },
 ];
 
 /// The components a step writes back besides transforms and velocities
@@ -191,7 +199,7 @@ pub(crate) const WRITTEN: [&str; 5] = [
 ];
 
 /// Every component of physics beyond rigid bodies, which its systems read.
-pub(crate) const READ: [&str; 11] = [
+pub(crate) const READ: [&str; 12] = [
     CHARACTER,
     PLATFORMER,
     Joint::NAME,
@@ -203,6 +211,7 @@ pub(crate) const READ: [&str; 11] = [
     WaterLine::NAME,
     Ragdoll::NAME,
     Fluid3D::NAME,
+    Parent::NAME,
 ];
 
 /// The fields and layout of one reflected component, for decoding rows.
@@ -223,6 +232,9 @@ impl Rows {
 }
 
 pub(crate) struct Ids {
+    transform: SchemaId,
+    transform_layout: Layout,
+    parent: FieldRef,
     t_position: FieldRef,
     t_quaternion: FieldRef,
     t_scale: FieldRef,
@@ -281,9 +293,13 @@ impl Ids {
         world.register::<crate::CharacterEvent>()?;
         world.register::<crate::Splash>()?;
         world.register::<Fluid3D>()?;
+        world.register::<Parent>()?;
         let (body_fields, body_layout) = fields_of::<RigidBody>(world)?;
         let (collider_fields, collider_layout) = fields_of::<Collider>(world)?;
         Ok(Ids {
+            transform,
+            transform_layout: Layout::of(&Transform::schema()),
+            parent: world.field::<Parent>("entity")?,
             t_position: world.field_by_id(transform, "position")?,
             t_quaternion: world.field_by_id(transform, "quaternion")?,
             t_scale: world.field_by_id(transform, "scale")?,
@@ -412,9 +428,71 @@ impl<T: Copy> ByEntity<T> {
     }
 }
 
+/// Packed bytes of one component of any entity (`SystemContext::get_bytes`
+/// in the tick, `World::get_bytes` outside it).
+pub(crate) type GetBytes<'a> = &'a dyn Fn(Entity, SchemaId) -> Result<Vec<u8>>;
+
+/// Where soft bodies on child entities are in the world: their local
+/// transform after their parents' down the `og.Parent` chain, as the
+/// renderer composes `og.MatrixWorld` (#10 of kestrel-stair's findings: a
+/// cape on a child of the body hung at the world origin). Built only when a
+/// soft body has a parent.
+struct Chains<'a> {
+    parents: ByEntity<u64>,
+    get: GetBytes<'a>,
+    ids: &'a Ids,
+}
+
+impl Chains<'_> {
+    fn place(&self, e: Entity, position: Vec3, quaternion: Quat) -> (Vec3, Quat) {
+        world_pose(
+            e,
+            (position, quaternion),
+            |c| self.parents.get(c).map(Entity::from_bits),
+            |p| {
+                let bytes = (self.get)(p, self.ids.transform).ok()?;
+                self.ids.transform_layout.decode::<Transform>(&bytes).ok()
+            },
+        )
+    }
+}
+
+/// The world position and rotation of `e`, whose own `og.Transform` is
+/// `local` (position, quaternion): its parents' transforms applied down the
+/// `og.Parent` chain (`parent_of`), as the renderer composes
+/// `og.MatrixWorld`. A parent's scale scales the child's offset; a parent
+/// without `og.Transform` (`transform_of` gives `None`) ends the chain
+/// there, and so does a chain longer than 256 (a cycle).
+pub fn world_pose(
+    e: Entity,
+    local: (Vec3, Quat),
+    parent_of: impl Fn(Entity) -> Option<Entity>,
+    transform_of: impl Fn(Entity) -> Option<Transform>,
+) -> (Vec3, Quat) {
+    let (mut p, mut q) = local;
+    let mut cur = e;
+    for _ in 0..256 {
+        let Some(parent) = parent_of(cur) else {
+            break;
+        };
+        let Some(t) = transform_of(parent) else {
+            break;
+        };
+        p = t.position + t.quaternion * (t.scale * p);
+        q = (t.quaternion * q).normalize();
+        cur = parent;
+    }
+    (p, q)
+}
+
 /// Reads the scene through the system's queries (`q(i)` is query `i` of
-/// [`QUERIES`]).
-pub(crate) fn gather<'w>(q: &dyn Fn(usize) -> Result<QueryIter<'w>>, ids: &Ids) -> Result<Scene> {
+/// [`QUERIES`]); `get` reads the transforms of the parents soft bodies
+/// hang from.
+pub(crate) fn gather<'w>(
+    q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
+    get: GetBytes<'_>,
+    ids: &Ids,
+) -> Result<Scene> {
     let mut colliders = ByEntity::new();
     for a in q(Q_BODY_COLLIDERS)? {
         let rows: Vec<Collider> = read_rows(&a, &ids.collider_fields, &ids.collider_layout)?;
@@ -540,6 +618,16 @@ pub(crate) fn gather<'w>(q: &dyn Fn(usize) -> Result<QueryIter<'w>>, ids: &Ids) 
             .vehicles
             .extend(a.entities().iter().copied().zip(rows));
     }
+    let mut parents = ByEntity::new();
+    let mut any_parent = false;
+    for a in q(Q_PARENTS)? {
+        let p = a.read::<u64>(ids.parent)?;
+        for (e, parent) in a.entities().iter().zip(p.iter()) {
+            parents.insert(*e, *parent);
+            any_parent = true;
+        }
+    }
+    let chains = any_parent.then_some(Chains { parents, get, ids });
     macro_rules! placed {
         ($index:expr, $rows:expr, $list:expr, $make:expr) => {
             for a in q($index)? {
@@ -547,7 +635,11 @@ pub(crate) fn gather<'w>(q: &dyn Fn(usize) -> Result<QueryIter<'w>>, ids: &Ids) 
                 let quaternion = a.read::<Quat>(ids.t_quaternion)?;
                 let rows = $rows.read(&a)?;
                 for (row, (e, c)) in a.entities().iter().zip(rows).enumerate() {
-                    $list.push($make(*e, position[row], quaternion[row], c));
+                    let (p, r) = match &chains {
+                        Some(chains) => chains.place(*e, position[row], quaternion[row]),
+                        None => (position[row], quaternion[row]),
+                    };
+                    $list.push($make(*e, p, r, c));
                 }
             }
         };

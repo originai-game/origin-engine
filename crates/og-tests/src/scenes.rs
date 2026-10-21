@@ -95,6 +95,7 @@ pub const SCENES: &[&str] = &[
     "sprites-untonemapped",
     "stylise-bands-tint",
     "tilemap-lit",
+    "model-flash",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -431,6 +432,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         }
         "stylised" => g.scene = fx::stylised_scene()?,
         "skinning" => g.scene = fx::skinning_scene(),
+        // kestrel-stair #11: per-instance flash and tint, a glTF model's
+        // instances sharing its materials (`InstanceFx`).
+        "model-flash" => g.scene = fx::model_flash_scene()?,
         // E5: fog over the colonnade by day, the day-night look at dusk
         // and at night (stars, moonlight), planar water.
         "atmosphere-fog" => g.scene = crate::atmo_scenes::fog_scene(),

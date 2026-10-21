@@ -27,7 +27,7 @@ ordinary dependency).
 | Module | Entry points |
 |---|---|
 | `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
-| `schema` | `AudioSource`, `AudioListener`, `Audio`, `SoundStarted`, `SoundEnded`, `end_reason`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
+| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
 | `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
@@ -212,6 +212,18 @@ Records (`schema.rs`, IDL module `audio`):
   (from the next tick on). `og.MusicBeat` (event) per beat, in the tick
   whose interval holds it.
 - `og.SoundEnded.reason` 4 (`SOUND_CULLED`): the voice cap.
+- `og.ReverbZone` (component, wave 11; kestrel-stair #21): a box (`size`
+  along the entity's axes) or a sphere (`radius`) with `fade` (m), `bus`,
+  `send`, `room`, `damping`, and `weight` written back. Each tick the
+  listener's weight in each zone is `ReverbZone::weight_at`: 1 inside, then
+  linear to 0 at `fade` metres from the surface. The strongest zone (ties to
+  the first in query order) eases `reverbRoom`, `reverbDamping` and its
+  bus's `AudioBusFx.reverb` towards its own by that weight before the fx
+  state is hashed and sent, so a zone is the same fx commands as a game
+  writing those values: in the stream, the world hash and every resync, a
+  function of the listener's position alone (no state of its own; a
+  restore continues as the walk did). og.Audio and og.AudioBusFx keep the
+  open air's values: the zone never writes them.
 
 Tick side: bus effects are sent as `fx` commands (op 6: `bus`, the
 parameter in `voice`, the value in `gain`) whenever any changed, and in
@@ -234,7 +246,9 @@ captures the whole run (its SHA-256 is in `--json`).
 
 Tests: `tests/mix.rs` (each broken once, `tests/evidence/E6/break-and-restore.md`):
 bus filters per bus, ducking 12 dB and back, the compressor's 10.5 dB, the
-reverb tail, scheduled starts on their sample and stems aligned, the music
+reverb tail, a reverb zone (the open air, half way through its fade, inside,
+nothing sent standing still, the open air back; the same walk twice and
+across a restore; a click rings inside and not outside), scheduled starts on their sample and stems aligned, the music
 clock and a stinger on the bar line, a two-second crossfade, the voice cap,
 occlusion and distance dulling, and the same PCM twice with `listen`
 returning its last second (`$OG_EVIDENCE_DIR/M6/e6-mix.{wav,json}`).

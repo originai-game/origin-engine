@@ -31,7 +31,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   hook.color = in.color;
   hook.time = frame.time.x;
   let params = shader_params();
-  let base = surface_color(hook, params, material.base_color * base_sample * in.color);
+  let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   // One discard for the alpha cut-off and the dissolve (see dissolve_at);
@@ -48,6 +48,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
+    unlit = look_flash(unlit, in.look);
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
   let metalness_sample = textureSample(metalness_tex, material_sampler, uv);
@@ -176,6 +177,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (EFFECTS && material.toon.w > 0.0) {
     color = mix(color, material.flash.rgb, material.toon.w);
   }
+  color = look_flash(color, in.look);
 
   if (frame.light_color.w > 1.5) {
     // Debug: the ambient occlusion term.

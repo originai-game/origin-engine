@@ -18,7 +18,7 @@ module nav {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6654</sub>
+<sub>`api.ogt` line 6710</sub>
 
 ## Contents
 
@@ -52,7 +52,7 @@ module nav {
 | [`og.nav.flowField`](#fn-flowField) | function | A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. It rebuilds when the grid changes. |
 | [`og.nav.setFlowTargets`](#fn-setFlowTargets) | function | Move a flow field's targets (rebuilds it). |
 | [`og.nav.flowAt`](#fn-flowAt) | function | The direction a flow field gives at a point (unit length, or zero at a target or where nothing is reachable). |
-| [`og.nav.load`](#fn-load) | function | A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models. |
+| [`og.nav.load`](#fn-load) | function | A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook. |
 | [`og.nav.build`](#fn-build) | function | A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load). |
 | [`og.nav.setObstacle`](#fn-setObstacle) | function | Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state. |
 | [`og.nav.nearest`](#fn-nearest) | function | The point on a navmesh nearest a world point, within `extent` (half sizes). |
@@ -88,7 +88,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 7010</sub>
+<sub>`api.ogt` line 7066</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -118,7 +118,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 7017</sub>
+<sub>`api.ogt` line 7073</sub>
 
 <a id="fn-setCost"></a>
 
@@ -154,7 +154,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 7024</sub>
+<sub>`api.ogt` line 7080</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -186,7 +186,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 7034</sub>
+<sub>`api.ogt` line 7090</sub>
 
 <a id="fn-findPath"></a>
 
@@ -216,7 +216,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 7042</sub>
+<sub>`api.ogt` line 7098</sub>
 
 <a id="fn-flowField"></a>
 
@@ -246,7 +246,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 7049</sub>
+<sub>`api.ogt` line 7105</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -278,7 +278,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 7056</sub>
+<sub>`api.ogt` line 7112</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -310,13 +310,13 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 7064</sub>
+<sub>`api.ogt` line 7120</sub>
 
 <a id="fn-load"></a>
 
 ### `og.nav.load`
 
-A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models.
+A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook.
 
 ```ts
 og.nav.load(world: World, path: string): Result<NavMeshInfo>
@@ -333,14 +333,14 @@ Binding symbol `og_nav_load` · publish builds: kept
 
 ```ogt
 fn load {
-  doc "A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models."
+  doc "A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook."
   param world World "The world."
   param path String "The navmesh asset, such as `levels/arena.nav.ogt`."
   returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh."
 }
 ```
 
-<sub>`api.ogt` line 7072</sub>
+<sub>`api.ogt` line 7128</sub>
 
 <a id="fn-build"></a>
 
@@ -370,7 +370,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 7079</sub>
+<sub>`api.ogt` line 7135</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -406,7 +406,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 7086</sub>
+<sub>`api.ogt` line 7142</sub>
 
 <a id="fn-nearest"></a>
 
@@ -442,7 +442,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 7097</sub>
+<sub>`api.ogt` line 7153</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -472,7 +472,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 7108</sub>
+<sub>`api.ogt` line 7164</sub>
 
 ## Components, resources and events
 
@@ -593,7 +593,7 @@ component NavAgent {
 }
 ```
 
-<sub>`api.ogt` line 6681</sub>
+<sub>`api.ogt` line 6737</sub>
 
 <a id="record-Steering"></a>
 
@@ -720,7 +720,7 @@ component Steering {
 }
 ```
 
-<sub>`api.ogt` line 6766</sub>
+<sub>`api.ogt` line 6822</sub>
 
 ## Types
 
@@ -736,7 +736,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Navigation "A grid, a navmesh or a flow field agents plan on."
 ```
 
-<sub>`api.ogt` line 6660</sub>
+<sub>`api.ogt` line 6716</sub>
 
 <a id="type-NavAlgorithm"></a>
 
@@ -759,7 +759,7 @@ enum NavAlgorithm {
 }
 ```
 
-<sub>`api.ogt` line 6675</sub>
+<sub>`api.ogt` line 6731</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -804,7 +804,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 6860</sub>
+<sub>`api.ogt` line 6916</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -832,7 +832,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 6885</sub>
+<sub>`api.ogt` line 6941</sub>
 
 <a id="type-NavCell"></a>
 
@@ -855,7 +855,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 6895</sub>
+<sub>`api.ogt` line 6951</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -897,7 +897,7 @@ struct PathDesc {
 }
 ```
 
-<sub>`api.ogt` line 6902</sub>
+<sub>`api.ogt` line 6958</sub>
 
 <a id="type-NavPath"></a>
 
@@ -926,7 +926,7 @@ struct NavPath {
 }
 ```
 
-<sub>`api.ogt` line 6923</sub>
+<sub>`api.ogt` line 6979</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -950,7 +950,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 6934</sub>
+<sub>`api.ogt` line 6990</sub>
 
 <a id="type-NavBox"></a>
 
@@ -978,7 +978,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 6941</sub>
+<sub>`api.ogt` line 6997</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1036,7 +1036,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 6952</sub>
+<sub>`api.ogt` line 7008</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1049,8 +1049,8 @@ A navmesh's shape.
 | `mesh` | `Navigation` | `0` | — | — | — | What NavAgent.nav and the queries take. |
 | `polygons` | `number` | `0` | — | — | — | Its convex polygons. |
 | `tiles` | `number` | `0` | — | — | — | Its tiles. |
-| `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Its bounds' lowest corner. |
-| `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Its bounds' highest corner. |
+| `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The lowest corner of the box around its polygons. |
+| `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The highest corner of the box around its polygons (its highest walkable floor's y). |
 | `cellSize` | `number` | `0` | — | `m` | — | Its voxel width. |
 
 ```ogt
@@ -1059,10 +1059,10 @@ struct NavMeshInfo {
   field mesh Navigation "What NavAgent.nav and the queries take."
   field polygons u32 "Its convex polygons."
   field tiles u32 "Its tiles."
-  field min Vector3 "Its bounds' lowest corner." {
+  field min Vector3 "The lowest corner of the box around its polygons." {
     unit m
   }
-  field max Vector3 "Its bounds' highest corner." {
+  field max Vector3 "The highest corner of the box around its polygons (its highest walkable floor's y)." {
     unit m
   }
   field cellSize f32 "Its voxel width." {
@@ -1071,7 +1071,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 6988</sub>
+<sub>`api.ogt` line 7044</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1092,7 +1092,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 7004</sub>
+<sub>`api.ogt` line 7060</sub>
 
 ## Column kinds
 
@@ -1111,7 +1111,7 @@ column Navigation {
 }
 ```
 
-<sub>`api.ogt` line 6662</sub>
+<sub>`api.ogt` line 6718</sub>
 
 ## Constants
 
@@ -1127,28 +1127,28 @@ column Navigation {
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
 ```
 
-<sub>`api.ogt` line 6669</sub>
+<sub>`api.ogt` line 6725</sub>
 
 ```ogt
 const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
 ```
 
-<sub>`api.ogt` line 6670</sub>
+<sub>`api.ogt` line 6726</sub>
 
 ```ogt
 const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
 ```
 
-<sub>`api.ogt` line 6671</sub>
+<sub>`api.ogt` line 6727</sub>
 
 ```ogt
 const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
 ```
 
-<sub>`api.ogt` line 6672</sub>
+<sub>`api.ogt` line 6728</sub>
 
 ```ogt
 const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
 ```
 
-<sub>`api.ogt` line 6673</sub>
+<sub>`api.ogt` line 6729</sub>

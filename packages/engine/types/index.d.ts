@@ -5674,12 +5674,32 @@ export interface TextureArrayInfo {
 
 /**
  * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
+ * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
  *
  * The value of the `Model` component (token `og.Model`).
  */
 export interface Model {
   /** The glTF asset. */
   asset: Asset;
+  /**
+   * A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  tint: Color;
+  /**
+   * A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  flash: number;
+  /**
+   * The flash's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  flashColor: Color;
 }
 
 
@@ -6895,7 +6915,7 @@ export interface Vehicle {
 }
 
 /**
- * A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+ * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
  *
  * The value of the `Rope` component (token `og.Rope`).
  */
@@ -7005,7 +7025,7 @@ export declare const PIN_LEFT: 4;
 export declare const PIN_TOP_RINGS: 8;
 
 /**
- * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+ * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
  *
  * The value of the `Cloth` component (token `og.Cloth`).
  */
@@ -9177,7 +9197,7 @@ export interface Animation {
  */
 export interface GraphDesc {
   /**
-   * The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README).
+   * The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line).
    *
    * @default ""
    */
@@ -9617,11 +9637,11 @@ export interface SquashDesc {
    */
   readonly entity?: Entity;
   /**
-   * The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump).
+   * The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0.
    *
-   * @default { x: 1.25, y: 0.8 }
+   * @default {}
    */
-  readonly impact?: Vector2;
+  readonly impact?: Partial<Vector3>;
   /**
    * The scale it recovers to.
    *
@@ -9645,7 +9665,7 @@ export interface SquashDesc {
 }
 
 /**
- * A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0.
+ * A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -10311,6 +10331,76 @@ export interface AudioBusFx {
    * @tunable
    */
   duckRelease: number;
+}
+
+/**
+ * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
+ * Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).
+ *
+ * The value of the `ReverbZone` component (token `og.ReverbZone`).
+ */
+export interface ReverbZone {
+  /**
+   * The box's full size along the entity's axes, centred on it (times og.Transform.scale).
+   *
+   * @default { x: 10, y: 4, z: 10 }
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * How far past the volume's surface the zone fades out, linearly; 0 is a hard edge.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * The bus whose reverb send the zone sets.
+   *
+   * @default "sfx"
+   */
+  bus: AudioBus;
+  /**
+   * That bus's send to the reverb inside (its AudioBusFx.reverb outside).
+   *
+   * @default 0.5
+   * @range 0..1
+   * @tunable
+   */
+  send: number;
+  /**
+   * The reverb's room size inside (Audio.reverbRoom outside).
+   *
+   * @default 0.85
+   * @range 0..1
+   * @tunable
+   */
+  room: number;
+  /**
+   * The reverb's damping of high frequencies inside (Audio.reverbDamping outside).
+   *
+   * @default 0.3
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick).
+   *
+   * @range 0..1
+   * @readonly written by the engine
+   */
+  readonly weight: number;
 }
 
 /**
@@ -10985,13 +11075,13 @@ export interface NavMeshInfo {
   /** Its tiles. */
   readonly tiles: number;
   /**
-   * Its bounds' lowest corner.
+   * The lowest corner of the box around its polygons.
    *
    * @unit m (metres)
    */
   readonly min: Vector3;
   /**
-   * Its bounds' highest corner.
+   * The highest corner of the box around its polygons (its highest walkable floor's y).
    *
    * @unit m (metres)
    */
@@ -11026,9 +11116,9 @@ export interface NavRebuild {
 
 
 // ── ai ──────────────────────────────────────────────────────────
-// Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+// Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
 // An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
-// Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+// Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
 
 /**
  * A loaded behaviour tree or state machine.
@@ -11104,7 +11194,7 @@ export interface AiAgent {
 }
 
 /**
- * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+ * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
  *
  * The value of the `Perception` component (token `og.Perception`).
  */
@@ -11289,6 +11379,12 @@ export interface NoiseDesc {
    * @range 0..100
    */
   readonly loudness?: number;
+  /**
+   * Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it.
+   *
+   * @default 0
+   */
+  readonly source?: Entity;
 }
 
 /** What an agent is doing. */
@@ -11312,6 +11408,7 @@ export interface AiDescription {
   /** Its target (0: none). */
   readonly target: Entity;
 }
+
 
 
 
@@ -17622,8 +17719,9 @@ export declare namespace og {
   }
   /**
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
+   * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
@@ -17893,11 +17991,11 @@ export declare namespace og {
    */
   const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32"> }, Vehicle>;
   /**
-   * A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+   * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
    */
   const Rope: ComponentType<{ readonly segments: FieldSpec<"u32">; readonly length: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly end: FieldSpec<"Entity">; readonly endOffset: FieldSpec<"Vector3">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Vector3">; readonly visible: FieldSpec<"bool"> }, Rope>;
   /**
-   * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+   * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
    */
   const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
   /**
@@ -18223,11 +18321,11 @@ export declare namespace og {
      */
     function squash(world: World, desc?: SquashDesc): Result<Tween>;
     /**
-     * Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash).
+     * Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
      *
      * @param world The world.
      * @param desc The entity and the flash.
-     * @returns Refused for an entity with neither og.Sprite nor og.Mesh.
+     * @returns Refused for an entity with none of og.Sprite, og.Mesh and og.Model.
      */
     function flash(world: World, desc?: FlashDesc): Result<Tween>;
   }
@@ -18294,6 +18392,11 @@ export declare namespace og {
    * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
    */
   const AudioBusFx: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly lowpass: FieldSpec<"f32">; readonly highpass: FieldSpec<"f32">; readonly reverb: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly ratio: FieldSpec<"f32">; readonly attack: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly makeup: FieldSpec<"f32">; readonly duck: FieldSpec<"bool">; readonly duckBus: FieldSpec<"AudioBus">; readonly duckDepth: FieldSpec<"f32">; readonly duckThreshold: FieldSpec<"f32">; readonly duckAttack: FieldSpec<"f32">; readonly duckRelease: FieldSpec<"f32"> }, AudioBusFx>;
+  /**
+   * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
+   * Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).
+   */
+  const ReverbZone: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly bus: FieldSpec<"AudioBus">; readonly send: FieldSpec<"f32">; readonly room: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, ReverbZone>;
   /**
    * A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.
    */
@@ -18404,7 +18507,7 @@ export declare namespace og {
      */
     function flowAt(world: World, field: Navigation, point: Vector3): Vector3;
     /**
-     * A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models.
+     * A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook.
      *
      * @param world The world.
      * @param path The navmesh asset, such as `levels/arena.nav.ogt`.
@@ -18453,7 +18556,7 @@ export declare namespace og {
    */
   const AiAgent: ComponentType<{ readonly behaviour: FieldSpec<"Behaviour">; readonly active: FieldSpec<"bool">; readonly thinkEvery: FieldSpec<"u32">; readonly status: FieldSpec<"u32">; readonly state: FieldSpec<"u32">; readonly node: FieldSpec<"u32">; readonly changes: FieldSpec<"u32"> }, AiAgent>;
   /**
-   * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+   * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
    */
   const Perception: ComponentType<{ readonly sight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly eyeHeight: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly occluders: FieldSpec<"u32">; readonly hearing: FieldSpec<"f32">; readonly memory: FieldSpec<"f32">; readonly team: FieldSpec<"u32">; readonly forward: FieldSpec<"Vector3">; readonly target: FieldSpec<"Entity">; readonly sees: FieldSpec<"bool">; readonly lastSeen: FieldSpec<"Vector3">; readonly sinceSeen: FieldSpec<"f32">; readonly heard: FieldSpec<"bool">; readonly heardAt: FieldSpec<"Vector3">; readonly sinceHeard: FieldSpec<"f32"> }, Perception>;
   /** Something agents of other teams can see. */
@@ -18461,9 +18564,9 @@ export declare namespace og {
   /** An agent's state or running node changed (systems read it the tick after). */
   const AiChanged: EventType<AiChanged>;
   /**
-   * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+   * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
-   * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+   * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
    */
   namespace ai {
     /**
@@ -18501,6 +18604,14 @@ export declare namespace og {
      * @returns Refused for an agent that has not thought yet, a built-in key or another kind of value.
      */
     function set(world: World, entity: Entity, key: string, value: unknown): Result<void>;
+    /**
+     * Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @returns Refused for a world without og.ai.
+     */
+    function restart(world: World, entity: Entity): Result<void>;
     /**
      * Make a noise agents may hear next tick (a gunshot, a door, a thrown stone).
      *

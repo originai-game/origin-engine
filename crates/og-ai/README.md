@@ -28,7 +28,7 @@ tree {
     }
     sequence attack {
       check sees
-      check targetDistance below 0.9
+      check targetDistance below Tuning.slimeReach   # compared with a resource field
       command bite {             # the game's command, with the agent's handle
         cooldown 1
       }
@@ -53,7 +53,7 @@ tree {
 | `steps [label]` | a sequence that resumes at its running child |
 | `parallel [label] { policy all\|one; ... }` | every child every tick |
 | `invert`, `succeed`, `repeat N`, `cooldown S`, `timeout S` | decorators of one child |
-| `check <operand> [is\|not\|below\|above\|atMost\|atLeast <value>]` | a blackboard key, `Component.field` of the agent or `Resource.field` (a `.x/.y/.z` lane of a vector); no operator: truthy |
+| `check <operand> [is\|not\|below\|above\|atMost\|atLeast <value>]` | a blackboard key, `Component.field` of the agent or `Resource.field` (a `.x/.y/.z` lane of a vector); no operator: truthy. The value is a number, three numbers, `true`/`false`, or a key or field read each time the check runs (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource; an unknown one fails the check with a warning |
 | `move_to <key \| x y z> { speed }` | to a point; succeeds on arrival, fails when unreachable |
 | `chase [key] { speed; reach }` | after an entity key's position (default `target`) |
 | `flee [key] { speed; distance }` | away until `distance` away |
@@ -93,7 +93,13 @@ Built-in keys, written every think: `self`, `position`, `sees`, `heard`,
 
 - `og.AiAgent` (component): `behaviour`, `active`, `thinkEvery`; written:
   `status` (`AI_RUNNING`, `AI_SUCCESS`, `AI_FAILURE`), `state`, `node`,
-  `changes`.
+  `changes`. A behaviour starts afresh on the agent's first think, when
+  `behaviour` changes, and after `og.ai.restart(world, agent)`
+  (`AiSystem::restart`), at its next think: a machine in its initial state
+  (its `enter` run again), a tree at its root, timers and cooldowns reset,
+  the blackboard back to the declared keys, the start point (wander's
+  centre) where it then stands, what it saw and heard forgotten; actions
+  without a speed keep the speed it first started with.
 - `og.Perception` (component): `sight`, `fov`, `eyeHeight`, `occlude`,
   `occluders`, `hearing`, `memory`, `team`, `forward`; written: `target`,
   `sees`, `lastSeen`, `sinceSeen`, `heard`, `heardAt`, `sinceHeard`.
@@ -110,7 +116,10 @@ nearest perceivable of another team within sight, inside the cone around
 `forward`, else the way the agent last moved, else (before it has moved) the
 way its Transform faces (+Z in 3D, +X in 2D), not behind a collider by the
 host's `SightRay`; spatial sounds that started and `noise` calls within
-`hearing × loudness`), then every `thinkEvery` ticks the tree or machine,
+`hearing × loudness`, at the source's world position down its `og.Parent`
+chain; an agent does not hear its own: a sound of its entity or of an
+entity under it, or a noise whose `source` is one of them), then every
+`thinkEvery` ticks the tree or machine,
 then the running action's target and speed go to the agent's
 `og.NavAgent` (no moving action stops it) and its commands to the queue
 (`take_commands`). Checks read the agent's components and the world's
@@ -129,6 +138,10 @@ last moved and pending noises.
 with their line; a guard that patrols, chases on sight, bites on a
 cooldown and flees when a component field drops; a resource fact that
 redirects it and a selector that gives the patrol back; walls, the view
-cone and range hiding a target and hearing by radius; a machine on facts
-and timers with its enter and exit actions; two runs and a restored
-snapshot deciding the same.
+cone and range hiding a target and hearing by radius; an agent deaf to its
+own sounds and its children's, a child's sound heard where it is; a
+machine on facts and timers with its enter and exit actions; a restart
+that puts a machine in its initial state and a tree at its root; a check
+against a resource field read every think; two runs and a restored
+snapshot deciding the same. og-cook's `tests/behaviour.rs` cooks a check
+against a field and refuses a malformed one with its line.

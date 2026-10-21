@@ -94,7 +94,7 @@ export const Game = defineResource("Game", {
   gateOpen: bool(false),
   gateLift: f32(0, { unit: "m" }),
   inCrypt: bool(false, { doc: "The courier is inside the crypt: the reverb zone." }),
-  reverb: f32(0.12, { doc: "The effects bus's reverb send, eased towards the zone's." }),
+  reverb: f32(0, { doc: "How much of the crypt's reverb zone the listener hears (its og.ReverbZone.weight), 0 to 1." }),
   capeHang: f32(0, { unit: "m", doc: "The cape's hem below its pins (og.physics.clothPoints)." }),
   capeBehind: f32(0, { unit: "m", doc: "How far the cape's hem trails behind the courier." }),
   bannerSway: f32(0, { unit: "m", doc: "How far banner-0's free corner hangs out from its pinned corner." }),
@@ -166,6 +166,9 @@ export const Tuning = defineResource("Tuning", {
   wardenPatrol: f32(1.1, { min: 0, max: 6, step: 0.1, unit: "m/s", tunable: true }),
   wardenChase: f32(2.4, { min: 0.5, max: 8, step: 0.1, unit: "m/s", tunable: true }),
   sight: f32(11, { min: 0, max: 40, step: 0.5, unit: "m", tunable: true }),
+  impFleeBelow: f32(2, { min: 0, max: 3, step: 1, tunable: true, doc: "An imp flees with fewer thorns than this (its behaviour reads it)." }),
+  impReach: f32(1.25, { min: 0.3, max: 4, step: 0.05, unit: "m", tunable: true, doc: "An imp bites within this distance (its behaviour reads it)." }),
+  wardenReach: f32(2.3, { min: 0.5, max: 5, step: 0.05, unit: "m", tunable: true, doc: "A warden slams within this distance (its behaviour reads it)." }),
   cameraDistance: f32(5.6, { min: 2, max: 20, step: 0.1, unit: "m", tunable: true }),
   cameraPitch: f32(0.34, { min: 0, max: 1.4, step: 0.01, unit: "rad", tunable: true }),
 });
@@ -211,8 +214,6 @@ export const Foe = defineComponent("Foe", {
   bites: u32(0),
   alerts: u32(0),
   carries: bool(false, { doc: "It carries the warden sigil (drops it when it falls)." }),
-  warm: u32(0, { doc: "Its NavAgent's plans when it was (re)placed: its mind wakes after the next plan (FINDINGS #7)." }),
-  awake: bool(false, { doc: "Its mind has been woken (og.AiAgent.active) since it was placed." }),
   oneShot: bool(false, { doc: "A hurt clip plays over its graph." }),
   sight: f32(-1, { doc: "The og.Perception.sight last written (-1: none yet)." }),
   pace: f32(-1, { doc: "The graph's speed parameter last written." }),
@@ -223,8 +224,6 @@ export const Foe = defineComponent("Foe", {
   clipAttack: f64(0, { doc: "Its attack clip (retargeted): bite or slam." }),
   clipHurt: f64(0),
   clipDie: f64(0),
-  mind: f64(0),
-  spare: f64(0, { doc: "A second handle of its behaviour: swapping starts its machine afresh (a new run)." }),
 });
 
 /** A sigil or a herb lying on the stair. */

@@ -117,12 +117,16 @@ impl Op {
 
 /// A condition: an operand (a blackboard key, `Component.field` of the
 /// agent, `Resource.field`, with an optional `.x`/`.y`/`.z` lane), an
-/// operator and a value.
+/// operator and a value: a literal, or (`against`) a key or field read
+/// each time the check runs, so a threshold can live in a tuning resource.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Check {
     pub operand: String,
     pub op: Op,
     pub value: Value,
+    /// The key, `Component.field` or `Resource.field` the operand is
+    /// compared with instead of `value` (`check Foe.hp below Tuning.fleeHp`).
+    pub against: Option<String>,
 }
 
 /// A speed: fixed, or read from a key or field each think (a tunable).
@@ -377,6 +381,7 @@ pub(crate) fn parse_check(e: &Entry) -> Result<Check, String> {
             operand,
             op: Op::Truthy,
             value: Value::Bool(true),
+            against: None,
         });
     }
     let op_word = e.values[1].as_word().ok_or_else(|| {
@@ -391,8 +396,30 @@ pub(crate) fn parse_check(e: &Entry) -> Result<Check, String> {
             format!("'{op_word}' is not an operator: is, not, below, above, atMost or atLeast"),
         )
     })?;
-    let value = value_at(e, 2)?;
-    Ok(Check { operand, op, value })
+    // A key or a field to compare with, read each time (Tuning.fleeHp).
+    if let [v] = &e.values[2..]
+        && v.as_bool().is_none()
+        && let Some(r) = word_or_string(v)
+    {
+        return Ok(Check {
+            operand,
+            op,
+            value: Value::Num(0.0),
+            against: Some(r.to_string()),
+        });
+    }
+    let value = value_at(e, 2).map_err(|_| {
+        err(
+            e,
+            "'check' compares with a value: a number, three numbers (a point), true/false, or a key or field holding it (Tuning.fleeHp)",
+        )
+    })?;
+    Ok(Check {
+        operand,
+        op,
+        value,
+        against: None,
+    })
 }
 
 struct Parser {
@@ -648,7 +675,11 @@ impl Parser {
                     if c.op == Op::Truthy {
                         String::new()
                     } else {
-                        format!(" {} {}", c.op.name(), describe(c.value))
+                        format!(
+                            " {} {}",
+                            c.op.name(),
+                            c.against.clone().unwrap_or_else(|| describe(c.value))
+                        )
                     }
                 );
                 self.nodes.push(Node {
@@ -805,16 +836,18 @@ impl Behaviour {
         self.nodes.get(i).map_or("", |n| n.name.as_str())
     }
 
-    /// Every operand a check names that is not a key: `Component.field` or `Resource.field`.
+    /// Every operand a check names (either side) that is not a key: `Component.field` or `Resource.field`.
     pub fn field_operands(&self) -> Vec<String> {
         let mut out = Vec::new();
         let mut push = |c: &Check| {
-            if !self.keys.iter().any(|k| k.0 == c.operand)
-                && !BUILTIN_KEYS.contains(&c.operand.as_str())
-                && c.operand.contains('.')
-                && !out.contains(&c.operand)
-            {
-                out.push(c.operand.clone());
+            for o in std::iter::once(&c.operand).chain(c.against.as_ref()) {
+                if !self.keys.iter().any(|k| &k.0 == o)
+                    && !BUILTIN_KEYS.contains(&o.as_str())
+                    && o.contains('.')
+                    && !out.contains(o)
+                {
+                    out.push(o.clone());
+                }
             }
         };
         for n in &self.nodes {

@@ -7,7 +7,7 @@
 //! blocks that differ, on both tiers (owed in the README's "What phase 2
 //! owes": dirty tracking).
 
-/// The comparison and write granularity: 4 KiB, about 85 instances of 48
+/// The comparison and write granularity: 4 KiB, 64 instances of 64
 /// bytes (`instances::GpuTransform`). Smaller blocks write fewer bytes for
 /// scattered changes but issue more writes.
 pub(crate) const BLOCK: usize = 4096;

@@ -75,6 +75,9 @@ impl AiApi for NodeHost {
     fn og_ai_noise(&self, world: u32, desc: Option<String>) -> String {
         rt::og_ai_noise(world, desc)
     }
+    fn og_ai_restart(&self, world: u32, entity: f64) -> String {
+        rt::og_ai_restart(world, entity)
+    }
     fn og_ai_describe(&self, world: u32, entity: f64) -> String {
         rt::og_ai_describe(world, entity)
     }

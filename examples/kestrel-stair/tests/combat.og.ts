@@ -1,7 +1,8 @@
 // The sword (og-feel §1-§7): a press swings on its tick (the swing sound,
 // the attack clip over the blend tree), and the hit lands on the clip's
 // `hit` marker, an og.AnimationEvent: hit stop by weight (7 ticks on a
-// warden), a shake, the warden flinching (a squash: FINDINGS #11), a number
+// warden), a shake, the warden flashing white alone (its og.Model's own flash,
+// FINDINGS #11 fixed) and flinching (a squash in x and z), a number
 // and the hit sound. Six strikes fell the terrace warden (eight are swung, the
 // courier pressing on): its die clip, the
 // world held longer, and the third sigil dropped where it fell, which F
@@ -29,6 +30,8 @@ export default playtest({
     "1.017:get:sfx-2.Sfx:swing-sound.json",
     "1.15:get:og.TimeScale:stop.json",
     "1.15:get:warden-0.og.Transform:held0.json",
+    "1.15:get:warden-0.og.Model:flash.json",
+    "1.15:get:warden-1.og.Model:other.json",
     "1.18:get:warden-0.og.Transform:held1.json",
     "1.18:get:warden-0.Foe:hit1.json",
     "1.25:get:og.Camera:shake.json",
@@ -62,7 +65,10 @@ export default playtest({
     const h0 = value<{ position: number[]; scale: number[] }>(run, "held0.json");
     const h1 = value<{ position: number[]; scale: number[] }>(run, "held1.json");
     t.equal(h1.position, h0.position, "the warden held still through the stop");
-    t.ok(h0.scale[0]! > 1.05 && h0.scale[1]! < 0.95, `and flinched (${h0.scale[0]!.toFixed(2)} x ${h0.scale[1]!.toFixed(2)})`);
+    t.ok(h0.scale[0]! > 1.05 && h0.scale[1]! < 0.95 && h0.scale[2]! > 1.05, `and flinched (${h0.scale.map((s) => s.toFixed(2)).join(" x ")})`);
+    const flashed = value<{ flash: number }>(run, "flash.json").flash;
+    t.ok(flashed > 0.3, `and flashed white (${flashed.toFixed(2)})`);
+    t.equal(value<{ flash: number }>(run, "other.json").flash, 0, "alone: the other warden, sharing its materials, did not");
     t.equal(value<Foe>(run, "hit1.json").hp, 5, "one stone lost");
     t.ok(value<{ trauma: number }>(run, "shake.json").trauma > 0.05, "the camera shook");
     const felled = game(run, "felled.json");

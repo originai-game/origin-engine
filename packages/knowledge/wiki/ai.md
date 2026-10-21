@@ -2,11 +2,11 @@
 
 # The `ai` module
 
-Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
 
 An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
 
-Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
 
 - **TypeScript**: functions are the namespace `og.ai`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,7 +18,7 @@ module ai {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7118</sub>
+<sub>`api.ogt` line 7174</sub>
 
 ## Contents
 
@@ -30,7 +30,7 @@ module ai {
 | [`AI_SUCCESS`](#const-AI_SUCCESS) | constant | AiAgent.status: the tree succeeded on the last think. |
 | [`AI_FAILURE`](#const-AI_FAILURE) | constant | AiAgent.status: the tree failed on the last think. |
 | [`og.AiAgent`](#record-AiAgent) | component | An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear. |
-| [`og.Perception`](#record-Perception) | component | What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness. |
+| [`og.Perception`](#record-Perception) | component | What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them. |
 | [`og.Perceivable`](#record-Perceivable) | component | Something agents of other teams can see. |
 | [`og.AiChanged`](#record-AiChanged) | event | An agent's state or running node changed (systems read it the tick after). |
 | [`BehaviourInfo`](#type-BehaviourInfo) | struct | A loaded behaviour. |
@@ -40,6 +40,7 @@ module ai {
 | [`og.ai.parse`](#fn-parse) | function | A behaviour from text, now (tests and generated behaviours; assets go through og cook). |
 | [`og.ai.get`](#fn-get) | function | A blackboard value of an agent as of its last think. |
 | [`og.ai.set`](#fn-set) | function | Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`. |
+| [`og.ai.restart`](#fn-restart) | function | Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway. |
 | [`og.ai.noise`](#fn-noise) | function | Make a noise agents may hear next tick (a gunshot, a door, a thrown stone). |
 | [`og.ai.describe`](#fn-describe) | function | What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target. |
 
@@ -73,7 +74,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 7289</sub>
+<sub>`api.ogt` line 7346</sub>
 
 <a id="fn-parse"></a>
 
@@ -103,7 +104,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 7296</sub>
+<sub>`api.ogt` line 7353</sub>
 
 <a id="fn-get"></a>
 
@@ -135,7 +136,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 7303</sub>
+<sub>`api.ogt` line 7360</sub>
 
 <a id="fn-set"></a>
 
@@ -169,7 +170,37 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 7311</sub>
+<sub>`api.ogt` line 7368</sub>
+
+<a id="fn-restart"></a>
+
+### `og.ai.restart`
+
+Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway.
+
+```ts
+og.ai.restart(world: World, entity: Entity): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The agent. |
+
+**Returns** `Result<void>`: Refused for a world without og.ai.
+
+Binding symbol `og_ai_restart` · publish builds: kept
+
+```ogt
+fn restart {
+  doc "Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway."
+  param world World "The world."
+  param entity Entity "The agent."
+  returns Result.Void "Refused for a world without og.ai."
+}
+```
+
+<sub>`api.ogt` line 7377</sub>
 
 <a id="fn-noise"></a>
 
@@ -199,7 +230,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 7320</sub>
+<sub>`api.ogt` line 7384</sub>
 
 <a id="fn-describe"></a>
 
@@ -229,7 +260,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 7327</sub>
+<sub>`api.ogt` line 7391</sub>
 
 ## Components, resources and events
 
@@ -279,13 +310,13 @@ component AiAgent {
 }
 ```
 
-<sub>`api.ogt` line 7137</sub>
+<sub>`api.ogt` line 7193</sub>
 
 <a id="record-Perception"></a>
 
 ### `og.Perception` (component)
 
-What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
 
 Token `og.Perception`, registered under the schema name `og.Perception`; its value type is `Perception`.
 
@@ -310,7 +341,7 @@ Token `og.Perception`, registered under the schema name `og.Perception`; its val
 
 ```ogt
 component Perception {
-  doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness."
+  doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them."
   field sight f32 "How far it sees." {
     default 8
     min 0
@@ -380,7 +411,7 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 7163</sub>
+<sub>`api.ogt` line 7219</sub>
 
 <a id="record-Perceivable"></a>
 
@@ -409,7 +440,7 @@ component Perceivable {
 }
 ```
 
-<sub>`api.ogt` line 7233</sub>
+<sub>`api.ogt` line 7289</sub>
 
 <a id="record-AiChanged"></a>
 
@@ -436,7 +467,7 @@ event AiChanged {
 }
 ```
 
-<sub>`api.ogt` line 7245</sub>
+<sub>`api.ogt` line 7301</sub>
 
 ## Types
 
@@ -452,7 +483,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Behaviour "A loaded behaviour tree or state machine."
 ```
 
-<sub>`api.ogt` line 7124</sub>
+<sub>`api.ogt` line 7180</sub>
 
 <a id="type-BehaviourInfo"></a>
 
@@ -481,7 +512,7 @@ struct BehaviourInfo {
 }
 ```
 
-<sub>`api.ogt` line 7253</sub>
+<sub>`api.ogt` line 7309</sub>
 
 <a id="type-NoiseDesc"></a>
 
@@ -495,6 +526,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it is. |
 | `loudness` | `number` | `1` | 0 … 100 | — | — | How loud: heard within Perception.hearing times this. |
+| `source` | `Entity` | `0` | — | — | — | Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it. |
 
 ```ogt
 struct NoiseDesc {
@@ -508,10 +540,11 @@ struct NoiseDesc {
     min 0
     max 100
   }
+  field source Entity "Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it."
 }
 ```
 
-<sub>`api.ogt` line 7263</sub>
+<sub>`api.ogt` line 7319</sub>
 
 <a id="type-AiDescription"></a>
 
@@ -546,7 +579,7 @@ struct AiDescription {
 }
 ```
 
-<sub>`api.ogt` line 7276</sub>
+<sub>`api.ogt` line 7333</sub>
 
 ## Column kinds
 
@@ -565,7 +598,7 @@ column Behaviour {
 }
 ```
 
-<sub>`api.ogt` line 7126</sub>
+<sub>`api.ogt` line 7182</sub>
 
 ## Constants
 
@@ -579,16 +612,16 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>`api.ogt` line 7133</sub>
+<sub>`api.ogt` line 7189</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>`api.ogt` line 7134</sub>
+<sub>`api.ogt` line 7190</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>`api.ogt` line 7135</sub>
+<sub>`api.ogt` line 7191</sub>

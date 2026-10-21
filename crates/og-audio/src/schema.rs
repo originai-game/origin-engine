@@ -434,6 +434,87 @@ impl Default for AudioBusFx {
     }
 }
 
+/// A reverb zone: a box (or a sphere) where the shared reverb sounds like
+/// this room. While the listener is inside, og.audio eases the reverb's
+/// room size and damping, and one bus's send to it, towards the zone's;
+/// past its edge the zone fades out over `fade` metres. The listener's
+/// weight in each zone is a function of its position that tick (the
+/// strongest zone wins, ties to the first in query order), so it is
+/// deterministic and the stream carries it. og.Audio's `reverbRoom` and
+/// `reverbDamping` and the bus's og.AudioBusFx `reverb` stay the open air's.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.ReverbZone")]
+pub struct ReverbZone {
+    /// The box's full size along the entity's axes, centred on it (times
+    /// og.Transform.scale).
+    #[reflect(default = [10, 4, 10], unit = "m")]
+    pub size: Vec3,
+    /// A sphere of this radius about the entity instead of the box (times
+    /// the largest of og.Transform.scale); 0 uses the box.
+    #[reflect(min = 0, unit = "m", tunable)]
+    pub radius: f32,
+    /// How far past the volume's surface the zone fades out, linearly; 0 is
+    /// a hard edge.
+    #[reflect(min = 0, default = 2, unit = "m", tunable)]
+    pub fade: f32,
+    /// The bus whose reverb send the zone sets.
+    #[reflect(variants = ["master", "music", "sfx", "ui"], default = 2)]
+    pub bus: u32,
+    /// That bus's send to the reverb inside, 0..1 (its og.AudioBusFx
+    /// `reverb` outside).
+    #[reflect(min = 0, max = 1, default = 0.5, tunable)]
+    pub send: f32,
+    /// The reverb's room size inside, 0..1 (og.Audio.reverbRoom outside).
+    #[reflect(min = 0, max = 1, default = 0.85, tunable)]
+    pub room: f32,
+    /// The reverb's damping of high frequencies inside, 0..1
+    /// (og.Audio.reverbDamping outside).
+    #[reflect(min = 0, max = 1, default = 0.3, tunable)]
+    pub damping: f32,
+    /// How much of this zone the listener hears, 0..1 (written by og.audio
+    /// each tick: 1 inside, 0 past the fade).
+    #[reflect(min = 0, max = 1)]
+    pub weight: f32,
+}
+
+impl Default for ReverbZone {
+    fn default() -> Self {
+        ReverbZone {
+            size: Vec3::new(10.0, 4.0, 10.0),
+            radius: 0.0,
+            fade: 2.0,
+            bus: Bus::Sfx as u32,
+            send: 0.5,
+            room: 0.85,
+            damping: 0.3,
+            weight: 0.0,
+        }
+    }
+}
+
+impl ReverbZone {
+    /// How much of the zone a listener at `p` hears, the zone's entity at
+    /// `t`: 1 inside the volume, falling linearly to 0 at `fade` metres
+    /// from its surface (0 outside a hard edge).
+    pub fn weight_at(&self, t: &Transform, p: Vec3) -> f32 {
+        let scale = t.scale.abs();
+        let outside = if self.radius > 0.0 {
+            ((p - t.position).length() - self.radius * scale.max_element()).max(0.0)
+        } else {
+            let local = t.quaternion.normalize().inverse() * (p - t.position);
+            let half = self.size.abs() * scale * 0.5;
+            (local.abs() - half).max(Vec3::ZERO).length()
+        };
+        if outside <= 0.0 {
+            1.0
+        } else if self.fade > 0.0 {
+            (1.0 - outside / self.fade).max(0.0)
+        } else {
+            0.0
+        }
+    }
+}
+
 /// A musical clock: tempo and metre. The engine's og.music system writes
 /// the current bar and beat and the times of the next beat and bar each
 /// tick, and sends og.MusicBeat on every beat; a source whose `startAt` is

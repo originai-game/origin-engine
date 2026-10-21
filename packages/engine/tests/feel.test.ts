@@ -232,11 +232,11 @@ test("og.tween.flash whitens an og.Sprite and fades back", () => {
   expect(pixel(capture(engine), W / 2, H / 2).slice(0, 3)).toEqual([255, 255, 255]);
   engine.advance(15);
   expect(pixel(capture(engine), W / 2, H / 2).slice(0, 3)).toEqual([255, 0, 0]);
-  // An entity with neither og.Sprite nor og.Mesh is refused.
+  // An entity with none of og.Sprite, og.Mesh and og.Model is refused.
   const bare = must(engine.world.spawn({}));
   const refused = og.tween.flash(engine.world, { entity: bare });
   expect(refused.ok).toBeFalse();
-  if (!refused.ok) expect(refused.reason).toContain("neither og.Sprite nor og.Mesh");
+  if (!refused.ok) expect(refused.reason).toContain("none of og.Sprite, og.Mesh and og.Model");
 });
 
 test("a squash and a flash started with a hit stop show their impact through the stop, then recover", () => {

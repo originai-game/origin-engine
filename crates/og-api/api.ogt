@@ -3448,7 +3448,19 @@ module load {
 
   component Model {
     doc "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one."
+    doc "The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck."
     field asset Asset "The glTF asset."
+    field tint Color "A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF)." {
+      default 1 1 1
+    }
+    field flash f32 "A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
   }
 
   fn bundle {
@@ -4335,7 +4347,7 @@ module physics {
   }
 
   component Rope {
-    doc "A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`."
+    doc "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`."
     field segments u32 "The number of links (points minus one)." {
       default 16
       min 1
@@ -4401,7 +4413,7 @@ module physics {
   const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 
   component Cloth {
-    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
     field columns u32 "Points across." {
       default 12
       min 2
@@ -5814,7 +5826,7 @@ module anim {
   struct GraphDesc {
     doc "A blend-tree graph to register."
     desc true
-    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README)."
+    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line)."
     field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
   }
 
@@ -6059,9 +6071,7 @@ module tween {
     doc "Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest."
     desc true
     field entity Entity "The entity."
-    field impact Vector2 "The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump)." {
-      default 1.25 0.8
-    }
+    field impact Partial.Vector3 "The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0."
     field rest Vector3 "The scale it recovers to." {
       default 1 1 1
     }
@@ -6076,7 +6086,7 @@ module tween {
   }
 
   struct FlashDesc {
-    doc "A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0."
+    doc "A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0."
     desc true
     field entity Entity "The entity."
     field color Color "The flash colour (white for a hit, red for damage taken)." {
@@ -6153,10 +6163,10 @@ module tween {
   }
 
   fn flash {
-    doc "Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash)."
+    doc "Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash."
     param world World "The world."
     param desc FlashDesc "The entity and the flash."
-    returns Result.Tween "Refused for an entity with neither og.Sprite nor og.Mesh."
+    returns Result.Tween "Refused for an entity with none of og.Sprite, og.Mesh and og.Model."
   }
 }
 
@@ -6584,6 +6594,52 @@ module audio {
     }
   }
 
+  component ReverbZone {
+    doc "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener."
+    doc "Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener)."
+    field size Vector3 "The box's full size along the entity's axes, centred on it (times og.Transform.scale)." {
+      default 10 4 10
+      unit m
+    }
+    field radius f32 "A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box." {
+      min 0
+      unit m
+      tunable true
+    }
+    field fade f32 "How far past the volume's surface the zone fades out, linearly; 0 is a hard edge." {
+      default 2
+      min 0
+      unit m
+      tunable true
+    }
+    field bus AudioBus "The bus whose reverb send the zone sets." {
+      default sfx
+    }
+    field send f32 "That bus's send to the reverb inside (its AudioBusFx.reverb outside)." {
+      default 0.5
+      min 0
+      max 1
+      tunable true
+    }
+    field room f32 "The reverb's room size inside (Audio.reverbRoom outside)." {
+      default 0.85
+      min 0
+      max 1
+      tunable true
+    }
+    field damping f32 "The reverb's damping of high frequencies inside (Audio.reverbDamping outside)." {
+      default 0.3
+      min 0
+      max 1
+      tunable true
+    }
+    field weight f32 "How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick)." {
+      min 0
+      max 1
+      readonly true
+    }
+  }
+
   component Music {
     doc "A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat."
     field bpm f32 "Beats per minute." {
@@ -6990,10 +7046,10 @@ module nav {
     field mesh Navigation "What NavAgent.nav and the queries take."
     field polygons u32 "Its convex polygons."
     field tiles u32 "Its tiles."
-    field min Vector3 "Its bounds' lowest corner." {
+    field min Vector3 "The lowest corner of the box around its polygons." {
       unit m
     }
-    field max Vector3 "Its bounds' highest corner." {
+    field max Vector3 "The highest corner of the box around its polygons (its highest walkable floor's y)." {
       unit m
     }
     field cellSize f32 "Its voxel width." {
@@ -7070,7 +7126,7 @@ module nav {
   }
 
   fn load {
-    doc "A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models."
+    doc "A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook."
     param world World "The world."
     param path String "The navmesh asset, such as `levels/arena.nav.ogt`."
     returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh."
@@ -7117,9 +7173,9 @@ module nav {
 
 module ai {
   skill og-ai
-  doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
   doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
-  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
+  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
 
   handle Behaviour "A loaded behaviour tree or state machine."
 
@@ -7161,7 +7217,7 @@ module ai {
   }
 
   component Perception {
-    doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness."
+    doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them."
     field sight f32 "How far it sees." {
       default 8
       min 0
@@ -7271,6 +7327,7 @@ module ai {
       min 0
       max 100
     }
+    field source Entity "Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it."
   }
 
   struct AiDescription {
@@ -7315,6 +7372,13 @@ module ai {
     param key String "The key; built-in keys are refused."
     param value Json "The value."
     returns Result.Void "Refused for an agent that has not thought yet, a built-in key or another kind of value."
+  }
+
+  fn restart {
+    doc "Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway."
+    param world World "The world."
+    param entity Entity "The agent."
+    returns Result.Void "Refused for a world without og.ai."
   }
 
   fn noise {

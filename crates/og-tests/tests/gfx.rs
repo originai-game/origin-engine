@@ -1285,6 +1285,50 @@ fn stylised_matches_its_reference() {
     assert!(check("stylised").stats.prepass_draws > 0);
 }
 
+/// One glTF model's three instances (one flashing, one tinted) and two
+/// skinned cylinders (one flashing) share their materials: each look rides
+/// in its instance's record, so the flash is drawn without a draw of its
+/// own, and the flashed instance alone is lighter than its twin.
+#[test]
+fn model_flash_matches_its_reference() {
+    let report = check("model-flash");
+    let s = report.stats;
+    assert_eq!((s.skinned_instances, s.joints), (2, 8));
+    // Without the looks: the same draws.
+    let looks = built("model-flash");
+    let mut plain = built("model-flash");
+    for i in &mut plain.scene.instances {
+        i.fx = og_render::InstanceFx::NONE;
+    }
+    for i in &mut plain.scene.skinned_instances {
+        i.fx = og_render::InstanceFx::NONE;
+    }
+    let (with, stats) = frame(&looks.desc, &looks.scene, looks.frames);
+    let (without, plain_stats) = frame(&plain.desc, &plain.scene, plain.frames);
+    assert_eq!(stats.draw_calls, plain_stats.draw_calls);
+    // The middle model is lighter with its flash, the left one unchanged.
+    let column = |img: &RgbaImage, x0: u32, x1: u32| {
+        let mut sum = 0.0;
+        for y in 150..560 {
+            for x in x0..x1 {
+                let i = ((y * img.width + x) * 4) as usize;
+                sum += luma(&[img.pixels[i], img.pixels[i + 1], img.pixels[i + 2], 255]);
+            }
+        }
+        sum
+    };
+    let (mid_with, mid_without) = (column(&with, 560, 720), column(&without, 560, 720));
+    assert!(
+        mid_with > mid_without * 1.15,
+        "the flashed model is lighter: {mid_with} against {mid_without}"
+    );
+    assert_eq!(
+        column(&with, 200, 360),
+        column(&without, 200, 360),
+        "the unflashed twin is untouched"
+    );
+}
+
 #[test]
 fn skinning_matches_its_reference() {
     let s = check("skinning").stats;

@@ -588,8 +588,8 @@ impl Default for Vehicle {
 
 // ---- Verlet ropes and cloth -------------------------------------------------
 
-/// A Verlet rope: `segments` links from the entity's position (plus
-/// `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung
+/// A Verlet rope: `segments` links from the entity's world position (its
+/// og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung
 /// by gravity and wind, colliding with every solid collider at `radius`.
 /// It moves nothing (one-way: a rope joint ties bodies together, og.Joint
 /// JOINT_ROPE). Its points are world state (the og.physics state block);
@@ -668,8 +668,9 @@ pub const PIN_LEFT: u32 = 4;
 pub const PIN_TOP_RINGS: u32 = 8;
 
 /// A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart,
-/// hanging from the entity's position (its top-left corner, the grid laid
-/// out along the entity's local x and down -y), pinned by `pins` (pinned
+/// hanging from the entity's world position (its og.Transform after its
+/// parents': its top-left corner, the grid laid out along the entity's
+/// local x and down -y), pinned by `pins` (pinned
 /// points follow the entity), with stretch and shear constraints, gravity,
 /// wind, collision against every solid collider and, with `thickness`,
 /// against itself. One-way like og.Rope;

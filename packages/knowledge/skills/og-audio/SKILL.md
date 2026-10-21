@@ -15,7 +15,13 @@ Two games written from this package alone (`examples/lantern-vale`,
 track, cooked in 4-second chunks, streams from the title screen under the
 effects' duck, Hollowbell's music streams the same way, flipbook frame
 events put Hollowbell's footsteps, strikes and bell on their exact frames,
-and `og polish` heard a sound on every damage moment.
+and `og polish` heard a sound on every damage moment. In The Kestrel Stair
+(`examples/kestrel-stair`, a 3D third-person game) spatial sources (the
+braziers, the imps' chitter, the crypt's drip, the bell) were heard from a
+listener on the camera with distance, pan, distance dulling and occlusion
+behind walls, each read back exactly through `og.AudioPlayback` with
+`get:`; its 2:40 track streamed in 4-second
+chunks on the music bus. A reverb zone: see physics-anim-2.
 
 ## 1. Every event sounds
 
@@ -71,6 +77,7 @@ Four buses: `master`, `music`, `sfx`, `ui`. Set levels with the sources'
 | Muffled (underwater, pause menu) | `lowpass` 600–1200 Hz on sfx and music |
 | Thin radio or phone | `highpass` 400 Hz plus `lowpass` 3 kHz |
 | Space and room | `reverb` 0.1–0.3 on sfx (og.Audio `reverbRoom`, `reverbDamping`); keep music dry |
+| A room that sounds like a room (a crypt, a cave, a hall) | an `og.ReverbZone` on an entity at the room's centre (§6), not code that eases the bus |
 | Even out loud and quiet effects | compressor: `threshold` −18 (dB), `ratio` 3–4, `attack` 0.005 and `release` 0.15 (s), `makeup` 3 (dB) |
 | Never clip | a limiter on master: `threshold` −1, `ratio` 20, `attack` 0.001 |
 
@@ -141,6 +148,15 @@ at 1.0 is a mix bug, not loudness.
 - `distanceCutoff` (e.g. 2000 Hz) dulls far sounds; `occlude: true` plays a
   source behind a collider at og.Audio's `occlusionGain` through
   `occlusionCutoff`: enemies behind walls sound behind walls.
+- A room of its own: `og.ReverbZone` (a box `size` along the entity's
+  axes, or `radius`) eases the shared reverb towards its `room`,
+  `damping` and its `bus`'s `send` while the listener is inside, fading
+  over `fade` metres past the walls (2–4 m reads as walking through a
+  door). A stone crypt: `room` 0.9, `damping` 0.25, `send` 0.5 on sfx;
+  a small wooden room: `room` 0.4, `damping` 0.6. og.Audio and the
+  bus's og.AudioBusFx stay the open air's; read `weight` to know where
+  the listener is. It follows the listener's Transform, so put the
+  og.AudioListener where the ears are (the camera, or the player).
 - `og.Audio.maxVoices` (32) caps voices; past it the lowest `priority`,
   then the quietest, then the oldest is culled (`SOUND_CULLED`). Give the
   player's own sounds and the music a high priority (200+), ambient props a

@@ -8,8 +8,8 @@
 //
 // An instance of an array-map material carries its layer plus one beside
 // its transform in the instance stream (instances.rs `GpuTransform::layer`,
-// lib.rs `INSTANCE_LAYOUT` location 8; 0: the material's own layers), so
-// positions are the standard path's.
+// pbr.wgsl `InstanceFxIn` x; 0: the material's own layers), so positions
+// are the standard path's.
 
 var<private> map_layer: i32;
 var<private> normal_layer: i32;
@@ -23,18 +23,15 @@ fn array_layers(instance_layer: u32) {
 }
 
 // The instance's layer plus one (0: the material's).
-struct ArrayInstanceIn {
-  @location(8) layer: f32,
-};
-
-fn array_instance_layer(a: ArrayInstanceIn) -> u32 {
-  return u32(max(a.layer, 0.0) + 0.5);
+fn array_instance_layer(a: InstanceFxIn) -> u32 {
+  return u32(max(a.look.x, 0.0) + 0.5);
 }
 
 @vertex
-fn vs(v: VertexIn, i: InstanceIn, a: ArrayInstanceIn) -> VertexOut {
+fn vs(v: VertexIn, i: InstanceIn, a: InstanceFxIn) -> VertexOut {
   var o = lit_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
   o.layer = array_instance_layer(a);
+  o.look = a.look;
   return o;
 }
 
@@ -45,7 +42,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
 }
 
 @vertex
-fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, a: ArrayInstanceIn) -> PrepassOut {
+fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn) -> PrepassOut {
   var o = prepass_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3), v);
   o.layer = array_instance_layer(a);
   return o;

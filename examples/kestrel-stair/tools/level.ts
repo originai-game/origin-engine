@@ -4,7 +4,7 @@
 // tools/make-assets.ts; and the files that must agree with it: the
 // navmesh (nav/stair.ogt) and the foes' behaviours (ai/*.ogt).
 
-import { BANNERS, BLOCKS, BRAZIERS, COLUMNS, CRYPT, FOES, LEDGES, MIND, RAMPS, STAIRS, WALLS, WAYSTONES } from "../src/layout.ts";
+import { BANNERS, BLOCKS, BRAZIERS, COLUMNS, CRYPT, FOES, LEDGES, RAMPS, STAIRS, WALLS, WAYSTONES } from "../src/layout.ts";
 import { Glb, MeshBuilder } from "./gltf.ts";
 import type { V3 } from "./gltf.ts";
 import { linear } from "./media.ts";
@@ -150,7 +150,7 @@ ${route}
 tree {
   selector {
     sequence flee {
-      check Foe.hp below ${MIND.impFleeBelow}   # a literal: a check takes no Tuning field (FINDINGS #3)
+      check Foe.hp below Tuning.impFleeBelow   # read each think (FINDINGS #3, fixed)
       flee {
         distance 7
         speed Tuning.impChase
@@ -159,7 +159,7 @@ tree {
     sequence bite {
       check sees
       check Game.phase is 1
-      check targetDistance below ${MIND.impReach}
+      check targetDistance below Tuning.impReach
       check Foe.cooldown below 0.01
       wait 0.25
       command bite {
@@ -215,7 +215,7 @@ machine {
       reach 1.6
     }
     to slam {
-      check targetDistance below ${MIND.wardenReach}   # a literal: a check takes no Tuning field (FINDINGS #3)
+      check targetDistance below Tuning.wardenReach   # read each think (FINDINGS #3, fixed)
     }
     to search {
       check sees is false

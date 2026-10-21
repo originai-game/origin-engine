@@ -58,7 +58,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | Module | TypeScript | Publish builds | Summary |
 |---|---|---|---|
 | [`nav`](nav.md) | `og.nav.*` | kept | Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch. |
-| [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
+| [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
 
 ### `og-platform-sdk`
 
@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-895 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+897 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -394,6 +394,7 @@ Field units the docs and Tune use.
 | [`og.ai.load`](ai.md#fn-load) | function | ai | `og_ai_load` |
 | [`og.ai.noise`](ai.md#fn-noise) | function | ai | `og_ai_noise` |
 | [`og.ai.parse`](ai.md#fn-parse) | function | ai | `og_ai_parse` |
+| [`og.ai.restart`](ai.md#fn-restart) | function | ai | `og_ai_restart` |
 | [`og.ai.set`](ai.md#fn-set) | function | ai | `og_ai_set` |
 | [`og.AiAgent`](ai.md#record-AiAgent) | component | ai | — |
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
@@ -566,6 +567,7 @@ Field units the docs and Tune use.
 | [`og.render.text`](render.md#fn-text) | function | render | `og_render_text` |
 | [`og.render.updateMaterial`](render.md#fn-updateMaterial) | function | render | `og_render_update_material` |
 | [`og.RenderSettings`](render.md#record-RenderSettings) | resource | render | — |
+| [`og.ReverbZone`](audio.md#record-ReverbZone) | component | audio | — |
 | [`og.RigidBody`](physics.md#record-RigidBody) | component | physics | — |
 | [`og.Rng`](rng.md#record-Rng) | resource | rng | — |
 | [`og.Rope`](physics.md#record-Rope) | component | physics | — |

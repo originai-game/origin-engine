@@ -12,6 +12,8 @@ export default playtest({
   commands: script(
     "0.3:play:0:quick",
     "0.35:set:Tuning.sight=0",
+    // The court's imp stands at the start of its round, out of the run's way.
+    "0.35:set:Tuning.impPatrol=0",
     // Flat ground: a second of walking, then of running.
     "0.4:warp:-6:40",
     hold("KeyW", 0.5, 1.6),

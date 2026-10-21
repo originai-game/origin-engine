@@ -12,9 +12,10 @@ next for each part.
 
 ## What works
 
-Two games were written from this package alone: `examples/lantern-vale`
-(a 3D top-down adventure) and `examples/hollowbell` (a 2D platformer).
-What they asked for the documented way worked the first time: a Tiled map
+Three games were written from this package alone: `examples/lantern-vale`
+(a 3D top-down adventure), `examples/hollowbell` (a 2D platformer) and
+`examples/kestrel-stair` (a 3D third-person action-adventure). What they
+asked for the documented way worked the first time: a Tiled map
 with a blob47 auto-tiled terrain, Tiled's parallax and objects with
 properties (§8); flipbook frame events driving footsteps, strikes and a
 bell; texture arrays as world sprites, screen sprites and emitter layers;
@@ -22,13 +23,24 @@ streaming groups of `.vox` models and textures loading as the camera
 neared them (§6); a look applied before `start` and a second one at a tick
 for the results (§15); `og.physics.overlap` on a layer and with sensors;
 a character controller shoving a pile of bodies (§13); a skinned glTF on
-twos (§9). `og cook` took their 47 and 69 assets cold in 8.2 s and 3.6 s,
-under 100 ms after a change, without a warning, and its refusals named
-the line and the fix.
+twos (§9). In The Kestrel Stair: one clip library retargeted at cook time
+onto a Mixamo-named, A-posed character, and at run time
+(`og.anim.retarget`) onto an Unreal-named one (its bones detected) and
+onto one whose bones only a `type rig` file names, all three playing
+through blend trees the first time, the clips' `hit` markers coming
+through both retargets (§9); a slam lunging about a metre by root motion,
+`Skeleton.rootMotion` planar for its length; a navmesh baked from the
+level's glTF (og-ai §1); the 3D character controller over triangle-mesh
+slopes, steps and ledges, refusing a scree too steep (§13); a cape, four
+banners in a gusting wind and a chain with a lamp at its last link (§13);
+`world.snapshot()` and `world.restore()` across a relaunch, bringing back
+93 entities with their cloth, paths and minds (§17). `og cook` took their
+47, 69 and 62 assets cold in 8.2 s, 3.6 s and 8.5 s, about 0.1 s after a
+change, without a warning, and its refusals named the line and the fix.
 
 ## Writing a game from this package
 
-The order both games found productive:
+The order the games found productive:
 
 1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
    seed. The scaffold writes it; change it there and nowhere else.
@@ -36,21 +48,25 @@ The order both games found productive:
    and from the start a command for each state a test must reach (`play`,
    `warp:<where>`) and facts for what it must check.
 3. **Assets by script**: `tools/make-assets.*` writes every texture,
-   tileset, map, flipbook, emitter, sound and look deterministically (both
-   games and every archetype do), with import settings beside each source
+   tileset, map, flipbook, emitter, sound and look deterministically (every
+   game and archetype does), with import settings beside each source
    (§5, §8, §10). Rerun it after a change; never hand-edit its outputs.
 4. **Cook** (`og cook`, og-build §1): read every refusal, it names the line
    and the fix.
-5. **Run with commands** (og-build §1, §4): `og run . --headless
+5. **In 3D, the navmesh before the minds** (og-ai §1): bake it from the
+   level (its glTF's `model` line), load it in `start` and check
+   `og.nav.nearest` at every spawn and route point; only then write the
+   behaviours.
+6. **Run with commands** (og-build §1, §4): `og run . --headless
    --commands "...;screenshot:x.png;...;quit"`, then open each frame and
    say what it shows. Do this after every change that shows on screen.
-6. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
+7. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
    asserting on facts, `get:` answers and dumps, one per feature, and a
    frames playtest comparing screenshots with `references/<tier>/`.
-7. **Polish** (og-build §5): `og polish` until its findings are gone; each
+8. **Polish** (og-build §5): `og polish` until its findings are gone; each
    names the section that fixes it (og-taste §10, og-feel §13).
 
-Three mistakes both games made before reading the right page:
+Mistakes the games made, or would have, before reading the right page:
 
 - **The resource handle.** A system reads or writes a resource only when
   it lists it among its `reads` or `writes` (og-core §4: undeclared, it
@@ -68,6 +84,10 @@ Three mistakes both games made before reading the right page:
   `og-out/test/<name>/`, and a playtest reads them back by the name its
   step gave (`run.json("shop.json")`). Give every step's file its own
   name, so a check reads the step it means (og-build §1, §3).
+- **An agent off the mesh.** Place every navmesh agent at its
+  `og.nav.nearest` point (idle or seeking a target on the mesh), and have a
+  playtest read each agent's position and `status` a few ticks in: still
+  where it was put, its height too, and not `NAV_UNREACHABLE` (og-ai §2).
 
 ## 1. The skills
 
@@ -584,10 +604,20 @@ poses it and `og.AnimationPlayer { clip, speed, loop, fade }` plays a clip
 puppet looks, while events and root motion stay smooth).
 `og.AnimationGraph` runs a blend
 tree with layered state machines registered by `og.anim.graph` (parameters
-such as speed pick the motion), `og.IkChain` turns a chain of bones to a
-target after the clips, `og.Blendshapes` weighs morph targets, and
-`og.AnimationEvent` reports a clip's named frames. Root motion is a
-`Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
+such as speed pick the motion; its grammar ends this section), `og.IkChain`
+turns a chain of bones to a target after the clips, `og.Blendshapes` weighs
+morph targets, and `og.AnimationEvent` reports a clip's markers (below).
+An `og.AnimationPlayer` beside a graph plays over it by its `weight`: a
+strike, a bite or a fall at weight 1, back to 0 when `finished`.
+**Root motion** is `og.Skeleton.rootMotion`: `planar` moves the entity's
+Transform by the root joint's xz travel and yaw, `full` by all of it,
+`off` (the default) leaves the hips travelling inside the model; switch it
+to `planar` for a lunge's clip and back to `off` after.
+`templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
+a hero retargeted at cook time and sentinels at run time) is the pattern,
+and for a 3D action game as a whole: a CharacterController over a level,
+clips retargeted at cook and at run time, blend trees, a navmesh and
+behaviour machines (og-ai).
 `og.anim.clip` finds a clip by name, a model's as a flipbook's (§8):
 
 ```ts
@@ -600,17 +630,48 @@ world.insert(slime, og.AnimationPlayer, { clip: chase, loop: true, stepFps: 12 }
 A `.vox` with frames (§5) is played the same way: its clips (`frames`, or
 the `voxClip` names) swap the frames' models on the frame boundaries.
 
+**Markers** are a clip's named times: the frame a strike lands, a
+footstep. The cook reads them from the glTF, in each animation's extras
+(`animations[i].extras."og.events"`, no other key):
+
+```json
+{ "name": "attack", "extras": { "og.events": [{ "name": "hit", "time": 0.42 }] } }
+```
+
+or from the model's import settings, `event "attack" "hit" 0.42` (clip,
+name, seconds; the `animation` block below). A name is 1 to 64 bytes, a
+time inside the clip and an `event` line's clip one of the glTF's own, or
+the cook refuses it naming the clip; a library's clips bring the markers
+the library carries (in its glTF or its own import settings).
+`ClipInfo.markers` lists a clip's marker names in time order (an empty
+list: the glTF carried none). On the tick playback passes one, through a
+player or a graph, `og.AnimationEvent { entity, clip, name, time, weight }`
+fires; a system that lists `og.AnimationEvent` in its `reads` reads them
+with `world.events(og.AnimationEvent)`. Markers survive retargeting, at
+cook time and at run time, so a library's `hit` lands on every character.
+
 **Retargeting** — one clip on characters of other proportions and bone
 names. Keep shared clips in an animation library (a glTF with a skeleton
 and clips, no mesh). At cook time, a character's import settings
-(`models/hero.glb.ogt`, `type import`) pull them in:
+(`models/hero.glb.ogt`) pull them in. A model's `animation` block, every
+line with its default:
 
 ```text
+type import
+version 1
+---
 animation {
-  library "anims/humanoid-clips.glb"   # its clips land in hero's #anim, retargeted
-  rig "rigs/hero.ogt"                  # optional: how hero's bones are named
+  rate 30                              # resampling rate of every clip, 1 to 120 Hz (default: the source's key rate)
+  event "attack" "hit" 0.42            # a marker on a clip of this glTF's own: clip, name, seconds (repeatable; or glTF extras."og.events")
+  library "anims/humanoid-clips.glb"   # its clips land in this model's #anim, retargeted (repeatable)
+  rig "rigs/hero.ogt"                  # how this model's bones are named (`type rig`); default: detected from the node names
+  footIk true                          # retargeting solves the legs so planted feet stay planted (default true)
+  compress false                       # quantised samples and keyframe reduction (default false: f32)
+  tolerance 0.0001                     # the most compression may move a sampled value (default 0.0001, at most 0.1)
 }
 ```
+
+A clip the model has of its own wins over a library's of the same name.
 
 At run time, `og.anim.retarget(world, { clip, source, target })` answers a
 new clip for `target` (both skeletons from `og.load.animation`). The bones
@@ -631,6 +692,115 @@ interpolation rebuilds within `tolerance` (default 0.0001: about 0.1 mm
 and 0.01°); a channel 16 bits cannot hold within it stays exact. Turn it on
 for a game with many clips; leave it off while a clip's motion is still
 being judged.
+
+### Blend trees: the graph grammar
+
+A graph is `.ogt` text of `type animgraph` passed to `og.anim.graph(world,
+{ text, clips })`; each `clip` line names a clip by `ClipInfo.name` among
+`clips` (a model's `og.load.animation(...).clips`, or retargeted ones).
+Motions (clips and blends of them) form a tree; layers run state machines
+over them. Every line, with its default:
+
+```text
+type animgraph
+version 1
+---
+param speed                 # a parameter: og.AnimationGraph.p0, the next p1, ... (at most 8)
+param wave
+param x
+param y
+clip idle "idle"            # clip <motion> "<clip name>"
+clip walk "walk" {
+  speed 1                   # duration multiplier, above 0 (default 1)
+  loop true                 # false: holds its last frame (default true)
+}
+clip run "run"
+clip waving "wave"
+blend1d move speed {        # blend1d <motion> <param>: the two children around the value blend linearly, clamped at the ends
+  child idle 0              # child <motion> <threshold>; any order (at least one)
+  child walk 1.5
+  child run 4
+}
+blend2d strafe x y {        # blend2d <motion> <param x> <param y>: children at points, gradient-band weights
+  child walk 0 1            # child <motion> <x> <y>
+  child idle 0 0
+}
+layer base {                # the first layer is the base: root motion and og.AnimationGraph.state come from it
+  state still idle          # state <name> <motion>
+  state move move {
+    speed 1                 # playback rate, 0 or more (default 1)
+  }
+  entry still               # the state it starts in (default: the first)
+  transition still move {   # transition <from | any> <to>; in file order, the first that holds fires
+    when speed gt 0.2       # when <param> gt | ge | lt | le | eq | ne <number>; every `when` must hold
+    exit 0.9                # and the source has played this many cycles (a `when` or an `exit` is required)
+    fade 0.25               # cross-fade seconds (default 0.2)
+  }
+  transition any still {    # any: from every state but the target
+    when speed le 0.2
+  }
+}
+layer upper {
+  mode additive             # override (default): replaces the pose below | additive: adds each clip's difference from its first frame
+  weight wave               # a number 0 to 1, or a parameter clamped to it (default 1)
+  state wave waving
+}
+```
+
+Each state advances one phase by `dt × AnimationGraph.speed × state speed
+/ duration`, the duration weighted across a blend's clips, so blended
+clips stay in step. Per tick and layer the transitions are checked first,
+then the phases advance, then the poses blend; a transition during a fade
+replaces it. `og.anim.graph` refuses a parse error naming the line, a
+clip name `clips` lacks, a parameter not declared and a motion that
+contains itself. Write the parameters from a system every tick
+(`world.set(body, og.AnimationGraph, { p0: speed })`); `state` and
+`stateTime` read back the base layer's.
+
+The third-person archetype's hero (`src/anim.ts`): idle, walk and run by
+the speed across the ground, and the run held mid-stride, slowed, in the
+air:
+
+```text
+type animgraph
+version 1
+---
+param speed
+param air
+clip idle "idle"
+clip walk "walk" {
+  speed 1.1
+}
+clip run "run"
+blend1d move speed {
+  child idle 0
+  child walk 2.2
+  child run 5.6
+}
+layer base {
+  state ground move
+  state air run {
+    speed 0.3
+  }
+  entry ground
+  transition ground air {
+    when air gt 0.5
+    fade 0.15
+  }
+  transition air ground {
+    when air lt 0.5
+    fade 0.1
+  }
+}
+```
+
+```ts
+const anim = must(og.load.animation(world, "models/strider.glb"));
+const graph = must(og.anim.graph(world, { text: HERO_GRAPH, clips: anim.clips }));
+world.insert(body, og.Skeleton, { asset: anim.skeleton });
+world.insert(body, og.AnimationGraph, { asset: graph });
+// every tick: world.set(body, og.AnimationGraph, { p0: groundSpeed, p1: airborne ? 1 : 0 });
+```
 
 ## 10. Effects
 

@@ -22,6 +22,8 @@ struct PhysicalOut {
   // The model's scale along its axes (the thickness is in object space).
   @location(6) scale: vec3<f32>,
   @location(7) affine: vec3<f32>,
+  // The instance's look (pbr.wgsl InstanceFxIn).
+  @location(8) @interpolate(flat) look: vec4<f32>,
 };
 
 fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
@@ -35,19 +37,24 @@ fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
   p.local_pos = o.local_pos;
   p.tangent = o.tangent;
   p.affine = o.affine;
+  p.look = o.look;
   p.scale = vec3<f32>(length(model[0].xyz), length(model[1].xyz), length(model[2].xyz));
   return p;
 }
 
 @vertex
-fn vs_physical(v: VertexIn, i: InstanceIn) -> PhysicalOut {
-  return physical_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+fn vs_physical(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> PhysicalOut {
+  var p = physical_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+  p.look = k.look;
+  return p;
 }
 
 @vertex
 fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PhysicalOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
-  return physical_vertex(model, morph_vertex(v, vi, i));
+  var p = physical_vertex(model, morph_vertex(v, vi, i));
+  p.look = i.look;
+  return p;
 }
 
 // The lobes beyond Surface's, per fragment.
@@ -289,7 +296,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   hook.color = in.color;
   hook.time = frame.time.x;
   let params = shader_params();
-  let base = surface_color(hook, params, material.base_color * base_sample * in.color);
+  let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5) {
@@ -493,6 +500,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   if (EFFECTS && material.toon.w > 0.0) {
     color = mix(color, material.flash.rgb, material.toon.w);
   }
+  color = look_flash(color, in.look);
   if (frame.light_color.w > 1.5) {
     let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ssao, fx.ao.x > 0.5)), 1.0);

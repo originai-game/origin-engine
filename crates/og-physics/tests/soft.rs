@@ -380,3 +380,77 @@ fn a_2d_water_line_is_splashed_by_bodies_and_characters_and_settles() {
     let y = transform(&w, ball).position.y;
     assert!(y > -0.6, "the ball (density 1, buoyancy 12) floats at {y}");
 }
+
+/// #10 of kestrel-stair's findings: a cloth on a child entity (a cape on a
+/// body) hangs from its world transform, its parent's after its own, and
+/// follows the parent when the parent moves or turns.
+#[test]
+fn a_cloth_pinned_to_a_child_entity_follows_its_parent() {
+    use og_core::glam::Quat;
+    let (mut w, p) = world(Physics::default(), 1);
+    let body = w.spawn((at(10.0, 0.0, 39.0),)).unwrap();
+    let cape = w
+        .spawn((
+            at(-0.3, 1.5, -0.2),
+            Parent {
+                entity: body.to_bits(),
+            },
+            Cloth {
+                columns: 4,
+                rows: 5,
+                spacing: 0.15,
+                ..Cloth::default()
+            },
+        ))
+        .unwrap();
+    run(&mut w, 60);
+    let pins = |p: &PhysicsSystem| {
+        let c = p.cloth_points(cape).unwrap();
+        (c.points[0], c.points[3])
+    };
+    let (first, last) = pins(&p);
+    assert!(
+        (first - Vec3::new(9.7, 1.5, 38.8)).length() < 1e-4,
+        "the first pin hangs at {first}, not at the body's shoulders"
+    );
+    assert!((last - Vec3::new(10.15, 1.5, 38.8)).length() < 1e-4);
+    // The body walks and turns half a circle: the pins go with it.
+    w.insert(
+        body,
+        rotated(
+            at(4.0, 2.0, -6.0),
+            Quat::from_rotation_y(std::f32::consts::PI),
+        ),
+    )
+    .unwrap();
+    w.step().unwrap();
+    let (first, last) = pins(&p);
+    assert!(
+        (first - Vec3::new(4.3, 3.5, -5.8)).length() < 1e-4,
+        "after the turn the first pin is at {first}"
+    );
+    assert!((last - Vec3::new(3.85, 3.5, -5.8)).length() < 1e-4);
+    // The free points follow under it.
+    run(&mut w, 240);
+    let c = p.cloth_points(cape).unwrap();
+    let hem = c.points[4 * 4 + 1];
+    assert!(
+        (hem.x - 4.15).abs() < 0.2 && (hem.z + 5.8).abs() < 0.2 && hem.y < 3.0,
+        "the hem hangs under the moved pins at {hem}"
+    );
+    // A grandparent's move carries the cloth too.
+    let ground = w.spawn((at(0.0, 10.0, 0.0),)).unwrap();
+    w.insert(
+        body,
+        Parent {
+            entity: ground.to_bits(),
+        },
+    )
+    .unwrap();
+    w.step().unwrap();
+    let (first, _) = pins(&p);
+    assert!(
+        (first - Vec3::new(4.3, 13.5, -5.8)).length() < 1e-4,
+        "under the grandparent the first pin is at {first}"
+    );
+}

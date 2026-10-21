@@ -7,14 +7,16 @@
 //! - [`bouncing_boxes_hash`]: `World::world_hash` of the bouncing-boxes
 //!   world (`crates/og-ecs/tests/support/bouncing_boxes.rs`, the same file the
 //!   og-ecs test runs), seed 42, after 3600 ticks;
-//! - [`physics_hash`]: the world hashes of og-physics' beyond-rigid-bodies
+//! - [`physics3d_hash`]: the world hashes of og-physics' beyond-rigid-bodies
 //!   scenario (`crates/og-physics/tests/support/beyond.rs`: joints,
 //!   controllers, cars, ropes, cloth with self-collision, water, fluids and
-//!   a fluid group, ragdolls in 3D and 2D), 3D and 2D, after 600 ticks, and
-//!   of a pen of 1,000 of the pile's bodies (`tests/support/pile.rs`) after
-//!   300, enough bodies for the step to go to four lanes (og-physics's
-//!   `pool_bodies`: 500 on four), so the host's lanes run steps it on
-//!   rapier's parallel build;
+//!   a fluid group, ragdolls) in 3D after 600 ticks, and of a pen of 1,000
+//!   of the pile's bodies (`tests/support/pile.rs`) after 300, enough bodies
+//!   for the step to go to four lanes (og-physics's `pool_bodies`: 500 on
+//!   four), so the host's lanes run steps it on rapier's parallel build;
+//! - [`physics2d_hash`]: the same scenario in 2D after 600 ticks. A build
+//!   with one physics profile (the `physics2d` or `physics3d` feature alone,
+//!   as og-host-web's per-profile modules are built) has only its own;
 //! - [`anim_hash`]: the world hash of og-anim's walk scenario
 //!   (`crates/og-anim/tests/support/walk.rs`: graphs, players, root motion,
 //!   blendshapes, IK) after 600 ticks, with every sample of the walk
@@ -36,7 +38,9 @@ mod bouncing_boxes;
 
 #[path = "../../../crates/og-physics/tests/support/mod.rs"]
 mod physics_support;
-use physics_support::{beyond, pile};
+use physics_support::beyond;
+#[cfg(feature = "physics3d")]
+use physics_support::pile;
 
 #[allow(dead_code)]
 #[path = "../../../crates/og-anim/tests/support/mod.rs"]
@@ -131,18 +135,27 @@ pub fn bouncing_boxes_hash() -> u64 {
     w.world_hash()
 }
 
+fn beyond_hash(profile: u32) -> u64 {
+    let (mut w, p, cast) = beyond::build(7, profile);
+    beyond::run(&mut w, &p, &cast, 0, 600, profile);
+    w.world_hash()
+}
+
 /// See the crate documentation.
-pub fn physics_hash() -> u64 {
+#[cfg(feature = "physics3d")]
+pub fn physics3d_hash() -> u64 {
     let mut h = StableHasher::new();
-    for profile in [og_physics::PROFILE_3D, og_physics::PROFILE_2D] {
-        let (mut w, p, cast) = beyond::build(7, profile);
-        beyond::run(&mut w, &p, &cast, 0, 600, profile);
-        h.write_u64(w.world_hash());
-    }
+    h.write_u64(beyond_hash(og_physics::PROFILE_3D));
     let (mut w, _p) = pile::pen(1000, 11);
     pile::run(&mut w, 300);
     h.write_u64(w.world_hash());
     h.finish()
+}
+
+/// See the crate documentation.
+#[cfg(feature = "physics2d")]
+pub fn physics2d_hash() -> u64 {
+    beyond_hash(og_physics::PROFILE_2D)
 }
 
 /// See the crate documentation.
@@ -188,9 +201,16 @@ mod wasm {
         super::bouncing_boxes_hash()
     }
 
+    #[cfg(feature = "physics3d")]
     #[unsafe(no_mangle)]
-    pub extern "C" fn physics_hash() -> u64 {
-        super::physics_hash()
+    pub extern "C" fn physics3d_hash() -> u64 {
+        super::physics3d_hash()
+    }
+
+    #[cfg(feature = "physics2d")]
+    #[unsafe(no_mangle)]
+    pub extern "C" fn physics2d_hash() -> u64 {
+        super::physics2d_hash()
     }
 
     #[unsafe(no_mangle)]

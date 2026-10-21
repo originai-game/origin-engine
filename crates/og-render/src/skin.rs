@@ -71,6 +71,8 @@ pub struct SkinnedInstance {
     pub morph_weights: [f32; MAX_MORPH_TARGETS],
     /// How much larger than the bind pose's bounds the pose may reach.
     pub bounds_scale: f32,
+    /// Its own hit flash and tint ([`crate::InstanceFx`]).
+    pub fx: crate::InstanceFx,
 }
 
 impl SkinnedInstance {
@@ -83,6 +85,7 @@ impl SkinnedInstance {
             palette,
             morph_weights: [0.0; MAX_MORPH_TARGETS],
             bounds_scale: 2.0,
+            fx: crate::InstanceFx::NONE,
         }
     }
 }
@@ -106,7 +109,8 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 
 /// `SkinnedInstanceIn`: the transform (its columns' xyz, as
 /// [`crate::instances::GpuTransform::columns`]), (first joint, joint count, first
-/// morph element, morph targets) and the eight morph weights.
+/// morph element, morph targets), the eight morph weights and the
+/// instance's look (0, then [`crate::instances::fx_bits`]).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct SkinnedInstanceGpu {
@@ -114,6 +118,7 @@ pub(crate) struct SkinnedInstanceGpu {
     pub palette: [f32; 4],
     pub morph0: [f32; 4],
     pub morph1: [f32; 4],
+    pub look: [f32; 4],
 }
 
 pub(crate) const SKINNED_INSTANCE_STRIDE: u64 = std::mem::size_of::<SkinnedInstanceGpu>() as u64;
@@ -122,7 +127,7 @@ pub(crate) const SKINNED_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> =
     wgpu::VertexBufferLayout {
         array_stride: SKINNED_INSTANCE_STRIDE,
         step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4, 11 => Float32x4, 12 => Float32x4],
+        attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4, 11 => Float32x4, 12 => Float32x4, 13 => Float32x4],
     };
 
 /// Joints per row of the palette texture (four texels each).

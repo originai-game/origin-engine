@@ -1,11 +1,10 @@
 // What moves on its own: the crypt's lamp hangs at the chain's last link
 // (og.physics.ropePoints, the og.Rope's simulated points), the braziers
 // flicker, the banners' wind gusts with the time of day, and the crypt is
-// a reverb zone, kept by the game (the engine has one shared reverb fed per
-// bus, no zone: FINDINGS #21): with the courier inside, the effects bus sends far more to
-// the shared reverb and the room grows (og.AudioBusFx.reverb,
-// og.Audio.reverbRoom), and the sky's light falls away (og.Environment's
-// intensity), eased over half a second either way.
+// dim: its og.ReverbZone (src/sound.ts; FINDINGS #21, fixed: the engine
+// eases the shared reverb, which this system did by hand) says how far the
+// listener is inside, and the sky's light (og.Environment's intensity)
+// falls away with it.
 
 import { og, defineSystem } from "@origingame/engine";
 import { Game } from "./components.ts";
@@ -13,12 +12,12 @@ import { begin, flush } from "./state.ts";
 import { BRAZIERS, CRYPT, CRYPT_ROOM } from "./layout.ts";
 import { entity, must } from "./world.ts";
 
-/** The crypt's reverb against the open air's. */
-const ROOM = { crypt: { send: 0.55, room: 0.92, damping: 0.25, sky: 0.12 }, open: { send: 0.12, room: 0.5, damping: 0.5, sky: 0.45 } };
+/** The sky's light in the crypt against the open air's. */
+const SKY = { crypt: 0.12, open: 0.45 };
 
 export const Fx = defineSystem(
   "Fx",
-  { writes: [Game, og.Transform, og.PointLight, og.Audio, og.AudioBusFx, og.Environment], after: ["View"] },
+  { reads: [og.ReverbZone], writes: [Game, og.Transform, og.PointLight, og.Environment], after: ["View"] },
   (_q, time, world) => {
     const g = begin(world);
     try {
@@ -56,24 +55,18 @@ export const Fx = defineSystem(
           must(world.set(entity(world, `brazier-${i}`), og.PointLight, { intensity: f }));
         });
       }
-      // The reverb zone.
+      // Where the courier is, for the playtests: its head in the crypt's box.
       const b = CRYPT_ROOM;
       const head = { x: g.heroX, y: g.heroY + 1.5, z: g.heroZ };
       const inside = head.x > b.min[0] && head.x < b.max[0] && head.y > b.min[1] && head.y < b.max[1] && head.z > b.min[2] && head.z < b.max[2];
       if (inside !== g.inCrypt) g.inCrypt = inside;
-      const want = inside ? ROOM.crypt : ROOM.open;
-      const k = 1 - Math.exp(-time.dt * 4);
-      const send = Math.abs(want.send - g.reverb) < 0.002 ? want.send : g.reverb + (want.send - g.reverb) * k;
-      if (send !== g.reverb) {
-        g.reverb = send;
-        const t = (send - ROOM.open.send) / (ROOM.crypt.send - ROOM.open.send);
-        must(world.set(entity(world, "sfx-bus"), og.AudioBusFx, { reverb: send }));
-        const audio = must(world.resource(og.Audio));
-        audio.reverbRoom = ROOM.open.room + (ROOM.crypt.room - ROOM.open.room) * t;
-        audio.reverbDamping = ROOM.open.damping + (ROOM.crypt.damping - ROOM.open.damping) * t;
-        // And the crypt is dim: the sky's light falls away inside, the lamp and the door light it.
+      // The crypt is dim as its reverb is near: the sky's light falls away with the zone's weight
+      // (the listener's, written by og.audio), the lamp and the door light it.
+      const weight = must(world.get(entity(world, "crypt-reverb"), og.ReverbZone)).weight;
+      if (weight !== g.reverb) {
+        g.reverb = weight;
         const env = must(world.resource(og.Environment));
-        env.intensity = ROOM.open.sky + (ROOM.crypt.sky - ROOM.open.sky) * t;
+        env.intensity = SKY.open + (SKY.crypt - SKY.open) * weight;
       }
     } finally {
       flush(g);
