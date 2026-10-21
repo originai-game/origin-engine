@@ -177,7 +177,9 @@ export const Prefs = defineResource("Prefs", {
 /** The car's handling and the chase camera, tunable through the probe. */
 export const Tuning = defineResource("Tuning", {
   engineForce: f32(5200, { min: 0, max: 20000, unit: "N", tunable: true, doc: "Force per driven wheel at full throttle." }),
-  brakeForce: f32(2600, { min: 0, max: 20000, tunable: true }),
+  // Newtons per wheel since og.Vehicle's brakes became a force (vehicle-physics):
+  // 156,000 N over a 60 Hz tick is the 2,600 N·s a tick the car was tuned with.
+  brakeForce: f32(156000, { min: 0, max: 400000, unit: "N", tunable: true, doc: "Force per wheel at full brake." }),
   maxSpeed: f32(46, { min: 5, max: 90, unit: "mps", tunable: true }),
   grip: f32(0.62, { min: 0.05, max: 4, tunable: true }),
   maxSteer: f32(0.5, { min: 0.05, max: 1.2, unit: "rad", tunable: true }),

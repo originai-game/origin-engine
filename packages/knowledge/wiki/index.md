@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-902 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+906 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -512,6 +512,10 @@ Field units the docs and Tune use.
 | [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
+| [`og.physics.applyForce`](physics.md#fn-applyForce) | function | physics | `og_physics_apply_force` |
+| [`og.physics.applyImpulse`](physics.md#fn-applyImpulse) | function | physics | `og_physics_apply_impulse` |
+| [`og.physics.applyTorque`](physics.md#fn-applyTorque) | function | physics | `og_physics_apply_torque` |
+| [`og.physics.applyTorqueImpulse`](physics.md#fn-applyTorqueImpulse) | function | physics | `og_physics_apply_torque_impulse` |
 | [`og.physics.clothPoints`](physics.md#fn-clothPoints) | function | physics | `og_physics_cloth_points` |
 | [`og.physics.fluid3dParticles`](physics.md#fn-fluid3dParticles) | function | physics | `og_physics_fluid3d_particles` |
 | [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |

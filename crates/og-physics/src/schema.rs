@@ -108,6 +108,13 @@ pub struct RigidBody {
     /// 1 enables continuous collision detection (fast, small bodies that must not tunnel); 0 off.
     #[reflect(min = 0, max = 1)]
     pub ccd: u32,
+    /// Moves the centre of mass from where the collider puts it (its shape's
+    /// centre), in the entity's own frame and scaled by og.Transform.scale
+    /// like Collider.offset; the inertia stays the shape's. A car's lowered
+    /// below its chassis box corners without rolling over. Needs an
+    /// og.Collider (a body without one has its mass at its origin).
+    #[reflect(name = "centerOfMass", unit = "m", tunable)]
+    pub center_of_mass: Vec3,
 }
 
 impl Default for RigidBody {
@@ -120,6 +127,7 @@ impl Default for RigidBody {
             gravity_scale: 1.0,
             lock: 0,
             ccd: 0,
+            center_of_mass: Vec3::ZERO,
         }
     }
 }

@@ -105,7 +105,7 @@ export interface ColumnKinds {
   /** A Color field: r, g, b interleaved. */
   Color: { readonly array: Float32Array; readonly stride: 3; readonly value: Color };
   /**
-   * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+   * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each.
    * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
    */
   str: { readonly array: Uint8Array; readonly stride: number; readonly value: string };
@@ -247,6 +247,8 @@ export interface Ray {
 // ── reflect ─────────────────────────────────────────────────────
 // Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
+// A field holds one value: there is no array or list column. A few values are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
+// A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
 
 /**
  * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
@@ -389,7 +391,7 @@ export declare function Matrix4(value?: Matrix4, options?: FieldOptions): FieldS
 export declare function Color(value?: Color, options?: FieldOptions): FieldSpec<"Color">;
 
 /**
- * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script).
+ * Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each.
  * Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes.
  *
  * A `str` field: stored in a `Uint8Array` whose stride is its capacity.
@@ -606,7 +608,7 @@ export interface World {
    */
   nameOf(entity: Entity): string | null;
   /**
-   * A query over the current archetypes, for commands and callbacks; systems receive theirs.
+   * A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own.
    *
    * @param desc The components to match.
    */
@@ -634,13 +636,13 @@ export interface World {
    */
   instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>;
   /**
-   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not. Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
    *
    * @returns The save, or why not (the world could not be read).
    */
   snapshot(): Result<string>;
   /**
-   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
    *
    * @param save The text world.snapshot returned.
    * @param desc Whether a type whose layout changed since the save is mapped field by field.
@@ -691,6 +693,7 @@ export interface ArchetypeView {
 // ── system ──────────────────────────────────────────────────────
 // Systems: functions the engine calls once per tick with their matched archetypes.
 // A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
+// Its query is every component of its reads and writes together: an entity matches only when it has all of them (and none of `without`). A component declared to read one entity with world.get (the player's car) therefore narrows the loop to entities that have it too, often to none, silently. world.query is refused inside a system, by design (a system reaches only what it declared, so its access is known before it runs): loop over each archetype in a system of its own, declaring only that archetype's components, and carry what crosses between systems in a resource.
 // Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
 
 /**
@@ -700,13 +703,13 @@ export interface ArchetypeView {
  */
 export interface SystemDesc {
   /**
-   * Components, resources and events the system reads (world.events). Components here also shape its query.
+   * Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components.
    *
    * @default []
    */
   readonly reads?: readonly (AnyReflected | AnyEvent)[];
   /**
-   * Components, resources and events the system writes (world.emit). Components here also shape its query.
+   * Components, resources and events the system writes (world.emit). Every component here is also required by its query, with the reads'.
    *
    * @default []
    */
@@ -5718,6 +5721,12 @@ export interface Model {
    * @default true
    */
   receiveShadow: boolean;
+  /**
+   * Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away.
+   *
+   * @default true
+   */
+  visible: boolean;
 }
 
 
@@ -5899,6 +5908,13 @@ export interface RigidBody {
    * @range 0..1
    */
   ccd: number;
+  /**
+   * Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider.
+   *
+   * @unit m (metres)
+   * @tunable
+   */
+  centerOfMass: Vector3;
 }
 
 /**
@@ -5998,7 +6014,7 @@ export interface Collider {
 }
 
 /**
- * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
+ * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse.
  *
  * The value of the `Velocity` component (token `og.Velocity`).
  */
@@ -6768,7 +6784,9 @@ export declare const DRIVE_FRONT: 1;
 export declare const DRIVE_ALL: 2;
 
 /**
- * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing.
+ * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
+ * The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.
+ * The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.
  *
  * The value of the `Vehicle` component (token `og.Vehicle`).
  */
@@ -6861,7 +6879,7 @@ export interface Vehicle {
    */
   suspensionDamping: number;
   /**
-   * The tyres' grip (3D: the friction slip; 2D: the wheels' friction).
+   * The tyres' grip (3D: the friction slip, how much of its load a tyre holds before it slides: 2 grips a road car through a bend, below 1 it slides like a drift car; 2D: the wheels' friction).
    *
    * @default 2
    * @range 0..
@@ -6869,9 +6887,9 @@ export interface Vehicle {
    */
   grip: number;
   /**
-   * The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque).
+   * The engine's force at full throttle (3D: per driven wheel, in newtons: 2,500 on the two rear wheels push 1,000 kg at 5 m/s²; 2D: the motor's torque, N·m).
    *
-   * @default 80
+   * @default 2500
    * @range 0..
    * @tunable
    */
@@ -6879,16 +6897,16 @@ export interface Vehicle {
   /**
    * The top speed: the engine's force fades out towards it (throttle against the motion brakes first).
    *
-   * @default 20
+   * @default 40
    * @range 0..
    * @unit mps (metres per second)
    * @tunable
    */
   maxSpeed: number;
   /**
-   * The brakes' force at full brake.
+   * The brakes' force at full brake (3D: per wheel, in newtons, every wheel braking: 2,000 stop 1,000 kg at 8 m/s²; 2D: the wheels' braking torque).
    *
-   * @default 30
+   * @default 2000
    * @range 0..
    * @tunable
    */
@@ -6911,12 +6929,19 @@ export interface Vehicle {
   /**
    * The wheels' mass (2D: the wheel bodies; 3D ignores it).
    *
-   * @default 1
+   * @default 20
    * @range 0.01..
    * @unit kg (kilograms)
    * @tunable
    */
   wheelMass: number;
+  /**
+   * How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering (an arcade car); towards 1 at the road, the roll that tips a tall car over (rapier's own car uses 0.1, which rolls a 1,000 kg car at full lock above about 20 m/s). Raise it a little for body roll, with og.RigidBody.centerOfMass lowered to keep the car on its wheels.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  rollInfluence: number;
   /**
    * Written: the forward speed (m/s; negative reversing).
    *
@@ -6930,6 +6955,13 @@ export interface Vehicle {
    * @readonly written by the engine
    */
   readonly contacts: number;
+  /**
+   * Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides; for a squeal's volume or smoke without reading the wheels (3D; 0 in 2D).
+   *
+   * @range 0..1
+   * @readonly written by the engine
+   */
+  readonly slip: number;
 }
 
 /**
@@ -7975,6 +8007,10 @@ export interface MeshDesc {
 
 
 
+
+
+
+
 /** A wheel of an og.Vehicle as the last step left it, for drawing. */
 export interface WheelPose {
   /**
@@ -7987,6 +8023,18 @@ export interface WheelPose {
   readonly rotation: Quaternion;
   /** Whether it touches the ground. */
   readonly contact: boolean;
+  /**
+   * How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. Start smoke and skid marks above about 0.2, and fade a squeal in with it.
+   *
+   * @range 0..1
+   */
+  readonly slip: number;
+  /**
+   * How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness.
+   *
+   * @unit mps (metres per second)
+   */
+  readonly sideSpeed: number;
 }
 
 /**
@@ -17849,7 +17897,7 @@ export declare namespace og {
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
@@ -18073,13 +18121,13 @@ export declare namespace og {
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
    * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
    */
-  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32"> }, RigidBody>;
+  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32">; readonly centerOfMass: FieldSpec<"Vector3"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
    */
   const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"u32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
-   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
+   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse.
    */
   const Velocity: ComponentType<{ readonly linear: FieldSpec<"Vector3">; readonly angular: FieldSpec<"Vector3"> }, Velocity>;
   /**
@@ -18115,9 +18163,11 @@ export declare namespace og {
    */
   const CharacterEvent: EventType<CharacterEvent>;
   /**
-   * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing.
+   * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
+   * The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.
+   * The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.
    */
-  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32"> }, Vehicle>;
+  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32"> }, Vehicle>;
   /**
    * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
    */
@@ -18180,7 +18230,45 @@ export declare namespace og {
      */
     function overlap(world: World, desc?: OverlapDesc): Result<readonly Entity[]>;
     /**
-     * Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state.
+     * Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash).
+     *
+     * @param world The world.
+     * @param entity The body's entity (an og.RigidBody).
+     * @param force The force in newtons (2D uses x and y).
+     * @param point Where it acts, in world space; omitted is the centre of mass (no spin).
+     * @returns Refused for an entity without an og.RigidBody, or a force or point that is not finite.
+     */
+    function applyForce(world: World, entity: Entity, force: Vector3, point?: Vector3): Result<void>;
+    /**
+     * Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the next physics step (after a hit stop ends). As applyForce otherwise.
+     *
+     * @param world The world.
+     * @param entity The body's entity (an og.RigidBody).
+     * @param impulse The impulse in newton-seconds (2D uses x and y).
+     * @param point Where it acts, in world space; omitted is the centre of mass.
+     * @returns Refused for an entity without an og.RigidBody, or an impulse or point that is not finite.
+     */
+    function applyImpulse(world: World, entity: Entity, impulse: Vector3, point?: Vector3): Result<void>;
+    /**
+     * Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist.
+     *
+     * @param world The world.
+     * @param entity The body's entity (an og.RigidBody).
+     * @param torque The torque in newton-metres.
+     * @returns Refused for an entity without an og.RigidBody, or a torque that is not finite.
+     */
+    function applyTorque(world: World, entity: Entity, torque: Vector3): Result<void>;
+    /**
+     * Give a dynamic body an angular impulse (N·m·s about each world axis; 2D uses z): its spin changes at once, as applyImpulse.
+     *
+     * @param world The world.
+     * @param entity The body's entity (an og.RigidBody).
+     * @param torque The angular impulse in newton-metre-seconds.
+     * @returns Refused for an entity without an og.RigidBody, or a value that is not finite.
+     */
+    function applyTorqueImpulse(world: World, entity: Entity, torque: Vector3): Result<void>;
+    /**
+     * Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state: world.snapshot carries a mesh, convex-hull or height-field collider by its handle and scale, not its triangles, and world.restore rebuilds the collider from the geometry registered then (so load or register it before restoring; a save naming one that is not is refused).
      *
      * @param world The world.
      * @param mesh The handle colliders name in Collider.mesh.

@@ -6,6 +6,8 @@ Systems: functions the engine calls once per tick with their matched archetypes.
 
 A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
 
+Its query is every component of its reads and writes together: an entity matches only when it has all of them (and none of `without`). A component declared to read one entity with world.get (the player's car) therefore narrows the loop to entities that have it too, often to none, silently. world.query is refused inside a system, by design (a system reaches only what it declared, so its access is known before it runs): loop over each archetype in a system of its own, declaring only that archetype's components, and carry what crosses between systems in a resource.
+
 Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
@@ -18,7 +20,7 @@ module system {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 415</sub>
+<sub>`api.ogt` line 417</sub>
 
 ## Contents
 
@@ -61,7 +63,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 446</sub>
+<sub>`api.ogt` line 449</sub>
 
 ## Interfaces
 
@@ -77,7 +79,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 439</sub>
+<sub>`api.ogt` line 442</sub>
 
 <a id="member-System-name"></a>
 
@@ -95,7 +97,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 441</sub>
+<sub>`api.ogt` line 444</sub>
 
 <a id="member-System-reads"></a>
 
@@ -113,7 +115,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 442</sub>
+<sub>`api.ogt` line 445</sub>
 
 <a id="member-System-writes"></a>
 
@@ -131,7 +133,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 443</sub>
+<sub>`api.ogt` line 446</sub>
 
 ## Types
 
@@ -145,8 +147,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `reads` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system reads (world.events). Components here also shape its query. |
-| `writes` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system writes (world.emit). Components here also shape its query. |
+| `reads` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components. |
+| `writes` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system writes (world.emit). Every component here is also required by its query, with the reads'. |
 | `without` | `readonly AnyComponent[]` | `[]` | — | — | — | Components a matched entity must not have. |
 | `after` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run before this one. |
 | `before` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run after this one. |
@@ -155,15 +157,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct SystemDesc {
   doc "A system's declared access and order."
   desc true
-  field reads List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system reads (world.events). Components here also shape its query."
-  field writes List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system writes (world.emit). Components here also shape its query."
+  field reads List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system reads (world.events). Every component here is also required by its query: a matched entity has all of the reads' and writes' components."
+  field writes List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system writes (world.emit). Every component here is also required by its query, with the reads'."
   field without List.AnyComponent "Components a matched entity must not have."
   field after List.String "Names of systems that must run before this one."
   field before List.String "Names of systems that must run after this one."
 }
 ```
 
-<sub>`api.ogt` line 422</sub>
+<sub>`api.ogt` line 425</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -192,4 +194,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 432</sub>
+<sub>`api.ogt` line 435</sub>

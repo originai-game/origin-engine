@@ -24,7 +24,17 @@
 //!                                   u32 pending, pending × bytes }
 //! names      u32 n, n × { u64 entity, str name }      (entity order)
 //! blocks     u32 n, n × { str name, str bytes }       (format 3, added order)
+//! resume     str system                               (format 4 only)
 //! ```
+//!
+//! Format 4 is format 3 taken in the middle of a tick: by a system
+//! ([`crate::SystemContext::snapshot`]), or of a world restored from one
+//! that has not stepped since. `resume` names the system that took it, so
+//! a restore completes that tick: the next [`World::step`] runs the systems
+//! after it (the tick's events are already delivered) and then ends the
+//! tick, and the restored world goes on exactly as the one that saved did,
+//! provided the system made the snapshot its last write of the tick. A
+//! snapshot between ticks is format 2 or 3, as before.
 //!
 //! `str` is a `u32` length then the bytes. Format 1 (the M1 snapshots) has
 //! only `str name, u64 layout_hash` per type and no names section; it is
@@ -36,7 +46,8 @@
 //! [`World::world_hash`] is FNV-1a of the *state stream*: the snapshot as
 //! format 1 lays it out (type names and layout hashes, no field table), then,
 //! only when some entity is named, `"NAME"` and the names section, then,
-//! only when the world has state blocks, `"BLOK"` and the blocks section. The field
+//! only when the world has state blocks, `"BLOK"` and the blocks section,
+//! then, only mid-tick, `"RSUM"` and the resume section. The field
 //! table is a function of the registrations the layout hashes already cover,
 //! so two worlds have the same hash exactly when their state is identical,
 //! and a world without names or blocks hashes exactly as it did before they
@@ -64,7 +75,10 @@ const FORMAT: u32 = 2;
 const FORMAT_BLOCKS: u32 = 3;
 /// The M1 format: no field table, no names. Read, and the hash stream's.
 const FORMAT_STATE: u32 = 1;
+/// Format 3 with the resume section: taken mid-tick.
+const FORMAT_RESUME: u32 = 4;
 const NAMES_TAG: &[u8; 4] = b"NAME";
+const RESUME_TAG: &[u8; 4] = b"RSUM";
 const BLOCKS_TAG: &[u8; 4] = b"BLOK";
 
 fn field_type(name: &str) -> Option<FieldType> {
@@ -217,6 +231,8 @@ struct Parsed<'a> {
     names: Vec<(Entity, String)>,
     /// State blocks (format 3): name, saved bytes.
     blocks: Vec<(&'a str, &'a [u8])>,
+    /// The system that took a mid-tick snapshot (format 4).
+    resume: Option<&'a str>,
 }
 
 fn not_registered(name: &str) -> Error {
@@ -294,13 +310,14 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
         return Err(bad("not a world snapshot (magic)"));
     }
     let format = r.u32()? as u32;
-    if ![FORMAT_STATE, FORMAT, FORMAT_BLOCKS].contains(&format) {
+    if ![FORMAT_STATE, FORMAT, FORMAT_BLOCKS, FORMAT_RESUME].contains(&format) {
         return Err(bad(format!(
-            "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_BLOCKS}"
+            "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_RESUME}"
         )));
     }
-    // Formats 2 and 3 share everything but the blocks section.
-    let blocks_section = format == FORMAT_BLOCKS;
+    // Formats 2, 3 and 4 share everything but the blocks and resume sections.
+    let resume_section = format == FORMAT_RESUME;
+    let blocks_section = format == FORMAT_BLOCKS || resume_section;
     let format = if blocks_section { FORMAT } else { format };
 
     let type_count = r.count(12)?;
@@ -535,6 +552,11 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
             blocks.push((name, r.sized()?));
         }
     }
+    let resume = if resume_section {
+        Some(r.str("resume system name")?)
+    } else {
+        None
+    };
     if r.pos != bytes.len() {
         return Err(bad(format!("{} trailing bytes", bytes.len() - r.pos)));
     }
@@ -547,7 +569,39 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
         events,
         names,
         blocks,
+        resume,
     })
+}
+
+/// Where a restored world's next step starts: after the system that took
+/// a mid-tick snapshot. `None` for a snapshot between ticks; refused for a
+/// system this world does not schedule (dropped, with a warning, when
+/// `report` is given: the restored world starts the next tick afresh).
+fn resume_at(
+    world: &World,
+    resume: Option<&str>,
+    report: Option<&mut MigrationReport>,
+) -> Result<Option<usize>> {
+    let Some(name) = resume else {
+        return Ok(None);
+    };
+    match world.systems.iter().position(|s| s.name == name) {
+        Some(i) => Ok(Some(i + 1)),
+        None => match report {
+            Some(r) => {
+                r.warnings.push(format!(
+                    "the snapshot was taken inside system {name}, which this world does not schedule; it starts the next tick afresh"
+                ));
+                Ok(None)
+            }
+            None => Err(Error::new(
+                ErrorKind::NotFound,
+                format!(
+                    "snapshot: it was taken inside system '{name}', which this world does not schedule, so the rest of that tick cannot run"
+                ),
+            )),
+        },
+    }
 }
 
 /// Each block's decoded state from a snapshot (`None`: the snapshot has no
@@ -814,23 +868,35 @@ struct State {
     names: Vec<(Entity, String)>,
     /// Per state block, in added order.
     blocks: Vec<Option<Box<dyn Any + Send>>>,
+    /// The system the next step starts at (a mid-tick snapshot).
+    resume: Option<usize>,
 }
 
 impl World {
     /// The snapshot (`state == false`) or the state stream the hash covers.
     fn write(&self, state: bool) -> Vec<u8> {
-        self.write_columns(state, false)
+        self.write_columns(state, None)
     }
 
-    /// The writer; `unguarded` reads a column the running system holds
-    /// mutably as it is ([`crate::SystemContext::snapshot`]).
-    fn write_columns(&self, state: bool, unguarded: bool) -> Vec<u8> {
+    /// The writer. `running` is the system taking the snapshot
+    /// ([`crate::SystemContext::snapshot`]): a column it holds mutably is
+    /// read as it is, and the snapshot resumes after it. Otherwise a world
+    /// restored mid-tick and not stepped since resumes where it would.
+    fn write_columns(&self, state: bool, running: Option<&str>) -> Vec<u8> {
+        let unguarded = running.is_some();
+        let resume = running.or_else(|| {
+            self.resume
+                .and_then(|k| k.checked_sub(1))
+                .and_then(|i| self.systems.get(i))
+                .map(|s| s.name.as_str())
+        });
         let mut w = Writer(Vec::new());
         w.bytes(MAGIC);
-        let format = match (state, self.blocks.is_empty()) {
-            (true, _) => FORMAT_STATE,
-            (false, true) => FORMAT,
-            (false, false) => FORMAT_BLOCKS,
+        let format = match (state, self.blocks.is_empty(), resume.is_some()) {
+            (true, ..) => FORMAT_STATE,
+            (false, _, true) => FORMAT_RESUME,
+            (false, true, false) => FORMAT,
+            (false, false, false) => FORMAT_BLOCKS,
         };
         w.u32(format as usize);
 
@@ -954,7 +1020,7 @@ impl World {
             }
         }
 
-        if !self.blocks.is_empty() {
+        if !self.blocks.is_empty() || (!state && resume.is_some()) {
             if state {
                 w.bytes(BLOCKS_TAG);
             }
@@ -967,6 +1033,13 @@ impl World {
                 w.sized(&saved);
             }
         }
+
+        if let Some(name) = resume {
+            if state {
+                w.bytes(RESUME_TAG);
+            }
+            w.sized(name.as_bytes());
+        }
         w.0
     }
 
@@ -978,8 +1051,8 @@ impl World {
 
     /// [`Self::snapshot`] from inside a running system, whose columns its
     /// host holds while it runs ([`crate::SystemContext::snapshot`]).
-    pub(crate) fn snapshot_in_system(&self) -> Vec<u8> {
-        self.write_columns(false, true)
+    pub(crate) fn snapshot_in_system(&self, system: &str) -> Vec<u8> {
+        self.write_columns(false, Some(system))
     }
 
     /// Whether [`Self::restore`] (or, with `migrate`, [`Self::restore_migrating`])
@@ -997,6 +1070,7 @@ impl World {
             decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
             return Ok(());
         }
+        resume_at(self, parsed.resume, None)?;
         for t in &parsed.types {
             let id = self
                 .registry
@@ -1101,6 +1175,7 @@ impl World {
             queue.pending = pending.iter().map(|b| b.to_vec()).collect();
         }
         let blocks = decode_blocks(&self.blocks, &parsed.blocks, None)?;
+        let resume = resume_at(self, parsed.resume, None)?;
 
         self.commit(State {
             alloc: parsed.alloc,
@@ -1111,6 +1186,7 @@ impl World {
             events,
             names: parsed.names,
             blocks,
+            resume,
         });
         Ok(())
     }
@@ -1236,6 +1312,7 @@ impl World {
         }
 
         let blocks = decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
+        let resume = resume_at(self, parsed.resume, Some(&mut report))?;
 
         // Nothing below fails.
         for i in unknown {
@@ -1250,6 +1327,7 @@ impl World {
             events,
             names: parsed.names,
             blocks,
+            resume,
         });
         Ok(report)
     }
@@ -1268,6 +1346,7 @@ impl World {
         for (b, decoded) in self.blocks.iter_mut().zip(state.blocks) {
             b.block.apply(decoded);
         }
+        self.resume = state.resume;
         self.structural += 1;
     }
 }

@@ -6,6 +6,10 @@ Reflection: components and resources are declared once with their field layout a
 
 The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 
+A field holds one value: there is no array or list column. A few values are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
+
+A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
+
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
@@ -33,7 +37,7 @@ module reflect {
 | [`Quaternion()`](#column-Quaternion) | column kind | A Quaternion field: x, y, z, w interleaved. |
 | [`Matrix4()`](#column-Matrix4) | column kind | A Matrix4 field: sixteen column-major elements per entity. |
 | [`Color()`](#column-Color) | column kind | A Color field: r, g, b interleaved. |
-| [`str()`](#column-str) | column kind | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). |
+| [`str()`](#column-str) | column kind | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each. |
 | [`defineComponent`](#fn-defineComponent) | function | Declare a component: plain data stored per entity in engine memory, one column per field. |
 | [`defineResource`](#fn-defineResource) | function | Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults. |
 
@@ -71,7 +75,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 182</sub>
+<sub>`api.ogt` line 184</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -102,7 +106,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 191</sub>
+<sub>`api.ogt` line 193</sub>
 
 ## Types
 
@@ -138,7 +142,7 @@ struct FieldOptions {
 }
 ```
 
-<sub>`api.ogt` line 92</sub>
+<sub>`api.ogt` line 94</sub>
 
 ## Column kinds
 
@@ -156,7 +160,7 @@ Each is a factory, `f32(value?, options?)`, that makes one field of a component 
 | <a id="column-Quaternion"></a>`Quaternion` | `Quaternion` | `Float32Array` | 4 | A Quaternion field: x, y, z, w interleaved. |
 | <a id="column-Matrix4"></a>`Matrix4` | `Matrix4` | `Float32Array` | 16 | A Matrix4 field: sixteen column-major elements per entity. |
 | <a id="column-Color"></a>`Color` | `Color` | `Float32Array` | 3 | A Color field: r, g, b interleaved. |
-| <a id="column-str"></a>`str` | `string` | `Uint8Array` | the capacity | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes. |
+| <a id="column-str"></a>`str` | `string` | `Uint8Array` | the capacity | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each. Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes. |
 
 ```ogt
 column f32 {
@@ -167,7 +171,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 104</sub>
+<sub>`api.ogt` line 106</sub>
 
 ```ogt
 column f64 {
@@ -178,7 +182,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 111</sub>
+<sub>`api.ogt` line 113</sub>
 
 ```ogt
 column u32 {
@@ -189,7 +193,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 118</sub>
+<sub>`api.ogt` line 120</sub>
 
 ```ogt
 column i32 {
@@ -200,7 +204,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 125</sub>
+<sub>`api.ogt` line 127</sub>
 
 ```ogt
 column bool {
@@ -211,7 +215,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 132</sub>
+<sub>`api.ogt` line 134</sub>
 
 ```ogt
 column Vector2 {
@@ -222,7 +226,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 139</sub>
+<sub>`api.ogt` line 141</sub>
 
 ```ogt
 column Vector3 {
@@ -233,7 +237,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 146</sub>
+<sub>`api.ogt` line 148</sub>
 
 ```ogt
 column Quaternion {
@@ -244,7 +248,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 153</sub>
+<sub>`api.ogt` line 155</sub>
 
 ```ogt
 column Matrix4 {
@@ -255,7 +259,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 160</sub>
+<sub>`api.ogt` line 162</sub>
 
 ```ogt
 column Color {
@@ -266,11 +270,11 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 167</sub>
+<sub>`api.ogt` line 169</sub>
 
 ```ogt
 column str {
-  doc "Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script)."
+  doc "Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each."
   doc "Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes."
   array Uint8Array
   capacity true
@@ -278,4 +282,4 @@ column str {
 }
 ```
 
-<sub>`api.ogt` line 174</sub>
+<sub>`api.ogt` line 176</sub>

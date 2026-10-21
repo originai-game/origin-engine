@@ -16,7 +16,7 @@ module world {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 202</sub>
+<sub>`api.ogt` line 204</sub>
 
 ## Contents
 
@@ -45,7 +45,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 247</sub>
+<sub>`api.ogt` line 249</sub>
 
 <a id="member-World-tick"></a>
 
@@ -63,7 +63,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 250</sub>
+<sub>`api.ogt` line 252</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -91,7 +91,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 252</sub>
+<sub>`api.ogt` line 254</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -119,7 +119,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 258</sub>
+<sub>`api.ogt` line 260</sub>
 
 <a id="member-World-alive"></a>
 
@@ -147,7 +147,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 264</sub>
+<sub>`api.ogt` line 266</sub>
 
 <a id="member-World-has"></a>
 
@@ -178,7 +178,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 270</sub>
+<sub>`api.ogt` line 272</sub>
 
 <a id="member-World-insert"></a>
 
@@ -213,7 +213,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 278</sub>
+<sub>`api.ogt` line 280</sub>
 
 <a id="member-World-remove"></a>
 
@@ -244,7 +244,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 289</sub>
+<sub>`api.ogt` line 291</sub>
 
 <a id="member-World-get"></a>
 
@@ -275,7 +275,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 297</sub>
+<sub>`api.ogt` line 299</sub>
 
 <a id="member-World-set"></a>
 
@@ -308,7 +308,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 305</sub>
+<sub>`api.ogt` line 307</sub>
 
 <a id="member-World-resource"></a>
 
@@ -337,7 +337,7 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 314</sub>
+<sub>`api.ogt` line 316</sub>
 
 <a id="member-World-find"></a>
 
@@ -365,7 +365,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 321</sub>
+<sub>`api.ogt` line 323</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -393,13 +393,13 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 327</sub>
+<sub>`api.ogt` line 329</sub>
 
 <a id="member-World-query"></a>
 
 #### `World.query`
 
-A query over the current archetypes, for commands and callbacks; systems receive theirs.
+A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own.
 
 ```ts
 World.query(desc?: QueryDesc): Result<Query>
@@ -415,13 +415,13 @@ Binding symbol `og_world_query` · publish builds: kept
 
 ```ogt
 fn query {
-  doc "A query over the current archetypes, for commands and callbacks; systems receive theirs."
+  doc "A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own."
   param desc QueryDesc "The components to match."
   returns Result.Query
 }
 ```
 
-<sub>`api.ogt` line 333</sub>
+<sub>`api.ogt` line 335</sub>
 
 <a id="member-World-events"></a>
 
@@ -450,7 +450,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 339</sub>
+<sub>`api.ogt` line 341</sub>
 
 <a id="member-World-emit"></a>
 
@@ -481,7 +481,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 346</sub>
+<sub>`api.ogt` line 348</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -514,13 +514,13 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 354</sub>
+<sub>`api.ogt` line 356</sub>
 
 <a id="member-World-snapshot"></a>
 
 #### `World.snapshot`
 
-The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not. Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
 
 ```ts
 World.snapshot(): Result<string>
@@ -532,18 +532,18 @@ Binding symbol `og_world_snapshot` · publish builds: kept
 
 ```ogt
 fn snapshot {
-  doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not. Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
+  doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
   returns Result.String "The save, or why not (the world could not be read)."
 }
 ```
 
-<sub>`api.ogt` line 362</sub>
+<sub>`api.ogt` line 364</sub>
 
 <a id="member-World-restore"></a>
 
 #### `World.restore`
 
-Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
 
 ```ts
 World.restore(save: string, desc?: RestoreDesc): Result<void>
@@ -560,14 +560,14 @@ Binding symbol `og_world_restore` · publish builds: kept
 
 ```ogt
 fn restore {
-  doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
+  doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
   param save String "The text world.snapshot returned."
   param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
   returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases)."
 }
 ```
 
-<sub>`api.ogt` line 367</sub>
+<sub>`api.ogt` line 369</sub>
 
 <a id="type-Query"></a>
 
@@ -581,7 +581,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 375</sub>
+<sub>`api.ogt` line 377</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -604,7 +604,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 377</sub>
+<sub>`api.ogt` line 379</sub>
 
 <a id="member-Query-count"></a>
 
@@ -627,7 +627,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 381</sub>
+<sub>`api.ogt` line 383</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -641,7 +641,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 387</sub>
+<sub>`api.ogt` line 389</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -659,7 +659,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 389</sub>
+<sub>`api.ogt` line 391</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -677,7 +677,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 390</sub>
+<sub>`api.ogt` line 392</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -695,7 +695,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1."
 ```
 
-<sub>`api.ogt` line 391</sub>
+<sub>`api.ogt` line 393</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -723,7 +723,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 392</sub>
+<sub>`api.ogt` line 394</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -752,7 +752,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 397</sub>
+<sub>`api.ogt` line 399</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -784,7 +784,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 403</sub>
+<sub>`api.ogt` line 405</sub>
 
 ## Types
 
@@ -805,7 +805,7 @@ handle Entity {
 }
 ```
 
-<sub>`api.ogt` line 207</sub>
+<sub>`api.ogt` line 209</sub>
 
 <a id="type-SpawnDesc"></a>
 
@@ -841,7 +841,7 @@ struct SpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 219</sub>
+<sub>`api.ogt` line 221</sub>
 
 <a id="type-RestoreDesc"></a>
 
@@ -863,7 +863,7 @@ struct RestoreDesc {
 }
 ```
 
-<sub>`api.ogt` line 234</sub>
+<sub>`api.ogt` line 236</sub>
 
 <a id="type-QueryDesc"></a>
 
@@ -887,7 +887,7 @@ struct QueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 240</sub>
+<sub>`api.ogt` line 242</sub>
 
 ## Column kinds
 
@@ -906,4 +906,4 @@ column Entity {
 }
 ```
 
-<sub>`api.ogt` line 212</sub>
+<sub>`api.ogt` line 214</sub>
