@@ -48,6 +48,11 @@ pub struct Viewport {
     /// Apple platforms (`navigator.platform`); native hosts leave it off, so
     /// a script edits the same on every OS.
     pub mac_keys: bool,
+    /// Where the host's own control covers the surface (the web shell's
+    /// round Back, top left of a published page), in CSS pixels; empty is
+    /// none. Anchored groups keep out of it: a group it would overlap
+    /// moves along the edge it sits on, past it.
+    pub covered: Rect,
 }
 
 impl Default for Viewport {
@@ -62,6 +67,7 @@ impl Default for Viewport {
             high_contrast: false,
             reduced_transparency: false,
             mac_keys: false,
+            covered: Rect::default(),
         }
     }
 }
@@ -369,6 +375,9 @@ pub(crate) struct State {
     pub focus_visible: bool,
     /// The topmost focus scope of the last frame (0: none).
     pub scope: u64,
+    /// That scope is a locked dialog: Back does not close it, so
+    /// `Ui::back` answers it.
+    pub scope_locked: bool,
     /// Where focus returns when that scope closes.
     pub focus_return: u64,
     /// Keyboard and gamepad navigation as the last frame declared it.
@@ -966,8 +975,15 @@ impl Ui {
     }
 
     /// Escape or gamepad B this tick, not taken by a dialog or menu: true
-    /// once, then taken. A pause screen closes on it.
+    /// once, then taken. A pause screen closes on it. While a dialog or menu
+    /// Back closes is open (the topmost of the last frame), it answers false
+    /// and leaves Back to that dialog, even when called before the dialog
+    /// is built this tick (a HUD drawn under pause): og-ui's rule, the
+    /// topmost dialog or menu closes. A locked dialog lets it through.
     pub fn back(&mut self) -> bool {
+        if self.state.scope != 0 && !self.state.scope_locked {
+            return false;
+        }
         std::mem::take(&mut self.nav.back)
     }
 
@@ -2258,6 +2274,16 @@ impl Ui {
             vp.width - vp.safe_area.horizontal(),
             vp.height - vp.safe_area.vertical(),
         );
+        // The host's control, where the layout stands before a right-to-left
+        // mirror (which moves a top-left group to the top right).
+        let covered = {
+            let c = vp.covered;
+            if self.direction == og_i18n::Direction::Rtl {
+                Rect::new(vp.width - c.x - c.width, c.y, c.width, c.height)
+            } else {
+                c
+            }
+        };
         for &f in &self.floating.clone() {
             let float = self.nodes[f].float;
             if float == Float::Modal {
@@ -2323,6 +2349,12 @@ impl Ui {
                     }
                     (x, y)
                 }
+            };
+            let (x, y) = match float {
+                Float::Anchored { anchor, margin, .. } => {
+                    keep_out(Rect::new(x, y, w, h), anchor, covered, margin.max(gap))
+                }
+                _ => (x, y),
             };
             let placed = Rect::new(x, y, w, h);
             self.nodes[f].el.width = Size::Fixed(w);
@@ -2438,6 +2470,7 @@ impl Ui {
         let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
         let mut tree_path: BTreeMap<usize, String> = BTreeMap::new();
         let mut top_scope = 0u64;
+        let mut top_locked = false;
         for &i in &order[1..] {
             let n = &self.nodes[i];
             let (role, name, description, value, states) = self.a11y_info(i);
@@ -2467,6 +2500,7 @@ impl Ui {
             }
             if n.scope && !n.inert {
                 top_scope = n.key;
+                top_locked = n.locked;
             }
             let visible = n.rect.intersect(&n.clip);
             // Scrolled or clipped out of view: not on screen, not listed. A
@@ -2687,6 +2721,7 @@ impl Ui {
         }
         self.state.players = self.players as u8;
         self.state.scope = top_scope;
+        self.state.scope_locked = top_locked;
         self.state.nav_off = !self.nav_on;
         // Focus order: the controls keys and pads reach now, in the tree's
         // order (the order navigation walks: `nav::focusables`).
@@ -3916,7 +3951,9 @@ impl Ui {
             u64_(&mut b, h.scroller);
         }
         u64_(&mut b, s.tick);
-        b.push(u8::from(s.focus_visible) | u8::from(s.nav_off) << 1);
+        b.push(
+            u8::from(s.focus_visible) | u8::from(s.nav_off) << 1 | u8::from(s.scope_locked) << 2,
+        );
         u64_(&mut b, s.scope);
         u64_(&mut b, s.focus_return);
         b.push(s.stick.0);
@@ -4238,6 +4275,7 @@ impl Reader<'_> {
         let flags = self.u8()?;
         s.focus_visible = flags & 1 != 0;
         s.nav_off = flags & 2 != 0;
+        s.scope_locked = flags & 4 != 0;
         s.scope = self.u64()?;
         s.focus_return = self.u64()?;
         s.stick = (self.u8()?, self.u64()?);
@@ -4368,5 +4406,26 @@ impl Reader<'_> {
             s.histories.insert(k, h);
         }
         Some(s)
+    }
+}
+
+/// An anchored group's place moved out of the host's control `c`: along
+/// the edge it sits on, past `c` by `gap` (a corner or side group sideways,
+/// a top or bottom centred group up or down); a centred group stays.
+fn keep_out(r: Rect, anchor: Anchor, c: Rect, gap: f32) -> (f32, f32) {
+    if c.is_empty() || !r.overlaps(&c) {
+        return (r.x, r.y);
+    }
+    let (ax, ay) = anchor.fractions();
+    if ax < 0.5 {
+        (r.x.max(c.right() + gap), r.y)
+    } else if ax > 0.5 {
+        (r.x.min(c.x - gap - r.width), r.y)
+    } else if ay < 0.5 {
+        (r.x, r.y.max(c.bottom() + gap))
+    } else if ay > 0.5 {
+        (r.x, r.y.min(c.y - gap - r.height))
+    } else {
+        (r.x, r.y)
     }
 }

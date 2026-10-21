@@ -1717,6 +1717,20 @@ fn add_geometry(world: u32, mesh: og_render::MeshData, physics: bool) -> Result<
     Ok(json!(handle as f64))
 }
 
+/// A geometry desc's `uvRepeat` applied (og_render::shapes::repeat_uv).
+fn uv_repeat(d: &Value, mesh: &mut og_render::MeshData) -> Result<(), String> {
+    let r = &d["uvRepeat"];
+    let axis = |k: &str| -> Result<f32, String> {
+        let v = r[k].as_f64().unwrap_or(1.0);
+        if !v.is_finite() {
+            return Err(format!("uvRepeat.{k} must be finite, got {v}"));
+        }
+        Ok(v as f32)
+    };
+    og_render::shapes::repeat_uv(mesh, glam::Vec2::new(axis("x")?, axis("y")?));
+    Ok(())
+}
+
 fn size_of(d: &Value, key: &str, default: f64) -> Result<f32, String> {
     let v = d[key].as_f64().unwrap_or(default);
     if !(v.is_finite() && v >= 0.0) {
@@ -1733,33 +1747,18 @@ pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
             size_of(&d, "height", 1.0)?,
             size_of(&d, "depth", 1.0)?,
         );
-        add_geometry(world, og_render::shapes::cuboid(size), true)
+        let mut mesh = og_render::shapes::cuboid(size);
+        uv_repeat(&d, &mut mesh)?;
+        add_geometry(world, mesh, true)
     })())
 }
 
 pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
     result((|| {
         let d = parse(desc.as_deref())?;
-        let (w, h) = (
-            size_of(&d, "width", 1.0)? / 2.0,
-            size_of(&d, "height", 1.0)? / 2.0,
-        );
-        let v = |x: f32, y: f32, u: f32, t: f32| og_render::Vertex {
-            tangent: [0.0; 4],
-            position: [x, y, 0.0],
-            normal: [0.0, 0.0, 1.0],
-            uv: [u, t],
-            color: [1.0; 4],
-        };
-        let mesh = og_render::MeshData {
-            vertices: vec![
-                v(-w, -h, 0.0, 1.0),
-                v(w, -h, 1.0, 1.0),
-                v(w, h, 1.0, 0.0),
-                v(-w, h, 0.0, 0.0),
-            ],
-            indices: vec![0, 1, 2, 0, 2, 3],
-        };
+        let mut mesh =
+            og_render::shapes::plane_xy(size_of(&d, "width", 1.0)?, size_of(&d, "height", 1.0)?);
+        uv_repeat(&d, &mut mesh)?;
         add_geometry(world, mesh, true)
     })())
 }
@@ -1776,6 +1775,7 @@ pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
                 *c *= radius * 2.0;
             }
         }
+        uv_repeat(&d, &mut mesh)?;
         add_geometry(world, mesh, false)
     })())
 }

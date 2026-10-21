@@ -250,6 +250,8 @@ export async function play(): Promise<PlayHandle> {
       const text = back.querySelector("span");
       if (text) text.textContent = T.back;
       back.hidden = false;
+      // The UI keeps its anchored groups out of Back from now on (Viewport.covered).
+      if (shellRef) shellRef.resize(box.width, box.height, box.safeArea, backCover());
       back.onclick = () => {
         let fromPortal = false;
         try {
@@ -364,6 +366,19 @@ export async function play(): Promise<PlayHandle> {
     return box;
   };
   let box = place();
+  // Where Back covers the canvas, in the canvas's CSS px (Viewport.covered):
+  // the tucked control, as wide as it is tall (its name shows beside it only
+  // for the first seconds of play); none while it is hidden or off the canvas.
+  const backCover = (): { x: number; y: number; width: number; height: number } | undefined => {
+    if (!back || back.hidden) return undefined;
+    const r = back.getBoundingClientRect();
+    const c = canvas.getBoundingClientRect();
+    const x = r.left - c.left;
+    const y = r.top - c.top;
+    const side = r.height;
+    if (side <= 0 || x + side <= 0 || y + side <= 0 || x >= c.width || y >= c.height) return undefined;
+    return { x, y, width: side, height: side };
+  };
 
   // ── the engine ───────────────────────────────────────────────────────
   const seedText = query.get(REPLAY_SEED_PARAM);
@@ -455,7 +470,7 @@ export async function play(): Promise<PlayHandle> {
   log.push([lanes.on ? `lanes: on, ${lanes.threads} Workers` : `lanes: off (${lanes.why})`]);
   const resize = () => {
     box = place();
-    shell.resize(box.width, box.height, box.safeArea);
+    shell.resize(box.width, box.height, box.safeArea, backCover());
   };
   let pending = 0;
   const onResize = () => {
@@ -469,7 +484,7 @@ export async function play(): Promise<PlayHandle> {
   globalThis.visualViewport?.addEventListener("resize", onResize);
   screen.orientation?.addEventListener?.("change", onResize);
   // The first layout's safe area reaches the UI too.
-  shell.resize(box.width, box.height, box.safeArea);
+  shell.resize(box.width, box.height, box.safeArea, backCover());
 
   // ── the probe: in-page and over the og-probe wire ────────────────────
   // `lanes`: the mode the engine got at boot (on with its Workers, or why it runs single-threaded).

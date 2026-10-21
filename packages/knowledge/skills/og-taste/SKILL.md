@@ -49,7 +49,7 @@ game can hold on every frame. Some premises and where they land:
 | an exploration or flight game, serene | `faceted-low-poly` | flat facets, a soft vignette, AgX light |
 | a fighting or character-action game | `anime-cel-3d` | toon bands, cool-tinted shadows, outlines that thin with distance |
 | survival horror, lonely and uncanny | `low-resolution-3d` | early-console 3D: snapped vertices, affine textures, fog |
-| an arcade shooter or rhythm game | `neon-vector` | bright outlines that bloom on a dark scene |
+| an arcade shooter, rhythm or racing game | `neon-vector` | bright outlines that bloom on a dark scene; a large ground plane keeps its outline only where it ends, and with `outlineDistance` a line grows at most four times its width near the camera |
 | a narrative puzzle, gentle and sad | `watercolor-wash` | bleeding strokes pooling at their rims on paper |
 
 `npm create @origingame/game -- --premise "<one line>"` does this match

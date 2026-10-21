@@ -481,15 +481,18 @@ export class Shell {
 
   /**
    * The canvas was laid out at `cssWidth`×`cssHeight`: resize the render
-   * target (device pixels, with the DPR cap) and tell the UI its viewport.
+   * target (device pixels, with the DPR cap) and tell the UI its viewport,
+   * with the page's own control over the canvas (`covered`, Viewport.covered:
+   * the shell's Back) that anchored groups keep out of.
    */
-  resize(cssWidth: number, cssHeight: number, safeArea?: Record<string, number>): { width: number; height: number; dpr: number } {
+  resize(cssWidth: number, cssHeight: number, safeArea?: Record<string, number>, covered?: Record<string, number>): { width: number; height: number; dpr: number } {
     const size = pixelSize(cssWidth, cssHeight, globalThis.devicePixelRatio || 1, this.#dprCap);
     const viewport = {
       width: cssWidth,
       height: cssHeight,
       dpr: size.dpr,
       ...(safeArea ? { safeArea } : {}),
+      ...(covered ? { covered } : {}),
       coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false,
     };
     this.#viewport = viewport;
