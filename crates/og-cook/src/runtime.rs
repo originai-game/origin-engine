@@ -2126,6 +2126,7 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
             repeat_x: l.flags & fl::REPEAT_X != 0,
             repeat_y: l.flags & fl::REPEAT_Y != 0,
             z: l.z,
+            lit: l.flags & fl::UNLIT == 0,
         });
     }
     for o in &objects {

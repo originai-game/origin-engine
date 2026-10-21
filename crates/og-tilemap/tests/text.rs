@@ -74,6 +74,7 @@ layer floor {
 layer walls {
   terrain wall
   collision true
+  lit false
   row 1 1 0 0
   row 0 1 0 0
   row 0 0 0 0
@@ -100,8 +101,8 @@ fn a_hand_written_map_reads_legends_rows_and_objects() {
     assert_eq!(f.cells, vec![8, 0, 0, 51, 8, 8, 8, 8, 0, 8, 0, 0]);
     let w = &m.layers[1];
     assert_eq!(
-        (w.terrain.as_deref(), w.collision, w.z),
-        (Some("wall"), true, 1)
+        (w.terrain.as_deref(), w.collision, w.z, w.lit, f.lit),
+        (Some("wall"), true, 1, false, true)
     );
     let o = &m.objects[0];
     assert_eq!((o.name.as_str(), o.kind.as_str()), ("door", "door"));

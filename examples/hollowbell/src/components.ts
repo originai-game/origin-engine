@@ -30,7 +30,7 @@ export const Layer = { Glimmer: 0, Chime: 4, Heart: 8, LanternDark: 9, LanternLi
 export const Bits = { World: 1, Hero: 2, Enemy: 4, Stone: 8, Plank: 16 } as const;
 
 /** Sprite layers, back to front (the map's layers start at Draw.map). */
-export const Draw = { sky: -40, map: -20, pools: -14, props: -5, items: 2, enemies: 3, hero: 5, fx: 12, text: 100 } as const;
+export const Draw = { sky: -40, map: -20, props: -5, items: 2, enemies: 3, hero: 5, fx: 12, text: 100 } as const;
 
 /** Sound requests: bits of Game.sfx that the Voices system plays once each. */
 export const Sound = {
@@ -248,11 +248,12 @@ export const Stone = defineComponent("Stone", {
   knocks: u32(0),
 });
 
-/** A light that flickers: torches, crystals. */
+/** A light that flickers: torches, crystals, Wren's lantern (steady: rate 0). */
 export const Flicker = defineComponent("Flicker", {
   base: f32(1, { doc: "Its intensity at rest." }),
   rate: f32(9, { doc: "How fast it flickers (radians per second)." }),
   phase: f32(0),
+  dusk: bool(false, { doc: "Fade it out towards daylight (Game.ambient 1): a lantern lighting the map would glare in the village." }),
 });
 
 /** The bell. */
@@ -270,18 +271,6 @@ export const Mole = defineComponent("Mole", {
 export const Fx = defineComponent("Fx", {
   kind: u32(0, { doc: "FxKind.*" }),
   bursts: u32(0),
-});
-
-/**
- * A pool of light drawn over the map where a light shines: og.Lighting2D lights
- * sprites but never a tilemap's layers (FINDINGS.md #9), so the map is
- * tinted to the ambient light (src/props.ts MapShade) and these add the light back.
- */
-export const Pool = defineComponent("Pool", {
-  kind: u32(0, { doc: "0 a fixed light (a torch, a crystal), 1 the hero's lantern, 2 a checkpoint lantern (lit by Game.litMask)." }),
-  index: u32(0, { doc: "A checkpoint lantern's index." }),
-  strength: f32(0.5, { doc: "Its opacity in the dark." }),
-  radius: f32(4, { unit: "m" }),
 });
 
 /** One voice: plays its sound once when Game.sfx asks for its bit. */

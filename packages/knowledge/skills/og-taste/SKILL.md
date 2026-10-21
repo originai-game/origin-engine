@@ -10,6 +10,17 @@ game a look of its own and keep it consistent. The mechanics are og-ui's
 (skins, motion and sounds are og-ui §6) and the amounts of game feel
 og-feel's; this is the taste.
 
+## What works
+
+Both games written from this package alone reached `og polish`'s taste 99
+from a preset tuned in their own look file: Lantern Vale
+(`examples/lantern-vale`) the anime cel preset with ink, a tinted shadow
+side and a painted second look for the results; Hollowbell
+(`examples/hollowbell`) a 16-bit pixel grid with its own 32-colour palette
+through `Stylise.palette` and a Bayer dither, and the 2D glow. Swapping the
+look at a tick (`og.render.applyLook`) for the results worked the first
+time in both.
+
 ## 1. Choose a style from the premise
 
 Write the premise in one line, then answer four questions:
@@ -324,12 +335,64 @@ Fog {
 }
 ```
 
+**The pixel grid** (`Stylise.pixelHeight`, `pixelUpscale`) scales the
+frame up by a whole number, so pick the height for the output you ship
+at. The height sets the scale: `pixelUpscale` when height × scale fits
+the output's height, else (and for 0) the largest that does. The width
+is the aspect's columns, at most the output's width over the scale, so
+at most the last column gives way, never the scale: 240 lines at 1280 ×
+720 are 426 columns at 3x (1278 × 720, a 1-pixel border each side), at
+1920 × 1080 427 columns at 4x (1708 × 960, a 106/60-pixel border). A
+height that divides the output fills it: 180 (4x), 240 (3x) or 360 (2x)
+at 720p; 270 (4x) or 360 (3x) at 1080p. The `16bit-pixel` preset's 224
+lines draw at 3x inside a 43/24-pixel border at 720p. Size the camera to
+the grid: with 16-pixel tiles, 240 lines are 15 tiles tall.
+
 The engine ships canvases and palettes a look names without the game
 owning a copy: `Stylise.paintCanvas "@canvas/paper"` (also `linen`, a
 woven canvas, and `watercolor`, cold-pressed paper) and `Stylise.palette
 "@palettes/handheld4"` (also `lcd2`, `dusk16`, `bright32` and `1bit`). The
 cook puts the ones a look names into the bundle; a palette or canvas of
 the game's own is a path under `assets/` as before.
+
+**Fit the pixel grid to the screens.** `Stylise.pixelHeight` sets the
+whole-number scale from the output's height alone, the width follows the
+aspect, and what the grid does not cover is a border in
+`Camera.background` (the rule is `Stylise.pixelHeight`'s doc, og-game
+§15). So choose the height by the screens the game meets, not by the era
+alone. The scale per output (✓ fills it, ≈ fills it but for one column, b
+leaves a border):
+
+| `pixelHeight` | 1280×720 | 1920×1080 | 2560×1440 | 3840×2160 | phone 1600×720 | phone 1688×780 | phone 1830×824 |
+|---|---|---|---|---|---|---|---|
+| 90 | 8 ✓ | 12 ✓ | 16 ✓ | 24 ✓ | 8 ✓ | 8 b | 9 b |
+| 135 | 5 b | 8 ✓ | 10 b | 16 ✓ | 5 b | 5 b | 6 b |
+| 144 | 5 ✓ | 7 b | 10 ✓ | 15 ✓ | 5 ✓ | 5 b | 5 b |
+| 160 | 4 b | 6 b | 9 ≈ | 13 b | 4 b | 4 b | 5 b |
+| 180 | 4 ✓ | 6 ✓ | 8 ✓ | 12 ✓ | 4 ✓ | 4 b | 4 b |
+| 192 | 3 b | 5 b | 7 b | 11 b | 3 b | 4 b | 4 b |
+| 216 | 3 b | 5 ✓ | 6 b | 10 ✓ | 3 b | 3 b | 3 b |
+| 224 | 3 b | 4 b | 6 b | 9 b | 3 b | 3 b | 3 b |
+| 240 | 3 ≈ | 4 b | 6 ≈ | 9 ≈ | 3 ≈ | 3 b | 3 b |
+| 270 | 2 b | 4 ✓ | 5 b | 8 ✓ | 2 b | 2 b | 3 b |
+| 360 | 2 ✓ | 3 ✓ | 4 ✓ | 6 ✓ | 2 ✓ | 2 b | 2 b |
+
+- 180 is the height to reach for (90 or 360 for a coarser or finer grid):
+  it fills every 16:9 size. 144 suits 720p and 1440p, 216 and 270 1080p
+  and 4K; 240 fills 720p but leaves a 106/60-pixel border at 1080p.
+- 224 (`16bit-pixel`) and 192 (`8bit-pixel`) leave a border everywhere:
+  write `pixelHeight 180` (or 216) in the game's look, which wins over the
+  preset field by field, unless the border is part of the look.
+- A phone's output is its page's CSS size times the device pixel ratio,
+  capped at 2 (`publish { dpr_cap 2 }` in project.ogt; the columns above
+  are 800×360, 844×390 and 915×412 CSS pixels in landscape), so most
+  phones leave a border whatever the height. Give it a colour of the
+  palette (`Camera.background`), or letterbox the page to 16:9
+  (`publish { fit letterbox aspect "16:9" }`).
+- With 16-pixel tiles, 180 lines are 11¼ tiles tall: size the camera and
+  the rooms to the grid, not the other way round.
+- Prove it on frames: `og run . --headless --size 1280x720` and again at
+  `1920x1080`, a screenshot each, and read the border.
 
 With a moving 3D camera, lay the paper and the strokes on the scene
 rather than over the screen: `Stylise.paintCanvasSpace surface` (grain

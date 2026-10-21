@@ -9,6 +9,19 @@ runs playtests, scores them and builds the publishable bundle. Nothing here
 needs a browser or a Rust toolchain. The command channel is
 `reference/commands.md`, the probe `reference/probe.md`.
 
+## What works
+
+The loop held for two whole games written from this package alone
+(`examples/lantern-vale`, `examples/hollowbell`): `og cook` took 47 and 69
+assets cold in 8.2 s and 3.6 s and under 100 ms after a change, without a
+warning, and every refusal named the line and the fix (a copied skin
+without its CJK `fallback` named the line and og-taste §1;
+`PostEffects.vignette is true or false` named the line). Scripted runs gave
+the same frames every time, `store: "keep"` relaunches and two-process
+replays worked the first time they were asked for, and `og polish` scored
+taste 99 for both and feel 90 and 92, naming the section that fixes each
+finding.
+
 ## 1. The loop
 
 1. **Cook** after any change under `assets/`: `og cook`. It is incremental
@@ -48,7 +61,8 @@ needs a browser or a Rust toolchain. The command channel is
    (og-game §6 and §11). Unknown actions warn and the script continues; read the
    warnings.
 3. **Read what it wrote.** Screenshots are PNG files, dumps are JSON files
-   (`<action>-<tick>.png|json` unless the step names a path); `og run`
+   (`<action>-<tick>.png|json` unless the step names a path), written
+   under `og-out/` in the project (`--out <dir>` chooses); `og run`
    prints each path. Open the frame and describe what it shows; read
    `dump_world` for the entity count, the archetype tables and each system's
    matched count. A system that matched 0 entities is usually a missing
@@ -83,7 +97,10 @@ starts.
 `og test .` runs the project's bun tests and every `tests/*.og.ts` playtest
 script through `og run --headless --commands`. A playtest asserts on what the
 game exposes (dumps, `state()` facts, entity fields, `get` answers), never on
-how the code is written. A test that ran no checks fails. Run it before
+how the code is written. Each playtest writes into its own
+`og-out/test/<name>/`, emptied when it starts, and its `check` reads a
+step's file by the name the step gave (`run.json("shop.json")`,
+`run.png("title.png")`); give each step's file its own name. A test that ran no checks fails. Run it before
 claiming a change works. A playtest runs with the host clock at
 2026-01-01 00:00 UTC (`clock` to change it) and a fresh store; `store:
 "keep"` with `then: [{ commands, clock }]` runs further processes over the

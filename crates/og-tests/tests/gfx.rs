@@ -1145,6 +1145,15 @@ fn fx_2d_matches_its_reference() {
     assert!(s.sprites > 24 * 14 + 5, "{} sprites", s.sprites);
 }
 
+/// Hollowbell FINDINGS #9: three tile layers in 2D lighting's range, two
+/// lights and two occluders; the window's sky layer opts out.
+#[test]
+fn tilemap_lit_matches_its_reference() {
+    let s = check("tilemap-lit").stats;
+    assert_eq!((s.lights_2d, s.occluders_2d), (2, 2));
+    assert_eq!((s.tile_chunks, s.sprites), (3, 1));
+}
+
 #[test]
 fn trails_beams_match_their_reference() {
     let s = check("trails-beams").stats;

@@ -1215,6 +1215,12 @@
           "type": "u32",
           "value": 64,
           "doc": "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
+        },
+        {
+          "name": "UI_LAYER",
+          "type": "i32",
+          "value": 1000,
+          "doc": "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
         }
       ],
       "functions": [
@@ -1806,7 +1812,7 @@
         },
         {
           "name": "emitter",
-          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.",
+          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -3160,7 +3166,7 @@
     },
     {
       "name": "tilemap",
-      "doc": "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.\nLayers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.\nCells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.",
+      "doc": "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.\nLayers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.\nWith og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).\nCells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -11689,7 +11695,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights.",
+          "description": "The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. The height sets the scale (pixelUpscale); the width is the output's aspect times the height, rounded, but at most the output's width over the scale, so the last column gives way rather than the scale: 240 rows at 1280x720 are 426.67 columns, rounded to 427, and 427 x 3 = 1281 does not fit, so the grid is 426 x 240 at 3x (1278 x 720, a 1-pixel border each side). Heights that divide the output's evenly fill it: 180 (4x), 240 (3x) and 360 (2x) at 720p, 270 (4x) and 360 (3x) at 1080p.",
           "default": 0,
           "minimum": 0,
           "maximum": 2160
@@ -11698,7 +11704,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it.",
+          "description": "The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height (a smaller scale than the largest leaves the border it implies: 240 lines at 2x in 1280x720 draw 854 x 480 in a 213 x 120 border), else the largest that fits; 0 takes the largest that fits (720 / 240 = 3, 1080 / 240 = 4, rounded down). A frame that does not fill the output is centred with Camera.background round it.",
           "default": 0,
           "minimum": 0,
           "maximum": 16
@@ -12187,7 +12193,7 @@
     "Lighting2D": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.",
+      "description": "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -12775,7 +12781,7 @@
         },
         "screen": {
           "type": "boolean",
-          "description": "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise.",
+          "description": "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it.",
           "default": false
         },
         "clip": {
@@ -13063,7 +13069,7 @@
         },
         "screen": {
           "type": "boolean",
-          "description": "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only.",
+          "description": "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it.",
           "default": false
         },
         "clip": {
@@ -18598,6 +18604,10 @@
         "visible": {
           "type": "boolean",
           "description": "Whether it is drawn."
+        },
+        "lit": {
+          "type": "boolean",
+          "description": "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
         }
       },
       "required": [
@@ -18607,7 +18617,8 @@
         "parallax",
         "collision",
         "terrain",
-        "visible"
+        "visible",
+        "lit"
       ],
       "additionalProperties": false
     },
