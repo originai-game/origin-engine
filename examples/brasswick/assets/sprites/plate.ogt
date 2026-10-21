@@ -1,0 +1,15 @@
+type flipbook
+version 1
+---
+# A pressure plate (tools/make-assets.ts): up, then down.
+texture "plate.png"
+pivot 0.5 0
+grid 16 16 2 1
+clip up {
+  frames 0
+  fps 1
+}
+clip down {
+  frames 1
+  fps 1
+}

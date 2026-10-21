@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# A gear taken: brass sparks every way (tools/make-assets.ts).
+maxParticles 32
+shape point
+spread 180
+rate 0
+burst 0 14
+duration 0.1
+looping false
+lifetime 0.2 0.45
+speed 2 5
+size 0.1 0.18
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.9 0.5 1
+  key 1 0.9 0.5 0.15 0
+}
+drag 3
+texture "fx/spark.png"
+blend additive
+glow 1.5
+render sprite 12

@@ -1,0 +1,10 @@
+type flipbook
+version 1
+---
+# A gear (tools/make-assets.ts): six frames of a turn.
+texture "gear.png"
+grid 12 12 6 1
+clip spin {
+  frames 0 1 2 3 4 5
+  fps 10
+}
