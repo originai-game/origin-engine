@@ -52,6 +52,7 @@ declare module "bun:test" {
   }
   export function describe(name: string, body: () => void): void;
   export function beforeAll(body: Body): void;
+  export function afterAll(body: Body): void;
   interface Matchers {
     toBe(value: unknown): void;
     toEqual(value: unknown): void;

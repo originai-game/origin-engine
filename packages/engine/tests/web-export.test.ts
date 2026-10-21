@@ -4,7 +4,7 @@
 // by their content, and project.ogt's publish settings decide isolation, the
 // badge and the icon. (The page itself is driven in Chrome by tests/web/.)
 import { beforeAll, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_PUBLISH, settingsOf, webBuild, type ProjectSettings } from "../src/node/web-build.ts";
@@ -17,6 +17,7 @@ const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
 
 declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
+  export function readdirSync(path: string): string[];
 }
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stderr: Uint8Array };
@@ -41,10 +42,10 @@ const read = (dir: string, f: string) => readFileSync(join(dir, f), "utf8");
 function positionalInits(dir: string): string[] {
   const found: string[] = [];
   const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith(".js") && !e.name.startsWith("origin-engine")) {
+    for (const name of readdirSync(d)) {
+      const p = join(d, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name.endsWith(".js") && !name.startsWith("origin-engine")) {
         // A call of the glue's default export or initSync whose argument is not one object literal.
         for (const m of readFileSync(p, "utf8").matchAll(/\b(?:default|initSync)\(\s*(?![{)\s])[^)]*\)/g)) found.push(`${p.slice(dir.length + 1)}: ${m[0]}`);
       }
