@@ -43,10 +43,31 @@ pub enum UiKey {
     KeyY,
     /// With Control under mac keys: the line's end (emacs).
     KeyE,
+    /// With Control under mac keys (emacs): a character on (F) and back
+    /// (B), a line down (N) and up (P) (a field's ends), delete a character
+    /// on (D) and back (H), delete to the paragraph's end (K) and start
+    /// (U), delete the word before the caret (W).
+    KeyF,
+    KeyB,
+    KeyN,
+    KeyP,
+    KeyD,
+    KeyH,
+    KeyK,
+    KeyU,
+    KeyW,
+    /// A focused zoom view zooms in with `=`/`+` and the keypad's `+`, out
+    /// with `-` and the keypad's `-`, and back to its fit with `0`.
+    Equal,
+    Minus,
+    Digit0,
+    NumpadAdd,
+    NumpadSubtract,
+    Numpad0,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 19] = [
+    pub const ALL: [UiKey; 34] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -66,6 +87,21 @@ impl UiKey {
         UiKey::KeyZ,
         UiKey::KeyY,
         UiKey::KeyE,
+        UiKey::KeyF,
+        UiKey::KeyB,
+        UiKey::KeyN,
+        UiKey::KeyP,
+        UiKey::KeyD,
+        UiKey::KeyH,
+        UiKey::KeyK,
+        UiKey::KeyU,
+        UiKey::KeyW,
+        UiKey::Equal,
+        UiKey::Minus,
+        UiKey::Digit0,
+        UiKey::NumpadAdd,
+        UiKey::NumpadSubtract,
+        UiKey::Numpad0,
     ];
 
     /// Its `KeyboardEvent.code`.
@@ -90,6 +126,21 @@ impl UiKey {
             UiKey::KeyZ => "KeyZ",
             UiKey::KeyY => "KeyY",
             UiKey::KeyE => "KeyE",
+            UiKey::KeyF => "KeyF",
+            UiKey::KeyB => "KeyB",
+            UiKey::KeyN => "KeyN",
+            UiKey::KeyP => "KeyP",
+            UiKey::KeyD => "KeyD",
+            UiKey::KeyH => "KeyH",
+            UiKey::KeyK => "KeyK",
+            UiKey::KeyU => "KeyU",
+            UiKey::KeyW => "KeyW",
+            UiKey::Equal => "Equal",
+            UiKey::Minus => "Minus",
+            UiKey::Digit0 => "Digit0",
+            UiKey::NumpadAdd => "NumpadAdd",
+            UiKey::NumpadSubtract => "NumpadSubtract",
+            UiKey::Numpad0 => "Numpad0",
         }
     }
 }

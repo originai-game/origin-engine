@@ -264,23 +264,36 @@ impl StateBlock for UiState {
 
 /// The play surface an engine's UI lays out in: what the host set with
 /// [`set_viewport`], else the render target at 1 CSS pixel per device
-/// pixel, else 1280×720.
+/// pixel, else 1280×720; a native host (which sets none) on macOS edits
+/// text with the Mac's keys ([`native_keys`]).
 pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
     if let Some(v) = preview_of(engine_id) {
         return v;
     }
     let Ok(eng) = engine(engine_id) else {
-        return Viewport::default();
+        return native_keys(Viewport::default());
     };
     let Ok(rs) = eng.render.try_borrow() else {
-        return Viewport::default();
+        return native_keys(Viewport::default());
     };
     if let Some(v) = rs.viewport {
         return v;
     }
-    match rs.backend.as_ref().map(|b| b.size()) {
+    native_keys(match rs.backend.as_ref().map(|b| b.size()) {
         Some((w, h)) if w > 0 && h > 0 => Viewport::new(w as f32, h as f32),
         _ => Viewport::default(),
+    })
+}
+
+/// A native host's viewport takes the platform's editing keys: on macOS
+/// Command takes the shortcuts and Option the words, as a Mac text field
+/// does (`Viewport.macKeys`); elsewhere Control. The web host says which
+/// with [`set_viewport`] (the browser's platform), so this is the native
+/// hosts' alone.
+pub(crate) fn native_keys(v: Viewport) -> Viewport {
+    Viewport {
+        mac_keys: cfg!(target_os = "macos"),
+        ..v
     }
 }
 
@@ -2289,4 +2302,31 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
 /// The previewed viewport of an engine, when one is set.
 fn preview_of(engine_id: u32) -> Option<Viewport> {
     PREVIEW.with(|p| p.borrow().get(&engine_id).copied())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A native host sets no viewport: on macOS its text controls take the
+    /// Mac's keys (Command for the shortcuts, Option for words), elsewhere
+    /// Control; one the host set (the web shell's) is kept as it is.
+    #[test]
+    fn a_native_host_edits_with_the_platforms_keys() {
+        let v: Value = serde_json::from_str(&og_ui_viewport(u32::MAX)).expect("json");
+        assert_eq!(
+            v["macKeys"].as_bool(),
+            Some(cfg!(target_os = "macos")),
+            "{v}"
+        );
+        let set = Viewport {
+            mac_keys: false,
+            ..Viewport::new(800.0, 600.0)
+        };
+        PREVIEW.with(|p| p.borrow_mut().insert(u32::MAX - 1, set));
+        assert!(
+            !viewport_of(u32::MAX - 1).mac_keys,
+            "a set viewport is kept"
+        );
+    }
 }
