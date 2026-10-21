@@ -486,6 +486,7 @@ layer walls {
   opacity 1                # (default 1)
   visible true             # (default true)
   collision true           # its tiles' collision becomes static colliders (default false)
+  lit false                # the layer takes no 2D light (og.Lighting2D); default true: lit like a sprite in the lit range
   repeat x                 # x, y or both: tile the layer endlessly (a background)
   terrain wall             # a terrain layer: cells are 1 (filled) or 0, the terrain picks the tiles
   legend "#" 1             # a character and its tile id (-1 empty; on a terrain layer 1 filled)
@@ -517,6 +518,7 @@ cook reads of a layer and an object:
 |---|---|---|
 | `autotile` | tile layer custom property (string) | the layer is a terrain layer of that terrain of its tileset; any tile in a cell marks it filled, the terrain picks the drawn tile |
 | `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
+| `lit` | tile layer custom property (bool) | false keeps the layer out of og.Lighting2D (a sky or window layer); default true |
 | `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
 | `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y; a property of another name (`repeat`) is not read |
 | `parallaxx`, `parallaxy` | Tiled's own layer fields (Layer Properties, Parallax Factor) | the layer's parallax |
