@@ -6,21 +6,23 @@
 //   player, its loading, error and empty states honest), Settings
 //   (og.ui.settingsScreen, every word from the string tables, English and
 //   German); the record under the title;
-// - the race: og.ui.racingHud (speed, gear, lap, the lap time, the record,
-//   the mini-map with the car and the ghost; touch steering on a phone),
-//   the three sector times and the last split's delta against the record
-//   top centre, the countdown, Wrong way;
+// - the race: og.ui.racingHud as a time trial (no place, no boost meter:
+//   speed, gear, lap, the lap time, the last split's delta against the
+//   record under it, the record, the three sectors as its splits, the
+//   mini-map with the car and the ghost; touch steering on a phone; every
+//   word from the tables), the countdown, Wrong way;
 // - pause (og.ui.pauseMenu: Resume, Restart, the ghost on or off, Settings,
-//   Quit), the results (og.ui.resultsScreen), toasts; a wipe between the
+//   Quit), the results (og.ui.resultsScreen: the race's time, the session's
+//   best before it), toasts; a wipe between the
 //   screens (a fade with reduced motion).
 //
 // The Ui system also holds time under a menu, and takes og.platform's
 // answers (src/save.ts).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { GameSettings, MapMarker, Texture, Value, World } from "@origingame/engine";
+import type { GameSettings, MapMarker, RaceSplit, Texture, Value, World } from "@origingame/engine";
 import { Phase, Prefs, Race, Racer, Sound, TapeChunk } from "./components.ts";
-import { deltaText, lapText, startRace } from "./race.ts";
+import { lapText, seconds, startRace } from "./race.ts";
 import { replayAnswers, saveStart, SNAPSHOT_AT, watch } from "./replay.ts";
 import { answers, readAll, readBoard } from "./save.ts";
 import { uiSounds } from "./sound.ts";
@@ -83,35 +85,19 @@ function saveSettings(world: World, p: PrefsV): void {
   p.saves += 1;
 }
 
-/** Seconds as s.mmm, for a split. */
-function secs(ticks: number): string {
-  const ms = Math.round((ticks * 1000) / 60);
-  return `${Math.floor(ms / 1000)}.${String(ms % 1000).padStart(3, "0")}`;
-}
-
 function capsule(id: string, build: () => void): void {
   og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
 }
 
-/** The sector times: green under the record's, red over, accent while it is the one being driven. */
-function sectors(world: World, r: RaceV): void {
+/** The lap's sectors as the HUD's splits: each one's time once crossed, and its delta against the record's sector. */
+function splits(world: World, r: RaceV): RaceSplit[] {
   const mine = [r.split1, r.split2 > 0 ? r.split2 - r.split1 : 0, 0];
   const recs = [r.recordS1, r.recordS2, r.recordS3];
-  const driving = r.split1 === 0 ? 0 : r.split2 === 0 ? 1 : 2;
-  og.ui.anchor("Sectors", { anchor: "top", offsetY: 12, direction: "column", cross: "center", gap: S.xs }, () => {
-    capsule("Splits", () => {
-      for (let i = 0; i < 3; i++) {
-        const t = mine[i]!;
-        const tone = t === 0 ? (i === driving && r.phase === Phase.Racing ? "accent" : "fgSubtle") : recs[i]! === 0 ? "fg" : t <= recs[i]! ? "success" : "danger";
-        og.ui.label(`S${i + 1}`, say(world, "hud.sector", { n: i + 1, time: t === 0 ? "--.---" : secs(t) }), { font: "mono", nowrap: true, color: { token: tone } });
-      }
-    });
-    og.ui.transition("Delta", r.deltaShow > 0 && r.deltaAt > 0, { kind: "pop" }, () => {
-      capsule("DeltaCapsule", () => {
-        og.ui.label("DeltaText", say(world, r.deltaAt === 3 ? "hud.deltaLap" : "hud.deltaSplit", { n: r.deltaAt, delta: deltaText(r.delta) }), { font: "mono", step: "xl", nowrap: true, color: { token: r.delta <= 0 ? "success" : "danger" } });
-      });
-    });
-  });
+  return mine.map((t, i) => ({
+    label: say(world, "hud.split", { n: i + 1 }),
+    time: t === 0 ? null : seconds(t),
+    delta: t === 0 || recs[i]! === 0 ? null : seconds(t - recs[i]!),
+  }));
 }
 
 function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
@@ -127,21 +113,31 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
   const h = og.ui.racingHud("Hud", {
     speed: Math.round(r.kmh),
     maxSpeed: 180,
-    unit: say(world, "hud.kmh"),
     gear: r.gear === 0 ? "R" : `${r.gear}`,
     lap: Math.min(LAPS, r.lap),
     laps: LAPS,
-    position: 1,
-    racers: 1,
+    // A time trial: no place, no boost.
+    racers: 0,
+    boostMeter: false,
     time: lapTicks / 60,
-    best: r.record > 0 ? r.record / 60 : null,
+    // The last split's (or the line's) delta against the record, for three seconds.
+    delta: r.deltaShow > 0 && r.deltaAt > 0 ? seconds(r.delta) : null,
+    best: r.record > 0 ? seconds(r.record) : null,
+    splits: splits(world, r),
     map: { texture: r.minimap as unknown as Texture, markers, size: 150 },
     touch,
+    // Every word of the HUD from the tables.
+    unit: say(world, "hud.kmh"),
+    lapLabel: say(world, "hud.lap"),
+    bestLabel: say(world, "hud.best"),
+    pauseLabel: say(world, "hud.pause"),
+    brakeLabel: say(world, "hud.brake"),
+    leftLabel: say(world, "hud.left"),
+    rightLabel: say(world, "hud.right"),
   });
   // Touch: the arrows steer, Brake brakes; the throttle is held for the player.
   r.touchSteer = touch ? h.moveX : 0;
   r.touchThrottle = touch ? (h.held.includes("brake") ? -1 : 1) : 0;
-  sectors(world, r);
   if (r.phase === Phase.Countdown) {
     const n = Math.ceil(r.countdown / 60);
     og.ui.anchor("Count", { anchor: "center", direction: "column", cross: "center" }, () => {
@@ -230,11 +226,6 @@ function settings(world: World, r: RaceV, p: PrefsV): void {
   }
 }
 
-/** The run's points: 100,000 over its total seconds (a 1:36.2 run scores 1,039). */
-export function points(ticks: number): number {
-  return ticks === 0 ? 0 : Math.round(100000 / (ticks / 60));
-}
-
 /** Stars for the run's best lap against the medal times (seconds). */
 export const MEDALS = [40, 37, 35] as const;
 export function stars(r: RaceV): number {
@@ -248,16 +239,18 @@ function results(world: World, r: RaceV): "again" | "board" | "title" | "replay"
   const res = og.ui.resultsScreen("Results", {
     open: r.phase === Phase.Finished && r.finishedFor >= RESULTS_DELAY,
     title: say(world, r.replaying ? (r.replayMatched === 1 ? "results.replayed" : "results.replayOff") : r.newRecord ? "results.record" : "results.finished"),
-    // The template counts a whole number up and shows no unit (FINDINGS #10): the run's points, 100,000 over the total seconds.
-    score: points(r.total),
-    best: r.recordPoints,
-    newBest: r.newRecord,
-    bestLabel: say(world, "results.best", { best: r.record > 0 ? lapText(r.record) : "—" }),
+    // The race's time is the headline, counted up as m:ss.mmm; the best is the session's fastest race before it (none on the first).
+    format: "time",
+    scoreLabel: say(world, "results.total"),
+    score: seconds(r.total),
+    best: seconds(r.totalBefore),
+    newBest: r.totalBefore > 0 && r.total < r.totalBefore,
+    bestLabel: say(world, "results.best"),
     newBestLabel: say(world, "results.newBest"),
     stars: stars(r),
     maxStars: 3,
     stats: [
-      { label: say(world, "results.total"), value: lapText(r.total) },
+      { label: say(world, "results.lapRecord"), value: r.record === 0 ? "—" : lapText(r.record) },
       { label: say(world, "results.bestLap"), value: r.runBest === 0 ? "—" : lapText(r.runBest) },
       ...lapsText,
       { label: say(world, "results.rank"), value: r.rank > 0 ? `#${r.rank}` : "—" },

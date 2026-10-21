@@ -1,8 +1,9 @@
 // German, every screen: the title, the leaderboard, the race's HUD, pause,
 // the settings and the results, read from dump_ui. No word of the English
 // table is left on them (the ones both languages share aside), and no
-// focusable control is unnamed. The racing HUD's own words stay English:
-// it has no field for them (FINDINGS #8), asserted here so a fix shows.
+// focusable control is unnamed. The racing HUD's own words are the
+// table's too (RacingHudDesc's labels, FINDINGS #8 fixed): `Runde` under
+// the lap, no `lap`, no boost meter.
 import { playtest } from "@origingame/engine/playtest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -21,10 +22,10 @@ function english(): string[] {
 }
 
 /** Strings both tables share: names, units and the words German borrows. */
-const SHARED = new Set(["English", "Deutsch", "Meridian Loop", "km/h", "Audio", "Vibration"]);
+const SHARED = new Set(["English", "Deutsch", "Meridian Loop", "km/h", "Audio", "Vibration", "Pause"]);
 
 export default playtest({
-  name: "every screen in German: no English left of the game's table, every control named; the racing HUD's own words still English",
+  name: "every screen in German: no English left of the game's table, the racing HUD's own words included, every control named",
   commands: script(
     "0.3:language:de",
     "1:dump_ui:title.json",
@@ -61,11 +62,13 @@ export default playtest({
     t.ok(texts(run, "pause.json").includes("Pausiert"), "pause in German");
     t.ok(texts(run, "settings.json").includes("Einstellungen"), "the settings in German");
     t.ok(texts(run, "results.json").includes("Im Ziel") || texts(run, "results.json").includes("Neuer Rundenrekord"), "the results in German");
-    // The racing HUD's own words (FINDINGS #8): no RacingHudDesc field to pass them.
+    t.ok(texts(run, "results.json").includes("Gesamtzeit"), "the results' headline is the total time, in German");
+    // The racing HUD's own words (FINDINGS #8): its desc's, from the table.
     const hud = texts(run, "hud.json");
-    t.ok(hud.includes("lap"), "the racing HUD still says `lap` (FINDINGS #8)");
-    t.ok(hud.includes("Boost"), "and `Boost`, a meter a time trial has no use for (FINDINGS #8)");
-    t.ok(hud.includes("Pause"), "and its pause button `Pause` (FINDINGS #8)");
+    t.ok(hud.includes("Runde"), "the racing HUD says `Runde` under the lap");
+    t.ok(!hud.includes("lap"), "not `lap`");
+    t.ok(!hud.some((s) => s.includes("Boost")), "and has no boost meter (a time trial)");
+    t.ok(hud.includes("S1") && hud.includes("S2") && hud.includes("S3"), "its splits are the HUD's: S1, S2, S3");
     for (const f of ["title-race.json", "pause-race.json", "settings-race.json", "results-race.json"]) t.equal(race(run, f).a11yUnnamed, 0, `no focusable control unnamed (${f.replace("-race.json", "")})`);
   },
 });

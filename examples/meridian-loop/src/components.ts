@@ -58,8 +58,9 @@ export const Race = defineResource("Race", {
   recordS1: u32(0),
   recordS2: u32(0),
   recordS3: u32(0),
-  /** The best run's points (the results' score). */
-  recordPoints: u32(0),
+  /** The session's fastest race (ticks, 0 none yet), and what it was before the race just finished, which the results compare with. */
+  bestTotal: u32(0),
+  totalBefore: u32(0),
   /** The last split's delta against the record (ticks, negative faster) and which split (1, 2, 3 for the line). */
   delta: i32(0),
   deltaAt: u32(0),
@@ -191,6 +192,8 @@ export const Tuning = defineResource("Tuning", {
   rollDamp: f32(0.12, { min: 0, max: 1, tunable: true }),
   /** Extra pull towards the road with all four wheels down, m/s² per (m/s)². */
   downforce: f32(0.004, { min: 0, max: 0.05, tunable: true }),
+  /** In the air, the yaw rate asked of the chassis per radian between where it points and where it flies (1/s); 0 is none. */
+  airAlign: f32(4, { min: 0, max: 20, tunable: true }),
   cameraBack: f32(7.5, { min: 2, max: 30, unit: "m", tunable: true }),
   cameraHeight: f32(2.6, { min: 0.5, max: 20, unit: "m", tunable: true }),
   cameraLag: f32(0.12, { min: 0, max: 2, unit: "s", tunable: true }),

@@ -134,8 +134,8 @@ function endLap(world: World, r: RaceV, prefs: Value<typeof Prefs>): void {
     r.total = r.clock;
     hideGhost(world);
     r.ghostTick = 0;
-    const pts = Math.round(100000 / (r.total / 60));
-    if (pts > r.recordPoints) r.recordPoints = pts;
+    r.totalBefore = r.bestTotal;
+    if (r.bestTotal === 0 || r.total < r.bestTotal) r.bestTotal = r.total;
     r.ghostActive = false;
     if (r.replaying) {
       r.replayMatched = r.total === r.replayTotal ? 1 : 2;
@@ -171,10 +171,9 @@ export function lapText(ticks: number): string {
   return `${m}:${s < 10 ? "0" : ""}${s}.${f < 10 ? "00" : f < 100 ? "0" : ""}${f}`;
 }
 
-/** A delta in ticks as ±s.mmm. */
-export function deltaText(ticks: number): string {
-  const ms = Math.round((Math.abs(ticks) * 1000) / 60);
-  return `${ticks < 0 ? "-" : "+"}${Math.floor(ms / 1000)}.${String(ms % 1000).padStart(3, "0")}`;
+/** Whole ticks as seconds cut to the millisecond as lapText rounds them, for og.ui's times (m:ss.mmm). */
+export function seconds(ticks: number): number {
+  return Math.round((ticks * 1000) / 60) / 1000;
 }
 
 /** The race's tick: countdown, progress, splits, laps, resets, the poses, the ghost. */
