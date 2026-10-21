@@ -64,7 +64,7 @@ tree {
     }
     sequence bite {
       check sees
-      check targetDistance below 0.9
+      check targetDistance below Tuning.slimeReach   # compared with a resource field, read every think
       command bite {                 # the game's command, the agent's handle first
         cooldown 1
       }
@@ -90,12 +90,17 @@ tree {
 - Checks read the blackboard's built-in keys (`sees`, `heard`, `target`,
   `targetDistance`, `lastSeen`, `sinceSeen`, `heardAt`, `elapsed`), your
   own keys (`key alert 0`, `set alert 1`), `Component.field` of the agent
-  and `Resource.field`. An unknown operand fails its check and logs one
-  warning naming the fix: read the run's warnings.
+  and `Resource.field`, compared with a literal or with another key or
+  field (`check Foe.hp below Tuning.fleeHp`). An unknown operand fails its
+  check and logs one warning naming the fix: read the run's warnings.
 - Keep damage, death, loot and knock-back in the game: a behaviour raises
   `command bite` and the game's command handler applies it. Tune numbers
-  live in components and resources (`speed Tuning.slimeSpeed`), never as
-  copies in the .ogt.
+  live in components and resources (`speed Tuning.slimeSpeed`, `check
+  targetDistance below Tuning.slimeReach`), never as copies in the .ogt.
+- A new run or a respawn: put the agent back (its Transform, its
+  NavAgent's target with `seeking: false`) and call
+  `og.ai.restart(world, agent)`: a machine starts again in its initial
+  state, a tree at its root, timers, cooldowns and the blackboard reset.
 - Telegraph attacks: a `wait 0.3` or a wind-up state before the command
   (og-feel §2). An enemy that hits on the tick it arrives feels unfair.
 - `thinkEvery 2` or `3` for crowds: agents are staggered, so the cost
@@ -107,8 +112,9 @@ tree {
   a little past the screen's half width, `occlude: true` so walls hide.
   Before an agent first moves its cone points the way its Transform faces.
 - Hearing: spatial `og.AudioSource`s that start within `hearing × volume`
-  are heard; `og.ai.noise(world, { position, loudness })` for silent events
-  (a thrown rock, a door).
+  are heard, except the agent's own (its entity's and its children's: an
+  imp's chitter does not alert the imp); `og.ai.noise(world, { position,
+  loudness, source })` for silent events (a thrown rock, a door).
 - `memory` is how long a lost target stays the target; `lastSeen` lets a
   search state walk to where it was.
 
@@ -125,6 +131,10 @@ tree {
   `templates/archetypes/tower-defense/tests/maze.og.ts` a flow field
   re-routed round placements and a placement refused because `findPath`
   no longer reaches the goal.
+  `templates/archetypes/third-person` is the 3D action pattern: sentinels on
+  a cooked navmesh with behaviour machines (patrol, alert, grab) raising
+  the game's commands, restarted for a new run (`tests/sentinels.og.ts`,
+  `tests/restart.og.ts`).
   Include the negative: a wall that hides the hero, a target outside the
   cone.
 - Determinism: a playtest with `runs: 2` over a chase must end on one hash.

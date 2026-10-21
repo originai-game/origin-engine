@@ -586,6 +586,9 @@ such as speed pick the motion), `og.IkChain` turns a chain of bones to a
 target after the clips, `og.Blendshapes` weighs morph targets, and
 `og.AnimationEvent` reports a clip's named frames. Root motion is a
 `Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
+For a 3D action game, `templates/archetypes/third-person` is the pattern:
+a CharacterController over a level, clips retargeted at cook and at run
+time, blend trees, a navmesh and behaviour machines (og-ai).
 `og.anim.clip` finds a clip by name, a model's as a flipbook's (§8):
 
 ```ts

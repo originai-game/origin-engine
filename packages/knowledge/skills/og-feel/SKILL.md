@@ -325,6 +325,10 @@ values with `get:` (og-build §1), which logs the value and writes it as JSON:
 `templates/archetypes/topdown`, `runner` and `match3` do all of this, and
 `tower-defense`, `roguelike`, `idle` and `rhythm` too (each README's feel
 table names where); read their `src/` and `tests/` for working patterns.
+For a 3D action game, `templates/archetypes/third-person` is the pattern: a
+CharacterController over a level, clips retargeted at cook and run time
+through blend trees, and navmesh enemies on behaviour machines whose
+grabs land with hit stop and shake.
 
 ## 14. Feel, measured: `og polish`
 
