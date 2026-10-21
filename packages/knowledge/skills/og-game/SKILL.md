@@ -1457,7 +1457,11 @@ to 64 KiB a key: a record in one key, the world in a slot
   its tick: restored, the next step completes that tick (the systems
   after the saver and the physics step), so a replay from it (the
   countdown's world restored, the taped inputs fed again) runs the saved
-  race tick for tick. Take it as the system's last write of the tick:
+  race tick for tick. The command channel's scheduled steps keep their
+  remaining delays across a restore (og.Time takes the saved tick), so a
+  playtest that taps Continue onto a save of a later tick, or an earlier
+  one, runs the rest of its script and ends at its last step or `quit`.
+  Take it as the system's last write of the tick:
   what the system does after the call is not in it. A saved type whose fields changed since (a
   release added one) is refused naming the type and fields; pass
   `{ migrate: true }` to map it by field name (new fields take their

@@ -1491,10 +1491,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // the selection a copy takes), `copy`: text a Ctrl/Cmd+C or X took.
     // `stepMs`: wall milliseconds a tick took (the mean of this frame's, or
     // the last frame's that ticked), `renderMs`: the last render's.
+    // `pending`: the command channel's steps still to run (a script has
+    // ended when it is 0, wherever a restore moved og.Time).
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
+        "pending": probe.steps_left(),
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);

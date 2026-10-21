@@ -223,7 +223,8 @@ async function runOne(file: string, entry: string, root: string, out: string): P
       quit = true;
       break;
     }
-    if ((answer.tick ?? 0) > report!.untilTick) break;
+    // Its last step has run (a restore may have moved og.Time, and the steps with it).
+    if ((answer.pending ?? ((answer.tick ?? 0) > report!.untilTick ? 0 : 1)) === 0) break;
   }
   drain();
   const wav = join(out, "audio.wav");

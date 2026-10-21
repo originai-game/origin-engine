@@ -512,6 +512,14 @@ impl Probe {
         self.queue.len()
     }
 
+    /// Steps still to run: those scheduled and a screenshot waiting for
+    /// its frame. A host running a script ends it when this is 0 (or on
+    /// `quit`), not at the tick the script's last step was scheduled for,
+    /// which a restore moving og.Time ([`Probe::shift_schedule`]) moves.
+    pub fn steps_left(&self) -> usize {
+        self.queue.len() + usize::from(self.shot.is_some())
+    }
+
     /// Files commands produced since the last call, for the host to write.
     pub fn take_outputs(&mut self) -> Vec<Output> {
         std::mem::take(&mut self.outputs)

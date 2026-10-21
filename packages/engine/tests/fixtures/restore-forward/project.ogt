@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# A save restored by a command moves og.Time past the tick the script's
+# last step was scheduled for (tests/og-run.test.ts, brasswick FINDINGS #13).
+name "Restore forward"
+id "restore-forward"
+engine "0.0.1"
+entry "src/main.ts"
+profile "2d"
+tick 30
+seed 3
