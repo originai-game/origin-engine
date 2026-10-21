@@ -293,7 +293,7 @@ export const Areas = defineSystem("Areas", { reads: [Area], writes: [Game, og.Li
     }
   }
   if (found !== g.area) {
-    if (g.phase === Phase.Play && found >= 0 && !g.start && time.tick > 1) og.ui.toast(world, say(world, key));
+    if (g.phase === Phase.Play && found >= 0 && time.tick > 1) og.ui.toast(world, say(world, key));
     g.area = found;
     g.arena = key === "area.arena";
   }
