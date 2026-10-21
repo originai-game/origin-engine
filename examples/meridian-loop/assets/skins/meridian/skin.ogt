@@ -1,0 +1,110 @@
+type skin
+version 1
+---
+# Meridian Loop's skin: the engine's neon pack (templates/ui-kit), copied and retinted by tools/make-assets.ts.
+name "meridian"
+base dark
+atlas "atlas.png" 384 256
+scale 1
+palette {
+  bg "#07020f"
+  bgSubtle "#0e0520"
+  surface "#1b0f36"
+  surfaceRaised "#1b0f36"
+  surfaceHover "#26164a"
+  materialThick "#1b0f36"
+  materialRegular "#1b0f36eb"
+  materialThin "#1b0f36d9"
+  fg "#fbefff"
+  fgMuted "#cdb6ea"
+  fgSubtle "#8d76ad"
+  fgInverse "#07020f"
+  fill "#7a4fe6"
+  fillStrong "#7650d8"
+  border "#4a2f86"
+  borderStrong "#b18cff"
+  accent "#d4127f"
+  accentHover "#e0258f"
+  accentActive "#b80e6d"
+  accentFg "#fbefff"
+  accentInk "#ff8ac8"
+  accentSoft "#c81ebc40"
+  focus "#36e8ff"
+  thumb "#5a3aa6"
+  scrim "#030008cc"
+  success "#3dffb0"
+  warn "#ffd23d"
+  danger "#ff3d6e"
+  info "#36e8ff"
+  shadow "#000000aa"
+}
+radius {
+  control 8
+  field 6
+  block 8
+  card 10
+  panel 14
+  sheet 14
+  button 12
+}
+ramp {
+  body 15 20
+  meta 13 18
+  caption 13 18
+  lg 19 24
+  xl 22 28
+  xl2 26 30
+  xl3 30 34
+  displaySm 32 36
+  displayMd 40 44
+  displayLg 50 54
+}
+durations {
+  instant 90
+  fast 140
+  base 220
+  slow 380
+}
+fonts {
+  body "Rajdhani-Bold.ttf"
+  display "ChakraPetch-BoldItalic.ttf"
+  numeric "Orbitron-Medium.ttf"
+}
+icons "icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 22 authored
+slice card 104 4 64 64 14 tint
+slice button 172 4 48 48 16 tint
+slice buttonHover 224 4 48 48 16 tint
+slice buttonPressed 276 4 48 48 16 tint
+slice buttonDisabled 328 4 48 48 16 tint
+slice field 4 104 48 48 10 tint
+slice slot 56 104 48 48 12 tint
+slice tooltip 108 104 32 32 10 tint
+slice capsule 144 104 32 32 14 tint
+slice track 180 104 32 16 6 tint
+slice fill 216 104 32 16 6 tint
+soft 252 104 64 64 24
+corner 320 104 32 32 20 20 accent 2
+corners card
+divider 4 172 128 24 128 24 accent
+flourish 136 172 64 24 36 16 accent 0
+tile 204 172 64 64 48 48 0.12 10 panel
+shadow panel 0 0 0 0 "#00000000"
+glow button 6 accent 0.35
+glow capsule 4 accent 0.25
+glow panel 14 accent 0.18
+glow slot 3 focus 0.2
+textGlow display 2.0 accent 0.7
+textGlow numeric 1.2 focus 0.5
+press 0.96 0.96 0
+hover 0 1.04
+motion {
+  enter pop
+  stagger 35
+  toast slideLeft
+  progress 260
+  shake 7
+  pop 0.16
+}
