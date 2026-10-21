@@ -3,7 +3,9 @@ version 1
 ---
 # Hollowbell's skin: a copy of the engine's pixel style pack (templates/ui-kit/assets/skins/pixel;
 # CC0 art, OFL fonts; LICENSES.md), recoloured to the game's palette (palettes/hollowbell.hex):
-# the cave's violet ground, cream ink, the bell's gold as the one accent.
+# the cave's violet ground, cream ink, the bell's pale gold as the one accent,
+# and a type ramp in whole multiples of DotGothic16's 16 px grid, so its
+# one-pixel strokes stay whole (at 13 or 22 px they blur and lose contrast).
 # Its fallback is the game's own Chinese subset (tools/subset-font.py).
 name "hollowbell"
 base dark
@@ -26,13 +28,13 @@ palette {
   fillStrong "#4b4269"
   border "#5b4f7d"
   borderStrong "#a79ccf"
-  accent "#e0ae3c"
-  accentHover "#f7dc74"
-  accentActive "#b07a2a"
+  accent "#f7dc74"
+  accentHover "#fff4c4"
+  accentActive "#e0ae3c"
   accentFg "#0b0a12"
-  accentInk "#f7dc74"
-  accentSoft "#e0ae3c33"
-  focus "#f7dc74"
+  accentInk "#fff4c4"
+  accentSoft "#f7dc7433"
+  focus "#fff4c4"
   thumb "#5b4f7d"
   scrim "#0b0a12b3"
   success "#8cc65e"
@@ -51,20 +53,20 @@ radius {
   button 0
 }
 ramp {
-  xs 12 16
-  meta 13 18
-  caption 13 18
-  sm 14 18
+  xs 16 18
+  meta 16 18
+  caption 16 18
+  sm 16 20
   body 16 20
   reading 16 22
   base 16 22
-  lg 18 24
-  xl 22 28
-  xl2 24 28
-  xl3 28 32
+  lg 16 24
+  xl 32 36
+  xl2 32 36
+  xl3 32 36
   displaySm 32 36
-  displayMd 36 40
-  displayLg 44 48
+  displayMd 48 52
+  displayLg 48 52
 }
 durations {
   instant 80

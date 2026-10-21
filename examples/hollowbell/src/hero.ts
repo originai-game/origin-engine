@@ -114,11 +114,16 @@ export const Control = defineSystem(
         pc.down[i] = control && down ? 1 : 0;
 
         if (control && move !== 0 && hero.attack[i] === 0) g.facing = move > 0 ? 1 : -1;
-        if (control && swing && hero.attack[i] === 0) {
+        // A swing pressed while busy is buffered for 10 ticks and taken as soon as Wren is free (og-feel §1).
+        if (swing && playing) hero.swingBuffer[i] = 10;
+        else if (hero.swingBuffer[i]! > 0) hero.swingBuffer[i] = hero.swingBuffer[i]! - 1;
+        if (control && hero.swingBuffer[i]! > 0 && hero.attack[i] === 0) {
+          hero.swingBuffer[i] = 0;
           hero.attack[i] = 1;
           g.swings += 1;
           g.sfx |= Sound.Swing;
         }
+        if (control && down && (input.pressed("ArrowDown") || input.pressed("KeyS") || pad.pressed("down", 0)) && pc.grounded[i] === 1) g.sfx |= Sound.Drop;
         if (control && up) {
           if (g.nearMole) {
             g.talking = true;
@@ -129,6 +134,7 @@ export const Control = defineSystem(
               g.ringing = 1;
             } else {
               og.ui.toast(world, say(world, "hud.need", { n: 3 - g.chimes }), { tone: "warn" });
+              g.sfx |= Sound.Refuse;
             }
           }
         }

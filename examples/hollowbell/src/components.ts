@@ -35,7 +35,7 @@ export const Draw = { sky: -40, map: -20, pools: -14, props: -5, items: 2, enemi
 /** Sound requests: bits of Game.sfx that the Voices system plays once each. */
 export const Sound = {
   Jump: 1, Land: 2, Step: 4, Swing: 8, Hit: 16, Hurt: 32, Glimmer: 64, Chime: 128,
-  Buy: 256, Checkpoint: 512, Boss: 1024, Win: 2048, Bell: 4096,
+  Buy: 256, Checkpoint: 512, Boss: 1024, Win: 2048, Bell: 4096, Refuse: 8192, Drop: 16384,
 } as const;
 
 /** Effect requests: bits of Game.fx, and the Fx row's kind. */
@@ -199,6 +199,7 @@ export const Hero = defineComponent("Hero", {
   clip: u32(0, { doc: "The flipbook clip shown (HERO_CLIP)." }),
   wasGrounded: bool(true),
   airJumped: bool(false),
+  swingBuffer: u32(0, { unit: "ticks", doc: "A swing pressed while busy (mid-swing, thrown back), taken when free within 10 ticks." }),
 });
 
 /** An enemy: a beetle walks its beat, a moth hovers and dives, the gloam charges. */

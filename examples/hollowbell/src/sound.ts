@@ -26,6 +26,8 @@ export function spawnVoices(world: World, g: Value<typeof Game>): void {
     ["audio/boss.ogt", Sound.Boss, 0.8, 230],
     ["audio/win.ogt", Sound.Win, 0.75, 230],
     ["audio/bell.wav", Sound.Bell, 0.9, 235],
+    ["audio/ui-error.ogt", Sound.Refuse, 0.5, 180],
+    ["audio/step.ogt", Sound.Drop, 0.35, 120],
   ];
   for (const [path, bit, volume, priority] of voices) {
     const v = must(world.spawn({ name: `sfx-${bit}` }));
