@@ -22,8 +22,8 @@ import { must } from "./world.ts";
 
 /**
  * The courier's graph: p0 the speed across the ground, p1 1 in the air. The
- * `type animgraph` grammar is og-anim's README, outside the knowledge
- * package: these lines follow the third-person archetype's (FINDINGS #2).
+ * `type animgraph` grammar is og-game §9 since wave 11 (FINDINGS #2, fixed);
+ * these lines follow the third-person archetype's.
  */
 const HERO_GRAPH = `type animgraph
 version 1
