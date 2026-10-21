@@ -14,8 +14,28 @@
 // The engine side: the frame answer's `text` (`{ path, rect, multiline,
 // selection, composing }` or null) and `copy` (text a copy took), which the
 // Worker forwards as `{ type: "text", target }` and `{ type: "copy", text }`.
+//
+// For assistive technology the textarea is the field while it has the
+// focus: it is named after the field's node in the accessibility tree
+// (a11y.ts: its name, its placeholder as aria-placeholder, its text as the
+// description), and the mirror's own element for the field steps aside
+// (aria-hidden) while its parent owns the textarea (aria-owns), so a screen
+// reader meets one text box, inside the dialog it belongs to. While no field
+// is focused the textarea is aria-hidden; it never holds the focus hidden
+// (Chrome blocks that and a reader lands on an unnamed box:
+// examples/WEB-FINDINGS.md #7).
 
 import type { InjectedInput } from "./input.ts";
+
+/** What the textarea is named from: the accessibility mirror (a11y.ts A11yMirror). */
+export interface TextLabels {
+  /** The mirrored node at `path`: its name, placeholder (description) and text (value). */
+  node(path: string): { readonly name: string; readonly description: string; readonly value: string } | undefined;
+  /** The textarea stands in for the field at `path` (null: for none). */
+  standIn(path: string | null, element: HTMLElement | null): void;
+}
+
+let entries = 0;
 
 /** The engine's focused text control, as the Worker reports it. */
 export interface TextTarget {
@@ -36,6 +56,7 @@ export class TextEntry {
   #canvas: HTMLCanvasElement;
   #send: (event: InjectedInput) => void;
   #target: TextTarget | null = null;
+  #labels: TextLabels | undefined;
   #composing = false;
   /** The editing key pressed in this task, so a virtual keyboard's delete without one still deletes. */
   #keyed = "";
@@ -43,10 +64,12 @@ export class TextEntry {
   #copiedAt = 0;
   #off: Array<() => void> = [];
 
-  constructor(canvas: HTMLCanvasElement, send: (event: InjectedInput) => void) {
+  constructor(canvas: HTMLCanvasElement, send: (event: InjectedInput) => void, labels?: TextLabels) {
     this.#canvas = canvas;
     this.#send = send;
+    this.#labels = labels;
     const area = canvas.ownerDocument.createElement("textarea");
+    area.id = `og-text-entry${entries++ ? `-${entries}` : ""}`;
     area.setAttribute("aria-hidden", "true");
     area.setAttribute("autocomplete", "off");
     area.setAttribute("autocapitalize", "off");
@@ -129,8 +152,11 @@ export class TextEntry {
     const area = this.element;
     if (!target) {
       if (had && area.ownerDocument.activeElement === area) area.blur();
+      this.relabel();
       return;
     }
+    // Named and visible to assistive technology before it takes the focus.
+    this.relabel();
     const box = this.#canvas.getBoundingClientRect();
     const sx = box.width / (this.#canvas.clientWidth || box.width || 1);
     const sy = box.height / (this.#canvas.clientHeight || box.height || 1);
@@ -147,6 +173,34 @@ export class TextEntry {
       // a key's character and its typed text never both type.
       this.#send({ kind: "text", text: "" });
     }
+  }
+
+  /**
+   * Name the textarea after the focused field's node (call when the
+   * mirrored tree changed): or hide it from assistive technology while no
+   * field is focused.
+   */
+  relabel(): void {
+    const area = this.element;
+    const target = this.#target;
+    const set = (name: string, value: string | null) => {
+      if (value === null) area.removeAttribute(name);
+      else if (area.getAttribute(name) !== value) area.setAttribute(name, value);
+    };
+    if (!target) {
+      for (const a of ["aria-label", "aria-placeholder", "aria-description", "aria-multiline"]) set(a, null);
+      set("aria-hidden", "true");
+      this.#labels?.standIn(null, null);
+      return;
+    }
+    const node = this.#labels?.node(target.path);
+    set("aria-hidden", null);
+    // Unmirrored (no tree yet): the field's own id stands for its name.
+    set("aria-label", node?.name || target.path.split("/").pop() || null);
+    set("aria-placeholder", node?.description || null);
+    set("aria-description", node?.value || null);
+    set("aria-multiline", target.multiline ? "true" : "false");
+    this.#labels?.standIn(target.path, area);
   }
 
   /** The engine copied without a copy event (a game's own copy): best effort. */
@@ -188,6 +242,7 @@ export class TextEntry {
 
   dispose(): void {
     for (const off of this.#off.splice(0)) off();
+    this.#labels?.standIn(null, null);
     this.element.remove();
   }
 }

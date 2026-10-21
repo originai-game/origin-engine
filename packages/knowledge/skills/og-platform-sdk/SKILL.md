@@ -93,12 +93,36 @@ trying.
 
 - Read saves on the first tick and show defaults until they answer;
   never block the title on the platform.
+- Settings are a pair: a game that calls `saveSettings` also calls
+  `loadSettings` on its first tick and, when it answers, applies every
+  field it saves, through the same code its settings screen uses. Ask
+  for the saved language with `og.i18n.setLocale` even when it matches
+  the default (the host's own locale may be another). Saving alone
+  passes every test that never relaunches, and every reload comes back
+  in the defaults. A `store: "keep"` playtest whose relaunch reads the
+  setting back proves it (§4; `templates/ui-kit/tests/settings-saved.og.ts`).
 - Save on meaningful moments (a new best, a level done, settings closed),
   not every tick: writes are rate limited.
 - Never store anything the game can recompute, and never a secret: the
   store belongs to the player, not to the game.
 - The engine exposes no identity (no player id, name or account): a game
   that needs a display name asks for it (§5).
+
+The settings read, as the UI kit does it (`followSettings` in
+`templates/ui-kit/src/main.ts`, called by its system every tick):
+
+```ts
+if (time.tick === 0) {
+  d.settingsRequest = og.platform.loadSettings(world);   // og.settings, answered later
+} else if (d.settingsRequest !== 0) {
+  const answer = og.platform.result(world, d.settingsRequest);
+  if (answer !== null) {
+    d.settingsRequest = 0;
+    const saved = answer.ok ? (answer.data as { value?: unknown } | null)?.value : null;
+    if (saved && typeof saved === "object") takeSettings(world, d, saved as Partial<GameSettings>, true);  // volumes, language, contrast, motion
+  }
+}
+```
 
 ## 4. Test it
 

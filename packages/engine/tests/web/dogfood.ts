@@ -29,9 +29,10 @@
 // per frame as `og run` does natively, each screenshot compared with the
 // game's metal reference under og-tests' rule, and 600 more frames timed
 // (`--time 600`). A publish build has no command channel (og-build §6), so
-// the scripted sequence cannot run on the published page itself
-// (examples/WEB-FINDINGS.md #6: the page is driven by real clicks on the
-// controls the accessibility mirror locates instead).
+// a frames playtest made of game commands cannot run on the published page
+// itself; tests/web/published.ts runs a script of input and capture steps
+// there, on its own clock (examples/WEB-FINDINGS.md #6). The served page
+// and the mirror-driven input are tests/web/play-origin.ts, shared with it.
 //
 //   bun tests/web/dogfood.ts --project examples/hollowbell [--webgl] [--frames] [--no-play]
 //       [--no-build] [--no-isolation] [--throttle <Mbit/s>] [--out <dir>] [--chrome <path>]
@@ -44,20 +45,17 @@
 // Writes <out>/<id>/<tier>/dogfood.json and screenshots (default
 // dist/dogfood). Never fails on a finding: it records them.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { brotliCompressSync, constants } from "node:zlib";
 import { Browser, chromePath, type Page } from "./cdp.ts";
-import { readHeaders, TYPES } from "./serve.ts";
+import { findInMirror as FIND, keyEvent, MIRROR_TREE as TREE, OBSERVE_MIRROR as OBSERVE, playOrigin, pressAt, publish, publishedFiles, VK } from "./play-origin.ts";
 import { ogBin } from "../support/og-bin.ts";
-import { decodePng, type Image } from "../support/png.ts";
+import { compareFrames, decodePng, type Image } from "../support/png.ts";
 import { bundleGame } from "../../src/node/build.ts";
 import type { PlaytestDesc } from "../../src/playtest.ts";
 
 declare const Bun: {
-  serve(o: { port: number; hostname: string; fetch(r: Request): Response | Promise<Response> }): { port: number; stop(): void };
-  file(p: string): Blob;
   spawnSync(cmd: string[], o?: { cwd?: string; env?: Record<string, string | undefined>; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
 
@@ -156,36 +154,20 @@ const PLANS: Record<string, Plan> = {
 // ── 1. publish, as the author does ────────────────────────────────────
 const og = ogBin();
 const dist = join(work, id, "publish");
-function files(dir: string): Array<{ path: string; bytes: number; brotli: number }> {
-  const list: Array<{ path: string; bytes: number; brotli: number }> = [];
-  const walk = (d: string) => {
-    for (const name of readdirSync(d).sort()) {
-      const p = join(d, name);
-      if (statSync(p).isDirectory()) walk(p);
-      else {
-        const bytes = readFileSync(p);
-        list.push({ path: relative(dir, p), bytes: bytes.length, brotli: brotliCompressSync(bytes, { params: { [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_SIZE_HINT]: bytes.length } }).length });
-      }
-    }
-  };
-  walk(dir);
-  return list;
-}
 if (!args.includes("--no-build") || !existsSync(join(dist, "og-build.json"))) {
-  const t0 = performance.now();
-  const r = Bun.spawnSync([og, "build", project, "--publish", "--out", dist], { cwd: repo, env: { ...process.env, OG_ENGINE_PACKAGE: pkg }, stdout: "pipe", stderr: "pipe" });
-  const said = td.decode(r.stdout) + td.decode(r.stderr);
+  const r = publish({ og, project, dist, repo, pkg });
+  const said = r.said;
   writeFileSync(join(work, id, "og-build.txt"), said);
-  result["build"] = { exit: r.exitCode, ms: Math.round(performance.now() - t0), warnings: said.split("\n").filter((l) => /warn|warning|missing|single-threaded/i.test(l)) };
+  result["build"] = { exit: r.exit, ms: r.ms, warnings: said.split("\n").filter((l) => /warn|warning|missing|single-threaded/i.test(l)) };
   console.log(said);
-  if (r.exitCode !== 0) {
-    note(`og build --publish failed (exit ${r.exitCode})`);
+  if (r.exit !== 0) {
+    note(`og build --publish failed (exit ${r.exit})`);
     save();
     process.exit(1);
   }
 }
 const manifest = JSON.parse(readFileSync(join(dist, "og-build.json"), "utf8")) as Record<string, unknown>;
-const listed = files(dist);
+const listed = publishedFiles(dist);
 const sum = (f: (x: { path: string; bytes: number; brotli: number }) => boolean) => listed.filter(f).reduce((a, x) => ({ bytes: a.bytes + x.bytes, brotli: a.brotli + x.brotli }), { bytes: 0, brotli: 0 });
 result["package"] = {
   variant: manifest["variant"],
@@ -206,176 +188,20 @@ result["package"] = {
 save();
 
 // ── 2. the stand-in play origin ───────────────────────────────────────
-const GAME = { id: `${id.replace(/[^a-z0-9]/g, "")}01`.slice(0, 24), releaseId: "release_dogfood01" };
-const ROOT = `/play/${GAME.id}/${GAME.releaseId}/`;
-const rules = readHeaders(dist);
-type Call = { at: number; method: string; args: Record<string, unknown>; answer: unknown };
-const calls: Call[] = [];
-const reports: Array<{ kind: string; at: number; keepalive?: boolean }> = [];
-const missing: string[] = [];
-const store = new Map<string, { value: unknown; revision: number }>();
-const boards = new Map<string, Array<{ name: string; score: number; me?: boolean }>>([
-  ["ascent", [{ name: "Wren", score: 212.4 }, { name: "Ilse", score: 245.0 }, { name: "Oswin", score: 301.9 }]],
-]);
-const t0 = performance.now();
-const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
-function answer(method: string, a: Record<string, unknown>): { ok: true; data: unknown } | { ok: false; error: Record<string, unknown> } {
-  switch (method) {
-    case "store.get": {
-      const s = store.get(String(a["key"]));
-      return { ok: true, data: { key: a["key"], value: s?.value ?? null, revision: s?.revision ?? 0 } };
-    }
-    case "store.set": {
-      const key = String(a["key"]);
-      const s = store.get(key);
-      if (typeof a["revision"] === "number" && a["revision"] !== (s?.revision ?? 0)) return { ok: false, error: { code: "conflict", message: "stale", retryable: false, revision: s?.revision ?? 0 } };
-      const revision = (s?.revision ?? 0) + 1;
-      store.set(key, { value: a["value"] ?? null, revision });
-      return { ok: true, data: { key, revision } };
-    }
-    case "store.list":
-      return { ok: true, data: { keys: [...store].map(([key, v]) => ({ key, revision: v.revision })) } };
-    case "leaderboard.submit": {
-      const board = String(a["board"] ?? "default");
-      const list = boards.get(board) ?? [];
-      list.push({ name: "You", score: Number(a["score"]), me: true });
-      const asc = a["order"] === "asc";
-      list.sort((x, y) => (asc ? x.score - y.score : y.score - x.score));
-      boards.set(board, list);
-      const rank = list.findIndex((e) => e.me) + 1;
-      return { ok: true, data: { ok: true, board, rank, best: Number(a["score"]) } };
-    }
-    case "leaderboard.top":
-    case "leaderboard.around": {
-      const board = String(a["board"] ?? "default");
-      const list = (boards.get(board) ?? []).map((e, i) => ({ rank: i + 1, name: e.name, score: e.score, me: !!e.me }));
-      const me = list.find((e) => e.me) ?? null;
-      return { ok: true, data: { board, sort: "asc", [method === "leaderboard.top" ? "top" : "entries"]: list.slice(0, Number(a["n"] ?? 10)), me } };
-    }
-    case "point.award":
-      return { ok: true, data: { granted: 0, balance: null } };
-    case "ai.mark":
-      return { ok: true, data: { marked: true } };
-    default:
-      return { ok: false, error: { code: "unavailable", message: `the stand-in answers no ${method}`, retryable: false } };
-  }
-}
 // --no-isolation: a host that sends the files without the build's COOP/COEP (the single-threaded engine).
-const isolated = !args.includes("--no-isolation");
-/** The shared link of --throttle: each chunk waits for its turn on it. */
-let linkFree = 0;
-const link = async (n: number) => {
-  const now = performance.now();
-  const start = Math.max(now, linkFree);
-  linkFree = start + (n * 8 * 1000) / (throttle * 1e6);
-  await wait(linkFree - now);
-};
-const isolation: Record<string, string> = isolated ? { "cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp", "cross-origin-resource-policy": "cross-origin" } : {};
-const server = Bun.serve({
-  port: 0,
-  hostname: "127.0.0.1",
-  async fetch(req) {
-    const url = new URL(req.url);
-    if (url.pathname.startsWith(`/__player/v2/${GAME.id}/${GAME.releaseId}/`)) {
-      const what = url.pathname.split("/").at(-1)!;
-      const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-      const at = Math.round(performance.now() - t0);
-      if (what === "hello")
-        return json(200, { og: "player", protocol: 2, kind: "hello", locale: "en", region: "global", started: false, paused: false,
-          capabilities: ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "point.award", "ai.mark"],
-          player: { token: "ogp_guest_dogfood", guest: true },
-          page: { title: id, back: `${url.origin}/portal/games/${id}`, portal: "https://portal.invalid" } });
-      if (what === "report") {
-        for (const m of (body?.["messages"] as Array<Record<string, unknown>>) ?? []) reports.push({ kind: String(m["kind"]), at, keepalive: req.keepalive });
-        return json(202, { accepted: ((body?.["messages"] as unknown[]) ?? []).length, rejected: 0 });
-      }
-      const method = String(body?.["method"]);
-      const a = (body?.["args"] ?? {}) as Record<string, unknown>;
-      const r = answer(method, a);
-      calls.push({ at, method, args: method === "store.set" ? { ...a, value: JSON.stringify(a["value"]).slice(0, 160) } : a, answer: r.ok ? JSON.stringify(r.data).slice(0, 200) : r.error });
-      return json(200, { og: "player", protocol: 2, kind: "result", id: body?.["id"], ...r, time: Date.now() });
-    }
-    if (url.pathname === `/portal/games/${id}`) return new Response("<!doctype html><title>game page</title><h1>game page</h1>", { headers: { "content-type": TYPES[".html"]! } });
-    if (!url.pathname.startsWith(ROOT)) {
-      missing.push(url.pathname);
-      return new Response("not found", { status: 404 });
-    }
-    let rel = url.pathname.slice(ROOT.length - 1);
-    if (rel.endsWith("/")) rel += "index.html";
-    const path = join(dist, rel);
-    if (!path.startsWith(dist) || !existsSync(path)) {
-      missing.push(url.pathname);
-      return new Response("not found", { status: 404 });
-    }
-    const headers: Record<string, string> = { "cache-control": "no-store", ...isolation };
-    for (const r of rules) if (r.pattern === rel || (r.pattern.endsWith("*") && rel.startsWith(r.pattern.slice(0, -1))) || (r.pattern.startsWith("/*.") && rel.endsWith(r.pattern.slice(2)))) Object.assign(headers, Object.fromEntries(Object.entries(r.headers).map(([k, v]) => [k.toLowerCase(), v])));
-    if (!isolated) {
-      delete headers["cross-origin-opener-policy"];
-      delete headers["cross-origin-embedder-policy"];
-    }
-    headers["content-type"] = TYPES[rel.slice(rel.lastIndexOf("."))] ?? "application/octet-stream";
-    // The platform's derived entry, only to a document load (server/src/play/entry.ts).
-    const opening = ["document", "iframe", "frame"].includes(req.headers.get("sec-fetch-dest") ?? "");
-    if (rel === "/index.html" && opening) {
-      const html = readFileSync(path, "utf8").replace(/<head[^>]*>/, (m) => `${m}<script id="__og-game-config">window.__OG_GAME=${JSON.stringify({ id: GAME.id, version: 1, releaseId: GAME.releaseId, protocol: 2 })}</script>`);
-      return new Response(html, { headers });
-    }
-    if (!throttle) return new Response(Bun.file(path), { headers });
-    const bytes = new Uint8Array(readFileSync(path));
-    headers["content-length"] = String(bytes.length);
-    await wait(40);
-    // Charged at its brotli size: a host sends it compressed (this server does not).
-    const listedFile = listed.find((x) => `/${x.path}` === rel);
-    const ratio = listedFile && listedFile.bytes > 0 ? listedFile.brotli / listedFile.bytes : 1;
-    let at = 0;
-    return new Response(new ReadableStream<Uint8Array>({
-      async pull(c) {
-        if (at >= bytes.length) return c.close();
-        const n = Math.min(16 * 1024, bytes.length - at);
-        await link(n * ratio);
-        c.enqueue(bytes.subarray(at, at + n));
-        at += n;
-      },
-    }), { headers });
-  },
-});
+const origin = playOrigin({ dist, id, isolated: !args.includes("--no-isolation"), throttle, files: listed });
+const { calls, reports, missing, store } = origin;
+const server = origin;
 
 // ── 3. play it ────────────────────────────────────────────────────────
 const plan = PLANS[id];
-const OBSERVE = `(() => {
-  window.__dog = { seen: {}, first: 0 };
-  const look = () => {
-    for (const el of document.querySelectorAll("[data-og-path]")) {
-      const p = el.getAttribute("data-og-path");
-      if (!(p in __dog.seen)) __dog.seen[p] = Math.round(performance.now());
-      const n = el.getAttribute("aria-label") || el.textContent || "";
-      if (n && !(("name:" + n) in __dog.seen)) __dog.seen["name:" + n] = Math.round(performance.now());
-    }
-  };
-  new MutationObserver(look).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-label"] });
-})();`;
-/** The mirror's element for `what`: a path, a path's last part, or a name. */
-const FIND = (what: string, nth = 0) => `(() => {
-  const w = ${JSON.stringify(what)};
-  const all = [...document.querySelectorAll("[data-og-path]")].filter((el) => {
-    const p = el.getAttribute("data-og-path");
-    const n = (el.getAttribute("aria-label") || (el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild.textContent : "") || "").trim();
-    return p === w || p.endsWith("/" + w) || n === w;
-  });
-  const el = all[${nth}];
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, path: el.getAttribute("data-og-path") };
-})()`;
-const TREE = `[...document.querySelectorAll("[data-og-path]")].map((el) => ({ path: el.getAttribute("data-og-path"), role: el.getAttribute("role"), name: (el.getAttribute("aria-label") || (el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild.textContent : "") || ""), states: [el.getAttribute("aria-selected") === "true" ? "selected" : null, el.getAttribute("aria-checked") === "true" ? "checked" : null, el.getAttribute("aria-disabled") === "true" ? "disabled" : null, document.activeElement === el ? "focused" : null].filter(Boolean), focusable: el.tabIndex >= 0 }))`;
-
 async function run(page: Page, steps: readonly Step[], label: string): Promise<boolean> {
   for (const s of steps) {
     if ("wait" in s) await wait(s.wait);
     else if ("key" in s) {
-      await page.send("Input.dispatchKeyEvent", { type: "keyDown", code: s.key, key: s.key.replace(/^Key/, "").toLowerCase(), windowsVirtualKeyCode: VK[s.key] ?? 0 });
+      await keyEvent(page, "keyDown", s.key);
       await wait(s.hold ?? 60);
-      await page.send("Input.dispatchKeyEvent", { type: "keyUp", code: s.key, key: s.key.replace(/^Key/, "").toLowerCase(), windowsVirtualKeyCode: VK[s.key] ?? 0 });
+      await keyEvent(page, "keyUp", s.key);
       await wait(120);
     } else if ("until" in s) {
       const ok = await page.until(`${FIND(s.until)}`, s.timeout ?? 8000).then(() => true, () => false);
@@ -389,39 +215,22 @@ async function run(page: Page, steps: readonly Step[], label: string): Promise<b
         note(`${label}: nothing named '${s.click}' to press (the mirror held: ${(await page.eval<Array<{ path: string; name: string }>>(TREE)).map((n) => `${n.path}=${n.name}`).join(", ").slice(0, 600)})`);
         return false;
       }
-      await page.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
-      await wait(50);
-      await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x: at.x, y: at.y, button: "left", clickCount: 1 });
-      await wait(70);
-      await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: at.x, y: at.y, button: "left", clickCount: 1 });
+      await pressAt(page, at);
       await wait(350);
     }
   }
   return true;
 }
-const VK: Record<string, number> = { Enter: 13, Escape: 27, Space: 32, Tab: 9, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, KeyW: 87, KeyA: 65, KeyS: 83, KeyD: 68, KeyE: 69, KeyJ: 74, KeyX: 88, KeyZ: 90, KeyF: 70, ShiftLeft: 16 };
 
 const pct = (xs: number[], q: number) => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length ? +s[Math.min(s.length - 1, Math.floor(q * s.length))]!.toFixed(3) : null;
 };
 const stats = (xs: number[]) => ({ n: xs.length, mean: xs.length ? +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(3) : null, p50: pct(xs, 0.5), p95: pct(xs, 0.95), max: pct(xs, 1) });
-/** og-tests' rule (crates/og-tests/src/compare.rs), as tests/web/reference.ts measures it. */
+/** og-tests' rule (tests/support/png.ts compareFrames): the outliers in percent, and the RMSE. */
 function compare(a: Image, b: Image): { outliers: number; rmse: number } {
-  if (a.width !== b.width || a.height !== b.height) return { outliers: 100, rmse: 1 };
-  const n = a.width * a.height;
-  let outliers = 0;
-  let sq = 0;
-  for (let p = 0; p < n; p++) {
-    let max = 0;
-    for (let k = 0; k < 3; k++) {
-      const d = Math.abs(a.rgba[p * 4 + k]! - b.rgba[p * 4 + k]!);
-      max = Math.max(max, d);
-      sq += (d / 255) ** 2;
-    }
-    if (max > 32) outliers++;
-  }
-  return { outliers: +((outliers / n) * 100).toFixed(3), rmse: +Math.sqrt(sq / (n * 3)).toFixed(5) };
+  const d = compareFrames(a, b);
+  return { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5) };
 }
 
 if (!args.includes("--no-play")) {
@@ -479,7 +288,7 @@ if (!args.includes("--no-play")) {
     await page.send("Log.enable");
     await page.send("Page.addScriptToEvaluateOnNewDocument", { source: OBSERVE });
     await page.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
-    const url = `http://127.0.0.1:${server.port}${ROOT}${webgl ? "?webgl=1" : ""}`;
+    const url = origin.url(webgl ? "?webgl=1" : "");
     const nav = performance.now();
     await page.send("Page.navigate", { url });
     await page.until("typeof __runtime_probe__ === 'object' || !document.getElementById('og-error')?.hidden", 120_000);

@@ -199,7 +199,11 @@ text for text roles), `aria-valuenow`/`-valuetext`, `aria-checked`,
 `-selected`, `-expanded`, `-disabled`, `-busy`, a dialog's `aria-modal`,
 and `tabindex=-1` on focusable nodes. The DOM focus follows the UI's focus
 (not out of the page's own fields, nor from the text control's textarea);
-a status or alert node that appears (a toast) is written into a polite or
+while a text field is focused that textarea has the focus and is the
+field for a reader (named after the field's node, its placeholder and its
+text), the field's own element is `aria-hidden` and its parent owns the
+textarea (`aria-owns`), so a reader meets one text box inside its dialog
+and no focused element is ever `aria-hidden`; a status or alert node that appears (a toast) is written into a polite or
 an assertive live region. What a screen reader does there reaches the UI
 as input: a click on a mirrored element (its default action) is og-input's
 `a11y` request `activate`, focus moving onto one `focus`, and
