@@ -13216,6 +13216,12 @@ export interface AnchorDesc {
    * @default null
    */
   readonly frame?: SkinPart | null;
+  /**
+   * Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap.
+   *
+   * @default false
+   */
+  readonly instant?: boolean;
 }
 
 /**
@@ -14441,6 +14447,12 @@ export interface MainMenuDesc {
    * @default null
    */
   readonly onSelect?: UiAction | null;
+  /**
+   * Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin.
+   *
+   * @default false
+   */
+  readonly instant?: boolean;
 }
 
 /**

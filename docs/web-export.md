@@ -418,7 +418,11 @@ earlier build; a build that fails after replacing it removes what it wrote.
   applied and drawn as they land, up to 5 s after the first tick
   (`SETTLE_MS`). A returning player's title is in the saved language with
   Continue on behind the gate (`tests/settle.test.ts`; the dogfood
-  harness's `reload.translatedBehindGate`). These are the game's own ticks,
+  harness's `reload.translatedBehindGate`). The frame is a still of the
+  title a few ticks in, so an entrance still moving then stands part-way
+  until the tap: a game builds the screen it opens on settled
+  (`og.ui.mainMenu`'s and `og.ui.anchor`'s `instant`, og-platform-sdk §3;
+  the three dogfood games do). These are the game's own ticks,
   its answers applied as every answer is, host input a replay repeats; the
   gate's tap ends the settling. The first
   tap, click, Enter or Space unlocks audio (one AudioContext), asks for
