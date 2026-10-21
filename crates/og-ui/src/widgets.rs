@@ -1775,6 +1775,11 @@ impl Ui {
             }
         }
         self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
+        self.nodes[spin].a11y.range = Some(crate::a11y::A11yRange {
+            min: bounded.then_some(lo),
+            max: bounded.then_some(hi),
+            now: *value,
+        });
         out
     }
 
@@ -2477,6 +2482,11 @@ impl Ui {
         }
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(format!("{} of {}", value.round(), max.round()));
+        n.a11y.range = Some(crate::a11y::A11yRange {
+            min: Some(0.0),
+            max: Some(max),
+            now: value,
+        });
     }
 
     /// A cooldown: a disc whose amber ring fills clockwise from the top as
@@ -2587,7 +2597,9 @@ impl Ui {
 
     /// A zoomable picture (a map, an artwork): two fingers pinch it to zoom
     /// about their centre and pan it as they move (og.Pointers), the wheel
-    /// zooms about the pointer, a drag pans. It stays on its picture and
+    /// zooms about the pointer, a drag pans; focused by keys or a pad, `+`
+    /// (`=`) and `-` zoom it about its centre, `0` fits it again and the
+    /// arrows pan it a tenth of its size. It stays on its picture and
     /// within its zoom limits; the zoom and the centre are UI state.
     /// Answers where it is.
     pub fn zoom_view(&mut self, id: impl Into<Id>, desc: &ZoomViewDesc) -> ZoomResponse {
@@ -2616,6 +2628,14 @@ impl Ui {
         });
         let s = crate::scroll::ZoomState { min, max, ..s };
         self.set_zoom_state(key, s);
+        // Keys and pads reach it; while focused its arrows (↑ ↓ too) are
+        // its own, with + - and 0.
+        let r = self.nav_target(i, true);
+        self.nodes[i].multiline = true;
+        if r.focused {
+            let adjust = self.nav.adjust;
+            self.zoom_keys(key, adjust);
+        }
         let s = self.zoom_state(key).unwrap_or(s);
         let [u0, v0, u1, v1] = desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
         let half = 0.5 / s.zoom;

@@ -54,7 +54,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp; `ellipsis` cuts it with "…" ("..." in a font without it) where it does not fit: a `nowrap` label on its one line (it can then shrink in a row), a wrapping one on its last line with `max_lines` | the whole text, cut or not |
 | `button(id, text, ButtonDesc) -> Response` | a capsule of `h-control-sm/md/lg`; `Secondary` (neutral fill, default), `Primary` (amber, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture; `aspect` (width over height) keeps its proportions: with the height left to fit it is as tall as its laid-out width over it, with a fixed height and the width left to fit as wide as the height times it (`Element::aspect`, any element) | — |
-| `zoom_view(id, &ZoomViewDesc) -> ZoomResponse` | a zoomable picture (a map, an artwork): two touches pinch it about their centre and pan it, the wheel zooms about the pointer, a drag pans; it stays on its picture and within `min_zoom`..`max_zoom` (1 to 4 by default); answers the zoom and the centre; role `image` named by its id, its zoom as its value (§Scrolling) | — |
+| `zoom_view(id, &ZoomViewDesc) -> ZoomResponse` | a zoomable picture (a map, an artwork): two touches pinch it about their centre and pan it, the wheel zooms about the pointer, a drag pans; focused (Tab, a pad) `+`/`-` zoom it, `0` fits it, the arrows pan it; it stays on its picture and within `min_zoom`..`max_zoom` (1 to 4 by default); answers the zoom and the centre; role `image` named by its id, its zoom as its value (§Scrolling) | — |
 | `progress(id, value, ProgressDesc)` | a capsule track filled to 0–1 | — |
 | `slider(id, &mut f32, SliderDesc) -> Response` | track, amber fill, thumb; a press anywhere on it sets the value, dragging follows; `min`/`max`/`step` | — |
 | `toggle(id, &mut bool, label) -> Response` | a switch (amber on) with a label; a click flips it | the label |
@@ -138,13 +138,19 @@ both ways. Its offsets are UI state, clamped by the layout to its content.
   (pinch). The press the first finger began presses nothing once the
   second lands, and the primary pointer presses nothing while two are
   held; two fingers on anything else (a stick and a button) are no
-  gesture. The gesture is UI state (`State::pinch`, `save_state`
-  version 7). A zoom view also zooms by the wheel about the pointer and
-  pans by a drag.
+  gesture. Two fingers lifting off a scroll container fling it with
+  their last velocity, as one finger's drag does. The gesture is UI
+  state (`State::pinch`, `save_state` version 7). A zoom view also zooms
+  by the wheel about the pointer and pans by a drag, and takes focus from
+  keys and pads: `+` (`=`, the keypad's) and `-` zoom it about its centre
+  by 1.25, `0` fits it again, the arrows (↑ and ↓ too) pan it a tenth of
+  its size while it is focused.
 
 `tests/widgets.rs` `scroll_views_scroll_both_ways_hand_off_fling_and_grab`
 covers each (and a restore); `two_fingers_scroll_lists_and_pinch_zoom_views`
-covers two touches, the zoom view and aspect ratios, and the kit's
+covers two touches, the zoom view and aspect ratios,
+`two_fingers_lifting_off_a_list_fling_it` the two-finger fling and
+`a_focused_zoom_view_takes_keys` the keys, and the kit's
 `tests/gestures.og.ts` drives them through the probe.
 
 ## Layers
@@ -367,15 +373,20 @@ font. og-cook's `type icons` file names the SVGs (`source`, `size`,
 `range`, one `icon "<name>" ["<file>"]` a line; `crates/og-cook/src/cook/icons.rs`)
 and cooks them into an `og.Font` blob: icon `i` is the glyph at U+E000 + i,
 its em square the SVG's view box (ascender 1, descender 0), the field a
-true signed distance in all four channels (strokes with round caps and
-joins are exact; a butt cap is cut square; a miter join draws round), the
-names in a `names` section. `og.load.font` loads it, `UiDesc.icons.font`
+true signed distance in all four channels of the stroke's own outline
+(round caps and joins are arcs; a butt cap is cut square; a miter join
+reaches its point within `stroke-miterlimit`, else is bevelled, and a
+bevel is cut across, so a miter's corner stays sharp but for one texel's
+rounding a single channel gives; a path's `stroke-linejoin`, else the
+set's `join` line, else SVG's miter), the names in a `names` section. `og.load.font` loads it, `UiDesc.icons.font`
 (`IconAtlas::font`) makes it the atlas: `icon` draws its glyph fitted to
 the icon's square through the MTSDF text path (crisp at any size, in its
-ink), and rich text's `[icon=name]` draws it inline. The UI kit ships 64
+ink), and rich text's `[icon=name]` draws it inline. The UI kit ships 72
 iconoir icons (the platform's icon set, MIT) as
-`templates/ui-kit/assets/icons/iconoir.ogt`: 72 KB cooked, one 473 × 476
-page at 48 px per icon, range 8. Its `materials` screen draws from it;
+`templates/ui-kit/assets/icons/iconoir.ogt` (`join round`), 17 of them
+again under the kit's own names (`coin`, `gear`, `sword`…), at 48 px per
+icon, range 8. Every kit screen draws from it (a style pack keeps its own
+icons; the 32-cell PNG grid is the fallback when the set does not load);
 `tests/materials_gfx.rs` renders them.
 
 ## Juice and screen transitions (`src/juice.rs`)
@@ -550,7 +561,16 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   word key (Option under mac keys, Ctrl or Alt elsewhere: §Input) with
   ←/→ moves by words (to a word's start leftwards, its end rightwards),
   with Backspace and Delete deletes one; Ctrl with Home/End goes to the
-  text's ends, and under mac keys Cmd+←/→ to the line's. Words are UAX
+  text's ends, and under mac keys Cmd+←/→ to the line's and Ctrl the
+  emacs keys (§Input). The caret stands between grapheme clusters
+  (og-i18n's `graphemes`): ←/→, Backspace, Delete and a press step over a
+  base and its marks, an emoji with its modifiers and joiners, at once,
+  and a long word wraps between clusters. ← and → move as they point: on
+  in the text in a right-to-left run (the glyph at the caret's), by
+  clusters and by words alike, and a selection collapses to its side on
+  screen. A mixed text's line is placed by the highest ascender and the
+  lowest descender of its faces (`FontMetrics::extents`), every run on
+  one baseline. Words are UAX
   #29's (og-i18n's `word_segments`): letters, digits and marks with the
   apostrophes and points inside them (`can't`, `3.14`), a run of
   punctuation one word, each Han or Hiragana character one, a Katakana run
@@ -722,14 +742,16 @@ own. Pointing it at another resource is the one line
 **Modifiers** are read as held keys: `shift`, `ctrl` (Control), `meta`
 (Command, or the Windows key) and `alt` (Alt or Option). Text controls read
 them by the platform's convention, `Viewport::mac_keys` (IDL
-`Viewport.macKeys`, which the web shell sets on Apple platforms and native
-hosts leave off, so a script edits alike on every OS):
+`Viewport.macKeys`, which the web shell sets from the browser's platform
+and a native host sets on macOS; a script that must edit alike on every
+OS pins it with `og.ui.previewViewport`):
 
 | | mac keys | other platforms |
 |---|---|---|
 | select all, copy, cut, undo, redo | Cmd+A, C, X, Z, Shift+Z (Y) | Ctrl (or Cmd) +A, C, X, Z, Shift+Z, Y |
 | by words (←/→, Backspace, Delete) | Option | Ctrl (or Alt) |
 | the line's ends | Cmd+←/→ (Backspace, Delete delete to them), Ctrl+A/E, Home/End | Home/End |
+| emacs | Ctrl+F/B a character, N/P a line (a field's ends), D/H delete one, K to the paragraph's end, U to its start, W the word before | — |
 | the text's ends | Cmd+↑/↓ in an area, Ctrl/Cmd+Home/End | Ctrl+Home/End |
 
 The probe's `key_down:Meta+ArrowLeft` holds Command with the key
@@ -825,18 +847,18 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/text.rs` | Shift+arrows select and typing replaces the selection, Ctrl/Cmd+A, C (the clipboard) and X; a drag selects from the press and a Shift+press extends; a text area breaks lines on Enter, ↑/↓ move between lines and stay out of focus navigation, it wraps; a composition shows at the caret, replaces the selection as it starts, commits, ends when empty; the caret shows 32 ticks and hides 32 at 60 Hz and never blinks under reduced motion; once a typed-text stream exists keys type nothing; labels cut with an ellipsis on one line and at two lines, the probe reading the whole text; the edit state survives a save and restore |
 | `tests/rtl.rs` | Arabic shaped into joined forms in visual order; UAX #9 orders runs (digits, neutrals at a line's end, brackets mirrored, Hebrew reversed); Devanagari's conjunct and pre-base sign; kerning pairs tighten the measure and the visual layout alike; a right-to-left UI mirrors |
 | `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
-| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all |
-| `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; a base and its combining mark go to one face together, a joiner keeps its letter's face; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice |
+| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all; the caret, Backspace, Delete and a press step over a grapheme cluster (a base and its mark, an emoji and its skin tone, a ZWJ family); ← and → (and with Alt by words) move on in the text in a Hebrew field, a selection collapsing to its left side there; under mac keys Ctrl+F, B, N, P, D, H, K, U and W edit as emacs does, elsewhere nothing |
+| `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; a base and its combining mark go to one face together, a joiner keeps its letter's face; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice; its runs share one baseline centred on every face's extents (a taller fallback face moves it); a `[wave]` span mixing faces moves glyph by glyph, each in its face, and rests under reduced motion |
 | `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook): every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
 | `tests/support/scenes.rs` | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
 | `tests/gfx.rs` | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (an amber bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; `text-fields-2` (a double-clicked word, an undone field, an area a drag scrolled part way) matches its reference with no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/theme.rs` | `src/theme.rs` equals the generator's output for the vendored tokens |
-| `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop |
+| `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop; two fingers lifting off a list fling it (none under reduced motion); a focused zoom view zooms with + and -, fits with 0 and pans with the arrows, keeping the focus |
 | `tests/skin.rs` | a skinned card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default theme emits no skin piece; a skin file names the wrong line (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
 | `tests/packs.rs` | the six packs parse, name only existing assets, and every ink a template draws on a skinned surface is at least 4.5:1 over the frame art under it (and `fg` on a selected tab) |
 | `tests/pack_contrast.rs` | every skin (the six packs, Ember Vale's copy of fantasy, the archetypes' sparkorb, lampdive, lanebeat and pathguard, the examples' hollowbell, lantern and kestrel): each button role's label in each state, and `fg`, `fgMuted`, `fgSubtle`, a field's placeholder and text at rest and focused, a stack's count on a bag slot at rest and selected, a meter's label over each kind's fill and its track, against the draw commands composited over the atlas texels: a label on a panel at 4.5:1, a primary or secondary label at rest or hovered at 7:1; the primary and secondary labels read from a rendered frame at 4.5:1; a badge in every tone at 4.5:1 on the screen and in a panel, the status tones and the accent with the palette's own ink in a panel; prints every row with its ink and ground |
-| `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
-| `tests/materials_gfx.rs` | `references/<tier>/materials.png`: a dark card with its edge light, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled; no missing glyph |
+| `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; a slider, a stepper (bounded or not), a progress and a meter carry their bounds and value as numbers; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
+| `tests/materials_gfx.rs` | `references/<tier>/materials.png`: a dark card with its edge light, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled and flung as they lift; no missing glyph |
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
 | `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; every screen in each style pack matches its cell of `references/<tier>/kit-skin-<pack>.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
@@ -877,16 +899,18 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
 - **Text**: og-ui's cooked-font text frames in the browser tiers
   (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their
   fonts, which og-tests-web cannot; `text-fields-2` draws the test font and
-  runs there). A mixed text's runs share the role face's baseline and line
-  box. Words are UAX #29's without a dictionary: Thai, Lao, Khmer and
-  Myanmar move a grapheme cluster at a time, Han and Hiragana a character
-  at a time, a Katakana run as one word; word moves are logical, so in a
-  right-to-left run Alt+← moves back in the text, not leftwards. The caret
-  and Backspace still step by character, not by grapheme cluster (a base
-  and its mark take two). Under mac keys the emacs keys beyond Ctrl+A and
-  E (Ctrl+K, F, B, N, P) do nothing; native hosts report standard keys on
-  macOS too, so `og run` on a Mac edits with Ctrl. A `[wave]`, `[shake]` or
-  `[pulse]` span that mixes faces is drawn still. (Cmd told apart from
+  runs there). Words are UAX #29's without a dictionary: Thai, Lao, Khmer
+  and Myanmar move a grapheme cluster at a time, Han and Hiragana a
+  character at a time, a Katakana run as one word. Backspace takes a whole
+  grapheme cluster in every script (some platforms take an Indic or Thai
+  cluster's last mark alone); ← and → move as the run under the caret
+  points, not visually across a bidi run's edge; the emacs kill buffer
+  (Ctrl+Y, Ctrl+T) is not kept. (The caret and Backspace by grapheme
+  clusters, ←/→ and word moves as they point in right-to-left runs, the
+  emacs keys F, B, N, P, D, H, K, U and W under mac keys, mac keys on a
+  native host on macOS, a mixed text's line placed by every face's extents
+  and a moving span that mixes faces moving glyph by glyph landed in the
+  ui-five round. Cmd told apart from
   Ctrl with macOS's editing keys, UAX #29 words for moves, double clicks
   and undo, and a font per grapheme cluster landed in the ui-4 round; a
   font per run inside one label, word-wise moves, double- and
@@ -895,29 +919,28 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
   rich-text span, shaping with rustybuzz, run-time CJK glyphs, ellipsis
   truncation, selection, text areas, IME composition and the caret blink
   in the phase 4 UI text round; rich text in the phase 2 UI round.)
-- **Accessibility**: the spinbutton's and the slider's mirror carry no
-  `aria-valuemin`/`-max` (the tree has no bounds; a percent value takes
-  0–100); a reader's adjust on Chrome and Safari reaches the UI through
-  the native range's `input` event, not checked with VoiceOver itself in
-  this round. (A stepper's spinbutton adjustable like the slider, and
+- **Accessibility**: a reader's adjust reaches the UI through the
+  mirrored native range's `input` and `change` events (checked over the
+  stand-in DOM, `packages/engine/tests/web-a11y-range.test.ts`, and in
+  Chrome by `tests/web/a11y.ts`), not with VoiceOver itself. (Bounds in
+  the tree, `A11yNode::value_min`, `value_max` and `value_now`, mirrored
+  as `aria-valuemin`, `-max` and `-now`, landed in the ui-five round; a
+  stepper's spinbutton adjustable like the slider, and
   reduced transparency flattening scrims and translucent fills with
   `UiTheme.reducedTransparency`, landed in the ui-4 round; sliders
   mirrored as native ranges and `prefers-reduced-transparency` in the
   fields round; the tree in the phase 2 UI round; the shell's mirror, live
   regions, focus following, requests from the DOM and the page's motion
   and contrast preferences in the phase 4 UI shell round.)
-- **Materials**: an icon set's field is one true distance, not three
-  channels, so a miter join draws round (under 0.2 units of iconoir's 24);
-  the kit's screens other than `materials` keep the 32-cell PNG grid
-  (their names are not iconoir's). Each glass run with overlay content
-  under it rebuilds the blur pyramid once (`tests/evidence/P4/ui-shell/
-  glass-cost.md`). (Glass landed in the phase 2 UI round; glass
-  over overlay layers, the edge light and icon sets in the phase 4 UI
-  shell round.)
-- **Input**: no fling after a two-finger scroll; a zoom view takes no keys
-  (it is an image, not a control). (Pads beyond the first landed in the
-  phase 2 UI round; two-finger scroll, pinch and the zoom view in the
-  phase 4 UI shell round.)
+- **Materials**: each glass run with overlay content under it rebuilds
+  the blur pyramid once (`tests/evidence/P4/ui-shell/glass-cost.md`; an
+  optimisation, deferred). (Miter and bevel joins in an icon set's field,
+  a set's `join` line and every kit screen on the iconoir set landed in
+  the ui-five round; glass in the phase 2 UI round; glass over overlay
+  layers, the edge light and icon sets in the phase 4 UI shell round.)
+- (Input: a two-finger fling and a zoom view's keys landed in the ui-five
+  round; pads beyond the first in the phase 2 UI round; two-finger
+  scroll, pinch and the zoom view in the phase 4 UI shell round.)
 - (Layout: aspect ratios landed in the phase 4 UI shell round; two-axis
   scrolling, nested handoff, momentum and draggable scrollbars in the
   phase 2 UI round.)

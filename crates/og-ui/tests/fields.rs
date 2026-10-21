@@ -26,6 +26,16 @@
 //! - a drag below a text area jumps to the end (or does not scroll), keeps
 //!   scrolling past the end, or scrolls while the pointer is inside →
 //!   `a_drag_past_a_text_area_scrolls_it_line_by_line`
+//! - the caret, Delete or Backspace stepping into a grapheme cluster (a
+//!   base and its combining mark, an emoji and its skin tone, a family
+//!   joined by ZWJ), a press landing between a base and its mark →
+//!   `the_caret_and_backspace_step_by_grapheme_clusters`
+//! - ← moving back in the text in a right-to-left run (by characters or
+//!   with Alt by words), a selection collapsing to the wrong side there →
+//!   `arrows_move_as_they_point_in_right_to_left_runs`
+//! - the emacs keys beyond Control+A and E doing nothing under mac keys
+//!   (Ctrl+F, B, N, P, D, H, K, U, W), or acting off a Mac →
+//!   `mac_keys_honour_the_emacs_keys`
 
 mod support;
 
@@ -573,4 +583,155 @@ fn words_are_uax_29_words() {
     assert_eq!(rig.value, "原点", "a commit after Han text is a step");
     undo(&mut rig);
     assert_eq!(rig.value, "");
+}
+
+#[test]
+fn the_caret_and_backspace_step_by_grapheme_clusters() {
+    // a, e with a combining acute (two characters, one cluster), b.
+    let mut rig = Rig::new("ae\u{301}b", "");
+    rig.focus_field();
+    rig.keys(&[UiKey::Left], false, false, false);
+    assert_eq!(rig.caret_marked(), "ae\u{301}|b");
+    rig.keys(&[UiKey::Left], false, false, false);
+    assert_eq!(
+        rig.caret_marked(),
+        "a|e\u{301}b",
+        "over the cluster at once"
+    );
+    // Shift+→ selects the cluster whole; Delete takes it whole.
+    rig.keys(&[UiKey::Right], true, false, false);
+    assert_eq!(rig.selection(), "e\u{301}");
+    rig.keys(&[UiKey::Left], false, false, false);
+    rig.keys(&[UiKey::Delete], false, false, false);
+    assert_eq!(rig.value, "ab");
+    // Backspace after an emoji with its skin tone, and after a family of
+    // four joined by ZWJ (seven characters): one press each.
+    rig.value = "ok👍🏽".into();
+    rig.focus_field();
+    rig.keys(&[UiKey::End], false, false, false);
+    rig.keys(&[UiKey::Backspace], false, false, false);
+    assert_eq!(rig.value, "ok");
+    rig.typed("👨‍👩‍👧‍👦");
+    rig.keys(&[UiKey::Backspace], false, false, false);
+    assert_eq!(rig.value, "ok");
+    // A press anywhere over the cluster lands before or after it, never
+    // between the base and its mark.
+    rig.value = "e\u{301}e\u{301}e\u{301}".into();
+    rig.focus_field();
+    let (_, y, _, h) = rig.rect("Name");
+    for k in 0..=6 {
+        let x = rig.field_x(k);
+        rig.click(Vec2::new(x, y + h / 2.0));
+        rig.idle(40);
+        let marked = rig.caret_marked();
+        let at = marked.chars().position(|c| c == '|').expect("a caret");
+        assert!(
+            at % 2 == 0,
+            "a press at character {k} put the caret at {at}"
+        );
+    }
+}
+
+#[test]
+fn arrows_move_as_they_point_in_right_to_left_runs() {
+    // Hebrew: the paragraph runs right to left, so ← goes on in the text.
+    let mut rig = Rig::new("שלום עולם", "");
+    rig.focus_field();
+    rig.keys(&[UiKey::Home], false, false, false);
+    rig.keys(&[UiKey::Left], false, false, false);
+    assert_eq!(rig.caret_marked(), "ש|לום עולם");
+    rig.keys(&[UiKey::Right], false, false, false);
+    assert_eq!(rig.caret_marked(), "|שלום עולם");
+    // Alt+← (Ctrl+← too): to the end of the word, leftwards on screen.
+    rig.keys(&[UiKey::Left], false, false, true);
+    assert_eq!(rig.caret_marked(), "שלום| עולם");
+    rig.keys(&[UiKey::Left], false, true, false);
+    assert_eq!(rig.caret_marked(), "שלום עולם|");
+    // Alt+→: back to the word's start.
+    rig.keys(&[UiKey::Right], false, false, true);
+    assert_eq!(rig.caret_marked(), "שלום |עולם");
+    // Under mac keys, Option alike.
+    rig.vp.mac_keys = true;
+    rig.chord(&[UiKey::Right], false, false, false, true);
+    assert_eq!(rig.caret_marked(), "|שלום עולם");
+    rig.chord(&[UiKey::Left], false, false, false, true);
+    assert_eq!(rig.caret_marked(), "שלום| עולם");
+    rig.vp.mac_keys = false;
+    // ← without Shift collapses a selection to its left side on screen:
+    // its end in the text.
+    rig.keys(&[UiKey::Home], false, false, false);
+    rig.keys(&[UiKey::Left, UiKey::Left], true, false, false);
+    assert_eq!(rig.selection(), "של");
+    rig.keys(&[UiKey::Left], false, false, false);
+    assert_eq!(rig.caret_marked(), "של|ום עולם");
+    // A left-to-right word in it moves as Latin does.
+    let mut rig = Rig::new("abc", "");
+    rig.focus_field();
+    rig.keys(&[UiKey::Left], false, false, false);
+    assert_eq!(rig.caret_marked(), "ab|c");
+}
+
+#[test]
+fn mac_keys_honour_the_emacs_keys() {
+    let ctrl = |rig: &mut Rig, k: UiKey| rig.chord(&[k], false, true, false, false);
+    let mut rig = Rig::new("hello brave new world", "");
+    rig.vp.mac_keys = true;
+    rig.focus_field();
+    // B and F: a character back and on.
+    ctrl(&mut rig, UiKey::KeyB);
+    ctrl(&mut rig, UiKey::KeyB);
+    assert_eq!(rig.caret_marked(), "hello brave new wor|ld");
+    ctrl(&mut rig, UiKey::KeyF);
+    assert_eq!(rig.caret_marked(), "hello brave new worl|d");
+    // H deletes back, D on.
+    ctrl(&mut rig, UiKey::KeyH);
+    assert_eq!(rig.value, "hello brave new word");
+    ctrl(&mut rig, UiKey::KeyD);
+    assert_eq!(rig.value, "hello brave new wor");
+    // W deletes the word before the caret.
+    ctrl(&mut rig, UiKey::KeyW);
+    assert_eq!(rig.value, "hello brave new ");
+    // P and N in a field: its ends.
+    ctrl(&mut rig, UiKey::KeyP);
+    assert_eq!(rig.caret_marked(), "|hello brave new ");
+    ctrl(&mut rig, UiKey::KeyN);
+    assert_eq!(rig.caret_marked(), "hello brave new |");
+    // K deletes to the end, U to the start.
+    rig.chord(&[UiKey::Left], false, false, false, true);
+    rig.chord(&[UiKey::Left], false, false, false, true);
+    ctrl(&mut rig, UiKey::KeyK);
+    assert_eq!(rig.value, "hello ");
+    ctrl(&mut rig, UiKey::KeyU);
+    assert_eq!(rig.value, "");
+    // In an area: N and P a line down and up, K at a line's end takes its
+    // break, U deletes back to the paragraph's start only.
+    let (x, y, w, _) = rig.rect("Notes");
+    rig.click(Vec2::new(x + w / 2.0, y + 6.0));
+    rig.idle(40);
+    rig.typed("one\ntwo\nthree");
+    ctrl(&mut rig, UiKey::KeyP);
+    ctrl(&mut rig, UiKey::KeyE);
+    ctrl(&mut rig, UiKey::KeyK);
+    assert_eq!(rig.area, "one\ntwothree");
+    ctrl(&mut rig, UiKey::KeyU);
+    assert_eq!(rig.area, "one\nthree");
+    ctrl(&mut rig, UiKey::KeyN);
+    ctrl(&mut rig, UiKey::KeyP);
+    ctrl(&mut rig, UiKey::KeyA);
+    rig.typed(">");
+    assert_eq!(rig.area, ">one\nthree");
+    // Off a Mac, Control with those letters edits nothing.
+    let mut rig = Rig::new("hello world", "");
+    rig.focus_field();
+    for k in [
+        UiKey::KeyB,
+        UiKey::KeyH,
+        UiKey::KeyD,
+        UiKey::KeyK,
+        UiKey::KeyU,
+        UiKey::KeyW,
+    ] {
+        ctrl(&mut rig, k);
+    }
+    assert_eq!(rig.caret_marked(), "hello world|");
 }
