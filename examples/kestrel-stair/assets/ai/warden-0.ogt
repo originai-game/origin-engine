@@ -34,7 +34,7 @@ machine {
       reach 1.6
     }
     to slam {
-      check targetDistance below 2.3   # a literal: a check takes no Tuning field (FINDINGS #3)
+      check targetDistance below Tuning.wardenReach   # read each think (FINDINGS #3, fixed)
     }
     to search {
       check sees is false

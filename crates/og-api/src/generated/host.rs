@@ -464,6 +464,8 @@ pub trait AiApi: Wire {
     fn og_ai_get(&self, world: u32, entity: f64, key: String) -> String;
     /// `og.ai.set`
     fn og_ai_set(&self, world: u32, entity: f64, key: String, value: String) -> String;
+    /// `og.ai.restart`
+    fn og_ai_restart(&self, world: u32, entity: f64) -> String;
     /// `og.ai.noise`
     fn og_ai_noise(&self, world: u32, desc: Option<String>) -> String;
     /// `og.ai.describe`
@@ -928,6 +930,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ai_parse",
     "og_ai_get",
     "og_ai_set",
+    "og_ai_restart",
     "og_ai_noise",
     "og_ai_describe",
     "og_platform_store_get",

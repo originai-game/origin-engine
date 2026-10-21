@@ -138,8 +138,6 @@ export const Sentinel = defineComponent("Sentinel", {
   alarms: u32(0),
   speed: f32(0, { unit: "m/s", doc: "Its speed across the ground (the graph's p0)." }),
   alert: bool(false, { doc: "It is chasing or grabbing (its eye burns red)." }),
-  mind: f64(0, { doc: "The behaviour its og.AiAgent runs (og.ai.load's handle)." }),
-  spare: f64(0, { doc: "A second load of the same behaviour: swapped in to start the machine afresh (a new run)." }),
 });
 
 /** One voice: plays its sound once when Game.sfx asks for its bit. */

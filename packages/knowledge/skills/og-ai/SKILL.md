@@ -132,10 +132,11 @@ world.insert(guard, og.Perception, { sight: 9, fov: 120, eyeHeight: 1.6, team: 2
 world.insert(hero, og.Perceivable, { team: 1, eyeHeight: 1 });
 ```
 
-- Place every agent on the mesh, at its `og.nav.nearest` point, seeking a
-  target there (its own point or its round's first), and prove it in a
-  playtest: a few ticks in, each agent stands where it was put (its
-  height too) and its `status` is not `NAV_UNREACHABLE`.
+- Place every agent on the mesh, at its `og.nav.nearest` point (idle, or
+  seeking a target there: an agent that has not planned yet stays where
+  it was put, and a teleported one walks on from where it lands), and
+  prove it in a playtest: a few ticks in, each agent stands where it was
+  put (its height too) and its `status` is not `NAV_UNREACHABLE`.
 - `radius` keeps grid paths clear of walls; set it to the body's.
 - `faceMovement` turns the body to where it walks (3D +Z forward, 2D +X).
 - `drive: false` keeps planning and reporting but leaves the motion to the
@@ -166,7 +167,7 @@ tree {
     }
     sequence bite {
       check sees
-      check targetDistance below 0.9
+      check targetDistance below Tuning.slimeReach   # compared with a resource field, read every think
       command bite {                 # the game's command, the agent's handle first
         cooldown 1
       }
@@ -189,19 +190,22 @@ tree {
   NPCs whose mode should stick (patrol, alert, search), with enter and
   exit actions and timed transitions.
 - Checks read the blackboard's built-in keys, your own keys (`key alert
-  0`, `set alert 1`), `Component.field` of the agent and `Resource.field`.
-  An unknown operand fails its check and logs one warning naming the fix:
-  read the run's warnings.
+  0`, `set alert 1`), `Component.field` of the agent and `Resource.field`,
+  compared with a literal or with another key or field read each time
+  (`check Foe.hp below Tuning.fleeHp`). An unknown operand fails its check
+  and logs one warning naming the fix: read the run's warnings.
 - Keep damage, death, loot and knock-back in the game: a behaviour raises
   `command bite` and the game's command handler applies it. Tune numbers
-  live in components and resources (`speed Tuning.slimeSpeed`), never as
-  copies in the .ogt.
+  live in components and resources (`speed Tuning.slimeSpeed`, `check
+  targetDistance below Tuning.slimeReach`), never as copies in the .ogt.
+- A new run or a respawn: put the agent back (its Transform, its
+  NavAgent's target with `seeking: false`) and call
+  `og.ai.restart(world, agent)`: a machine starts again in its initial
+  state, a tree at its root, timers, cooldowns and the blackboard reset.
 - Telegraph attacks: a `wait 0.3` or a wind-up state before the command
   (og-feel §2). An enemy that hits on the tick it arrives feels unfair.
 - `thinkEvery 2` or `3` for crowds: agents are staggered, so the cost
   spreads across ticks.
-- A check against a component or resource field, and restarting a
-  behaviour: see nav-ai.
 
 ### The behaviour file
 
@@ -223,7 +227,7 @@ route beat {                   # a patrol route, declared before the tree names 
 tree {                         # one root node; or a `machine` (below), never both
   selector main {              # children in order: the first that does not fail decides; re-checked from the top every think
     sequence hurt {            # children in order while they succeed; re-checked from the first every think
-      check Slime.hp below 30  # <operand> [is | not | below | above | atMost | atLeast <value>]; no operator: truthy
+      check Slime.hp below 30  # <operand> [is | not | below | above | atMost | atLeast <value>]; no operator: truthy; the value may be a key or field
       flee {                   # flee [key]: away from the key's position (default target)
         distance 6             # until this far (default 6)
         speed 3                # metres per second, or a key or field read every think (default: the NavAgent's speed)
@@ -270,7 +274,9 @@ tree {                         # one root node; or a `machine` (below), never bo
 
 - An action without `speed` moves at its og.NavAgent's `speed`. A value
   in `key`, `set` and `check` is a number, three numbers (a point) or
-  `true`/`false`. Command names are snake_case.
+  `true`/`false`; a `check`'s may also be a key, `Component.field` or
+  `Resource.field`, read every time the check runs (`check Foe.hp below
+  Tuning.fleeHp`). Command names are snake_case.
 - The cook refuses an unknown entry, node or option, a route that is not
   declared, a decorator without exactly one child and a malformed value,
   naming the line.
@@ -311,7 +317,7 @@ machine {
       reach 1.6
     }
     to slam {
-      check targetDistance below 2.3
+      check targetDistance below Tuning.wardenReach
     }
     to search {
       check sees is false
@@ -350,8 +356,9 @@ machine {
   a little past the screen's half width, `occlude: true` so walls hide.
   Before an agent first moves its cone points the way its Transform faces.
 - Hearing: spatial `og.AudioSource`s that start within `hearing × volume`
-  are heard; `og.ai.noise(world, { position, loudness })` for silent events
-  (a thrown rock, a door).
+  are heard, except the agent's own (its entity's and its children's: an
+  imp's chitter does not alert the imp); `og.ai.noise(world, { position,
+  loudness, source })` for silent events (a thrown rock, a door).
 - `memory` is how long a lost target stays the target; `lastSeen` lets a
   search state walk to where it was.
 
@@ -368,6 +375,10 @@ machine {
   `templates/archetypes/tower-defense/tests/maze.og.ts` a flow field
   re-routed round placements and a placement refused because `findPath`
   no longer reaches the goal.
+  `templates/archetypes/third-person` is the 3D action pattern: sentinels on
+  a cooked navmesh with behaviour machines (patrol, alert, grab) raising
+  the game's commands, restarted for a new run (`tests/sentinels.og.ts`,
+  `tests/restart.og.ts`).
   Include the negative: a wall that hides the hero, a target outside the
   cone.
 - Determinism: a playtest with `runs: 2` over a chase must end on one hash.

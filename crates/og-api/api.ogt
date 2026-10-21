@@ -6990,10 +6990,10 @@ module nav {
     field mesh Navigation "What NavAgent.nav and the queries take."
     field polygons u32 "Its convex polygons."
     field tiles u32 "Its tiles."
-    field min Vector3 "Its bounds' lowest corner." {
+    field min Vector3 "The lowest corner of the box around its polygons." {
       unit m
     }
-    field max Vector3 "Its bounds' highest corner." {
+    field max Vector3 "The highest corner of the box around its polygons (its highest walkable floor's y)." {
       unit m
     }
     field cellSize f32 "Its voxel width." {
@@ -7119,7 +7119,7 @@ module ai {
   skill og-ai
   doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
   doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
-  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
+  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
 
   handle Behaviour "A loaded behaviour tree or state machine."
 
@@ -7161,7 +7161,7 @@ module ai {
   }
 
   component Perception {
-    doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness."
+    doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them."
     field sight f32 "How far it sees." {
       default 8
       min 0
@@ -7271,6 +7271,7 @@ module ai {
       min 0
       max 100
     }
+    field source Entity "Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it."
   }
 
   struct AiDescription {
@@ -7315,6 +7316,13 @@ module ai {
     param key String "The key; built-in keys are refused."
     param value Json "The value."
     returns Result.Void "Refused for an agent that has not thought yet, a built-in key or another kind of value."
+  }
+
+  fn restart {
+    doc "Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway."
+    param world World "The world."
+    param entity Entity "The agent."
+    returns Result.Void "Refused for a world without og.ai."
   }
 
   fn noise {

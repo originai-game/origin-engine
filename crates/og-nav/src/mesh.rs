@@ -316,6 +316,33 @@ impl NavMesh {
         self.tiles.iter().map(|t| t.polys.len()).sum()
     }
 
+    /// The box around every polygon's vertices (lowest and highest corners);
+    /// a mesh without polygons answers its heightfield's floor rectangle at
+    /// the origin's height.
+    pub fn bounds(&self) -> (Vec3, Vec3) {
+        let mut lo = Vec3::splat(f32::MAX);
+        let mut hi = Vec3::splat(f32::MIN);
+        for tile in &self.tiles {
+            for p in &tile.polys {
+                for &v in &p.verts {
+                    let v = tile.verts[v as usize];
+                    lo = lo.min(v);
+                    hi = hi.max(v);
+                }
+            }
+        }
+        if lo.x > hi.x {
+            let f = &self.field;
+            let size = Vec3::new(
+                f.width as f32 * f.params.cell_size,
+                0.0,
+                f.depth as f32 * f.params.cell_size,
+            );
+            return (f.origin, f.origin + size);
+        }
+        (lo, hi)
+    }
+
     pub fn obstacles(&self) -> impl Iterator<Item = (u32, &Obstacle)> {
         self.obstacles.iter().map(|(k, v)| (*k, v))
     }

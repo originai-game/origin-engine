@@ -10985,13 +10985,13 @@ export interface NavMeshInfo {
   /** Its tiles. */
   readonly tiles: number;
   /**
-   * Its bounds' lowest corner.
+   * The lowest corner of the box around its polygons.
    *
    * @unit m (metres)
    */
   readonly min: Vector3;
   /**
-   * Its bounds' highest corner.
+   * The highest corner of the box around its polygons (its highest walkable floor's y).
    *
    * @unit m (metres)
    */
@@ -11028,7 +11028,7 @@ export interface NavRebuild {
 // ── ai ──────────────────────────────────────────────────────────
 // Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
 // An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
-// Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+// Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
 
 /**
  * A loaded behaviour tree or state machine.
@@ -11104,7 +11104,7 @@ export interface AiAgent {
 }
 
 /**
- * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+ * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
  *
  * The value of the `Perception` component (token `og.Perception`).
  */
@@ -11289,6 +11289,12 @@ export interface NoiseDesc {
    * @range 0..100
    */
   readonly loudness?: number;
+  /**
+   * Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it.
+   *
+   * @default 0
+   */
+  readonly source?: Entity;
 }
 
 /** What an agent is doing. */
@@ -11312,6 +11318,7 @@ export interface AiDescription {
   /** Its target (0: none). */
   readonly target: Entity;
 }
+
 
 
 
@@ -18399,7 +18406,7 @@ export declare namespace og {
    */
   const AiAgent: ComponentType<{ readonly behaviour: FieldSpec<"Behaviour">; readonly active: FieldSpec<"bool">; readonly thinkEvery: FieldSpec<"u32">; readonly status: FieldSpec<"u32">; readonly state: FieldSpec<"u32">; readonly node: FieldSpec<"u32">; readonly changes: FieldSpec<"u32"> }, AiAgent>;
   /**
-   * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+   * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
    */
   const Perception: ComponentType<{ readonly sight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly eyeHeight: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly occluders: FieldSpec<"u32">; readonly hearing: FieldSpec<"f32">; readonly memory: FieldSpec<"f32">; readonly team: FieldSpec<"u32">; readonly forward: FieldSpec<"Vector3">; readonly target: FieldSpec<"Entity">; readonly sees: FieldSpec<"bool">; readonly lastSeen: FieldSpec<"Vector3">; readonly sinceSeen: FieldSpec<"f32">; readonly heard: FieldSpec<"bool">; readonly heardAt: FieldSpec<"Vector3">; readonly sinceHeard: FieldSpec<"f32"> }, Perception>;
   /** Something agents of other teams can see. */
@@ -18409,7 +18416,7 @@ export declare namespace og {
   /**
    * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
-   * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+   * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
    */
   namespace ai {
     /**
@@ -18447,6 +18454,14 @@ export declare namespace og {
      * @returns Refused for an agent that has not thought yet, a built-in key or another kind of value.
      */
     function set(world: World, entity: Entity, key: string, value: unknown): Result<void>;
+    /**
+     * Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @returns Refused for a world without og.ai.
+     */
+    function restart(world: World, entity: Entity): Result<void>;
     /**
      * Make a noise agents may hear next tick (a gunshot, a door, a thrown stone).
      *

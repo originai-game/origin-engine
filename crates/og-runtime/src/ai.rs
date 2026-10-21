@@ -126,6 +126,17 @@ pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> String 
     }
 }
 
+/// `og.ai.restart`: the agent's behaviour starts afresh at its next think.
+pub fn og_ai_restart(world: u32, entity: f64) -> String {
+    match system(world) {
+        Some(s) => {
+            s.restart(Entity::from_bits(handle(entity)));
+            ok_void()
+        }
+        None => refuse("this world has no og.ai".to_string()),
+    }
+}
+
 pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
     let r = (|| -> Result<(), String> {
         let d = parse(desc.as_deref())?;
@@ -139,6 +150,7 @@ pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
         s.noise(og_ai::Noise {
             position: at,
             loudness: d["loudness"].as_f64().unwrap_or(1.0).clamp(0.0, 100.0) as f32,
+            source: d["source"].as_f64().map_or(0, handle),
         });
         Ok(())
     })();

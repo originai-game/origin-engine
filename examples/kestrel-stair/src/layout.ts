@@ -181,15 +181,11 @@ export function chapterAt(x: number, y: number, z: number): number {
 export const CRYPT_ROOM: Box = { min: [-20.4, 3.5, -13.4], max: [-9.6, 8.5, -2.6] };
 
 /**
- * The numbers the foes' behaviours compare against. A behaviour's `check`
- * takes only a literal on its right (`check Foe.hp below Tuning.x` is
- * refused: FINDINGS #3), so these are written into ai/*.ogt by the
- * generator, and the game reads the same table.
+ * The foes' thorns and stones when whole. The thresholds their behaviours
+ * compare against live in Tuning (`check Foe.hp below Tuning.impFleeBelow`;
+ * FINDINGS #3, fixed: a check reads a field on its right too).
  */
 export const MIND = {
   impHp: 3,
-  impFleeBelow: 2, // flees with fewer than this many thorns left (hp)
-  impReach: 1.25, // bites within this distance
   wardenHp: 6,
-  wardenReach: 2.3, // slams within this distance
 } as const;

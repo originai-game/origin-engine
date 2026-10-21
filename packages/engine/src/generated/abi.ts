@@ -369,6 +369,8 @@ export interface HostAbi<A, V> {
   og_ai_get(world: number, entity: number, key: string): string;
   /** `og.ai.set` */
   og_ai_set(world: number, entity: number, key: string, value: string): string;
+  /** `og.ai.restart` */
+  og_ai_restart(world: number, entity: number): string;
   /** `og.ai.noise` */
   og_ai_noise(world: number, desc: string | undefined): string;
   /** `og.ai.describe` */
@@ -800,6 +802,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ai_parse",
   "og_ai_get",
   "og_ai_set",
+  "og_ai_restart",
   "og_ai_noise",
   "og_ai_describe",
   "og_platform_store_get",

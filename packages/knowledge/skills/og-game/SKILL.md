@@ -84,7 +84,7 @@ Mistakes the games made, or would have, before reading the right page:
   step gave (`run.json("shop.json")`). Give every step's file its own
   name, so a check reads the step it means (og-build §1, §3).
 - **An agent off the mesh.** Place every navmesh agent at its
-  `og.nav.nearest` point, seeking a target on the mesh, and have a
+  `og.nav.nearest` point (idle or seeking a target on the mesh), and have a
   playtest read each agent's position and `status` a few ticks in: still
   where it was put, its height too, and not `NAV_UNREACHABLE` (og-ai §2).
 
@@ -613,7 +613,10 @@ Transform by the root joint's xz travel and yaw, `full` by all of it,
 `off` (the default) leaves the hips travelling inside the model; switch it
 to `planar` for a lunge's clip and back to `off` after.
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
-a hero retargeted at cook time and sentinels at run time) is the pattern.
+a hero retargeted at cook time and sentinels at run time) is the pattern,
+and for a 3D action game as a whole: a CharacterController over a level,
+clips retargeted at cook and at run time, blend trees, a navmesh and
+behaviour machines (og-ai).
 `og.anim.clip` finds a clip by name, a model's as a flipbook's (§8):
 
 ```ts

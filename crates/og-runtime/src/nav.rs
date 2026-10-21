@@ -388,15 +388,12 @@ pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
     j3(d.map_or(Vec3::ZERO, |d| plane.to_world(d, 0.0))).to_string()
 }
 
+/// `NavMeshInfo`: the bounds are its polygons' (FINDINGS #9 of
+/// examples/kestrel-stair: the floor's origin plus the agent's height was
+/// not where a baked level's terraces are).
 fn mesh_info(h: u64, m: &NavMesh) -> Value {
-    let f = &m.field;
-    let max = f.origin
-        + Vec3::new(
-            f.width as f32 * f.params.cell_size,
-            f.params.agent_height,
-            f.depth as f32 * f.params.cell_size,
-        );
-    json!({ "mesh": h, "polygons": m.poly_count(), "tiles": m.tiles.len(), "min": j3(f.origin), "max": j3(max), "cellSize": f.params.cell_size })
+    let (min, max) = m.bounds();
+    json!({ "mesh": h, "polygons": m.poly_count(), "tiles": m.tiles.len(), "min": j3(min), "max": j3(max), "cellSize": m.field.params.cell_size })
 }
 
 pub fn og_nav_load(world: u32, path: String) -> String {

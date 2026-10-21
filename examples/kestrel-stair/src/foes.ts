@@ -14,7 +14,7 @@
 // clip), and the terrace warden drops the third sigil.
 
 import { og, defineSystem, BODY_KINEMATIC, SHAPE_CAPSULE } from "@origingame/engine";
-import type { Behaviour, ClipAsset, Entity, Value, World } from "@origingame/engine";
+import type { ClipAsset, Entity, Value, World } from "@origingame/engine";
 import { foeRig } from "./anim.ts";
 import { Ending, Foe, Game, Hero, Kind, OneByOne, Phase, Sound, Tuning } from "./components.ts";
 import { begin, flush } from "./state.ts";
@@ -38,10 +38,8 @@ export function spawnFoes(world: World, g: GameV): void {
   const dust = must(og.load.emitter(world, "fx/dust.ogt"));
   FOES.forEach((f, i) => {
     const rig = rigs[f.kind];
-    // Loaded twice: og.AiAgent starts a machine afresh only when its behaviour changes (there is no
-    // restart), so a new run swaps handles (FINDINGS #5, the third-person archetype's way).
+    // Loaded once: a new run restarts it with og.ai.restart (FINDINGS #5, fixed).
     const mind = must(og.ai.load(world, `ai/${f.name}.ogt`));
-    const spare = must(og.ai.load(world, `ai/${f.name}.ogt`));
     const [x, y, z] = f.route[0]!;
     const e = must(world.instantiate(models[f.kind], { name: f.name, position: { x, y, z } }));
     const imp = f.kind === "imp";
@@ -50,12 +48,10 @@ export function spawnFoes(world: World, g: GameV): void {
     must(world.insert(e, og.AnimationPlayer, { clip: rig.clips[imp ? "bite" : "slam"]!, loop: false, weight: 0, fade: 0.1 }));
     must(world.insert(e, og.RigidBody, { kind: BODY_KINEMATIC }));
     must(world.insert(e, og.Collider, { shape: SHAPE_CAPSULE, radius: imp ? 0.35 : 0.55, height: imp ? 0.4 : 1.3, offset: { x: 0, y: imp ? 0.55 : 1.2, z: 0 }, layers: LAYER.foe }));
-    // Seeking its round's next point from the first tick, its mind off until it has planned once:
-    // an agent that has never planned is moved from navmesh polygon 0, whatever its height (FINDINGS #7).
-    const [nx, ny, nz] = f.route[1]!;
-    must(world.insert(e, og.NavAgent, { nav: g.nav as never, target: { x: nx, y: ny, z: nz }, seeking: true, speed: imp ? 1.8 : 1.1, acceleration: imp ? 18 : 8, radius: imp ? 0.4 : 0.6, stopDistance: 0.3, faceMovement: true, turnSpeed: imp ? 10 : 5 }));
+    // Idle where it stands until its mind moves it (FINDINGS #7, fixed: an agent that has never planned stays put).
+    must(world.insert(e, og.NavAgent, { nav: g.nav as never, target: { x, y, z }, seeking: false, speed: imp ? 1.8 : 1.1, acceleration: imp ? 18 : 8, radius: imp ? 0.4 : 0.6, stopDistance: 0.3, faceMovement: true, turnSpeed: imp ? 10 : 5 }));
     must(world.insert(e, og.Steering, { separation: 1.5, separationRadius: 1.6, avoidance: 1.2, avoidDistance: 1.8, avoidMask: LAYER.level | LAYER.gate }));
-    must(world.insert(e, og.AiAgent, { behaviour: mind.behaviour, active: false, thinkEvery: 2 }));
+    must(world.insert(e, og.AiAgent, { behaviour: mind.behaviour, active: true, thinkEvery: 2 }));
     must(world.insert(e, og.Perception, { sight: 11, fov: imp ? 140 : 110, eyeHeight: imp ? 0.9 : 2.2, occlude: true, occluders: LAYER.level | LAYER.gate, team: 2, memory: imp ? 2 : 4, hearing: 5 }));
     must(world.insert(e, Foe, {
       kind: imp ? Kind.Imp : Kind.Warden,
@@ -67,8 +63,6 @@ export function spawnFoes(world: World, g: GameV): void {
       clipAttack: rig.clips[imp ? "bite" : "slam"] as unknown as number,
       clipHurt: rig.clips.hurt as unknown as number,
       clipDie: rig.clips.die as unknown as number,
-      mind: mind.behaviour as unknown as number,
-      spare: spare.behaviour as unknown as number,
     }));
     // Heard from where it is: an imp's chitter loops; a warden's slam is a one-shot at the warden.
     must(world.insert(e, og.AudioSource, imp
@@ -208,7 +202,7 @@ function landAttack(world: World, g: GameV, t: TuneV, e: Entity, name: string, f
   const hz = g.heroZ - q.position.z;
   const dist = Math.hypot(hx, hz);
   const front = dist < 0.01 ? 1 : (hx * fx + hz * fz) / dist;
-  const reach = imp ? MIND.impReach + 0.35 : MIND.wardenReach + 0.5;
+  const reach = imp ? t.impReach + 0.35 : t.wardenReach + 0.5;
   const level = Math.abs(g.heroY - q.position.y) < 1.4;
   if (!imp) {
     g.sfx |= Sound.Slam;
@@ -230,19 +224,16 @@ function reset(world: World, g: GameV): void {
     const me = must(world.get(e, Foe));
     const imp = me.kind === Kind.Imp;
     must(world.set(e, og.Transform, { position: { x: me.homeX, y: me.homeY, z: me.homeZ } }));
-    // Back to planning before thinking (FINDINGS #7): a teleported agent that is not seeking moves from its old polygon.
-    const [nx, ny, nz] = f.route[1]!;
-    must(world.set(e, og.NavAgent, { target: { x: nx, y: ny, z: nz }, seeking: true, drive: true }));
+    // Idle where it was put (FINDINGS #7, fixed: a teleported agent is walked from where it stands).
+    must(world.set(e, og.NavAgent, { target: { x: me.homeX, y: me.homeY, z: me.homeZ }, seeking: false, drive: true }));
     must(world.set(e, og.Skeleton, { rootMotion: "off" }));
     must(world.set(e, og.Collider, { layers: LAYER.foe, mask: 0xffffffff }));
     must(world.set(e, og.AnimationPlayer, { weight: 0 }));
     if (imp) must(world.set(e, og.AudioSource, { playing: true }));
-    // A machine (the wardens') that left its patrol starts afresh: its other handle.
-    const ai = must(world.get(e, og.AiAgent));
-    const swap = !imp && ai.state !== 0;
-    must(world.set(e, og.AiAgent, { active: false, ...(swap ? { behaviour: me.spare as unknown as Behaviour } : {}) }));
-    const plans = must(world.get(e, og.NavAgent)).plans;
-    must(world.set(e, Foe, { hp: imp ? MIND.impHp : MIND.wardenHp, cooldown: 0, stun: 0, slam: 0, slamHit: false, dying: 0, warm: plans, awake: false, oneShot: false, sight: -1, pace: -1, ...(swap ? { mind: me.spare, spare: me.mind } : {}) }));
+    // Its mind starts afresh: a warden's machine back in patrol, an imp's tree at its root (FINDINGS #5, fixed).
+    must(world.set(e, og.AiAgent, { active: true }));
+    must(og.ai.restart(world, e));
+    must(world.set(e, Foe, { hp: imp ? MIND.impHp : MIND.wardenHp, cooldown: 0, stun: 0, slam: 0, slamHit: false, dying: 0, oneShot: false, sight: -1, pace: -1 }));
   }
   g.foesDown = 0;
 }
@@ -282,11 +273,6 @@ export const Foes = defineSystem(
         }
         // Every per-entity call costs (src/state.ts): each is made only when it changes something.
         const agent = must(world.get(e, og.NavAgent));
-        // Its mind wakes once the agent has planned on the navmesh (FINDINGS #7).
-        if (!f.awake && agent.plans > f.warm) {
-          must(world.set(e, og.AiAgent, { active: true }));
-          must(world.set(e, Foe, { awake: true }));
-        }
         const sight = hunting ? t.sight : 0;
         if (sight !== f.sight) must(world.set(e, og.Perception, { sight }));
         if (agent.speed !== (imp ? t.impPatrol : t.wardenPatrol) && agent.status === 0) must(world.set(e, og.NavAgent, { speed: imp ? t.impPatrol : t.wardenPatrol }));

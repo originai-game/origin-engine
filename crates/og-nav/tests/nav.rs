@@ -9,7 +9,9 @@
 //! a wall, off the surface or missing a ramp to a platform; an obstacle that
 //! rebuilds the whole mesh, or leaves it changed after removal; an agent
 //! that never arrives, walks into a wall, piles onto another, or replays to
-//! a different world after a snapshot.
+//! a different world after a snapshot; an agent that has never planned (or
+//! was teleported) walked from a polygon it does not stand on; bounds that
+//! leave polygons out.
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{World, WorldDesc};
@@ -650,4 +652,135 @@ fn an_agent_walks_a_navmesh_around_the_wall_and_arrives_on_the_surface() {
     assert!(p.position.distance(target) < 0.3);
     assert!(max_z > 5.0, "it went round through the gap (max z {max_z})");
     assert!(p.quaternion.length() > 0.99, "a unit rotation");
+}
+
+/// A court at y 0 (x from -3), a terrace at y 4 and, over the heightfield's
+/// first tile (so navmesh polygon 0), a high terrace at y 8.
+fn terraces() -> NavMesh {
+    let mut t = box_triangles(Vec3::new(3.5, -0.1, 0.0), Vec3::new(6.5, 0.1, 10.0));
+    t.extend(box_triangles(
+        Vec3::new(-6.5, 4.0, -6.5),
+        Vec3::new(3.5, 4.0, 3.5),
+    ));
+    t.extend(box_triangles(
+        Vec3::new(6.0, 2.0, 6.0),
+        Vec3::new(3.0, 2.0, 3.0),
+    ));
+    NavMesh::build(bake(&t, &params(), None).expect("bake"))
+}
+
+#[test]
+fn an_idle_agent_stays_on_its_own_terrace_and_later_reaches_a_target() {
+    // Kestrel Stair FINDINGS #7: an agent that had never planned was walked
+    // from polygon 0 (the high terrace here) and lifted to its height.
+    let mesh = terraces();
+    let (tile, first) = mesh.poly(0).expect("polygon 0");
+    assert!(
+        first
+            .verts
+            .iter()
+            .all(|&v| (tile.verts[v as usize].y - 8.0).abs() < 0.2),
+        "polygon 0 is on the high terrace"
+    );
+    let mut navs = Navs::default();
+    let h = navs.insert(Nav::Mesh(Box::new(mesh.clone())));
+    let mut w = world_with(Arc::new(Mutex::new(navs)), Plane::Xz);
+    let agent = |at: Vec3| {
+        (
+            og_nav::system::Transform {
+                position: at,
+                ..Default::default()
+            },
+            NavAgent {
+                nav: h,
+                target: at,
+                speed: 4.0,
+                ..Default::default()
+            },
+        )
+    };
+    let (court_at, terrace_at) = (Vec3::new(0.0, 0.0, 5.0), Vec3::new(5.0, 4.0, 5.0));
+    let court = w.spawn(agent(court_at)).unwrap();
+    let terrace = w.spawn(agent(terrace_at)).unwrap();
+    let at = |w: &World, e| w.get::<og_nav::system::Transform>(e).unwrap().position;
+    for _ in 0..30 {
+        w.step().unwrap();
+        assert_eq!(at(&w, court), court_at, "the idle agent on the court stays");
+        assert_eq!(
+            at(&w, terrace),
+            terrace_at,
+            "the idle agent on the terrace stays"
+        );
+    }
+    assert_eq!(
+        w.get::<NavAgent>(court).unwrap().status,
+        og_nav::STATUS_IDLE
+    );
+    // Later, each walks to a point on its own level and arrives there.
+    let goals = [
+        (court, Vec3::new(5.0, 0.0, -5.0), 0.0),
+        (terrace, Vec3::new(7.5, 4.0, 7.5), 4.0),
+    ];
+    for (e, target, _) in goals {
+        let mut a = w.get::<NavAgent>(e).unwrap();
+        a.target = target;
+        a.seeking = true;
+        w.insert(e, a).unwrap();
+    }
+    for _ in 0..600 {
+        w.step().unwrap();
+        for (e, _, y) in goals {
+            let p = at(&w, e);
+            assert!((p.y - y).abs() < 0.2, "the agent left its level: {p}");
+        }
+    }
+    for (e, target, _) in goals {
+        let a = w.get::<NavAgent>(e).unwrap();
+        assert_eq!(a.status, STATUS_ARRIVED, "at {}", at(&w, e));
+        assert!(at(&w, e).distance(target) < 0.3);
+    }
+    // Teleported while idle, then sent a step away: it walks from where it
+    // now stands, not from the polygon it left.
+    let mut a = w.get::<NavAgent>(court).unwrap();
+    a.seeking = false;
+    w.insert(court, a).unwrap();
+    w.step().unwrap();
+    let mut t = w.get::<og_nav::system::Transform>(court).unwrap();
+    t.position = Vec3::new(-2.0, 0.0, 8.0);
+    w.insert(court, t).unwrap();
+    a = w.get::<NavAgent>(court).unwrap();
+    a.target = Vec3::new(-1.0, 0.0, 8.0);
+    a.seeking = true;
+    w.insert(court, a).unwrap();
+    for _ in 0..120 {
+        w.step().unwrap();
+        let p = at(&w, court);
+        assert!(p.y.abs() < 0.2 && p.z > 7.0, "the agent jumped to {p}");
+    }
+    assert_eq!(w.get::<NavAgent>(court).unwrap().status, STATUS_ARRIVED);
+}
+
+#[test]
+fn a_navmesh_s_bounds_hold_every_polygon_up_to_the_high_terrace() {
+    // Kestrel Stair FINDINGS #9: the bounds' top was the floor's origin plus
+    // the agent's height, whatever the polygons' heights.
+    let mesh = terraces();
+    let (lo, hi) = mesh.bounds();
+    assert!(
+        (hi.y - 8.0).abs() < 0.2,
+        "the top is the high terrace: {hi}"
+    );
+    assert!(lo.y.abs() < 0.2, "the bottom is the court: {lo}");
+    for tile in &mesh.tiles {
+        for p in &tile.polys {
+            for &v in &p.verts {
+                let v = tile.verts[v as usize];
+                assert!(
+                    v.cmpge(lo).all() && v.cmple(hi).all(),
+                    "{v} is outside {lo}..{hi}"
+                );
+            }
+        }
+    }
+    assert!(lo.x < -9.0 && hi.x > 9.0 && lo.z < -9.0 && hi.z > 9.0);
 }

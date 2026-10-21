@@ -1049,8 +1049,8 @@ A navmesh's shape.
 | `mesh` | `Navigation` | `0` | — | — | — | What NavAgent.nav and the queries take. |
 | `polygons` | `number` | `0` | — | — | — | Its convex polygons. |
 | `tiles` | `number` | `0` | — | — | — | Its tiles. |
-| `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Its bounds' lowest corner. |
-| `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Its bounds' highest corner. |
+| `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The lowest corner of the box around its polygons. |
+| `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The highest corner of the box around its polygons (its highest walkable floor's y). |
 | `cellSize` | `number` | `0` | — | `m` | — | Its voxel width. |
 
 ```ogt
@@ -1059,10 +1059,10 @@ struct NavMeshInfo {
   field mesh Navigation "What NavAgent.nav and the queries take."
   field polygons u32 "Its convex polygons."
   field tiles u32 "Its tiles."
-  field min Vector3 "Its bounds' lowest corner." {
+  field min Vector3 "The lowest corner of the box around its polygons." {
     unit m
   }
-  field max Vector3 "Its bounds' highest corner." {
+  field max Vector3 "The highest corner of the box around its polygons (its highest walkable floor's y)." {
     unit m
   }
   field cellSize f32 "Its voxel width." {
