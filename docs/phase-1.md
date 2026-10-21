@@ -516,6 +516,65 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 13, publish-testing: the published page under a script, the text entry's name, clean pool Workers and the kit's settings (71d0d574)
+
+Wave 13's third stream took the web findings about what ships and the
+shell (examples/WEB-FINDINGS.md #6, #7, #8, #10), on lane-1.
+
+- **#6, a publish build could not run a playtest's script.** The publish
+  probe keeps hello, tick, state, pick, entity, input and capture and
+  nothing drove a published page with them. New harness
+  `packages/engine/tests/web/published.ts` (`bun tests/web/published.ts
+  --project examples/hollowbell [--webgl] [--no-build]
+  [--no-isolation]`): it runs `og build --publish`, serves the result as
+  the platform opens a release, and plays steps in the playtests' syntax
+  with real Chrome input events (keys, typed text, mouse presses on the
+  controls it finds in the accessibility mirror); `screenshot` is the
+  probe's capture compared with the project's references under
+  og-tests' rule, `state` and `mirror` feed the checks, a reload stands
+  in for a playtest's `then` relaunch, and a command-channel step
+  (`warp`, `show`, `dump_*`) is refused, never skipped. The engine
+  Worker runs on a clock the harness controls (one tick per frame, held
+  while a capture's readback lands), installed through the DevTools
+  protocol before the Worker starts, so the built files are untouched
+  and every capture is of the tick it names. The stand-in play origin
+  and the mirror-driven input moved out of dogfood.ts into
+  `tests/web/play-origin.ts`; the frame comparison into
+  `tests/support/png.ts`, which reference.ts reads too. Hollowbell 13 of
+  13 on WebGPU, WebGL2 and without isolation (the tick-60 frame matches
+  `metal`'s title exactly; a typed name, Begin and a held ArrowRight
+  reach the game; the console clean); the kit 18 of 18 (the gallery
+  frame exact, a saved 简体中文 back after a reload). Run against the old
+  pool helper, the old textarea and the old kit, it failed on each. Not
+  in any `check.sh` lane; og-build §6 and docs/web-export.md say how it
+  runs. Most existing playtests cannot run through `--playtest` (dump
+  and game-command steps), so its two plans live in the harness.
+- **#7, the hidden textarea was `aria-hidden` while focused.** It is
+  hidden only while no field is focused; a focused field's textarea
+  takes its name, placeholder and text from the field's node in the
+  mirror, whose own element hides and whose dialog owns the textarea,
+  so a reader meets one named text box (text-input.ts, a11y.ts,
+  shell.ts). New `tests/web-text-entry.test.ts` drives the real shell
+  against a stand-in Worker and document (`tests/support/dom.ts`),
+  failing 3 of 3 on the old code.
+- **#8, eight deprecated-parameter warnings per lanes page.** New
+  `scripts/rayon-worker.sh` rewrites wasm-bindgen-rayon's
+  `pkg.default(data.module, data.memory)` to the single-object form on
+  both paths build.sh puts a lanes module in dist, and stops the build
+  if the helper has neither form; no version moved (docs/ci.md). A test
+  in `tests/web-export.test.ts` checks the shipped snippets for any
+  positional init call.
+- **#10, the kit never read its saved settings.** `templates/ui-kit/src/main.ts`
+  asks for its settings on the first tick and applies every saved field
+  when the answer arrives, the settings screen through the same code;
+  new playtest `settings-saved.og.ts` (a first run saves Mute and
+  简体中文; a relaunch with the store kept asks on tick 0 and comes back
+  muted with a Chinese menu). og-platform-sdk §3 now says settings are
+  a pair (load on the first tick, apply what you save) with the kit's
+  code as the example, and og-i18n §5 how to restore the language;
+  validate.ts passes. examples/WEB-FINDINGS.md gained a "Fixed" section
+  for the four.
+
 ## Wave 13, webgl2-render-2: Lantern Vale's ink, Kestrel's crypt and the exposure's start on WebGL2 (c178e216)
 
 Wave 13's second stream took the web findings that are rendering on the
