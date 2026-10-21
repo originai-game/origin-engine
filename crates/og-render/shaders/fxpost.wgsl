@@ -205,12 +205,12 @@ fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
 // without any edge between them; compared with the pixel's own depth, the
 // whole plane read as edge near the horizon (a pale band) or everywhere a
 // wide line reached (outlineDistance near the camera). Where the pixel,
-// the neighbour and the one opposite face the same way (one plane), 1/depth
-// is affine in screen space, so the opposite one gives where the surface
-// goes on: 2/d0 - 1/d(opposite); the test is against that depth (never
-// nearer than d0), so a plane is lined only where it ends. A neighbour
-// facing another way (a step, another face, a curved rim) is tested
-// against d0 as before.
+// the neighbour and the one opposite are one object facing one way (one
+// plane), 1/depth is affine in screen space, so the opposite one gives
+// where the surface goes on: 2/d0 - 1/d(opposite); the test is against
+// that depth (never nearer than d0), so a plane is lined only where it
+// ends. A neighbour of another object, facing another way (a step,
+// another face, a curved rim) or the sky is tested against d0 as before.
 @fragment
 fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -238,8 +238,11 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
     let step = vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * width));
     let q = px + step;
     let d = depth_at(q);
-    let planar = dot(world_normal(q), n0) > 0.999 && dot(world_normal(px - step), n0) > 0.999;
-    let ahead = select(d0, surface_ahead(d0, depth_at(px - step)), planar);
+    let back = px - step;
+    let planar = !is_sky(d)
+        && outline_texel(q).w == id.w && outline_texel(back).w == id.w
+        && dot(world_normal(q), n0) > 0.999 && dot(world_normal(back), n0) > 0.999;
+    let ahead = select(d0, surface_ahead(d0, depth_at(back)), planar);
     if (d > ahead * (1.0 + fxp.outline.y)) {
       edges += 1.0;
     } else if (abs(d - d0) < d0 * fxp.outline.y * 4.0
@@ -254,14 +257,15 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
 
 // Where the surface at a pixel of depth `d0` goes on one step ahead, from
 // the depth `back` one step behind: on a plane 1/depth is affine in screen
-// space. Never nearer than d0; d0 itself when the step behind is sky, not
-// nearer, or less than half as deep (no receding plane to follow); the
-// camera's far plane when the plane would not reach that far (beyond its
-// horizon).
+// space. Never nearer than d0 nor farther than twice it (in the last
+// pixels before its horizon the plane's own depth runs away, and a step
+// to a farther surface there is still an edge: the ground's far end); d0
+// itself when the step behind is sky, not nearer, or less than half as
+// deep (no receding plane to follow).
 fn surface_ahead(d0: f32, back: f32) -> f32 {
   if (is_sky(back) || back >= d0 || back < d0 * 0.5) { return d0; }
   let inv = 2.0 / d0 - 1.0 / back;
-  return select(fxp.cam.x, max(d0, 1.0 / inv), inv > 1.0 / fxp.cam.x);
+  return select(d0 * 2.0, clamp(1.0 / inv, d0, d0 * 2.0), inv > 0.5 / d0);
 }
 
 // The outline target's bytes at `px` (clamped to the image).

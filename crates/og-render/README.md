@@ -1815,9 +1815,9 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   width (never for an orthographic camera). The outline pass
   (fxpost.wgsl `fs_outline`) tests a neighbour's depth against where the
   pixel's own surface would be there when the pixel, the neighbour and the
-  one opposite face the same way (1/depth is affine in screen space on a
-  plane, `surface_ahead`), so a surface at a grazing angle is lined only
-  where it ends: a 1,600 m ground under a chase camera was one wash of
+  one opposite are one object facing one way (1/depth is affine in screen
+  space on a plane, `surface_ahead`, at most twice the pixel's depth), so
+  a surface at a grazing angle is lined only where it ends: a 1,600 m ground under a chase camera was one wash of
   outline with the distance term and a band along the horizon without it
   (meridian-loop #7, og-tests `stylise-outline-ground`). Two exceptions (lantern-vale FINDINGS #16, where a
   look's toon silently switched the lanterns' lacquer and the slimes'
