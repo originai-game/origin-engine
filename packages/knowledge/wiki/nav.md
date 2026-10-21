@@ -52,7 +52,7 @@ module nav {
 | [`og.nav.flowField`](#fn-flowField) | function | A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. It rebuilds when the grid changes. |
 | [`og.nav.setFlowTargets`](#fn-setFlowTargets) | function | Move a flow field's targets (rebuilds it). |
 | [`og.nav.flowAt`](#fn-flowAt) | function | The direction a flow field gives at a point (unit length, or zero at a target or where nothing is reachable). |
-| [`og.nav.load`](#fn-load) | function | A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models. |
+| [`og.nav.load`](#fn-load) | function | A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook. |
 | [`og.nav.build`](#fn-build) | function | A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load). |
 | [`og.nav.setObstacle`](#fn-setObstacle) | function | Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state. |
 | [`og.nav.nearest`](#fn-nearest) | function | The point on a navmesh nearest a world point, within `extent` (half sizes). |
@@ -316,7 +316,7 @@ fn flowAt {
 
 ### `og.nav.load`
 
-A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models.
+A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook.
 
 ```ts
 og.nav.load(world: World, path: string): Result<NavMeshInfo>
@@ -333,7 +333,7 @@ Binding symbol `og_nav_load` · publish builds: kept
 
 ```ogt
 fn load {
-  doc "A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models."
+  doc "A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook."
   param world World "The world."
   param path String "The navmesh asset, such as `levels/arena.nav.ogt`."
   returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh."
