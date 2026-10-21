@@ -905,7 +905,19 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 - **2D lighting**: `Lighting2d` with `Light2d`s shadowed by `Occluder2d`s
   (soft penumbrae) and an order-independent glow buffer; only the lit
   sprite layer range is affected; `SpriteFx` adds flash, glow, lit and soft
-  per sprite.
+  per sprite. Tile layers in the range are lit as its sprites are
+  (`TileLayer::lit`, true unless the map's layer opts out: og-tilemap's
+  `lit false`, a Tiled layer's bool property `lit`, the blob's
+  `layer_flag::UNLIT`): every tile instance carries the lit flag the
+  sprite shader reads (`fx.y`), so the ambient, the lights and the
+  occluders' shadows reach a tilemap on every tier, the same pipeline.
+  Before, tiles were never lit (hollowbell FINDINGS #9: a dark cave of
+  tiles drew as authored). Tests: `tests/sprites2d.rs`
+  `tile_layers_in_the_lit_range_take_the_2d_light` (near, far, behind a
+  wall, opted out, out of the range; broken once by an unlit flag) and
+  the og-tests scene `tilemap-lit` (a dark cave of three tile layers, a
+  torch and a crystal, a pillar's and a ledge's shadows on the back wall,
+  a window's sky layer kept as authored).
 - **Skinning and blendshapes**: `SkinData` + `JointPalette` (storage buffer
   on the full tier; on WebGL2 one `Rgba32Float` vertex texture, the morph
   deltas in its first rows and the palette after them),

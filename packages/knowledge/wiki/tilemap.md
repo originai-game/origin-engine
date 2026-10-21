@@ -6,6 +6,8 @@ Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: gri
 
 Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
 
+With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
+
 Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
 
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
@@ -67,7 +69,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 6249</sub>
+<sub>`api.ogt` line 6251</sub>
 
 <a id="fn-getTile"></a>
 
@@ -103,7 +105,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 6256</sub>
+<sub>`api.ogt` line 6258</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -135,7 +137,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 6266</sub>
+<sub>`api.ogt` line 6268</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -169,7 +171,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 6274</sub>
+<sub>`api.ogt` line 6276</sub>
 
 ## Components, resources and events
 
@@ -224,7 +226,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 6158</sub>
+<sub>`api.ogt` line 6159</sub>
 
 ## Types
 
@@ -240,7 +242,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 6149</sub>
+<sub>`api.ogt` line 6150</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -257,6 +259,7 @@ One layer of a map.
 | `collision` | `boolean` | `false` | — | — | — | Its solid tiles collide. |
 | `terrain` | `string` | `""` | — | — | — | The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer. |
 | `visible` | `boolean` | `false` | — | — | — | Whether it is drawn. |
+| `lit` | `boolean` | `false` | — | — | — | Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false). |
 
 ```ogt
 struct TileLayerInfo {
@@ -268,10 +271,11 @@ struct TileLayerInfo {
   field collision bool "Its solid tiles collide."
   field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
   field visible bool "Whether it is drawn."
+  field lit bool "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
 }
 ```
 
-<sub>`api.ogt` line 6188</sub>
+<sub>`api.ogt` line 6189</sub>
 
 <a id="type-TileObject"></a>
 
@@ -306,7 +310,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 6199</sub>
+<sub>`api.ogt` line 6201</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -341,7 +345,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 6215</sub>
+<sub>`api.ogt` line 6217</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -373,7 +377,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 6230</sub>
+<sub>`api.ogt` line 6232</sub>
 
 <a id="type-TileCell"></a>
 
@@ -396,7 +400,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 6242</sub>
+<sub>`api.ogt` line 6244</sub>
 
 ## Column kinds
 
@@ -415,4 +419,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 6151</sub>
+<sub>`api.ogt` line 6152</sub>

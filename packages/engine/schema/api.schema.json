@@ -3160,7 +3160,7 @@
     },
     {
       "name": "tilemap",
-      "doc": "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.\nLayers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.\nCells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.",
+      "doc": "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.\nLayers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.\nWith og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).\nCells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -12187,7 +12187,7 @@
     "Lighting2D": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.",
+      "description": "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -18589,6 +18589,10 @@
         "visible": {
           "type": "boolean",
           "description": "Whether it is drawn."
+        },
+        "lit": {
+          "type": "boolean",
+          "description": "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
         }
       },
       "required": [
@@ -18598,7 +18602,8 @@
         "parallax",
         "collision",
         "terrain",
-        "visible"
+        "visible",
+        "lit"
       ],
       "additionalProperties": false
     },

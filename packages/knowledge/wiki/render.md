@@ -66,7 +66,7 @@ module render {
 | [`og.Stylise`](#record-Stylise) | resource | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation. |
 | [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
 | [`LookInfo`](#type-LookInfo) | struct | A loaded look: where it came from and what applying it sets. |
-| [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
+| [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
 | [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
 | [`og.Occluder2D`](#record-Occluder2D) | component | A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
@@ -1472,7 +1472,7 @@ resource MaterialStyle {
 
 ### `og.Lighting2D` (resource)
 
-2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
+2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
 
 Token `og.Lighting2D`, registered under the schema name `og.Lighting2D`; its value type is `Lighting2D`.
 
@@ -1486,7 +1486,7 @@ Token `og.Lighting2D`, registered under the schema name `og.Lighting2D`; its val
 
 ```ogt
 resource Lighting2D {
-  doc "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
+  doc "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
   field enabled bool "Light the layers."
   field ambient Color "Light everywhere (0 is darkness outside the lights)." {
     default 0.15 0.15 0.15

@@ -1256,6 +1256,7 @@ fn load_tilemap(eng: &Engine, path: &str) -> Result<Value, String> {
                 "name": l.name, "index": i, "z": l.z,
                 "parallax": { "x": l.parallax.x, "y": l.parallax.y },
                 "collision": l.collision, "terrain": l.terrain.clone().unwrap_or_default(), "visible": l.visible,
+                "lit": l.lit,
             })
         })
         .collect();
@@ -2392,6 +2393,7 @@ fn tile_layers(
                     layer.repeat_y.then_some(world_size.y),
                 ],
                 time: now as f32,
+                lit: layer.lit,
             });
         }
     }

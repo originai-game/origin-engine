@@ -4266,7 +4266,7 @@ export interface LookInfo {
 }
 
 /**
- * 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
+ * 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
  *
  * The `Lighting2D` resource (token `og.Lighting2D`).
  */
@@ -9657,6 +9657,7 @@ export interface FlashDesc {
 // ── tilemap ─────────────────────────────────────────────────────
 // Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
 // Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
+// With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
 // Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
 
 /**
@@ -9749,6 +9750,10 @@ export interface TileLayerInfo {
   readonly terrain: string;
   /** Whether it is drawn. */
   readonly visible: boolean;
+  /**
+   * Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false).
+   */
+  readonly lit: boolean;
 }
 
 /**
@@ -17157,7 +17162,7 @@ export declare namespace og {
    */
   const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool"> }, MaterialStyle>;
   /**
-   * 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
+   * 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
    */
   const Lighting2D: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly ambient: FieldSpec<"Color">; readonly minLayer: FieldSpec<"i32">; readonly maxLayer: FieldSpec<"i32">; readonly resolution: FieldSpec<"f32"> }, Lighting2D>;
   /**
@@ -17941,6 +17946,7 @@ export declare namespace og {
   /**
    * Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
    * Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
+   * With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
    * Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
    */
   namespace tilemap {

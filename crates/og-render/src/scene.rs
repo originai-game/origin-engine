@@ -2823,6 +2823,12 @@ pub struct TileLayer {
     pub repeat: [Option<f32>; 2],
     /// Seconds of animated-tile time.
     pub time: f32,
+    /// Taken by 2D lighting ([`crate::Lighting2d`]) when `layer` is in its
+    /// `min_layer..=max_layer`, as the sprites of that layer are: the
+    /// ambient, every [`crate::Light2d`] and the occluders' shadows. False
+    /// keeps the layer as authored in any range (a sky, a far parallax
+    /// backdrop).
+    pub lit: bool,
 }
 
 /// The nine pieces of a nine-slice sprite: the corners keep their size, the

@@ -539,8 +539,10 @@ impl Decal {
 // ---------------------------------------------------------------------------
 
 /// The 2D lighting of the sprite layers `min_layer..=max_layer`: their
-/// colour is multiplied by `ambient` plus every [`Light2d`] reaching the
-/// pixel, shadowed by [`Occluder2d`]s. Other layers (UI) are drawn as authored.
+/// colour (sprites, 2D particles and the tile layers there whose
+/// [`crate::TileLayer::lit`] is set) is multiplied by `ambient` plus every
+/// [`Light2d`] reaching the pixel, shadowed by [`Occluder2d`]s. Other
+/// layers (UI) are drawn as authored.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Lighting2d {
     /// Linear light everywhere (0 is darkness outside the lights).

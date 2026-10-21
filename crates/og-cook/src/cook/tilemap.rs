@@ -261,6 +261,7 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
             (l.repeat_x, layer_flag::REPEAT_X),
             (l.repeat_y, layer_flag::REPEAT_Y),
             (l.terrain.is_some(), layer_flag::TERRAIN),
+            (!l.lit, layer_flag::UNLIT),
         ] {
             if on {
                 flags |= bit;
@@ -707,6 +708,11 @@ fn walk_tiled(
                         .unwrap_or(false);
                 if let Some(z) = props.get("z").and_then(Value::as_i64) {
                     layer.z = z as i32;
+                }
+                if let Some(lit) = props.get("lit") {
+                    layer.lit = lit.as_bool().ok_or_else(|| {
+                        format!("layer '{name}': the property lit is a bool (true or false)")
+                    })?;
                 }
                 if map.tilesets.is_empty() {
                     return Err(format!(

@@ -2622,7 +2622,7 @@ module render {
   }
 
   resource Lighting2D {
-    doc "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
+    doc "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
     field enabled bool "Light the layers."
     field ambient Color "Light everywhere (0 is darkness outside the lights)." {
       default 0.15 0.15 0.15
@@ -6144,6 +6144,7 @@ module tilemap {
   skill og-game
   doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
   doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
+  doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
   doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
 
   handle TilemapAsset "A loaded map: its layers, tilesets and objects."
@@ -6194,6 +6195,7 @@ module tilemap {
     field collision bool "Its solid tiles collide."
     field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
     field visible bool "Whether it is drawn."
+    field lit bool "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
   }
 
   struct TileObject {
