@@ -118,7 +118,7 @@ benchmarks, both set aside on 2026-10-22):**
   fault being armed once the probe's tick passes 30 and the cull it trips
   still tick 30's (the probe counts the tick in progress; the lanes run
   passed at a later tick). The check accepts 30 or later since this
-  commit; the harness is rerun on the measure build to confirm.
+  commit (bdc1d850); rerun on the measure build, both runs pass every check.
 
 ## Main gate, wave 12 (2026-10-21)
 
