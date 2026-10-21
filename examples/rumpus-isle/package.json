@@ -1,0 +1,23 @@
+{
+  "name": "rumpus-isle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "og dev .",
+    "start": "og run .",
+    "build": "og build .",
+    "publish-build": "og build . --publish",
+    "cook": "og cook .",
+    "assets": "bun tools/make-assets.ts",
+    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p .",
+    "polish": "og polish .",
+    "test": "og test ."
+  },
+  "dependencies": {
+    "@origingame/engine": "0.0.1"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

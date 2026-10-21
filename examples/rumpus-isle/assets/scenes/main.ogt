@@ -1,0 +1,73 @@
+type scene
+version 1
+---
+# The isle (the camera, the critters, the tiles and the berries are placed
+# by src/arena.ts in start): the sun, the sea, the island and the islets
+# round it with their palms.
+name "Isle"
+entity "sun" {
+  Transform {
+    position 6 14 8
+    quaternion -0.3696438 0.2391176 0.0990458 0.8923991
+  }
+  DirectionalLight {
+    color 1 0.96 0.88
+    intensity 3.2
+    castShadow true
+    shadowDistance 40
+    shadowSoftness 0.02
+  }
+}
+entity "island" {
+  model "models/island.glb"
+  Transform {
+    position 0 0 0
+  }
+}
+entity "islet-0" {
+  model "models/islet.glb"
+  Transform {
+    position -11.5 -0.5 -4
+  }
+  entity "palm-0" {
+    model "models/palm.glb"
+    Transform {
+      position -0.3 0.1 0.2
+      quaternion 0 0.9238795 0 0.3826834
+    }
+  }
+}
+entity "islet-1" {
+  model "models/islet.glb"
+  Transform {
+    position 12 -0.5 -2.5
+    quaternion 0 0.7071068 0 0.7071068
+  }
+  entity "palm-1" {
+    model "models/palm.glb"
+    Transform {
+      position 0.2 0.1 -0.3
+      quaternion 0 0.3826834 0 0.9238795
+    }
+  }
+}
+entity "islet-2" {
+  model "models/islet.glb"
+  Transform {
+    position 9.5 -0.5 -9.5
+    quaternion 0 0.9659258 0 0.258819
+  }
+}
+entity "islet-3" {
+  model "models/islet.glb"
+  Transform {
+    position -9 -0.5 7.5
+    quaternion 0 0.258819 0 0.9659258
+  }
+  entity "palm-3" {
+    model "models/palm.glb"
+    Transform {
+      position 0 0.1 0
+    }
+  }
+}

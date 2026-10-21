@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# Confetti over the podium (tools/make-assets.ts).
+maxParticles 400
+shape box 3 0.2 1.2
+spread 25
+rate 90
+lifetime 2.5 3.5
+speed 0.5 1.5
+size 0.1 0.16
+rotation 0 360
+angularVelocity -400 400
+colorOverLife {
+  key 0 1 1 1 1
+  key 0.85 1 1 1 1
+  key 1 1 1 1 0
+}
+gravity 0 -2.2 0
+noise 0.8 0.6 0.4
+drag 0.8
+blend alpha

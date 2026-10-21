@@ -1,0 +1,25 @@
+type project
+version 1
+---
+# The project manifest (docs/design.md §2.5): `og run`, `og build`, `og cook`,
+# `og dev` and `og test` read it. `npm create @origingame/game` fills in the
+# name and id.
+name "Rumpus Isle"
+id "rumpus-isle"
+# The engine this game is written against (design §9: upgrades are explicit).
+engine "0.0.1"
+entry "src/main.ts"
+# 2d (orthographic camera, sprites, 2D physics) or 3d.
+profile "3d"
+tick 60
+seed 1
+scenes {
+  main "scenes/main.ogt"
+}
+scene main
+publish {
+  # `og build --publish` keeps only the player-facing probe members
+  # (hello, tick, state, pick, entity, input, capture).
+  probe player
+  out "dist"
+}

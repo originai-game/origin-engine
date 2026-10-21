@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# A berry taken (tools/make-assets.ts).
+maxParticles 48
+shape sphere 0.2 surface
+rate 0
+burst 0 22
+duration 0.1
+looping false
+lifetime 0.35 0.6
+speed 1.5 3
+size 0.08 0.14
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.95 0.6 1
+  key 1 1 0.5 0.6 0
+}
+color 2 1.6 1.2 1
+gravity 0 1.5 0
+drag 2
+blend additive

@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's back preset (tools/make-assets.ts): og.load.sound(world, "audio/leave.ogt") plays it.
+preset "back"
+seed 1
+pitch 0.9
+length 0.8
+volume 0.5

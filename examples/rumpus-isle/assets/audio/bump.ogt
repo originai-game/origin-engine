@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's hit preset (tools/make-assets.ts): og.load.sound(world, "audio/bump.ogt") plays it.
+preset "hit"
+seed 4
+pitch 1.35
+length 0.5
+volume 0.8

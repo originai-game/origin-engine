@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's coin preset (tools/make-assets.ts): og.load.sound(world, "audio/berry.ogt") plays it.
+preset "coin"
+seed 3
+pitch 1.1
+length 0.8
+volume 0.6

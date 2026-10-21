@@ -1,0 +1,14 @@
+# Made by tools/make-assets.ts (about 5 MB): run `bun tools/make-assets.ts` after a clone.
+assets/music/romp.wav
+assets/audio/splash.wav
+# The engine's cartoon style pack, copied by tools/make-assets.ts from templates/ui-kit (its art and fonts).
+assets/skins/rumpus/*.png
+assets/skins/rumpus/*.ttf
+# og cook output: rebuilt from assets/, never committed.
+cooked/
+# og build output.
+dist/
+# og run and og test output, and og's bundled entry.
+og-out/
+.og/
+node_modules/
