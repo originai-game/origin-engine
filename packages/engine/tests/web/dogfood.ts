@@ -154,6 +154,14 @@ const PLANS: Record<string, Plan> = {
     language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "日本語" }, { wait: 400 }, { click: "Done" }],
     translated: "新しい旅",
   },
+  brasswick: {
+    title: "new",
+    start: [{ click: "new" }, { wait: 1500 }],
+    play: ["ArrowRight", "Space", "ArrowRight", "ArrowLeft"],
+    quit: [{ key: "Escape" }, { wait: 600 }, { click: "quit" }],
+    language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "Español" }, { wait: 400 }, { click: "Done" }],
+    translated: "Partida nueva",
+  },
   "ui-kit": {
     title: "UI kit",
     start: [{ click: "platformer" }, { wait: 1000 }],

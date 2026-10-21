@@ -187,14 +187,14 @@ function capsule(id: string, build: () => void): void {
  * a score builds its own (og-taste §2: capsules with an icon and a number, in the corners).
  */
 function hud(world: World, g: GameV): void {
-  og.ui.anchor("Gears", { anchor: "topLeft", direction: "row", gap: S.sm, cross: "center" }, () => {
+  // All in the top-right corner: on the published page the shell's Back handle sits over the top-left
+  // one, outside og.ui's safe area (FINDINGS.md).
+  let paused = false;
+  og.ui.anchor("Hud", { anchor: "topRight", direction: "row", gap: S.sm, cross: "center" }, () => {
     capsule("Count", () => {
       og.ui.icon("Gear", "gear", { size: 20, tint: { token: "accent" } });
       og.ui.label("Gears", say(world, "hud.gears", { n: g.gears, of: GEARS[g.level] }), { step: "lg", nowrap: true });
     });
-  });
-  let paused = false;
-  og.ui.anchor("Level", { anchor: "topRight", direction: "row", gap: S.sm, cross: "center" }, () => {
     capsule("Name", () => {
       og.ui.label("Text", say(world, "levels.card", { n: g.level + 1, name: say(world, LEVEL_KEYS[g.level]!) }), { nowrap: true });
     });

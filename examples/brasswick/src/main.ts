@@ -23,7 +23,7 @@ import { Clip, Control } from "./hero.ts";
 import { buildVault, clip, LEVEL_PITCH, loadArt, must, spawnWick, VIEW_H } from "./level.ts";
 import { applyPrefs, LANGUAGES, setLanguage } from "./prefs.ts";
 import { Crates, Doors, Gates, Lifts, Plates } from "./puzzle.ts";
-import { askContinue, Saves } from "./save.ts";
+import { Answers, askContinue, Saves } from "./save.ts";
 import { spawnVoices, Voices } from "./sound.ts";
 import { finishLevel, startLevel, toTitle, Ui } from "./ui.ts";
 
@@ -76,7 +76,7 @@ function needPlay(world: World, what: string) {
 export default og.game({
   look: "looks/brasswick.ogt",
   resources: [Game, Prefs, Tuning, Fx, Sfx],
-  systems: [...og.systems.cameras, Ui, Control, Crates, Plates, Doors, Gates, Lifts, Ticks, Pickups, Lamps, Exits, Hazards, Saves, Effects, Voices, Settle],
+  systems: [...og.systems.cameras, Answers, Ui, Control, Crates, Plates, Doors, Gates, Lifts, Ticks, Pickups, Lamps, Exits, Hazards, Saves, Effects, Voices, Settle],
   // The pixel look: no antialiasing (the preset says so too).
   render: { antialias: "off" },
   start,

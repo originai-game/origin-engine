@@ -1,70 +1,83 @@
-# The game template
+# Brasswick
 
-What `npm create @origingame/game` writes: the smallest whole Origin Engine
-project, and the hello of the engine's design grown into a scene. A menu's
-Start button (or S, or Enter) spins the trickster and drops a crate onto
-the ground; a guard patrols the yard, sees only inside its cone and not
-through the wall, raises the alarm, chases, searches and goes back.
+The fifth dogfood game of the Origin Engine build-out, written from the
+knowledge package alone (`packages/knowledge`: the skills, the wiki, `og
+--help`): a short 2D puzzle-platformer in a lamplit clockwork vault. Wick,
+a small brass automaton with a candle for a wick, climbs out through three
+levels. What the knowledge package got wrong or left out, and what the
+engine did not do, is `FINDINGS.md`.
 
 ```sh
-og run .     # headless with the probe; og dev . reloads on save
-og test .    # tests/smoke.og.ts and tests/guard.og.ts
-og polish .  # the taste and feel scores of those playtests
-og build .   # the play page
+bun tools/make-assets.ts   # every asset (the music and the copied skin are not committed)
+og cook .
+og run .                   # headless with the probe; og dev . reloads on save
+og test .                  # nine playtests, the frames against references/metal
+bun run typecheck
+og build . --publish       # the web build
 ```
 
-## What it demonstrates, and the skills it exercises
+## Controls
+
+| Action | Keyboard | Pad |
+|---|---|---|
+| Run | Arrows or A, D | left stick, d-pad |
+| Jump (wall jump on a wall) | Space, Z, Up or W | A |
+| Drop through a grate | Down or S | d-pad down |
+| Back to the last lamp | R | Y |
+| Pause | Escape | Start |
+| Menus | arrows, Tab, Enter, Escape | d-pad, A, B |
+
+On a phone the HUD shows a d-pad and Jump.
+
+## The levels
+
+`tools/levels.ts` builds each as a character grid (a few rectangles and the
+things placed in them); `tools/make-assets.ts` writes them as tilemaps in
+the engine's own `type tilemap` grammar (`assets/maps/level-<n>.ogt`), and
+the game reads every position from the maps' objects (`src/level.ts`). All
+three are in the world at once, side by side in x, each inside its
+`og.CameraZone`.
+
+1. **The Boiler Stair**: a spike pit, a crate shoved against a ledge as a
+   step, a lamp, a crate onto a plate that holds a door open, a hop over
+   it, and a wall-jump shaft to the hatch.
+2. **Counterweights**: grates, a crate shoved off a slab onto its plate,
+   two ticks (one walks the second crate's floor), a crate dropped into a
+   pit onto its plate.
+3. **The Lantern Gate**: dark; a lift over spikes, a gate on a prismatic
+   joint whose position motor slides it up while its plate is held, a long
+   wall-jump climb, a tick on the top shelf.
+
+## What it uses
 
 | Part | Where | Skill |
 |---|---|---|
-| The project: `project.ogt`, the entry's `og.game` default export, `cooked/` from `assets/` | `project.ogt`, `src/main.ts` | og-game §2, §5 |
-| Components, a resource, systems over archetype columns, one job each | `Health`, `Velocity`, `Spin`, `Run`; `Move`, `StartSpin`, `Drop`, `Rotate` | og-core §4, §5; og-game §3 |
-| The frame's art direction as data: a look extending a catalogue preset, applied by `GameDesc.look` | `assets/looks/origin-game.ogt` (a created game's is `<id>.ogt`), `og.game({ look })` | og-taste §1, §12 |
-| A text scene spawned before the first tick, a glTF model, a font, a box with a collider that falls | `assets/scenes/main.ogt`, `start` | og-game §4, §6, §13 |
-| A menu panel whose button answers with a look and a sound (og sfx's click preset) | `Menu`, `assets/audio/click.ogt` | og-ui §1, §3; og-taste §6; og-audio §2, §3 |
-| Every word the menu shows from a string table, the base one in the source language | `assets/strings/en.ogt`, `Menu` | og-i18n §1, §2 |
-| A guard as data: a state machine on og.ai, a navmesh cooked from the yard, sight cones against the wall | `assets/ai/guard.ogt`, `assets/nav/yard.ogt` | og-ai §1–§5 |
-| Commands with their usage in `help`, facts for playtests | `commands`, `commandHelp`, `facts` | og-game §3; og-build §1 |
-| Playtests that assert on dumps and facts, never on the code | `tests/` | og-build §3, §4 |
-
-`og polish .` (2026-10-19): taste 100, feel 87 (tests/evidence/E7/polish/
-in the engine repository). The feel row below 90 is idle frames: the guard
-playtest stages its scenario without pressing Start, so for half its ticks
-only the guard stands still at a corner of its search, and the smoke
-playtest waits half a second on the title before its press. A game made
-from the template should keep a playtest that plays it.
-
-Asset licences: `LICENSES.md`.
+| A tileset with a blob47 terrain, three maps in the `type tilemap` grammar: far pipes (`lit false`) and mid girders repeating behind with parallax, the back wall, the plate with collision, grates, decor | `tools/make-assets.ts`, `assets/tiles/vault.ogt`, `assets/maps/` | og-game §8, og-feel §11 |
+| og.Lighting2D over the lit map layers, og.Light2D on Wick, the lamps, the wall lamps and the hatch, crates casting shadows, the 2D glow | `src/level.ts`, `src/main.ts`, `assets/looks/brasswick.ogt` | og-game §10, og-taste §8 |
+| og.PlatformerController: run, jump, coyote time, a buffer, wall slide and wall jumps, one-way grates, riding the lift, shoving crates | `src/hero.ts`, `src/level.ts` | og-game §13, og-feel §12 |
+| Crates (dynamic boxes), pressure plates (`og.physics.overlap`), doors (kinematic bodies moved by og.Velocity), the gate (og.Joint, `JOINT_PRISMATIC`, `MOTOR_POSITION`), the lift (kinematic) | `src/puzzle.ts` | og-game §13 |
+| Flipbooks: Wick (idle, run, jump, fall, wall, push, hurt, cheer; `step` and `shove` events), ticks, gears, plates, lamps, the hatch | `assets/sprites/*.ogt`, `src/hero.ts`, `src/actors.ts` | og-game §8, og-feel §9 |
+| Juice: hit stop, shake, squash and stretch, floating text, one-shot emitters restarted by `startTick` | `src/hero.ts`, `src/actors.ts`, `src/feel.ts` | og-feel §3–§7 |
+| The title, level select, pause, settings and results templates; a HUD from widgets | `src/ui.ts` | og-ui §2–§6 |
+| English and Spanish string tables, the settings' words from them | `assets/strings/`, `src/ui.ts` | og-i18n |
+| og sfx presets on voices, the music streamed in chunks on its bus, ducked under the effects | `src/sound.ts`, `assets/audio/`, `assets/music/vault.wav.ogt` | og-audio |
+| og.platform: the settings (loaded on the first tick, saved on close), the progress record at its revision, the whole world in a slot at each lamp, Continue restoring it | `src/save.ts`, `src/prefs.ts` | og-platform-sdk, og-game §17 |
+| Keyboard and pad 0 | `src/hero.ts`, `src/ui.ts` | og-game §7, og-ui §4 |
 
 ## The look
 
-The game's art direction is data, in one file a reader can diff:
-`assets/looks/brasswick.ogt` (an `.ogt` of `type look`), named by
-`look: "looks/brasswick.ogt"` in the `og.game({...})` of `src/main.ts`. It is applied
-after the first scene spawns and before `start` runs, and sets tone
-mapping and exposure, the post stack, the stylisation (`Stylise`),
-material defaults (`MaterialStyle`: toon, outlines, flat shading), fog,
-sky, the environment map and the UI skin.
+`assets/looks/brasswick.ogt` extends the catalogue's `detailed-pixel`
+(og-taste §12) at 360 lines (2x at 1280×720, 3x at 1920×1080: the preset's
+270 leave a border at 720p), 24 tones a channel and a lighter dither, with
+the fantasy skin recoloured brass (`skins/brasswick`, copied by the
+generator) and the 2D glow.
 
-It extends `detailed-pixel`, chosen with `--look`: "Dense illustrative pixels" in the style
-catalogue. Pixel art pushed towards illustration: rich clusters, subtle hue shifts and detailed scenery, with the pixel grid still visible on close look. Its UI skin pack is `fantasy`.
+## Playtests
 
-To change it:
+`tests/`: `frames.og.ts` (nine frames against `references/metal/`),
+`replay.og.ts` (the first level played by keys alone, twice, one hash),
+`move.og.ts`, `puzzle.og.ts`, `actors.og.ts`, `save.og.ts` (a relaunch over
+a kept store), `locales.og.ts` (Spanish on every screen), `audio.og.ts`.
+`OG_FX_CAPTURE=1 og test .` records this tier's references.
 
-- **Another style**: set `extends "<slug>"` to another entry of the style
-  catalogue (the og-taste skill's §12 lists all 37 with the premises each
-  fits and three checks to hold the frames to), then `og cook`.
-- **Tune it**: add a block after `extends`; a field written there wins
-  over the preset's, field by field:
-
-  ```text
-  RenderSettings {
-    toneMapping agx
-    exposure 1.1
-  }
-  ```
-
-- **Switch at a tick** (a flashback, an area's mood): `og.load.look` a
-  second look file and `og.render.applyLook(world, look)`.
-- **Check it**: `og run --headless --commands "1:screenshot:look.png;1.1:quit"`
-  and read the frame against the style's checks.
+Asset licences: `LICENSES.md`.

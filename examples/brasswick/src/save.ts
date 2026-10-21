@@ -71,7 +71,13 @@ export function askContinue(world: World, g: GameV): void {
   g.loadRequest = r.ok ? r.value : 0;
 }
 
-export const Saves = defineSystem("Saves", { writes: [Game, Prefs, og.Audio] }, (_q, time, world) => {
+/**
+ * First in the tick: the answers that arrived, applied before the Ui system builds the screens, so
+ * the title the shell draws behind the play gate already shows the saved language and Continue
+ * (og-platform-sdk §3: the shell runs one more tick per answer the first tick asked for, and the
+ * frame is that tick's UI).
+ */
+export const Answers = defineSystem("Answers", { writes: [Game, Prefs, og.Audio] }, (_q, time, world) => {
   const g = must(world.resource(Game));
   const p = must(world.resource(Prefs));
   if (g.restored) {
@@ -157,7 +163,12 @@ export const Saves = defineSystem("Saves", { writes: [Game, Prefs, og.Audio] }, 
       }
     }
   }
+});
 
+/** Late in the tick, after the lamps and the exits asked: the vault slot, the progress record and the settings written. */
+export const Saves = defineSystem("Saves", { writes: [Game, Prefs] }, (_q, _time, world) => {
+  const g = must(world.resource(Game));
+  const p = must(world.resource(Prefs));
   // A lamp was lit: the world as it stands, in the vault slot (one request for every key).
   if (g.saveNow && g.saveRequest === 0) {
     g.saveNow = false;
