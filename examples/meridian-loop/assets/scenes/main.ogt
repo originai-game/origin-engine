@@ -1,0 +1,6 @@
+type scene
+version 1
+---
+# Meridian Loop's scene: the circuit, the cars and the lights are built in
+# code (src/world.ts) from src/track.ts.
+name "Meridian Loop"

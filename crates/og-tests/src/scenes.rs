@@ -102,6 +102,12 @@ pub const SCENES: &[&str] = &[
     "stylise-outline-ground",
 ];
 
+/// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
+/// both): their content is cooked by og-cook at build time, which the
+/// browser's wasm build of the scenes does not carry.
+#[cfg(not(target_arch = "wasm32"))]
+pub const NATIVE_SCENES: &[&str] = &["vox-keyframes"];
+
 /// Which backend tiers a scene has a reference for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Applies {
@@ -504,6 +510,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-object" => g.scene = crate::stylise_scenes::object_scene(),
         "stylise-halftone-surface" => g.scene = crate::stylise_scenes::halftone_surface_scene()?,
         "stylise-outline-voxels" => g.scene = crate::stylise_scenes::outline_voxels_scene(),
+        // Owed row 63: a .vox transform keyed across frames, cooked and
+        // posed at frames 0 and 2 side by side.
+        #[cfg(not(target_arch = "wasm32"))]
+        "vox-keyframes" => g.scene = crate::vox_scenes::keyframes_scene()?,
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
         "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
         // Untonemapped sprites under TAA (its history carries the alpha).

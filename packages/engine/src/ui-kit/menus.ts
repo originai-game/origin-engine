@@ -38,6 +38,7 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
     padding: all(phone ? t.lg : t.xl),
     background: token("materialThick"),
     radius: t.panel,
+    instant: desc.instant ?? false,
   }, () => {
     kit.column("Heading", { gap: t.xs, cross: "center", width: grow() }, () => {
       kit.label("Title", desc.title ?? "", { step: phone ? "displayMd" : "displayLg", font: "display", align: "center", width: grow(), heading: true });

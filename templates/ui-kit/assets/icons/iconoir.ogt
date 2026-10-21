@@ -1,11 +1,14 @@
 type icons
 version 1
 ---
-# 64 game-UI glyphs of iconoir 7.12.1 (MIT, iconoir/LICENSE), cooked into
-# a distance-field atlas like a font (og-cook cook::icons) for UiDesc.icons.font.
+# 72 game-UI glyphs of iconoir 7.12.1 (MIT, iconoir/LICENSE), cooked into
+# a distance-field atlas like a font (og-cook cook::icons) for UiDesc.icons.font,
+# and the kit's own icon names after them (the 32 of the old PNG grid).
 source "iconoir"
 size 48
 range 8
+# iconoir draws round joins; floppy-disk and pause name none (SVG's miter).
+join round
 # Navigation and controls
 icon "home"
 icon "settings"
@@ -77,3 +80,23 @@ icon "floppy-disk"
 icon "trash"
 icon "edit-pencil"
 icon "language"
+# The kit's names (its screens, the shop, the idle game, the dialogue's
+# portraits), each an iconoir glyph: those the set has under another name,
+# and eight more icons.
+icon "coin" "coins"
+icon "gear" "settings"
+icon "sword" "hammer"
+icon "gem" "hexagon"
+icon "bolt" "flash"
+icon "close" "xmark"
+icon "back" "nav-arrow-left"
+icon "bag" "shopping-bag"
+icon "bomb" "bowling-ball"
+icon "flag" "triangle-flag"
+icon "apple"
+icon "leaf"
+icon "fire" "fire-flame"
+icon "drop" "droplet"
+icon "skull" "emoji-talking-angry"
+icon "music" "music-double-note"
+icon "person" "user"

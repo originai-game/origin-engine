@@ -11,6 +11,8 @@
 //! source "iconoir"       # the SVGs' directory, beside this file
 //! size 48                # atlas pixels per icon (its em)
 //! range 8                # the distance range, atlas pixels
+//! join round             # the join of a path that names none (round,
+//!                        # miter or bevel; SVG's miter when left out)
 //! icon "heart"           # an icon: its name, and its SVG's file name without
 //! icon "close" "xmark"   # .svg when the two differ
 //! ```
@@ -23,16 +25,23 @@
 //! is how the runtime knows it is an icon set.
 //!
 //! The field is a true signed distance in all four channels (the median of
-//! three equal channels is the distance, as og-ui's run-time glyphs): the
-//! icons are strokes with round caps and joins, which a true distance draws
-//! exactly; a butt cap is cut square at its end, and a miter join is drawn
-//! round (at iconoir's 1.5-unit stroke the corner moves by under 0.2 units).
+//! three equal channels is the distance, as og-ui's run-time glyphs), of
+//! the stroke's own outline: round caps and joins are arcs; a butt cap is
+//! cut square at its end; a miter join reaches its point (SVG's
+//! `stroke-miterlimit`, 4 unless the path says, beyond which it is
+//! bevelled) and a bevel join is cut across, so the zero line keeps a
+//! miter's corner sharp (a single channel rounds it only inside one atlas
+//! texel, where three channels would not; at 48 px an em that is under a
+//! twentieth of iconoir's 24 units). A path's join is its
+//! `stroke-linejoin`, else the set's `join` line, else SVG's `miter`.
 //! SVG support is what line icons use: `<path>` elements with absolute or
 //! relative `M L H V C S Q T Z` commands, `stroke` with `stroke-width`,
-//! `stroke-linecap` (`round`, `butt`, `square` taken as butt) and `fill`
-//! (`currentColor` or any colour fills by the nonzero rule; `none` does
-//! not), inherited from the `<svg>` element. Anything else is refused with
-//! the icon and element named.
+//! `stroke-linecap` (`round`, `butt`, `square` taken as butt),
+//! `stroke-linejoin` (`round`, `miter`, `miter-clip` and `arcs` taken as
+//! miter, `bevel`), `stroke-miterlimit` and `fill` (`currentColor` or any
+//! colour fills by the nonzero rule; `none` does not), inherited from the
+//! `<svg>` element. Anything else is refused with the icon and element
+//! named.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
@@ -51,8 +60,33 @@ pub struct IconSet {
     pub source: String,
     pub size: u32,
     pub range: u32,
+    /// The join of a stroked path that names none (`join`; SVG's miter).
+    pub join: Join,
     /// (name, SVG file stem), in index order.
     pub icons: Vec<(String, String)>,
+}
+
+/// How a stroke's segments meet at a corner (SVG's `stroke-linejoin`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Join {
+    /// Out to the point where the two edges meet (within the miter limit).
+    #[default]
+    Miter,
+    /// An arc around the corner.
+    Round,
+    /// Cut straight across the corner.
+    Bevel,
+}
+
+impl Join {
+    fn parse(v: &str) -> Option<Join> {
+        match v {
+            "miter" | "miter-clip" | "arcs" => Some(Join::Miter),
+            "round" => Some(Join::Round),
+            "bevel" => Some(Join::Bevel),
+            _ => None,
+        }
+    }
 }
 
 /// Parses an icon set file.
@@ -65,6 +99,7 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
         source: ".".into(),
         size: 48,
         range: 8,
+        join: Join::Miter,
         icons: Vec::new(),
     };
     for e in &doc.body.entries {
@@ -85,6 +120,15 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
                     set.range = v as u32;
                 }
             }
+            "join" => {
+                let v = e
+                    .word(0)
+                    .or_else(|_| e.string(0))
+                    .map_err(|x| at(x.to_string()))?;
+                set.join = Join::parse(v)
+                    .filter(|_| matches!(v, "round" | "miter" | "bevel"))
+                    .ok_or_else(|| at(format!("join \"{v}\": round, miter or bevel")))?;
+            }
             "icon" => {
                 let name = e.string(0).map_err(|x| at(x.to_string()))?.to_owned();
                 let file = match e.values.len() {
@@ -104,7 +148,7 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
             }
             other => {
                 return Err(at(format!(
-                    "`{other}` is not an icon set line (source, size, range, icon)"
+                    "`{other}` is not an icon set line (source, size, range, join, icon)"
                 )));
             }
         }
@@ -154,6 +198,10 @@ struct Shape {
     half: f32,
     /// Butt (or square) caps instead of round.
     butt: bool,
+    /// How its segments meet, and the miter limit (a miter longer than
+    /// `limit` stroke widths is bevelled).
+    join: Join,
+    limit: f32,
     filled: bool,
 }
 
@@ -360,8 +408,9 @@ fn flatten(d: &str) -> Result<Vec<Subpath>, String> {
     Ok(out)
 }
 
-/// The shapes of an SVG icon and its view box (x, y, width, height).
-fn shapes(svg: &str) -> Result<(Vec<Shape>, [f32; 4]), String> {
+/// The shapes of an SVG icon and its view box (x, y, width, height); a
+/// stroked path that names no join takes `join`.
+fn shapes(svg: &str, join: Join) -> Result<(Vec<Shape>, [f32; 4]), String> {
     let open = svg.find("<svg").ok_or("no <svg> element")?;
     let svg_tag = &svg[open..open + svg[open..].find('>').ok_or("an unclosed <svg> tag")?];
     let view = match attr(svg_tag, "viewBox") {
@@ -403,10 +452,25 @@ fn shapes(svg: &str) -> Result<(Vec<Shape>, [f32; 4]), String> {
                     None => 1.0,
                 };
                 let cap = inherit(tag, svg_tag, "stroke-linecap").unwrap_or("butt");
+                let join = match inherit(tag, svg_tag, "stroke-linejoin") {
+                    Some(v) => Join::parse(v)
+                        .ok_or_else(|| format!("stroke-linejoin \"{v}\" is not a join"))?,
+                    None => join,
+                };
+                let limit = match inherit(tag, svg_tag, "stroke-miterlimit") {
+                    Some(v) => numbers(v)?
+                        .first()
+                        .copied()
+                        .filter(|l| *l >= 1.0)
+                        .ok_or("a stroke-miterlimit is a number of at least 1")?,
+                    None => 4.0,
+                };
                 out.push(Shape {
                     subpaths: flatten(d)?,
                     half: if stroke { width / 2.0 } else { 0.0 },
                     butt: cap != "round",
+                    join,
+                    limit,
                     filled: fill,
                 });
             }
@@ -435,6 +499,117 @@ fn segment(p: (f32, f32), a: (f32, f32), b: (f32, f32)) -> (f32, f32) {
     ((ex * ex + ey * ey).sqrt(), t)
 }
 
+/// The signed distance (negative inside) from `p` to a convex polygon
+/// (its corners in order, either way round).
+fn convex(p: (f32, f32), pts: &[(f32, f32)]) -> f32 {
+    let n = pts.len();
+    let mut d = f32::MAX;
+    let (mut pos, mut neg) = (false, false);
+    for k in 0..n {
+        let (a, b) = (pts[k], pts[(k + 1) % n]);
+        d = d.min(segment(p, a, b).0);
+        let c = (b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0);
+        pos |= c > 0.0;
+        neg |= c < 0.0;
+    }
+    if pos && neg { d } else { -d }
+}
+
+/// The signed distance from `p` to a stroke whose segments meet in miter
+/// or bevel joins: the union of each segment's band (cut square at its
+/// ends), the joins' wedges on the outer side of each corner (to the miter
+/// point within the limit, else across) and round caps' discs.
+fn stroke_joined(p: (f32, f32), pts: &[(f32, f32)], closed: bool, s: &Shape) -> f32 {
+    // Corners without the zero-length segments a path can draw (a curve
+    // ending on its start, then Z).
+    let mut v: Vec<(f32, f32)> = Vec::with_capacity(pts.len());
+    for &q in pts {
+        if v.last()
+            .is_none_or(|l| (l.0 - q.0).abs() + (l.1 - q.1).abs() > 1e-6)
+        {
+            v.push(q);
+        }
+    }
+    if closed && v.len() > 2 {
+        let (f, l) = (v[0], v[v.len() - 1]);
+        if (f.0 - l.0).abs() + (f.1 - l.1).abs() <= 1e-6 {
+            v.pop();
+        }
+    }
+    let h = s.half;
+    let n = v.len();
+    if n < 2 {
+        return v.first().map_or(f32::MAX, |c| {
+            if s.butt {
+                f32::MAX
+            } else {
+                ((p.0 - c.0).powi(2) + (p.1 - c.1).powi(2)).sqrt() - h
+            }
+        });
+    }
+    let edges = if closed { n } else { n - 1 };
+    let dir = |k: usize| {
+        let (a, b) = (v[k % n], v[(k + 1) % n]);
+        let l = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+        ((b.0 - a.0) / l, (b.1 - a.1) / l)
+    };
+    let mut best = f32::MAX;
+    for k in 0..edges {
+        let (a, b) = (v[k], v[(k + 1) % n]);
+        let t = dir(k);
+        let nrm = (-t.1 * h, t.0 * h);
+        best = best.min(convex(
+            p,
+            &[
+                (a.0 + nrm.0, a.1 + nrm.1),
+                (b.0 + nrm.0, b.1 + nrm.1),
+                (b.0 - nrm.0, b.1 - nrm.1),
+                (a.0 - nrm.0, a.1 - nrm.1),
+            ],
+        ));
+    }
+    // The joins: at every corner of a closed path, the inner ones of an open one.
+    let corners: Vec<usize> = if closed {
+        (0..n).collect()
+    } else {
+        (1..n - 1).collect()
+    };
+    for c in corners {
+        let t1 = dir((c + n - 1) % n);
+        let t2 = dir(c);
+        let cross = t1.0 * t2.1 - t1.1 * t2.0;
+        let dot = t1.0 * t2.0 + t1.1 * t2.1;
+        if cross.abs() < 1e-6 && dot > 0.0 {
+            continue; // straight on
+        }
+        // The outer side of the turn, and the bands' corners there.
+        let side = if cross > 0.0 { -1.0 } else { 1.0 };
+        let (n1, n2) = ((-t1.1, t1.0), (-t2.1, t2.0));
+        let q = v[c];
+        let p1 = (q.0 + side * n1.0 * h, q.1 + side * n1.1 * h);
+        let p2 = (q.0 + side * n2.0 * h, q.1 + side * n2.1 * h);
+        // The miter's length over the stroke's width: 1 / cos(α/2), α the
+        // angle between the normals.
+        let cos_half = ((1.0 + n1.0 * n2.0 + n1.1 * n2.1) / 2.0).max(0.0).sqrt();
+        if s.join == Join::Miter && cos_half > 0.0 && 1.0 / cos_half <= s.limit {
+            let m = (n1.0 + n2.0, n1.1 + n2.1);
+            let ml = (m.0 * m.0 + m.1 * m.1).sqrt();
+            let reach = h / cos_half;
+            let tip = (q.0 + side * m.0 / ml * reach, q.1 + side * m.1 / ml * reach);
+            best = best.min(convex(p, &[q, p1, tip, p2]));
+        } else {
+            best = best.min(convex(p, &[q, p1, p2]));
+        }
+    }
+    // Round caps: a disc at each end of an open path.
+    if !closed && !s.butt {
+        for e in [v[0], v[n - 1]] {
+            best = best.min(((p.0 - e.0).powi(2) + (p.1 - e.1).powi(2)).sqrt() - h);
+        }
+    }
+    best
+}
+
 /// The signed distance (negative inside) from `p` to the icon, view-box units.
 fn signed_distance(shapes: &[Shape], p: (f32, f32)) -> f32 {
     let mut best = f32::MAX;
@@ -457,7 +632,11 @@ fn signed_distance(shapes: &[Shape], p: (f32, f32)) -> f32 {
             }
             best = best.min(if winding != 0 { -d } else { d });
         }
-        if s.half > 0.0 {
+        if s.half > 0.0 && s.join != Join::Round {
+            for (pts, closed) in &s.subpaths {
+                best = best.min(stroke_joined(p, pts, *closed, s));
+            }
+        } else if s.half > 0.0 {
             for (pts, closed) in &s.subpaths {
                 let n = pts.len();
                 let edges = if *closed { n } else { n - 1 };
@@ -540,8 +719,8 @@ pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
         let path = dir.join(format!("{file}.svg"));
         let svg = std::fs::read_to_string(&path)
             .map_err(|e| CookError(format!("icon \"{name}\": {}: {e}", path.display())))?;
-        let (sh, view) =
-            shapes(&svg).map_err(|e| CookError(format!("icon \"{name}\" ({file}.svg): {e}")))?;
+        let (sh, view) = shapes(&svg, set.join)
+            .map_err(|e| CookError(format!("icon \"{name}\" ({file}.svg): {e}")))?;
         let pixels = render(&sh, view, set.size, set.range, pad);
         let (gx, gy) = (
             1 + (i as u32 % cols) * (cell + 1),
@@ -627,7 +806,7 @@ mod tests {
     #[test]
     fn a_round_stroke_is_its_width_and_a_butt_end_is_cut() {
         let svg = r#"<svg viewBox="0 0 24 24" stroke-width="2" fill="none"><path d="M4 12H20" stroke="currentColor" stroke-linecap="round"/></svg>"#;
-        let (sh, view) = shapes(svg).unwrap();
+        let (sh, view) = shapes(svg, Join::Round).unwrap();
         assert_eq!(view, [0.0, 0.0, 24.0, 24.0]);
         assert_eq!(
             signed_distance(&sh, (12.0, 12.0)),
@@ -641,7 +820,7 @@ mod tests {
             "a round cap reaches past the end"
         );
         let butt = svg.replace(r#" stroke-linecap="round""#, "");
-        let (sh, _) = shapes(&butt).unwrap();
+        let (sh, _) = shapes(&butt, Join::Round).unwrap();
         assert_eq!(
             signed_distance(&sh, (2.0, 12.0)),
             2.0,
@@ -650,8 +829,120 @@ mod tests {
         // A filled square: inside negative.
         let fill =
             r#"<svg viewBox="0 0 24 24"><path d="M4 4H20V20H4Z" fill="currentColor"/></svg>"#;
-        let (sh, _) = shapes(fill).unwrap();
+        let (sh, _) = shapes(fill, Join::Round).unwrap();
         assert_eq!(signed_distance(&sh, (12.0, 12.0)), -8.0);
-        assert!(shapes(r#"<svg><circle r="2"/></svg>"#).is_err());
+        assert!(shapes(r#"<svg><circle r="2"/></svg>"#, Join::Miter).is_err());
+    }
+
+    /// An L of stroke width 2 turning at (4, 4): its outer corner as each
+    /// join draws it.
+    fn corner(join: &str) -> Vec<Shape> {
+        let svg = format!(
+            r#"<svg viewBox="0 0 24 24" stroke-width="2" fill="none"><path d="M4 20V4H20" stroke="currentColor" {join}/></svg>"#
+        );
+        shapes(&svg, Join::Miter).unwrap().0
+    }
+
+    #[test]
+    fn a_miter_join_keeps_its_corner_and_a_bevel_cuts_it() {
+        // Miter (SVG's default): the outer corner reaches (3, 3), sharp.
+        let miter = corner("");
+        assert!(
+            signed_distance(&miter, (3.0, 3.0)).abs() < 1e-4,
+            "the point is on the outline"
+        );
+        assert!(
+            signed_distance(&miter, (3.2, 3.2)) < -0.19,
+            "inside the corner"
+        );
+        assert!(
+            (signed_distance(&miter, (2.0, 3.0)) - 1.0).abs() < 1e-4,
+            "one unit out of the side"
+        );
+        // The outline beyond the corner's point is a distance to that point:
+        // the zero line meets it at a right angle, not an arc.
+        let d = signed_distance(&miter, (2.0, 2.0));
+        assert!((d - 2f32.sqrt()).abs() < 1e-4, "{d}");
+        // Round: the arc of radius 1 around (4, 4); the corner point is out.
+        let round = corner(r#"stroke-linejoin="round""#);
+        assert!((signed_distance(&round, (3.0, 3.0)) - (2f32.sqrt() - 1.0)).abs() < 1e-4);
+        // Bevel: cut across from (3, 4) to (4, 3).
+        let bevel = corner(r#"stroke-linejoin="bevel""#);
+        assert!(signed_distance(&bevel, (3.2, 3.2)) > 0.0);
+        assert!(signed_distance(&bevel, (3.6, 3.6)) < 0.0);
+        // The rest of the stroke is the same whatever the join.
+        for p in [
+            (4.0, 12.0),
+            (5.5, 12.0),
+            (12.0, 2.5),
+            (20.5, 4.0),
+            (4.0, 21.5),
+        ] {
+            let (m, r) = (signed_distance(&miter, p), signed_distance(&round, p));
+            assert!((m - r).abs() < 1e-4, "{p:?}: miter {m}, round {r}");
+        }
+        // Past the miter limit a sharp turn is bevelled.
+        let sharp = r#"<svg viewBox="0 0 24 24" stroke-width="2" fill="none"><path d="M4 20L12 4L20 20" stroke="currentColor"/></svg>"#;
+        let (sh, _) = shapes(sharp, Join::Miter).unwrap();
+        // The miter point is 1/sin(θ/2) ≈ 2.24 half-widths over the apex,
+        // within the limit 4: drawn.
+        assert!(signed_distance(&sh, (12.0, 4.0 - 2.0)) < 0.0);
+        let limited = sharp.replace(
+            r#"stroke="currentColor""#,
+            r#"stroke="currentColor" stroke-miterlimit="2""#,
+        );
+        let (sh, _) = shapes(&limited, Join::Miter).unwrap();
+        assert!(
+            signed_distance(&sh, (12.0, 4.0 - 2.0)) > 0.0,
+            "bevelled past the limit"
+        );
+    }
+
+    #[test]
+    fn the_rendered_field_keeps_a_miter_corner_sharp() {
+        // At 48 px an em of 24 units (2 px a unit), the texel over the
+        // miter's point reads on the outline (0.5) and the one inside the
+        // corner well within; round, the corner texel falls outside.
+        let px = |sh: &[Shape], x: u32, y: u32| {
+            let rgba = render(sh, [0.0, 0.0, 24.0, 24.0], 48, 8, 0);
+            f32::from(rgba[((y * 48 + x) * 4) as usize]) / 255.0
+        };
+        // Texel (6, 6) covers units 3..3.5: its centre (3.25, 3.25).
+        let (miter, round) = (corner(""), corner(r#"stroke-linejoin="round""#));
+        assert!(
+            px(&miter, 6, 6) > 0.5,
+            "inside the miter: {}",
+            px(&miter, 6, 6)
+        );
+        assert!(
+            px(&round, 6, 6) < 0.5,
+            "outside the round join: {}",
+            px(&round, 6, 6)
+        );
+    }
+
+    #[test]
+    fn a_set_declares_the_join_its_paths_leave_out() {
+        let set = parse("type icons\nversion 1\n---\njoin round\nicon \"a\"\n").unwrap();
+        assert_eq!(set.join, Join::Round);
+        assert_eq!(
+            parse("type icons\nversion 1\n---\nicon \"a\"\n")
+                .unwrap()
+                .join,
+            Join::Miter
+        );
+        assert!(parse("type icons\nversion 1\n---\njoin arcs\nicon \"a\"\n").is_err());
+        let svg = r#"<svg viewBox="0 0 24 24" stroke-width="2" fill="none"><path d="M4 20V4H20" stroke="currentColor"/></svg>"#;
+        let (sh, _) = shapes(svg, Join::Round).unwrap();
+        assert!(
+            signed_distance(&sh, (3.2, 3.2)) > 0.0,
+            "the set's round join"
+        );
+        let named = svg.replace("<path ", r#"<path stroke-linejoin="miter" "#);
+        let (sh, _) = shapes(&named, Join::Round).unwrap();
+        assert!(
+            signed_distance(&sh, (3.2, 3.2)) < 0.0,
+            "a path's own join wins"
+        );
     }
 }

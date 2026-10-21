@@ -39,6 +39,7 @@ export const HOURS = { start: 16.5, night: 19.5, title: 17.1, end: 19.2 } as con
 /** The run: progress, the clock, the screens and the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the skin's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
   ending: u32(Ending.None, { doc: "Ending.* once a run is over." }),
   chapter: u32(0, { doc: "The chapter the run started at (layout CHAPTERS)." }),
   paused: bool(false),

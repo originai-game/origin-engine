@@ -1,0 +1,6 @@
+type import
+version 1
+---
+texture {
+  kind color
+}

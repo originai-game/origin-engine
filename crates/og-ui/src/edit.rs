@@ -10,12 +10,21 @@
 //! a bounded history per control, typing grouped by words), and the
 //! caret's blink by the tick.
 //!
-//! The keys follow the platform ([`crate::Viewport::mac_keys`]): on a Mac
+//! The keys follow the platform ([`crate::Viewport::mac_keys`]: the web
+//! shell's browser on an Apple platform, a native host on macOS): on a Mac
 //! Command is the shortcut key and goes to the line's ends with ←/→ (and
 //! deletes to them with Backspace and Delete, ↑/↓ the text's ends in an
-//! area), Option moves and deletes by words, Control+A and E go to the
-//! line's ends; elsewhere Control is the shortcut key and moves by words
-//! (Alt too), and Command only takes the shortcuts.
+//! area), Option moves and deletes by words, and Control takes the emacs
+//! keys (A and E the line's ends, F and B a character, N and P a line, D
+//! and H delete a character, K to the paragraph's end, U to its start, W
+//! the word before); elsewhere Control is the shortcut key and moves by
+//! words (Alt too), and Command only takes the shortcuts.
+//!
+//! The caret stands between grapheme clusters ([`clusters`]): an arrow,
+//! Backspace and Delete step over a base and its marks, an emoji with its
+//! modifiers and joiners, at once, and a press lands beside one. ← and →
+//! move as they point: on in the text in a right-to-left run, by clusters
+//! and by words alike (word moves stay UAX #29's words).
 //!
 //! Positions come from the same visual layout the text is drawn with
 //! (`FontMetrics::visual`: kerning, bidi runs, shaped clusters), so a press
@@ -79,16 +88,47 @@ pub(crate) fn caret_x(boxes: &[GlyphBox], k: usize) -> f32 {
     }
 }
 
-/// The character boundary (0 to `n`) whose caret is nearest `x`.
-pub(crate) fn nearest(boxes: &[GlyphBox], n: usize, x: f32) -> usize {
+/// The grapheme cluster boundary of a line (0 to its length) whose caret
+/// is nearest `x`: a press never lands between a base and its marks.
+pub(crate) fn nearest(boxes: &[GlyphBox], line: &[char], x: f32) -> usize {
     let mut best = (0usize, f32::MAX);
-    for k in 0..=n {
+    for k in clusters(line) {
         let d = (caret_x(boxes, k) - x).abs();
         if d < best.1 {
             best = (k, d);
         }
     }
     best.0
+}
+
+/// A text's grapheme cluster boundaries (UAX #29, extended: og-i18n's
+/// [`og_i18n::graphemes`]), 0 and each cluster's end: where the caret may
+/// stand. A base and its combining marks, an emoji with its modifiers and
+/// joiners, a Hangul syllable of jamo, an Indic consonant with its vowel
+/// signs are each one step of the caret and one Backspace.
+pub(crate) fn clusters(chars: &[char]) -> Vec<usize> {
+    let s: String = chars.iter().collect();
+    let mut out = vec![0];
+    out.extend(og_i18n::graphemes(&s).into_iter().map(|(_, b)| b));
+    out
+}
+
+/// The cluster boundary after `k` (the text's end at most).
+pub(crate) fn next_cluster(chars: &[char], k: usize) -> usize {
+    clusters(chars)
+        .into_iter()
+        .find(|&b| b > k)
+        .unwrap_or(chars.len())
+        .min(chars.len())
+}
+
+/// The cluster boundary before `k` (0 at least).
+pub(crate) fn prev_cluster(chars: &[char], k: usize) -> usize {
+    clusters(chars)
+        .into_iter()
+        .rev()
+        .find(|&b| b < k)
+        .unwrap_or(0)
 }
 
 /// A multi-line text's lines at `width`: character ranges `[start, end)`
@@ -105,6 +145,15 @@ pub(crate) fn wrap(
     let w = |a: usize, b: usize| {
         let s: String = chars[a..b].iter().collect();
         m.measure_tracked(s.trim_end_matches(' '), size, tracking)
+    };
+    // Where a word wider than the line may break: between clusters.
+    let stops = clusters(chars);
+    let after = |k: usize| {
+        stops
+            .iter()
+            .copied()
+            .find(|&b| b > k)
+            .unwrap_or(chars.len())
     };
     let mut p = 0;
     loop {
@@ -132,11 +181,11 @@ pub(crate) fn wrap(
                 lines.push((start, a));
                 start = a;
             }
-            // A word wider than the line: between characters.
-            while w(start, b) > width && b - start > 1 {
-                let mut k = start + 1;
-                while k < b && w(start, k + 1) <= width {
-                    k += 1;
+            // A word wider than the line: between grapheme clusters.
+            while w(start, b) > width && after(start) < b {
+                let mut k = after(start);
+                while k < b && w(start, after(k).min(b)) <= width {
+                    k = after(k).min(b);
                 }
                 lines.push((start, k));
                 start = k;
@@ -613,7 +662,7 @@ impl Ui {
                     .min(lines.len().saturating_sub(1));
                 let l = &lines[li];
                 let x = p.x - line_x0(l, &inner) - x0;
-                let k = l.0 + nearest(&l.2, l.1 - l.0, x);
+                let k = l.0 + nearest(&l.2, &chars[l.0..l.1], x);
                 let unit = |count: u8, k: usize| match count {
                     2 => word_at(&chars, k),
                     3 if d.multiline => line_at(&chars, k),
@@ -700,8 +749,13 @@ impl Ui {
             // By words: Option under mac keys; elsewhere Control (or Alt).
             let word = if mac { alt && !meta } else { ctrl || alt };
             // To the line's ends: Command with the arrows, Backspace and
-            // Delete under mac keys; Control+A and E there too (emacs).
+            // Delete under mac keys.
             let line = mac && meta;
+            // Control under mac keys: the emacs keys a Mac text field
+            // honours (A and E the line's ends, F and B a character on and
+            // back, N and P a line down and up, D and H delete a character
+            // on and back, K to the line's end, U to its start, W the word
+            // before the caret).
             let emacs = mac && ctrl && !meta;
             // The line holding the caret: its start and end.
             let line_of = |chars: &[char], caret: usize| {
@@ -709,10 +763,42 @@ impl Ui {
                 let (li, _) = locate(&lines, caret);
                 (lines[li].0, lines[li].1)
             };
+            // Whether the caret at `k` stands in a right-to-left run (the
+            // glyph after it, or before it at a line's end; the paragraph's
+            // direction in an empty text): there ← moves on in the text and
+            // → back, by clusters and by words alike, as the arrow points.
+            let rtl_at = |chars: &[char], k: usize| {
+                let lines = layout(chars);
+                let (li, _) = locate(&lines, k);
+                let (a, b, bx) = &lines[li];
+                let at = |i: usize| {
+                    bx.iter()
+                        .filter(|g| g.index <= i)
+                        .max_by_key(|g| g.index)
+                        .map(|g| g.rtl)
+                };
+                let line: String = chars[*a..*b].iter().collect();
+                let run = if k < *b {
+                    at(k - a)
+                } else if k > *a {
+                    at(k - a - 1)
+                } else {
+                    None
+                };
+                run.unwrap_or(og_i18n::paragraph_direction(&line, dir) == Direction::Rtl)
+            };
             for k in self.input.keys.iter().copied() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 let selected = a != b;
                 let mut moved = None;
+                // The emacs keys that are another key's edit.
+                let k = match k {
+                    UiKey::KeyD if emacs => UiKey::Delete,
+                    UiKey::KeyH if emacs => UiKey::Backspace,
+                    UiKey::KeyN if emacs && d.multiline => UiKey::Down,
+                    UiKey::KeyP if emacs && d.multiline => UiKey::Up,
+                    k => k,
+                };
                 match k {
                     UiKey::Backspace | UiKey::Delete if selected => {
                         chars.drain(a..b);
@@ -723,11 +809,15 @@ impl Ui {
                     UiKey::Backspace if caret > 0 => {
                         let from = if line {
                             let start = line_of(&chars, caret).0;
-                            if start < caret { start } else { caret - 1 }
+                            if start < caret {
+                                start
+                            } else {
+                                prev_cluster(&chars, caret)
+                            }
                         } else if word {
                             word_left(&chars, caret)
                         } else {
-                            caret - 1
+                            prev_cluster(&chars, caret)
                         };
                         chars.drain(from..caret);
                         caret = from;
@@ -737,25 +827,92 @@ impl Ui {
                     UiKey::Delete if caret < chars.len() => {
                         let to = if line {
                             let end = line_of(&chars, caret).1;
-                            if end > caret { end } else { caret + 1 }
+                            if end > caret {
+                                end
+                            } else {
+                                next_cluster(&chars, caret)
+                            }
                         } else if word {
                             word_right(&chars, caret)
                         } else {
-                            caret + 1
+                            next_cluster(&chars, caret)
                         };
                         chars.drain(caret..to);
                         anchor = caret;
                         note(&mut kind, EditKind::Forward);
                     }
-                    // Command+←/→ under mac keys: the line's ends.
-                    UiKey::Left if line => moved = Some(line_of(&chars, caret).0),
-                    UiKey::Right if line => moved = Some(line_of(&chars, caret).1),
-                    UiKey::Left if word => moved = Some(word_left(&chars, caret)),
-                    UiKey::Right if word => moved = Some(word_right(&chars, caret)),
-                    UiKey::Left if selected && !shift => moved = Some(a),
-                    UiKey::Right if selected && !shift => moved = Some(b),
-                    UiKey::Left => moved = Some(caret.saturating_sub(1)),
-                    UiKey::Right => moved = Some((caret + 1).min(chars.len())),
+                    // ← and → as they point: on in the text in a
+                    // right-to-left run. Command under mac keys: the line's
+                    // ends; the word key: by words; a selection collapses
+                    // to its side; else a grapheme cluster.
+                    UiKey::Left | UiKey::Right => {
+                        let on = (k == UiKey::Right) != rtl_at(&chars, caret);
+                        moved = Some(if line {
+                            let (start, end) = line_of(&chars, caret);
+                            if on { end } else { start }
+                        } else if word {
+                            if on {
+                                word_right(&chars, caret)
+                            } else {
+                                word_left(&chars, caret)
+                            }
+                        } else if selected && !shift {
+                            if on { b } else { a }
+                        } else if on {
+                            next_cluster(&chars, caret)
+                        } else {
+                            prev_cluster(&chars, caret)
+                        });
+                    }
+                    // Control+F and B under mac keys: a cluster on and back
+                    // in the text (whichever way it runs).
+                    UiKey::KeyF if emacs => {
+                        moved = Some(if selected && !shift {
+                            b
+                        } else {
+                            next_cluster(&chars, caret)
+                        })
+                    }
+                    UiKey::KeyB if emacs => {
+                        moved = Some(if selected && !shift {
+                            a
+                        } else {
+                            prev_cluster(&chars, caret)
+                        })
+                    }
+                    // Control+N and P in a field: the text's ends.
+                    UiKey::KeyN if emacs => moved = Some(chars.len()),
+                    UiKey::KeyP if emacs => moved = Some(0),
+                    // Control+K, U and W under mac keys: delete to the
+                    // paragraph's end (its line break when the caret is at
+                    // it), to its start, the word before the caret; a
+                    // selection goes first.
+                    UiKey::KeyK | UiKey::KeyU | UiKey::KeyW if emacs => {
+                        let (from, to) = if selected {
+                            (a, b)
+                        } else {
+                            let (start, end) = line_at(&chars, caret);
+                            match k {
+                                UiKey::KeyK if end > caret => (caret, end),
+                                UiKey::KeyK => (caret, (caret + 1).min(chars.len())),
+                                UiKey::KeyU => (start, caret),
+                                _ => (word_left(&chars, caret), caret),
+                            }
+                        };
+                        if from < to {
+                            chars.drain(from..to);
+                            caret = from;
+                            anchor = from;
+                            note(
+                                &mut kind,
+                                if selected || k == UiKey::KeyK {
+                                    EditKind::Other
+                                } else {
+                                    EditKind::Back
+                                },
+                            );
+                        }
+                    }
                     // Ctrl (or Command) with Home and End: the text's ends.
                     UiKey::Home if ctrl || meta => moved = Some(0),
                     UiKey::End if ctrl || meta => moved = Some(chars.len()),
@@ -775,7 +932,7 @@ impl Ui {
                         moved = Some(match to {
                             Some(t) => {
                                 let l = &lines[t];
-                                l.0 + nearest(&l.2, l.1 - l.0, x)
+                                l.0 + nearest(&l.2, &chars[l.0..l.1], x)
                             }
                             None if k == UiKey::Up => 0,
                             None => chars.len(),

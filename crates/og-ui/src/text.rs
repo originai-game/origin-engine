@@ -317,6 +317,34 @@ impl FontMetrics {
         out
     }
 
+    /// The ascender and descender (em) a line of `text` is placed by: this
+    /// font's, or for a mixed text the highest ascender and the lowest
+    /// descender of this font (the line's strut) and the fonts its runs
+    /// take. Every run sits on one baseline, and the line box placed
+    /// around these extents holds each run's face, as CSS's line box holds
+    /// each inline box's: a taller fallback face (an Arabic or Devanagari
+    /// run in a Latin label) moves the shared baseline down instead of
+    /// rising out of the box.
+    pub fn extents(&self, text: &str) -> (f32, f32) {
+        if self.runs.is_none() {
+            return (self.ascender, self.descender);
+        }
+        self.font_runs(text)
+            .iter()
+            .filter_map(|(_, k)| self.part(*k))
+            .fold((self.ascender, self.descender), |(a, d), m| {
+                (a.max(m.ascender), d.min(m.descender))
+            })
+    }
+
+    /// The baseline of a line of `text` at `size` in a line box `line_h`
+    /// tall whose top is `top`: its [`FontMetrics::extents`] centred in the
+    /// box.
+    pub fn baseline(&self, text: &str, top: f32, line_h: f32, size: f32) -> f32 {
+        let (a, d) = self.extents(text);
+        top + (line_h - (a - d) * size) / 2.0 + a * size
+    }
+
     /// The kerning between `a` and the `b` after it, em (0: none).
     pub fn kern(&self, a: char, b: char) -> f32 {
         if self.kerning.is_empty() {

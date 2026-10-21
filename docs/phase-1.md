@@ -701,6 +701,84 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, ui-five: text editing by grapheme, bounds in the a11y tree, miter joins, the kit on the icon set (e6c445bc)
+
+Rows 59, 60 and 61, on lane-2.
+
+- **Row 59, text editing.** The caret moved by one char and stopped
+  between a base and its accent; arrows, Backspace, Delete, a press and
+  line wrapping now step over a whole grapheme cluster (a base and its
+  marks, an emoji with its tone, a ZWJ family). ← and → were logical
+  everywhere; in a right-to-left run they move the way they point, for
+  single steps and word moves, and a selection collapses to the arrow's
+  side. Under mac keys only Ctrl+A/E worked; Ctrl+F, B, N, P, D, H, K,
+  U and W now do as on a Mac and nothing off one (`UiKey` gains them,
+  plus `=`, `-`, `0` and their keypad versions). The native macOS host
+  edits with mac keys (a script holding Ctrl or Meta edits differently
+  on a Mac than on Linux unless it pins `macKeys` through
+  `og.ui.previewViewport`; the IDL, README and skill say so). A mixed
+  text's runs share one baseline centred on the extents of every face
+  the line uses (labels, fields, text areas, rich spans). A `[wave]`,
+  `[shake]` or `[pulse]` span that mixes faces, runs right to left or is
+  shaped animates glyph by glyph, a shaped run's joined letters moving
+  together. Tests failing on the old code: fields.rs
+  `the_caret_and_backspace_step_by_grapheme_clusters`,
+  `arrows_move_as_they_point_in_right_to_left_runs`,
+  `mac_keys_honour_the_emacs_keys`; runs.rs
+  `a_mixed_labels_runs_share_a_baseline_that_holds_every_face`,
+  `a_moving_span_that_mixes_faces_moves`; og-runtime
+  `a_native_host_edits_with_the_platforms_keys`. Frame moved:
+  `text-mixed-runs` (its Arabic lines up 1 px, the Arabic face's deeper
+  descender). Not done: an emacs kill buffer (Ctrl+Y, Ctrl+T) and fully
+  visual caret movement across a bidi run's edge (the README's owed
+  list).
+- **Row 60, accessibility.** The tree carried no number bounds and the
+  mirror guessed 0 to 100 for values ending in `%`. `A11yNode` gains
+  `valueMin`, `valueMax` and `valueNow` (null for none): a slider its
+  range, a bounded stepper its bounds, an unbounded one its value, a
+  meter 0 to max, a progress 0 to 100; the web mirror writes
+  `aria-valuemin`, `aria-valuemax` and `aria-valuenow`. Tests:
+  `ranges_carry_their_bounds_and_value` (a11y.rs) and
+  `tests/web-a11y-range.test.ts` (its bounds test fails on the old
+  mirror; its reader-adjust test drives the range's `input` and
+  `change`; the stand-in DOM now bubbles events).
+- **Row 61, materials and input.** Every icon stroke was distance
+  minus half its width, so joins came out round; a path's
+  `stroke-linejoin` is honoured (miter to `stroke-miterlimit`, bevel,
+  round) and a set declares a default with a `join` line (og-cook
+  icons.rs; three tests fail on the old code). The kit's screens draw
+  from the icon set (`iconoir.ogt` declares `join round`, gains 8
+  iconoir SVGs and the kit's 17 names, 81 entries; hammer, hexagon,
+  bowling-ball and emoji-talking-angry stand in for sword, gem, bomb
+  and skull); style packs keep their own icons; the materials frame is
+  byte-identical. A two-finger scroll never kept its velocity and now
+  flings on lift, and a float rounding at the scroll clamp that ended
+  every fling early is fixed; the zoom view takes focus and `+`/`=`,
+  `-`, `0` and the arrows (tests `two_fingers_lifting_off_a_list_fling_it`,
+  `a_focused_zoom_view_takes_keys`). Frame moved: `materials` (its quest
+  list flings on to Quest 4 to 6). The glass blur pyramid is left
+  alone (optimisation). The kit's desktop and phone frames on the
+  default skin move with the icon set and are re-recorded by the
+  coordinator at the merge (`OG_UI_CAPTURE=1 og test`), with the cooker
+  version bumped to r5 so a user's icon set re-cooks with its joins.
+
+## Wave 13, templates-title: the archetypes' opening titles drawn finished behind the gate (991f6435)
+
+The web-boot-2 pattern applied to the templates (lane-4): idle, rhythm,
+roguelike, third-person and tower-defense (the five whose title is a
+`mainMenu`) gain `leftTitle` on their `Game` resource and pass
+`instant: !g.leftTitle` (idle's save writes named fields, so the flag
+is not saved). No frame moved: the five record their title between
+0.5 s and 1.0 s, after the entrance, so `title.png` is byte-identical
+in all five (roguelike's `dive` at 0.048 % and third-person's three at
+RMSE ≤ 0.002 differ the same with the change removed: the engine's).
+Tower-defense's title at tick 3 used to be the panel popping in with
+only "Path Guard" drawn and is now the whole title. Not changed:
+match3, runner and topdown draw their titles as text and sprites with
+no panel; the kit opens on its gallery (default skin, no entrance);
+`templates/game`'s menu is a plain column. The og-ui skill's template
+table gained `instant` on its title row.
+
 ## Wave 13, web-boot-2: the opening title drawn finished behind the play gate (b5350d48)
 
 The web-boot stream's leftover (lane-5), cut to this one item on
@@ -805,8 +883,12 @@ Rows 63 and 55, on lane-4.
   `stylise-surface` (0.035) and `stylise-object` (0.044): the hatched
   floor shadows are legible crossed strokes instead of a dense grey and
   the far canvas grain is calmer. Every other og-tests scene renders
-  exactly as on main's shader (checked before the scope correction).
-  Row 55 is closed.
+  exactly as on main's shader (checked before the scope correction);
+  after the merge, fx-showcase's looks suite moved one frame,
+  `looks-inked-comic-3d` (its floor hatched in surface space: RMSE 0.047,
+  4.98 % outliers, the far floor's moiré gone), re-recorded on metal by
+  the coordinator; the other 36 looks frames are unmoved. Row 55 is
+  closed.
 - **Row 63, `.vox` animation (431d9da1, 900158dc).** The importer read
   only the first of an `nTRN`'s per-frame dicts, so a part moving
   across frames stayed put. og-cook now keeps every key sorted by `_f`
@@ -5065,9 +5147,9 @@ resource only the owner can give.
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 58 | og-ui's cooked-font text frames in the browser tiers (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their fonts, which og-tests-web cannot) | P4 UI text | M | engine, phase 4 | open |
-| 59 | og-ui text, what the UI text, fields and UI four rounds left (og-ui README §What phase 2 owes): the caret and Backspace step by character, not grapheme cluster; a mixed text's runs share the role face's baseline; word moves are logical in right-to-left runs; emacs keys beyond Ctrl+A/E; native hosts on macOS edit with Ctrl; a `[wave]`, `[shake]` or `[pulse]` span that mixes faces is drawn still | P4 UI fields, UI four | M | engine, phase 4 | open |
-| 60 | og-ui accessibility: the slider's and spinbutton's mirror carry no `aria-valuemin`/`-max` (the tree has no bounds); a reader's adjust checked through the native range's `input` event in Chrome, not with VoiceOver itself | P4 UI shell, UI four | S | engine, phase 4 | open |
-| 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | open |
+| 59 | og-ui text, what the UI text, fields and UI four rounds left (og-ui README §What phase 2 owes): the caret and Backspace step by character, not grapheme cluster; a mixed text's runs share the role face's baseline; word moves are logical in right-to-left runs; emacs keys beyond Ctrl+A/E; native hosts on macOS edit with Ctrl; a `[wave]`, `[shake]` or `[pulse]` span that mixes faces is drawn still | P4 UI fields, UI four | M | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five) but for an emacs kill buffer and visual caret movement across a bidi edge, in the og-ui README's owed list |
+| 60 | og-ui accessibility: the slider's and spinbutton's mirror carry no `aria-valuemin`/`-max` (the tree has no bounds); a reader's adjust checked through the native range's `input` event in Chrome, not with VoiceOver itself | P4 UI shell, UI four | S | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five): the tree carries valueMin/valueMax/valueNow, the mirror writes the aria range |
+| 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five) for the joins, the icon set, the fling and the zoom view; the glass blur pyramid's cost deferred with the optimisation rows |
 | 62 | Platform ask 12: the game wizard's style step (a catalogue entry from the premise, the look written, its three checks for the blind critic; `docs/platform-asks.md`) | P4 knowledge 3 | M | platform | open, waiting on the platform |
 | 63 | `.vox` animation, the rest (og-cook README §What phase 2 owes): MagicaVoxel's `nTRN` key frames are not read (a transform's first frame places it throughout, so a part moving across frames does not move), and every folded frame still costs a joint and a draw (its vertices run through the skinning shader at scale 0; a visibility track in og-anim would make a fold free) | W7 cook-vox | M | engine, phase 4 | the key frames closed at 431d9da1 and 900158dc (Wave 13, vox-stylise); the visibility track (a folded frame's joint and draw) deferred with the optimisation rows; `_loop` and the playback range still not read |
 | 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | closed at 3c036fa4 (api-surface round two): the reverse check fails on an undeclared member, with a one-entry allow-list (`World.id`), and found 17 column factories and three constants never exported; the shell crash path tested under bun (tests/web-shell-crash.test.ts); the runtime `Engine` class stays unchecked (the host's lifecycle object) |
