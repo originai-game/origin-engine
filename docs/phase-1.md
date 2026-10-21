@@ -701,6 +701,70 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, racing-ui: the racing HUD in the game's words, Back under a dialog, a time as a result, texture repeat, the outline on a large ground, the shell's control kept clear (3189ae6a)
+
+Meridian Loop's UI, render, shell and knowledge findings (lane-3): 8, 9,
+10, 13, 15, 7, 18 and 17.
+
+- **#8.** The HUD's words were hard-coded English, unlike the other kit
+  screens; `RacingHudDesc` gains `lapLabel`, `bestLabel`, `pauseLabel`,
+  `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`, and for a time
+  trial `delta`, `splits` (label, time, delta signed with a plain `-`),
+  `racers: 0` to hide the place and `boostMeter: false`; the defaults
+  draw exactly as before. Test `tests/ui-race.test.ts` (a German HUD
+  with no English left, the delta and splits, no place or meter).
+- **#9.** The HUD asked for Back before the pause dialog was built that
+  tick; `og.ui.back()` now answers false while an unlocked dialog or
+  menu was on top last frame (a locked dialog lets Back through). Test
+  `a_hud_never_takes_back_while_a_dialog_is_open`. A game that draws its
+  HUD under pause (Kestrel, the kit's pause screen) now closes pause on
+  Escape: their suites run at the merge.
+- **#10.** `ResultsDesc.format` (`points` or `time`) and `scoreLabel`:
+  with `time` the score counts up as m:ss.mmm, the lower time is the
+  best, a best of 0 shows no best line (the results case of
+  ui-race.test.ts: "1:36.233", "Bestzeit 1:35.100").
+- **#13.** Render warnings were logged with tick 0 and one flag allowed
+  one warning per process; each missing character is named once, on
+  the tick it is first drawn, with the font's asset and its charset
+  (inferred from its glyphs; the charset table moved to
+  `og_cook::format::charset`, one copy); every render warning carries
+  its real tick (`tests/missing_glyphs.rs`).
+- **#15.** A geometry option, not a material one: box, plane and sphere
+  descs gain `uvRepeat` (the material sampler already wraps; a material
+  `repeat` would have been a second path through every lit and shadow
+  shader). New og-tests scene `ground-grid` (a 1,600 m plane, a grid
+  line every 10 m under posts every 10 m; `uvRepeat` 1 draws no lines).
+- **#7.** The outline pass compared a neighbour's depth with the pixel's
+  own, so a ground at a grazing angle read as edge everywhere; when the
+  neighbour and the opposite pixel are the same object facing the same
+  way, the test is against where that plane continues (capped at twice
+  the depth), and the distance term grows a line to at most 4× its
+  width (fxpost.wgsl, pbr_prepass.wgsl). New scene
+  `stylise-outline-ground` (`a_large_ground_keeps_its_outline_only_where_it_ends`;
+  the old shaders turn half the frame cyan). Re-recorded, each against
+  main's shaders on the same tree: fx-showcase
+  `looks-bold-comic-illustration` (457 pixels, RMSE 0.0044: a box's top
+  face seen nearly edge-on is no longer one dark band),
+  `looks-rubber-hose-animation` (237, 0.0082, the same), `post` (160,
+  0.0035: the ground's far edge a one-pixel line instead of 3 to 4
+  rows), og-tests `stylise-outline-voxels` (138, 0.0044: lines across
+  voxel faces seen edge-on gone). `looks-neon-vector` was re-recorded
+  once on a stale addon and put back: the change does not move it.
+- **#18.** New `Viewport.covered`: the shell measures its Back control
+  (the round, icon-only size) and passes it through `Shell.resize`, and
+  og-ui moves any anchored group that would overlap it along its edge,
+  so the racing HUD's place and lap sit to its right
+  (`anchored_groups_keep_out_of_the_host_control`). Untested in a
+  browser; the control's name beside it for the first 4 s is not kept
+  clear.
+- **#17.** og-core §2 gains "Recording, replaying and ghosts" on Meridian
+  Loop's code, og-game §17 points to it.
+
+Not done: the kit's string tables for the racing HUD's words (its CJK
+subsets would be re-made); Meridian Loop does not use the new fields
+yet; the other HUDs' fixed words ("Pause", "Jump", "kills", "moves
+left", "Target").
+
 ## Wave 13, vehicle-physics: wheel rays on the chassis's layers, forces and a centre of mass, light snapshots, a mid-tick save that completes its tick (e9eae253)
 
 Meridian Loop's physics and API findings (lane-5): 3 (the blocker), 2,
