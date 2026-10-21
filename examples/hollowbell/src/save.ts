@@ -8,7 +8,7 @@
 // same store (`og run --platform-store`, a playtest's `store: "keep"`)
 // continues the run.
 //
-// FINDINGS.md #F-snapshot: there is no game-side world snapshot to save a
+// FINDINGS.md #1: there is no game-side world snapshot to save a
 // slot with (the engine's snapshot is EngineProbe.snapshot, a probe member
 // dropped in publish builds and kept only in the running process), so a
 // save is this record of the run's state, and Continue rebuilds the world

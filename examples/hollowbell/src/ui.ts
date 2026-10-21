@@ -107,7 +107,7 @@ function takeSettings(world: World, p: PrefsV, s: GameSettings): void {
 /**
  * Where a warp puts Wren's feet: 5 cm over the floor it names. Put exactly on
  * a tilemap's floor, the controller sinks 7 mm into the tiles' colliders at
- * some places and cannot run sideways until it jumps (FINDINGS.md #F-stuck);
+ * some places and cannot run sideways until it jumps (FINDINGS.md #15);
  * from 5 cm up it lands on its first step.
  */
 export const WARP_LIFT = 0.05;
@@ -177,7 +177,7 @@ function hud(world: World, g: GameV): void {
   let paused = false;
   og.ui.anchor("Bell", { anchor: "topRight", direction: "row", gap: S.sm, cross: "center" }, () => {
     // Room for the chimes, drawn below as screen sprites: a plain row, no frame, because og.ui draws
-    // over every screen sprite whatever its layer (FINDINGS.md #F-screenlayer).
+    // over every screen sprite whatever its layer (FINDINGS.md #8).
     og.ui.row("Chimes", { width: px(CHIMES * 26 + 16), height: px(34) }, () => {});
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 44 }).clicked) paused = true;
   });
@@ -229,7 +229,7 @@ function talk(world: World, g: GameV, p: PrefsV): void {
   });
   if (!g.talking) return;
   // The talk's box does not take the focus when it opens, so Enter, Space and the pad's A would do
-  // nothing until Tab (FINDINGS.md #F-cutscenefocus): move the focus to it.
+  // nothing until Tab (FINDINGS.md #10): move the focus to it.
   if (!og.ui.focus(0).endsWith("Dialogue")) og.ui.navigate(world, "next");
   g.talkIndex = r.index;
   if (r.finished || r.skipped) {
@@ -296,7 +296,7 @@ function naming(world: World, g: GameV, p: PrefsV): void {
  * and high contrast, and a label mixing Latin and Chinese. Built from widgets
  * rather than og.ui.settingsScreen, whose words (Settings, Audio, Graphics,
  * Master, Mute everything, Done...) stay English in every locale: SettingsDesc
- * has no field for them (FINDINGS.md #F-settings).
+ * has no field for them (FINDINGS.md #11).
  */
 function settings(world: World, g: GameV, p: PrefsV): void {
   let done = false;

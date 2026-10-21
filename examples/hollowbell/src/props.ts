@@ -141,7 +141,7 @@ export const Lanterns = defineSystem(
  * The lift rides to and fro over the pit. og-game §13 says a kinematic body
  * moves by its og.Velocity; it does not (BODY_KINEMATIC: "moved by game code
  * through its Transform"), so the lift is moved here by its velocity, which it
- * keeps so the controller standing on it is carried (FINDINGS.md #F-kinematic).
+ * keeps so the controller standing on it is carried (FINDINGS.md #13).
  */
 export const Lifts = defineSystem("Lifts", { reads: [Game], writes: [Lift, og.Transform, og.Velocity] }, (q, time) => {
   const dt = time.scaledDt;
@@ -339,7 +339,7 @@ export const Effects = defineSystem("Effects", { writes: [Game, Fx, og.Transform
 
 /**
  * The map in the dark: og.Lighting2D lights sprites but never a tilemap's
- * layers (FINDINGS.md #F-tilelight), so the map is tinted to the ambient
+ * layers (FINDINGS.md #9), so the map is tinted to the ambient
  * light here, and the Pools below add the lights' glow back over it.
  */
 export const MapShade = defineSystem("MapShade", { reads: [Game], writes: [og.Tilemap], after: ["Areas"] }, (q, _time, world) => {

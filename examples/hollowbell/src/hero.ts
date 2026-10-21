@@ -88,7 +88,7 @@ export const Control = defineSystem(
               heal(g);
               g.warp = true;
               g.warpX = g.checkpoint >= 0 ? g.checkX : g.spawnX;
-              g.warpY = (g.checkpoint >= 0 ? g.checkY : g.spawnY) + 0.05; // FINDINGS.md #F-stuck
+              g.warpY = (g.checkpoint >= 0 ? g.checkY : g.spawnY) + 0.05; // FINDINGS.md #15
               g.invulnerable = t.iframes;
               og.ui.toast(world, say(world, "toast.woke"));
             }
@@ -109,6 +109,8 @@ export const Control = defineSystem(
         pc.jumpHeight[i] = t.jumpHeight;
         pc.timeToApex[i] = t.timeToApex;
         pc.airJumps[i] = g.cloak ? 1 : 0;
+        // The knock-back is a run away from the hit: og.PlatformerController takes no velocity or
+        // impulse of the game's (FINDINGS.md #5).
         pc.moveX[i] = control ? move : g.knock > 0 && playing ? g.knockDir : 0;
         pc.jump[i] = control && jump ? 1 : 0;
         pc.down[i] = control && down ? 1 : 0;

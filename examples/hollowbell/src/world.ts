@@ -111,7 +111,7 @@ export function viewHalfWidth(world: World): number {
 /**
  * `g` is the caller's handle on Game, passed down rather than fetched again
  * here: a second world.resource(Game) handle does not see the first one's
- * writes, nor the first this one's (FINDINGS.md #F-resource).
+ * writes, nor the first this one's (FINDINGS.md #6).
  */
 export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void {
   const t = must(world.resource(Tuning));
@@ -129,7 +129,7 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
   lighting.ambient = { r: 1, g: 1, b: 1 };
   // The actors, props and effects take the light. The sky (Draw.sky), the map and its light pools
   // (Draw.pools) are below the lit range: og.Lighting2D never lights a tilemap's layers anyway
-  // (FINDINGS.md #F-tilelight), so the map is tinted and the pools add the light back.
+  // (FINDINGS.md #9), so the map is tinted and the pools add the light back.
   lighting.minLayer = Draw.pools + 1;
   lighting.maxLayer = 50;
   lighting.resolution = 0.5;
@@ -228,7 +228,7 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
         must(world.insert(e, Flicker, { base: torch ? 1.3 : 0.7, rate: torch ? 9 + (index % 4) : 2, phase: index * 1.7 }));
         if (torch) {
           must(world.insert(e, og.ParticleSystem, { emitter: embers, seed: 100 + index }));
-          // The flame glows: the map's own flame tile is tinted with the dark (FINDINGS.md #F-tilelight).
+          // The flame glows: the map's own flame tile is tinted with the dark (FINDINGS.md #9).
           const flame = spawn(world, `${o.name}-flame`, p.x, p.y + 0.15);
           must(world.insert(flame, og.Sprite, { texture: spark, width: 0.45, height: 0.6, color: { r: 1, g: 0.75, b: 0.4 }, blend: "additive", glow: 1.4, layer: Draw.props }));
         }
@@ -303,7 +303,7 @@ function spawnHero(world: World, g: Value<typeof Game>, art: Art, x: number, y: 
   must(world.insert(e, og.Flipbook, { sheet: art.hero.sheet, clip: HERO_CLIP.idle }));
   must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: HERO_BOX.w, y: HERO_BOX.h, z: 1 }, offset: { x: 0, y: HERO_BOX.h / 2, z: 0 }, layers: Bits.Hero, mask: Bits.World | Bits.Stone | Bits.Plank }));
   // Its run stutters on flat ground: every few ticks its velocity drops to almost 0 and it
-  // accelerates again (FINDINGS.md #F-stutter); no skin or snap setting made it steadier.
+  // accelerates again (FINDINGS.md #16); no skin or snap setting made it steadier.
   must(world.insert(e, og.PlatformerController, { oneWayLayers: Bits.Plank, wallJumps: false, coyoteTime: 0.1, jumpBuffer: 0.12, maxFallSpeed: 18 }));
   must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.86, b: 0.6 }, intensity: 1.1, radius: light, falloff: 1.4, sourceRadius: 0.2 }));
   const half = viewHalfWidth(world);

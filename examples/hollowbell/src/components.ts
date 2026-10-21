@@ -274,7 +274,7 @@ export const Fx = defineComponent("Fx", {
 
 /**
  * A pool of light drawn over the map where a light shines: og.Lighting2D lights
- * sprites but never a tilemap's layers (FINDINGS.md #F-tilelight), so the map is
+ * sprites but never a tilemap's layers (FINDINGS.md #9), so the map is
  * tinted to the ambient light (src/props.ts MapShade) and these add the light back.
  */
 export const Pool = defineComponent("Pool", {

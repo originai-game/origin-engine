@@ -1,7 +1,7 @@
 // 2D light. The village is in daylight (og.Lighting2D's ambient near 1);
 // walking into the upper hollow eases it down to the area's 0.2 and the map
 // is tinted with it (src/props.ts MapShade: og.Lighting2D lights sprites
-// but not a tilemap's layers, FINDINGS.md #F-tilelight). In a frame of the
+// but not a tilemap's layers, FINDINGS.md #9). In a frame of the
 // dark cave the pool round Wren's lantern and a torch's are far brighter
 // than the rock between; the brighter wick widens Wren's light from 4.5 m
 // to 7.

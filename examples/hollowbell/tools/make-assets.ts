@@ -1080,7 +1080,7 @@ function motes(): void {
   spark.oval(3.5, 3.5, 1, 1, "white");
   writePixel("fx/spark.png", spark);
   // A soft round pool of light (white, its alpha falling off with the square of the distance): drawn additive and tinted
-  // over the darkened map where a light shines (src/props.ts Pools; FINDINGS.md #F-tilelight).
+  // over the darkened map where a light shines (src/props.ts Pools; FINDINGS.md #9).
   const pool = new Pix(64, 64);
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
