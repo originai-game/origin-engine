@@ -1009,14 +1009,22 @@ impl PostPasses {
         };
         let (up, down) = exposure.adaptation().unwrap_or((0.0, 0.0));
         // The previous adapted exposure must be in the texture this frame
-        // reads; a frame whose tick went back starts again.
+        // reads; a frame whose tick went back starts again. A frame of tick
+        // 0, before the first tick, meters at once and is never adapted
+        // from: one host draws it (the web shell's first frame, behind the
+        // play gate) and another does not (`og run` draws from tick 1), so
+        // the adaptation starts at the first ticked frame's metered
+        // exposure on every host (web findings #5: Lantern Vale's first two
+        // seconds were brighter on the web, which adapted from its tick 0
+        // frame).
         let (dt, snap) = match self.exposure.last {
+            _ if tick == 0 => (0.0, true),
             Some((t, written, both)) if tick >= t && (written != slot || both) => {
                 ((tick - t) as f32 / tick_rate.max(1e-3), false)
             }
             _ => (0.0, true),
         };
-        self.exposure.last = Some((tick, slot, false));
+        self.exposure.last = (tick > 0).then_some((tick, slot, false));
         let u = AdaptUniform {
             speed: [dt, up, down, snap as u32 as f32],
             meter: [compensation, min_ev, max_ev.max(min_ev), 0.0],

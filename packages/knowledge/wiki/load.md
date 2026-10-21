@@ -1062,16 +1062,16 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `scene` | `number` | `0` | — | — | — | Which glTF scene to instantiate. |
-| `castShadow` | `boolean` | `false` | — | — | — | Set Mesh.castShadow on every mesh instantiated from it. |
-| `receiveShadow` | `boolean` | `false` | — | — | — | Set Mesh.receiveShadow on every mesh instantiated from it. |
+| `castShadow` | `boolean` | `false` | — | — | — | Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows. |
+| `receiveShadow` | `boolean` | `false` | — | — | — | Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows. |
 
 ```ogt
 struct GltfDesc {
   doc "How to load a glTF, as three.js GLTFLoader options where they apply."
   desc true
   field scene u32 "Which glTF scene to instantiate."
-  field castShadow bool "Set Mesh.castShadow on every mesh instantiated from it."
-  field receiveShadow bool "Set Mesh.receiveShadow on every mesh instantiated from it."
+  field castShadow bool "Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows."
+  field receiveShadow bool "Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows."
 }
 ```
 

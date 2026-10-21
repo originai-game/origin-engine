@@ -131,6 +131,80 @@ fn paraboloid_point_shadows_match_cube_faces_within_tolerance() {
     );
 }
 
+/// The crypt: the sun's cascades and the lamp's point shadow; the lamp's
+/// own glass box casts none.
+#[test]
+fn shadows_crypt_matches_its_reference() {
+    let report = check("shadows-crypt");
+    assert_eq!(report.stats.shadowed_lights, 1);
+    let faces = match report.info.point_shadows {
+        PointShadows::Paraboloid => 2,
+        _ => 6,
+    };
+    assert_eq!(
+        report.stats.shadow_passes,
+        report.info.shadow_cascades + faces
+    );
+}
+
+/// A light inside its own glass that casts no shadow lights the room on
+/// cube faces and paraboloids alike, and the two draw it within
+/// tolerance; glass that casts shuts the light in on both (web findings
+/// #4: every mesh cast, and paraboloids stored the faces turned towards
+/// the light, so The Kestrel Stair's crypt lamp lit its crypt on WebGL2
+/// and not on the full tier).
+#[test]
+fn a_light_in_a_non_casting_fixture_lights_its_room_on_both_point_shadow_storages() {
+    let shut = || {
+        let mut scene = shadow_scenes::crypt_scene();
+        assert_eq!(
+            scene.instances.iter().filter(|i| !i.cast_shadows).count(),
+            1,
+            "the lamp's glass alone casts no shadow"
+        );
+        for i in &mut scene.instances {
+            i.cast_shadows = true;
+        }
+        scene
+    };
+    let mut lit_frames = Vec::new();
+    for mode in [PointShadows::Cube, PointShadows::Paraboloid] {
+        let desc = RenderDesc {
+            point_shadows: mode,
+            ..scenes::base_desc()
+        };
+        let (lit, stats) = frame(&desc, &shadow_scenes::crypt_scene(), 1);
+        let (dark, dark_stats) = frame(&desc, &shut(), 1);
+        assert!(
+            dark_stats.shadow_casters > stats.shadow_casters,
+            "the casting glass is drawn into the shadow passes, the other not"
+        );
+        let shut_out = darker(&dark, &lit);
+        println!("{mode:?}: {shut_out} pixels darker with the glass casting");
+        assert!(
+            shut_out > 100_000,
+            "{mode:?}: only {shut_out} pixels lost the lamp"
+        );
+        lit_frames.push(lit);
+    }
+    let (cube, para) = (&lit_frames[0], &lit_frames[1]);
+    let c = compare(
+        &cube.pixels,
+        &para.pixels,
+        cube.width,
+        cube.height,
+        &Tolerance::default(),
+    )
+    .expect("same size");
+    println!(
+        "cube vs paraboloid: rmse {:.5}, {} outliers",
+        c.rmse, c.outliers
+    );
+    if let Err(e) = c.check(&Tolerance::default()) {
+        panic!("paraboloid vs cube in the crypt: {e}");
+    }
+}
+
 /// Eight shadowed lights on the full tier (38 passes: six points with
 /// cube faces, two spots); the two far, dim ones are left out.
 #[test]
