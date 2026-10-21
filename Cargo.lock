@@ -1945,6 +1945,8 @@ version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
  "image",
+ "og-anim",
+ "og-cook",
  "og-core",
  "og-render",
  "og-tilemap",

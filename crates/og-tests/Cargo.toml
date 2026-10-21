@@ -15,6 +15,12 @@ glam = { workspace = true }
 # hdr: the environment-map scene's equirectangular image (assets/env).
 image = { workspace = true, features = ["hdr"] }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# vox_scenes: a .vox cooked into a project of its own and played as a game
+# loads it (the cook is native only; the scene is not in the browser's set).
+og-cook = { path = "../og-cook" }
+og-anim = { path = "../og-anim" }
+
 [[bin]]
 name = "og-gfx"
 path = "src/bin/og-gfx.rs"
