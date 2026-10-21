@@ -114,7 +114,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-908 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+909 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -742,6 +742,7 @@ Field units the docs and Tune use.
 | [`PanelDesc`](ui.md#type-PanelDesc) | desc struct | ui | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
+| [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |

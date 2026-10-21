@@ -146,6 +146,10 @@ pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
     v[key].as_f64().map_or(default, |x| x as f32)
 }
 
+/// og.ParticleSystem.startTick's default (the IDL's `PARTICLES_ARMED`):
+/// never written, so a one-shot emitter has not fired.
+const PARTICLES_ARMED: u32 = u32::MAX;
+
 pub(crate) fn u(v: &Value, key: &str, default: u32) -> u32 {
     v[key].as_f64().map_or(default, |x| x as u32)
 }
@@ -636,12 +640,19 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             }
         }
         let stop = u(&v, "stopTick", 0);
+        // An unwritten startTick (PARTICLES_ARMED): a looping emitter runs
+        // as if started at tick 0, a one-shot waits for its tick.
+        let start = match u(&v, "startTick", PARTICLES_ARMED) {
+            PARTICLES_ARMED if scene.emitter(emitter).is_some_and(|e| !e.looping) => continue,
+            PARTICLES_ARMED => 0,
+            t => t,
+        };
         scene.particles.push(ParticleSystem {
             id: e,
             emitter,
             transform: h.world_of(e),
             seed: u64::from(u(&v, "seed", 0)),
-            start_tick: u64::from(u(&v, "startTick", 0)),
+            start_tick: u64::from(start),
             stop_tick: (stop > 0).then_some(u64::from(stop)),
             tick,
         });

@@ -4467,6 +4467,11 @@ export interface Decal {
 }
 
 /**
+ * ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it.
+ */
+export declare const PARTICLES_ARMED: 4294967295;
+
+/**
  * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.
  *
  * The value of the `ParticleSystem` component (token `og.ParticleSystem`).
@@ -4476,7 +4481,11 @@ export interface ParticleSystem {
   emitter: ParticleEmitter;
   /** The random seed: systems with different seeds differ. */
   seed: number;
-  /** The tick emission started: write og.world tick when spawning a one-shot burst. */
+  /**
+   * The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait.
+   *
+   * @default 4294967295
+   */
   startTick: number;
   /**
    * The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops.

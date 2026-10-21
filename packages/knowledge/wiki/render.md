@@ -70,6 +70,7 @@ module render {
 | [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
 | [`og.Occluder2D`](#record-Occluder2D) | component | A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
+| [`PARTICLES_ARMED`](#const-PARTICLES_ARMED) | constant | ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it. |
 | [`og.ParticleSystem`](#record-ParticleSystem) | component | Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way. |
 | [`og.Trail`](#record-Trail) | component | A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail. |
 | [`og.Beam`](#record-Beam) | component | A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter). |
@@ -137,7 +138,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2875</sub>
+<sub>`api.ogt` line 2879</sub>
 
 <a id="fn-sprite"></a>
 
@@ -167,7 +168,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 3003</sub>
+<sub>`api.ogt` line 3007</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -197,7 +198,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3180</sub>
+<sub>`api.ogt` line 3184</sub>
 
 <a id="fn-measureText"></a>
 
@@ -227,7 +228,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3187</sub>
+<sub>`api.ogt` line 3191</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -257,7 +258,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3256</sub>
+<sub>`api.ogt` line 3260</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -287,7 +288,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3263</sub>
+<sub>`api.ogt` line 3267</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -317,7 +318,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3270</sub>
+<sub>`api.ogt` line 3274</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -347,7 +348,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3294</sub>
+<sub>`api.ogt` line 3298</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -379,7 +380,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3301</sub>
+<sub>`api.ogt` line 3305</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -411,7 +412,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3311</sub>
+<sub>`api.ogt` line 3315</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -443,7 +444,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3319</sub>
+<sub>`api.ogt` line 3323</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -477,7 +478,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3327</sub>
+<sub>`api.ogt` line 3331</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -507,7 +508,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3336</sub>
+<sub>`api.ogt` line 3340</sub>
 
 <a id="fn-look"></a>
 
@@ -535,7 +536,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3343</sub>
+<sub>`api.ogt` line 3347</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -563,7 +564,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3349</sub>
+<sub>`api.ogt` line 3353</sub>
 
 <a id="fn-text"></a>
 
@@ -593,7 +594,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3355</sub>
+<sub>`api.ogt` line 3359</sub>
 
 ## Components, resources and events
 
@@ -1659,7 +1660,7 @@ Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`;
 |---|---|---|---|---|---|---|
 | `emitter` | `ParticleEmitter` | `0` | — | — | — | The emitter asset; 0 draws nothing. |
 | `seed` | `number` | `0` | — | — | — | The random seed: systems with different seeds differ. |
-| `startTick` | `number` | `0` | — | — | — | The tick emission started: write og.world tick when spawning a one-shot burst. |
+| `startTick` | `number` | `4294967295` | — | — | — | The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait. |
 | `stopTick` | `number` | `0` | — | — | — | The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn (a hidden system loses its particles). |
 
@@ -1668,7 +1669,9 @@ component ParticleSystem {
   doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way."
   field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
   field seed u32 "The random seed: systems with different seeds differ."
-  field startTick u32 "The tick emission started: write og.world tick when spawning a one-shot burst."
+  field startTick u32 "The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait." {
+    default 4294967295
+  }
   field stopTick u32 "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops."
   field visible bool "Whether it is drawn (a hidden system loses its particles)." {
     default true
@@ -1676,7 +1679,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2743</sub>
+<sub>`api.ogt` line 2745</sub>
 
 <a id="record-Trail"></a>
 
@@ -1752,7 +1755,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2754</sub>
+<sub>`api.ogt` line 2758</sub>
 
 <a id="record-Beam"></a>
 
@@ -1818,7 +1821,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2802</sub>
+<sub>`api.ogt` line 2806</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1949,7 +1952,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 3010</sub>
+<sub>`api.ogt` line 3014</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1997,7 +2000,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3095</sub>
+<sub>`api.ogt` line 3099</sub>
 
 ## Types
 
@@ -2796,7 +2799,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2842</sub>
+<sub>`api.ogt` line 2846</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2827,7 +2830,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2863</sub>
+<sub>`api.ogt` line 2867</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2889,7 +2892,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2882</sub>
+<sub>`api.ogt` line 2886</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2918,7 +2921,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2916</sub>
+<sub>`api.ogt` line 2920</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2941,7 +2944,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2927</sub>
+<sub>`api.ogt` line 2931</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -3052,7 +3055,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2934</sub>
+<sub>`api.ogt` line 2938</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3140,7 +3143,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3122</sub>
+<sub>`api.ogt` line 3126</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3182,7 +3185,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3194</sub>
+<sub>`api.ogt` line 3198</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3218,7 +3221,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3217</sub>
+<sub>`api.ogt` line 3221</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3258,7 +3261,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3235</sub>
+<sub>`api.ogt` line 3239</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3293,7 +3296,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3281</sub>
+<sub>`api.ogt` line 3285</sub>
 
 <a id="type-Shader"></a>
 
@@ -3307,7 +3310,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3309</sub>
+<sub>`api.ogt` line 3313</sub>
 
 ## Column kinds
 
@@ -3488,24 +3491,31 @@ column StyliseSpace {
 
 | Constant | Type | Value | Doc |
 |---|---|---|---|
+| <a id="const-PARTICLES_ARMED"></a>`PARTICLES_ARMED` | `number` | `4294967295` | ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it. |
 | <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `256` | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
 | <a id="const-MAX_CLUSTER_LIGHTS"></a>`MAX_CLUSTER_LIGHTS` | `number` | `64` | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
 | <a id="const-UI_LAYER"></a>`UI_LAYER` | `number` | `1000` | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way. |
 
 ```ogt
+const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
+```
+
+<sub>`api.ogt` line 2743</sub>
+
+```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3277</sub>
+<sub>`api.ogt` line 3281</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3278</sub>
+<sub>`api.ogt` line 3282</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 3279</sub>
+<sub>`api.ogt` line 3283</sub>

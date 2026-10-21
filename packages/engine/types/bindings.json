@@ -1006,7 +1006,7 @@
         {
           "name": "startTick",
           "column": "u32",
-          "default": 0
+          "default": 4294967295
         },
         {
           "name": "stopTick",

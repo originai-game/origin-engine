@@ -6485,7 +6485,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "startTick",
                 column: "u32",
-                default: "0",
+                default: "4294967295",
                 readonly: false,
                 tunable: false,
                 min: None,
@@ -6493,7 +6493,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The tick emission started: write og.world tick when spawning a one-shot burst.",
+                doc: "The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait.",
                 variants: &[],
                 capacity: 0,
             },

@@ -941,10 +941,14 @@ round false               # sprite mode: fade each particle to a round edge over
   speeds are in world units like a sprite's, and the particles take the
   sprite batch's order and glow like any sprite.
 - A one-shot effect (a hit, a pickup, landing dust) is `rate 0`,
-  `looping false`, one `burst 0 <count>` and a short `duration`; restart
-  it by writing the tick to its `og.ParticleSystem.startTick` (moving the
-  entity first). A lasting one (embers, motes, rain) keeps the defaults
-  `looping true` and a `rate`.
+  `looping false`, one `burst 0 <count>` and a short `duration`; fire
+  and restart it by writing the tick to its `og.ParticleSystem.startTick`
+  (moving the entity first). Spawn it in `start` without a `startTick`:
+  the default, `PARTICLES_ARMED`, means never written, so it waits
+  armed and emits nothing until its first use (write `PARTICLES_ARMED`
+  back to re-arm one without firing it). A lasting one (embers, motes,
+  rain) keeps the defaults `looping true` and a `rate`, and emits from
+  tick 0 without a `startTick`.
 - `sheet` animates a sprite sheet texture: `life 1` plays its frames once
   over each particle's life, `fps 12` at a rate, `random` one frame per
   particle. `array` does the same over a texture array's layers (§8), one
