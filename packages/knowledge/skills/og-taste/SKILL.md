@@ -331,6 +331,46 @@ woven canvas, and `watercolor`, cold-pressed paper) and `Stylise.palette
 cook puts the ones a look names into the bundle; a palette or canvas of
 the game's own is a path under `assets/` as before.
 
+**Fit the pixel grid to the screens.** `Stylise.pixelHeight` is the
+number of pixel rows; the width follows the output's aspect, and the frame
+is scaled up by the largest whole number that fits (`pixelUpscale` can
+only lower it), the rest a border in `Camera.background` (the arithmetic is in
+`Stylise.pixelHeight`'s doc, og-game §15). Choose the height by
+the screens the game meets, not by the era alone: a height that divides
+720, 1080 and 1440 fills every 16:9 screen, one that does not leaves a band
+or loses a whole step of scale. The scale per output (✓ fills it, b leaves
+a border):
+
+| `pixelHeight` | 1280×720 | 1920×1080 | 2560×1440 | 3840×2160 | phone 1688×780 | phone 1830×824 |
+|---|---|---|---|---|---|---|
+| 90 | 8 ✓ | 12 ✓ | 16 ✓ | 24 ✓ | 8 b | 9 b |
+| 135 | 5 b | 8 ✓ | 10 b | 16 ✓ | 5 b | 6 b |
+| 144 | 5 ✓ | 7 b | 10 ✓ | 15 ✓ | 5 b | 5 b |
+| 160 | 4 b | 6 b | 9 b | 13 b | 4 b | 5 b |
+| 180 | 4 ✓ | 6 ✓ | 8 ✓ | 12 ✓ | 4 b | 4 b |
+| 192 | 3 b | 5 b | 7 b | 11 b | 4 b | 4 b |
+| 216 | 3 b | 5 ✓ | 6 b | 10 ✓ | 3 b | 3 b |
+| 224 | 3 b | 4 b | 6 b | 9 b | 3 b | 3 b |
+| 270 | 2 b | 4 ✓ | 5 b | 8 ✓ | 2 b | 3 b |
+| 360 | 2 ✓ | 3 ✓ | 4 ✓ | 6 ✓ | 2 b | 2 b |
+
+- 180 is the default to reach for (and 90 or 360 for a coarser or finer
+  grid): whole at every 16:9 size. 144 suits 720p and 1440p, 216 and 270
+  1080p and 4K.
+- 240, three presets' height, is 426⅔ pixels wide at 16:9: it leaves a
+  border at every 16:9 size, and at 1280×720 it is drawn 2x, not 3x. 224
+  (`16bit-pixel`) and 192 (`8bit-pixel`) leave a border too. Write
+  `pixelHeight 180` (or 216) in the game's look, which wins over the
+  preset field by field, unless the border is part of the look.
+- A phone's output is its page's CSS size times the device pixel ratio,
+  capped at 2 (`publish { dpr_cap 2 }` in project.ogt), about 19.5:9 in
+  landscape, so every height leaves a border there. Keep the height that
+  fits the desktop sizes and give the border a colour of the palette
+  (`Camera.background`), or letterbox the page to 16:9 (`publish { fit
+  letterbox aspect "16:9" }`).
+- Prove it on frames: `og run . --headless --size 1280x720` and again at
+  `1920x1080`, a screenshot each, and read the border.
+
 With a moving 3D camera, lay the paper and the strokes on the scene
 rather than over the screen: `Stylise.paintCanvasSpace surface` (grain
 per metre by `paintCanvasWorldScale`), `hatchingSpace surface` and
