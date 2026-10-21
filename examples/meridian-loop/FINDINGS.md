@@ -4,7 +4,7 @@ Every problem met writing this game from the knowledge package (skills and wiki)
 
 | | Blocker | Annoyance | Nit | Total |
 |---|---|---|---|---|
-| Count | 1 | 10 | 6 | 17 |
+| Count | 1 | 10 | 7 | 18 |
 
 Top five: #3, #12, #9, #8, #2 (with #6).
 
@@ -25,6 +25,7 @@ Top five: #3, #12, #9, #8, #2 (with #6).
 15. **No texture repeat: a plane geometry has no UV scale and StandardMaterialDesc no `repeat`** — nit. A ground grid repeating every 10 m (three.js `texture.repeat`) cannot be made with `og.render.planeGeometry` and `standardMaterial`. Workaround: the ground is a glTF of its own whose UVs run past 1 with a repeating sampler (`tools/circuit.ts` `groundModel`).
 16. **WheelPose has no slip, and og.Vehicle reads back only `speed` and `contacts`** — nit (API gap). Tyre smoke, skid marks and the squeal want each wheel's slide, which rapier's controller knows (its skid info); the game derives the rear axle's sideways speed from og.Velocity instead (`src/car.ts`), which misses wheelspin.
 17. **Nothing in the knowledge package says how a game records and replays its own play, or makes a ghost** — nit (docs). "Replay" is used throughout (og-core §2: answers are host input "a replay records them like a key press"; og-build §4; og-feel §13) for the probe's and playtests' re-runs; a game author asking for a ghost or a Watch-replay feature finds no recorder, no pattern and no word on which way works: re-driving a second body from recorded inputs (#3 blocks it for cars), recording poses (`src/ghost.ts`), or restoring a snapshot and feeding inputs (#11, #12 meet it). Workaround: the game tapes its intents and poses itself (`src/tape.ts`, `src/tapes.ts`).
+18. **On the published page the shell's Back button covers the racing HUD's top-left corner** — nit (web). During play the shell draws its round Back control over the canvas's top-left (12, 12 to about 52, 52 CSS px), exactly where `og.ui.racingHud` anchors the place and lap: the place's "1/1" is half hidden behind it on WebGPU (`dist/dogfood/meridian-loop/webgpu/play.png`). og-ui §5 says anchored groups sit inside the safe area; the shell's control is not part of it. Repro: `bun tests/web/dogfood.ts --project examples/meridian-loop` in `packages/engine`, then `play.png`. Workaround: none in the game (the place is a number a time trial does not need, #8).
 
 ## What worked well
 
@@ -54,3 +55,32 @@ emitter's start and stop ticks, sparks at `og.CollisionStarted`'s point and
 the camera's shake, kick and punch needed no more than their docs. Every
 refusal named its fix: the undeclared `Racer`, the 4,096-byte `str`, the
 `u32` handle, `world.query` in a system, a font's missing glyphs.
+
+## On the web
+
+Published with `og build examples/meridian-loop --publish` (the dev-profile
+`og` and the `wasm-opt -Oz` modules this lane's build at dfa10100 made) and
+played once in headless Chrome for Testing 150 on WebGPU through
+`packages/engine/tests/web/dogfood.ts` (main 85174856's harness, with a
+plan for this game: Time trial, the countdown, 600 ticks holding W, A and
+D in turn, Escape and Quit, the Leaderboard, the settings switched to
+Deutsch and saved, a reload, Back), 2026-10-22, on a machine shared with
+other lanes (load 11 to 20). WebGL2, the frames on the web and
+`published.ts` were left to the coordinator after the merge (scope cut).
+
+| Measure | WebGPU |
+|---|---|
+| The package (raw / brotli -q 11) | 28,328,127 / 9,811,997 B, both engine variants; `og build --publish` printed no warning |
+| Boot download (a lanes page, brotli) | 5,288,182 B in 58 files: engine 3,159,320, cooked 1,699,037 (46 files), Basis 217,304, shell 114,678, one music chunk 97,843 (the other 14 chunks fetched as they near) |
+| First frame, title in the mirror | 696 ms (`og:ready` 493 ms); after the reload under the service worker 313 ms |
+| Lanes | on, 8 threads, cross-origin isolated |
+| 600 ticks of play | 60 ticks/s; step p50 1.60 / p95 2.65 ms, render 0.57 / 0.96 ms; the Worker's work per frame p50 1.99 / p95 3.26 ms; display interval p95 8.34 ms (120 Hz) |
+| Resident memory at the end | renderer 616 MB, GPU 157 MB |
+| The platform | the first tick's `record` and `og.settings` reads, `leaderboard.top` from the Leaderboard (an empty board, shown as its empty state), the settings saved with `language: "de"`, `start`, `ready`, `sample` and `end` on Back |
+| The reload | the store read again, the title in German once the gate is passed (behind the gate still English: WEB-FINDINGS #1, known) |
+| Accessibility | the title's mirror 6 nodes (a heading, 2 texts, 3 buttons), none unnamed; every press found and clicked |
+| Console | no page error, no exception; the 16 known `wasm-bindgen-rayon` warnings (WEB-FINDINGS #8) |
+
+The title captured on the page differs from metal's `title.png` (RMSE
+0.118) only because the title's camera orbits with the clock and the page
+captured tick 112 against the reference's 72.

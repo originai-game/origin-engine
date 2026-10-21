@@ -23,8 +23,8 @@ export default playtest({
     "17:get:Race:paused.json",
     press("Escape", 17.5),
     "18:drive:auto",
-    "90:get:Race:end.json",
-    "90.1:quit",
+    "110:get:Race:end.json",
+    "110.1:quit",
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
