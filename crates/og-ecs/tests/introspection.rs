@@ -140,12 +140,18 @@ fn systems_are_timed_with_the_world_clock() {
     assert_eq!(info[0].ms, Some(1.5));
     assert_eq!((info[0].total_ms, info[0].runs), (3.0, 2));
     let mut plain = world();
-    plain.add_system(SystemDesc::new("idle"), |_| Ok(())).unwrap();
+    plain
+        .add_system(SystemDesc::new("idle"), |_| Ok(()))
+        .unwrap();
     for _ in 0..3 {
         plain.step().unwrap();
     }
     assert_ne!(hash, plain.world_hash(), "the clock moved the tick on");
-    assert_eq!(w.world_hash(), plain.world_hash(), "timing never reaches the hash");
+    assert_eq!(
+        w.world_hash(),
+        plain.world_hash(),
+        "timing never reaches the hash"
+    );
 }
 
 #[test]

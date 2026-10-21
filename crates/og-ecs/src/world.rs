@@ -896,8 +896,13 @@ impl World {
         LAST_TICK.store(tick, std::sync::atomic::Ordering::Relaxed);
         let mut commands = Vec::new();
         for i in 0..self.systems.len() {
-            let matched = self.match_counts(&self.systems[i]);
-            self.systems[i].matched = matched;
+            // Archetype sizes change only with a structural change: the
+            // counts of a tick without one are the last tick's.
+            if self.systems[i].matched_at != Some(self.structural) {
+                let matched = self.match_counts(&self.systems[i]);
+                self.systems[i].matched = matched;
+                self.systems[i].matched_at = Some(self.structural);
+            }
             self.systems[i].last_tick = Some(tick);
             let t0 = self.clock.map(|now| now());
             let result = {

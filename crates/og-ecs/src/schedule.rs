@@ -66,6 +66,9 @@ pub(crate) struct System {
     pub desc_queries: Vec<QueryDesc>,
     /// Entities each query matched when the system last ran.
     pub matched: Vec<usize>,
+    /// The world's structural count `matched` was counted at: counted
+    /// again only after an entity moved, came or went.
+    pub matched_at: Option<u64>,
     /// The tick the system last ran in.
     pub last_tick: Option<u64>,
     /// Wall-clock milliseconds of its last run, of every run, and the runs
@@ -183,6 +186,7 @@ impl System {
             reads,
             writes,
             matched: vec![0; queries.len()],
+            matched_at: None,
             queries,
             desc_queries: desc.queries,
             last_tick: None,
