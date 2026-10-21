@@ -56,7 +56,10 @@ const Count = defineSystem("PhCount", { reads: [og.SensorEntered, og.CollisionSt
 function scene(world: World): void {
   const floor = world.spawn({ name: "floor", position: { x: 0, y: -0.5, z: 0 } });
   if (!floor.ok) throw new Error(floor.reason);
-  world.insert(floor.value, og.Collider, { shape: SHAPE_BOX, size: { x: 40, y: 1, z: 40 } });
+  // 200 m across: the paddle really sweeps since the kinematic rule (a
+  // kinematic body with a Velocity moves by it), and a body it flings must
+  // still land on the floor for the settle check below.
+  world.insert(floor.value, og.Collider, { shape: SHAPE_BOX, size: { x: 200, y: 1, z: 200 } });
   const ramp = world.spawn({ name: "ramp", position: { x: -3, y: 1, z: 0 }, quaternion: { x: 0, y: 0, z: 0.2588, w: 0.9659 } });
   if (!ramp.ok) throw new Error(ramp.reason);
   world.insert(ramp.value, og.Collider, { shape: SHAPE_BOX, size: { x: 6, y: 0.4, z: 4 } });
