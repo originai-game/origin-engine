@@ -620,6 +620,65 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, shadow-flags: a model's and a mesh's shadow flags reach the renderer, models casting by default (7dc09488)
+
+Row 87's stream, on lane-2, after webgl2-render-2 made `og.Mesh.castShadow`
+reach the renderer and left the other three flags declared but
+unapplied.
+
+- **The default.** `GltfDesc` keeps the three.js names `castShadow` and
+  `receiveShadow` as booleans with `default true`: a field left out, or
+  no desc at all, means "casts and receives", `false` turns one off; the
+  same shape as `StandardMaterialDesc.styled { default true }`, so `{}`
+  stays a sensible zero value, and a negated name would have read as a
+  double negative. `Mesh.receiveShadow` is on by default too (every mesh
+  received before; the frames prove nothing moved); `Mesh.castShadow`
+  stays off, as in three.js.
+- **How it applies.** `og.Model` gained its own `castShadow` and
+  `receiveShadow` (default true, at the end of its layout): how a game
+  turns shadows off per instance and how the flags show in reflection
+  and scene text. A desc's flags are stored on the asset and copied into
+  the `og.Model` that `world.instantiate` or a scene's `model` line
+  creates (a later `og.load.gltf` of the same path replaces them for
+  models instantiated after it; a non-boolean flag is refused). A scene
+  entity with both a `model` line and a `Model { … }` table now gets one
+  `og.Model` (the table's fields plus the line's asset), where it pushed
+  two. In the renderer `receive_shadows` rides in the sign of the
+  instance record's layer slot, so no batch splits and a receiving
+  instance is the same bytes as before; the lit and physical shaders skip
+  the shadow-map reads where it is off; skinned models carry both flags
+  and non-casters leave the shadow passes.
+- **Frames.** New og-tests scene `shadow-flags` (metal): a low sun over
+  a field; in front a trickster model added as-is throws its shadow left
+  and one with cast off has none; behind, a 5 m wall shades a row of
+  four, the box and trickster that receive dark, the two that do not lit
+  orange-red and purple. Kestrel's crypt through its frames script with
+  a `set` at 7.9 s: `hero-body.og.Model.castShadow=false` removes only
+  the courier's shadow from the floor and right wall (31,612 pixels);
+  `stair.og.Model.receiveShadow=false` lights the whole crypt as if
+  unshadowed (508,920 pixels). Unchanged: all 112 project frames
+  (fx-showcase 62, the eight archetypes 25, the three games 25) are
+  byte-identical to the base commit's through `og run --commands` on
+  both builds (five of them, idle `card`, match3 `clearing`,
+  tower-defense `title`, Kestrel `records`, Lantern Vale `settings-zh`,
+  miss the reference identically on both: the stream's way of running
+  the scripts outside the playtest runner, not rendering), and every
+  og-tests frame is identical when its scene runs alone (`terrain-grass`
+  shows 29 pixels off by one level in `og-gfx --all` from the order
+  scenes run in, on the base too).
+- **Tests.** `crates/og-tests/tests/shadows.rs` (3: the reference, models
+  casting as their instances say, surfaces with receive off lit
+  unshadowed under the sun and a shadowed point light, every changed
+  pixel gaining light and matching a frame where the wall casts
+  nothing; 0 pixels change on shaders that ignore the flag);
+  `crates/og-runtime/tests/shadow_flags.rs` (6: the IDL defaults, a model
+  loaded with no flags, with them off and per instance, an animated
+  walker, a mesh's flags, a cooked scene's text round-trip, a bare
+  `model` line taking the load's flags; 4 fail on the old runtime); an
+  encoding unit test in instances.rs. `GltfDesc.scene` stays ignored as
+  before. No vulkan-cpu or browser reference for `shadow-flags`: judged
+  against `metal` at the wave's end. Row 87 is closed.
+
 ## Wave 13, web-boot: the title behind the gate, the WebGL2 first frame, the boot's bytes and an engine memory readout (69c75852)
 
 Wave 13's first stream took the web findings about boot and the build
@@ -4773,7 +4832,7 @@ resource only the owner can give.
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | closed at dcdcd17c: the script taps Title after the wipe and opens the chapters; `chapters.png` re-recorded (0.1835) |
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
-| 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | open |
+| 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | closed at 892a3c94 (merged in wave 13): models cast and receive by default (`GltfDesc.castShadow`/`receiveShadow` default true, `og.Model` carrying both per instance), `Mesh.receiveShadow` applied, 112 project frames byte-identical (Wave 13, shadow-flags) |
 | 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | open |
 | 89 | perf-games' tables and `og polish` rows on an idle machine (load under 8 for the whole run): every run of 2b896be5 shared the machine with the lavapipe VM, the gate or an iOS simulator | W12 perf-games | S | engine, phase 4 (a wave-end measurement) | open |
 | 90 | perf-games' follow-ups: the lanes on a loaded machine (Kestrel's physics 0.93 ms serial, 2.9 to 4.2 ms on the pool at load 20 to 25; the grains were measured idle); release sprite extraction still looks each field up by name (about 5 % of Hollowbell's frame); `og.ui.end` re-measures every text each tick; Lantern Vale's dev playtests' step spikes (p95 7 to 9.5 ms against a 2.2 ms median), unprofiled | W12 perf-games | M | engine, phase 4 (perf) | open |
