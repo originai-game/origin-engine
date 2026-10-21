@@ -438,8 +438,15 @@ impl Layout {
     }
 
     /// The field named `key` and its byte offset in packed form, by binary
-    /// search over the names (a per-frame reader's lookup).
+    /// search over the names (a per-frame reader resolves its fields once
+    /// with [`Slot::of`] instead).
     pub fn slot(&self, key: &str) -> Option<(&FieldLayout, usize)> {
+        let (i, at) = self.index_of(key)?;
+        Some((&self.fields[i], at))
+    }
+
+    /// The index of the field named `key` and its byte offset in packed form.
+    fn index_of(&self, key: &str) -> Option<(usize, usize)> {
         let index = self.by_name.get_or_init(|| {
             let mut at = 0;
             let mut index: Vec<(usize, usize)> = self
@@ -460,8 +467,7 @@ impl Layout {
         let k = index
             .binary_search_by(|(i, _)| self.fields[*i].name.as_str().cmp(key))
             .ok()?;
-        let (i, at) = index[k];
-        Some((&self.fields[i], at))
+        Some(index[k])
     }
 
     /// Byte offset of field `i` in packed form.
@@ -526,47 +532,98 @@ impl Layout {
     }
 }
 
+/// A field of a record named for a [`Rec`] read: by its name (`"width"`,
+/// looked up on each read) or by a [`Slot`] resolved once against the
+/// layout the read [`Row`]s have.
+pub trait Key {
+    /// The field's name (what the JSON is indexed by).
+    fn name(&self) -> &str;
+    /// The field's index and packed offset in `layout`.
+    fn index_in(&self, layout: &Layout) -> Option<(usize, usize)>;
+}
+
+impl Key for str {
+    fn name(&self) -> &str {
+        self
+    }
+    fn index_in(&self, layout: &Layout) -> Option<(usize, usize)> {
+        layout.index_of(self)
+    }
+}
+
+/// A field name resolved once against one layout: its index and packed
+/// offset (`None`: the layout has no such field, and every read of it
+/// answers `None` as the JSON would). Per-frame extraction resolves the
+/// fields it reads once per layout and reads each [`Row`] by offset, where
+/// a binary search over the names for every read was about 5 % of a 2D
+/// frame (Hollowbell's sprites, tests/evidence/P4/perf-games). A slot read
+/// from a row of another layout reads that layout's bytes at the offset:
+/// keep a layout's slots beside it.
+#[derive(Clone, Copy, Debug)]
+pub struct Slot {
+    pub key: &'static str,
+    at: Option<(usize, usize)>,
+}
+
+impl Slot {
+    pub fn of(layout: &Layout, key: &'static str) -> Slot {
+        Slot {
+            key,
+            at: layout.index_of(key),
+        }
+    }
+}
+
+impl Key for Slot {
+    fn name(&self) -> &str {
+        self.key
+    }
+    fn index_in(&self, _: &Layout) -> Option<(usize, usize)> {
+        self.at
+    }
+}
+
 /// A record read field by field, as its JSON would answer: implemented by
 /// the decoded [`Value`] and by [`Row`], the packed bytes read in place
 /// (per-frame extraction reads a few fields of every sprite or row, where
 /// decoding each record's whole JSON map was most of the cost).
 pub trait Rec {
     /// `value[key].as_f64()`.
-    fn num(&self, key: &str) -> Option<f64>;
+    fn num<K: Key + ?Sized>(&self, key: &K) -> Option<f64>;
     /// `value[key].as_i64()`.
-    fn int(&self, key: &str) -> Option<i64>;
+    fn int<K: Key + ?Sized>(&self, key: &K) -> Option<i64>;
     /// `value[key].as_u64()`.
-    fn uint(&self, key: &str) -> Option<u64>;
+    fn uint<K: Key + ?Sized>(&self, key: &K) -> Option<u64>;
     /// `value[key]` as a flag: a bool as itself, a number as `!= 0`, else `None`.
-    fn flag(&self, key: &str) -> Option<bool>;
+    fn flag<K: Key + ?Sized>(&self, key: &K) -> Option<bool>;
     /// `value[key][lane].as_f64()` (a vector's `x`, a colour's `r`).
-    fn lane(&self, key: &str, lane: &str) -> Option<f64>;
+    fn lane<K: Key + ?Sized>(&self, key: &K, lane: &str) -> Option<f64>;
     /// `value[key].as_str()`.
-    fn text(&self, key: &str) -> Option<std::borrow::Cow<'_, str>>;
+    fn text<K: Key + ?Sized>(&self, key: &K) -> Option<std::borrow::Cow<'_, str>>;
 }
 
 impl Rec for Value {
-    fn num(&self, key: &str) -> Option<f64> {
-        self[key].as_f64()
+    fn num<K: Key + ?Sized>(&self, key: &K) -> Option<f64> {
+        self[key.name()].as_f64()
     }
-    fn int(&self, key: &str) -> Option<i64> {
-        self[key].as_i64()
+    fn int<K: Key + ?Sized>(&self, key: &K) -> Option<i64> {
+        self[key.name()].as_i64()
     }
-    fn uint(&self, key: &str) -> Option<u64> {
-        self[key].as_u64()
+    fn uint<K: Key + ?Sized>(&self, key: &K) -> Option<u64> {
+        self[key.name()].as_u64()
     }
-    fn flag(&self, key: &str) -> Option<bool> {
-        match &self[key] {
+    fn flag<K: Key + ?Sized>(&self, key: &K) -> Option<bool> {
+        match &self[key.name()] {
             Value::Bool(b) => Some(*b),
             Value::Number(n) => Some(n.as_f64().is_some_and(|x| x != 0.0)),
             _ => None,
         }
     }
-    fn lane(&self, key: &str, lane: &str) -> Option<f64> {
-        self[key][lane].as_f64()
+    fn lane<K: Key + ?Sized>(&self, key: &K, lane: &str) -> Option<f64> {
+        self[key.name()][lane].as_f64()
     }
-    fn text(&self, key: &str) -> Option<std::borrow::Cow<'_, str>> {
-        self[key].as_str().map(std::borrow::Cow::Borrowed)
+    fn text<K: Key + ?Sized>(&self, key: &K) -> Option<std::borrow::Cow<'_, str>> {
+        self[key.name()].as_str().map(std::borrow::Cow::Borrowed)
     }
 }
 
@@ -590,10 +647,11 @@ impl<'a> Row<'a> {
         Row { layout, bytes }
     }
 
-    /// The field named `key` and its bytes; `None` for a list, whose JSON
+    /// The field `key` names and its bytes; `None` for a list, whose JSON
     /// is an array that none of these reads answers.
-    fn field(&self, key: &str) -> Option<(&'a FieldLayout, &'a [u8])> {
-        let (f, at) = self.layout.slot(key)?;
+    fn field<K: Key + ?Sized>(&self, key: &K) -> Option<(&'a FieldLayout, &'a [u8])> {
+        let (i, at) = key.index_in(self.layout)?;
+        let f = self.layout.fields.get(i)?;
         if f.ty.is_list() {
             return None;
         }
@@ -617,39 +675,44 @@ impl<'a> Row<'a> {
             _ => None,
         }
     }
-}
 
-impl Rec for Row<'_> {
-    fn num(&self, key: &str) -> Option<f64> {
-        let (f, b) = self.field(key)?;
+    /// A float field as its JSON number answers it.
+    fn float(f: &FieldLayout, b: &[u8]) -> Option<f64> {
         match f.kind {
             Kind::F32 => finite(f64::from(f32_at(b, 0))),
             Kind::F64 => finite(f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))),
             _ => Row::integer(f, b).map(|i| i as f64),
         }
     }
-    fn int(&self, key: &str) -> Option<i64> {
+}
+
+impl Rec for Row<'_> {
+    fn num<K: Key + ?Sized>(&self, key: &K) -> Option<f64> {
+        let (f, b) = self.field(key)?;
+        Row::float(f, b)
+    }
+    fn int<K: Key + ?Sized>(&self, key: &K) -> Option<i64> {
         let (f, b) = self.field(key)?;
         Row::integer(f, b).and_then(|i| i64::try_from(i).ok())
     }
-    fn uint(&self, key: &str) -> Option<u64> {
+    fn uint<K: Key + ?Sized>(&self, key: &K) -> Option<u64> {
         let (f, b) = self.field(key)?;
         Row::integer(f, b).and_then(|i| u64::try_from(i).ok())
     }
-    fn flag(&self, key: &str) -> Option<bool> {
+    fn flag<K: Key + ?Sized>(&self, key: &K) -> Option<bool> {
         let (f, b) = self.field(key)?;
         match f.kind {
             Kind::Bool => Some(b.iter().any(|x| *x != 0)),
-            Kind::F32 | Kind::F64 => self.num(key).map(|x| x != 0.0),
+            Kind::F32 | Kind::F64 => Row::float(f, b).map(|x| x != 0.0),
             _ => Row::integer(f, b).map(|i| i != 0),
         }
     }
-    fn lane(&self, key: &str, lane: &str) -> Option<f64> {
+    fn lane<K: Key + ?Sized>(&self, key: &K, lane: &str) -> Option<f64> {
         let (f, b) = self.field(key)?;
         let i = f.kind.keys().iter().position(|k| *k == lane)?;
         finite(f64::from(f32_at(b, i)))
     }
-    fn text(&self, key: &str) -> Option<std::borrow::Cow<'_, str>> {
+    fn text<K: Key + ?Sized>(&self, key: &K) -> Option<std::borrow::Cow<'_, str>> {
         let (f, b) = self.field(key)?;
         match f.kind {
             Kind::Str => Some(std::borrow::Cow::Borrowed(og_core::unpack_str(b))),
@@ -904,20 +967,36 @@ mod tests {
                 let names = layout.fields.iter().map(|f| f.name.as_str());
                 for key in names.chain(["missing"]) {
                     let at = format!("{}.{key}", layout.schema);
+                    // The same reads by name and by a slot resolved once.
+                    let slot = Slot::of(&layout, String::leak(key.to_owned()));
                     assert_eq!(
                         row.num(key).map(f64::to_bits),
                         value.num(key).map(f64::to_bits),
                         "{at} num"
                     );
+                    assert_eq!(
+                        row.num(&slot).map(f64::to_bits),
+                        value.num(key).map(f64::to_bits),
+                        "{at} num by slot"
+                    );
                     assert_eq!(row.int(key), value.int(key), "{at} int");
+                    assert_eq!(row.int(&slot), value.int(key), "{at} int by slot");
                     assert_eq!(row.uint(key), value.uint(key), "{at} uint");
+                    assert_eq!(row.uint(&slot), value.uint(key), "{at} uint by slot");
                     assert_eq!(row.flag(key), value.flag(key), "{at} flag");
+                    assert_eq!(row.flag(&slot), value.flag(key), "{at} flag by slot");
                     assert_eq!(row.text(key), value.text(key), "{at} text");
+                    assert_eq!(row.text(&slot), value.text(key), "{at} text by slot");
                     for lane in ["x", "y", "z", "w", "r", "g", "b", "elements"] {
                         assert_eq!(
                             row.lane(key, lane).map(f64::to_bits),
                             value.lane(key, lane).map(f64::to_bits),
                             "{at}.{lane}"
+                        );
+                        assert_eq!(
+                            row.lane(&slot, lane).map(f64::to_bits),
+                            value.lane(key, lane).map(f64::to_bits),
+                            "{at}.{lane} by slot"
                         );
                     }
                     checked += 1;
