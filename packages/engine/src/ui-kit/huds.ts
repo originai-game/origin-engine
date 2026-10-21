@@ -226,7 +226,7 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
   const out = hud();
   const showTouch = (desc.touch ?? false) && touch;
   const racers = desc.racers ?? 8;
-  const boost = desc.boost ?? null;
+  const boost = (desc.boostMeter ?? true) ? (desc.boost ?? 0) : null;
   const boostLabel = desc.boostLabel ?? "Boost";
   kit.anchor(`${id}.place`, { anchor: "topLeft", gap: t.lg }, () => {
     // A time trial (racers 0) has no place.
@@ -246,7 +246,7 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
     const delta = desc.delta ?? null;
     if (delta !== null) kit.label("Delta", deltaText(delta), { step: "lg", font: "mono", color: deltaInk(delta), nowrap: true });
     if (desc.best !== null && desc.best !== undefined) {
-      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", lapTime(desc.best)), { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", clock(desc.best, true)), { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
     }
     const splits = desc.splits ?? [];
     if (splits.length > 0) {

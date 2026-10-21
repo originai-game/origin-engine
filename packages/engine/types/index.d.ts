@@ -15181,7 +15181,7 @@ export interface RaceSplit {
 }
 
 /**
- * A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and leaves boost null (no meter), and shows its sectors as splits.
+ * A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15259,12 +15259,18 @@ export interface RacingHudDesc {
    */
   readonly splits?: readonly RaceSplit[];
   /**
-   * The boost meter, 0 to 1; null hides the meter and the touch Boost pedal.
+   * The boost meter, 0 to 1.
    *
-   * @default null
+   * @default 0
    * @unit ratio (a fraction between 0 and 1)
    */
-  readonly boost?: number | null;
+  readonly boost?: number;
+  /**
+   * Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false.
+   *
+   * @default true
+   */
+  readonly boostMeter?: boolean;
   /**
    * A mini-map; null is none.
    *

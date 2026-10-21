@@ -9733,7 +9733,7 @@ module ui {
   }
 
   struct RacingHudDesc {
-    doc "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and leaves boost null (no meter), and shows its sectors as splits."
+    doc "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits."
     desc true
     field speed f32 "The speed, in `unit`."
     field maxSpeed f32 "The dial's top." {
@@ -9759,8 +9759,11 @@ module ui {
     field delta Option.f32 "A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it."
     field best Option.f32 "The best lap in seconds; null hides it."
     field splits List.RaceSplit "Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none."
-    field boost Option.f32 "The boost meter, 0 to 1; null hides the meter and the touch Boost pedal." {
+    field boost f32 "The boost meter, 0 to 1." {
       unit ratio
+    }
+    field boostMeter bool "Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false." {
+      default true
     }
     field map Option.MinimapDesc "A mini-map; null is none."
     field touch bool "Show touch controls (steering arrows, Brake, Boost) on phones and tablets."

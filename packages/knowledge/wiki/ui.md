@@ -223,7 +223,7 @@ module ui {
 | [`Generator`](#type-Generator) | desc struct | A generator an idle game lists: level, cost, progress. |
 | [`IdleHudDesc`](#type-IdleHudDesc) | desc struct | An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list. |
 | [`RaceSplit`](#type-RaceSplit) | desc struct | One split of a racing HUD: a sector's time and its delta against the reference (the record's split). |
-| [`RacingHudDesc`](#type-RacingHudDesc) | desc struct | A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and leaves boost null (no meter), and shows its sectors as splits. |
+| [`RacingHudDesc`](#type-RacingHudDesc) | desc struct | A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits. |
 | [`DialogueLine`](#type-DialogueLine) | desc struct | One line of a cutscene. |
 | [`CutsceneDesc`](#type-CutsceneDesc) | desc struct | A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right. |
 | [`CutsceneResult`](#type-CutsceneResult) | struct | A cutscene's answer this tick. |
@@ -2764,7 +2764,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 10104</sub>
+<sub>`api.ogt` line 10107</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2795,7 +2795,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 10112</sub>
+<sub>`api.ogt` line 10115</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2826,7 +2826,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 10120</sub>
+<sub>`api.ogt` line 10123</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2857,7 +2857,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 10128</sub>
+<sub>`api.ogt` line 10131</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2888,7 +2888,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 10136</sub>
+<sub>`api.ogt` line 10139</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2919,7 +2919,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 10144</sub>
+<sub>`api.ogt` line 10147</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2950,7 +2950,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 10152</sub>
+<sub>`api.ogt` line 10155</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2981,7 +2981,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 10160</sub>
+<sub>`api.ogt` line 10163</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3012,7 +3012,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 10168</sub>
+<sub>`api.ogt` line 10171</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3043,7 +3043,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 10176</sub>
+<sub>`api.ogt` line 10179</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3074,7 +3074,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 10184</sub>
+<sub>`api.ogt` line 10187</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3105,7 +3105,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 10192</sub>
+<sub>`api.ogt` line 10195</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3136,7 +3136,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 10200</sub>
+<sub>`api.ogt` line 10203</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3167,7 +3167,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 10208</sub>
+<sub>`api.ogt` line 10211</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3198,7 +3198,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 10216</sub>
+<sub>`api.ogt` line 10219</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3229,7 +3229,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 10224</sub>
+<sub>`api.ogt` line 10227</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3260,7 +3260,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 10232</sub>
+<sub>`api.ogt` line 10235</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3291,7 +3291,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 10240</sub>
+<sub>`api.ogt` line 10243</sub>
 
 ## Types
 
@@ -7053,7 +7053,7 @@ struct RaceSplit {
 
 ### `RacingHudDesc` (desc struct)
 
-A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and leaves boost null (no meter), and shows its sectors as splits.
+A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -7071,7 +7071,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `delta` | `number \| null` | `null` | — | — | — | A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it. |
 | `best` | `number \| null` | `null` | — | — | — | The best lap in seconds; null hides it. |
 | `splits` | `readonly RaceSplit[]` | `[]` | — | — | — | Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none. |
-| `boost` | `number \| null` | `null` | — | `ratio` | — | The boost meter, 0 to 1; null hides the meter and the touch Boost pedal. |
+| `boost` | `number` | `0` | — | `ratio` | — | The boost meter, 0 to 1. |
+| `boostMeter` | `boolean` | `true` | — | — | — | Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false. |
 | `map` | `MinimapDesc \| null` | `null` | — | — | — | A mini-map; null is none. |
 | `touch` | `boolean` | `false` | — | — | — | Show touch controls (steering arrows, Brake, Boost) on phones and tablets. |
 | `lapLabel` | `string` | `"lap"` | — | — | — | The caption under the lap. Every word of the HUD is a field with its English default (unit too): a localised game passes its string table's (og.i18n.t). |
@@ -7084,7 +7085,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct RacingHudDesc {
-  doc "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and leaves boost null (no meter), and shows its sectors as splits."
+  doc "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits."
   desc true
   field speed f32 "The speed, in `unit`."
   field maxSpeed f32 "The dial's top." {
@@ -7110,8 +7111,11 @@ struct RacingHudDesc {
   field delta Option.f32 "A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it."
   field best Option.f32 "The best lap in seconds; null hides it."
   field splits List.RaceSplit "Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none."
-  field boost Option.f32 "The boost meter, 0 to 1; null hides the meter and the touch Boost pedal." {
+  field boost f32 "The boost meter, 0 to 1." {
     unit ratio
+  }
+  field boostMeter bool "Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false." {
+    default true
   }
   field map Option.MinimapDesc "A mini-map; null is none."
   field touch bool "Show touch controls (steering arrows, Brake, Boost) on phones and tablets."
@@ -7165,7 +7169,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 9790</sub>
+<sub>`api.ogt` line 9793</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -7203,7 +7207,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 9798</sub>
+<sub>`api.ogt` line 9801</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -7226,7 +7230,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 9815</sub>
+<sub>`api.ogt` line 9818</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -7260,7 +7264,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 9822</sub>
+<sub>`api.ogt` line 9825</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -7318,7 +7322,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 9834</sub>
+<sub>`api.ogt` line 9837</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -7341,7 +7345,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 9865</sub>
+<sub>`api.ogt` line 9868</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -7373,7 +7377,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 9872</sub>
+<sub>`api.ogt` line 9875</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -7417,7 +7421,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 9883</sub>
+<sub>`api.ogt` line 9886</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -7438,7 +7442,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 9905</sub>
+<sub>`api.ogt` line 9908</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -7463,7 +7467,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 9911</sub>
+<sub>`api.ogt` line 9914</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -7491,7 +7495,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 9919</sub>
+<sub>`api.ogt` line 9922</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -7519,7 +7523,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 9928</sub>
+<sub>`api.ogt` line 9931</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -7540,7 +7544,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 9938</sub>
+<sub>`api.ogt` line 9941</sub>
 
 <a id="type-StatRow"></a>
 
@@ -7564,7 +7568,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 9944</sub>
+<sub>`api.ogt` line 9947</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -7587,7 +7591,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 9951</sub>
+<sub>`api.ogt` line 9954</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -7649,7 +7653,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 9957</sub>
+<sub>`api.ogt` line 9960</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -7677,7 +7681,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 9988</sub>
+<sub>`api.ogt` line 9991</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7717,7 +7721,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 9997</sub>
+<sub>`api.ogt` line 10000</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7742,7 +7746,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 10015</sub>
+<sub>`api.ogt` line 10018</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7768,7 +7772,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 10023</sub>
+<sub>`api.ogt` line 10026</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7810,7 +7814,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 10031</sub>
+<sub>`api.ogt` line 10034</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7833,7 +7837,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 10051</sub>
+<sub>`api.ogt` line 10054</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7866,7 +7870,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 10058</sub>
+<sub>`api.ogt` line 10061</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7902,7 +7906,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 10072</sub>
+<sub>`api.ogt` line 10075</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -7923,7 +7927,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 10087</sub>
+<sub>`api.ogt` line 10090</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -7953,4 +7957,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 10093</sub>
+<sub>`api.ogt` line 10096</sub>

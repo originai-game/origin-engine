@@ -49,6 +49,7 @@ const TimeTrial = defineSystem("UrTimeTrial", { writes: [Trial] }, (_q, _t, worl
     lap: 2,
     laps: 3,
     racers: 0,
+    boostMeter: false,
     time: 47.5,
     delta: -0.412,
     best: 96.233,
@@ -70,7 +71,7 @@ test("og.ui.racingHud: a time trial's words are the desc's, with its delta and s
   expect(texts).toContain("Runde");
   expect(texts).toContain("Bestzeit 1:36.233");
   expect(ui.some((e) => e.id === "Pause" && (e.text === "Pausieren" || ui.some((c) => c.parent === "Pause" && c.text === "Pausieren")))).toBeTrue();
-  // racers 0: no place; boost left out: no meter.
+  // racers 0: no place; boostMeter false: no meter.
   expect(ui.some((e) => e.id === "Place" || e.id === "Position")).toBeFalse();
   expect(ui.some((e) => e.id === "Boost")).toBeFalse();
   // The live delta and the splits, signed with the ASCII minus.
