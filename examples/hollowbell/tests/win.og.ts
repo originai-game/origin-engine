@@ -54,6 +54,6 @@ export default playtest({
     t.equal(dawn.pixelHeight, 160, "the dawn look's coarser grid is applied");
     const again = game(run, "again.json");
     t.ok(again.phase === PLAY && again.chimes === 0 && again.look === 0, "Play again: a fresh run under the game's own look");
-    t.equal(value<{ pixelHeight: number }>(run, "main.json").pixelHeight, 224, "its 224-line grid");
+    t.equal(value<{ pixelHeight: number }>(run, "main.json").pixelHeight, 240, "its 240-line grid");
   },
 });

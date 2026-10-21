@@ -11,7 +11,7 @@ engine's own CC0 / OFL assets.
 | `assets/tiles/hollow.png`, `hollow.ogt` | CC0 1.0 | self-made: the tileset (the rock's 47 blob shapes, the back wall, planks, a torch, crystals, grass, hills, a fence, thorns) drawn pixel by pixel, `tools/make-assets.ts` |
 | `assets/maps/hollow.tmj` | CC0 1.0 | self-made: the Tiled map and its objects, `tools/make-assets.ts` |
 | `assets/sprites/*.png`, `*.ogt`, `assets/sprites/items/*.png` | CC0 1.0 | self-made: Wren, the beetle, the moth, Old Burrow, the bell, the sky, the items' texture array, `tools/make-assets.ts` |
-| `assets/fx/**` | CC0 1.0 | self-made: sparks, dust, the light pool, the motes' texture array and the particle emitters, `tools/make-assets.ts` |
+| `assets/fx/**` | CC0 1.0 | self-made: sparks, dust, the motes' texture array and the particle emitters, `tools/make-assets.ts` |
 | `assets/audio/*.ogt` | CC0 1.0 | `og sfx` presets (seed, pitch, length, volume chosen here) that `og cook` synthesises |
 | `assets/audio/bell.wav` | CC0 1.0 | self-made: a synthesised bell toll, `tools/make-assets.ts` |
 | `assets/music/hollow.wav` (not committed) | CC0 1.0 | self-made: "Under the Hill", synthesised by `tools/make-assets.ts` |

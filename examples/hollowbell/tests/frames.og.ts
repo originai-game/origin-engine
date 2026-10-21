@@ -1,6 +1,6 @@
 // Nine frames at 1280x720 compared with references/<tier>/: the title over
 // the village, a run's start, a strike's freeze frame in the dark upper
-// hollow (the beetle white, the sparks, the number, the light pools), the
+// hollow (the beetle white, the sparks, the number, the lit map), the
 // mole's talk, his wares, the pause menu, the settings in Chinese (the
 // mixed-script label), the gloam winding up in its hall, and the results
 // under the dawn look. `OG_FX_CAPTURE=1 og test .` records this tier's
