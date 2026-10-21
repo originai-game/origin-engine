@@ -1417,6 +1417,30 @@
           "name": "asset",
           "column": "Asset",
           "default": 0
+        },
+        {
+          "name": "tint",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        {
+          "name": "flash",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "flashColor",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
         }
       ]
     },

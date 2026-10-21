@@ -45,21 +45,24 @@ struct LeanOut {
   @location(0) world_pos: vec3<f32>,
   @location(1) normal: vec3<f32>,
   @location(2) color: vec4<f32>,
+  // The instance's look (pbr.wgsl InstanceFxIn).
+  @location(3) @interpolate(flat) look: vec4<f32>,
 };
 
 @vertex
-fn vs_lean(v: LeanVertexIn, i: InstanceIn) -> LeanOut {
+fn vs_lean(v: LeanVertexIn, i: InstanceIn, k: InstanceFxIn) -> LeanOut {
   let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position, v.normal, vec2<f32>(0.0), v.color);
   var o: LeanOut;
   o.clip = p.clip;
   o.world_pos = p.world;
   o.normal = p.normal;
   o.color = v.color;
+  o.look = k.look;
   return o;
 }
 
 @vertex
-fn vs_lean_compact(v: CompactVertexIn, i: InstanceIn) -> LeanOut {
+fn vs_lean_compact(v: CompactVertexIn, i: InstanceIn, k: InstanceFxIn) -> LeanOut {
   let n = oct_decode(v.normal);
   let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position.xyz, n, vec2<f32>(0.0), v.color);
   var o: LeanOut;
@@ -67,6 +70,7 @@ fn vs_lean_compact(v: CompactVertexIn, i: InstanceIn) -> LeanOut {
   o.world_pos = p.world;
   o.normal = p.normal;
   o.color = v.color;
+  o.look = k.look;
   return o;
 }
 
@@ -81,6 +85,7 @@ fn fs_lean(in: LeanOut) -> @location(0) vec4<f32> {
   full.local_pos = vec3<f32>(0.0);
   full.tangent = vec4<f32>(0.0);
   full.affine = vec3<f32>(0.0);
+  full.look = in.look;
   return lit_fragment(full);
 }
 

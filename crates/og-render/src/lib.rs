@@ -776,8 +776,8 @@ struct ShadowPassUniform {
     pad: [f32; 36],
 }
 
-/// An instance in the instance buffers: its columns' xyz and its
-/// texture-array layer ([`instances::GpuTransform`]).
+/// An instance in the instance buffers: its columns' xyz, its
+/// texture-array layer and its look ([`instances::GpuTransform`]).
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<instances::GpuTransform>() as u64;
 
 const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -789,7 +789,7 @@ const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayou
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: INSTANCE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32],
+    attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4],
 };
 
 /// One attribute of [`Vertex`] at its offset in the shared vertex buffer.
@@ -4400,6 +4400,10 @@ impl Renderer {
                 ],
                 morph0: [w[0], w[1], w[2], w[3]],
                 morph1: [w[4], w[5], w[6], w[7]],
+                look: {
+                    let [flash, color, tint] = instances::fx_bits(&s.fx);
+                    [0.0, flash, color, tint]
+                },
             });
         }
         Ok(SkinnedFrame {

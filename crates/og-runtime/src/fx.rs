@@ -875,14 +875,16 @@ pub(crate) fn skeletons(world: &World, rs: &RenderState) -> std::collections::BT
 
 /// Draws a model posed by og-anim: its skinned primitives as skinned
 /// instances under the entity's palette (and blendshape weights), the rest
-/// as instances. `false` when it cannot (no palette yet, no skin data):
-/// the caller draws it at its bind pose.
+/// as instances, each with the model's own tint and flash (`look`). `false`
+/// when it cannot (no palette yet, no skin data): the caller draws it at
+/// its bind pose.
 pub(crate) fn posed_model(
     rs: &mut RenderState,
     entity: u64,
     asset: u64,
     world_matrix: Mat4,
     parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
+    look: og_render::InstanceFx,
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
     let RenderState {
@@ -911,6 +913,7 @@ pub(crate) fn posed_model(
         match meshes.get(p).copied().flatten() {
             Some(skinned) => {
                 let mut inst = SkinnedInstance::new(skinned, material, world_matrix, palette);
+                inst.fx = look;
                 if info.prim_mesh.get(p).copied() == Some(out.mesh) {
                     let n = inst.morph_weights.len().min(out.weights.len());
                     inst.morph_weights[..n].copy_from_slice(&out.weights[..n]);
@@ -918,7 +921,13 @@ pub(crate) fn posed_model(
                 scene.skinned_instances.push(inst);
             }
             None => {
-                scene.add_instance(mesh, material, world_matrix * local);
+                scene.instances.push(og_render::Instance {
+                    mesh,
+                    material,
+                    transform: world_matrix * local,
+                    material_layer: None,
+                    fx: look,
+                });
                 keys.push((entity, k as u32));
             }
         }

@@ -18,7 +18,7 @@ module tween {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 5973</sub>
+<sub>`api.ogt` line 5985</sub>
 
 ## Contents
 
@@ -31,7 +31,7 @@ module tween {
 | [`TweenGroupDesc`](#type-TweenGroupDesc) | desc struct | How a sequence or parallel group runs. |
 | [`og.TweenCompleted`](#record-TweenCompleted) | event | A tween or group ended on its own (read in the tick after). |
 | [`SquashDesc`](#type-SquashDesc) | desc struct | Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest. |
-| [`FlashDesc`](#type-FlashDesc) | desc struct | A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0. |
+| [`FlashDesc`](#type-FlashDesc) | desc struct | A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0. |
 | [`og.tween.to`](#fn-to) | function | Start a tween. Systems may call it; it first moves in this tick's og.tween run. |
 | [`og.tween.sequence`](#fn-sequence) | function | Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next. |
 | [`og.tween.parallel`](#fn-parallel) | function | Start tweens together; the group ends with the last one. |
@@ -39,7 +39,7 @@ module tween {
 | [`og.tween.cancelEntity`](#fn-cancelEntity) | function | Stop every tween of an entity (no events), say before starting a new reaction. |
 | [`og.tween.active`](#fn-active) | function | Whether a tween is still running. |
 | [`og.tween.squash`](#fn-squash) | function | Squash and stretch the entity's og.Transform.scale (cancels its earlier squash). |
-| [`og.tween.flash`](#fn-flash) | function | Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash). |
+| [`og.tween.flash`](#fn-flash) | function | Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash. |
 
 ## Functions
 
@@ -71,7 +71,7 @@ fn to {
 }
 ```
 
-<sub>`api.ogt` line 6098</sub>
+<sub>`api.ogt` line 6110</sub>
 
 <a id="fn-sequence"></a>
 
@@ -105,7 +105,7 @@ fn sequence {
 }
 ```
 
-<sub>`api.ogt` line 6105</sub>
+<sub>`api.ogt` line 6117</sub>
 
 <a id="fn-parallel"></a>
 
@@ -139,7 +139,7 @@ fn parallel {
 }
 ```
 
-<sub>`api.ogt` line 6115</sub>
+<sub>`api.ogt` line 6127</sub>
 
 <a id="fn-cancel"></a>
 
@@ -169,7 +169,7 @@ fn cancel {
 }
 ```
 
-<sub>`api.ogt` line 6125</sub>
+<sub>`api.ogt` line 6137</sub>
 
 <a id="fn-cancelEntity"></a>
 
@@ -199,7 +199,7 @@ fn cancelEntity {
 }
 ```
 
-<sub>`api.ogt` line 6132</sub>
+<sub>`api.ogt` line 6144</sub>
 
 <a id="fn-active"></a>
 
@@ -229,7 +229,7 @@ fn active {
 }
 ```
 
-<sub>`api.ogt` line 6139</sub>
+<sub>`api.ogt` line 6151</sub>
 
 <a id="fn-squash"></a>
 
@@ -259,13 +259,13 @@ fn squash {
 }
 ```
 
-<sub>`api.ogt` line 6146</sub>
+<sub>`api.ogt` line 6158</sub>
 
 <a id="fn-flash"></a>
 
 ### `og.tween.flash`
 
-Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash).
+Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
 
 ```ts
 og.tween.flash(world: World, desc?: FlashDesc): Result<Tween>
@@ -276,20 +276,20 @@ og.tween.flash(world: World, desc?: FlashDesc): Result<Tween>
 | `world` | `World` | no | The world. |
 | `desc` | `FlashDesc` | yes | The entity and the flash. |
 
-**Returns** `Result<Tween>`: Refused for an entity with neither og.Sprite nor og.Mesh.
+**Returns** `Result<Tween>`: Refused for an entity with none of og.Sprite, og.Mesh and og.Model.
 
 Binding symbol `og_tween_flash` · publish builds: kept
 
 ```ogt
 fn flash {
-  doc "Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash)."
+  doc "Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash."
   param world World "The world."
   param desc FlashDesc "The entity and the flash."
-  returns Result.Tween "Refused for an entity with neither og.Sprite nor og.Mesh."
+  returns Result.Tween "Refused for an entity with none of og.Sprite, og.Mesh and og.Model."
 }
 ```
 
-<sub>`api.ogt` line 6153</sub>
+<sub>`api.ogt` line 6165</sub>
 
 ## Components, resources and events
 
@@ -316,7 +316,7 @@ event TweenCompleted {
 }
 ```
 
-<sub>`api.ogt` line 6051</sub>
+<sub>`api.ogt` line 6063</sub>
 
 ## Types
 
@@ -332,7 +332,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Tween "A running tween or group."
 ```
 
-<sub>`api.ogt` line 5979</sub>
+<sub>`api.ogt` line 5991</sub>
 
 <a id="type-Ease"></a>
 
@@ -395,7 +395,7 @@ enum Ease {
 }
 ```
 
-<sub>`api.ogt` line 5988</sub>
+<sub>`api.ogt` line 6000</sub>
 
 <a id="type-TweenDesc"></a>
 
@@ -450,7 +450,7 @@ struct TweenDesc {
 }
 ```
 
-<sub>`api.ogt` line 6014</sub>
+<sub>`api.ogt` line 6026</sub>
 
 <a id="type-TweenGroupDesc"></a>
 
@@ -478,7 +478,7 @@ struct TweenGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 6041</sub>
+<sub>`api.ogt` line 6053</sub>
 
 <a id="type-SquashDesc"></a>
 
@@ -516,13 +516,13 @@ struct SquashDesc {
 }
 ```
 
-<sub>`api.ogt` line 6058</sub>
+<sub>`api.ogt` line 6070</sub>
 
 <a id="type-FlashDesc"></a>
 
 ### `FlashDesc` (desc struct)
 
-A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0.
+A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -536,7 +536,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct FlashDesc {
-  doc "A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0."
+  doc "A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0."
   desc true
   field entity Entity "The entity."
   field color Color "The flash colour (white for a hit, red for damage taken)." {
@@ -558,7 +558,7 @@ struct FlashDesc {
 }
 ```
 
-<sub>`api.ogt` line 6076</sub>
+<sub>`api.ogt` line 6088</sub>
 
 ## Column kinds
 
@@ -577,4 +577,4 @@ column Tween {
 }
 ```
 
-<sub>`api.ogt` line 5981</sub>
+<sub>`api.ogt` line 5993</sub>

@@ -18,7 +18,7 @@ module audio {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6308</sub>
+<sub>`api.ogt` line 6320</sub>
 
 ## Contents
 
@@ -72,7 +72,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 6642</sub>
+<sub>`api.ogt` line 6654</sub>
 
 ## Components, resources and events
 
@@ -199,7 +199,7 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 6335</sub>
+<sub>`api.ogt` line 6347</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -225,7 +225,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 6423</sub>
+<sub>`api.ogt` line 6435</sub>
 
 <a id="record-Audio"></a>
 
@@ -313,7 +313,7 @@ resource Audio {
 }
 ```
 
-<sub>`api.ogt` line 6433</sub>
+<sub>`api.ogt` line 6445</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -434,7 +434,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 6496</sub>
+<sub>`api.ogt` line 6508</sub>
 
 <a id="record-Music"></a>
 
@@ -490,7 +490,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 6585</sub>
+<sub>`api.ogt` line 6597</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -517,7 +517,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 6619</sub>
+<sub>`api.ogt` line 6631</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -542,7 +542,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 6627</sub>
+<sub>`api.ogt` line 6639</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -569,7 +569,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 6634</sub>
+<sub>`api.ogt` line 6646</sub>
 
 ## Types
 
@@ -598,7 +598,7 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 6320</sub>
+<sub>`api.ogt` line 6332</sub>
 
 ## Column kinds
 
@@ -617,7 +617,7 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 6328</sub>
+<sub>`api.ogt` line 6340</sub>
 
 ## Constants
 
@@ -633,28 +633,28 @@ column AudioBus {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 6314</sub>
+<sub>`api.ogt` line 6326</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 6315</sub>
+<sub>`api.ogt` line 6327</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 6316</sub>
+<sub>`api.ogt` line 6328</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 6317</sub>
+<sub>`api.ogt` line 6329</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>`api.ogt` line 6318</sub>
+<sub>`api.ogt` line 6330</sub>

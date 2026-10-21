@@ -13,16 +13,45 @@
 use crate::{Instance, RenderError, RenderScene};
 use glam::{Mat4, Vec3};
 
-/// An instance as the GPU reads it, 52 bytes: the x, y and z of its
+/// An instance as the GPU reads it, 64 bytes: the x, y and z of its
 /// transform's four columns (`instance.wgsl` `instance_matrix`; their w is
-/// taken as (0, 0, 0, 1): an instance's transform is affine), and the
+/// taken as (0, 0, 0, 1): an instance's transform is affine), the
 /// texture-array layer of an array-map material's instance plus one
-/// (`material::instance_layer_bits`; 0 elsewhere, read by pbr_array.wgsl).
+/// (`material::instance_layer_bits`; 0 elsewhere, read by pbr_array.wgsl)
+/// and its look ([`fx_bits`]; with the layer, `InstanceFxIn` in pbr.wgsl).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct GpuTransform {
     pub columns: [[f32; 3]; 4],
     pub layer: f32,
+    pub fx: [f32; 3],
+}
+
+/// An instance's look as the lit shaders read it (pbr.wgsl `InstanceFxIn`
+/// y, z and w): the flash amount, the flash colour and the tint's distance
+/// from white, each colour 8:8:8 in an integer below 2^24 (exact in an f32,
+/// so a copy through GPU culling keeps it). [`crate::InstanceFx::NONE`] is
+/// all zeros, as an instance record that never had a look.
+pub(crate) fn fx_bits(fx: &crate::InstanceFx) -> [f32; 3] {
+    let pack = |c: Vec3| {
+        let q = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
+        ((q(c.x) << 16) | (q(c.y) << 8) | q(c.z)) as f32
+    };
+    let flash = if fx.flash.is_finite() {
+        fx.flash.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let color = if flash > 0.0 {
+        pack(fx.flash_color)
+    } else {
+        0.0
+    };
+    [
+        flash,
+        color,
+        pack(Vec3::ONE - fx.tint.clamp(Vec3::ZERO, Vec3::ONE)),
+    ]
 }
 
 /// The columns of `m` as the GPU reads them ([`GpuTransform::columns`]).
@@ -37,11 +66,12 @@ pub(crate) fn gpu_columns(m: &Mat4) -> [[f32; 3]; 4] {
     ]
 }
 
-/// `m` as the GPU reads it, layer 0 ([`GpuTransform`]).
+/// `m` as the GPU reads it, layer 0, no look ([`GpuTransform`]).
 pub(crate) fn gpu_transform(m: &Mat4) -> GpuTransform {
     GpuTransform {
         columns: gpu_columns(m),
         layer: 0.0,
+        fx: [0.0; 3],
     }
 }
 
@@ -70,6 +100,7 @@ fn run_transform(m: &Mat4, inst: &Instance, run: &Run) -> GpuTransform {
     if run.array {
         t.layer = crate::material::instance_layer_bits(inst.material_layer);
     }
+    t.fx = fx_bits(&inst.fx);
     t
 }
 
@@ -282,11 +313,13 @@ impl SortedInstances {
                 let inst = &instances[self.order[k] as usize];
                 let m = &inst.transform;
                 if same_bits(m, &self.matrices[k]) {
-                    // An array run's layer may change on its own.
+                    // An array run's layer, and any instance's look, may
+                    // change on their own.
                     if run.array {
                         let layer = crate::material::instance_layer_bits(inst.material_layer);
                         self.transforms[k].layer = layer;
                     }
+                    self.transforms[k].fx = fx_bits(&inst.fx);
                     continue;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
@@ -382,6 +415,7 @@ mod tests {
         culled.push(GpuTransform {
             columns: [[9.0; 3]; 4],
             layer: 0.0,
+            fx: [0.0; 3],
         });
         kept.restore(culled, still.spheres);
         // Three moved (one of them by a sign of zero only).

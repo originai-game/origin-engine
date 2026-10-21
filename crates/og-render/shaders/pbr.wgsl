@@ -9,7 +9,8 @@
 // Effects (each behind a branch, so a material or frame without it shades
 // exactly as before): projected decals before lighting, screen-space
 // ambient occlusion on the image-based light, toon bands, rim light, the
-// dissolve (discard plus a glowing edge) and the hit flash. `vs_prepass` /
+// dissolve (discard plus a glowing edge) and the hit flash (the material's,
+// and the instance's own with its tint: `InstanceFxIn`). `vs_prepass` /
 // `fs_prepass` write the depth-normal prepass: world normal and
 // screen-space velocity, view depth, and the material's outline.
 
@@ -52,6 +53,16 @@ struct InstanceIn {
   @location(7) m3: vec3<f32>,
 };
 
+// What an instance carries beside its transform (instances.rs
+// `GpuTransform`, lib.rs `INSTANCE_LAYOUT` location 8): x an array-map
+// instance's layer plus one (pbr_array.wgsl), then its own look
+// (instances.rs `fx_bits`): y the hit flash, z the flash's colour and w the
+// tint's distance from white, each colour 8:8:8 in an exact integer. All
+// zero: no look.
+struct InstanceFxIn {
+  @location(8) look: vec4<f32>,
+};
+
 // A skinned instance: its transform and where its joints start in the palette.
 struct SkinnedInstanceIn {
   @location(4) m0: vec3<f32>,
@@ -61,6 +72,7 @@ struct SkinnedInstanceIn {
   @location(8) palette: vec4<f32>,  // x: first joint, y: joints, z: first morph delta, w: morph targets
   @location(11) morph0: vec4<f32>,  // morph weights 0..3
   @location(12) morph1: vec4<f32>,  // morph weights 4..7
+  @location(13) look: vec4<f32>,    // as InstanceFxIn's (x 0)
 };
 
 struct SkinIn {
@@ -89,7 +101,29 @@ struct VertexOut {
   // Affine texturing (frame.stylise.z): uv times the clip w, and that w,
   // so the fragment can undo the perspective-correct interpolation.
   @location(6) affine: vec3<f32>,
+  // The instance's look (InstanceFxIn; zero: none).
+  @location(8) @interpolate(flat) look: vec4<f32>,
 };
+
+// A colour packed 8:8:8 in an exact integer (instances.rs `fx_bits`; flat,
+// so it arrives exact: no rounding, which at 2^24 - 1 would carry).
+fn look_rgb(packed: f32) -> vec3<f32> {
+  let u = u32(packed);
+  return vec3<f32>(f32((u >> 16u) & 255u), f32((u >> 8u) & 255u), f32(u & 255u)) / 255.0;
+}
+
+// The base colour times the instance's tint (look.w: its distance from
+// white; 0 leaves the colour untouched).
+fn look_tint(c: vec4<f32>, look: vec4<f32>) -> vec4<f32> {
+  if (look.w <= 0.0) { return c; }
+  return vec4<f32>(c.rgb * (vec3<f32>(1.0) - look_rgb(look.w)), c.a);
+}
+
+// The lit colour mixed towards the instance's flash colour by its flash.
+fn look_flash(c: vec3<f32>, look: vec4<f32>) -> vec3<f32> {
+  if (look.y <= 0.0) { return c; }
+  return mix(c, look_rgb(look.z), look.y);
+}
 
 // The uv a fragment samples with: the interpolated one, or (retro 3D) the
 // affine one, interpolated without perspective as early hardware did.
@@ -194,6 +228,7 @@ fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   o.uv = v.uv;
   o.color = v.color;
   o.local_pos = v.position;
+  o.look = vec4<f32>(0.0);
   // A tangent follows the surface: through the model itself.
   let t = (model * vec4<f32>(v.tangent.xyz, 0.0)).xyz;
   o.tangent = vec4<f32>(select(vec3<f32>(0.0), normalize(t), dot(t, t) > 1e-20), v.tangent.w);
@@ -216,8 +251,10 @@ fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
 }
 
 @vertex
-fn vs(v: VertexIn, i: InstanceIn) -> VertexOut {
-  return lit_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+fn vs(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> VertexOut {
+  var o = lit_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+  o.look = k.look;
+  return o;
 }
 
 
@@ -256,7 +293,9 @@ fn morph_vertex(v: VertexIn, vi: u32, i: SkinnedInstanceIn) -> VertexIn {
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VertexOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
-  return lit_vertex(model, morph_vertex(v, vi, i));
+  var o = lit_vertex(model, morph_vertex(v, vi, i));
+  o.look = i.look;
+  return o;
 }
 
 fn prepass_vertex(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn) -> PrepassOut {

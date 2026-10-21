@@ -65,7 +65,9 @@ moving. It never shortens one already running.
 | Finishing blow, a death | 12–20, paired with slow motion |
 
 - Pair a hit stop with a flash (`og.tween.flash`, 0.08–0.15 s) and a small
-  shake; the stop is what sells the contact.
+  shake; the stop is what sells the contact. The flash takes a sprite, a
+  mesh or a glTF instance (its og.Model: that instance alone flashes, the
+  others sharing its materials do not).
 - Pair it with a knock-back too: on the hit's tick set the
   character's `og.PlatformerController.impulse` to `{ x: away * 6, y: 7 }`
   (m/s; taken once on the next step, so it flies when the stop ends) and

@@ -5674,12 +5674,32 @@ export interface TextureArrayInfo {
 
 /**
  * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
+ * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
  *
  * The value of the `Model` component (token `og.Model`).
  */
 export interface Model {
   /** The glTF asset. */
   asset: Asset;
+  /**
+   * A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  tint: Color;
+  /**
+   * A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  flash: number;
+  /**
+   * The flash's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  flashColor: Color;
 }
 
 
@@ -9645,7 +9665,7 @@ export interface SquashDesc {
 }
 
 /**
- * A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0.
+ * A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -17568,8 +17588,9 @@ export declare namespace og {
   }
   /**
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
+   * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
@@ -18169,11 +18190,11 @@ export declare namespace og {
      */
     function squash(world: World, desc?: SquashDesc): Result<Tween>;
     /**
-     * Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash).
+     * Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
      *
      * @param world The world.
      * @param desc The entity and the flash.
-     * @returns Refused for an entity with neither og.Sprite nor og.Mesh.
+     * @returns Refused for an entity with none of og.Sprite, og.Mesh and og.Model.
      */
     function flash(world: World, desc?: FlashDesc): Result<Tween>;
   }

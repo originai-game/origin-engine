@@ -160,14 +160,14 @@ export function strikeFoe(world: World, g: GameV, t: TuneV, e: Entity, from: { x
 }
 
 /**
- * The hit's flinch on the foe's model. og-feel §3 pairs a hit stop with a flash, but
- * og.tween.flash takes an og.Sprite or an og.Mesh and a glTF instance draws through og.Model
- * ("has neither og.Sprite nor og.Mesh"), and its materials are shared by every instance, so a
- * foe's own flash cannot be drawn (FINDINGS #11): a squash and the sparks stand in for it.
+ * The hit's flash and flinch on the foe's model (og-feel §3 pairs a hit stop with a flash): its
+ * own white flash (FINDINGS #11, fixed: og.tween.flash takes the og.Model entity, and the flash
+ * is this instance's alone though every foe of its kind shares the glTF's materials), a squash
+ * that bulges in x and z (FINDINGS #4, fixed: the impact has a z), and the sparks.
  */
 function flash(world: World, e: Entity): void {
-  // (A squash's impact is x and y only, even in 3D: FINDINGS #4.)
-  must(og.tween.squash(world, { entity: e, impact: { x: 1.12, y: 0.86 }, duration: 0.16 }));
+  must(og.tween.flash(world, { entity: e, amount: 0.7, duration: 0.14 }));
+  must(og.tween.squash(world, { entity: e, impact: { x: 1.12, y: 0.86, z: 1.12 }, duration: 0.16 }));
 }
 
 /** Foe `e` falls: its die clip, its mind stopped, its collider gone; the warden's sigil dropped. */

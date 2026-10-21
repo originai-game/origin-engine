@@ -1,1 +1,1 @@
-materials-array: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=18 batches=5 instances=13 culled=0 triangles=3186 shadow_passes=3 shadow_casters=27 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=851.4ms
+model-flash: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=13 batches=2 instances=4 culled=0 triangles=58325 shadow_passes=3 shadow_casters=15 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=1078.5ms vs reference: rmse=0.00000 max_diff=0 outliers=0
