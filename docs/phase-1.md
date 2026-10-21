@@ -701,6 +701,51 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, no-renderer: a playtest without a renderer passes on its other checks and says so (71c0e9dd)
+
+The engine side of the CPU sandbox decision (lane-1): without a GPU
+adapter, every project's `og test` passes and each screenshot is
+reported "no renderer, frame unchecked"; the world hashes match a run
+with a renderer.
+
+- **Before.** Renderer creation never panicked (the addon returned an
+  error; the `.expect("a headless adapter")` calls are only in the
+  engine's own GPU suites, which need a GPU by design), but nothing
+  could deny the renderer for a test (`WGPU_BACKEND` was unread), `og
+  run --headless` exited 0 with each screenshot a WARN, `og test`
+  exited 1 (match3 failed 3 of 7: "ran without warnings" and "the run
+  wrote no dealt.png"), the UI laid out on 1280×720 whatever size the
+  playtest asked for (a non-default size could diverge), `og polish`
+  scored frame time from the step alone, and `og doctor` counted no
+  renderer as a problem and suggested lavapipe. The probe's `hello`
+  already said `none` and `capture` already answered null.
+- **Now.** `OG_RENDERER=none` (og-render; docs/ci.md "Switches in the
+  environment") makes creation report "no GPU adapter" as a machine
+  without one does; the screenshot step writes no PNG and logs an info
+  line (og-probe); the play surface keeps the requested size with no
+  renderer (og-host-node); `og run --json` lists the skipped frames in
+  `unchecked`; playtests gain `t.frame(files, check)`, whose checks run
+  only with a renderer and otherwise print `~ <file>: no renderer, frame
+  unchecked` with `run.rendered` and `run.unchecked` beside it (a frame
+  read outside `t.frame` ends the check function and passes with a note);
+  `og test`'s summary adds "N frame(s) unchecked" with the exit status
+  unaffected; `og polish` says "no renderer"; `og doctor` reports the
+  tier as `none`. Every frame check of the templates and examples moved
+  inside `t.frame` (the shared `checkFrames` helpers, ui-kit's skins.ts,
+  fx-showcase's station.ts); the e2b addon script no longer expects a
+  frame. Docs: the og-build and og-game skills, web-export, the og-probe
+  and og-render READMEs, the IDL text regenerated.
+- **Tests.** `packages/engine/tests/no-renderer.test.ts` (fails on the
+  old code: "2 of 3 suite(s) failed") and og-runtime's
+  `tests/no_renderer.rs` (the old screenshot warning fails its
+  no-warnings assertion). Before the scope correction the stream also
+  ran all 14 projects' 176 playtests with and without the switch:
+  every one passes both ways with identical hashes (fx-showcase's 15
+  station playtests count their frame checks inside a helper, every
+  field check still runs). Not done: the engine's own GPU suites still
+  need a renderer by design; `capture` with no renderer answers plain
+  null, `hello` is where the tier reads `none`.
+
 ## Wave 13, shadow-flags: a model's and a mesh's shadow flags reach the renderer, models casting by default (7dc09488)
 
 Row 87's stream, on lane-2, after webgl2-render-2 made `og.Mesh.castShadow`
