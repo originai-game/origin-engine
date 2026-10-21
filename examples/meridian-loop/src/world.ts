@@ -165,7 +165,7 @@ export function placeCar(world: World, k: number): void {
   must(world.set(car, og.Transform, { position: p.position, quaternion: p.quaternion }));
   must(world.set(car, og.Velocity, { linear: { x: 0, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0 } }));
   must(world.set(car, og.Vehicle, { throttle: 0, steer: 0, brake: 1 }));
-  must(world.set(car, Racer, { steer: 0, steerIn: 0, throttleIn: 0, brakeIn: 0, air: 0 }));
+  must(world.set(car, Racer, { steer: 0, air: 0 }));
 }
 
 void SAMPLES;

@@ -98,9 +98,28 @@ export const Race = defineResource("Race", {
   ghostEndError: f32(0),
   /** The test hook: the autopilot drives instead of the player. */
   autopilot: bool(false),
-  /** This tick's input code (src/tape.ts), for the run's tape; the throttle asked, for the engine's voice. */
+  /** What the driver asks this tick, quantised (src/tape.ts), and its code for the run's tape. */
+  inSteer: f32(0),
+  inThrottle: f32(0),
+  inBrake: f32(0),
   code: u32(0),
-  throttle: f32(0),
+  /** The replay: the world restored to the race's countdown (src/replay.ts) and the run's inputs driving the car. */
+  replayMark: bool(false),
+  replaying: bool(false),
+  replayWait: bool(false),
+  replayLen: u32(0),
+  replayTotal: u32(0),
+  /** How the last replay ended: 0 not yet, 1 on the original's tick, 2 elsewhere. */
+  replayMatched: u32(0),
+  replayReady: bool(false),
+  replaySlotOk: bool(false),
+  replaySave: u32(0),
+  replayTapeWrite: u32(0),
+  replayLoad: u32(0),
+  replayTapeRead: u32(0),
+  replays: u32(0),
+  /** The size of the replay's saved world (world.snapshot()'s text). */
+  snapBytes: u32(0),
   /** The racing HUD's touch controls this tick. */
   touchSteer: f32(0),
   touchThrottle: f32(0),
@@ -137,7 +156,7 @@ export const Race = defineResource("Race", {
   /** og.ui's accessibility counts, for the locales playtest. */
   a11yNodes: u32(0),
   a11yUnnamed: u32(0),
-  /** Asset handles loaded in `start`, by number (a handle is past 2^32: an f64). */
+  /** Asset handles loaded in `start`, by number (a handle is past 2^32: an f64, FINDINGS #5). */
   minimap: f64(0),
 });
 
@@ -179,11 +198,7 @@ export const Tuning = defineResource("Tuning", {
 export const Racer = defineComponent("Racer", {
   /** The ghost (replays a tape) or the player. */
   ghost: bool(false),
-  /** What the driver asks this tick, quantised (src/tape.ts). */
-  steerIn: f32(0),
-  throttleIn: f32(0),
-  brakeIn: f32(0),
-  /** The wheel's lock now, eased towards steerIn. */
+  /** The wheel's lock now, eased towards Race.inSteer. */
   steer: f32(0),
   /** Wheels on the ground, and ticks spent off it. */
   contacts: u32(4),
@@ -196,7 +211,7 @@ export const Racer = defineComponent("Racer", {
 export const RUN_TICKS = 10000;
 
 /**
- * A str field holds at most 4096 bytes (FINDINGS #5), so a tape is cut in
+ * A str field holds at most 4096 bytes (FINDINGS #4), so a tape is cut in
  * chunks of CHUNK bytes, one entity each (`tape-cur-<i>`, `tape-best-<i>`,
  * `tape-run-<i>`): CHUNK is a whole number of poses (15 bytes) and of input
  * ticks (2 bytes).

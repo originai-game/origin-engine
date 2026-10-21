@@ -51,9 +51,16 @@ export interface Race {
   bestLen: number;
   runLen: number;
   ghostActive: boolean;
+  replaying: boolean;
+  replays: number;
+  replayMatched: number;
+  replayTotal: number;
+  snapBytes: number;
   ghostTick: number;
   autopilot: boolean;
   kmh: number;
+  inSteer: number;
+  inThrottle: number;
   gear: number;
   rpm: number;
   slip: number;

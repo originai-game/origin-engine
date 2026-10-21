@@ -14,7 +14,7 @@
 // (the skid marks), View (the camera), Voices (the engine, the tyres, the
 // cues).
 
-import { og } from "@origingame/engine";
+import { og, SHAPE_BOX } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { Chassis, Driver } from "./car.ts";
 import { Phase, Prefs, Race, Racer } from "./components.ts";
@@ -25,7 +25,7 @@ import { spawnVoices, Voices } from "./sound.ts";
 import { fromStart, LAPS, SAMPLES } from "./track.ts";
 import { LANGUAGES, setLanguage, takeSettings, Ui } from "./ui.ts";
 import { View } from "./view.ts";
-import { buildCircuit, entity, must, placeCar, spawnCars, spawnEffects } from "./world.ts";
+import { buildCircuit, entity, LAYER, must, placeCar, spawnCars, spawnEffects } from "./world.ts";
 
 function start(world: World): void {
   const r = must(world.resource(Race));
@@ -102,6 +102,21 @@ function ghost(world: World, args: readonly string[]): void {
   takeSettings(world, must(world.resource(Prefs)), { ghost: args[0] === "on" });
 }
 
+/**
+ * `twin`: FINDINGS #3's repro. A second og.Vehicle on the car's spot, on a
+ * collision layer of its own that meets only the circuit (and the car's mask
+ * leaves it out): no collider of either car interacts with the other's, yet
+ * each car's wheel rays land on the other's chassis and the two climb.
+ */
+function twin(world: World): void {
+  const car = entity(world, "car");
+  const t = must(world.get(car, og.Transform));
+  const e = must(world.spawn({ name: "twin", position: t.position, quaternion: t.quaternion }));
+  must(world.insert(e, og.RigidBody, { mass: 1000 }));
+  must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 1.7, y: 0.25, z: 4 }, layers: 4, mask: LAYER.track }));
+  must(world.insert(e, og.Vehicle, { ...must(world.get(car, og.Vehicle)), throttle: 0, steer: 0, brake: 1 }));
+}
+
 /** `reset`: the car back on the road, as R. */
 function reset(world: World): void {
   resetCar(world, race(world));
@@ -174,15 +189,16 @@ export default og.game({
   look: "looks/meridian.ogt",
   start,
   systems: [Ui, RaceSystem, Driver, Tapes, Chassis, Fx, Marks, View, Voices],
-  commands: { race: raceCmd, drive, warp, language, open, ghost, reset },
+  commands: { race: raceCmd, drive, warp, language, open, ghost, reset, twin },
   commandHelp: {
-    race: { usage: "[go]", doc: "A race from the grid now; go skips the countdown." },
+    race: { usage: "[go]", doc: "A race from the grid now; go skips the countdown (and with it the replay's saved start)." },
     drive: { usage: "<auto|off>", doc: "The autopilot drives the car round the centre line, or stops." },
     warp: { usage: "<k>[:<speed>]", doc: "The car k samples (2 m each) past the start line, along the road, at speed m/s." },
     language: { usage: "<en|de>", doc: "Switches the language as the settings do." },
     open: { usage: "<settings|board|pause>", doc: "Opens a screen as its button does." },
     ghost: { usage: "<on|off>", doc: "Shows or hides the best lap's ghost, as pause's item does." },
     reset: { usage: "", doc: "Puts the car back on the road, as R does (the lap no longer counts)." },
+    twin: { usage: "", doc: "FINDINGS #3: a second car on the car's spot whose colliders meet only the circuit; the two climb each other." },
   },
   facts,
 });

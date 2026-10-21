@@ -18,9 +18,10 @@
 // answers (src/save.ts).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { GameSettings, Value, World } from "@origingame/engine";
+import type { GameSettings, MapMarker, Texture, Value, World } from "@origingame/engine";
 import { Phase, Prefs, Race, Racer, Sound, TapeChunk } from "./components.ts";
 import { deltaText, lapText, startRace } from "./race.ts";
+import { replayAnswers, saveStart, SNAPSHOT_AT, watch } from "./replay.ts";
 import { answers, readAll, readBoard } from "./save.ts";
 import { uiSounds } from "./sound.ts";
 import { say } from "./text.ts";
@@ -117,10 +118,10 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
   og.ui.setNavigation(false);
   const touch = og.ui.frameViewport().coarsePointer;
   const car = must(world.get(entity(world, "car"), og.Transform)).position;
-  const markers = [{ ...mapPoint(car.x, car.z), player: true }];
+  const markers: MapMarker[] = [{ ...mapPoint(car.x, car.z), player: true }];
   if (r.ghostActive) {
     const gh = must(world.get(entity(world, "ghost"), og.Transform)).position;
-    markers.push({ ...mapPoint(gh.x, gh.z), player: false, tone: "info" } as typeof markers[number] & { tone: "info" });
+    markers.push({ ...mapPoint(gh.x, gh.z), tone: "info" });
   }
   const lapTicks = r.phase === Phase.Racing ? r.clock - r.lapStart : 0;
   const h = og.ui.racingHud("Hud", {
@@ -134,7 +135,7 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
     racers: 1,
     time: lapTicks / 60,
     best: r.record > 0 ? r.record / 60 : null,
-    map: { texture: r.minimap as never, markers, size: 150 },
+    map: { texture: r.minimap as unknown as Texture, markers, size: 150 },
     touch,
   });
   // Touch: the arrows steer, Brake brakes; the throttle is held for the player.
@@ -158,6 +159,9 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
   og.ui.anchor("Keys", { anchor: "bottomLeft", direction: "column", gap: S.xs }, () => {
     if (!touch && r.clock < 600 && r.lap === 1) og.ui.label("KeysText", say(world, "hud.keys"), { step: "meta", nowrap: true, color: { token: "fgMuted" } });
     if (!p.ghost) og.ui.label("GhostOff", say(world, "hud.ghostOff"), { step: "meta", nowrap: true, color: { token: "fgSubtle" } });
+  });
+  og.ui.anchor("ReplayTag", { anchor: "left", direction: "column", gap: S.xs }, () => {
+    if (r.replaying) capsule("ReplayCapsule", () => og.ui.label("ReplayText", say(world, "hud.replay"), { step: "lg", nowrap: true, color: { token: "accentInk" } }));
   });
   return { pause: h.paused };
 }
@@ -239,12 +243,12 @@ export function stars(r: RaceV): number {
   return MEDALS.filter((m) => s <= m).length;
 }
 
-function results(world: World, r: RaceV): "again" | "board" | "title" | null {
+function results(world: World, r: RaceV): "again" | "board" | "title" | "replay" | null {
   const lapsText = [r.lap1, r.lap2, r.lap3].map((t, i) => ({ label: say(world, "results.lap", { n: i + 1 }), value: t === 0 ? "—" : lapText(t) }));
   const res = og.ui.resultsScreen("Results", {
     open: r.phase === Phase.Finished && r.finishedFor >= RESULTS_DELAY,
-    title: say(world, r.newRecord ? "results.record" : "results.finished"),
-    // The template counts a whole number up and shows no unit (FINDINGS #9): the run's points, 100,000 over the total seconds.
+    title: say(world, r.replaying ? (r.replayMatched === 1 ? "results.replayed" : "results.replayOff") : r.newRecord ? "results.record" : "results.finished"),
+    // The template counts a whole number up and shows no unit (FINDINGS #10): the run's points, 100,000 over the total seconds.
     score: points(r.total),
     best: r.recordPoints,
     newBest: r.newRecord,
@@ -260,11 +264,12 @@ function results(world: World, r: RaceV): "again" | "board" | "title" | null {
     ],
     actions: [
       { id: "again", label: say(world, "results.again"), primary: true },
+      ...(r.replayReady ? [{ id: "replay", label: say(world, "results.replay") }] : []),
       { id: "board", label: say(world, "results.board") },
       { id: "title", label: say(world, "results.title") },
     ],
   });
-  return res.selected === "again" || res.selected === "board" || res.selected === "title" ? res.selected : null;
+  return res.selected === "again" || res.selected === "board" || res.selected === "title" || res.selected === "replay" ? res.selected : null;
 }
 
 function toTitle(world: World, r: RaceV): void {
@@ -293,8 +298,11 @@ export const Ui = defineSystem(
       applyPrefs(world, p);
     }
     answers(world, r, p, (s) => takeSettings(world, p, s));
+    replayAnswers(world, r);
+    // The replay's start: saved by the first system of the tick, so the restored world runs this whole tick again.
+    if (r.phase === Phase.Countdown && r.countdown === SNAPSHOT_AT + 1 && !r.replaying && !r.held) saveStart(world, r);
     const racing = r.phase === Phase.Countdown || r.phase === Phase.Racing;
-    const hold = racing && (r.paused || r.settingsOpen);
+    const hold = racing && (r.paused || r.settingsOpen || r.replayWait);
     if (hold !== r.held) {
       must(og.time.setScale(world, hold ? 0 : 1));
       r.held = hold;
@@ -329,13 +337,14 @@ export const Ui = defineSystem(
       const c = results(world, r);
       if (c === "again") startRace(world, r);
       if (c === "title") toTitle(world, r);
+      if (c === "replay") watch(world, r);
       if (c === "board") {
         r.boardOpen = true;
         readBoard(world, r);
       }
     } else {
       // Not drawn under pause or the settings: the racing HUD takes Back even under a dialog, so Escape
-      // and the pad's B would never close them (FINDINGS #10).
+      // and the pad's B would never close them (FINDINGS #9).
       const h = r.paused || r.settingsOpen ? { pause: false } : hud(world, r, p);
       if (racing && !r.paused && !r.settingsOpen && (h.pause || must(world.resource(og.Input)).pressed("KeyP"))) r.paused = true;
       const m = og.ui.pauseMenu("Pause", {

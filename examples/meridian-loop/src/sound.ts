@@ -64,8 +64,8 @@ export const Voices = defineSystem("Voices", { writes: [Race, Sfx, og.AudioSourc
   const held = r.held || time.scaledDt === 0;
   // The engine: idle at the title, the revs while driving, quiet under a menu.
   const engine = entity(world, "engine");
-  const pitch = r.phase === Phase.Countdown ? 0.72 + Math.max(0, r.throttle) * 0.9 : enginePitch(r.gear, r.rpm);
-  const vol = !live || held ? 0.08 : 0.16 + Math.abs(r.throttle) * 0.18 + (r.airborne ? 0.04 : 0);
+  const pitch = r.phase === Phase.Countdown ? 0.72 + Math.max(0, r.inThrottle) * 0.9 : enginePitch(r.gear, r.rpm);
+  const vol = !live || held ? 0.08 : 0.16 + Math.abs(r.inThrottle) * 0.18 + (r.airborne ? 0.04 : 0);
   must(world.set(engine, og.AudioSource, { pitch: Math.max(0.3, Math.min(3, pitch)), volume: vol }));
   const tyres = entity(world, "tyres");
   const slide = !held && r.skidding ? Math.min(0.55, (Math.abs(r.slip) - 2.5) * 0.08) : 0;

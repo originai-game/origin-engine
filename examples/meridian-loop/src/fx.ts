@@ -72,7 +72,7 @@ export const Fx = defineSystem(
   },
 );
 
-/** The skid marks: a ring of decals over the Mark entities (og.Decal, og.Transform). */
+/** The skid marks: a ring of decals over the Mark entities (og.Decal, og.Transform). A system of its own: a query is every component a system declares, so one that also read the car's Racer would match no mark (FINDINGS #6). */
 export const Marks = defineSystem("Marks", { writes: [Race, Mark, og.Decal, og.Transform], after: ["Fx"] }, (q, time, world) => {
   const r = must(world.resource(Race));
   if (r.held || time.scaledDt === 0) return;

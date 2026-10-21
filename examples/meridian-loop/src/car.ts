@@ -11,7 +11,7 @@
 // The Chassis system turns the intents into og.Vehicle's inputs: the wheel
 // eased towards the asked lock, the lock shortened with speed, and two
 // assists written as small changes of og.Velocity (there is no force or
-// torque call): the roll and pitch rates damped, so a banked turn or a
+// torque call, FINDINGS #2): the roll and pitch rates damped, so a banked turn or a
 // landing does not tip the car, and a little downforce with four wheels
 // down. It also reads back the slide, the air time and the landings.
 
@@ -88,7 +88,7 @@ function intents(world: World, r: Value<typeof Race>, speed: number): Intent {
   return { steer: Math.max(-1, Math.min(1, steer)), throttle: Math.max(-1, Math.min(1, throttle)), brake };
 }
 
-export const Driver = defineSystem("Driver", { reads: [og.Input, og.Gamepad, og.Transform, og.Vehicle], writes: [Race, Racer], after: ["Race"] }, (_q, time, world) => {
+export const Driver = defineSystem("Driver", { reads: [og.Input, og.Gamepad, og.Transform, og.Vehicle], writes: [Race], after: ["Race"] }, (_q, time, world) => {
   const r = must(world.resource(Race));
   if (r.held || time.scaledDt === 0) return;
   const carE = entity(world, "car");
@@ -97,9 +97,12 @@ export const Driver = defineSystem("Driver", { reads: [og.Input, og.Gamepad, og.
   if (r.phase === Phase.Racing) want = quantise(intents(world, r, v.speed));
   else if (r.phase === Phase.Countdown) want = { steer: 0, throttle: 0, brake: 1 };
   else if (r.phase === Phase.Finished) want = { steer: 0, throttle: 0, brake: 0.5 };
-  must(world.set(carE, Racer, { steerIn: want.steer, throttleIn: want.throttle, brakeIn: want.brake }));
+  // A replay's intents come off the run's tape instead (the Tapes system, next).
+  if (r.replaying && r.phase === Phase.Racing) return;
+  r.inSteer = want.steer;
+  r.inThrottle = want.throttle;
+  r.inBrake = want.brake;
   r.code = encode(want);
-  r.throttle = want.throttle;
 });
 
 /** The chassis: og.Vehicle's inputs from the intents, the assists, and what it reads back. */
@@ -117,12 +120,12 @@ export const Chassis = defineSystem("Chassis", { reads: [Tuning], writes: [Race,
 
   // The wheel eases to the asked lock; the lock shortens with speed.
   const step = t.steerRate * dt;
-  const steer = racer.steer + Math.max(-step, Math.min(step, racer.steerIn - racer.steer));
+  const steer = racer.steer + Math.max(-step, Math.min(step, r.inSteer - racer.steer));
   const lock = 1 / (1 + Math.abs(speed) / t.steerFalloff);
   must(world.set(carE, og.Vehicle, {
     steer: steer * lock,
-    throttle: racer.throttleIn,
-    brake: racer.brakeIn,
+    throttle: r.inThrottle,
+    brake: r.inBrake,
     grip: t.grip,
     engineForce: t.engineForce,
     brakeForce: t.brakeForce,

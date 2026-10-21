@@ -17,7 +17,7 @@ import { og, defineSystem } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { Phase, Race, RUN_TICKS, TapeChunk, TAPE_TICKS } from "./components.ts";
 import { tapeView } from "./tapes.ts";
-import { bytesOf, euler, lerpAngle, POSE_BYTES, POSE_EVERY, poseAt, poseBytes, quat } from "./tape.ts";
+import { bytesOf, codeAt, decode, euler, lerpAngle, POSE_BYTES, POSE_EVERY, poseAt, poseBytes, quat } from "./tape.ts";
 import { fromStart, nearest, SAMPLES } from "./track.ts";
 import { entity, must } from "./world.ts";
 
@@ -55,8 +55,15 @@ export const Tapes = defineSystem("Tapes", { writes: [Race, TapeChunk, og.Transf
   let place: { position: { x: number; y: number; z: number }; quaternion: { x: number; y: number; z: number; w: number }; spin: number } | null = null;
   const view = tapeView(q);
   if (view) {
-    // The run's inputs, two bytes a tick, for the replay.
+    // The run's inputs, two bytes a tick, for the replay; a replay drives the car by them.
     const ro = r.runLen < RUN_TICKS ? view.offset("run", r.runLen * 2) : -1;
+    if (ro >= 0 && r.replaying && r.runLen < r.replayLen) {
+      r.code = codeAt(view.bytes[ro]!, view.bytes[ro + 1]!);
+      const i = decode(r.code);
+      r.inSteer = i.steer;
+      r.inThrottle = i.throttle;
+      r.inBrake = i.brake;
+    }
     if (ro >= 0) {
       const [hi, lo] = bytesOf(r.code);
       view.bytes[ro] = hi;

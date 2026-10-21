@@ -16,7 +16,7 @@ export default playtest({
     // GO is three seconds after the race starts.
     "3.55:get:Race:go.json",
     "3.6:key_down:KeyW",
-    "3.617:get:car.Racer:answer.json",
+    "3.617:get:Race:answer.json",
     "6.6:get:Race:accel.json",
     "6.6:key_up:KeyW",
     hold("KeyS", 6.7, 1.2),
@@ -42,7 +42,15 @@ export default playtest({
     "19:get:Race:back.json",
     press("KeyR", 19.5),
     "19.8:get:Race:reset.json",
-    "19.9:quit",
+    // The pad: the right trigger is the throttle, the left stick steers.
+    "20:warp:20:0",
+    "20.2:gamepad:-:0,0:0,1",
+    "21.7:get:Race:pad-throttle.json",
+    "21.7:gamepad:-:-0.9,0:0,1",
+    "22.2:get:Race:pad-steer.json",
+    "22.2:get:car.Racer:pad-racer.json",
+    "22.3:gamepad:-",
+    "22.4:quit",
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
@@ -50,7 +58,7 @@ export default playtest({
     const [g, h] = [position(run, "grid.json"), position(run, "held.json")];
     t.ok(Math.hypot(g[0]! - h[0]!, g[2]! - h[2]!) < 0.05, "W in the countdown does not move the car off the line");
     t.equal(race(run, "go.json").phase, RACING, "the race is on three seconds after it starts");
-    t.equal(value<{ throttleIn: number }>(run, "answer.json").throttleIn, 1, "the tick after W is pressed, the throttle is down");
+    t.equal(value<{ inThrottle: number }>(run, "answer.json").inThrottle, 1, "the tick after W is pressed, the throttle is down");
     const accel = race(run, "accel.json");
     t.ok(accel.kmh > 70 && accel.kmh < 130, `three seconds of throttle from a standing start: ${accel.kmh.toFixed(1)} km/h (70 to 130)`);
     t.ok(accel.gear >= 3, `the gearbox shifted up (gear ${accel.gear})`);
@@ -71,5 +79,8 @@ export default playtest({
     // Put back past the gap: three samples past the landing ramp's top (src/race.ts).
     t.ok(back.at - 20 >= 241 && back.at - 20 <= 250, `put back past the gap (sample ${back.at - 20} from the line)`);
     t.equal(race(run, "reset.json").resets, 2, "R puts the car back too");
+    t.ok(race(run, "pad-throttle.json").kmh > 25, `the pad's right trigger drives (${race(run, "pad-throttle.json").kmh.toFixed(1)} km/h after 1.5 s)`);
+    t.ok(race(run, "pad-steer.json").inSteer < -0.8, `the left stick steers left (asked ${race(run, "pad-steer.json").inSteer})`);
+    t.ok(value<{ steer: number }>(run, "pad-racer.json").steer < -0.5, "and the wheel follows");
   },
 });

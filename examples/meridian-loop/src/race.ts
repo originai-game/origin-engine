@@ -16,6 +16,7 @@ import { COUNTDOWN, Phase, Prefs, Race, Racer, Sound, TapeChunk, TAPE_TICKS } fr
 import { POSE_BYTES } from "./tape.ts";
 import { readTape, writeTape } from "./tapes.ts";
 import { hideGhost } from "./ghost.ts";
+import { saveTape } from "./replay.ts";
 import { submitLap, writeRecord } from "./save.ts";
 import { across, fromStart, JUMP, LAPS, nearest, SAMPLES, SPLITS, START, WIDTH } from "./track.ts";
 import { entity, GRID_BACK, must, placeCar } from "./world.ts";
@@ -66,6 +67,8 @@ export function startRace(world: World, r: RaceV): void {
   r.ghostTick = 0;
   r.ghostAt = -1;
   r.rank = -1;
+  r.replaying = false;
+  r.replayMatched = 0;
   r.sfx |= Sound.Beep;
   placeCar(world, -GRID_BACK);
   hideGhost(world);
@@ -120,7 +123,7 @@ function endLap(world: World, r: RaceV, prefs: Value<typeof Prefs>): void {
     r.bestLen = r.curLen;
     r.sfx |= Sound.Best;
     og.ui.toast(world, og.i18n.t(world, "toast.record", { time: lapText(ticks) }), { tone: "success" });
-    writeRecord(world, r, poses, r.curLen);
+    if (!r.replaying) writeRecord(world, r, poses, r.curLen);
   } else {
     r.sfx |= r.valid && r.record > 0 && ticks > r.record ? Sound.Slower : Sound.Lap;
     if (!r.valid) og.ui.toast(world, og.i18n.t(world, "toast.invalid"), { tone: "warn" });
@@ -129,10 +132,19 @@ function endLap(world: World, r: RaceV, prefs: Value<typeof Prefs>): void {
   if (r.lap > LAPS) {
     r.phase = Phase.Finished;
     r.total = r.clock;
+    hideGhost(world);
+    r.ghostTick = 0;
     const pts = Math.round(100000 / (r.total / 60));
     if (pts > r.recordPoints) r.recordPoints = pts;
     r.ghostActive = false;
-    if (r.runBest > 0) submitLap(world, r, r.runBest);
+    if (r.replaying) {
+      r.replayMatched = r.total === r.replayTotal ? 1 : 2;
+      r.replayReady = true;
+    }
+    else {
+      if (r.runBest > 0) submitLap(world, r, r.runBest);
+      saveTape(world, r);
+    }
     return;
   }
   startLap(world, r, prefs);
