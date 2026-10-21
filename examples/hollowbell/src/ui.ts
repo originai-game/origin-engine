@@ -228,9 +228,8 @@ function talk(world: World, g: GameV, p: PrefsV): void {
     ],
   });
   if (!g.talking) return;
-  // The talk's box does not take the focus when it opens, so Enter, Space and the pad's A would do
-  // nothing until Tab (FINDINGS.md #10): move the focus to it.
-  if (!og.ui.focus(0).endsWith("Dialogue")) og.ui.navigate(world, "next");
+  // The talk's box takes the focus as it opens, so Enter, Space and the pad's A answer it from the
+  // first line (FINDINGS.md #10, fixed in the engine: the navigate workaround is gone).
   g.talkIndex = r.index;
   if (r.finished || r.skipped) {
     g.talking = false;

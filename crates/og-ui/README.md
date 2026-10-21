@@ -245,6 +245,8 @@ past half-way once, then after `motion.duration.slow` every
 - A dialog or open menu is a focus scope: while it is the topmost, focus
   stays inside; when it opens, focus moves to its first control (or the one a
   widget asks for, the select's chosen option); when it closes, focus returns.
+- A dialogue box takes the focus when it appears (unless a dialog is open
+  over it), so a cutscene answers Enter, Space and A from its first line.
 - A press focuses the control without the ring; navigation shows the ring
   (amber `focus`, a gap of what is behind, then the control).
 - Navigation that lands on a control outside its scroll container's view

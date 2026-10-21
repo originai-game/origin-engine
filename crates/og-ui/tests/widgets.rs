@@ -1686,3 +1686,72 @@ fn an_icon_set_draws_its_glyphs_in_their_squares() {
     );
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
+
+/// What opens takes the focus (the og-ui skill §4: the topmost owns it): a
+/// dialogue box that appears over a HUD whose button had the focus answers
+/// Enter at once, and a dialog the game opens (not a press: a state change,
+/// as a shop or the results open) answers Enter on its first control.
+#[test]
+fn a_dialogue_or_a_dialog_that_appears_takes_the_focus_so_enter_answers_it() {
+    #[derive(Default)]
+    struct Talk {
+        talking: bool,
+        open: bool,
+        advanced: u32,
+        paused: u32,
+        bought: u32,
+    }
+    let mut rig = Rig::new(Talk::default());
+    let b = &mut |ui: &mut Ui, s: &mut Talk| {
+        if ui.button("Pause", "Pause", ButtonDesc::default()).clicked {
+            s.paused += 1;
+        }
+        if s.talking {
+            let r = ui.dialogue(
+                "Talk",
+                &DialogueDesc {
+                    speaker: "Burrow".into(),
+                    text: "Mind the brambles.".into(),
+                    ..DialogueDesc::default()
+                },
+            );
+            if r.advanced {
+                s.advanced += 1;
+            }
+        }
+        let m = ui.open_modal(
+            "Shop",
+            s.open,
+            &ModalDesc {
+                title: "Shop".into(),
+                ..ModalDesc::default()
+            },
+        );
+        if m.visible && ui.button("Buy", "Buy", ButtonDesc::default()).clicked {
+            s.bought += 1;
+        }
+        ui.close_modal();
+    };
+    rig.idle(1, b);
+    rig.key(UiKey::Tab, b);
+    rig.idle(1, b);
+    assert_eq!(rig.ui.focus_path(0), "Pause", "the HUD's button had the focus");
+    rig.state.talking = true;
+    rig.idle(2, b);
+    assert_eq!(rig.ui.focus_path(0), "Talk", "the dialogue took it as it appeared");
+    rig.key(UiKey::Enter, b);
+    rig.idle(1, b);
+    rig.key(UiKey::Enter, b);
+    rig.idle(1, b);
+    assert_eq!(
+        (rig.state.advanced, rig.state.paused),
+        (1, 0),
+        "Enter finished the line, then advanced it; Pause was not pressed"
+    );
+    rig.state.talking = false;
+    rig.state.open = true;
+    rig.idle(30, b);
+    rig.key(UiKey::Enter, b);
+    rig.idle(1, b);
+    assert_eq!(rig.state.bought, 1, "the dialog the game opened answered Enter");
+}

@@ -175,7 +175,10 @@ the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise
 `og.ui.back()` answers true once (open pause on it). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
-dialogs turn navigation back on while open. The UI reads pad 0 from
+dialogs turn navigation back on while open. What opens takes the focus:
+a dialog (every modal template: pause, settings, shop, results, confirm)
+its first control, a dialogue box or cutscene the box, so Enter, Space and
+A answer it at once without a Tab first. The UI reads pad 0 from
 `og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
 queue intents with `og.ui.navigate(world, intent)`. A focus move plays the
 `hover` sound and Enter, Space or A the `press` sound, as the pointer does
