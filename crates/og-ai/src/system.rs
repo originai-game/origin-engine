@@ -179,6 +179,15 @@ pub struct AiChanged {
     pub status: u32,
 }
 
+/// The engine's `og.Parent`, mirrored (same name and layout): a sound
+/// made by an agent's child is the agent's own.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.Parent")]
+pub struct Parent {
+    /// The parent.
+    pub entity: u64,
+}
+
 /// A physics ray for sight: (origin, direction, max distance, layer mask,
 /// entity to ignore) → the first hit's distance and entity.
 pub type SightRay =
@@ -209,10 +218,13 @@ struct RecordFields {
 }
 
 /// A noise a game made (`og.ai.noise`), heard next tick.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Noise {
     pub position: Vec3,
     pub loudness: f32,
+    /// The entity making it (0: none): it, and the agents it is a child
+    /// of, do not hear it.
+    pub source: u64,
 }
 
 #[derive(Debug, Default)]
@@ -263,6 +275,27 @@ impl AiSystem {
     /// Queues a noise heard by agents next tick.
     pub fn noise(&self, n: Noise) {
         lock(&self.state).noises.push(n);
+    }
+
+    /// Starts an agent's behaviour afresh at its next think, as a new
+    /// behaviour would: a machine in its initial state (its `enter` run
+    /// again), a tree at its root, every timer and cooldown reset, the
+    /// blackboard back to the declared keys, the start point (wander's
+    /// centre) where it then stands and what it saw and heard forgotten.
+    /// Actions without a speed keep the speed it started with. False for an
+    /// entity that has not thought yet (its first think starts afresh anyway).
+    pub fn restart(&self, e: Entity) -> bool {
+        let mut st = lock(&self.state);
+        let key = e.to_bits();
+        st.seen_tick.remove(&key);
+        st.heard_tick.remove(&key);
+        match st.mems.get_mut(&key) {
+            Some(m) => {
+                m.started = false;
+                true
+            }
+            None => false,
+        }
     }
 
     /// The commands the last ticks queued, in order: run them before the next tick.
@@ -346,6 +379,7 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
     world.register::<AiAgent>()?;
     world.register::<Perception>()?;
     world.register::<Perceivable>()?;
+    world.register::<Parent>()?;
     world.register::<AiChanged>()?;
     world.register::<og_audio::schema::SoundStarted>()?;
     world.register::<og_audio::AudioSource>()?;
@@ -384,6 +418,7 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
         .write::<AiAgent>()
         .write::<Perception>()
         .read::<Perceivable>()
+        .read::<Parent>()
         .read::<Transform>()
         .write::<og_nav::NavAgent>()
         .read::<og_nav::system::Velocity>()
@@ -465,6 +500,45 @@ fn read_field(
     })
 }
 
+/// An entity's position in the world: its og.Transform composed down its
+/// og.Parent chain.
+fn world_position(ctx: &SystemContext<'_>, e: Entity) -> Vec3 {
+    let Ok(t) = ctx.get::<Transform>(e) else {
+        return Vec3::ZERO;
+    };
+    let mut p = t.position;
+    let mut at = e;
+    for _ in 0..32 {
+        let Ok(parent) = ctx.get::<Parent>(at) else {
+            break;
+        };
+        at = Entity::from_bits(parent.entity);
+        if !ctx.is_alive(at) {
+            break;
+        }
+        let Ok(pt) = ctx.get::<Transform>(at) else {
+            break;
+        };
+        p = pt.position + pt.quaternion.normalize() * (pt.scale * p);
+    }
+    p
+}
+
+/// `e` and the entities above it by og.Parent (none for 0).
+fn lineage(ctx: &SystemContext<'_>, e: u64) -> Vec<u64> {
+    let mut out = Vec::new();
+    let mut at = e;
+    while at != 0 && out.len() < 32 && !out.contains(&at) {
+        out.push(at);
+        let ent = Entity::from_bits(at);
+        if !ctx.is_alive(ent) {
+            break;
+        }
+        at = ctx.get::<Parent>(ent).map_or(0, |p| p.entity);
+    }
+    out
+}
+
 struct Seen {
     e: Entity,
     pos: Vec3,
@@ -498,24 +572,28 @@ fn run(
         }
     }
     let mut st = lock(&sys.state);
-    // Sounds: spatial sources that started (delivered this tick), and game noises.
+    // Sounds: spatial sources that started (delivered this tick), and game
+    // noises; each with the entities that do not hear it (its source and
+    // the source's parents).
     let mut noises = std::mem::take(&mut st.noises);
     for s in ctx.events::<og_audio::schema::SoundStarted>()? {
         let e = Entity::from_bits(s.entity);
         if !ctx.is_alive(e) {
             continue;
         }
-        let (Ok(t), Ok(src)) = (ctx.get::<Transform>(e), ctx.get::<og_audio::AudioSource>(e))
+        let (Ok(_), Ok(src)) = (ctx.get::<Transform>(e), ctx.get::<og_audio::AudioSource>(e))
         else {
             continue;
         };
         if src.spatial {
             noises.push(Noise {
-                position: t.position,
+                position: world_position(ctx, e),
                 loudness: src.volume.clamp(0.0, 4.0),
+                source: s.entity,
             });
         }
     }
+    let makers: Vec<Vec<u64>> = noises.iter().map(|n| lineage(ctx, n.source)).collect();
     if agents.is_empty() {
         return Ok(());
     }
@@ -611,7 +689,10 @@ fn run(
             };
             p.heard = false;
             let mut loudest: Option<(f32, Vec3)> = None;
-            for nz in &noises {
+            for (nz, makers) in noises.iter().zip(&makers) {
+                if makers.contains(&key) {
+                    continue;
+                }
                 let d = nz.position.distance(pos);
                 if d <= p.hearing * nz.loudness && loudest.is_none_or(|(ld, _)| d < ld) {
                     loudest = Some((d, nz.position));
@@ -653,8 +734,9 @@ fn run(
         let perception = ctx.get::<Perception>(e).ok();
         let mut mem = st.mems.remove(&key).unwrap_or_default();
         if !mem.started || mem.behaviour != agent.behaviour || mem.nodes.len() != b.nodes.len() {
-            // A first think, or another behaviour: start afresh.
-            let speed = if mem.started {
+            // A first think, another behaviour or a restart: start afresh, at
+            // the speed it started with unless this is its first think.
+            let speed = if mem.behaviour != 0 {
                 mem.base_speed
             } else {
                 nav.map_or(3.5, |a| a.speed)
@@ -921,6 +1003,7 @@ impl StateBlock for AiBlock {
         for n in &st.noises {
             put_v3(o, n.position);
             put_f32(o, n.loudness);
+            put_u64(o, n.source);
         }
     }
 
@@ -978,6 +1061,7 @@ impl StateBlock for AiBlock {
             noises.push(Noise {
                 position: r.v3()?,
                 loudness: r.f32()?,
+                source: r.u64()?,
             });
         }
         let [seen, heard] = maps;

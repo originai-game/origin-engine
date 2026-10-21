@@ -142,10 +142,24 @@ pub fn check(
     line: usize,
     name: &str,
 ) -> bool {
+    let missing = |fx: &mut Effects, what: &str| {
+        fx.warnings.push(format!("behaviour '{name}' line {line}: no key or field '{what}' (a key of the behaviour, Component.field of the agent or Resource.field); the check fails"));
+    };
+    // The value compared with: the literal, or the key or field read now.
+    let value = match &c.against {
+        None => c.value,
+        Some(r) => match (s.resolve)(r, mem) {
+            Some(v) => v,
+            None => {
+                missing(fx, r);
+                return false;
+            }
+        },
+    };
     match (s.resolve)(&c.operand, mem) {
-        Some(v) => c.op.test(v, c.value),
+        Some(v) => c.op.test(v, value),
         None => {
-            fx.warnings.push(format!("behaviour '{name}' line {line}: no key or field '{}' (a key of the behaviour, Component.field of the agent or Resource.field); the check fails", c.operand));
+            missing(fx, &c.operand);
             c.op == Op::Not
         }
     }

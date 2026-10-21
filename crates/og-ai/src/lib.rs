@@ -20,7 +20,7 @@ pub use asset::{
 };
 pub use system::{
     AiAgent, AiChanged, AiDesc, AiSystem, Behaviours, CommandSink, Description, NEVER, Noise,
-    Perceivable, Perception, SYSTEM_NAME, SightRay, install,
+    Parent, Perceivable, Perception, SYSTEM_NAME, SightRay, install,
 };
 pub use tree::{AgentMem, Status};
 

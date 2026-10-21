@@ -3,7 +3,7 @@
 // restore that replays it, a navmesh built from a floor and boxes whose
 // obstacle rebuilds tiles, an agent that plans without driving, and a guard
 // on a behaviour tree that patrols, sees, chases at a resource's speed and
-// bites through the game's command.
+// bites through the game's command; a machine restarted by og.ai.restart.
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineResource, f32, f64, u32, NAV_ARRIVED, NAV_MOVING } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -122,6 +122,10 @@ test("og.nav: a navmesh built from a floor and a box routes round it, and an obs
   );
   expect(info.polygons).toBeGreaterThan(0);
   expect(info.tiles).toBe(9);
+  // The bounds are the polygons' (a floor at y 0, kept 0.4 m from its edges), not the floor plus the agent's height.
+  expect(Math.abs(info.max.y - info.min.y)).toBeLessThan(0.2);
+  expect(info.max.x).toBeGreaterThan(23);
+  expect(info.max.x).toBeLessThanOrEqual(24);
   const from = { x: 4, y: 0, z: 4 };
   const to = { x: 20, y: 0, z: 4 };
   const round = must(og.nav.findPath(w, { nav: info.mesh, from, to }));
@@ -222,4 +226,44 @@ test("og.ai: a guard on a behaviour tree patrols, sees, chases at a resource's s
   must(og.ai.set(w, guard, "alarm", 3) as never);
   expect(og.ai.get(w, guard, "alarm")).toBe(3);
   expect(og.ai.set(w, guard, "sees", true).ok).toBeFalse();
+});
+
+const MOOD = `type behaviour
+version 1
+---
+name "mood"
+machine {
+  initial calm
+  state calm {
+    wait 100
+    to angry {
+      check Pace.bites atLeast Pace.chase
+    }
+  }
+  state angry {
+    wait 100
+  }
+}
+`;
+
+test("og.ai.restart: a machine goes back to its initial state at its next think", () => {
+  const engine = start(og.game({ resources: [Pace], start: (world: World) => {
+    const b = must(og.ai.parse(world, MOOD));
+    const e = must(world.spawn({ name: "moody" }));
+    world.insert(e, og.AiAgent, { behaviour: b.behaviour });
+  } }));
+  const w = engine.world;
+  const moody = w.find("moody")! as Entity;
+  engine.advance(2);
+  expect(must(w.get(moody, og.AiAgent)).state).toBe(0);
+  // Pace.bites reaches Pace.chase (a check against a field): angry, and it stays so.
+  must(w.resource(Pace)).bites = 5;
+  engine.advance(2);
+  must(w.resource(Pace)).bites = 0;
+  engine.advance(2);
+  expect(must(w.get(moody, og.AiAgent)).state).toBe(1);
+  must(og.ai.restart(w, moody));
+  engine.advance(1);
+  expect(must(w.get(moody, og.AiAgent)).state).toBe(0);
+  expect((og.ai.describe(w, moody) as { state: string }).state).toBe("calm");
 });

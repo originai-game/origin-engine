@@ -8,13 +8,15 @@
 //! a higher one becomes true; a condition on a component or resource field
 //! that reads the wrong bytes; a command fired every tick despite its
 //! cooldown; sight through a wall, behind the agent or beyond its range;
-//! hearing beyond its radius; a state machine that ignores its timers or its
-//! enter/exit actions; two runs or a restored snapshot that decide
-//! differently.
+//! hearing beyond its radius, or its own sounds (and its children's); a
+//! state machine that ignores its timers or its enter/exit actions; a
+//! restart that leaves a machine in its state or a tree mid-way; a check
+//! against a tuning field that reads it once, or not at all; two runs or a
+//! restored snapshot that decide differently.
 
 use og_ai::{
-    AI_RUNNING, AiAgent, AiDesc, Behaviour, Noise, Perceivable, Perception, SightRay, Value,
-    install,
+    AI_RUNNING, AiAgent, AiDesc, Behaviour, Kind, Noise, Parent, Perceivable, Perception, SightRay,
+    Value, install,
 };
 use og_core::Reflect;
 use og_core::glam::{Vec2, Vec3};
@@ -34,6 +36,12 @@ struct Health {
 struct Game {
     alarm: bool,
     level: u32,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "Tuning")]
+struct Tuning {
+    flee: f32,
 }
 
 const GUARD: &str = r#"
@@ -114,6 +122,25 @@ fn malformed_behaviours_are_refused_with_their_line_and_the_fix() {
     assert!(e.contains("not both"), "{e}");
     let e = errors(&format!("{head}tree {{\n  command Bite\n}}\n"));
     assert!(e.contains("snake_case"), "{e}");
+    let e = errors(&format!("{head}tree {{\n  check hp below 1 2\n}}\n"));
+    assert!(
+        e.contains("line 5") && e.contains("a key or field holding it"),
+        "{e}"
+    );
+    // A threshold in a tuning resource: compared with, read each time.
+    let b = Behaviour::parse(&format!(
+        "{head}tree {{\n  check Health.hp below Tuning.flee\n}}\n"
+    ))
+    .expect("a check against a field parses");
+    let Kind::Check(c) = &b.nodes[0].kind else {
+        panic!("a check")
+    };
+    assert_eq!(c.against.as_deref(), Some("Tuning.flee"));
+    assert_eq!(b.nodes[0].name, "check Health.hp below Tuning.flee");
+    assert_eq!(
+        b.field_operands(),
+        vec!["Health.hp".to_string(), "Tuning.flee".to_string()]
+    );
     let b = Behaviour::parse(GUARD).expect("the guard parses");
     assert_eq!(b.name, "guard");
     assert_eq!(
@@ -139,6 +166,8 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
     world.register::<Health>().unwrap();
     world.register::<Game>().unwrap();
     world.insert_resource(Game::default()).unwrap();
+    world.register::<Tuning>().unwrap();
+    world.insert_resource(Tuning { flee: 20.0 }).unwrap();
     let ray: SightRay = Arc::new(move |o: Vec3, d: Vec3, max: f32, _mask: u32, _ex: Entity| {
         if !wall || d.x.abs() < 1e-6 {
             return None;
@@ -146,7 +175,11 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
         let t = (10.0 - o.x) / d.x;
         (t > 0.0 && t < max).then_some((t, Entity::from_bits(0xdead)))
     });
-    let mut records = vec!["Health".to_string(), "Game".to_string()];
+    let mut records = vec![
+        "Health".to_string(),
+        "Game".to_string(),
+        "Tuning".to_string(),
+    ];
     records.sort();
     let ai = install(
         &mut world,
@@ -426,6 +459,7 @@ fn walls_the_view_cone_and_range_hide_the_target_and_noises_are_heard_within_hea
     s.ai.noise(Noise {
         position: Vec3::new(8.0, 10.0, 0.0),
         loudness: 1.0,
+        ..Default::default()
     });
     s.world.step().unwrap();
     let p = s.world.get::<Perception>(s.guard).unwrap();
@@ -433,6 +467,7 @@ fn walls_the_view_cone_and_range_hide_the_target_and_noises_are_heard_within_hea
     s.ai.noise(Noise {
         position: Vec3::new(17.0, 5.0, 0.0),
         loudness: 1.0,
+        ..Default::default()
     });
     s.world.step().unwrap();
     assert!(
@@ -499,6 +534,7 @@ fn a_state_machine_moves_on_facts_and_timers_and_runs_enter_and_exit() {
     s.ai.noise(Noise {
         position: Vec3::new(6.0, 6.0, 0.0),
         loudness: 2.0,
+        ..Default::default()
     });
     let cmds = steps(&mut s, 1);
     assert_eq!(state(&s), "alert");
@@ -576,5 +612,163 @@ fn two_runs_and_a_restored_snapshot_decide_the_same() {
         s.world.world_hash(),
         h1,
         "the restored world decided differently"
+    );
+}
+
+#[test]
+fn an_agent_does_not_hear_its_own_sounds_nor_its_children_s() {
+    use og_audio::AudioSource;
+    use og_audio::schema::SoundStarted;
+    // Kestrel Stair FINDINGS #8: an imp heard its own chitter.
+    let mut s = scene(GUARD, false);
+    let spatial = AudioSource {
+        spatial: true,
+        volume: 1.0,
+        ..Default::default()
+    };
+    let at = |p: Vec3| Transform {
+        position: p,
+        ..Default::default()
+    };
+    s.world.insert(s.guard, spatial).unwrap();
+    let guard = s.guard.to_bits();
+    let bell = s
+        .world
+        .spawn((
+            at(Vec3::new(1.0, 0.0, 0.0)),
+            Parent { entity: guard },
+            spatial,
+        ))
+        .unwrap();
+    // A cart 3 m off with a bell 1 m further on it: heard where the bell is.
+    let cart = s.world.spawn((at(Vec3::new(5.0, 2.0, 0.0)),)).unwrap();
+    let cart_bell = s
+        .world
+        .spawn((
+            at(Vec3::new(1.0, 0.0, 0.0)),
+            Parent {
+                entity: cart.to_bits(),
+            },
+            spatial,
+        ))
+        .unwrap();
+    let hears = |s: &mut Scene, from: Entity| {
+        s.world
+            .send(SoundStarted {
+                entity: from.to_bits(),
+                ..Default::default()
+            })
+            .unwrap();
+        s.world.step().unwrap();
+        s.world.get::<Perception>(s.guard).unwrap()
+    };
+    let me = s.guard;
+    assert!(!hears(&mut s, me).heard, "its own sound");
+    assert!(!hears(&mut s, bell).heard, "its child's sound");
+    let p = hears(&mut s, cart_bell);
+    assert!(p.heard, "another's sound");
+    assert_eq!(p.heard_at, Vec3::new(6.0, 2.0, 0.0), "where the bell is");
+    // A game noise made by the agent itself is not heard either.
+    s.ai.noise(Noise {
+        position: Vec3::new(3.0, 2.0, 0.0),
+        loudness: 1.0,
+        source: guard,
+    });
+    s.world.step().unwrap();
+    assert!(!s.world.get::<Perception>(s.guard).unwrap().heard);
+}
+
+#[test]
+fn a_restart_puts_a_machine_in_its_initial_state_and_a_tree_at_its_root() {
+    // Kestrel Stair FINDINGS #5: a new run needed a second handle.
+    let mut s = scene(MACHINE, false);
+    steps(&mut s, 3);
+    s.ai.noise(Noise {
+        position: Vec3::new(6.0, 6.0, 0.0),
+        loudness: 2.0,
+        ..Default::default()
+    });
+    steps(&mut s, 2);
+    assert_eq!(s.world.get::<AiAgent>(s.guard).unwrap().state, 1, "alert");
+    assert!(s.ai.restart(s.guard));
+    steps(&mut s, 1);
+    assert_eq!(
+        s.world.get::<AiAgent>(s.guard).unwrap().state,
+        0,
+        "idle again"
+    );
+    assert_eq!(
+        s.ai.get(s.guard, "mood"),
+        Some(Value::Num(1.0)),
+        "idle's enter ran again"
+    );
+    assert_eq!(
+        s.world.get::<Perception>(s.guard).unwrap().since_heard,
+        og_ai::NEVER,
+        "what it heard is forgotten"
+    );
+    // A tree: `steps` resumes at its running child, a restart at the first.
+    let tree = r#"
+type behaviour
+version 1
+---
+name "drill"
+tree {
+  steps {
+    command one
+    wait 10
+  }
+}
+"#;
+    let mut s = scene(tree, false);
+    let ones = |c: &[(String, Vec<String>)]| c.iter().filter(|c| c.0 == "one").count();
+    assert_eq!(ones(&steps(&mut s, 30)), 1, "once, then it waits");
+    assert!(s.ai.restart(s.guard));
+    assert_eq!(ones(&steps(&mut s, 30)), 1, "again from the root");
+    // An agent that has not thought: nothing to restart.
+    let mut s = scene(tree, false);
+    assert!(!s.ai.restart(s.guard));
+    assert_eq!(ones(&steps(&mut s, 2)), 1);
+}
+
+#[test]
+fn a_check_against_a_tuning_field_reads_it_every_time() {
+    let tree = r#"
+type behaviour
+version 1
+---
+name "skittish"
+tree {
+  selector {
+    sequence {
+      check Health.hp below Tuning.flee
+      command low
+    }
+    sequence {
+      check Health.hp atLeast Tuning.missing
+      command never
+    }
+    wait 100
+  }
+}
+"#;
+    let mut s = scene(tree, false);
+    let lows = |c: &[(String, Vec<String>)]| c.iter().filter(|c| c.0 == "low").count();
+    assert_eq!(lows(&steps(&mut s, 5)), 0, "50 hp is not below 20");
+    s.world.resource_mut::<Tuning>().unwrap().flee = 60.0;
+    let cmds = steps(&mut s, 5);
+    assert_eq!(
+        lows(&cmds),
+        5,
+        "50 hp is below 60, read the tick it changed"
+    );
+    s.world.insert(s.guard, Health { hp: 70.0 }).unwrap();
+    let cmds = steps(&mut s, 5);
+    assert_eq!(lows(&cmds), 0, "70 hp is not below 60");
+    assert!(cmds.iter().all(|c| c.0 != "never"), "a missing field fails");
+    let w = s.ai.take_warnings();
+    assert!(
+        w.iter().any(|w| w.contains("'Tuning.missing'")),
+        "the missing field is named: {w:?}"
     );
 }

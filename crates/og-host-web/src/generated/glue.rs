@@ -914,6 +914,11 @@ pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> String 
 }
 
 #[wasm_bindgen]
+pub fn og_ai_restart(world: u32, entity: f64) -> String {
+    <Host as AiApi>::og_ai_restart(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
     <Host as AiApi>::og_ai_noise(&Host, world, desc)
 }
