@@ -3,12 +3,12 @@
 # Keep logic in the scripts so local and CI runs match.
 name: ci
 
+# By hand only during the build-out (docs/ci.md §CI): the local gate is the
+# signal for every merge and wave, and the cloud runners are slower than it
+# and billed. Run it from the Actions tab when a run on the shared runner
+# is wanted; the push, pull_request and schedule triggers come back when
+# the repository is published.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  schedule:
-    - cron: "17 3 * * *" # nightly perf, 03:17 UTC
   workflow_dispatch:
 
 concurrency:

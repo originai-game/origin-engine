@@ -180,6 +180,15 @@ it the steps fall back to `cargo test`.
 
 ### CI
 
+**During the build-out the workflow runs by hand only** (`workflow_dispatch`;
+the push, pull_request and schedule triggers are off since 2026-10-21): the
+local gate is the signal for every merge (the functional lane) and every
+wave's end (`--all`, web-reference and the lavapipe pass, or
+`scripts/wave-end.sh`), it is faster than the shared runner and it covers
+more (the browser tiers and the Metal references). What follows describes
+the workflow as it runs when dispatched, and as it will run on push once
+the repository is published.
+
 Every job runs on `ubuntu-latest` (a private repository's runner: 2 vCPU,
 7 GB, about 13 GB of free disk) inside a `debian:trixie` container, and
 `.github/actions/provision` installs what the scripts expect; the lanes are
