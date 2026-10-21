@@ -2002,6 +2002,9 @@ impl Ui {
             Tone::Neutral => (p.fill, p.fg_muted),
             Tone::Accent => (p.accent_soft, p.accent_ink),
             Tone::Inverse => (p.fg, p.fg_inverse),
+            // The status tones: the tone's own ink on its 16 % tint, mixed as
+            // the platform's CSS mixes it (Srgba::tint_over, once the badge
+            // knows what is behind it), so each pack's tones read 4.5:1.
             other => {
                 let c = self.tone_dot(other);
                 (c.fade(0.16), c)
@@ -2018,6 +2021,10 @@ impl Ui {
                 ..Element::default()
             },
         );
+        if !matches!(tone, Tone::Neutral | Tone::Accent | Tone::Inverse) {
+            let under = self.behind(i);
+            self.nodes[i].el.background = Some(fg.tint_over(under, 0.16));
+        }
         let mut c = self.text_content(text, t.type_ramp.xs, fg);
         c.wrap = false;
         c.align = TextAlign::Center;

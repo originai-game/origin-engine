@@ -75,6 +75,27 @@ fn packs() -> Vec<(String, PathBuf)> {
     out
 }
 
+/// The archetypes' own skins, each a pack recoloured by hand for its game
+/// (ember is in [`packs`]): held to the badge bars only (the tones), their
+/// buttons and fields printed by the first test's rows when added there.
+fn archetype_skins() -> Vec<(String, PathBuf)> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/archetypes");
+    [
+        ("idle", "sparkorb"),
+        ("roguelike", "lampdive"),
+        ("rhythm", "lanebeat"),
+        ("tower-defense", "pathguard"),
+    ]
+    .iter()
+    .map(|(archetype, skin)| {
+        (
+            skin.to_string(),
+            root.join(archetype).join("assets/skins").join(skin),
+        )
+    })
+    .collect()
+}
+
 fn lin(c: f32) -> f32 {
     if c <= 0.04045 {
         c / 12.92
@@ -484,14 +505,69 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 }
             }
         }
-        // A badge in every tone (its tinted fill, its tone's ink), on the
-        // screen and in a panel, every row printed. The bar holds for the
-        // accent badge in a panel: the results screen's "New best" (it read
+    }
+    println!("{}", rows.join("\n"));
+    assert!(failing.is_empty(), "{}", failing.join("\n"));
+}
+
+/// A badge in every tone (its tint, its tone's ink), on the screen and in
+/// a panel, for every pack and the archetypes' skins, every row printed.
+/// The status tones (success, warn, danger, info) and the accent hold
+/// 4.5:1 in a panel, and on the screen too where the pack's screen and
+/// panel sit on the same side (both dark or both light): no ink reads
+/// 4.5:1 on a dark stage and on a cream panel at once, and the light packs'
+/// badges sit in their panels. The tones are the colours meters, toasts
+/// and status dots share, so the light packs' are deep (cartoon's warn read
+/// 1.63:1 on its panel at #f2a516, now #7b5102) and the dark packs' light;
+/// the tint mixes as the platform's CSS mixes it (`Srgba::tint_over`: a
+/// linear 16 % lifted a dark ground so far that no ink, white included,
+/// reached 4.5:1 on the pixel pack's panel). The neutral badge (fgMuted on
+/// fill) and the inverse are printed, not held: scifi's and neon's neutral
+/// read under 3:1, a round of their fill.
+#[test]
+fn every_skin_keeps_its_status_and_accent_badges_at_4_5_to_1() {
+    let mut rows = Vec::new();
+    let mut failing = Vec::new();
+    for (name, dir) in packs().into_iter().chain(archetype_skins()) {
+        let text = std::fs::read_to_string(dir.join("skin.ogt"))
+            .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
+        let file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let atlas = image::open(dir.join("atlas.png"))
+            .expect("atlas.png")
+            .to_rgba8();
+        let tex = atlas_handle();
+        let theme = file.theme(Some(tex), [0; 6]);
+        let p = theme.palette;
+        let bg = rgb(p.bg);
+        // What a label reads on, bare and in a panel: which sides the
+        // badges are held on.
+        let ground = |panel: Option<Srgba>| {
+            let mut scene = RenderScene::new();
+            let mut ui = ui_with_font(add_test_font(&mut scene));
+            ui.set_theme(theme);
+            for _ in 0..40 {
+                ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+                let label = |ui: &mut Ui| ui.label("L", "Ink", LabelDesc::default());
+                match panel {
+                    Some(bg) => ui.panel(
+                        "G",
+                        PanelDesc {
+                            background: Some(bg),
+                            ..PanelDesc::default()
+                        },
+                        label,
+                    ),
+                    None => label(&mut ui),
+                }
+                ui.end();
+            }
+            measured(&ui, "Ink", bg, tex, &atlas).1
+        };
+        let dark = |c: [f32; 3]| luminance(c) < 0.18;
+        let same_side = dark(ground(None)) == dark(ground(Some(p.surface)));
+        // The accent badge is the results screen's "New best" (it read
         // 4.12:1 here in the fantasy pack and 4.03:1 in Lantern Vale's
-        // polish frame before accentInk moved). The status tones (success,
-        // warn, danger, info) and the neutral badge on the screen are
-        // printed, not held: their inks are the tone dots' colours, which
-        // meters, toasts and dots share, a palette round of their own.
+        // polish frame before accentInk moved).
         for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
             for (tone_name, tone) in [
                 ("neutral", Tone::Neutral),
@@ -529,7 +605,9 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     hex(ink),
                     hex(ground)
                 ));
-                if panel.is_some() && tone == Tone::Accent && r < LABEL_BAR {
+                let held = !matches!(tone, Tone::Neutral | Tone::Inverse)
+                    && (panel.is_some() || same_side);
+                if held && r < LABEL_BAR {
                     failing.push(format!(
                         "{name}: a {tone_name} badge on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
                     ));

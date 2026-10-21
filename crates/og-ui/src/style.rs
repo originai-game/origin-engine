@@ -48,6 +48,23 @@ impl Srgba {
         )
     }
 
+    /// This colour at alpha `k` over `below` as a browser composites it (in
+    /// sRGB, the platform's `bg-success/16`), kept translucent for og-render,
+    /// which composites in linear light: the alpha whose linear blend over
+    /// `below` has the browser's luminance, so the art under it still
+    /// shows. A linear 16 % of a light ink over a dark ground lifts the
+    /// ground to a sixth of the ink's luminance (no ink then reads 4.5:1 on
+    /// it, white included, on the darker packs); the browser's 16 % lifts
+    /// it a few percent. Over a light ground it darkens more than linear.
+    pub fn tint_over(self, below: Srgba, k: f32) -> Srgba {
+        let (lc, lb) = (self.luminance(), below.luminance());
+        let mixed = self.fade(k).over(below).luminance();
+        if (lc - lb).abs() < 1e-4 {
+            return self.fade(k);
+        }
+        self.fade(((mixed - lb) / (lc - lb)).clamp(0.0, 1.0) / self.alpha.max(1e-4))
+    }
+
     /// Mixed towards `to` by `t` (0–1), keeping this colour's alpha.
     pub fn mix(self, to: Srgba, t: f32) -> Srgba {
         let t = t.clamp(0.0, 1.0);
