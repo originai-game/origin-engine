@@ -140,8 +140,13 @@ impl Joint {
 /// og.Collider) moved by `move` each tick, sliding along walls, climbing
 /// slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the
 /// ground, carried by the moving platform it stands on and falling by
-/// gravity. The entity needs an og.Transform and an og.Collider; the step
-/// makes it a kinematic body and pushes dynamic bodies it walks into.
+/// gravity. It keeps `skin` off every surface, standing that far over the
+/// ground; a step is climbed when the ground beyond it is at most
+/// `stepHeight` over the ground it stands on. What blocks it is every solid
+/// collider its og.Collider's `layers` and `mask` interact with (each one's
+/// layers meeting the other's mask), as for bodies. The entity needs an
+/// og.Transform and an og.Collider; the step makes it a kinematic body and
+/// pushes dynamic bodies it walks into.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.CharacterController")]
 pub struct CharacterController {
@@ -235,8 +240,11 @@ impl Default for CharacterController {
 /// platforms (colliders on `oneWayLayers` are solid from above only; hold
 /// `down` to drop through), moving platforms (it rides what it stands on)
 /// and corner correction (a jump that clips a ceiling corner by less than
-/// `cornerCorrection` slides past it). The entity needs an og.Transform and
-/// an og.Collider (a box or capsule); it becomes a kinematic body.
+/// `cornerCorrection` slides past it). It keeps `skin` off every surface;
+/// what blocks it is every solid collider its og.Collider's `layers` and
+/// `mask` interact with (each one's layers meeting the other's mask), as
+/// for bodies. The entity needs an og.Transform and an og.Collider (a box
+/// or capsule); it becomes a kinematic body.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.PlatformerController")]
 pub struct PlatformerController {

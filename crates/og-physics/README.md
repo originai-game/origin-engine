@@ -175,7 +175,9 @@ the measured grains: one hash and one snapshot), `tests/pile.rs` (a pen at
 6597690808174327434 once the platformer moved itself, its 2D scenario's
 walker running and landing differently by design, and 947364242694612608
 with `og.PlatformerController.impulse` in its record; the kinematic rule
-leaves it; natively with lanes off, on four and eight threads and with every pass
+leaves it; 15539601638348908910 once the character controller moved
+itself, its 3D scenario's walker standing a skin over the floor by design,
+the 2D scenario's world hash unchanged by the shared move; natively with lanes off, on four and eight threads and with every pass
 split on four and on eight; the wasm's builds hash the same scenarios) and
 `packages/engine/tests/lanes.test.ts` (a 1,000-box pile through the native
 engine with lanes off and on four threads). The lanes wasm itself is
@@ -236,8 +238,8 @@ reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
 | Record | What the step does with it |
 |---|---|
 | `og.Joint` | fixed, revolute (limits, velocity or position motor), prismatic, spring, rope and ball joints between a body and another (`other`) or a world point; the second frame keeps the pose it was made in; `value` is written back |
-| `og.CharacterController` | a kinematic capsule moved by `move` after the step: slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies; writes `grounded`, `velocity`, `ground` |
-| `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms, an `impulse` the game sets (a knock-back) taken once; its own move (below); sends `og.CharacterEvent` |
+| `og.CharacterController` | a kinematic capsule moved by `move` after the step, its own move (below): slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies, blocked by what its collider's layers and mask meet; writes `grounded`, `velocity`, `ground` |
+| `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms, an `impulse` the game sets (a knock-back) taken once; its own move (below), blocked by what its collider's layers and mask meet; sends `og.CharacterEvent` |
 | `og.Vehicle` | 3D: rapier's raycast vehicle with a top-speed fade and reverse braking; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
@@ -257,29 +259,54 @@ per feature: `cargo run --release -p og-physics --example soft_costs`
 and for the 3D fluid `--example fluid3d_costs`
 (`tests/evidence/P2/sph/costs.md`).
 
-### The platformer's move (`src/platformer.rs`)
+### The controllers' move (`src/mover.rs`)
 
-`og.PlatformerController` moves its shape itself, not through rapier's
-`KinematicCharacterController` (which `og.CharacterController` still
-uses). That controller casts with its skin as parry's target distance, and
-parry 0.31's support-map cast with a target distance is off by up to the
-distance (a 0.7 × 1.25 box 2 cm over a 74 m floor travels 1.98 cm, not
-1 cm), while a cast starting within it falls back on a contact query that
-returns nothing at some places. A run grazing the floor then met it at
-random with a tilted normal and the controller's 2D slope rule (2D has no
-horizontal tangent) took the whole step: the run stuttered to 0 m/s every
-few ticks (examples/hollowbell #16); and a shape put exactly on a floor
-fell 11 mm into it and stuck (#15). Exact casts (no target distance) from
-a millimetre away or more measure to 2e-5 m, so the move keeps its `skin`
-itself: rising, up then across; otherwise lifted two skins (less under a
-ceiling), across (up a walkable slope keeping its x speed, stopped by a
-wall, along a ceiling never up), then down by the lift and the fall onto
-walkable ground within `snapDistance` more, a skin over it (a steeper
-slope slides it down). `tests/platformer_ground.rs`: a run holds
-`maxSpeed` tick after tick on one box, on twelve adjacent boxes and on a
-tilemap's collision rectangles, runs up and down a 30° hill at its speed
-and is stopped by a 60° one, and a controller written to the floor's
-height at 190 places stands a skin over it and runs.
+`og.CharacterController` (both profiles) and `og.PlatformerController`
+move their shape themselves, not through rapier's
+`KinematicCharacterController`. That controller casts with its skin as
+parry's target distance, and parry 0.31's support-map cast with a target
+distance is off by up to the distance (a 0.7 × 1.25 box 2 cm over a 74 m
+floor travels 1.98 cm, not 1 cm), while a cast starting within it falls
+back on a contact query that returns nothing at some places. A run
+grazing the floor then met it at random with a tilted normal: in 2D the
+controller's slope rule (2D has no horizontal tangent) took the whole
+step, the run stuttering to 0 m/s every few ticks (examples/hollowbell
+#16), and a shape put exactly on a floor fell 11 mm into it and stuck
+(#15); in 3D (row 72, measured with Lantern Vale's capsule, radius 0.3,
+1.6 m, at 6 m/s) a run dropped to 0 to 0.4 m/s for a tick every second or
+so on one box, on adjacent boxes and on a triangle mesh, the capsule stood
+1 mm over the floor instead of its 2 cm skin and crept up 0.1 mm a tick,
+one put on the floor sank 9 cm, 0.2 m stairs with 0.3 m treads stopped it
+at the first step (the autostep wanted the capsule's width on the tread)
+and a 30° slope was climbed at 4.4 m/s across. Exact casts (no target
+distance) from a millimetre away or more measure to 2e-5 m, so the move
+keeps its `skin` itself: rising, up then across; otherwise lifted two
+skins (less under a ceiling), across (up a walkable slope keeping its
+speed across, stopped by a wall, along a ceiling never up), then down by
+the lift and the fall onto walkable ground within `snapDistance` more, a
+skin over it (a steeper slope slides it down). A shape resting on an edge
+(a step's nose, a ledge) meets it with a normal tilted by its own curve,
+so a short ray down just inside the edge reads the ground's. The
+character controller, standing and blocked, also tries the move from
+`stepHeight` up and takes it when that goes further and lands on walkable
+ground, not a dynamic body, at most `stepHeight` over the ground it stood
+on; with `gravityScale` 0 it slides in any direction. Both filter what
+blocks them by the collider's `layers` and `mask` (each one's layers
+meeting the other's mask), as rapier does for bodies.
+`tests/platformer_ground.rs`: a run holds `maxSpeed` tick after tick on
+one box, on twelve adjacent boxes and on a tilemap's collision
+rectangles, runs up and down a 30° hill at its speed and is stopped by a
+60° one, and a controller written to the floor's height at 190 places
+stands a skin over it and runs. `tests/character_ground.rs`, all failing
+on rapier's controller: a 3D run holds its speed every tick, its centre a
+skin over the floor, on one box (along x and diagonally), on adjacent
+boxes, on a triangle mesh and on a height field; a capsule written to the
+floor's height at 190 places on each stands a skin over it and runs; 0.2 m
+stairs are climbed and descended at walking speed on the ground every
+tick; steps of 0.1 to 0.345 m are climbed at `stepHeight` 0.35 and 0.36,
+0.4 and 0.6 m ones are not; a 30° hill is run up and down at full speed
+and a 50° slope stops it. `tests/controllers.rs` walks both controllers
+through walls their layers do not meet.
 
 ### Phase 2: cloth self-collision, fluid groups, 2D ragdolls
 
@@ -370,13 +397,14 @@ layering, mixing, emitters and sinks mean the same in both.
 ## Tests
 
 `cargo test -p og-physics`: `bodies.rs` (write-back, events, sensors,
-layers, kinematic, locks, errors), `edits.rs` (component changes reaching
+layers, kinematic, locks, errors), `controllers.rs`, `platformer_ground.rs`
+and `character_ground.rs` (the controllers' move, above), `edits.rs` (component changes reaching
 the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
 `pile.rs` (determinism and restore, set `OG_PHYSICS_PILE_REPORT` to write
 its JSON report; lanes on and off on a pen large enough for the pool),
 `lanes.rs` (every split pass against lanes off, ragdolls among them, the
 pool threshold, the stats' phases and where they ran, queries off
-rayon's global pool, a panic in a query), and the E5 round's `joints.rs`, `controllers.rs`,
+rayon's global pool, a panic in a query), and the E5 round's `joints.rs`,
 `vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`, and phase 2's `fluid3d.rs`. The dev profile builds og-physics and rapier at
 `opt-level = 3`; the pile takes about 15 s. `examples/lanes_costs.rs`
 times the step with lanes off and on (`OG_LANES=off|4|8`, release;

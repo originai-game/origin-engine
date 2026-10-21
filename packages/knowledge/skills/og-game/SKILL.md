@@ -946,7 +946,10 @@ deterministic and part of snapshots (`reference/physics.md`):
 - `og.CharacterController` (3D, or top-down with `gravityScale` 0) — set
   `move` every tick and `jump` to jump; it climbs `maxSlope` and
   `stepHeight`, snaps to the ground, rides moving platforms, slides along
-  walls, pushes bodies; read `grounded`, `velocity`, `ground`.
+  walls, pushes bodies; read `grounded`, `velocity`, `ground`. Its
+  og.Collider's `layers` and `mask` decide what blocks it, as for bodies
+  (a ghost through a gate: leave the gate's layer out of its `mask`); the
+  same for the PlatformerController.
 - `og.PlatformerController` (2D) — `moveX`, `jump`, `down` in; jump height
   and time to apex, coyote time, jump buffer, wall jumps, one-way layers,
   corner correction as tunables (og-feel §12 has values by genre);
