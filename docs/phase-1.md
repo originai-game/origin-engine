@@ -83,7 +83,24 @@ perf-games. The round sections below have each.
   at 49 s, 4 checks) and the kit's and Hollowbell's after
   publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
   the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
-  it) and main was pushed there. The perf-games merge (2b896be5, a
+  it) and main was pushed there. Later merges of this wave, each with
+  its lane and the suites after it: no-renderer (71c0e9dd fast-forward,
+  182 s, 5 of 5), vox-stylise (96be0866, 153 s, 5 of 5; fx-showcase's
+  `looks-inked-comic-3d` re-recorded, d539ce13), dogfood-5 (2471dad6,
+  90 s; Meridian Loop's seven frames re-recorded on main's engine,
+  9782d90d), web-boot-2 (0dffd7be, 129 s), ui-five (5c835a67, six
+  generated wiki pages regenerated at the merge) with templates-title
+  (015a0ffa) and the kit's 68 frames re-recorded (46e01e62): the lane
+  failed one Rust test, og-runtime's no_renderer (ui-five's `macKeys`
+  left false on the renderer-less surface; a surface set without it
+  takes the platform's keys since ed9e1a62) and Meridian Loop's
+  `pub-pause` moved with the kit (6e36bc82); vehicle-physics (7c34f4dd):
+  the lane the same test, and the suites Kestrel's save test (a 36 KB
+  world in one part since the physics save dropped the mesh colliders;
+  9fe3a417) and Meridian Loop's handling-bound playtests (retuned by
+  kit-words); racing-ui (c060c875): fmt on the coordinator's own line
+  (3802bf70); dogfood-6 (4d888752, 143 s, 5 of 5, Brasswick's 8
+  playtests green) and main pushed there. The perf-games merge (2b896be5, a
   fast-forward) failed its lane at bun-functional in the knowledge
   package's drift check alone: og-game §14 named the engine's systems
   as `og.ui.end`, which the check read as an API member (prose since
