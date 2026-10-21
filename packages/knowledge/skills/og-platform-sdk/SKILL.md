@@ -92,7 +92,15 @@ trying.
 ## 3. Rules
 
 - Read saves on the first tick and show defaults until they answer;
-  never block the title on the platform.
+  never block the title on the platform. On the web the title behind the
+  play gate is not tick 1's defaults: the shell takes the first tick, then
+  one more tick each time the store answers what that tick asked (the
+  settings, a slot's manifest, then its parts), up to 8 ticks, before the
+  first frame while the answers come within 300 ms and drawn as they land
+  for 5 s after (docs/web-export.md §The shell). So apply an answer the
+  tick it arrives (the language, Continue's label): a title that waits for
+  a later tick, or a screen transition that only starts after the tap,
+  still shows its defaults behind the gate.
 - Save on meaningful moments (a new best, a level done, settings closed),
   not every tick: writes are rate limited.
 - Never store anything the game can recompute, and never a secret: the

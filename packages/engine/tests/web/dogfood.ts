@@ -656,7 +656,7 @@ if (!args.includes("--no-play")) {
       await page.until("typeof __runtime_probe__ === 'object'", 60_000);
       await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000).catch(() => {});
       // Behind the gate (the first screen a returning player sees), then after the gate: the
-      // platform's answers land only once a tick runs, i.e. after the tap (WEB-FINDINGS #1).
+      // Worker applies the store's answers behind the gate (src/web/settle.ts; WEB-FINDINGS #1).
       await wait(1500);
       const behind = await page.eval<Array<{ path: string; role: string; name: string; states: string[] }>>(TREE);
       const translatedBehindGate = (await page.eval(FIND(plan.translated))) !== null;

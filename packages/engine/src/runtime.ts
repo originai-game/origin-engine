@@ -1137,6 +1137,11 @@ export class Engine {
     if (calls.length > 0) this.#platform.handle(calls, (request, answer) => void this.answerPlatform(request, answer));
   }
 
+  /** og.platform's calls the world has no answer to yet: in flight at the host, or answered and applied at the next tick's start. */
+  platformPending(): number {
+    return (parse<{ pending?: number }>(abi().og_platform_info(this.id)).pending ?? 0) as number;
+  }
+
   /** Answer one platform call; applied at the start of the next tick. */
   answerPlatform(request: number, answer: PlatformAnswer): boolean {
     // An answer that carries no time (a Player before the time ask, the local platform) gets the host clock's.

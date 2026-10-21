@@ -52,6 +52,7 @@ import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudio
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscoder, type TextureFormat } from "./basis.ts";
 import type { HostError } from "./shell.ts";
+import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 
 interface Start {
   type: "start";
@@ -86,7 +87,10 @@ interface Start {
   viewport?: Viewport;
   /** Bytes the boot will fetch (the wasm, the cooked bundle), for real progress; omitted: counted as they arrive. */
   expect?: { wasm?: number; cooked?: number };
-  /** Without autoplay: take the first tick before the first frame, so the frame behind a play gate shows the game's first screen (its UI is built by ticks). */
+  /**
+   * Without autoplay: take the first tick before the first frame, so the frame behind a play gate shows the
+   * game's first screen (its UI is built by ticks), then the ticks that apply the platform's answers to it (settle.ts).
+   */
   prime?: boolean;
 }
 
@@ -112,9 +116,16 @@ type Message =
   | AudioMessage
   | AudioLatencyMessage;
 
-/** og.platform's host in the Worker: the calls go to the page, whose answers come back as `platform-answer`. */
-function toPage(host: string, capabilities: readonly string[]): PlatformHost {
-  return { host, capabilities, handle: (calls) => self.postMessage({ type: "platform", calls }) };
+/** og.platform's host in the Worker: the calls go to the page (counted), whose answers come back as `platform-answer`. */
+function toPage(host: string, capabilities: readonly string[], counter: PlatformCounter): PlatformHost {
+  return {
+    host,
+    capabilities,
+    handle: (calls) => {
+      counter.sent(calls);
+      self.postMessage({ type: "platform", calls });
+    },
+  };
 }
 
 interface WorkerScope {
@@ -488,6 +499,8 @@ export function startWorker(game: GameToken): void {
   /** The tick the last frame reached (a crash's tick when no panic names one). */
   let lastTick: number | null = null;
   let lastBeat = 0;
+  /** What the page was asked and answered: the ticks behind the gate apply its answers (settle.ts). */
+  const platformCounter = new PlatformCounter();
   /** Where the boot went (BootPhases), sent with the first frame. */
   const boot: BootPhases = {};
   let phaseAt = performance.now();
@@ -713,9 +726,11 @@ export function startWorker(game: GameToken): void {
     }
   };
 
+  /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
+  let settling = false;
   /** One rendered frame without a tick: the first frame behind the play gate. */
   const present = () => {
-    if (!engine || playing) return;
+    if (!engine || playing || settling) return;
     try {
       const answered = engine.frame(0);
       if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
@@ -837,7 +852,7 @@ export function startWorker(game: GameToken): void {
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
         // The time is the browser's until the Player's answers carry its own (docs/platform-asks.md).
         engine.setClock(systemClock("browser"));
-        engine.attachPlatform(toPage("none", []));
+        engine.attachPlatform(toPage("none", [], platformCounter));
         if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;
         rpc = data.rpc;
@@ -870,12 +885,35 @@ export function startWorker(game: GameToken): void {
           playing = true;
           schedule();
         } else if (rendering) {
+          let primed = false;
           if (data.prime && engine.probe.tick() === 0) {
-            const primed = engine.advance(1);
-            if (!primed.ok) throw new Error(primed.reason);
+            const first = engine.advance(1);
+            if (!first.ok) throw new Error(first.reason);
+            primed = true;
           }
           phase("prime");
+          // The platform's answers to the first tick's reads (the saved language, a slot's
+          // meta) applied behind the gate: before the first frame while they come quickly,
+          // then each settling tick drawn as it lands (settle.ts).
+          const at = performance.now();
+          const behindGate = {
+            stop: () => playing || crashed,
+            pending: () => engine?.platformPending() ?? 0,
+            advance: () => (engine ? engine.advance(1) : { ok: false, reason: "no engine" }),
+          };
+          if (primed) {
+            settling = true;
+            try {
+              await settle(platformCounter, behindGate.advance, { until: at + SETTLE_FIRST_MS, stop: behindGate.stop, pending: behindGate.pending });
+            } finally {
+              settling = false;
+            }
+          }
+          phase("settle");
           present();
+          if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
+            void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present }).catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
+          }
         }
       } catch (e) {
         crash(e instanceof Error ? e.message : String(e));
@@ -907,8 +945,11 @@ export function startWorker(game: GameToken): void {
       else log(`warn: audio: ${attached.reason}`);
     }
     if (data.type === "rpc") serve(data.frame, false);
-    if (data.type === "platform-answer") engine.answerPlatform(data.request, data.answer);
-    if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities));
+    if (data.type === "platform-answer") {
+      engine.answerPlatform(data.request, data.answer);
+      platformCounter.answered();
+    }
+    if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities, platformCounter));
     if (data.type === "play") {
       playing = data.on;
       last = 0;

@@ -398,7 +398,21 @@ earlier build; a build that fails after replacing it removes what it wrote.
   comes first, a fast load skips straight to the game, and
   `prefers-reduced-motion` skips genesis.
 - **Play gate**: the first screen is drawn behind it (the shell takes the
-  game's first tick, which builds its UI, then holds the clock). The first
+  game's first tick, which builds its UI, then holds the clock). The
+  platform's answers to what that tick asked are applied behind the gate
+  too (`src/web/settle.ts`): og.platform's answers apply at a tick's start,
+  so the Worker waits for the page's answers to the first tick's calls and
+  takes one tick to apply them, then again for the calls that tick made (a
+  slot's parts after its manifest, then the slot's own answer), until a
+  tick leaves nothing to apply, at most 8 ticks (`SETTLE_TICKS`). It waits
+  up to 300 ms (`SETTLE_FIRST_MS`) before the first frame, so a store that
+  answers quickly is in the first frame; answers later than that are
+  applied and drawn as they land, up to 5 s after the first tick
+  (`SETTLE_MS`). A returning player's title is in the saved language with
+  Continue on behind the gate (`tests/settle.test.ts`; the dogfood
+  harness's `reload.translatedBehindGate`). These are the game's own ticks,
+  its answers applied as every answer is, host input a replay repeats; the
+  gate's tap ends the settling. The first
   tap, click, Enter or Space unlocks audio (one AudioContext), asks for
   fullscreen when `fullscreen gesture` and the page is not framed (and locks
   `orientation`), takes a screen wake lock and starts the clock. `gate none`
@@ -524,7 +538,8 @@ Who the shell speaks protocol 2 to, in order:
 Player through the same channel. The engine Worker hands each tick's calls
 to the page (`{ type: "platform", calls }`); the page answers them
 (`platform-answer`) and the answers are applied at the start of the next
-tick. A framed page (or one with the Stage overlay in its own document)
+tick (behind the play gate, the Worker takes those ticks itself: §The
+shell). A framed page (or one with the Stage overlay in its own document)
 holds its first calls (the tick behind the gate) until the Player's
 `hello`, or 1.5 s, so they never reach the wrong store. The
 messages the shell now sends and hears:
