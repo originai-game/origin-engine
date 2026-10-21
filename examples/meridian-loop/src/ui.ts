@@ -334,7 +334,9 @@ export const Ui = defineSystem(
         readBoard(world, r);
       }
     } else {
-      const h = hud(world, r, p);
+      // Not drawn under pause or the settings: the racing HUD takes Back even under a dialog, so Escape
+      // and the pad's B would never close them (FINDINGS #10).
+      const h = r.paused || r.settingsOpen ? { pause: false } : hud(world, r, p);
       if (racing && !r.paused && !r.settingsOpen && (h.pause || must(world.resource(og.Input)).pressed("KeyP"))) r.paused = true;
       const m = og.ui.pauseMenu("Pause", {
         open: r.paused && !r.settingsOpen,
