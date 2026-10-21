@@ -7,6 +7,37 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 12 (2026-10-21)
+
+Wave 12 started as soon as wave 11's last stream merged (the owner's
+instruction: no further question, no CI). Its streams and merges, in
+order: records-11 (37ee1908, docs, fast-forwarded with the Kestrel
+comments' fix 15f4e9eb), render-audio-3 (5bedf86b; rows 85 and 86),
+skins-palette (38f6435d; rows 77, 78, 79 and 84), web-dogfood (ccc462d7;
+the fourth dogfood round, of the web path), and perf-games (in flight).
+Four of the five coding streams were stopped by the session's rate limit
+for an hour and resumed from where they stopped. The round sections
+below have each.
+
+- **`scripts/check.sh functional`**, each merge: render-audio-3,
+  skins-palette, web-dogfood: pending (the coordinator fills).
+- **The web findings** (web-dogfood, examples/WEB-FINDINGS.md): 0
+  blockers, 7 annoyances, 5 nits; wave 13 takes them.
+
+**Wave-end figures: pending** (measured once perf-games lands).
+
+- **`scripts/check.sh --all`**: pending.
+- **`scripts/check.sh web-reference`**: pending (owed on the browser
+  tiers: og-ui `kit-skin-scifi-phone`, idle's, roguelike's and
+  tower-defense's re-recorded frames, Kestrel's `chapters`).
+- **Wasm**: pending.
+- **Determinism**: pending (a bare og-audio world registers one more
+  type since f89f1885).
+- **Perf**: perf-games measures the three games on the release addon
+  (its section when it lands).
+- **vulkan-cpu**: pending; wave 11's second wave-end run (with records)
+  is in progress and this wave's moved frames join the next.
+
 ## Main gate, wave 11 (2026-10-21, ce93d34b)
 
 Since the wave 10 record (a91e6139, then 1ea7b182 deferring wave 10's
@@ -467,6 +498,65 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Wave 12, web-dogfood: the three games and the kit published and played in Chrome (ccc462d)
+
+The fourth dogfood round, of the web path the native rounds never
+exercised: each of examples/lantern-vale, examples/hollowbell,
+examples/kestrel-stair and templates/ui-kit published as an author would
+(`og build --publish`, the 2D modules for Hollowbell), served as the
+platform's play page opens a release (the top-level page, `__OG_GAME`, a
+stand-in play origin answering Player protocol 2 over HTTP, the build's
+`_headers` making the pages isolated, the service worker active) and
+played in headless Chrome on both tiers with real clicks through the
+accessibility mirror (a publish build has no command channel, so the
+playtests' scripted sequences and the frame comparisons ran on the dev
+export of the same project, through `tests/web/reference.ts`). Measured
+at 7526ff3c with one release build (`OG_RELEASE=1 sh scripts/build.sh`,
+15 min) and one Chrome at a time; the harness is
+`packages/engine/tests/web/dogfood.ts`, the findings and the full tables
+examples/WEB-FINDINGS.md.
+
+| Game | Boot download (brotli) | Tier | First frame (ms) | Step p50/p95 (ms) | Render p50/p95 (ms) | Frames vs metal |
+|---|---|---|---|---|---|---|
+| Lantern Vale (3D) | 8.29 MB | WebGPU | 547 | 1.34 / 1.57 | 0.55 / 0.69 | 5 of 7 |
+| | | WebGL2 | 1,742 | 1.46 / 1.81 | 1.06 / 1.22 | 2 of 7 (worst 0.038) |
+| Hollowbell (2D) | 6.76 MB | WebGPU | 533 | 1.44 / 1.62 | 0.71 / 0.79 | 9 of 9, pixel-identical |
+| | | WebGL2 | 1,075 | 1.51 / 1.73 | 0.97 / 1.12 | 9 of 9, pixel-identical |
+| Kestrel Stair (3D) | 10.39 MB | WebGPU | 752 | 5.04 / 6.79 | 0.68 / 0.83 | 9 of 9 (worst 0.0046) |
+| | | WebGL2 | 1,368 | 5.85 / 7.48 | 1.34 / 1.64 | 7 of 9 (crypt 0.046, 7.6 %) |
+| UI kit (2D) | 11.55 MB | WebGPU | 529 | 0.90 / 1.02 | 0.30 / 0.37 | 22 of 22 |
+| | | WebGL2 | 1,092 | 0.93 / 1.11 | 0.43 / 0.53 | 22 of 22 |
+
+Every game held 60 ticks a second on the lanes pool (8 Workers); the
+single-threaded engine is 3.09 MB brotli (3D) and 2.92 MB (2D), the
+lanes modules 3.13 and 2.96 MB; store reads and writes, Kestrel's
+`leaderboard.top` and the start, ready, sample and end reports reached
+the stand-in origin; the language saved through settings came back after
+a reload in all three games; no unnamed node on any title; no page
+errors; without isolation the single-threaded engine reaches the first
+frame 100 to 190 ms sooner but Kestrel's step goes from 5.0 to 8.1 ms; at
+20 Mbit/s the first frame is 2.8 to 3.5 s for the games and 5.7 s for the
+kit, past the 2.0 s budget.
+
+Findings: 0 blockers, 7 annoyances, 5 nits. (1) The first screen behind
+the play gate is the game's tick 1, before saved settings and saves
+apply: the title shows in English with Continue disabled until the tap.
+(2) Chunked music is all fetched before the first frame (a chunked sound
+cannot go in a streaming group): 47 to 56 % of each game's boot download.
+(3) The WebGL2 fallback draws Lantern Vale's ink outlines and lantern
+sparks differently: five of seven frames miss `metal`. (4) WebGL2 lights
+Kestrel's crypt as if it had no roof (not diagnosed). (5) Lantern Vale's
+first two seconds are brighter on the web on both tiers (auto exposure).
+(6) A publish build cannot run a playtest's script, so nothing scripted
+checks the bytes that ship. (7) The hidden text-entry textarea is
+`aria-hidden` but takes focus. (8) Every lanes page logs eight warnings
+from the pool Workers it cannot fix. (9) No way to read the engine's
+memory on the web (`measureUserAgentSpecificMemory` never resolves, the
+probe reports none). (10) The UI kit saves its settings and never reads
+them. (11) The WebGL2 first frame is two to three times WebGPU's. (12)
+`og build`'s printed total is not what a player downloads. Wave 13 takes
+them.
 
 ## Wave 12, skins-palette: every skin under the packs' rule, badges on either side, Hollowbell's Skip, Kestrel's chapters (38f6435)
 
