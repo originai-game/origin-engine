@@ -31,7 +31,8 @@ function start(world: World): void {
   const g = must(world.resource(Game));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
   const art = loadArt(world);
-  // Control picks Wick's clips by index: check the sheet's order matches.
+  // Control picks Wick's clips by index: check the sheet's order matches (the flipbook grammar and its clip order are
+  // not in the knowledge package: FINDINGS.md #2).
   for (const [name, index] of Object.entries(Clip)) if (clip(art.wick, name) !== index) throw new Error(`sprites/wick.ogt's clip ${name} is not ${index}`);
 
   const camera = must(world.resource(og.Camera));

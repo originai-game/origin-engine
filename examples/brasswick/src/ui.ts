@@ -170,7 +170,7 @@ function levels(world: World, g: GameV): void {
     }),
   });
   // og.ui.levelSelect closes on Back alone (Escape, the pad's B): a pointer or a finger has no way out
-  // of it, and a button of the game's own drawn beside it is under its modal, inert (FINDINGS.md).
+  // of it, and a button of the game's own drawn beside it is under its modal, inert (FINDINGS.md #10).
   if (r.chosen !== null && r.chosen < g.unlocked) startLevel(world, g, r.chosen);
   else if (r.closed) g.levelsOpen = false;
 }
@@ -183,12 +183,12 @@ function capsule(id: string, build: () => void): void {
 
 /**
  * The HUD, from widgets: og.ui.platformerHud draws a hearts capsule even with maxLives 0 and a score
- * capsule always, and its level name has no frame (FINDINGS.md), so a puzzle game without lives or
+ * capsule always, and its level name has no frame (FINDINGS.md #4), so a puzzle game without lives or
  * a score builds its own (og-taste §2: capsules with an icon and a number, in the corners).
  */
 function hud(world: World, g: GameV): void {
   // All in the top-right corner: on the published page the shell's Back handle sits over the top-left
-  // one, outside og.ui's safe area (FINDINGS.md).
+  // one, outside og.ui's safe area (FINDINGS.md #15).
   let paused = false;
   og.ui.anchor("Hud", { anchor: "topRight", direction: "row", gap: S.sm, cross: "center" }, () => {
     capsule("Count", () => {
@@ -348,7 +348,8 @@ export const Ui = defineSystem(
     } else results(world, g);
     settings(world, g, p);
 
-    // Pause: Escape or Back with nothing open (og.ui.back answers once, after the dialogs had theirs), or the pad's Start.
+    // Pause: Escape or Back with nothing open, or the pad's Start. og.ui.back is asked after the dialogs are built:
+    // asked before them it takes their Back, and pause and the settings never close on Escape (FINDINGS.md #9).
     if (g.phase === Phase.Play && g.exiting === 0 && !g.settingsOpen) {
       const start = pad.connected(0) && pad.pressed("start", 0);
       if (!g.paused && (og.ui.back() || start)) g.paused = true;

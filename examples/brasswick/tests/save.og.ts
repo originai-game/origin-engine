@@ -44,7 +44,7 @@ export default playtest({
         "1.5:dump_ui:levels.json",
         "1.6:title",
         // Continue after the saved tick (about 214): a restore that moves og.Time past the script's
-        // last step ends og run there, the steps after it never run (FINDINGS.md).
+        // last step ends og run there, the steps after it never run (FINDINGS.md #13).
         "4.0:touch_move_to:continue",
         "4.017:touch_start",
         "4.05:touch_end",

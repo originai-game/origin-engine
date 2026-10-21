@@ -252,7 +252,7 @@ export function buildVault(world: World, art: Art, g: GameV): void {
         }
         case "oneway": {
           // A grate: a thin static collider on the one-way layer at the top of its cells (og.PlatformerController.oneWayLayers).
-          // A map's tile colliders all take og.Tilemap.colliderLayers, so a one-way layer of tiles cannot be told apart from the plate (FINDINGS.md).
+          // A map's tile colliders all take og.Tilemap.colliderLayers, so a one-way layer of tiles cannot be told apart from the plate (FINDINGS.md #5).
           const e = spawn(world, o.name, p.cx, p.top - 0.125);
           must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: p.w, y: 0.25, z: 1 }, layers: Bits.Grate, friction: 0.7 }));
           member(e);
@@ -278,7 +278,7 @@ export function buildVault(world: World, art: Art, g: GameV): void {
   // The effects' emitters, one per kind, moved and restarted where an effect is asked for (src/feel.ts).
   for (const [kind, emitter] of [[FxKind.Dust, dust], [FxKind.Gear, gearFx], [FxKind.Stomp, stompFx]] as const) {
     const e = spawn(world, `fx-${kind}`, 0, 10);
-    // Hidden until first asked for: startTick is a u32, so a one-shot spawned for later fires at tick 0 unless hidden (FINDINGS.md).
+    // Hidden until first asked for: startTick is a u32, so a one-shot spawned for later fires at tick 0 unless hidden (FINDINGS.md #3).
     must(world.insert(e, og.ParticleSystem, { emitter, seed: 3 + kind, startTick: 0, visible: false }));
     must(world.insert(e, FxSlot, { kind }));
   }

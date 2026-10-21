@@ -11,7 +11,7 @@ engine did not do, is `FINDINGS.md`.
 bun tools/make-assets.ts   # every asset (the music and the copied skin are not committed)
 og cook .
 og run .                   # headless with the probe; og dev . reloads on save
-og test .                  # nine playtests, the frames against references/metal
+og test .                  # eight playtests, the frames against references/metal
 bun run typecheck
 og build . --publish       # the web build
 ```

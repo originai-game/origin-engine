@@ -72,7 +72,7 @@ export function askContinue(world: World, g: GameV): void {
 }
 
 /**
- * First in the tick: the answers that arrived, applied before the Ui system builds the screens, so
+ * First in the tick: the answers that arrived, applied before the Ui system builds the screens (FINDINGS.md #16), so
  * the title the shell draws behind the play gate already shows the saved language and Continue
  * (og-platform-sdk §3: the shell runs one more tick per answer the first tick asked for, and the
  * frame is that tick's UI).
@@ -82,7 +82,8 @@ export const Answers = defineSystem("Answers", { writes: [Game, Prefs, og.Audio]
   const p = must(world.resource(Prefs));
   if (g.restored) {
     // The world came back from the vault slot at the end of the last tick: what it holds of the
-    // session is the save's (requests in flight, the settings as they were), so ask again.
+    // session is the save's (requests in flight, the settings as they were), so ask again. Nothing
+    // else marks the tick after a restore (FINDINGS.md #8): Saves sets Game.restored around the snapshot.
     g.restored = false;
     g.loads += 1;
     g.progressRequest = g.writeRequest = g.settingsRequest = g.slotRequest = g.loadRequest = g.saveRequest = 0;

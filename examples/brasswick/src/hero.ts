@@ -135,6 +135,8 @@ export const Control = defineSystem(
     if (g.phase === Phase.Play && g.heroY < -40) hurtWick(g);
 
     const facing = want.x !== 0 ? want.x : c.facing;
+    // The controller shoves any dynamic body at its full run speed whatever its mass, and has no
+    // pushBodies (FINDINGS.md #6): a crate ahead slows Wick to Tuning.pushSpeed instead.
     const pushing = playing && c.grounded && want.x !== 0 && crateAhead(world, wick, pos.x, pos.y, facing);
     g.pushing = pushing;
     must(world.set(wick, og.PlatformerController, {
