@@ -1190,7 +1190,7 @@ A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
 desktop so phones have room. `og run --json` prints `advanceMs`, the
 run's `frames` (step and render median, p95 and max) and its `systems`
 (each system's mean milliseconds a tick, slowest first: the game's and the
-engine's, `og.physics`, `og.ui.end`, `og.anim` and the rest, which the
+engine's own, physics, the UI's end of frame, animation and the rest, which the
 probe's `dump_world` also reports as `ms`), `og
 polish` the p95 step and render time of every playtest (og-build §5), and
 `og run --device` the first frame and frame times in a real browser or
