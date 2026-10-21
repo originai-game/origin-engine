@@ -24,7 +24,7 @@ printf '%s' "$slug" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' || { og_err "slug must
 [ -n "$(printf '%s' "$note" | tr -d '[:space:]')" ] || { og_err "the note must say how the file was produced"; usage; }
 ext="${src##*.}"
 case "$ext" in png|json|md) ;; *) og_err "evidence must be .png, .json or .md, got .$ext"; exit 1 ;; esac
-[ "$slug" != notes ] && [ "$slug" != readme ] || { og_err "slug '$slug' is reserved"; exit 1; }
+case "$slug" in notes|readme) og_err "slug '$slug' is reserved"; exit 1 ;; esac
 
 dir="$OG_ROOT/tests/evidence/$milestone"
 dest="$dir/$slug.$ext"
