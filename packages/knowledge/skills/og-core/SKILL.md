@@ -43,6 +43,23 @@ is an engine feature request, not something to work around in the game.
   thread. Game systems always run on the engine thread, one after another,
   so nothing in game code needs a lock; it needs only the rules above.
 
+### Saving progress
+
+The world is one snapshot: `world.snapshot()` returns it as text
+(`og-save:1:...`: every entity, component, name, resource, rng state,
+pending event and module state, with each type's schema hash) in every
+build, publish included, and `world.restore(save)` puts it back, so the
+restored world hashes as the saved one did, on either host. The session
+stays across a restore (input, the player's volumes, the platform's calls,
+the language, scheduled command steps); og.Time takes the saved tick.
+Inside a system the snapshot is the world as that system sees it (its own
+queued spawns and despawns are not in it) and a restore applies when the
+tick ends. A save whose types' fields changed is refused naming them, or
+mapped by name with `{ migrate: true }`. Only what is in the world is
+saved: progress in module variables is lost. Put the text in the
+platform's store beside what a title screen shows of the slot (og-game
+§17, og-platform-sdk §2).
+
 ## 3. Every failure is a value
 
 Engine calls that can fail return `Result<T>`: `{ ok: true, value }` or

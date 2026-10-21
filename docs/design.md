@@ -125,7 +125,9 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
   Web scaffold's `rng.ts` and `rng.rs` test vectors are inherited).
 - Snapshot and restore of the whole world (components, resources, rng
   states, pending events) to a blob; `sweep`, hot reload and `feel_compare`
-  are built on it.
+  are built on it, and so are a game's saves (`world.snapshot` and
+  `world.restore`, in every build: the blob as text for the platform store,
+  restored with the session kept).
 - Floating point: simulation uses `f32` with the same operations on both
   hosts; the engine ships its own `sin`/`cos`/`atan2`/`exp` so results do not
   depend on the host's `Math`. Physics (rapier) is built with its

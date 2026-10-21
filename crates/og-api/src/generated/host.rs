@@ -98,6 +98,10 @@ pub trait WorldApi: Wire {
     fn og_world_emit(&self, world: u32, event: String, payload: String) -> String;
     /// `World.instantiate`
     fn og_world_instantiate(&self, world: u32, asset: f64, desc: Option<String>) -> String;
+    /// `World.snapshot`
+    fn og_world_snapshot(&self, world: u32) -> String;
+    /// `World.restore`
+    fn og_world_restore(&self, world: u32, save: String, desc: Option<String>) -> String;
     /// `Query.archetypes`
     fn og_query_archetypes(&self, query: u32) -> String;
     /// `Query.count`
@@ -775,6 +779,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_world_events",
     "og_world_emit",
     "og_world_instantiate",
+    "og_world_snapshot",
+    "og_world_restore",
     "og_query_archetypes",
     "og_query_count",
     "og_archetype_view_get_count",

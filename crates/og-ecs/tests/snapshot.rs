@@ -340,3 +340,54 @@ fn a_retired_entity_slot_stays_retired_across_restore() {
     }
     assert_eq!(back.world_hash(), w.world_hash());
 }
+
+/// A system can snapshot the world while it holds its own columns (a host
+/// system's typed views stay borrowed while it runs): the snapshot is the
+/// world as that system sees it, its queued structural changes not in it.
+#[test]
+fn a_system_snapshots_the_world_while_it_holds_its_columns() {
+    use std::sync::{Arc, Mutex};
+    let mut w = build(5);
+    churn(&mut w, &mut Rng::new(4), 3);
+    let taken: Arc<Mutex<Option<Vec<u8>>>> = Arc::default();
+    let out = taken.clone();
+    let heat_t = w.field::<Heat>("t").unwrap();
+    w.add_system(
+        SystemDesc::new("saver")
+            .write::<Heat>()
+            .write::<Pos>()
+            .query(QueryDesc::new().write::<Heat>()),
+        move |ctx| {
+            if out.lock().unwrap().is_some() {
+                return Ok(());
+            }
+            let mut columns = Vec::new();
+            for a in ctx.query(0)? {
+                let mut t = a.write::<f64>(heat_t)?;
+                t[0] = 42.0;
+                columns.push(t);
+            }
+            ctx.spawn((Pos { p: Vec3::Y },))?;
+            *out.lock().unwrap() = Some(ctx.snapshot());
+            drop(columns);
+            Ok(())
+        },
+    )
+    .unwrap();
+    let live = w.entities().len();
+    w.step().unwrap();
+    let bytes = taken.lock().unwrap().take().unwrap();
+    // The spawn the system queued applied when it returned: one more now than in the snapshot.
+    assert_eq!(w.entities().len(), live + 1);
+    let mut b = build(5);
+    b.restore(&bytes).unwrap();
+    assert_eq!(b.entities().len(), live);
+    // Its own write through the held column is in it.
+    let heats: Vec<f64> = b
+        .query(&QueryDesc::new().read::<Heat>())
+        .unwrap()
+        .filter(|a| !a.is_empty())
+        .map(|a| a.read::<f64>(heat_t).unwrap()[0])
+        .collect();
+    assert!(heats.iter().all(|&t| t == 42.0), "{heats:?}");
+}

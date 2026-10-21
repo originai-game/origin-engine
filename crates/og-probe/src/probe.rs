@@ -195,7 +195,13 @@ pub struct Probe {
     /// it (its time and action): a second step naming one is written beside
     /// it, suffixed, with a warning naming both ([`Probe::emit`]).
     written: BTreeMap<String, (f64, String)>,
+    /// The host's end-of-tick work ([`Probe::set_after_tick`]).
+    after_tick: Option<AfterTickFn>,
 }
+
+/// The host's end-of-tick hook: called after every tick the probe takes,
+/// with the world between ticks (a game's deferred restore lands here).
+pub type AfterTickFn = Box<dyn FnMut(&mut World)>;
 
 /// The host's `derive` hook: what `get` answers for a record whose value the
 /// engine derives each frame from other state (a light og.DayNight drives).
@@ -376,6 +382,7 @@ impl Probe {
             derive: None,
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
+            after_tick: None,
         })
     }
 
@@ -405,6 +412,30 @@ impl Probe {
     /// ([`DeriveFn`]).
     pub fn set_derive(&mut self, derive: DeriveFn) {
         self.derive = Some(derive);
+    }
+
+    /// Work the host does after every tick, between ticks ([`AfterTickFn`]).
+    /// When it moves `Time` (a game restoring a save), the scheduled steps
+    /// keep their remaining delays ([`Probe::shift_schedule`]).
+    pub fn set_after_tick(&mut self, after: AfterTickFn) {
+        self.after_tick = Some(after);
+    }
+
+    /// The world's clock jumped from `from` to `to` outside a tick (a game
+    /// restored a save, which carries its own `Time`): every scheduled step
+    /// moves with it, so each keeps the delay it had left.
+    pub fn shift_schedule(&mut self, from: u64, to: u64) {
+        if from == to || self.queue.is_empty() {
+            return;
+        }
+        let queue = std::mem::take(&mut self.queue);
+        self.queue = queue
+            .into_iter()
+            .map(|((tick, seq), step)| {
+                let left = tick.saturating_sub(from);
+                ((to + left, seq), step)
+            })
+            .collect();
     }
 
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
@@ -749,6 +780,12 @@ impl Probe {
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
         world.step()?;
         self.input.end_tick(world);
+        if let Some(after) = self.after_tick.as_mut() {
+            let next = world.time().tick;
+            after(world);
+            let now = world.time().tick;
+            self.shift_schedule(next, now);
+        }
         Ok(())
     }
 

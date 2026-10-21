@@ -289,3 +289,27 @@ fn a_malformed_snapshot_is_refused_and_changes_nothing() {
     }
     assert_eq!(w.resource::<v2::Fresh>().unwrap().n, 42);
 }
+
+#[test]
+fn check_snapshot_refuses_what_restore_would_naming_the_fields_and_changes_nothing() {
+    let (old, _) = old_world();
+    let bytes = old.snapshot();
+    let w = new_world();
+    let before = w.world_hash();
+    let err = w.check_snapshot(&bytes, false).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Schema, "{err}");
+    // The first type that differs, with what differs.
+    assert!(
+        err.reason().contains(
+            "type 'Health' has a different layout in this world (Health.armor added; Health.regen removed; Health.status's variants changed)"
+        ),
+        "{err}"
+    );
+    // A migrating restore would take it.
+    w.check_snapshot(&bytes, true).unwrap();
+    assert_eq!(w.world_hash(), before);
+    // A snapshot of its own world passes; garbage does not.
+    w.check_snapshot(&w.snapshot(), false).unwrap();
+    assert!(w.check_snapshot(b"OGWS", false).is_err());
+    assert!(w.check_snapshot(b"nope", true).is_err());
+}

@@ -55,7 +55,7 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 
 | Need | Call | Notes |
 |---|---|---|
-| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })` | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
+| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })`; the whole world as one value: `world.snapshot()` text, back with `world.restore` (og-game §17) | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
 | Volume, controls, language | `loadSettings(world)`, `saveSettings(world, settings)` | the key `og.settings`, last save wins, local fallback when offline |
 | A leaderboard | `leaderboardSubmit(world, { board, score })`, `leaderboardTop`, `leaderboardAround` | the board keeps the player's best; show "around me" as well as the top |
 | Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; a name of 1–64 letters, digits, `.` and `_` (the Player files it as `game.custom.<name>`), at most 16 scalar attributes; never personal data |

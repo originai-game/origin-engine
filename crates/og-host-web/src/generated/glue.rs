@@ -169,6 +169,16 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
 }
 
 #[wasm_bindgen]
+pub fn og_world_snapshot(world: u32) -> String {
+    <Host as WorldApi>::og_world_snapshot(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> String {
+    <Host as WorldApi>::og_world_restore(&Host, world, save, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_query_archetypes(query: u32) -> String {
     <Host as WorldApi>::og_query_archetypes(&Host, query)
 }

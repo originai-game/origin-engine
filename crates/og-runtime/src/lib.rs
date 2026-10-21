@@ -50,6 +50,7 @@ mod physics_ext;
 mod platform;
 mod polish;
 mod probe;
+mod save;
 mod stream;
 mod terrain;
 mod terrain_stream;
@@ -112,6 +113,7 @@ pub use platform::{
     og_platform_take, og_platform_telemetry,
 };
 pub use probe::png;
+pub use save::{og_world_restore, og_world_snapshot};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,
 };

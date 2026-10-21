@@ -211,6 +211,12 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         .collect();
     let mut probe = eng.probe.borrow_mut();
     probe.set_engine_version(format!("origin-engine {}", env!("CARGO_PKG_VERSION")));
+    // A world.restore asked for during a tick applies as the tick ends.
+    probe.set_after_tick(Box::new(move |world| {
+        if let Ok(eng) = engine(id) {
+            super::save::after_tick(&eng, world);
+        }
+    }));
     if let Some(ui) = eng.state.borrow().ui.as_ref() {
         probe.set_ui(ui.probe());
     }

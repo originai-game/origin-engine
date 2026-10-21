@@ -485,6 +485,20 @@ export interface SpawnDesc {
 }
 
 /**
+ * How world.restore takes a save.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RestoreDesc {
+  /**
+   * Map a type whose layout changed since the save field by field, by name, as a hot reload does: a field added since takes its default, a removed one is dropped, an enum value is mapped by its variant's name, a field of another type starts at its default, and a type this build no longer registers is dropped. Off, such a save is refused naming the type and its fields.
+   *
+   * @default false
+   */
+  readonly migrate?: boolean;
+}
+
+/**
  * Which entities a query matches.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -619,6 +633,20 @@ export interface World {
    * @returns The root entity, or why it was refused (an asset still loading, a failed asset).
    */
   instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>;
+  /**
+   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. The store takes any JSON value up to 64 KiB a key, so keep the text beside what a title screen shows of the slot: `og.platform.storeSet(world, { key: "slot1", value: { name, chimes, world: text } })`, then og.platform.storeGet and world.restore of `value.world` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not. Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+   *
+   * @returns The save, or why not (the world could not be read).
+   */
+  snapshot(): Result<string>;
+  /**
+   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+   *
+   * @param save The text world.snapshot returned.
+   * @param desc Whether a type whose layout changed since the save is mapped field by field.
+   * @returns Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases).
+   */
+  restore(save: string, desc?: RestoreDesc): Result<void>;
 }
 
 /** A set of matched archetypes. Iterate archetypes, never entities one by one. */
@@ -15641,6 +15669,7 @@ export interface AlertDesc {
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
 // Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds.
+// Outputs are relative to the output directory: an absolute path, a `..` component or a name starting with `.` (kept for the harness, such as a playtest's kept store) is refused. A file an earlier step of the script wrote is never overwritten: the later step's is written as `<stem>-2.<ext>` with a warning naming both steps.
 
 /**
  * The actions the engine ships. Arguments follow the action, separated by `:`.
@@ -15664,8 +15693,8 @@ export interface AlertDesc {
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
  * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds.
- * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped.
- * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
+ * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped.
+ * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (an enum as its variant's name, `"music"`; og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.
  * - `"pause"`: `pause`: hold the clock; advance still steps.
  * - `"resume"`: `resume`: release the clock.
@@ -19103,6 +19132,7 @@ export declare namespace og {
   /**
    * The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
    * Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds.
+   * Outputs are relative to the output directory: an absolute path, a `..` component or a name starting with `.` (kept for the harness, such as a playtest's kept store) is refused. A file an earlier step of the script wrote is never overwritten: the later step's is written as `<stem>-2.<ext>` with a warning naming both steps.
    */
   namespace commands {
     /**

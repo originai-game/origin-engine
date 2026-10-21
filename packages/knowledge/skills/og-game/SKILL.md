@@ -830,7 +830,52 @@ og.render.look(world)?.name;                                              // the
   detail TAA softens. `RenderCapabilities.antialias` says what the device
   resolved it to.
 
-## 17. Where to look things up
+## 17. Saving progress
+
+A save is either the whole world or a record the game writes; both go in
+the platform's store (og-platform-sdk §2), which takes any JSON value up
+to 64 KiB a key.
+
+- **The world** (`world.snapshot()`, `world.restore(save)`): every entity,
+  component, name, resource (og.Time and og.Rng too), pending event and
+  module state (physics, animation, tweens, tile edits), as text
+  (`og-save:1:...`), in every build including publish and alike on both
+  hosts. Restoring brings that world back to the hash it had; the session
+  stays (input, the player's volumes, the platform's calls, the language,
+  the command channel's scheduled steps). Use it where the moment itself
+  is the save: a puzzle mid-move, a sandbox, a run that resumes exactly.
+
+  ```ts
+  // Save (a lantern lit, Save and quit): beside what the title shows of the slot.
+  const s = world.snapshot();
+  const asked = s.ok ? og.platform.storeSet(world, { key: "slot1", value: { name, chimes, world: s.value } }) : s;
+  if (asked.ok) run.saveRequest = asked.value;
+  // Continue, once storeGet's answer landed:
+  const back = world.restore(answer.data.value.world);   // in a system: applies when the tick ends
+  if (!back.ok) toast(back.reason);                       // a save from a build whose types changed names them
+  ```
+
+  A restore asked for in a system or a command applies when the tick
+  ends; in `start`, at once. A saved type whose fields changed since (a
+  release added one) is refused naming the type and fields; pass
+  `{ migrate: true }` to map it by field name (new fields take their
+  defaults), and keep a saved type's fields stable between releases where
+  you can. Keep progress in components and resources, never in module
+  variables (they are not in the save), and keep request numbers and the
+  session's own state (a best score read from the store, an open menu)
+  where a restore cannot roll them back: reset them after it. Asset
+  handles are saved as numbers: load in `start`, in the same order every
+  launch. Hollowbell's world saves to about 25 KiB; an empty one to 11.
+- **A record** (`storeSet(world, { key: "save", value: { chimes, glimmers,
+  checkpoint } })`): a few hundred bytes of what progress means, rebuilt
+  into a world on Continue. Smaller, readable on a title screen, and it
+  survives any change to the game's types; right for checkpoint games
+  (examples/hollowbell's `src/save.ts`).
+
+Test either across a relaunch with a playtest's `store: "keep"` and
+`then` (og-platform-sdk §4).
+
+## 18. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges

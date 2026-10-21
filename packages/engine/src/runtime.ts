@@ -630,6 +630,14 @@ export class WorldImpl {
     return parse(abi().og_world_find(this.id, name));
   }
 
+  snapshot(): Result<string> {
+    return parse(abi().og_world_snapshot(this.id));
+  }
+
+  restore(save: string, desc?: unknown): Result<void> {
+    return structural(parse(abi().og_world_restore(this.id, save, json(desc))));
+  }
+
   nameOf(entity: number): string | null {
     return parse(abi().og_world_name_of(this.id, entity));
   }

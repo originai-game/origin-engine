@@ -14,7 +14,7 @@ module transform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 500</sub>
+<sub>`api.ogt` line 518</sub>
 
 ## Contents
 
@@ -60,7 +60,7 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 527</sub>
+<sub>`api.ogt` line 545</sub>
 
 <a id="fn-decompose"></a>
 
@@ -88,7 +88,7 @@ fn decompose {
 }
 ```
 
-<sub>`api.ogt` line 535</sub>
+<sub>`api.ogt` line 553</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -122,7 +122,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 541</sub>
+<sub>`api.ogt` line 559</sub>
 
 <a id="fn-fromAxisAngle"></a>
 
@@ -152,7 +152,7 @@ fn fromAxisAngle {
 }
 ```
 
-<sub>`api.ogt` line 551</sub>
+<sub>`api.ogt` line 569</sub>
 
 ## Components, resources and events
 
@@ -183,7 +183,7 @@ component Transform {
 }
 ```
 
-<sub>`api.ogt` line 504</sub>
+<sub>`api.ogt` line 522</sub>
 
 <a id="record-Parent"></a>
 
@@ -204,7 +204,7 @@ component Parent {
 }
 ```
 
-<sub>`api.ogt` line 515</sub>
+<sub>`api.ogt` line 533</sub>
 
 <a id="record-MatrixWorld"></a>
 
@@ -227,4 +227,4 @@ component MatrixWorld {
 }
 ```
 
-<sub>`api.ogt` line 520</sub>
+<sub>`api.ogt` line 538</sub>

@@ -8,11 +8,14 @@
 // same store (`og run --platform-store`, a playtest's `store: "keep"`)
 // continues the run.
 //
-// FINDINGS.md #1: there is no game-side world snapshot to save a
-// slot with (the engine's snapshot is EngineProbe.snapshot, a probe member
-// dropped in publish builds and kept only in the running process), so a
-// save is this record of the run's state, and Continue rebuilds the world
-// from it.
+// FINDINGS.md #1, fixed: the engine now saves the whole world
+// (world.snapshot, world.restore; og-game §17), about 25 KiB of text for
+// this game. Hollowbell keeps this record by choice: a checkpoint game
+// restarts at its lantern anyway, the record is a few hundred bytes the
+// title reads for the slot's name, it survives any change to the game's
+// types, and a restored world would bring back what Game also keeps for
+// the session (the platform's request numbers, the best score, the pause
+// menu of Save and quit), which Continue would then have to reset.
 
 import { og } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
