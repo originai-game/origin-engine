@@ -242,7 +242,7 @@ og.render.boxGeometry(world: World, desc?: BoxGeometryDesc): Result<Geometry>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `BoxGeometryDesc` | yes | Its extents. |
+| `desc` | `BoxGeometryDesc` | yes | Its extents and texture repeat. |
 
 **Returns** `Result<Geometry>`.
 
@@ -252,12 +252,12 @@ Binding symbol `og_render_box_geometry` · publish builds: kept
 fn boxGeometry {
   doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
   param world World "The world whose renderer owns the geometry."
-  param desc BoxGeometryDesc "Its extents."
+  param desc BoxGeometryDesc "Its extents and texture repeat."
   returns Result.Geometry
 }
 ```
 
-<sub>`api.ogt` line 3243</sub>
+<sub>`api.ogt` line 3252</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -272,7 +272,7 @@ og.render.planeGeometry(world: World, desc?: PlaneGeometryDesc): Result<Geometry
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `PlaneGeometryDesc` | yes | Its extents. |
+| `desc` | `PlaneGeometryDesc` | yes | Its extents and texture repeat. |
 
 **Returns** `Result<Geometry>`.
 
@@ -282,12 +282,12 @@ Binding symbol `og_render_plane_geometry` · publish builds: kept
 fn planeGeometry {
   doc "Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too."
   param world World "The world whose renderer owns the geometry."
-  param desc PlaneGeometryDesc "Its extents."
+  param desc PlaneGeometryDesc "Its extents and texture repeat."
   returns Result.Geometry
 }
 ```
 
-<sub>`api.ogt` line 3250</sub>
+<sub>`api.ogt` line 3259</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -302,7 +302,7 @@ og.render.sphereGeometry(world: World, desc?: SphereGeometryDesc): Result<Geomet
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `SphereGeometryDesc` | yes | Its radius and tessellation. |
+| `desc` | `SphereGeometryDesc` | yes | Its radius, tessellation and texture repeat. |
 
 **Returns** `Result<Geometry>`.
 
@@ -312,12 +312,12 @@ Binding symbol `og_render_sphere_geometry` · publish builds: kept
 fn sphereGeometry {
   doc "Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh)."
   param world World "The world whose renderer owns the geometry."
-  param desc SphereGeometryDesc "Its radius and tessellation."
+  param desc SphereGeometryDesc "Its radius, tessellation and texture repeat."
   returns Result.Geometry
 }
 ```
 
-<sub>`api.ogt` line 3257</sub>
+<sub>`api.ogt` line 3266</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -347,7 +347,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3281</sub>
+<sub>`api.ogt` line 3290</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -379,7 +379,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3288</sub>
+<sub>`api.ogt` line 3297</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -411,7 +411,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3298</sub>
+<sub>`api.ogt` line 3307</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -443,7 +443,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3306</sub>
+<sub>`api.ogt` line 3315</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -477,7 +477,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3314</sub>
+<sub>`api.ogt` line 3323</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -507,7 +507,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3323</sub>
+<sub>`api.ogt` line 3332</sub>
 
 <a id="fn-look"></a>
 
@@ -535,7 +535,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3330</sub>
+<sub>`api.ogt` line 3339</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -563,7 +563,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3336</sub>
+<sub>`api.ogt` line 3345</sub>
 
 <a id="fn-text"></a>
 
@@ -593,7 +593,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3342</sub>
+<sub>`api.ogt` line 3351</sub>
 
 ## Components, resources and events
 
@@ -3155,6 +3155,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `width` | `number` | `1` | ≥ 0 | `m` | — | Its extent along x. |
 | `height` | `number` | `1` | ≥ 0 | `m` | — | Its extent along y. |
 | `depth` | `number` | `1` | ≥ 0 | `m` | — | Its extent along z. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160. |
 
 ```ogt
 struct BoxGeometryDesc {
@@ -3175,6 +3176,9 @@ struct BoxGeometryDesc {
     min 0
     unit m
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+    default 1 1
+  }
 }
 ```
 
@@ -3192,6 +3196,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `width` | `number` | `1` | ≥ 0 | `m` | — | Its extent along x. |
 | `height` | `number` | `1` | ≥ 0 | `m` | — | Its extent along y. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160. |
 
 ```ogt
 struct PlaneGeometryDesc {
@@ -3207,10 +3212,13 @@ struct PlaneGeometryDesc {
     min 0
     unit m
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+    default 1 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 3210</sub>
+<sub>`api.ogt` line 3213</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3225,6 +3233,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | Its radius. |
 | `widthSegments` | `number` | `32` | ≥ 3 | — | — | Segments around the equator. |
 | `heightSegments` | `number` | `16` | ≥ 2 | — | — | Rings from pole to pole. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160. |
 
 ```ogt
 struct SphereGeometryDesc {
@@ -3243,10 +3252,13 @@ struct SphereGeometryDesc {
     default 16
     min 2
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+    default 1 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 3225</sub>
+<sub>`api.ogt` line 3231</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3281,7 +3293,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3268</sub>
+<sub>`api.ogt` line 3277</sub>
 
 <a id="type-Shader"></a>
 
@@ -3295,7 +3307,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3296</sub>
+<sub>`api.ogt` line 3305</sub>
 
 ## Column kinds
 
@@ -3484,16 +3496,16 @@ column StyliseSpace {
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3264</sub>
+<sub>`api.ogt` line 3273</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3265</sub>
+<sub>`api.ogt` line 3274</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 3266</sub>
+<sub>`api.ogt` line 3275</sub>

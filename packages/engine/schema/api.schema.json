@@ -1352,7 +1352,7 @@
               "name": "desc",
               "type": "BoxGeometryDesc",
               "optional": true,
-              "doc": "Its extents."
+              "doc": "Its extents and texture repeat."
             }
           ],
           "returns": "Result<Geometry>",
@@ -1372,7 +1372,7 @@
               "name": "desc",
               "type": "PlaneGeometryDesc",
               "optional": true,
-              "doc": "Its extents."
+              "doc": "Its extents and texture repeat."
             }
           ],
           "returns": "Result<Geometry>",
@@ -1392,7 +1392,7 @@
               "name": "desc",
               "type": "SphereGeometryDesc",
               "optional": true,
-              "doc": "Its radius and tessellation."
+              "doc": "Its radius, tessellation and texture repeat."
             }
           ],
           "returns": "Result<Geometry>",
@@ -13627,6 +13627,14 @@
           "default": 1,
           "minimum": 0,
           "x-og-unit": "m"
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         }
       },
       "additionalProperties": false
@@ -13650,6 +13658,14 @@
           "default": 1,
           "minimum": 0,
           "x-og-unit": "m"
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         }
       },
       "additionalProperties": false
@@ -13682,6 +13698,14 @@
           "description": "Rings from pole to pole.",
           "default": 16,
           "minimum": 2
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         }
       },
       "additionalProperties": false

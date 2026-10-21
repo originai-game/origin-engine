@@ -5365,6 +5365,12 @@ export interface BoxGeometryDesc {
    * @unit m (metres)
    */
   readonly depth?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -5389,6 +5395,12 @@ export interface PlaneGeometryDesc {
    * @unit m (metres)
    */
   readonly height?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -5419,6 +5431,12 @@ export interface SphereGeometryDesc {
    * @range 2..
    */
   readonly heightSegments?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 
@@ -17834,21 +17852,21 @@ export declare namespace og {
      * Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too.
      *
      * @param world The world whose renderer owns the geometry.
-     * @param desc Its extents.
+     * @param desc Its extents and texture repeat.
      */
     function boxGeometry(world: World, desc?: BoxGeometryDesc): Result<Geometry>;
     /**
      * Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too.
      *
      * @param world The world whose renderer owns the geometry.
-     * @param desc Its extents.
+     * @param desc Its extents and texture repeat.
      */
     function planeGeometry(world: World, desc?: PlaneGeometryDesc): Result<Geometry>;
     /**
      * Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh).
      *
      * @param world The world whose renderer owns the geometry.
-     * @param desc Its radius and tessellation.
+     * @param desc Its radius, tessellation and texture repeat.
      */
     function sphereGeometry(world: World, desc?: SphereGeometryDesc): Result<Geometry>;
     /**

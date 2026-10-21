@@ -342,3 +342,23 @@ fn generate_tangents_follows_the_uvs() {
     assert_eq!(kept.vertices[0].tangent, [0.0, 1.0, 0.0, 1.0]);
     assert_eq!(kept.vertices[1].tangent, [1.0, 0.0, 0.0, 1.0]);
 }
+
+/// ground-grid (meridian-loop #15): og.render.planeGeometry's `uvRepeat`
+/// tiles a texture across a 1,600 m ground, a grid line every 10 m, the
+/// posts on them every 10 m too. Without the repeat (1) the one tile is
+/// stretched over the whole plane and no line is in view.
+#[test]
+fn ground_grid_repeats_every_10_m() {
+    let report = match gfx::check("ground-grid", &out_dir()) {
+        Ok(r) => r,
+        Err(e) => panic!("{e}"),
+    };
+    println!("{report}");
+    let tiled = frame(&scenes::ground_grid(160.0));
+    let stretched = frame(&scenes::ground_grid(1.0));
+    let (outliers, rmse) = diff(&tiled, &stretched, 24);
+    assert!(
+        outliers > (tiled.width * tiled.height / 20) as usize,
+        "the repeat draws lines the stretched tile has not: {outliers} outliers, RMSE {rmse}"
+    );
+}

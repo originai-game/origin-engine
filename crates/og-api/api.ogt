@@ -3205,6 +3205,9 @@ module render {
       min 0
       unit m
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
   }
 
   struct PlaneGeometryDesc {
@@ -3219,6 +3222,9 @@ module render {
       default 1
       min 0
       unit m
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
     }
   }
 
@@ -3238,26 +3244,29 @@ module render {
       default 16
       min 2
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
   }
 
   fn boxGeometry {
     doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
     param world World "The world whose renderer owns the geometry."
-    param desc BoxGeometryDesc "Its extents."
+    param desc BoxGeometryDesc "Its extents and texture repeat."
     returns Result.Geometry
   }
 
   fn planeGeometry {
     doc "Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too."
     param world World "The world whose renderer owns the geometry."
-    param desc PlaneGeometryDesc "Its extents."
+    param desc PlaneGeometryDesc "Its extents and texture repeat."
     returns Result.Geometry
   }
 
   fn sphereGeometry {
     doc "Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh)."
     param world World "The world whose renderer owns the geometry."
-    param desc SphereGeometryDesc "Its radius and tessellation."
+    param desc SphereGeometryDesc "Its radius, tessellation and texture repeat."
     returns Result.Geometry
   }
 
