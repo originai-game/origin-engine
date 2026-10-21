@@ -109,9 +109,11 @@ neon UI reads as two games.
 - **Value before hue**: check the screen in greyscale. Text, the primary
   button and the player character must separate from their ground by value
   alone (body text at least 4.5:1; the packs' test enforces it for theirs:
-  every label ink, every button label in every state, and a text field's
-  placeholder, which draws in `fgSubtle` on the field's frame, so a copied
-  pack whose `fgSubtle` or `fill` moves must keep that pair at 4.5:1 too).
+  every label ink, every button label in every state, a text field's
+  placeholder, which draws in `fgSubtle` on the field's frame, and an
+  accent badge, `accentInk` on `accentSoft` over a panel (the results
+  screen's "New best"), so a copied pack whose `fgSubtle`, `fill`,
+  `accentInk` or `accentSoft` moves must keep those pairs at 4.5:1 too).
 - Saturated colour on large areas tires the eye: keep saturation for small
   things (the accent, icons, effects) and keep grounds calmer.
 - Status colours mean status: never use `danger` red as decoration.

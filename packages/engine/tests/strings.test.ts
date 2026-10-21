@@ -1,10 +1,12 @@
-// A str field is world state through TypeScript on the native host
+// A str field is world state through TypeScript on both hosts
 // (tests/support/strings-hash.ts, one process per run): a JS string in, a JS
 // string out; over the capacity an error value (world.set) or a throw (a
 // resource's setter) that names the fix, never truncated; a system's view is
 // the zero-padded UTF-8 bytes, stride the capacity; snapshot and restore
 // carry the text; the probe's get:/set: read and write it; and two runs end
-// on one world hash.
+// on one world hash. The web host (the wasm module, outside a browser) gives
+// every one of those answers and the same hash (skipped where the wasm is
+// older than the addon, as hosts.test.ts's cross-host tests are).
 //
 // Ways it could fail, and the check that catches each:
 // - the text is truncated or written anyway when over the capacity → "long",
@@ -13,6 +15,8 @@
 //   prefix), so equal names hash apart or a run is not reproducible → the
 //   two runs' hashes, "hashRestored"
 // - the view's stride is not the capacity → "viewLength", "viewNames"
+// - the wasm host packs, pads, views or hashes a string otherwise than the
+//   native host → the cross-host test, answer by answer
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,14 +25,21 @@ declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: n
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+// The functional lane may run with a web module older than the native addon
+// (scripts/check.sh bun-functional): the cross-host test skips there and
+// runs in the full lane.
+const STALE_WASM = process.env.OG_WASM_STALE === "1";
+
 type Run = Record<string, unknown> & { hash: string; log: string[]; outputs: Array<{ value: unknown }> };
 
-function run(...extra: string[]): Run {
-  const r = Bun.spawnSync(["bun", "tests/support/strings-hash.ts", "--host", "node", ...extra], { cwd: pkg });
+function runOn(host: "node" | "web", ...extra: string[]): Run {
+  const r = Bun.spawnSync(["bun", "tests/support/strings-hash.ts", "--host", host, ...extra], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);
-  if (r.exitCode !== 0) throw new Error(`node host: ${new TextDecoder().decode(r.stderr)}${out}`);
+  if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
   return JSON.parse(out.trim().split("\n").pop()!) as Run;
 }
+
+const run = (...extra: string[]) => runOn("node", ...extra);
 
 test("a str field moves as a JS string, refuses text over its capacity and hashes the same in two runs", () => {
   const a = run();
@@ -60,4 +71,13 @@ test("a str field moves as a JS string, refuses text over its capacity and hashe
   // Deterministic: the same script, the same world.
   expect(b.hash).toBe(a.hash);
   expect(b).toEqual(a);
+}, 120_000);
+
+test.skipIf(STALE_WASM)("a str field gives the same answers and the same world hash on the native and the web host", () => {
+  const node = runOn("node");
+  const web = runOn("web");
+  expect(web.host).toBe("web");
+  // Every answer, the view's bytes, the probe's outputs and the log's lines included, then the hash.
+  expect({ ...web, host: "node" }).toEqual(node);
+  expect(web.hash).toBe(node.hash);
 }, 120_000);

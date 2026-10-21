@@ -249,6 +249,144 @@ fn taa_matches_its_reference_on_the_full_tier() {
     }
 }
 
+/// TAA's frames `at` (each 1-based) of the thin geometry with the camera
+/// at `pan(frame)` 2 cm steps to the side (`pan_thin_geometry`), and the
+/// last camera's frame without antialiasing.
+fn taa_frames(pan: impl Fn(u32) -> u32, at: &[u32]) -> (Vec<RgbaImage>, RgbaImage) {
+    let mut built = built("taa-motion");
+    let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+    assert_eq!(renderer.info().antialias, Antialias::Taa);
+    let mut out = Vec::new();
+    for f in 0..*at.iter().max().expect("a frame") {
+        og_tests::shadow_scenes::pan_thin_geometry(&mut built.scene, pan(f));
+        let stats = renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .expect("render");
+        assert_eq!(stats.taa_history, f > 0);
+        if at.contains(&(f + 1)) {
+            out.push(renderer.read_offscreen().expect("capture"));
+        }
+    }
+    let off = RenderDesc {
+        antialias: Antialias::Off,
+        ..built.desc
+    };
+    (out, frame(&off, &built.scene, 1).0)
+}
+
+/// `a` against `b`: (RMSE, the largest channel difference).
+fn difference(a: &RgbaImage, b: &RgbaImage) -> (f64, u8) {
+    let d = og_tests::compare::compare(
+        &a.pixels,
+        &b.pixels,
+        b.width,
+        b.height,
+        &og_tests::compare::Tolerance::default(),
+    )
+    .expect("compare");
+    (d.rmse, d.max_channel_diff)
+}
+
+/// The horizontal shift of `a` against `b` in each eighth of the frame's
+/// width, in pixels: the sub-pixel `s` (to 0.05) that best matches `a(x)`
+/// with `b(x - s)` linearly interpolated, over the luma of every other row
+/// of the frame's lower two fifths (the thin geometry's checkered ground,
+/// detail across the whole width).
+fn shifts_by_eighth(a: &RgbaImage, b: &RgbaImage) -> [f32; 8] {
+    let (w, h) = (a.width as usize, a.height as usize);
+    let l = |img: &RgbaImage, x: usize, y: usize| {
+        let i = (y * w + x) * 4;
+        luma(&[
+            img.pixels[i],
+            img.pixels[i + 1],
+            img.pixels[i + 2],
+            img.pixels[i + 3],
+        ])
+    };
+    let mut out = [0.0; 8];
+    for (k, shift) in out.iter_mut().enumerate() {
+        let (x0, x1) = (k * w / 8 + 4, (k + 1) * w / 8 - 4);
+        let mut best = (f32::MAX, 0.0);
+        for step in -30..=30 {
+            let s = step as f32 * 0.05;
+            let mut e = 0.0;
+            for y in (h * 3 / 5..h).step_by(2) {
+                for x in x0..x1 {
+                    let xs = x as f32 - s;
+                    let i = xs.floor() as usize;
+                    let f = xs - i as f32;
+                    let bb = l(b, i, y) * (1.0 - f) + l(b, i + 1, y) * f;
+                    e += (l(a, x, y) - bb).powi(2);
+                }
+            }
+            if e < best.0 {
+                best = (e, s);
+            }
+        }
+        *shift = best.1;
+    }
+    out
+}
+
+/// TAA's resolve with a still camera holds its history where it is. Once
+/// converged it is a fixed point of the jitter's cycle: frames 8 apart (the
+/// same Halton phase) agree within one level, the last bits of the 16-bit
+/// history. And it sits where the frame without antialiasing does: the
+/// jitter's weighted mean moves the whole frame a fraction of a pixel to
+/// one side, the same in every eighth of the width to 0.15 px. WebGL2
+/// before row 68's fix (TAA's depth read as 0 there) settled 0.5 to 0.75
+/// px to the side, more at the right of the frame than at the left: a
+/// steady state too, which the shift catches and the fixed point alone
+/// does not (a history read 0.05 px to the left per frame, times x over
+/// the width, fails here with shifts from -0.15 to 0.3 px).
+#[test]
+fn taa_with_a_still_camera_reaches_a_fixed_point_in_place() {
+    let (frames, off) = taa_frames(|_| 0, &[128, 136, 144]);
+    for pair in frames.windows(2) {
+        let (rmse, max) = difference(&pair[1], &pair[0]);
+        println!("still: frames 8 apart: rmse {rmse:.6}, max {max}");
+        assert!(
+            max <= 1 && rmse <= 1e-4,
+            "TAA's still frames 8 apart differ (rmse {rmse:.6}, max {max})"
+        );
+    }
+    let shifts = shifts_by_eighth(&frames[2], &off);
+    println!("still: shift against the frame without antialiasing by eighth: {shifts:?}");
+    let (lo, hi) = shifts
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(lo, hi), &s| (lo.min(s), hi.max(s)));
+    assert!(
+        hi - lo <= 0.15 && lo >= -0.35 && hi <= 0.35,
+        "TAA's converged frame moved against the unantialiased one: {shifts:?} px"
+    );
+}
+
+/// A camera that slides for 12 frames and stops: the history the motion
+/// left (reprojected, bilinear) is then held still, and the resolve
+/// reaches the fixed point a camera still there from the first frame
+/// reaches, within one level.
+#[test]
+fn taa_after_the_camera_stops_reaches_the_still_cameras_fixed_point() {
+    let at = [12 + 128, 12 + 136];
+    let (moved, _) = taa_frames(|f| f.min(12), &at);
+    let (still, _) = taa_frames(|_| 12, &at);
+    let (rmse, max) = difference(&moved[0], &moved[1]);
+    println!("moved then stopped: frames 8 apart: rmse {rmse:.6}, max {max}");
+    assert!(
+        max <= 1 && rmse <= 1e-4,
+        "frames 8 apart differ (rmse {rmse:.6}, max {max})"
+    );
+    let (rmse, max) = difference(&moved[1], &still[1]);
+    println!("moved then stopped against still there throughout: rmse {rmse:.6}, max {max}");
+    // One level apart in a few hundred more pixels than the cycle's own
+    // (rmse 0.0003): the clamp's box admits more than one fixed point of
+    // the 16-bit history's rounding.
+    assert!(
+        max <= 1 && rmse <= 1e-3,
+        "TAA after the camera stopped differs from a camera still there (rmse {rmse:.6}, max {max})"
+    );
+}
+
 #[test]
 fn msaa_matches_its_reference_on_the_no_compute_tier() {
     if adapter().tier == Tier::NoCompute {

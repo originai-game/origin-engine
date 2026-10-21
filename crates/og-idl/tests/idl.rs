@@ -299,6 +299,86 @@ fn broken_idls_are_refused_with_the_right_reason() {
     assert!(checked >= 8, "only {checked} broken fixtures ran");
 }
 
+/// A record's text field (`field text str.48`) reaches every output with
+/// its capacity: the TypeScript value is a string and its token a `str`
+/// field, the binding table and the schema carry the capacity, the hosts'
+/// record table hands it to the runtime, and the wiki states it.
+#[test]
+fn a_record_text_field_carries_its_capacity_into_every_output() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let api = og_idl::parse(&std::fs::read_to_string(dir.join("valid.ogt")).unwrap())
+        .unwrap_or_else(|d| panic!("valid.ogt refused: {d:?}"));
+    let out = |path: &str| -> String {
+        og_idl::generate(&api)
+            .into_iter()
+            .chain(og_idl::generate_wiki(&api))
+            .find(|g| g.path.ends_with(path))
+            .unwrap_or_else(|| panic!("no generated {path}"))
+            .contents
+    };
+    let dts = out("types/index.d.ts");
+    assert!(dts.contains("  text: string;"), "{dts}");
+    assert!(dts.contains("  name: string;"), "{dts}");
+    assert!(
+        dts.contains("@capacity 48 bytes of UTF-8 (str(48))"),
+        "{dts}"
+    );
+    assert!(
+        dts.contains("readonly text: FieldSpec<\"str\">; readonly size: FieldSpec<\"f32\">"),
+        "{dts}"
+    );
+
+    let bindings: serde_json::Value = serde_json::from_str(&out("types/bindings.json")).unwrap();
+    let label = &bindings["components"][0]["fields"][0];
+    assert_eq!(label["column"], "str");
+    assert_eq!(label["capacity"], 48);
+    assert_eq!(label["default"], "Ada");
+    let profile = &bindings["resources"][0]["fields"][0];
+    assert_eq!(
+        (
+            &profile["column"],
+            &profile["capacity"],
+            &profile["default"]
+        ),
+        (&"str".into(), &16.into(), &"".into())
+    );
+    assert!(
+        bindings["components"][0]["fields"][1]
+            .get("capacity")
+            .is_none()
+    );
+
+    let schema: serde_json::Value = serde_json::from_str(&out("schema/api.schema.json")).unwrap();
+    let text = &schema["$defs"]["Label"]["properties"]["text"];
+    assert_eq!(
+        (&text["type"], &text["x-og-capacity"]),
+        (&"string".into(), &48.into())
+    );
+
+    let host = out("og-api/src/generated/host.rs");
+    assert!(host.contains("pub capacity: u32,"), "{host}");
+    let field = |name: &str| {
+        let at = host
+            .find(&format!("name: \"{name}\""))
+            .unwrap_or_else(|| panic!("no {name} in host.rs"));
+        host[at..at + host[at..].find("}").unwrap()].to_string()
+    };
+    assert!(
+        field("text").contains("column: \"str\""),
+        "{}",
+        field("text")
+    );
+    assert!(field("text").contains("capacity: 48,"), "{}", field("text"));
+    assert!(field("name").contains("capacity: 16,"), "{}", field("name"));
+    assert!(field("size").contains("capacity: 0,"), "{}", field("size"));
+
+    let wiki = out("game.md");
+    assert!(
+        wiki.contains("`str(48)`: at most 48 bytes of UTF-8"),
+        "{wiki}"
+    );
+}
+
 #[test]
 fn the_committed_generated_files_match_the_idl() {
     let drift = og_idl::check(&repo()).unwrap_or_else(|e| panic!("{e}"));

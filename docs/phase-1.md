@@ -226,6 +226,158 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 8, wasm-size: where the lanes module's bytes are, two trims, a report tool (bf8dcd1)
+
+The lanes module was 3,498,640 B brotli (83.4 % of `wasm_core_brotli_bytes`)
+at 161bad3b. Measured per crate (each crate's part brotli-compressed on its
+own, `scripts/wasm-size-report.ts`): og-runtime 362 kB, rapier3d 327 kB,
+the data section 324 kB, rapier2d 246 kB, og-physics 232 kB, og-render
+232 kB, parry3d 203 kB, the exports with og-runtime's bodies inlined
+199 kB, naga 192 kB; the two physics profiles together about 935 kB; the
+largest functions `Renderer::render` (138 kB), `PhysicsState::decode`
+(54 kB), og-runtime's `extract` and `assemble`. Raw size points at the
+wrong things: 230 kB raw of rayon generic copies were 9 kB of brotli, and
+the `wasm-gate` profile is about 6.6 % larger than what ships.
+
+- 6d3f45a4, og-lanes: `map`, `for_each_mut` and `for_each_indexed` go
+  through one non-generic parallel loop instead of a rayon copy per item
+  and result type (about 200 copies): 3,498,258 to 3,489,535 B (8.7 kB);
+  results the same item for item, og-physics' split-against-serial lanes
+  tests pass.
+- c51e8d05, og-render: a `build.rs` copies `shaders/` with its `//`
+  comments removed and a `wgsl!` macro includes that copy; every token
+  and line stays where it was, the `.wgsl` files are untouched, a test
+  checks the copies line for line against the sources (one anchor in the
+  terrain code found a comment and now finds `fn band(`): 3,489,535 to
+  3,466,050 B (23.5 kB). The functional lane's GPU reference tests pass
+  on the merge: no frame moved.
+- bf8dcd16: `scripts/wasm-size-report.sh <module>` builds and optimises
+  a module as it ships and prints the size gate's number;
+  `scripts/wasm-size-report.ts` gives each crate's raw and own-brotli
+  bytes and the largest functions; `tests/evidence/P4/wasm-size/` holds
+  the README and notes; docs/ci.md "When the size gate fails" points at
+  the script.
+
+After the merge with 161bad3b (shipping `wasm` profile, brotli -q 11):
+lanes 3,464,929 B (82.6 %, from 83.4 %), 3D publish 3,048,477 B
+(72.7 %), 2D publish 2,882,459 B (68.7 %). Under 80 % needs about
+143 kB more, and the one thing that gives it without removing a feature
+is a lanes module per physics profile (row 71). Tried and not paying:
+og-host-web at opt-level z (5.9 kB larger), `RECORDS` as a static (the
+copies exist only in `wasm-gate`), the probe's command code behind
+`publish` (og.ai sends its commands through the probe's inbox),
+cook-only code (none in the module), `format!`/Debug sites (about 40,
+nothing worth taking). Rejected: og-runtime at z (frame time),
+`panic_immediate_abort` (a lane's panic must wake the engine thread),
+`optimize_for_size` for std (could reorder unstable sorts and move a
+hash), dropping field docs from publish (reflection serves them),
+`-Zlocation-detail=none` for lanes only (81.0 %, and every crash on a
+lanes page loses its file, line and column).
+
+Functional lane on the merge: 5 of 5 in 177 s.
+
+## Wave 8, taa-webgl2: the GL backend read TAA's depth as 0 (f3229ef)
+
+Row 68's cause, found natively on ANGLE's Metal renderer (the GL layer
+Chrome's WebGL2 uses on macOS; wgpu's `angle` feature enabled locally,
+not committed): `taa.wgsl` read the `Depth32Float` buffer with
+`textureLoad`, wgpu's GL backend binds no sampler to such a read, the
+depth texture stays on GL's default linear filtering, which GLSL ES 3.0
+calls incomplete, and an incomplete texture reads 0. So every pixel was
+reprojected from the near plane: wrong motion for a moving camera
+(`taa-sharp` at RMSE 0.074 against `metal` on ANGLE, poles broken into
+dashes), and for a still camera at the looks station's 2,800 m offset
+the near-plane points lost enough precision that the current and
+previous projections rounded differently, up to 0.025 px of false
+motion per frame, above the shader's 1e-3 px own-texel test, which is
+the sideways drift of render-style round two (a standalone TAA harness
+measured it: 0.025 px on ANGLE with depth 0, 5.5e-4 px with the real
+depth, 3.8e-5 px on Metal). naga's GLSL declares `precision highp`, so
+precision qualifiers were not it; given the depth, the shader matches
+Metal on ANGLE within one half-float step for still and moving cameras.
+
+- 1a9037a9: the resolve reads the depth through its own nearest sampler
+  (binding 5) at the pixel's centre, the same texel as before, so the GL
+  backend binds a sampler. cf5f2b9's CPU still-camera check stays. On
+  ANGLE `taa-sharp` goes to RMSE 0.00028 and `taa-motion` 0.00010 against
+  `metal`. `taa-sharp` applies on every tier (`scenes::Applies`), so
+  web-reference judges a moving-camera TAA frame against `metal` on
+  WebGL2: 0.00028 there, 0.00024 on WebGPU (the coordinator's run at
+  f3229ef, every gfx scene and the looks station passing on both tiers;
+  WebGL2 looks worst neon-vector 0.0098 against `metal`). og-render
+  `tests/shaders.rs`: TAA's GLSL must sample the depth with `textureLod`,
+  never `texelFetch` (fails on the old shader). og-tests `tests/gfx.rs`:
+  a still camera converges to a fixed point at the same sub-pixel
+  position across the frame (a fixed point alone would not have caught
+  the old drift, itself a steady state), and a camera that moves and
+  stops reaches the image of one still all along; both pass on ANGLE
+  with the CPU check off too.
+- Metal: every TAA scene byte-identical (`taa`, `taa-sharp`, `showcase`,
+  `overlay`, `sprites-untonemapped` at RMSE 0, max 0); the 39 looks-script
+  frames byte-identical to main's. No reference re-recorded. og-render
+  README (the TAA note, a fourth GL constraint, the table row) and
+  docs/ci.md's `scenes::Applies` sentence updated.
+- Left out: the native GL path (row 70); restructuring the reprojection
+  to avoid world coordinates (it would move `taa-sharp`'s metal bytes,
+  and with the real depth the rounding left is 5.5e-4 px, under the
+  test); the browser's drift reproduced end to end natively (the harness
+  reproduces it at the 2,800 m offset, symmetric about the centre rather
+  than the 0-to-2 px left-to-right measured in Chrome).
+
+Functional lane on the merge: 5 of 5 in 123 s.
+
+## Wave 8, api-surface round two: the reverse surface check, string fields in IDL records (81bb31f)
+
+- 3c036fa4, row 64: `packages/engine/tests/api-surface.test.ts` fails on
+  any member a game can reach that the IDL does not declare (the package
+  exports, `og` and every `og.<module>`, World, Query, ArchetypeView,
+  System, Game, Rng and RngStream, every engine resource object, the
+  EngineProbe), read from the IDL catalog in `schema/api.schema.json`
+  (members that exist only in TypeScript, `host false`, count as
+  declared); the allow-list holds one entry, `World.id` (the engine id
+  the runtime's free functions pass to the host, taken by no call), and
+  fails if an entry no longer exists. It found 17 column factories
+  (`Texture`, `ToneMapping`, `Tween`, `TerrainData`, ...) and the
+  constants `MAX_POINTERS`, `MAX_GAMEPADS` and `SOUND_CULLED` declared
+  and documented but never exported (importing one gave undefined); they
+  are exported, and a test checks every column factory and constant,
+  with a component of one field of every column kind registered and read
+  back. `tests/web-shell-crash.test.ts` runs the real Worker and shell
+  under bun with the native host bound and a fake port, canvas and
+  document: a throw in `GameDesc.start` reaches the shell's `onCrash`
+  once, with the message and stack, primed and with autoplay, and later
+  probe calls are refused (the card's DOM in `shell/page.ts` is not
+  exercised). The runtime `Engine` class is not checked (the host's
+  lifecycle object, never held by game code).
+- a2e48f3f, row 65 (a) and (b): an IDL component or resource field can be
+  `field name str.48` (shown `str<48>`; capacity 1 to 4096 bytes, a
+  default must fit, refused on other field kinds), generated into the
+  `.d.ts` (a `string` with a `@capacity` tag), `bindings.json`, the
+  schema, `FieldDecl.capacity` in the record table and the wiki; the
+  runtime and `og cook` store it as a fixed-size string. No engine record
+  had a natural string field (adding one would change world layouts), so
+  the IDL fixture `valid.ogt` uses it and four broken fixtures cover the
+  refusals. `crates/og-runtime/tests/scene_string.rs` cooks a scene with
+  a 16-byte string component, loads it through `og.load.scene`,
+  instantiates it and reads every name back (CJK, quotes, empty, full).
+- ae9ae608, row 65 (c): `strings.test.ts` gained the web-host half
+  (skipped on a stale wasm as hosts.test.ts's are); run by the stream
+  against the measure lane's module at cf5f2b9: every answer and the
+  world hash equal on both hosts.
+- 93625d6e, 81bb31f0, Lantern Vale #24: the "New best" badge takes its
+  colours from the skin; `pack_contrast.rs` now measures a badge in
+  every tone; the accent badge read pixel 3.90, cartoon 3.78, fantasy
+  and Ember 4.12, scifi 4.37 on a panel, so pixel's and scifi's badge
+  tint is more transparent and cartoon's, fantasy's and Ember's accent
+  ink darker (`#6e470d`): every pack 4.72:1 or better, `make-skins.py`
+  reproducing all six byte for byte; Lantern Vale's own skin copy took
+  the same ink at 402442cc. The other badge tones stay under 4.5:1: row
+  69.
+- Frames: none moved (ui-kit 32, Ember Vale and Lantern Vale suites pass
+  unchanged after the merge).
+
+Functional lane on the merge: 5 of 5 in 142 s.
+
 ## Wave 7, render-style round two: TAA on the GL backend (cf5f2b9)
 
 The first web-reference run of the wave (above) failed WebGL2's looks
@@ -2963,7 +3115,10 @@ resource only the owner can give.
 | 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | open |
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |
 | 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | closed: vulkan-cpu at 9bd0064 (the lavapipe pass), the browser tiers at cf5f2b9 (web-reference 379 s, every frame; WebGL2 keeps paper-craft and voxel-worlds by design, 95ea28a) |
-| 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | open |
+| 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | closed at 1a9037a (taa-webgl2, merged f3229ef): wgpu's GL backend read TAA's depth as 0 (a depth texture read with `textureLoad` and no sampler bound stays on linear filtering, which GLSL ES calls incomplete), so every pixel reprojected from the near plane: wrong motion for a moving camera, and near-plane rounding up to 0.025 px at the 2,800 m looks station for a still one, above the own-texel test. The depth is sampled with a nearest sampler now; `taa-sharp` applies on every tier and is WebGL2's moving-camera frame against `metal` (RMSE 0.00028); two og-tests tests pin the still-camera fixed point natively |
+| 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | open |
+| 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
+| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open |
 
 ## 0. Rules that shape the plan
 

@@ -125,6 +125,15 @@ and diagnostics show the angle-bracket form.
   for), `View.C` (a component's typed column views).
 - A function may declare `generic C AnyComponent` (or another reflection
   bound, or `Fields`) and use `C` in its signature.
+- Text in a component or resource field: a text column (`column str`,
+  `capacity true`) followed by its capacity in bytes, `field name str.48`
+  (shown `str<48>`; 1 to 4096 bytes of UTF-8). The TypeScript value is a
+  `string`, the token's field a `FieldSpec<"str">`; `bindings.json` and
+  the record table (`FieldDecl.capacity`) carry the capacity to the
+  runtime, which stores the field as og-core's `strN`; the schema gives it
+  as `x-og-capacity` and the wiki as `str(48)`. A default is one quoted
+  string that fits. Anywhere else (events, structs, parameters) text is
+  `String`.
 - A component, resource or event name used as a type means its value.
 
 ### Validation
@@ -145,6 +154,8 @@ and diagnostics show the angle-bracket form.
   functions, params, fields, props and units lowerCamelCase, consts
   SCREAMING_SNAKE_CASE, variants and cases lowercase-first;
 - component and resource fields whose type is not a declared column kind;
+  a text column without its capacity or with one outside 1 to 4096, or
+  used outside a component or resource field;
   `tunable`/`readonly` outside them; `optional` outside plain structs (an
   enum may be a column, `column AudioBus { array Uint32Array; stride 1;
   value AudioBus }`: it stores the variant's index, and the generated record

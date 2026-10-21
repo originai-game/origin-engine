@@ -142,10 +142,24 @@ impl TypeRef {
     /// Parse the IDL's dotted prefix form: `Map.List.Option.Entity` is
     /// `Map<List<Option<Entity>>>`, `Array.f32.16` is `Array<f32,16>`.
     /// Built-in generics have fixed arities, so the form is unambiguous;
-    /// every other name takes no arguments.
+    /// every other name takes no arguments, except that a whole type may
+    /// end in one number: a text column's byte capacity (`str.48` is
+    /// `str<48>`, which the validator allows only there).
     pub fn parse(text: &str) -> Option<TypeRef> {
         let mut parts = text.split('.');
-        let ty = Self::parse_parts(&mut parts)?;
+        let mut ty = Self::parse_parts(&mut parts)?;
+        if let Some(n) = parts.next() {
+            match &mut ty {
+                TypeRef::Named { args, .. }
+                    if args.is_empty()
+                        && !n.is_empty()
+                        && n.bytes().all(|b| b.is_ascii_digit()) =>
+                {
+                    args.push(TypeRef::Int(n.parse().ok()?));
+                }
+                _ => return None,
+            }
+        }
         parts.next().is_none().then_some(ty)
     }
 

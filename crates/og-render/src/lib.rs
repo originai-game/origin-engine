@@ -27,6 +27,15 @@
 //! # Ok(()) }
 //! ```
 
+/// A file of `shaders/` as the renderer compiles it: the copy build.rs
+/// wrote with its `//` comments removed (every token and line kept), so
+/// the comments stay in the sources and out of the wasm.
+macro_rules! wgsl {
+    ($file:literal) => {
+        include_str!(concat!(env!("OUT_DIR"), "/shaders/", $file))
+    };
+}
+
 mod atmosphere;
 mod blue_noise;
 mod capture;
@@ -161,22 +170,22 @@ pub const DEFAULT_OUTPUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 /// MSAA sample count when MSAA is on.
 pub const MSAA_SAMPLES: u32 = 4;
 
-const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
+const FRAME_WGSL: &str = wgsl!("frame.wgsl");
 /// The lit shader's vertex stages, lights and decals; the standard
 /// fragment shader and the prepass's follow it (`pbr_fs.wgsl`,
 /// `pbr_prepass.wgsl`), the physical one replaces both (`physical.wgsl`).
-const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
-const PBR_FS_WGSL: &str = include_str!("../shaders/pbr_fs.wgsl");
-const PBR_PREPASS_WGSL: &str = include_str!("../shaders/pbr_prepass.wgsl");
+const PBR_WGSL: &str = wgsl!("pbr.wgsl");
+const PBR_FS_WGSL: &str = wgsl!("pbr_fs.wgsl");
+const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
-const PBR_LEAN_WGSL: &str = include_str!("../shaders/pbr_lean.wgsl");
-const PHYSICAL_WGSL: &str = include_str!("../shaders/physical.wgsl");
+const PBR_LEAN_WGSL: &str = wgsl!("pbr_lean.wgsl");
+const PHYSICAL_WGSL: &str = wgsl!("physical.wgsl");
 /// `instance_matrix`: an instance's transform from its columns in the
 /// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
 /// points it moves are projected.
-pub(crate) const INSTANCE_WGSL: &str = include_str!("../shaders/instance.wgsl");
+pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
-pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
+pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
 
 /// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
 /// read as `palette` and the light tables as `tables`.
@@ -242,9 +251,9 @@ pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
         )
     }
 }
-const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
+const SHADOW_WGSL: &str = wgsl!("shadow.wgsl");
 /// The shadow pass's slot and the paraboloid projection every caster shares.
-pub(crate) const SHADOW_PASS_WGSL: &str = include_str!("../shaders/shadow_pass.wgsl");
+pub(crate) const SHADOW_PASS_WGSL: &str = wgsl!("shadow_pass.wgsl");
 
 /// The shadow shader's source with `hooks` (a material shader's, or the
 /// built-in identities) and the joint palette read as `palette`.
@@ -261,8 +270,8 @@ fn scatter_lit_source(tables: clusters::LightTables) -> String {
         "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
-        include_str!("../shaders/scatter_common.wgsl"),
-        include_str!("../shaders/scatter.wgsl")
+        wgsl!("scatter_common.wgsl"),
+        wgsl!("scatter.wgsl")
     )
 }
 
@@ -271,8 +280,8 @@ fn scatter_shadow_source() -> String {
     format!(
         "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}",
         particles_gpu::NOISE_WGSL,
-        include_str!("../shaders/scatter_common.wgsl"),
-        include_str!("../shaders/scatter_shadow.wgsl")
+        wgsl!("scatter_common.wgsl"),
+        wgsl!("scatter_shadow.wgsl")
     )
 }
 
@@ -281,16 +290,16 @@ fn scatter_shadow_source() -> String {
 fn fluid_shared_source(tables: clusters::LightTables) -> String {
     format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", tables.wgsl())
 }
-const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
-const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
+const SKY_WGSL: &str = wgsl!("sky.wgsl");
+const SPRITE_WGSL: &str = wgsl!("sprite.wgsl");
 /// The material uniform; the standard group's textures and the dissolve
 /// follow it (`material_maps.wgsl`, `material_dissolve.wgsl`), the
 /// physical group's replace the first (`material_physical.wgsl`).
-const MATERIAL_WGSL: &str = include_str!("../shaders/material.wgsl");
-const MATERIAL_MAPS_WGSL: &str = include_str!("../shaders/material_maps.wgsl");
-const MATERIAL_DISSOLVE_WGSL: &str = include_str!("../shaders/material_dissolve.wgsl");
-const MATERIAL_PHYSICAL_WGSL: &str = include_str!("../shaders/material_physical.wgsl");
-const RIBBON_WGSL: &str = include_str!("../shaders/ribbon.wgsl");
+const MATERIAL_WGSL: &str = wgsl!("material.wgsl");
+const MATERIAL_MAPS_WGSL: &str = wgsl!("material_maps.wgsl");
+const MATERIAL_DISSOLVE_WGSL: &str = wgsl!("material_dissolve.wgsl");
+const MATERIAL_PHYSICAL_WGSL: &str = wgsl!("material_physical.wgsl");
+const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
 
 /// Uniform slots of the shadow passes (dynamic offsets): 3 cascades, then 12 local faces.
 const SHADOW_SLOTS: usize = CASCADES + LOCAL_SHADOW_LAYERS;

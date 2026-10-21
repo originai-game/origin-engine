@@ -22,7 +22,7 @@
 use crate::{Side, clusters, skin};
 use std::collections::HashMap;
 
-pub(crate) const STYLISE_OBJECT_WGSL: &str = include_str!("../shaders/stylise_object.wgsl");
+pub(crate) const STYLISE_OBJECT_WGSL: &str = wgsl!("stylise_object.wgsl");
 
 /// The object pass's target: xyz the position's bits, w the packed normal
 /// with bit 0 set (0: no instance).

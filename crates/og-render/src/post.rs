@@ -10,14 +10,14 @@ use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
-const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");
-const POST_WGSL: &str = include_str!("../shaders/post.wgsl");
-const TAA_WGSL: &str = include_str!("../shaders/taa.wgsl");
-const LUMINANCE_WGSL: &str = include_str!("../shaders/luminance.wgsl");
-const EXPOSURE_WGSL: &str = include_str!("../shaders/exposure.wgsl");
-const FXPOST_WGSL: &str = include_str!("../shaders/fxpost.wgsl");
-const FXAA_WGSL: &str = include_str!("../shaders/fxaa.wgsl");
-const STYLISE_WGSL: &str = include_str!("../shaders/stylise.wgsl");
+const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
+const POST_WGSL: &str = wgsl!("post.wgsl");
+const TAA_WGSL: &str = wgsl!("taa.wgsl");
+const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
+const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
+const FXPOST_WGSL: &str = wgsl!("fxpost.wgsl");
+const FXAA_WGSL: &str = wgsl!("fxaa.wgsl");
+const STYLISE_WGSL: &str = wgsl!("stylise.wgsl");
 
 /// The tonemapped image FXAA reads (sRGB-encoded 8 bits, as the output).
 pub(crate) const LDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -318,6 +318,9 @@ pub(crate) struct PostPasses {
     /// The blue-noise dither's thresholds ([`crate::blue_noise`]).
     blue_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
+    /// TAA's depth read: nearest, so the GL backend binds a sampler to the
+    /// depth texture's unit (taa.wgsl `depth_sampler`).
+    nearest_sampler: wgpu::Sampler,
     black: wgpu::TextureView,
     /// The identity 32³ grading LUT (bound when no grading is set).
     pub identity_lut: wgpu::TextureView,
@@ -476,6 +479,14 @@ impl PostPasses {
                 layout_entry(2, float_texture(false)),
                 layout_entry(3, sampler_ty),
                 layout_entry(4, UNIFORM),
+                // The depth's own nearest sampler: on the GL backend a
+                // texture read with `textureLoad` gets no sampler, and a
+                // depth texture under its default linear filtering is
+                // incomplete and reads 0 (taa.wgsl, `depth_sampler`).
+                layout_entry(
+                    5,
+                    wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                ),
             ],
         });
         let module = |label: &str, body: &str| {
@@ -695,6 +706,12 @@ impl PostPasses {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
+        let nearest_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("post nearest"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            ..Default::default()
+        });
         let black_texture = target_texture(
             device,
             "black",
@@ -795,6 +812,7 @@ impl PostPasses {
             stylise_buffer: uniform("stylise", std::mem::size_of::<StyliseUniform>()),
             repeat_sampler,
             sampler,
+            nearest_sampler,
             black: black_texture.create_view(&Default::default()),
             post_buffer: uniform("post", std::mem::size_of::<PostUniform>()),
             taa_buffer: uniform("taa", std::mem::size_of::<TaaUniform>()),
@@ -2023,6 +2041,7 @@ impl FrameGraph {
                         tex(self.view("depth")),
                         sampler.clone(),
                         passes.taa_buffer.as_entire_binding(),
+                        wgpu::BindingResource::Sampler(&passes.nearest_sampler),
                     ],
                 )
             })
@@ -2039,6 +2058,7 @@ impl FrameGraph {
                         tex(self.view("depth")),
                         sampler.clone(),
                         passes.taa_buffer.as_entire_binding(),
+                        wgpu::BindingResource::Sampler(&passes.nearest_sampler),
                     ],
                 )
             })

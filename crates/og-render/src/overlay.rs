@@ -373,4 +373,4 @@ pub(crate) fn run_textures(
 }
 
 /// The overlay's module (`crate::shaders` validates it).
-pub(crate) const OVERLAY_WGSL: &str = include_str!("../shaders/overlay.wgsl");
+pub(crate) const OVERLAY_WGSL: &str = wgsl!("overlay.wgsl");

@@ -28,7 +28,7 @@ palette {
   accentActive "#e6ad1f"
   accentFg "#14111f"
   accentInk "#ffd86b"
-  accentSoft "#ffcd4a33"
+  accentSoft "#ffcd4a25"
   focus "#ffcd4a"
   thumb "#5b5480"
   scrim "#0a0812b3"
