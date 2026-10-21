@@ -26,10 +26,40 @@ module world {
 | [`Entity()`](#column-Entity) | column kind | An Entity field: (index, generation) pairs. |
 | [`SpawnDesc`](#type-SpawnDesc) | desc struct | How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform. |
 | [`RestoreDesc`](#type-RestoreDesc) | desc struct | How world.restore takes a save. |
+| [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
 | [`QueryDesc`](#type-QueryDesc) | desc struct | Which entities a query matches. |
 | [`World`](#type-World) | interface | The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to. |
 | [`Query`](#type-Query) | interface | A set of matched archetypes. Iterate archetypes, never entities one by one. |
 | [`ArchetypeView`](#type-ArchetypeView) | interface | One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to. |
+
+## Components, resources and events
+
+<a id="record-WorldRestored"></a>
+
+### `og.WorldRestored` (event)
+
+A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+
+Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; its value type is `WorldRestored`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `from` | `number` | `0` | — | `ticks` | — | The tick the world was at when the restore applied. |
+| `tick` | `number` | `0` | — | `ticks` | — | The saved tick: og.Time's tick right after the restore. |
+
+```ogt
+event WorldRestored {
+  doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+  field from u32 "The tick the world was at when the restore applied." {
+    unit ticks
+  }
+  field tick u32 "The saved tick: og.Time's tick right after the restore." {
+    unit ticks
+  }
+}
+```
+
+<sub>`api.ogt` line 243</sub>
 
 ## Interfaces
 
@@ -45,7 +75,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 250</sub>
+<sub>`api.ogt` line 260</sub>
 
 <a id="member-World-tick"></a>
 
@@ -63,7 +93,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 253</sub>
+<sub>`api.ogt` line 263</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -91,7 +121,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 255</sub>
+<sub>`api.ogt` line 265</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -119,7 +149,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 261</sub>
+<sub>`api.ogt` line 271</sub>
 
 <a id="member-World-alive"></a>
 
@@ -147,7 +177,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 267</sub>
+<sub>`api.ogt` line 277</sub>
 
 <a id="member-World-has"></a>
 
@@ -178,7 +208,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 273</sub>
+<sub>`api.ogt` line 283</sub>
 
 <a id="member-World-insert"></a>
 
@@ -213,7 +243,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 281</sub>
+<sub>`api.ogt` line 291</sub>
 
 <a id="member-World-remove"></a>
 
@@ -244,7 +274,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 292</sub>
+<sub>`api.ogt` line 302</sub>
 
 <a id="member-World-get"></a>
 
@@ -275,7 +305,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 300</sub>
+<sub>`api.ogt` line 310</sub>
 
 <a id="member-World-set"></a>
 
@@ -308,7 +338,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 308</sub>
+<sub>`api.ogt` line 318</sub>
 
 <a id="member-World-resource"></a>
 
@@ -337,7 +367,7 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 317</sub>
+<sub>`api.ogt` line 327</sub>
 
 <a id="member-World-find"></a>
 
@@ -365,7 +395,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 324</sub>
+<sub>`api.ogt` line 334</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -393,7 +423,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 330</sub>
+<sub>`api.ogt` line 340</sub>
 
 <a id="member-World-query"></a>
 
@@ -421,7 +451,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 336</sub>
+<sub>`api.ogt` line 346</sub>
 
 <a id="member-World-events"></a>
 
@@ -450,7 +480,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 342</sub>
+<sub>`api.ogt` line 352</sub>
 
 <a id="member-World-emit"></a>
 
@@ -481,7 +511,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 349</sub>
+<sub>`api.ogt` line 359</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -514,7 +544,7 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 357</sub>
+<sub>`api.ogt` line 367</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -537,13 +567,13 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 365</sub>
+<sub>`api.ogt` line 375</sub>
 
 <a id="member-World-restore"></a>
 
 #### `World.restore`
 
-Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
 
 ```ts
 World.restore(save: string, desc?: RestoreDesc): Result<void>
@@ -560,14 +590,14 @@ Binding symbol `og_world_restore` · publish builds: kept
 
 ```ogt
 fn restore {
-  doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
+  doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
   param save String "The text world.snapshot returned."
   param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
   returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases)."
 }
 ```
 
-<sub>`api.ogt` line 370</sub>
+<sub>`api.ogt` line 380</sub>
 
 <a id="type-Query"></a>
 
@@ -581,7 +611,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 378</sub>
+<sub>`api.ogt` line 388</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -604,7 +634,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 380</sub>
+<sub>`api.ogt` line 390</sub>
 
 <a id="member-Query-count"></a>
 
@@ -627,7 +657,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 384</sub>
+<sub>`api.ogt` line 394</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -641,7 +671,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 390</sub>
+<sub>`api.ogt` line 400</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -659,7 +689,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 392</sub>
+<sub>`api.ogt` line 402</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -677,7 +707,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 393</sub>
+<sub>`api.ogt` line 403</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -695,7 +725,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1."
 ```
 
-<sub>`api.ogt` line 394</sub>
+<sub>`api.ogt` line 404</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -723,7 +753,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 395</sub>
+<sub>`api.ogt` line 405</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -752,7 +782,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 400</sub>
+<sub>`api.ogt` line 410</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -784,7 +814,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 406</sub>
+<sub>`api.ogt` line 416</sub>
 
 ## Types
 
@@ -887,7 +917,7 @@ struct QueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 243</sub>
+<sub>`api.ogt` line 253</sub>
 
 ## Column kinds
 

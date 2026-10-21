@@ -1133,6 +1133,43 @@ pub struct RecordDecl {
 /// Every engine-owned record, in declaration order.
 pub const RECORDS: &[RecordDecl] = &[
     RecordDecl {
+        kind: "event",
+        name: "WorldRestored",
+        schema: "og.WorldRestored",
+        fields: &[
+            FieldDecl {
+                name: "from",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "ticks",
+                label: "",
+                doc: "The tick the world was at when the restore applied.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "tick",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "ticks",
+                label: "",
+                doc: "The saved tick: og.Time's tick right after the restore.",
+                variants: &[],
+                capacity: 0,
+            },
+        ],
+    },
+    RecordDecl {
         kind: "component",
         name: "Transform",
         schema: "og.Transform",

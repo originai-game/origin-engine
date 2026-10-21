@@ -470,6 +470,10 @@ pub(crate) struct State {
     pub feel_assets: super::feel::FeelAssets,
     /// A world.restore asked for inside a tick, applied when it ends.
     pub pending_restore: Option<super::save::Pending>,
+    /// A restore applied since the last tick began, (the tick the world
+    /// was at, the saved tick): og.WorldRestored is sent as the next tick
+    /// starts, so the world between ticks hashes as the save did.
+    pub restored: Option<(u64, u64)>,
 }
 
 pub(crate) struct Engine {
@@ -1150,6 +1154,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         feel: Some(a.feel.clone()),
         feel_assets: Default::default(),
         pending_restore: None,
+        restored: None,
     };
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));

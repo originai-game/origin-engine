@@ -1467,9 +1467,26 @@ to 64 KiB a key: a record in one key, the world in a slot
   `{ migrate: true }` to map it by field name (new fields take their
   defaults), and keep a saved type's fields stable between releases where
   you can. Keep progress in components and resources, never in module
-  variables (they are not in the save), and keep request numbers and the
-  session's own state (a best score read from the store, an open menu)
-  where a restore cannot roll them back: reset them after it. Asset
+  variables (they are not in the save). Everything in the world rolls
+  back with it, request numbers and the session's own state (a best score
+  read from the store, the settings, an open menu) included, so reset
+  them after it: the tick after a restore delivers `og.WorldRestored`
+  (`from`, the tick the world was at; `tick`, the saved one). A system
+  that reads it (`reads: [og.WorldRestored]`, `world.events(og.WorldRestored)`)
+  forgets the request numbers, asks the store again and closes what the
+  player had open:
+
+  ```ts
+  if (world.events(og.WorldRestored).length > 0) {
+    g.progressRequest = 0;                           // answered long ago, in another session
+    const asked = og.platform.storeGet(world, "settings");
+    g.settingsRequest = asked.ok ? asked.value : 0;  // the language and volumes live on in the session
+  }
+  ```
+
+  It is sent as that tick starts, so the world between the restore and
+  that tick hashes as the save did; after a save taken mid-tick it comes
+  with the first whole tick after the completing step. Asset
   handles are saved as numbers: load in `start`, in the same order every
   launch.
 - **A record** (`storeSet(world, { key: "save", value: { chimes, glimmers,

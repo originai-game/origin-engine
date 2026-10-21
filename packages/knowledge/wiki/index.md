@@ -114,7 +114,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-909 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+910 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -735,6 +735,7 @@ Field units the docs and Tune use.
 | [`og.WaterSurface`](physics.md#record-WaterSurface) | component | physics | — |
 | [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
+| [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |
 | [`Palette`](render.md#type-Palette) | handle | render | — |

@@ -501,6 +501,26 @@ export interface RestoreDesc {
 }
 
 /**
+ * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+ *
+ * The payload of the `WorldRestored` event (token `og.WorldRestored`).
+ */
+export interface WorldRestored {
+  /**
+   * The tick the world was at when the restore applied.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly from: number;
+  /**
+   * The saved tick: og.Time's tick right after the restore.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly tick: number;
+}
+
+/**
  * Which entities a query matches.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -642,7 +662,7 @@ export interface World {
    */
   snapshot(): Result<string>;
   /**
-   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
    *
    * @param save The text world.snapshot returned.
    * @param desc Whether a type whose layout changed since the save is mapped field by field.
@@ -17690,6 +17710,10 @@ export interface StreamBudget {
  * namespace per module (`og.load`, `og.commands`).
  */
 export declare namespace og {
+  /**
+   * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+   */
+  const WorldRestored: EventType<WorldRestored>;
   /**
    * Declare the game. The bundle's default export is its result.
    *
