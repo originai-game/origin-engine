@@ -326,7 +326,9 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   neighbours, colliders follow); `getTile` answers the tile there (on a
   terrain layer the one auto-tiling chose, -1 when empty), `cellAt` and
   `cellCenter` convert positions. Layers scroll by their `parallax`;
-  `repeat x` tiles a background (`reference/tilemap.md`).
+  `repeat x` tiles a background (`reference/tilemap.md`). Every line of a
+  tileset and a map, and what the cook reads of a Tiled map, is the
+  grammar at the end of this section.
 
 How many frames, how fast, which layer and how much parallax is og-feel
 §9–§11. `templates/archetypes/topdown` (a Zelda-like dungeon: a Tiled map
@@ -337,6 +339,156 @@ pickups with floating text, a door to a second room the camera scrolls to),
 this; `templates/archetypes/roguelike` carves a tilemap at run time from
 og.Rng and keeps its fog of war on a layer, and
 `templates/archetypes/tower-defense` writes placements to a map's layer.
+
+### Tilesets, maps and Tiled: the grammar
+
+A **tileset** is an `.ogt` of `type tileset` beside its atlas PNG (give the
+PNG `texture { kind pixel }` import settings). Tile ids count from 0, left
+to right and top to bottom of the grid. Every line, with its default:
+
+```text
+type tileset
+version 1
+---
+texture "tiles/dungeon.png"   # the atlas, an asset id (required)
+grid 16 16 8 8                # <tile width px> <tile height px> <columns> <rows> (required)
+margin 0                      # pixels round the grid (default 0)
+spacing 0                     # pixels between tiles (default 0)
+filter nearest                # nearest (default) | linear
+solid 0 1 2 3                 # tiles that collide over the whole cell (any number of lines)
+tile 50 {
+  collide 0 8 16 8            # a collision rectangle: x y w h in pixels from the tile's top-left, y down
+}
+tile 60 {
+  solid                       # the whole cell (as a `solid` line)
+}
+tile 51 {
+  frames 51 52 53 52          # an animated tile: these tiles in turn
+  fps 7                       # its rate, or `durations 0.1 0.1 0.2 0.1` (seconds, one per frame)
+}
+terrain wall {                # an auto-tiling terrain, named by a map layer
+  mode blob47                 # blob47 (eight neighbours, 47 shapes) | bitmask16 (four edges, 16 shapes)
+  rule 0 0                    # <neighbour mask> <tile>: one line per shape drawn
+  default 46                  # the tile for a mask no rule names (required)
+  edge filled                 # filled (default): cells off the map count as filled | empty
+}
+```
+
+The neighbour mask sums the neighbours filled with the same terrain:
+bitmask16 counts N 1, E 2, S 4, W 8; blob47 counts N 1, NE 2, E 4, SE 8,
+S 16, SW 32, W 64, NW 128, a corner only when both its edges are set, so
+exactly 47 masks occur and the cook refuses a `rule` for any other with
+its line. The collision of a tile counts only on a layer marked
+`collision`. `templates/archetypes/topdown/tools/make-assets.py` draws the
+47 wall shapes and writes their rules (`BLOB`, the sorted reduced masks,
+tile id = index); its `assets/tiles/dungeon.ogt`, the rules shortened:
+
+```text
+type tileset
+version 1
+---
+# tiles 0-46 are the wall terrain's 47 blob shapes, 47-49 floor, 50 moss, 51-53 the torch, 54-55 the door
+texture "tiles/dungeon.png"
+grid 16 16 8 8
+filter nearest
+solid 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46
+tile 51 {
+  frames 51 52 53 52
+  fps 7
+}
+terrain wall {
+  mode blob47
+  rule 0 0
+  rule 1 1
+  rule 4 2
+  # ... one rule per reduced mask, in order: 5 7 16 17 20 21 23 28 29 31 64 65 68 69 71 80 81 84 85 87
+  # 92 93 95 112 113 116 117 119 124 125 127 193 197 199 209 213 215 221 223 241 245 247 253
+  rule 255 46
+  default 46
+  edge filled
+}
+```
+
+A **hand-written map** is an `.ogt` of `type tilemap` (the runner's and
+the tower-defense archetype's `assets/maps/`):
+
+```text
+type tilemap
+version 1
+---
+size 32 18                 # cells across and down (required)
+tile 16 16                 # a tile's pixels (required)
+unit 1                     # world units per tile width (default 1)
+tileset "tiles/dungeon.ogt"   # one line per tileset, indexed from 0 (at least one)
+layer walls {
+  tileset 0                # which tileset (default 0)
+  z 5                      # sprite layer offset from og.Tilemap.layer (default: the layer's index)
+  parallax 0.5 1           # scroll factors (default 1 1; 0 stays with the camera)
+  offset 0 0               # world units (default 0 0)
+  opacity 1                # (default 1)
+  visible true             # (default true)
+  collision true           # its tiles' collision becomes static colliders (default false)
+  repeat x                 # x, y or both: tile the layer endlessly (a background)
+  terrain wall             # a terrain layer: cells are 1 (filled) or 0, the terrain picks the tiles
+  legend "#" 1             # a character and its tile id (-1 empty; on a terrain layer 1 filled)
+  row "################"   # one row per map row, top first, `size` wide; "." is empty unless legended
+  # or numeric rows: row 3 3 4 -1 5 (tile ids, -1 empty)
+}
+object door {
+  kind "door"
+  rect 15 8 1 2            # x y w h in cells (y down); or `at 4 6` for a point
+  prop target "room2"      # a property, answered as text in TileObject.properties
+}
+```
+
+**Tiled** (`.tmj`, saved as JSON): orthogonal and finite maps, layer data
+as CSV or uncompressed Base64 (a compressed layer is refused with the menu
+to change), horizontal and vertical flips kept (a rotated tile is
+refused), group layers flattened, one tileset per layer. An external
+tileset's `source` resolves against the map's folder and its extension
+becomes `.ogt`: `maps/tomb.tmj` naming `../tiles/dungeon.tsx` reads
+`assets/tiles/dungeon.ogt`, which holds the collision, animation and
+terrains (the `.tsx` is Tiled's own and may sit beside it; the cook
+refuses a missing `.ogt`, naming the path). An embedded single-image
+tileset is imported with its tiles' animations, the first rectangle of
+each tile's collision editor and a boolean `solid` tile property. What the
+cook reads of a layer and an object:
+
+<!-- grammar: tiled -->
+| Tiled | Where | Read as |
+|---|---|---|
+| `autotile` | tile layer custom property (string) | the layer is a terrain layer of that terrain of its tileset; any tile in a cell marks it filled, the terrain picks the drawn tile |
+| `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
+| `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
+| `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y; a property of another name (`repeat`) is not read |
+| `parallaxx`, `parallaxy` | Tiled's own layer fields (Layer Properties, Parallax Factor) | the layer's parallax |
+| `offsetx`, `offsety` | Tiled's own layer and group fields | the layer's offset, a group's added to its layers' |
+| `opacity`, `visible` | Tiled's own layer fields | as named |
+| `type` or `class` | an object's | TileObject.kind |
+| any other | an object's custom properties | TileObject.properties, every value as text |
+
+Objects keep their name, size and position (a tile object is anchored at
+its bottom, as Tiled draws it). Positions arrive in map-local world units,
+y up from the map's top-left corner. A map's import settings
+(`maps/tomb.tmj.ogt` beside `maps/tomb.tmj`, for any map format):
+
+```text
+type import
+version 1
+---
+tilemap {
+  unit 1                   # world units per tile width (default 1)
+  tileset "tiles/x.ogt"    # use this tileset for every tileset of the map
+  level "Level_0"          # LDtk: the level, by identifier (default the first)
+  solid 1 2                # LDtk: the IntGrid values that collide (default 1)
+}
+```
+
+`templates/archetypes/topdown/tools/make-assets.py` writes
+`assets/maps/tomb.tmj` (a floor layer, a `walls` layer with `autotile`
+`wall` and `collision` true, a `decor` layer at `z` 15 drawn over the hero,
+and an object layer of spawns, coins, the door and two rooms) beside its
+tileset: the pattern for a map made by a script.
 
 ## 9. Animation
 
@@ -410,8 +562,9 @@ Every effect is off until the game turns it on, as data:
   `og.camera.shake`, which decays by itself: og-feel §4). A game with fast
   motion wants `render: { antialias: "taa" }` in `og.game`.
 - **Particles** — an emitter is an `.ogt` asset of `type particles`
-  (rate, bursts, lifetime, speed, curves, collision; cooked like any asset)
-  loaded with `og.load.emitter`; an entity with `og.ParticleSystem
+  (shape, rate, bursts, lifetime, speed, curves over life, texture or
+  array, 3D or sprite rendering; every line is the grammar at the end of
+  this section) loaded with `og.load.emitter`; an entity with `og.ParticleSystem
   { emitter, seed, startTick }` emits it at its transform. Particles are
   drawn by the renderer from the tick, deterministic and never part of the
   simulation.
@@ -452,6 +605,102 @@ every field is in `reference/render.md`. Floating text,
 `og.render.floatingText(world, { text: "-12", position, color })`, pops a
 damage number or a pickup that rises and fades by itself (amounts: og-feel
 §7).
+
+### Particle emitters: the grammar
+
+An emitter is an `.ogt` of `type particles` under `assets/` (`fx/` by
+custom). Every line is optional; what is left out keeps its default (a
+small fountain of soft white points). A `<min> <max>` pair is a random
+range per particle, one number is both:
+
+```text
+type particles
+version 1
+---
+maxParticles 256          # the ring: the newest overwrite the oldest (1 to 1048576)
+shape cone 15 0.05        # point | sphere <radius> [surface] | cone <angle°> <radius> | box <x> <y> <z> (half extents)
+spread 0                  # degrees of random deviation from the shape's direction (180: every way)
+rate 40                   # particles per second; 0 for bursts only
+burst 0 30                # <time s> <count> [<cycles> <interval s>]: at that time of each cycle (repeatable)
+duration 1                # seconds per emission cycle
+looping true              # false: one cycle, then the particles live out
+lifetime 1 1.5            # seconds
+speed 1.5 2.5             # units per second, along the shape's direction
+size 0.08 0.12            # the quad's side in world units
+sizeOverLife 0 1 1 0      # <t> <value> pairs, t 0 (birth) to 1 (death), at most 8; multiplies size (default 1)
+colorOverLife {           # keys <t> <r> <g> <b> <a>, linear, at most 8 (default: white, fading over the last quarter)
+  key 0 1 1 1 1
+  key 1 1 1 1 0
+}
+color 1 1 1 1             # a tint, <r> <g> <b> [<a>]; above 1 blooms
+rotation 0 0              # start rotation, degrees
+angularVelocity 0 0       # degrees per second
+gravity 0 -2 0            # acceleration, units per second²
+drag 0                    # velocity scales by 1 / (1 + drag × dt)
+noise 0 0.5 0.3           # <strength> [<frequency> <scroll>]: a moving turbulence
+texture "fx/spark.png"    # an asset id; left out: a soft round dot
+sheet 4 4 16 life 1       # <columns> <rows> [<frames> [off | life <cycles> | fps <n> | random]]
+blend additive            # additive (fire, sparks, magic) | alpha (smoke, dust)
+space world               # world: born at the emitter, then free | local: carried with it
+align camera              # camera | velocity <stretch>: stretched along its motion (sparks, rain)
+softDistance 0            # fade where the quad nears the scene behind it (0: off)
+collision 0.4 0.2         # <bounce> <friction>: bounce off the depth buffer (3D billboards, world space)
+render billboard          # billboard (3D) | sprite <layer>: 2D, drawn in the sprite batch on that layer
+glow 0                    # sprite mode: strength in the 2D glow
+array "fx/smoke.ogt" random   # sprite mode: draw from a texture array, [<layers>] [off | life <cycles> | fps <n> | random]
+round false               # sprite mode: fade each particle to a round edge over its texture or layer
+```
+
+- Directions: `point`, `cone` and `box` emit along the entity's +y
+  (`spread 180` sends a point every way), `sphere` outwards. In a 2D game
+  set `render sprite <layer>`: positions stay in the xy plane, sizes and
+  speeds are in world units like a sprite's, and the particles take the
+  sprite batch's order and glow like any sprite.
+- A one-shot effect (a hit, a pickup, landing dust) is `rate 0`,
+  `looping false`, one `burst 0 <count>` and a short `duration`; restart
+  it by writing the tick to its `og.ParticleSystem.startTick` (moving the
+  entity first). A lasting one (embers, motes, rain) keeps the defaults
+  `looping true` and a `rate`.
+- `sheet` animates a sprite sheet texture: `life 1` plays its frames once
+  over each particle's life, `fps 12` at a rate, `random` one frame per
+  particle. `array` does the same over a texture array's layers (§8), one
+  draw for the whole emitter; a billboard emitter with an array is refused.
+- `collision` bounces 3D billboards off what the depth buffer shows on the
+  full tier (sparks on a floor); sprite-mode emitters skip it. It is a
+  look, never gameplay: particles never touch the simulation.
+- The cook refuses an unknown line, a missing texture or array and a
+  value of the wrong shape, naming the line.
+
+A hit's sparks in a 2D game (Hollowbell's `fx/hit.ogt`):
+
+```text
+type particles
+version 1
+---
+maxParticles 24
+shape point
+spread 180
+rate 0
+burst 0 10
+duration 0.1
+looping false
+lifetime 0.18 0.32
+speed 3 6
+size 0.12 0.22
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.95 0.75 1
+  key 1 0.95 0.55 0.2 0
+}
+drag 4
+texture "fx/spark.png"
+blend additive
+render sprite 12
+```
+
+`templates/archetypes/idle/assets/fx/` (taps, stars, a milestone),
+`templates/fx-showcase/assets/fx/` (fire, smoke, sparks with collision,
+2D embers) and `templates/archetypes/third-person/assets/fx/` hold more.
 
 ## 11. Atmosphere, water and terrain
 
