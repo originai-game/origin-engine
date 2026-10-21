@@ -75,7 +75,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   cleaned with `cargo clean -p <crate>`, never wholesale. `scripts/lane.sh
   --list` shows every lane and the branch it carries. One more lane,
   `origin-engine-measure`, carries no stream: the wave-end measurements
-  (`--all`, web-reference, the lavapipe captures) run there pinned at a
+  (`--all`, web-reference) run there pinned at a
   commit, so main never waits for them.
 - **One gate at a time, on the whole machine.** `scripts/check.sh` holds
   `~/.cache/og-gate/og-gate.lock` and then `target/og-gate.lock` (a release
@@ -119,10 +119,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   test with the GPU reference frames, drift, the packages' tests on the
   native host) and that is what a merge must pass. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
-  end: `scripts/wave-end.sh` (`scripts/check.sh --all`, `scripts/check.sh
-  web-reference`, then the vulkan-cpu frames on lavapipe and their table
-  against metal, serially) once per wave, with its summary in the report,
-  never per merge. A size or
+  end: `scripts/wave-end.sh` (`scripts/check.sh --all`, then
+  `scripts/check.sh web-reference`, serially; the vulkan-cpu frames on
+  lavapipe are set aside with the CPU-only sandbox requirement,
+  2026-10-22) once per wave, with its summary in the report, never per
+  merge. A size or
   frame-time number is a target to pursue there, not a reason to hold a
   functional merge. Never run `--all` after every edit. When a reference frame changes, re-record
   it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx

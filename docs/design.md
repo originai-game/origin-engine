@@ -345,14 +345,21 @@ the only mode:
 
 | Class | Contents | Image estimate |
 |---|---|---|
-| `engine` | bun, `@origingame/engine` (wasm + native addon), Mesa lavapipe, git | ≈ 500 MB |
+| `engine` | bun, `@origingame/engine` (wasm + native addon), git | ≈ 400 MB |
 | `probe` | the same plus ffmpeg (minimal static build) | ≈ 600 MB |
 | `asset` | plus Blender headless (trimmed) and the cook tools | ≈ 1.8 GB |
 | `browser-check` (evaluation only) | plus Chrome headless-shell for the final "runs in a real browser" check | ≈ 800 MB |
 
 No Godot, no Chromium in the inner loop, no Rust toolchain anywhere in the
-sandbox. Frames, sweeps, replays and `feel_compare` run through `og` on the
-native addon and are deterministic. Performance truth comes from the person's
+sandbox. Sweeps, replays, determinism and the probe's dumps run through
+`og` on the native addon without a GPU and are deterministic. Frames need
+a renderer: the `engine` and `probe` classes carry none (the CPU-only
+renderer on Mesa lavapipe, which they carried through the build-out, was
+set aside on 2026-10-22 to put features first; its stages stay in
+`scripts/wave-end.sh` for when it returns), so a playtest's screenshot
+checks there report "no renderer, frame unchecked" and pass, and a frame is
+verified on the author's machine, in `browser-check`, or on an executor
+with a GPU. Performance truth comes from the person's
 device through Player telemetry and from `og run --device` (safaridriver /
 Chrome DevTools on a paired phone) when the person is present.
 
@@ -395,7 +402,7 @@ docs/ci.md §Updating a budget).
 
 | | WebGPU (Chrome, Edge, Safari 26+, recent Firefox) | WebGL2 fallback | native Linux (executor) | native macOS (developer) |
 |---|---|---|---|---|
-| renderer | full | no compute: CPU culling/particles, tiled lights, no GTAO | full (Vulkan, lavapipe or GPU) | full (Metal) |
+| renderer | full | no compute: CPU culling/particles, tiled lights, no GTAO | full with a Vulkan device (a GPU; lavapipe set aside), else none: the simulation, the probe and the playtests without their frames | full (Metal) |
 | lanes | with COOP/COEP | with COOP/COEP | rayon | rayon |
 | audio | AudioWorklet | AudioWorklet | cpal or null | cpal |
 | capture | readback | readback | readback | readback |

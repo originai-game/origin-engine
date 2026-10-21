@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # The wave's end, serially, by the one session that runs gates (docs/ci.md
-# §When to run what): the whole gate, the browser tiers, then the vulkan-cpu
-# tier on lavapipe and a table of every vulkan-cpu frame against metal.
+# §When to run what): the whole gate and the browser tiers. The vulkan-cpu
+# tier on lavapipe (the CPU-only sandbox requirement) was set aside on
+# 2026-10-22 (docs/phase-1.md, "The CPU sandbox requirement set aside"):
+# its stages stay here for when it returns and run only when --stages
+# names them.
 #
 #   scripts/wave-end.sh [--dry-run] [--stages LIST] [--templates LIST] [--record NAMES]
 #
-# Stages, in order (--stages takes a comma list of them; default all):
+# Stages, in order (--stages takes a comma list of them; default gate,web):
 #   gate       scripts/check.sh --all
 #   web        scripts/check.sh web-reference
 #   cross      cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31:
@@ -52,7 +55,7 @@ IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
 TRIPLE=x86_64-unknown-linux-gnu
 ALL_STAGES="gate web cross prepare gfx ui playtests table"
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
-stages="$ALL_STAGES"
+stages="gate web"
 templates="ui-kit"
 for d in templates/*/references/metal templates/archetypes/*/references/metal examples/*/references/metal; do
   [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"

@@ -7,6 +7,35 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## The CPU sandbox requirement set aside (2026-10-22)
+
+The owner's decision, after the question of what the engine needs from a
+GPU: the CPU-only sandbox requirement, a playtest's frames rendered on
+Mesa lavapipe in a sandbox with no GPU, is set aside to put features
+first; the GPU side returns later. What the engine needs: every render
+goes through wgpu (Metal, Vulkan, WebGPU or WebGL2), there is no CPU
+rasteriser of the engine's own, and the simulation, the probe,
+determinism, replays and UI dumps need no GPU (tier `none`). What the
+requirement cost: lavapipe in the `engine` and `probe` sandbox images,
+a cross-build and a docker run of every playtest at each wave's end
+(8,964 s for the playtests alone in wave 11's run, holding the gate
+locks), the vulkan-cpu reference copies and their table, and rows 54,
+70, 74, 81, 82 of owed work. What changed (this commit):
+docs/design.md §5 (the sandbox classes carry no renderer; screenshot
+checks there report "no renderer, frame unchecked" and pass; frames are
+verified on the author's machine, in `browser-check` or on an executor
+with a GPU) and §8 (native Linux: full with a Vulkan device, else
+none); `scripts/wave-end.sh` runs `gate` and `web` by default and keeps
+the lavapipe stages for `--stages`; docs/ci.md §The wave-end run and
+§Browser reference tiers; AGENTS.md; the last 25 `vulkan-cpu` copies
+(og-tests 7, Hollowbell 2, fx-showcase 16) deleted, every tier with no
+directory judged against `metal` as before. The engine change the
+contract needs, `og test` and `og run` without a renderer never failing
+on a frame and saying so, is wave 13's no-renderer stream (lane-1). Rows
+70 and 81 are set aside with the requirement; Kestrel Stair's first
+lavapipe run and the moved Lantern Vale frames on lavapipe (the wave 13
+gate section) are no longer owed.
+
 ## Main gate, wave 13 (2026-10-21)
 
 Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
@@ -42,10 +71,10 @@ perf-games. The round sections below have each.
   suites after it) and main was pushed at e3a7ac9d. shadow-flags'
   merge and lane follow, then this wave's `--all` and web-reference.
 
-**Wave-end figures: pending** (with wave 12's, once perf-games lands:
-`--all`, web-reference, lavapipe with Kestrel Stair's first run and the
-moved Lantern Vale and Kestrel frames, rows 51 and 52's Chrome
-measurements).
+**Wave-end figures: pending** (with wave 12's: `--all` and
+web-reference in the measure worktree after the shadow-flags merge, rows
+51 and 52's Chrome measurements; no lavapipe run, the CPU sandbox
+requirement being set aside on 2026-10-22).
 
 ## Main gate, wave 12 (2026-10-21)
 
@@ -4823,7 +4852,7 @@ resource only the owner can give.
 | 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | closed: vulkan-cpu at 9bd0064 (the lavapipe pass), the browser tiers at cf5f2b9 (web-reference 379 s, every frame; WebGL2 keeps paper-craft and voxel-worlds by design, 95ea28a) |
 | 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | closed at 1a9037a (taa-webgl2, merged f3229ef): wgpu's GL backend read TAA's depth as 0 (a depth texture read with `textureLoad` and no sampler bound stays on linear filtering, which GLSL ES calls incomplete), so every pixel reprojected from the near plane: wrong motion for a moving camera, and near-plane rounding up to 0.025 px at the 2,800 m looks station for a still one, above the own-texel test. The depth is sampled with a nearest sampler now; `taa-sharp` applies on every tier and is WebGL2's moving-camera frame against `metal` (RMSE 0.00028); two og-tests tests pin the still-camera fixed point natively |
 | 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | closed at dcd8c31e (cook-ui-words, merged a31d6cbe): the badge's tint mixes as the platform's CSS does (`Srgba::tint_over`) instead of in linear light; the tones deepened on the light-panel skins (cartoon's warn #f2a516, 1.63:1, is #7b5102) and lightened on the dark ones, `accentSoft` more transparent on the archetype skins, `make-skins.py` byte-identical; `pack_contrast.rs` enforces success, warn, danger, info and the accent badge at 4.5:1 for the seven packs and sparkorb, lampdive, lanebeat and pathguard. abd2bf9b draws a meter's label in two inks split at the fill's edge (cartoon's "72 / 100" was 2.3:1, neon's 1.3:1). What it left: rows 77 and 78 |
-| 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
+| 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | set aside with the CPU sandbox requirement (2026-10-22); an option if the GPU-less tier returns |
 | 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | closed at 706833d5 (merged 0e77b6b6, on main at c638a46f, recorded at a91e6139): 3D lanes 3,095,052 B (73.8 %), 2D lanes 2,928,498 B (69.8 %); `--all` 9 of 9, web-reference and the web export, player and wire tests passing on the branch |
 | 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): measured first (rapier's controller stalled to 0 to 0.4 m/s a tick about once a second on a box, adjacent boxes and a trimesh, stood 1 mm above the floor instead of its 2 cm skin and crept up 0.1 mm a tick, sank 9 cm when placed on the floor, refused 0.2 m stairs, climbed a 30° slope at 4.4 m/s); one mover for both controllers in both profiles (`crates/og-physics/src/mover.rs`), `tests/character_ground.rs` with 7 tests failing on the old controller; physics_hash 947364242694612608 to 15539601638348908910 by design |
 | 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | closed at 876dd4ea (physics-3d, merged bb7c1e81): both controllers' query filters take the collider's collision groups (`og.Collider.layers`/`mask`), two tests in `tests/controllers.rs` |
@@ -4834,7 +4863,7 @@ resource only the owner can give.
 | 78 | Badges the palette round left: the neutral badge (scifi 2.15:1, neon 2.81:1; printed by `pack_contrast.rs`, not enforced) and the light packs' badges on a dark stage (about 2:1; the test holds a badge in its panel, and on the screen only where screen and panel are both dark or both light) | W10 cook-ui-words | S | engine, phase 4 (UI) | closed at b358d6a8: `Srgba::readable_on` moves a badge's or meter label's ink on the other side of the scale, the neutral badge's ink or fill made to read |
 | 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | closed at dcdcd17c: `talk.skip`, 跳过, the subset regenerated |
 | 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | closed at 0b245141 (basisu's padding bytes, the vendored one-line fix) with 78b8d0d8's thread-count test; the pipeline cache's torn file at 9ffc36cb |
-| 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open; read by cook-determinism (033182e): no defect in the engine's code, two Vulkan devices on two threads at once on Lavapipe the best reading; if it recurs, run the second 600-tick run after the first there |
+| 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | set aside with the CPU sandbox requirement (2026-10-22): no lavapipe run is scheduled; the reading stands if it returns |
 | 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | closed: two real runs at wave 11's end, the first (15f4e9eb) failing prepare and the playtests on the examples' ungenerated assets and stale kit copies, the second (e7d6cb5e, after the prepare stage learned to make them) passing every stage in 9,282 s; its copies judged by the rule in 36b326c3 (Main gate, wave 11) |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | closed at dcdcd17c: the script taps Title after the wipe and opens the chapters; `chapters.png` re-recorded (0.1835) |
