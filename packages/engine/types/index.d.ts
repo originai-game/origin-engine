@@ -3118,7 +3118,9 @@ export interface Mesh {
    */
   castShadow: boolean;
   /**
-   * Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows.
+   * Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley.
+   *
+   * @default true
    */
   receiveShadow: boolean;
   /**
@@ -5571,15 +5573,15 @@ export interface GltfDesc {
    */
   readonly scene?: number;
   /**
-   * Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows.
+   * Whether the models instantiated from it cast shadows: world.instantiate of the handle and a scene's `model` line give their og.Model this castShadow. On when omitted, so a model loaded without a desc casts as it always has; false turns it off for the model (og.Model.castShadow turns it off for one instance). The flags belong to the asset: another og.load.gltf of the same path answers the same handle and sets them again, for the models instantiated after it.
    *
-   * @default false
+   * @default true
    */
   readonly castShadow?: boolean;
   /**
-   * Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows.
+   * Whether the models instantiated from it receive shadows (og.Model.receiveShadow, as castShadow): on when omitted; false lights them as if unshadowed by every light.
    *
-   * @default false
+   * @default true
    */
   readonly receiveShadow?: boolean;
 }
@@ -5704,6 +5706,18 @@ export interface Model {
    * @default { r: 1, g: 1, b: 1 }
    */
   flashColor: Color;
+  /**
+   * Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false).
+   *
+   * @default true
+   */
+  castShadow: boolean;
+  /**
+   * Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table.
+   *
+   * @default true
+   */
+  receiveShadow: boolean;
 }
 
 
@@ -17811,7 +17825,7 @@ export declare namespace og {
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */

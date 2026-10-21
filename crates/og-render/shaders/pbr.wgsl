@@ -55,10 +55,11 @@ struct InstanceIn {
 
 // What an instance carries beside its transform (instances.rs
 // `GpuTransform`, lib.rs `INSTANCE_LAYOUT` location 8): x an array-map
-// instance's layer plus one (pbr_array.wgsl), then its own look
-// (instances.rs `fx_bits`): y the hit flash, z the flash's colour and w the
-// tint's distance from white, each colour 8:8:8 in an exact integer. All
-// zero: no look.
+// instance's layer plus one (pbr_array.wgsl), negated less one when the
+// instance receives no shadows (instances.rs `layer_bits`: `look_layer`,
+// `look_receives`), then its own look (instances.rs `fx_bits`): y the hit
+// flash, z the flash's colour and w the tint's distance from white, each
+// colour 8:8:8 in an exact integer. All zero: no look, receiving shadows.
 struct InstanceFxIn {
   @location(8) look: vec4<f32>,
 };
@@ -72,7 +73,7 @@ struct SkinnedInstanceIn {
   @location(8) palette: vec4<f32>,  // x: first joint, y: joints, z: first morph delta, w: morph targets
   @location(11) morph0: vec4<f32>,  // morph weights 0..3
   @location(12) morph1: vec4<f32>,  // morph weights 4..7
-  @location(13) look: vec4<f32>,    // as InstanceFxIn's (x 0)
+  @location(13) look: vec4<f32>,    // as InstanceFxIn's (x: no layer, 0 or -1)
 };
 
 struct SkinIn {
@@ -123,6 +124,19 @@ fn look_tint(c: vec4<f32>, look: vec4<f32>) -> vec4<f32> {
 fn look_flash(c: vec3<f32>, look: vec4<f32>) -> vec3<f32> {
   if (look.y <= 0.0) { return c; }
   return mix(c, look_rgb(look.z), look.y);
+}
+
+// Whether the instance is darkened by the shadow maps (look.x >= 0;
+// instances.rs `layer_bits`): one that is not is lit as if nothing stood
+// between it and any light.
+fn look_receives(look: vec4<f32>) -> bool {
+  return look.x >= 0.0;
+}
+
+// An array-map instance's layer plus one, 0 for the material's own
+// (look.x without the receive flag).
+fn look_layer(look: vec4<f32>) -> f32 {
+  return select(-look.x - 1.0, look.x, look_receives(look));
 }
 
 // The uv a fragment samples with: the interpolated one, or (retro 3D) the
@@ -353,7 +367,9 @@ fn toon_light(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32)
   return kd * band + s.f0 * spec * (1.0 - s.roughness);
 }
 
-fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+// `receives`: the instance is darkened by the light's shadow map
+// (look_receives).
+fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> vec3<f32> {
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
   let range = light.position_range.w;
@@ -369,7 +385,8 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   }
   if (atten <= 0.0) { return vec3<f32>(0.0); }
   if (dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
-  let shadow = local_shadow(light, p, n);
+  var shadow = 1.0;
+  if (receives) { shadow = local_shadow(light, p, n); }
   if (EFFECTS && material.toon.x > 0.5) {
     return toon_light(s, n, v, l, shadow) * light.color_kind.rgb * atten;
   }

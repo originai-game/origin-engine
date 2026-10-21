@@ -708,7 +708,7 @@
         {
           "name": "receiveShadow",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "visible",
@@ -1441,6 +1441,16 @@
             "g": 1,
             "b": 1
           }
+        },
+        {
+          "name": "castShadow",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "receiveShadow",
+          "column": "bool",
+          "default": true
         }
       ]
     },

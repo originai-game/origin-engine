@@ -720,7 +720,12 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
             }
             None => {
                 let (layout, id) = component(&eng, "og.Model")?;
-                let bytes = layout.encode(None, Some(&json!({ "asset": asset })))?;
+                let fields = eng
+                    .assets
+                    .borrow()
+                    .model_shadows(i)
+                    .model_fields(asset as u64);
+                let bytes = layout.encode(None, Some(&fields))?;
                 before_structural(&eng);
                 eng.world()?.insert_bytes(root, id, &bytes).map_err(err)?;
             }
@@ -2087,8 +2092,16 @@ pub fn og_load_default_bundle(world: u32) -> String {
     })())
 }
 
-pub fn og_load_gltf(world: u32, path: String, _desc: Option<String>) -> String {
-    result(engine(world).and_then(|eng| assets::load_gltf(&eng, &path).map(asset_value)))
+pub fn og_load_gltf(world: u32, path: String, desc: Option<String>) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let shadows = assets::ModelShadows::from_desc(&parse(desc.as_deref())?)?;
+        let index = assets::load_gltf(&eng, &path)?;
+        // The flags belong to the asset: this load's, for the models
+        // instantiated after it.
+        eng.assets.borrow_mut().model_shadows.insert(index, shadows);
+        Ok(asset_value(index))
+    })())
 }
 
 pub fn og_load_scene(world: u32, path: String) -> String {

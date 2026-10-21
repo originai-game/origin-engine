@@ -4,7 +4,7 @@
 //! and the thin geometry under TAA with motion, Catmull-Rom history and
 //! sharpening.
 
-use crate::scenes::ground;
+use crate::scenes::{ground, load};
 use glam::{Mat4, Quat, Vec3};
 use og_render::{
     Background, Camera, DirectionalLight, Environment, Exposure, Light, LightKind, Material,
@@ -295,6 +295,7 @@ pub fn crypt_scene() -> RenderScene {
         material_layer: None,
         fx: og_render::InstanceFx::NONE,
         cast_shadows: false,
+        receive_shadows: true,
     });
     scene.lights = vec![Light {
         position: lamp,
@@ -311,4 +312,113 @@ pub fn crypt_scene() -> RenderScene {
         ..Default::default()
     };
     scene
+}
+
+/// Where `shadow-flags` puts its objects, for the tests to toggle them:
+/// indices into the scene's instances (a model's are a range).
+pub struct FlagsScene {
+    pub scene: RenderScene,
+    /// The front trickster added as a model is (casting).
+    pub model_as_is: std::ops::Range<usize>,
+    /// The front trickster with `cast_shadows` off.
+    pub model_no_cast: std::ops::Range<usize>,
+    /// The wall.
+    pub wall: usize,
+    /// Behind the wall, in its shadow: a box and a trickster that receive,
+    /// and a box and a trickster with `receive_shadows` off.
+    pub box_receives: usize,
+    pub model_receives: std::ops::Range<usize>,
+    pub box_no_receive: usize,
+    pub model_no_receive: std::ops::Range<usize>,
+}
+
+/// Shadow flags per instance (`Instance::cast_shadows` and
+/// `receive_shadows`; og.Mesh's and og.Model's castShadow and
+/// receiveShadow): a low sun from the east over a field. In front, on open
+/// ground, two tricksters: the left one added as a model is (it casts) and
+/// the right one with `cast_shadows` off (no shadow beside it). Behind
+/// them a 5 m wall on the east side throws its shadow over a row of four:
+/// a red box and a trickster that receive (dark in the wall's shadow),
+/// then a red box and a trickster with `receive_shadows` off, lit as if
+/// the wall were not there while still casting on the ground.
+pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 60.0, 1.0, 0.9);
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.68, 0.62, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let red = scene.add_material(Material {
+        base_color: [0.75, 0.16, 0.1, 1.0],
+        roughness: 0.5,
+        ..Default::default()
+    });
+    let model = load("trickster.glb")?;
+    let parts = model.add_to(&mut scene);
+    let scale = 1.8 / (model.max - model.min).max_element().max(1e-3);
+    let trickster = |scene: &mut RenderScene, x: f32, z: f32, yaw: f32| {
+        let first = scene.instances.len();
+        parts.instance(
+            scene,
+            Mat4::from_translation(Vec3::new(x, -model.min.y * scale, z))
+                * Mat4::from_rotation_y(yaw)
+                * Mat4::from_scale(Vec3::splat(scale)),
+        );
+        first..scene.instances.len()
+    };
+    let model_as_is = trickster(&mut scene, -1.6, 2.2, 0.4);
+    let model_no_cast = trickster(&mut scene, 2.4, 2.2, -0.4);
+    let wall = scene.instances.len();
+    let slab = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 5.0, 6.0)));
+    scene.add_instance(
+        slab,
+        stone,
+        Mat4::from_translation(Vec3::new(3.6, 2.5, -3.2)),
+    );
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+    let block = |scene: &mut RenderScene, x: f32| {
+        let i = scene.instances.len();
+        scene.add_instance(
+            cube,
+            red,
+            Mat4::from_translation(Vec3::new(x, 0.5, -3.0)) * Mat4::from_rotation_y(0.35),
+        );
+        i
+    };
+    let box_receives = block(&mut scene, 2.3);
+    let model_receives = trickster(&mut scene, 1.0, -3.0, 0.2);
+    let box_no_receive = block(&mut scene, -0.4);
+    let model_no_receive = trickster(&mut scene, -1.8, -3.0, 0.2);
+    for i in model_no_cast.clone() {
+        scene.instances[i].cast_shadows = false;
+    }
+    for i in model_no_receive.clone().chain([box_no_receive]) {
+        scene.instances[i].receive_shadows = false;
+    }
+    let sun = Vec3::new(0.85, 0.48, 0.12).normalize();
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 4.0,
+        max_shadow_distance: 60.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.3;
+    scene.camera = Camera {
+        position: Vec3::new(0.2, 3.6, 8.6),
+        target: Vec3::new(0.4, 0.7, -1.2),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    Ok(FlagsScene {
+        scene,
+        model_as_is,
+        model_no_cast,
+        wall,
+        box_receives,
+        model_receives,
+        box_no_receive,
+        model_no_receive,
+    })
 }

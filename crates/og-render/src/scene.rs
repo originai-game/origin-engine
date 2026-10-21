@@ -438,6 +438,13 @@ pub struct Instance {
     /// still receives shadows: a lamp's own glass around its light, a glow
     /// card, a decal-like slab. [`RenderScene::add_instance`] casts.
     pub cast_shadows: bool,
+    /// Darkened by the shadow maps. `false` lights it as if nothing stood
+    /// between it and any light (the sun's cascades and every shadowed
+    /// local light are not read for it), while it still casts as
+    /// `cast_shadows` says: a glowing sign, a hero kept readable in a dark
+    /// alley. Carried in the instance record (`instances.rs`), so it never
+    /// splits a batch. [`RenderScene::add_instance`] receives.
+    pub receive_shadows: bool,
 }
 
 /// An instance's own look, beside its transform in the instance record and
@@ -2231,6 +2238,7 @@ impl RenderScene {
             material_layer: None,
             fx: InstanceFx::NONE,
             cast_shadows: true,
+            receive_shadows: true,
         });
     }
 

@@ -661,7 +661,9 @@ difference the tier makes by design, never to absorb a defect.
 light is two paraboloid hemispheres on WebGL2 and six cube faces on
 `metal`, which store the same faces since the paraboloids' winding was
 mirrored (the paraboloid frame within RMSE 0.0036 of the cube one
-natively), and the lamp's glass casts no shadow on either. Each tier
+natively), and the lamp's glass casts no shadow on either.
+`shadow-flags` (owed row 87) has none either: per-instance cast and
+receive flags under the sun's cascades alone. Each tier
 takes 30 to 50 s after the module build.
 
 The same module carries og-ui's four reference scenes as `og-ui/<name>`
