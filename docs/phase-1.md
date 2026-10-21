@@ -83,7 +83,24 @@ perf-games. The round sections below have each.
   at 49 s, 4 checks) and the kit's and Hollowbell's after
   publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
   the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
-  it) and main was pushed there. The perf-games merge (2b896be5, a
+  it) and main was pushed there. Later merges of this wave, each with
+  its lane and the suites after it: no-renderer (71c0e9dd fast-forward,
+  182 s, 5 of 5), vox-stylise (96be0866, 153 s, 5 of 5; fx-showcase's
+  `looks-inked-comic-3d` re-recorded, d539ce13), dogfood-5 (2471dad6,
+  90 s; Meridian Loop's seven frames re-recorded on main's engine,
+  9782d90d), web-boot-2 (0dffd7be, 129 s), ui-five (5c835a67, six
+  generated wiki pages regenerated at the merge) with templates-title
+  (015a0ffa) and the kit's 68 frames re-recorded (46e01e62): the lane
+  failed one Rust test, og-runtime's no_renderer (ui-five's `macKeys`
+  left false on the renderer-less surface; a surface set without it
+  takes the platform's keys since ed9e1a62) and Meridian Loop's
+  `pub-pause` moved with the kit (6e36bc82); vehicle-physics (7c34f4dd):
+  the lane the same test, and the suites Kestrel's save test (a 36 KB
+  world in one part since the physics save dropped the mesh colliders;
+  9fe3a417) and Meridian Loop's handling-bound playtests (retuned by
+  kit-words); racing-ui (c060c875): fmt on the coordinator's own line
+  (3802bf70); dogfood-6 (4d888752, 143 s, 5 of 5, Brasswick's 8
+  playtests green) and main pushed there. The perf-games merge (2b896be5, a
   fast-forward) failed its lane at bun-functional in the knowledge
   package's drift check alone: og-game §14 named the engine's systems
   as `og.ui.end`, which the check read as an API member (prose since
@@ -700,6 +717,61 @@ remembering a sprite's drop-shadow fit while nothing moves (Lantern
 Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
+
+## Wave 13, kit-2d: the platformer HUD draws what it is given, the level select has a way out, names a reader can read, HUD groups clear the shell's control (34dd34d3)
+
+Brasswick's UI, shell and platform-skill findings (lane-4): 4, 10, 11,
+12, 15 and 16.
+
+- **#4.** The left capsule and the `Score` capsule were drawn
+  unconditionally with `?? 0` defaults; `PlatformerHudDesc.coins` and
+  `score` are optional (left out, no capsule), `maxLives: 0` with no
+  `health` draws no hearts capsule, an empty left group is dropped; the
+  kit template sets all three, so no kit frame moves (a game that
+  relied on the always-drawn `0` now draws none).
+  `tests/ui-platformer.test.ts`, two of three failing on the old kit.
+- **#10.** The screen was a modal with `ignoreBackdrop: true` and no
+  control of its own; a `Footer/Back` button (`LevelSelectDesc.backLabel`)
+  and a tap on the scrim close it, answering `closed` as Escape and B
+  do (`tests/ui-levels.test.ts`). Shop, inventory and leaderboard share
+  the helper and the gap, left so their frames stay.
+- **#11, #12.** A card's name was its text plus each icon's atlas name
+  in English, and tab rows, radio groups and selects fell back to their
+  id; `IconDesc.label` and `ImageDesc.label` (an empty string marks
+  decoration), a `label` on `TabsDesc`, `RadioDesc` and `SelectDesc`; a
+  card is named by its level plus `starsLabel` ("{stars} of {max}
+  stars"), a locked one by `lockedLabel`; `SettingsDesc.sectionLabel` and
+  `languagesLabel`, and `qualityLabel` now names the presets too (they
+  were "Quality" in English, unreported). og-ui
+  `groups_and_icons_take_the_names_their_descs_give` and ui-levels'
+  `dump_ui` in Spanish; the og-i18n skill lists the fields. Brasswick
+  takes the strings in its tables and its locales playtest now asserts
+  Apartado, Idiomas, "1. La escalera de la caldera 0 de 3 estrellas" and
+  Volver.
+- **#15.** Since racing-ui every kit HUD is anchored groups and already
+  kept out of the shell's control (Hollowbell's `Status` and Brasswick's
+  HUD too; the platformer, idle and racing tests pass on main and
+  would fail on 21b0b0cc, the engine Brasswick ran on). What remained:
+  on a phone, moving a group right to clear the control pushed it onto
+  its neighbour (the shooter's vitals onto its kills and pause, 107 to
+  1,147 px² of overlap; the puzzle's level/moves onto its score, 3,540
+  to 6,970). Anchored groups are placed together before the other
+  layers, and a corner group steps down past the control when moving
+  along the edge would overlap more of the other groups or of the area
+  outside the safe area; only with `covered` set, so no frame moves
+  (`a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another`;
+  `tests/ui-hud-corner.test.ts`, one test per HUD on desktop, phone
+  portrait and landscape). Not fixed: the puzzle HUD on a 390 px phone
+  overlaps its own score group even without the control.
+- **#16.** og-platform-sdk §3 says systems run in `GameDesc.systems`
+  order, so the answers are applied in or before the system that
+  builds the title (list the answers system first, or read the answers
+  at the top of the UI system).
+
+Frames that move with the level select's Back button, re-recorded by
+the coordinator at the merge: og-ui `kit-desktop-levels`,
+`kit-phone-levels` and the twelve skin sheets, Kestrel's `chapters`,
+Brasswick's `levels`.
 
 ## Wave 13, dogfood-6: Brasswick, a 2D puzzle-platformer in a lamplit clockworks (4f14111a)
 

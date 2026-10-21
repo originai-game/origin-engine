@@ -158,6 +158,10 @@ function levels(world: World, g: GameV): void {
   if (!g.levelsOpen) return;
   const r = og.ui.levelSelect("Levels", {
     title: say(world, "levels.title"),
+    backLabel: say(world, "levels.back"),
+    // What a screen reader says for a card's stars and a locked card; the template fills {stars}, {max} and {name}.
+    starsLabel: say(world, "levels.stars"),
+    lockedLabel: say(world, "levels.locked"),
     columns: 3,
     levels: LEVEL_KEYS.map((key, n) => {
       const b = bestOf(g, n);
@@ -169,8 +173,7 @@ function levels(world: World, g: GameV): void {
       };
     }),
   });
-  // og.ui.levelSelect closes on Back alone (Escape, the pad's B): a pointer or a finger has no way out
-  // of it, and a button of the game's own drawn beside it is under its modal, inert (FINDINGS.md #10).
+  // Its Back button, a tap on its scrim, Escape and the pad's B all answer closed (FINDINGS.md #10, fixed).
   if (r.chosen !== null && r.chosen < g.unlocked) startLevel(world, g, r.chosen);
   else if (r.closed) g.levelsOpen = false;
 }
@@ -273,6 +276,8 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     invertLabel: say(world, "settings.invert"),
     vibrationLabel: say(world, "settings.vibration"),
     doneLabel: say(world, "settings.done"),
+    sectionLabel: say(world, "settings.section"),
+    languagesLabel: say(world, "settings.languages"),
   });
   if (!g.settingsOpen) return;
   if (r.changed) takeSettings(world, p, r.settings);

@@ -196,6 +196,7 @@ fn build(ui: &mut Ui, tex: og_render::TextureHandle) -> ZoomResponse {
                                 } else {
                                     t.palette.fg_muted
                                 }),
+                                ..IconDesc::default()
                             },
                         );
                     }

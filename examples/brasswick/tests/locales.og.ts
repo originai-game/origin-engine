@@ -2,9 +2,10 @@
 // HUD, pause, the settings (every tab), and the results, each dumped after
 // `language:es`. Every text is from es.ogt, none of the templates' English
 // defaults is left on screen, accents and ¿¡ñ draw from the skin's Latin-1
-// faces, and every focusable control has a name. Two accessible names of
-// the settings template stay English whatever the locale (FINDINGS.md #11, #12): the
-// check names them, so it fails the day they are fixed and can be dropped.
+// faces, and every focusable control has a name. What a screen reader hears
+// is Spanish too (FINDINGS.md #11, #12, fixed): the settings' tab row and
+// language list are named from the table, and a level card by its level and
+// its stars ("0 de 3 estrellas"), never by the icons' English names.
 import { playtest } from "@origingame/engine/playtest";
 import { elements, game, press, script, tap, texts } from "./lib.ts";
 
@@ -64,11 +65,12 @@ export default playtest({
     for (const w of ["Nivel 1 superado", "Engranajes", "4 de 6", "Tiempo", "Mejor tiempo", "Caídas", "Siguiente nivel", "Jugar otra vez", "Niveles"]) t.ok(results.includes(w), `the results say "${w}"`);
     t.ok(results.some((w) => w.startsWith("Récord ")), "and the best as Récord");
     t.equal(game(run, "results-game.json").a11yUnnamed, 0, "no focusable control without a name");
-    // Known: the settings template names its tab row "Section" and its language list "Languages" in every locale.
     const names = elements(run, "language.json").map((e) => e.name);
-    t.ok(names.includes("Section") && names.includes("Languages"), "the settings' tab row and language list are still named in English (FINDINGS.md #12)");
-    // Known: a level card's accessible name is its text and its icons' names ("star", "lock"), in English.
+    t.ok(names.includes("Apartado") && names.includes("Idiomas"), "the settings' tab row and language list are named in Spanish");
+    t.ok(!names.includes("Section") && !names.includes("Languages"), "and not in English");
     const cards = elements(run, "levels.json").filter((e) => e.kind === "cell").map((e) => e.name);
-    t.ok(cards.some((n) => n.endsWith("star star star")), `a level card's name ends in its icons' English names (${cards[0]})`);
+    t.equal(cards[0], "1. La escalera de la caldera 0 de 3 estrellas", "a level card is named by its level and its stars in Spanish");
+    t.ok(!cards.some((n) => /\b(star|lock)\b/.test(n)), `no card is named by an icon's English name (${cards.join(" | ")})`);
+    t.ok(levels.includes("Volver"), "the level select's Back button says Volver");
   },
 });
