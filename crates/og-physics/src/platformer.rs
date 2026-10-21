@@ -294,7 +294,9 @@ pub(crate) fn platformers(
         let new_body = rp::Pose::from_parts(v(end), at.rotation) * local.inverse();
         let (position, quaternion) = unpose(&new_body, b.position);
         out.moved[k] = Some((position, quaternion, None));
-        push(&mut sim.world, &moved.hits, desired / dt);
+        if p.push_bodies {
+            push(&mut sim.world, &moved.hits, desired / dt, p.push_strength, dt);
+        }
         if let Some(kind) = event {
             out.events.push(CharacterEvent {
                 entity: b.entity.to_bits(),

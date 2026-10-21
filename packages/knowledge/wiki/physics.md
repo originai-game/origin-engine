@@ -18,7 +18,7 @@ module physics {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3696</sub>
+<sub>`api.ogt` line 3697</sub>
 
 ## Contents
 
@@ -61,8 +61,8 @@ module physics {
 | [`MOTOR_VELOCITY`](#const-MOTOR_VELOCITY) | constant | `Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s). |
 | [`MOTOR_POSITION`](#const-MOTOR_POSITION) | constant | `Joint.motor`: spring towards `motorTarget` angle or position (a servo). |
 | [`og.Joint`](#record-Joint) | component | A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are. |
-| [`og.CharacterController`](#record-CharacterController) | component | A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into. |
-| [`og.PlatformerController`](#record-PlatformerController) | component | A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body. |
+| [`og.CharacterController`](#record-CharacterController) | component | A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds. |
+| [`og.PlatformerController`](#record-PlatformerController) | component | A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body and pushes the dynamic bodies it runs into (`pushBodies`) with at most `pushStrength`, so a crate's mass tells: a light one is shoved at the run speed, a heavy one holds (set its og.RigidBody `mass`). |
 | [`CHARACTER_JUMPED`](#const-CHARACTER_JUMPED) | constant | `CharacterEvent.kind`: a jump from the ground (or in coyote time). |
 | [`CHARACTER_LANDED`](#const-CHARACTER_LANDED) | constant | `CharacterEvent.kind`: touched the ground after being in the air. |
 | [`CHARACTER_WALL_JUMPED`](#const-CHARACTER_WALL_JUMPED) | constant | `CharacterEvent.kind`: a jump off a wall. |
@@ -149,7 +149,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 5004</sub>
+<sub>`api.ogt` line 5020</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -179,7 +179,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 5011</sub>
+<sub>`api.ogt` line 5027</sub>
 
 <a id="fn-overlap"></a>
 
@@ -209,7 +209,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 5018</sub>
+<sub>`api.ogt` line 5034</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -245,7 +245,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 5025</sub>
+<sub>`api.ogt` line 5041</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -281,7 +281,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 5036</sub>
+<sub>`api.ogt` line 5052</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -313,7 +313,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 5047</sub>
+<sub>`api.ogt` line 5063</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -345,7 +345,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 5055</sub>
+<sub>`api.ogt` line 5071</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -377,7 +377,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 5063</sub>
+<sub>`api.ogt` line 5079</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -407,7 +407,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 5124</sub>
+<sub>`api.ogt` line 5140</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -437,7 +437,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 5131</sub>
+<sub>`api.ogt` line 5147</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -467,7 +467,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 5138</sub>
+<sub>`api.ogt` line 5154</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -497,7 +497,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 5145</sub>
+<sub>`api.ogt` line 5161</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -531,7 +531,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 5152</sub>
+<sub>`api.ogt` line 5168</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -561,7 +561,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 5161</sub>
+<sub>`api.ogt` line 5177</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -591,7 +591,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 5168</sub>
+<sub>`api.ogt` line 5184</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -623,7 +623,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 5175</sub>
+<sub>`api.ogt` line 5191</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -653,7 +653,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 5183</sub>
+<sub>`api.ogt` line 5199</sub>
 
 <a id="fn-stats"></a>
 
@@ -681,7 +681,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 5211</sub>
+<sub>`api.ogt` line 5227</sub>
 
 ## Components, resources and events
 
@@ -753,7 +753,7 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 3721</sub>
+<sub>`api.ogt` line 3722</sub>
 
 <a id="record-Collider"></a>
 
@@ -840,7 +840,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 3766</sub>
+<sub>`api.ogt` line 3767</sub>
 
 <a id="record-Velocity"></a>
 
@@ -869,7 +869,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 3825</sub>
+<sub>`api.ogt` line 3826</sub>
 
 <a id="record-Physics"></a>
 
@@ -923,7 +923,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 3837</sub>
+<sub>`api.ogt` line 3838</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -950,7 +950,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 3871</sub>
+<sub>`api.ogt` line 3872</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -973,7 +973,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 3879</sub>
+<sub>`api.ogt` line 3880</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -996,7 +996,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 3885</sub>
+<sub>`api.ogt` line 3886</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -1019,7 +1019,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 3891</sub>
+<sub>`api.ogt` line 3892</sub>
 
 <a id="record-Contact"></a>
 
@@ -1044,7 +1044,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 3897</sub>
+<sub>`api.ogt` line 3898</sub>
 
 <a id="record-Joint"></a>
 
@@ -1149,13 +1149,13 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 3914</sub>
+<sub>`api.ogt` line 3915</sub>
 
 <a id="record-CharacterController"></a>
 
 ### `og.CharacterController` (component)
 
-A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
+A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds.
 
 Token `og.CharacterController`, registered under the schema name `og.CharacterController`; its value type is `CharacterController`.
 
@@ -1171,7 +1171,8 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 | `skin` | `number` | `0.02` | ≥ 0.001 | `m` | — | The gap kept between it and every surface. |
 | `coyoteTime` | `number` | `0.1` | ≥ 0 | `s` | tunable | After leaving an edge, a jump still starts within this time. |
 | `maxFallSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The fastest fall. |
-| `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it walks into. |
+| `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it walks into, with at most `pushStrength`. |
+| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on walkable ground after the step. |
 | `sliding` | `boolean` | `false` | — | — | read only | Written: sliding down a slope steeper than maxSlope. |
 | `velocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | read only | Written: the velocity it moved at this tick (the platform's carry included). |
@@ -1182,7 +1183,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 
 ```ogt
 component CharacterController {
-  doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into."
+  doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds."
   field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
     unit mps
   }
@@ -1235,8 +1236,14 @@ component CharacterController {
     unit mps
     tunable true
   }
-  field pushBodies bool "Push dynamic bodies it walks into." {
+  field pushBodies bool "Push dynamic bodies it walks into, with at most `pushStrength`." {
     default true
+  }
+  field pushStrength f32 "The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does." {
+    default 1000
+    min 0
+    unit newton
+    tunable true
   }
   field grounded bool "Written: standing on walkable ground after the step." {
     readonly true
@@ -1263,13 +1270,13 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 3984</sub>
+<sub>`api.ogt` line 3985</sub>
 
 <a id="record-PlatformerController"></a>
 
 ### `og.PlatformerController` (component)
 
-A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
+A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body and pushes the dynamic bodies it runs into (`pushBodies`) with at most `pushStrength`, so a crate's mass tells: a light one is shoved at the run speed, a heavy one holds (set its og.RigidBody `mass`).
 
 Token `og.PlatformerController`, registered under the schema name `og.PlatformerController`; its value type is `PlatformerController`.
 
@@ -1303,6 +1310,8 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 | `maxSlope` | `number` | `50` | 0 … 89 | `deg` | tunable | The steepest slope it runs up. |
 | `snapDistance` | `number` | `0.1` | ≥ 0 | `m` | tunable | How far below it the ground still holds it (slopes, small drops). |
 | `skin` | `number` | `0.01` | ≥ 0.001 | `m` | — | The gap kept between it and every surface. |
+| `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it runs into, with at most `pushStrength`. |
+| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on ground after the step. |
 | `onWall` | `number` | `0` | -1 … 1 | — | read only | Written: -1 sliding on a wall to its left, 1 to its right, 0 none. |
 | `facing` | `number` | `1` | -1 … 1 | — | read only | Written: -1 facing left, 1 right (the last run direction). |
@@ -1318,7 +1327,7 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 
 ```ogt
 component PlatformerController {
-  doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body."
+  doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body and pushes the dynamic bodies it runs into (`pushBodies`) with at most `pushStrength`, so a crate's mass tells: a light one is shoved at the run speed, a heavy one holds (set its og.RigidBody `mass`)."
   field moveX f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
     min -1
     max 1
@@ -1459,6 +1468,15 @@ component PlatformerController {
     min 0.001
     unit m
   }
+  field pushBodies bool "Push dynamic bodies it runs into, with at most `pushStrength`." {
+    default true
+  }
+  field pushStrength f32 "The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does." {
+    default 1000
+    min 0
+    unit newton
+    tunable true
+  }
   field grounded bool "Written: standing on ground after the step." {
     readonly true
   }
@@ -1504,7 +1522,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 4065</sub>
+<sub>`api.ogt` line 4072</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1534,7 +1552,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 4258</sub>
+<sub>`api.ogt` line 4274</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1693,7 +1711,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 4274</sub>
+<sub>`api.ogt` line 4290</sub>
 
 <a id="record-Rope"></a>
 
@@ -1782,7 +1800,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 4392</sub>
+<sub>`api.ogt` line 4408</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1888,7 +1906,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 4458</sub>
+<sub>`api.ogt` line 4474</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -2012,7 +2030,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 4534</sub>
+<sub>`api.ogt` line 4550</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2181,7 +2199,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 4623</sub>
+<sub>`api.ogt` line 4639</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2246,7 +2264,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 4749</sub>
+<sub>`api.ogt` line 4765</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2323,7 +2341,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 4792</sub>
+<sub>`api.ogt` line 4808</sub>
 
 <a id="record-Splash"></a>
 
@@ -2354,7 +2372,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 4845</sub>
+<sub>`api.ogt` line 4861</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2422,7 +2440,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 4857</sub>
+<sub>`api.ogt` line 4873</sub>
 
 ## Types
 
@@ -2450,7 +2468,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 4902</sub>
+<sub>`api.ogt` line 4918</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2485,7 +2503,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4910</sub>
+<sub>`api.ogt` line 4926</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2512,7 +2530,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 4926</sub>
+<sub>`api.ogt` line 4942</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2554,7 +2572,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 4936</sub>
+<sub>`api.ogt` line 4952</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2593,7 +2611,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4958</sub>
+<sub>`api.ogt` line 4974</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2620,7 +2638,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 4976</sub>
+<sub>`api.ogt` line 4992</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2650,7 +2668,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4986</sub>
+<sub>`api.ogt` line 5002</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2674,7 +2692,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 4997</sub>
+<sub>`api.ogt` line 5013</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2708,7 +2726,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 5071</sub>
+<sub>`api.ogt` line 5087</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2751,7 +2769,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 5087</sub>
+<sub>`api.ogt` line 5103</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2775,7 +2793,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 5109</sub>
+<sub>`api.ogt` line 5125</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2798,7 +2816,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 5116</sub>
+<sub>`api.ogt` line 5132</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -2823,7 +2841,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 5190</sub>
+<sub>`api.ogt` line 5206</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -2854,7 +2872,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 5199</sub>
+<sub>`api.ogt` line 5215</sub>
 
 ## Constants
 
@@ -2905,238 +2923,238 @@ struct PhysicsStats {
 const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
-<sub>`api.ogt` line 3702</sub>
+<sub>`api.ogt` line 3703</sub>
 
 ```ogt
 const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
-<sub>`api.ogt` line 3703</sub>
+<sub>`api.ogt` line 3704</sub>
 
 ```ogt
 const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
-<sub>`api.ogt` line 3704</sub>
+<sub>`api.ogt` line 3705</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>`api.ogt` line 3705</sub>
+<sub>`api.ogt` line 3706</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>`api.ogt` line 3706</sub>
+<sub>`api.ogt` line 3707</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>`api.ogt` line 3707</sub>
+<sub>`api.ogt` line 3708</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>`api.ogt` line 3708</sub>
+<sub>`api.ogt` line 3709</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>`api.ogt` line 3709</sub>
+<sub>`api.ogt` line 3710</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>`api.ogt` line 3710</sub>
+<sub>`api.ogt` line 3711</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>`api.ogt` line 3711</sub>
+<sub>`api.ogt` line 3712</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>`api.ogt` line 3712</sub>
+<sub>`api.ogt` line 3713</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>`api.ogt` line 3713</sub>
+<sub>`api.ogt` line 3714</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>`api.ogt` line 3714</sub>
+<sub>`api.ogt` line 3715</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>`api.ogt` line 3715</sub>
+<sub>`api.ogt` line 3716</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
-<sub>`api.ogt` line 3716</sub>
+<sub>`api.ogt` line 3717</sub>
 
 ```ogt
 const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
-<sub>`api.ogt` line 3717</sub>
+<sub>`api.ogt` line 3718</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>`api.ogt` line 3718</sub>
+<sub>`api.ogt` line 3719</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 3719</sub>
+<sub>`api.ogt` line 3720</sub>
 
 ```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>`api.ogt` line 3904</sub>
+<sub>`api.ogt` line 3905</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 3905</sub>
+<sub>`api.ogt` line 3906</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 3906</sub>
+<sub>`api.ogt` line 3907</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>`api.ogt` line 3907</sub>
+<sub>`api.ogt` line 3908</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>`api.ogt` line 3908</sub>
+<sub>`api.ogt` line 3909</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>`api.ogt` line 3909</sub>
+<sub>`api.ogt` line 3910</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>`api.ogt` line 3910</sub>
+<sub>`api.ogt` line 3911</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>`api.ogt` line 3911</sub>
+<sub>`api.ogt` line 3912</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 3912</sub>
+<sub>`api.ogt` line 3913</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 4251</sub>
+<sub>`api.ogt` line 4267</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 4252</sub>
+<sub>`api.ogt` line 4268</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 4253</sub>
+<sub>`api.ogt` line 4269</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 4254</sub>
+<sub>`api.ogt` line 4270</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 4255</sub>
+<sub>`api.ogt` line 4271</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 4256</sub>
+<sub>`api.ogt` line 4272</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 4270</sub>
+<sub>`api.ogt` line 4286</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 4271</sub>
+<sub>`api.ogt` line 4287</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 4272</sub>
+<sub>`api.ogt` line 4288</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 4453</sub>
+<sub>`api.ogt` line 4469</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 4454</sub>
+<sub>`api.ogt` line 4470</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 4455</sub>
+<sub>`api.ogt` line 4471</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 4456</sub>
+<sub>`api.ogt` line 4472</sub>

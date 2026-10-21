@@ -20,7 +20,7 @@ module tilemap {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6263</sub>
+<sub>`api.ogt` line 6279</sub>
 
 ## Contents
 
@@ -69,7 +69,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 6371</sub>
+<sub>`api.ogt` line 6387</sub>
 
 <a id="fn-getTile"></a>
 
@@ -105,7 +105,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 6378</sub>
+<sub>`api.ogt` line 6394</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -137,7 +137,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 6388</sub>
+<sub>`api.ogt` line 6404</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -171,7 +171,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 6396</sub>
+<sub>`api.ogt` line 6412</sub>
 
 ## Components, resources and events
 
@@ -226,7 +226,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 6279</sub>
+<sub>`api.ogt` line 6295</sub>
 
 ## Types
 
@@ -242,7 +242,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 6270</sub>
+<sub>`api.ogt` line 6286</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -275,7 +275,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 6309</sub>
+<sub>`api.ogt` line 6325</sub>
 
 <a id="type-TileObject"></a>
 
@@ -310,7 +310,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 6321</sub>
+<sub>`api.ogt` line 6337</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -345,7 +345,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 6337</sub>
+<sub>`api.ogt` line 6353</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -377,7 +377,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 6352</sub>
+<sub>`api.ogt` line 6368</sub>
 
 <a id="type-TileCell"></a>
 
@@ -400,7 +400,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 6364</sub>
+<sub>`api.ogt` line 6380</sub>
 
 ## Column kinds
 
@@ -419,4 +419,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 6272</sub>
+<sub>`api.ogt` line 6288</sub>

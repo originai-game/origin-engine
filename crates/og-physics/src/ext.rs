@@ -415,10 +415,24 @@ pub(crate) fn body_of(sim: &Sim, entity: u64) -> Option<rp::RigidBodyHandle> {
     sim.bodies.get(&entity).map(|t| t.handle)
 }
 
-/// Pushes the dynamic bodies a controller walked into: each takes the
-/// controller's speed into it along the contact normal.
-pub(crate) fn push(w: &mut rp::PhysicsWorld, hits: &[(rp::ColliderHandle, Vec3)], velocity: Vec3) {
+/// Pushes the dynamic bodies a controller walked into, one rule for both
+/// controllers: each body is asked to take (most of) the controller's speed
+/// into it along the contact normal, an impulse of its mass times that
+/// speed; the bodies of one tick share at most `strength` (N) times `dt`,
+/// so a light body is shoved at the controller's speed and a heavy one only
+/// as far as the force beats its friction (a tonne on the ground holds).
+pub(crate) fn push(
+    w: &mut rp::PhysicsWorld,
+    hits: &[(rp::ColliderHandle, Vec3)],
+    velocity: Vec3,
+    strength: f32,
+    dt: f32,
+) {
+    let mut budget = strength.max(0.0) * dt;
     for &(h, normal) in hits {
+        if budget <= 0.0 {
+            break;
+        }
         let Some(parent) = w.colliders.get(h).and_then(|c| c.parent()) else {
             continue;
         };
@@ -429,8 +443,9 @@ pub(crate) fn push(w: &mut rp::PhysicsWorld, hits: &[(rp::ColliderHandle, Vec3)]
         let into = -normal;
         let speed = velocity.dot(into) - unv(rb.linvel()).dot(into);
         if speed > 0.0 {
-            let impulse = into * (speed * rb.mass() * 0.8);
-            rb.apply_impulse(v(flat(impulse)), true);
+            let size = (speed * rb.mass() * 0.8).min(budget);
+            budget -= size;
+            rb.apply_impulse(v(flat(into * size)), true);
         }
     }
 }
@@ -563,7 +578,7 @@ pub(crate) fn characters(
         let (position, quaternion) = unpose(&new_body, b.position);
         out.moved[k] = Some((position, quaternion, None));
         if c.push_bodies {
-            push(&mut sim.world, &moved.hits, desired / dt);
+            push(&mut sim.world, &moved.hits, desired / dt, c.push_strength, dt);
         }
         if jumped {
             out.events.push(CharacterEvent {

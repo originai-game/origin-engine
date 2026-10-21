@@ -1159,7 +1159,7 @@ deterministic and part of snapshots (`reference/physics.md`):
 - `og.CharacterController` (3D, or top-down with `gravityScale` 0) — set
   `move` every tick and `jump` to jump; it climbs `maxSlope` and
   `stepHeight`, snaps to the ground, rides moving platforms, slides along
-  walls, pushes bodies; read `grounded`, `velocity`, `ground`. Its
+  walls, pushes dynamic bodies; read `grounded`, `velocity`, `ground`. Its
   og.Collider's `layers` and `mask` decide what blocks it, as for bodies
   (a ghost through a gate: leave the gate's layer out of its `mask`); the
   same for the PlatformerController.
@@ -1169,6 +1169,13 @@ deterministic and part of snapshots (`reference/physics.md`):
   `impulse` (m/s, taken once on the next step) knocks it back or launches
   it;
   `og.CharacterEvent` reports jumps and landings for dust and sounds.
+  Both controllers push the dynamic bodies they move into (`pushBodies`,
+  on by default) with at most `pushStrength` (1,000 N): the push is mass
+  times the speed asked of the body, capped, so mass tells. Give a crate
+  its `og.RigidBody.mass`: 2 kg is shoved at the run speed, 100 kg creeps,
+  a tonne on the ground holds (friction beats the push). Lower
+  `pushStrength` for a weak hero; `pushBodies: false` for a hero that
+  never shoves (a crate then blocks like a wall).
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
   from `og.physics.vehicleWheels`) or a car on wheel joints (2D). Its

@@ -102,6 +102,7 @@ Field units the docs and Tune use.
 | `ratio` | a fraction between 0 and 1 |
 | `bytes` | bytes |
 | `kg` | kilograms |
+| `newton` | newtons: the force that gives a kilogram one metre per second squared |
 | `mps` | metres per second |
 | `mps2` | metres per second squared |
 | `radps` | radians per second |

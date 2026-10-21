@@ -186,9 +186,20 @@ pub struct CharacterController {
     /// The fastest fall.
     #[reflect(name = "maxFallSpeed", min = 0, unit = "m/s", default = 40, tunable)]
     pub max_fall_speed: f32,
-    /// Push dynamic bodies it walks into.
+    /// Push dynamic bodies it walks into (with at most pushStrength).
     #[reflect(name = "pushBodies", default = 1)]
     pub push_bodies: bool,
+    /// The most force it pushes with: each tick the bodies it walks into
+    /// share an impulse of at most this times the tick's length, so a body
+    /// whose friction holds more (a heavy crate) does not move.
+    #[reflect(
+        name = "pushStrength",
+        min = 0,
+        unit = "N",
+        default = 1000,
+        tunable
+    )]
+    pub push_strength: f32,
     /// Written: standing on walkable ground after the step.
     pub grounded: bool,
     /// Written: sliding down a slope steeper than maxSlope.
@@ -222,6 +233,7 @@ impl Default for CharacterController {
             coyote_time: 0.1,
             max_fall_speed: 40.0,
             push_bodies: true,
+            push_strength: DEFAULT_PUSH_STRENGTH,
             grounded: false,
             sliding: false,
             velocity: Vec3::ZERO,
@@ -232,6 +244,10 @@ impl Default for CharacterController {
         }
     }
 }
+
+/// The controllers' `pushStrength` default (N): a body of a few kilograms
+/// is shoved at the controller's speed, one of a tonne on the ground holds.
+pub const DEFAULT_PUSH_STRENGTH: f32 = 1000.0;
 
 /// A 2D platformer character (the 2D profile): run, jump and fall with
 /// designer units (jump height and time to apex, not gravity), coyote time,
@@ -244,7 +260,9 @@ impl Default for CharacterController {
 /// what blocks it is every solid collider its og.Collider's `layers` and
 /// `mask` interact with (each one's layers meeting the other's mask), as
 /// for bodies. The entity needs an og.Transform and an og.Collider (a box
-/// or capsule); it becomes a kinematic body.
+/// or capsule); it becomes a kinematic body and pushes the dynamic bodies
+/// it runs into (`pushBodies`) with at most `pushStrength`, so a heavy one
+/// holds where a light one is shoved.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.PlatformerController")]
 pub struct PlatformerController {
@@ -358,6 +376,20 @@ pub struct PlatformerController {
     /// The gap kept between it and every surface.
     #[reflect(min = 0.001, unit = "m", default = 0.01)]
     pub skin: f32,
+    /// Push dynamic bodies it runs into (with at most pushStrength).
+    #[reflect(name = "pushBodies", default = 1)]
+    pub push_bodies: bool,
+    /// The most force it pushes with: each tick the bodies it runs into
+    /// share an impulse of at most this times the tick's length, so a body
+    /// whose friction holds more (a heavy crate) does not move.
+    #[reflect(
+        name = "pushStrength",
+        min = 0,
+        unit = "N",
+        default = 1000,
+        tunable
+    )]
+    pub push_strength: f32,
     /// Written: standing on ground after the step.
     pub grounded: bool,
     /// Written: -1 sliding on a wall to its left, 1 to its right, 0 none.
@@ -422,6 +454,8 @@ impl Default for PlatformerController {
             max_slope: 50.0,
             snap_distance: 0.1,
             skin: 0.01,
+            push_bodies: true,
+            push_strength: DEFAULT_PUSH_STRENGTH,
             grounded: false,
             on_wall: 0,
             facing: 1,
