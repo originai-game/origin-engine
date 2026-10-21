@@ -45,15 +45,23 @@ export const View = defineSystem(
       const head = { x: g.heroX, y: g.heroY + 1.55, z: g.heroZ };
       const back = { x: Math.sin(g.yaw), z: Math.cos(g.yaw) };
       const d = t.cameraDistance;
-      const want = { x: head.x + back.x * d * Math.cos(t.cameraPitch), y: head.y + d * Math.sin(t.cameraPitch), z: head.z + back.z * d * Math.cos(t.cameraPitch) };
-      // Keep the eye out of the walls and under roofs: a ray from the head towards it.
-      const dir = { x: want.x - head.x, y: want.y - head.y, z: want.z - head.z };
-      const len = Math.hypot(dir.x, dir.y, dir.z);
-      const hit = og.physics.raycast(world, { origin: head, direction: { x: dir.x / len, y: dir.y / len, z: dir.z / len }, maxDistance: len, filter: { mask: LAYER.level | LAYER.gate } });
-      const reach = hit.ok && hit.value ? Math.max(0.6, hit.value.distance - 0.3) : len;
-      eye = { x: head.x + (dir.x / len) * reach, y: head.y + (dir.y / len) * reach, z: head.z + (dir.z / len) * reach };
+      // Keep the eye out of the walls and under roofs: a ray from the head towards it at the
+      // tuned pitch, and one nearly level (under a lintel or a roof); the eye takes the longer.
+      const cast = (pitch: number) => {
+        const dir = { x: back.x * Math.cos(pitch), y: Math.sin(pitch), z: back.z * Math.cos(pitch) };
+        const hit = og.physics.raycast(world, { origin: head, direction: dir, maxDistance: d, filter: { mask: LAYER.level | LAYER.gate } });
+        const blocked = hit.ok && hit.value !== null;
+        const reach = blocked ? Math.max(0.6, hit.value!.distance - 0.3) : d;
+        return { dir, reach, blocked };
+      };
+      let ray = cast(t.cameraPitch);
+      if (ray.blocked) {
+        const low = cast(0.06);
+        if (low.reach > ray.reach + 0.5) ray = low;
+        snap = true;
+      }
+      eye = { x: head.x + ray.dir.x * ray.reach, y: head.y + ray.dir.y * ray.reach, z: head.z + ray.dir.z * ray.reach };
       focus = { x: head.x - back.x * 1.5, y: head.y - 0.2, z: head.z - back.z * 1.5 };
-      if (hit.ok && hit.value) snap = true;
     }
     const at = cam.position;
     const far = Math.hypot(eye.x - at.x, eye.y - at.y, eye.z - at.z) > 14;

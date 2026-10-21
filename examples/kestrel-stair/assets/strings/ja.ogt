@@ -5,7 +5,7 @@ version 1
 # subset to these characters by tools/subset-font.py (og-i18n §3).
 locale "ja"
 fonts "fonts/NotoSansJP-kestrel.otf"
-string "title.name" "チョウゲンボウの階段"
+string "title.name" "隼の階段"
 string "title.tagline" "日暮れまでに、手紙を山頂の鐘へ届けよ"
 string "title.continue" "つづきから · {place}、{clock}"
 string "title.new" "新しい旅"

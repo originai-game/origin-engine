@@ -148,10 +148,12 @@ export const Pickups = defineSystem(
     }
     if (g.gateOpen && g.gateLift < 4.2) {
       // It rises into the wall's top over a second and three quarters, then is gone from view.
-      g.gateLift = Math.min(4.2, g.gateLift + time.scaledDt * 2.4);
+      // (The lift is kept in an f32 field: compare the local, not the field read back.)
+      const lift = Math.min(4.2, g.gateLift + time.scaledDt * 2.4);
+      g.gateLift = lift >= 4.2 ? 4.25 : lift;
       const gate = entity(world, "gate");
-      must(world.set(gate, og.Transform, { position: { x: 0, y: (GATE.min[1] + GATE.max[1]) / 2 + g.gateLift, z: (GATE.min[2] + GATE.max[2]) / 2 } }));
-      if (g.gateLift >= 4.2) must(world.set(gate, og.Mesh, { visible: false }));
+      must(world.set(gate, og.Transform, { position: { x: 0, y: (GATE.min[1] + GATE.max[1]) / 2 + lift, z: (GATE.min[2] + GATE.max[2]) / 2 } }));
+      if (lift >= 4.2) must(world.set(gate, og.Mesh, { visible: false }));
     }
     if (!playing) {
       g.nearKind = Near.None;
@@ -161,10 +163,10 @@ export const Pickups = defineSystem(
     // What is within reach: the nearest.
     let kind: number = Near.None;
     let index = -1;
-    let best = REACH;
+    let best = Infinity;
     const consider = (k: number, i: number, x: number, y: number, z: number, reach = REACH) => {
       const d = Math.hypot(x - g.heroX, z - g.heroZ);
-      if (d < Math.min(best, reach) && Math.abs(y - g.heroY) < 2.2) {
+      if (d < reach && d < best && Math.abs(y - g.heroY) < 2.2) {
         best = d;
         kind = k;
         index = i;

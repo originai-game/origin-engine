@@ -23,7 +23,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { GameSettings, LevelInfo, Look, Sound as SoundHandle, Value, World } from "@origingame/engine";
-import { Ending, Game, HOURS, MAX_HP, Near, Phase, Prefs, Scene, Sound, Tuning } from "./components.ts";
+import { Ending, Game, Hero, HOURS, MAX_HP, Near, OneByOne, Phase, Prefs, Scene, Sound, Tuning } from "./components.ts";
 import { placeHero } from "./hero.ts";
 import { CHAPTERS, chapterAt, WAYSTONES } from "./layout.ts";
 import { eatHerb } from "./pickups.ts";
@@ -457,7 +457,7 @@ function results(world: World, g: GameV): "again" | "title" | "records" | null {
 /** The screens, the run's start, clock and end, the hold, the looks, the platform. */
 export const Ui = defineSystem(
   "Ui",
-  { reads: [Tuning, og.Input, og.Gamepad], writes: [Game, Prefs, og.Audio, og.DayNight, og.RenderSettings, og.PostEffects, og.Stylise, og.MaterialStyle, og.Fog, og.Sky, og.Environment] },
+  { reads: [Tuning, og.Input, og.Gamepad, OneByOne], writes: [Game, Prefs, Hero, og.Transform, og.CharacterController, og.Audio, og.DayNight, og.RenderSettings, og.PostEffects, og.Stylise, og.MaterialStyle, og.Fog, og.Sky, og.Environment] },
   (_q, time, world) => {
     const g = must(world.resource(Game));
     const p = must(world.resource(Prefs));
@@ -502,6 +502,13 @@ export const Ui = defineSystem(
           { id: "settings", label: say(world, "title.settings") },
         ];
         const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer") });
+        // The title menu takes no focus by itself, so Enter, Space and the pad's A would do nothing
+        // until an arrow or Tab (FINDINGS #12): the focus is put on its first item.
+        // (A navigation is applied the tick after it is queued: asked once, not again while it lands.)
+        if (og.ui.focus(0) === "" && !g.settingsOpen && world.tick - g.focusAsked > 3) {
+          og.ui.navigate(world, "next");
+          g.focusAsked = world.tick;
+        }
         if (!g.settingsOpen && g.phase === Phase.Title) {
           if (r.selected === "new") startRun(world, g, 0);
           if (r.selected === "continue") continueRun(world, g);

@@ -46,7 +46,7 @@ export function spawnHero(world: World, g: GameV): void {
   // half round so the cloth's x runs from the courier's left shoulder to its right.
   const cape = must(og.render.standardMaterial(world, { map: must(og.load.texture(world, "textures/cape.png")), roughness: 0.9, side: "double", sheen: 0.8, sheenColor: { r: 0.8, g: 0.3, b: 0.25 }, sheenRoughness: 0.6 }));
   const c = must(world.spawn({ name: "hero-cape", position: capeAt(START.x, START.y, START.z, Math.PI), quaternion: og.transform.fromAxisAngle(UP, Math.PI + Math.PI) }));
-  must(world.insert(c, og.Cloth, { columns: 7, rows: 12, spacing: 0.08, pins: 1, iterations: 10, damping: 0.97, wind: { x: 0, y: 0, z: -0.6 }, gust: 0.5, radius: 0.03, thickness: 0, material: cape }));
+  must(world.insert(c, og.Cloth, { columns: 7, rows: 12, spacing: 0.08, pins: 1, iterations: 10, damping: 0.9, wind: { x: 0, y: 0, z: -0.6 }, gust: 0.5, radius: 0.03, thickness: 0, material: cape }));
   // The strike's sparks.
   const sparks = must(world.spawn({ name: "hero-sparks" }));
   must(world.insert(sparks, og.ParticleSystem, { emitter: must(og.load.emitter(world, "fx/hit.ogt")), seed: 7, visible: false }));
@@ -109,7 +109,8 @@ export function hurtHero(world: World, g: GameV, t: TuneV, damage: number, from:
   must(og.camera.kick(world, { x: g.knockX, y: 0, z: g.knockZ }, heavy ? 0.3 : 0.15));
   must(og.render.floatingText(world, { text: `-${Math.round(damage)}`, position: { x: g.heroX, y: g.heroY + 2.1, z: g.heroZ }, size: 0.45, color: { r: 1, g: 0.25, b: 0.2 }, rise: 1.1, lifetime: 0.9 }));
   const body = entity(world, "hero-body");
-  if (g.hp > 0) must(world.set(body, og.AnimationPlayer, { clip: heroClip(world, "hurt"), time: 0, weight: 1, loop: false }));
+  // The hurt clip over the blend tree; with no strength left, the fall.
+  must(world.set(body, og.AnimationPlayer, { clip: heroClip(world, g.hp > 0 ? "hurt" : "die"), time: 0, weight: 1, loop: false, speed: 1 }));
 }
 
 /**
@@ -133,6 +134,10 @@ export const HeroMove = defineSystem(
     const playing = g.phase === Phase.Play && g.ending === Ending.None && !g.held;
     // Pause before the time gate, so a press during a hit stop still pauses.
     if (playing && (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start"))) g.paused = true;
+    // A strike pressed is kept for a fifth of a second (og-feel §1's buffer), so a press during a
+    // hit stop, a knock-back or the end of a swing still swings when it can.
+    if (playing && (inp.pressed("KeyJ") || inp.buttonPressed("left") || gp.pressed("x"))) g.strikeBuffer = 0.2;
+    else if (g.strikeBuffer > 0) g.strikeBuffer = Math.max(0, g.strikeBuffer - time.dt);
     const dt = time.scaledDt;
     const p = must(world.get(hero, og.Transform)).position;
     g.heroX = p.x;
@@ -172,14 +177,15 @@ export const HeroMove = defineSystem(
     }
 
     // The sword: a press starts a swing on this tick (the player's own attack has no wind-up).
-    const strike = playing && g.knock === 0 && (inp.pressed("KeyJ") || inp.buttonPressed("left") || gp.pressed("x"));
+    const strike = playing && g.knock === 0 && g.strikeBuffer > 0;
     if (strike && (g.attack === 0 || g.attack > t.swing * 0.75)) {
+      g.strikeBuffer = 0;
       g.attack = 0.0001;
       g.struck = false;
       g.swings += 1;
       g.sfx |= Sound.Swing;
       if (mag > 0.01) g.facing = Math.atan2(dx, dz);
-      // A little help with aim: the swing turns to the nearest standing foe within 3 m and 75 degrees.
+      // A little help with aim: the swing turns to the nearest standing foe within 3 m.
       const aim = aimAt(world, g);
       if (aim !== null) g.facing = aim;
       must(world.set(body, og.AnimationPlayer, { clip: heroClip(world, "attack"), time: 0, weight: 1, loop: false, speed: 0.55 / t.swing }));
@@ -270,7 +276,7 @@ export const HeroMove = defineSystem(
   },
 );
 
-/** The heading to the nearest standing foe within 3 m and 75 degrees of the courier's heading, or null. */
+/** The heading to the nearest standing foe within 3 m (those in front first), or null. */
 function aimAt(world: World, g: GameV): number | null {
   const near = og.physics.overlap(world, { shape: { shape: SHAPE_SPHERE, radius: 3 }, position: { x: g.heroX, y: g.heroY + 1, z: g.heroZ }, filter: { mask: LAYER.foe } });
   if (!near.ok) return null;
@@ -284,8 +290,10 @@ function aimAt(world: World, g: GameV): number | null {
     const dz = at.z - g.heroZ;
     const d = Math.hypot(dx, dz);
     const h = Math.atan2(dx, dz);
-    if (Math.abs(wrap(h - g.facing)) > (75 * Math.PI) / 180 || d >= bestD) continue;
-    bestD = d;
+    // The nearest wins, a foe behind counting as twice as far as one in front.
+    const score = d * (1 + Math.abs(wrap(h - g.facing)) / Math.PI);
+    if (score >= bestD) continue;
+    bestD = score;
     best = h;
   }
   return best;

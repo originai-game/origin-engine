@@ -98,10 +98,12 @@ export function textures(): Record<"paving" | "stone" | "grass" | "plaster" | "w
     return flower ? [232, 214, 160] : base;
   });
   const plaster = tileable(256, (u, v) => {
+    // Lime plaster: a warm wash, faint hairline cracks, a darker dado band at the foot.
     const w = wash(u, v, 61, 3);
-    const crack = smoothstep(0.48, 0.5, vnoise(u * 9, v * 9, 71, 9)) * (1 - smoothstep(0.5, 0.52, vnoise(u * 9, v * 9, 71, 9)));
-    const base = shade("#e3cfa4", "#bf9f72", 0.6 * w);
-    return [base[0] - 50 * crack, base[1] - 50 * crack, base[2] - 45 * crack];
+    const n = vnoise(u * 5, v * 5, 71, 5);
+    const crack = smoothstep(0.495, 0.5, n) * (1 - smoothstep(0.5, 0.505, n)) * smoothstep(0.4, 0.7, fbm(u * 3, v * 3, 72, 2, 3));
+    const base = shade("#e6d3ab", "#c9ab7f", 0.55 * w);
+    return [base[0] - 28 * crack, base[1] - 28 * crack, base[2] - 24 * crack];
   });
   const wood = tileable(128, (u, v) => {
     const grain = Math.sin((u * 18 + fbm(u * 4, v * 2, 81, 3, 4) * 3) * Math.PI * 2) * 0.5 + 0.5;
