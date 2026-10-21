@@ -113,6 +113,8 @@ export function spawnCars(world: World): void {
     brakeForce: t.brakeForce,
     maxSpeed: t.maxSpeed,
     maxSteer: t.maxSteer,
+    // rapier's own roll influence, which the car was tuned on (og.Vehicle's default is now 0).
+    rollInfluence: 0.1,
   }));
   must(world.insert(car, og.Model, { asset: must(og.load.gltf(world, "models/car.glb", { castShadow: true })) }));
   must(world.insert(car, Racer, {}));
