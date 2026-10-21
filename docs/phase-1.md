@@ -468,6 +468,63 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 12, skins-palette: every skin under the packs' rule, badges on either side, Hollowbell's Skip, Kestrel's chapters (38f6435)
+
+Rows 77, 78, 79 and 84.
+
+- 3da271b9, row 77: brightness changed, not hue (og-taste §3): sparkorb's
+  gold a darker amber under its cream labels (`#ad690a`; the bright gold
+  stays in `accentInk`, the glow and the HUD, so idle's gold words and
+  icons moved from `accent` to `accentInk`), its danger lighter;
+  lampdive's fills and subtle ink, with the pixel pack's `textWeight body
+  0.5` and `px_range 8` (its pressed primary label read 3.91:1 in the
+  frame without them); lanebeat's hover the scifi value; pathguard's
+  orange deeper with a cream `accentFg`, darker inks, a deep danger;
+  Hollowbell's panel one step darker from its own 32 colours (the coral
+  danger kept); Lantern Vale's success, warn and info back to the
+  fantasy pack's deep values; Kestrel unchanged (its bag's count reads 6:1
+  by colour; polish's lower reading was its sampling, #20).
+- b358d6a8, rows 77 and 78: `Srgba::readable_on` (and `READABLE` 4.5,
+  `over_linear`) moves an ink towards white or black until it reads
+  4.5:1 on a ground; a status or accent badge on a ground on the other
+  side of the scale from the palette's panels (a light pack's badge on
+  its dark stage) moves its ink, in its panel it keeps the palette's; the
+  neutral badge moves `fgMuted` where it does not read on `fill`, and
+  where no light ink can (scifi's mid-blue) the fill darkens; meter
+  labels take the same rule. og-ui sees only the palette, not a skin's
+  panel art, so it steps in only on the other side of the scale and the
+  palettes stay responsible for their panels, which the test checks.
+  `pack_contrast.rs` covers all 14 skins (the seven packs, the four
+  archetype skins, the three examples') under all three tests including
+  the rendered-frame reading, with a stack's count on a slot, meter
+  labels, every badge tone on both grounds; the og-ui README and
+  og-taste §3. Before to after: sparkorb primary 3.42/2.93 to 7.22/5.52,
+  pathguard primary 3.30/4.20/2.99 to 7.75/7.64/8.28 and its danger in a
+  panel 2.96 to 4.80, lampdive's placeholder 3.57 to 5.01, the neutral
+  badge in scifi, neon and lanebeat 2.15 to 4.65, light packs' badges on
+  the dark stage 1.05 to 3.53 up to 4.57 to 4.64, Lantern Vale's badges
+  3.15/2.72/4.07 to 4.67/4.68/4.70, Hollowbell's danger badge 4.26 to
+  4.50 (at the bar, no margin). `make-skins.py` reproduces the six packs
+  byte for byte; none of them changed.
+- dcdcd17c, rows 79 and 84: Hollowbell's `talk.skip` key (Skip / 跳过)
+  passed as `skipLabel`, its Chinese subset regenerated with 过, its
+  locales test asserting it; Kestrel's chapters script taps Title after
+  the results' 700 ms wipe (16.6 s), sets `Game.chaptersReached` so all
+  four cards show names, opens the chapters at 17.6 s and shoots at
+  19.2 s.
+- Frames re-recorded on metal (6cb4d28f, 529bdd1d; RMSE against the
+  old): Kestrel `chapters` 0.1835 (the four named cards now), og-ui
+  `kit-skin-scifi-phone` 0.0163 (the "Lv" badges on a darker fill),
+  idle title 0.0203, orbit 0.0155, card 0.0211, roguelike title 0.0152
+  and over 0.0210, tower-defense title 0.0253, wave 0.0171, end 0.0224.
+  Roguelike `dive` (0.0076) and every Hollowbell and Lantern Vale frame
+  (at most 0.0066) within tolerance, kept.
+- Left out: the vulkan-cpu copies of the moved frames (the wave's end);
+  sparkorb's accent is the most visible character change (a darker gold
+  was the only value reading on its neon button art in every state).
+
+Functional lane on the merge: see the wave 12 gate section.
+
 ## Wave 12, render-audio-3: the mesh flash on the instance record, parented audio (5bedf86)
 
 Rows 85 and 86. Merged after main's e7d6cb5e.
@@ -4286,14 +4343,14 @@ resource only the owner can give.
 | 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed for og-tests, Hollowbell and the looks on vulkan-cpu and for every browser frame (the waves 8 and 9 gate: web-reference 373 s, lavapipe at 517d8c4e); open only for og-ui `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu, with row 54: the wave-end run recording them is in progress at wave 11's end (Main gate, wave 11) |
 | 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | closed at 64f79249 (cook-ui-words, merged a31d6cbe): `og cook` warns through `Report.warnings` on every Tiled custom property it does not read, naming the property, where it sits and the names read there (a test; og-game §8's table gains `solid`); Hollowbell's map tool writes `repeatx` at f3bf909e and the hills repeat (title, play and results re-recorded: 0.0872, 0.0870, 0.0320) |
 | 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | closed at 77cb5b0a (cook-ui-words, merged a31d6cbe): `InventoryDesc.hintLabel`/`countLabel`, `LeaderboardDesc.retryLabel`, `TutorialDesc.skipLabel`/`nextLabel`/`doneLabel`/`stepLabel` ("{step} of {count}"), `CutsceneDesc.skipLabel`; the ui-kit demo passes them from its five tables (an `offline:` command for the leaderboard's error state), its locales playtest asserts them in Chinese, og-i18n §2 lists them. Hollowbell's cutscene "Skip" is row 79 |
-| 77 | Palette round two: the archetype skins' buttons and fields under 4.5:1 (sparkorb's primary button 3.42:1, lampdive's danger button 2.58:1 and its field placeholder 3.57:1, pathguard's primary 3.30:1; row 69's test holds only the status tones and the accent badge), and the examples' own skins, outside `pack_contrast.rs` (Hollowbell's danger 4.26:1; Lantern Vale's success 3.15, warn 2.72, info 4.07:1) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
-| 78 | Badges the palette round left: the neutral badge (scifi 2.15:1, neon 2.81:1; printed by `pack_contrast.rs`, not enforced) and the light packs' badges on a dark stage (about 2:1; the test holds a badge in its panel, and on the screen only where screen and panel are both dark or both light) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
-| 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | open |
+| 77 | Palette round two: the archetype skins' buttons and fields under 4.5:1 (sparkorb's primary button 3.42:1, lampdive's danger button 2.58:1 and its field placeholder 3.57:1, pathguard's primary 3.30:1; row 69's test holds only the status tones and the accent badge), and the examples' own skins, outside `pack_contrast.rs` (Hollowbell's danger 4.26:1; Lantern Vale's success 3.15, warn 2.72, info 4.07:1) | W10 cook-ui-words | S | engine, phase 4 (UI) | closed at 3da271b9 and b358d6a8 (merged 38f6435d): all 14 skins under the packs' rule, every row 4.5:1 or better (primary and secondary labels at rest and hovered 7:1) |
+| 78 | Badges the palette round left: the neutral badge (scifi 2.15:1, neon 2.81:1; printed by `pack_contrast.rs`, not enforced) and the light packs' badges on a dark stage (about 2:1; the test holds a badge in its panel, and on the screen only where screen and panel are both dark or both light) | W10 cook-ui-words | S | engine, phase 4 (UI) | closed at b358d6a8: `Srgba::readable_on` moves a badge's or meter label's ink on the other side of the scale, the neutral badge's ink or fill made to read |
+| 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | closed at dcdcd17c: `talk.skip`, 跳过, the subset regenerated |
 | 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | closed at 0b245141 (basisu's padding bytes, the vendored one-line fix) with 78b8d0d8's thread-count test; the pipeline cache's torn file at 9ffc36cb |
 | 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open; read by cook-determinism (033182e): no defect in the engine's code, two Vulkan devices on two threads at once on Lavapipe the best reading; if it recurs, run the second 600-tick run after the first there |
 | 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open: the first real run, started at a91e6139, stopped in its cross-build stage (it holds both gate locks for the whole run, and wave 11's merges would have waited); it is in progress at wave 11's end, at the merged tree (Main gate, wave 11) |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
-| 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | open |
+| 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | closed at dcdcd17c: the script taps Title after the wipe and opens the chapters; `chapters.png` re-recorded (0.1835) |
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
 
