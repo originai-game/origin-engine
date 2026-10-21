@@ -46,6 +46,17 @@ and `scene` are the defaults of the `GameDesc` fields of those names: what
 and `main`). Write each in one place; set in both to different values, the
 engine refuses to start and names both.
 
+`og` bundles TypeScript without checking its types, so type-check the
+project yourself after each change: `bun x tsc --noEmit` in a created
+project, whose `tsconfig.json` resolves `@origingame/engine` (the
+generated `types/index.d.ts`) and `@origingame/engine/playtest` from
+`node_modules`. An example inside the engine repository has no
+`node_modules`: its `tsconfig.json` maps both through `paths` to
+`packages/engine/types/index.d.ts` and `packages/engine/src/playtest.ts`
+(with `packages/engine/src/env.d.ts` and a `host.d.ts` for the `node:`
+modules and globals its bun scripts touch), and `bun run typecheck` runs
+it (`examples/hollowbell`, `examples/lantern-vale`).
+
 ## 3. Components, resources, systems, the game
 
 ```ts

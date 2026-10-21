@@ -31,7 +31,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { deflateSync } from "node:zlib";
 
-const ROOT = resolve(import.meta.dir, "..");
+const ROOT = resolve(import.meta.dir ?? ".", "..");
 const ASSETS = join(ROOT, "assets");
 
 function write(rel: string, data: Uint8Array | string): void {

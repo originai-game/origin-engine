@@ -11,6 +11,7 @@
     "build": "og build .",
     "cook": "og cook .",
     "test": "og test .",
+    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p .",
     "polish": "og polish ."
   },
   "dependencies": {
