@@ -1538,6 +1538,27 @@ renderers adapt identically over 330 ticks after a 4 EV drop, the frame
 restore to tick 31 redraws tick 120 byte for byte, and zero speeds equal
 `Exposure::auto()` bit for bit.
 
+**Where adaptation starts** (web findings #5, wave 13). A frame of tick
+0, drawn before the first tick, meters at once and is never adapted
+from: the next adapted frame starts afresh. The web shell draws one
+behind the play gate (and the reference page one at boot), `og run`
+draws none, so the adaptation used to start at a frame one host drew
+and the other did not. That frame was also the first a streamed terrain
+was drawn in, before any of its tiles had arrived (og-runtime's
+streamer now settles a terrain the first frame it is drawn, as a
+capture does): Lantern Vale's first frame drew no ground, metered 2.5 EV
+brighter than the vale, and the dusk look adapting at 1 EV/s up stayed
+under-exposed for its first two seconds, a little less on the web,
+whose tick-0 frame metered differently (title RMSE 0.031 and start
+0.036 against `metal` on both browser tiers). Now the first ticked frame
+meters the whole vale on every host: the title and start references
+were re-recorded (RMSE 0.173 and 0.044 against the old ones, the
+exposure at its target from the first frame), and a native run that
+draws a tick-0 frame first (as the web does) matches one that does not
+within RMSE 0.007 at the title. `tests/exposure.rs`: a tick-0 frame of a
+16× darker view leaves ticks 1 and 40 byte for byte those of a renderer
+that never drew it (fails on the old code at tick 1).
+
 ## Phase 4: stylisation
 
 The primitives a look composes into a non-photographic frame
