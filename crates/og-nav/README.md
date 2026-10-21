@@ -21,7 +21,7 @@ world.step()?;   // the agent plans (jump point search), follows the corners, ar
 |---|---|
 | `grid` | `Grid` (`new`, `from_costs`, `set`, `cost`, `walkable`, `can_step`, `cell_at`, `center`, `nearest_walkable`, `find_path`, `line_of_sight`, `waypoints`), `Algorithm::{AStar, Jps}`, `GridPath`, `Scratch`, `BLOCKED`, `ORTHO`/`DIAG` |
 | `flow` | `FlowField::build(&grid, targets)`, `sample`, `cost_at`; `NONE` |
-| `mesh` | `NavParams`, `Heightfield` (`flat`, `without`, `column`, `connected`), `NavMesh` (`build`, `from_tiles`, `build_tile`, `find_path`, `funnel`, `nearest`, `move_along`, `set_obstacle`, `rebuild_region`, `poly`, `height_at`, `closest_on`), `Tile`, `Poly`, `PolyRef`, `MeshPath`, `Obstacle` |
+| `mesh` | `NavParams`, `Heightfield` (`flat`, `without`, `column`, `connected`), `NavMesh` (`build`, `from_tiles`, `build_tile`, `find_path`, `funnel`, `nearest`, `move_along`, `set_obstacle`, `rebuild_region`, `poly`, `bounds`, `height_at`, `closest_on`), `Tile`, `Poly`, `PolyRef`, `MeshPath`, `Obstacle` |
 | `bake` (feature) | `bake(triangles, &params, bounds) -> Heightfield`, `box_triangles` |
 | `steer` | `seek`, `flee`, `arrive`, `predict`, `pursue`, `evade`, `wander` (`WanderCircle`), `separation`, `avoid` (`Feeler`), `accelerate` |
 | `system` | `NavAgent`, `Steering` (records), `Transform`/`Velocity` mirrors, `Nav`, `Navs`, `SharedNavs`, `Plane`, `NavDesc`, `Raycaster`, `install`, `plan`, `NavSystem::path_of`, the `STATUS_*` codes, `SYSTEM_NAME` = `og.nav` |
@@ -125,7 +125,12 @@ behaviours by weight; starting from the body's actual `og.Velocity` when it
 has one, turn the velocity towards the result by at most
 `acceleration · dt`, cap it at `speed`. An entity with an `og.Velocity`
 gets its velocity written (physics moves it, so walls hold it); any other
-moves its `og.Transform`, along the surface on a navmesh. The time is the
+moves its `og.Transform`, along the surface on a navmesh from the polygon
+it stands on: an agent that has never planned, or that the game moved off
+the polygon it was on (a teleport, a respawn), is first located (the
+nearest polygon within its height and twice its radius, at least 1 m; none
+off the mesh, where it moves freely). An agent at rest is not moved, so an
+idle agent keeps the height it was placed at. The time is the
 scaled tick: a hit stop holds agents. Wander noise is a hash of the entity
 and the tick.
 
@@ -171,3 +176,5 @@ broken once and failed, `tests/evidence/E6/break-and-restore.md`):
 | `two_hundred_agents_cross_a_256_grid_and_replay_identically_after_a_snapshot` | 200 agents cross a maze; two runs hash alike; a world restored at tick 301 ends identical |
 | `separation_spreads_a_pile_of_agents_and_wander_is_deterministic` | 20 agents spawned on one point spread apart; two runs hash alike; 3D agents keep their height |
 | `an_agent_walks_a_navmesh_around_the_wall_and_arrives_on_the_surface` | an agent goes round through the gap, never inside the wall or off the surface, and arrives |
+| `an_idle_agent_stays_on_its_own_terrace_and_later_reaches_a_target` | with polygon 0 on a high terrace, idle agents on the court and a lower terrace keep their positions, then each walks to a target on its own level; one teleported while idle walks from where it stands |
+| `a_navmesh_s_bounds_hold_every_polygon_up_to_the_high_terrace` | `bounds` holds every polygon vertex, its top the highest terrace |

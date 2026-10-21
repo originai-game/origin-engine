@@ -424,7 +424,7 @@ pub const OFF_PATH: f32 = 1.5;
 pub const PLANS_PER_TICK: u32 = 32;
 
 /// A path an agent follows.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PathState {
     pub corners: Vec<Vec3>,
     pub next: u32,
@@ -434,9 +434,45 @@ pub struct PathState {
     pub version: u64,
     /// Ticks since the plan.
     pub age: u32,
-    /// The navmesh polygon the agent stands on.
+    /// The navmesh polygon the agent stands on; [`crate::mesh::NONE`] until it is
+    /// located (an agent that has never planned stands on none).
     pub poly: u32,
     pub status: u32,
+}
+
+impl Default for PathState {
+    fn default() -> Self {
+        PathState {
+            corners: Vec::new(),
+            next: 0,
+            target: Vec3::ZERO,
+            nav: 0,
+            version: 0,
+            age: 0,
+            poly: NO_POLY,
+            status: 0,
+        }
+    }
+}
+
+/// The polygon of `mesh` an agent at `pos` stands on: `poly` while it still
+/// holds the agent (under it on x and z, its surface within the agent's
+/// height), else the nearest within the agent's height and radius, else
+/// [`crate::mesh::NONE`] (off the mesh). An agent that has never planned, or that the
+/// game teleported, is located here before the surface moves it.
+fn locate(mesh: &NavMesh, poly: u32, pos: Vec3, radius: f32) -> u32 {
+    let height = mesh.field.params.agent_height;
+    if let Some((tile, p)) = mesh.poly(poly) {
+        let on = NavMesh::closest_on(tile, p, pos);
+        if Vec2::new(on.x - pos.x, on.z - pos.z).length_squared() < 1e-6
+            && (on.y - pos.y).abs() <= height
+        {
+            return poly;
+        }
+    }
+    let reach = (radius * 2.0).max(1.0);
+    mesh.nearest(pos, Vec3::new(reach, height, reach))
+        .map_or(NO_POLY, |n| n.0)
 }
 
 #[derive(Debug, Default)]
@@ -889,15 +925,14 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             None => {
                 let step = p2 + v2 * dt;
                 new_pos = plane.to_world(step, height);
+                // An agent at rest is left where it stands; one that moves is
+                // walked along the surface from the polygon it stands on.
                 if let Some(Nav::Mesh(m)) = nav
                     && dt > 0.0
+                    && step != p2
                 {
-                    let mut poly = ps.poly;
-                    if m.poly(poly).is_none() {
-                        poly = m
-                            .nearest(pos, Vec3::new(1.0, m.field.params.agent_height, 1.0))
-                            .map_or(NO_POLY, |n| n.0);
-                    }
+                    let poly = locate(m, ps.poly, pos, agent.radius);
+                    ps.poly = poly;
                     if m.poly(poly).is_some() {
                         let (np, at) = m.move_along(poly as PolyRef, pos, new_pos);
                         ps.poly = np;
