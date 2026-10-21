@@ -621,6 +621,17 @@ shell (examples/WEB-FINDINGS.md #6, #7, #8, #10), on lane-1.
   validate.ts passes. examples/WEB-FINDINGS.md gained a "Fixed" section
   for the four.
 
+**The coordinator's run (the measure worktree at 5137ee44, after the
+merge):** `bun tests/web/published.ts` on Hollowbell and the kit, both
+tiers: Hollowbell 13 of 13 on WebGPU and on WebGL2 (the engine Worker on
+the harness's clock, the title's New in the mirror behind the gate, a
+real click opening it, the tick-60 title RMSE 0 against `metal`, the
+name dialog's focus in a named text box no aria-hidden hides, "Wren"
+typed, Begin, ArrowRight moving Wren from x 16.5 to 21.0, nothing on the
+console), the kit 18 of 18 on both (Mute, 简体中文 and Done saved once,
+the reload asking the play origin for og.settings and coming back in
+简体中文, the console clean).
+
 ## Wave 13, webgl2-render-2: Lantern Vale's ink, Kestrel's crypt and the exposure's start on WebGL2 (c178e216)
 
 Wave 13's second stream took the web findings that are rendering on the
