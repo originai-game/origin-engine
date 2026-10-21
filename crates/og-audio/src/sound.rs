@@ -513,6 +513,53 @@ impl SoundBank {
     /// other chunks arrive with [`SoundBank::put_chunk`]; until one does,
     /// its frames play as silence. Returns its handle (never 0).
     pub fn insert_chunked(&self, id: &str, head: &[u8], per_chunk: u32, count: u32) -> Result<u64> {
+        let data = Self::chunked_data(id, head, per_chunk, count)?;
+        Ok(self.put(data))
+    }
+
+    /// Puts a sound cooked in chunks behind an existing handle (its
+    /// streaming group loaded), as [`SoundBank::insert_chunked`] makes one:
+    /// the head must have the handle's rate, channels and length, and
+    /// voices playing the silent stand-in go on with its chunks from where
+    /// they are, the ones not resident yet as silence until the host puts
+    /// them ([`SoundBank::keep_chunks`] asks for them from now on). False
+    /// for a handle not in the bank.
+    pub fn replace_chunked(
+        &self,
+        handle: u64,
+        id: &str,
+        head: &[u8],
+        per_chunk: u32,
+        count: u32,
+    ) -> Result<bool> {
+        let Some(old) = self.get(handle) else {
+            return Ok(false);
+        };
+        let data = Self::chunked_data(id, head, per_chunk, count)?;
+        if (data.sample_rate, data.channels, data.frames)
+            != (old.sample_rate, old.channels, old.frames)
+        {
+            return Err(invalid(
+                id,
+                format!(
+                    "{} Hz x{} for {} frames replaces {} Hz x{} for {}",
+                    data.sample_rate,
+                    data.channels,
+                    data.frames,
+                    old.sample_rate,
+                    old.channels,
+                    old.frames
+                ),
+            ));
+        }
+        let data = Arc::new(data);
+        if let Storage::Silent(cell) = &old.storage {
+            let _ = cell.set(data.clone());
+        }
+        Ok(self.swap(handle, data))
+    }
+
+    fn chunked_data(id: &str, head: &[u8], per_chunk: u32, count: u32) -> Result<SoundData> {
         let total = qoa_header(head).map_err(|e| invalid(id, e))?;
         let qoa_frames = total.div_ceil(QOA_FRAME_LEN);
         let per = u64::from(per_chunk);
@@ -533,7 +580,7 @@ impl SoundBank {
             bytes: head.to_vec(),
             frames,
         }));
-        Ok(self.put(SoundData {
+        Ok(SoundData {
             id: id.to_string(),
             sample_rate,
             channels,
@@ -544,19 +591,23 @@ impl SoundBank {
                 slots: RwLock::new(slots),
                 loader: RwLock::new(None),
             }),
-        }))
+        })
     }
 
     /// Puts chunk `chunk` of a chunked sound in place: `frames` are its QOA
     /// frames (a cooked chunk's `qoa` section). Voices reaching it decode
-    /// it from then on. False for a handle not in the bank; an error for a
-    /// sound not chunked, a chunk past its last or frames of another shape.
+    /// it from then on. False for a handle not in the bank, or silent (its
+    /// streaming group unloaded while the chunk was on its way); an error
+    /// for a sound not chunked, a chunk past its last or frames of another
+    /// shape.
     pub fn put_chunk(&self, handle: u64, chunk: u32, frames: &[u8]) -> Result<bool> {
         let Some(s) = self.get(handle) else {
             return Ok(false);
         };
-        let Storage::Chunked(c) = &s.storage else {
-            return Err(invalid(&s.id, "is not chunked"));
+        let c = match &s.storage {
+            Storage::Chunked(c) => c,
+            Storage::Silent(_) => return Ok(false),
+            _ => return Err(invalid(&s.id, "is not chunked")),
         };
         let made = s.make_chunk(c, chunk as usize, frames.to_vec())?;
         c.slots.write().expect("chunk lock")[chunk as usize] = Some(made);

@@ -33,8 +33,10 @@
 //
 // The bytes depend only on the inputs: no dates, no absolute paths, files in
 // sorted order. Prints a size table (bytes and brotli -q 11, or gzip -9
-// without the brotli CLI); with --json one JSON line:
-//   { ok, out, publish, files: [{ path, bytes, compressed, codec }], total, probe: { build, members }, manifest }
+// without the brotli CLI), then what a player downloads (downloadsOf: each
+// page's boot, the lanes and the single-threaded page, and what comes
+// later); with --json one JSON line:
+//   { ok, out, publish, files: [{ path, bytes, compressed, codec }], total, downloads, probe: { build, members }, manifest }
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -239,12 +241,98 @@ function streamGroupsOf(manifest: string): { groups: Array<{ name: string; file:
   return { groups, grouped };
 }
 
+/** Files, raw bytes and compressed bytes (the size table's codec). */
+export interface DownloadSum {
+  readonly files: number;
+  readonly bytes: number;
+  readonly compressed: number;
+}
+
+/**
+ * What a player downloads, as the size gate counts it (each file's brotli
+ * -q 11 size, gzip -9 without the brotli CLI): the boot of each page the
+ * build serves, everything fetched before its first frame, and what comes
+ * later. A page takes one engine module: the lanes module when the page is
+ * cross-origin isolated and the build ships it, else the single-threaded
+ * one (docs/web-export.md §Lanes). The WebGPU and WebGL2 pages fetch the
+ * same files. `total` (every file of the directory) is none of these: it
+ * counts both engine modules, the licences, the icons and the manifest.
+ */
+export interface Downloads {
+  /** The boot of the single-threaded page, and of the lanes page when the build ships lanes. */
+  readonly boot: { readonly single: DownloadBoot; readonly lanes: DownloadBoot | null };
+  readonly later: {
+    /** Each streaming group's pack, fetched when its group loads. */
+    readonly packs: DownloadSum;
+    /** The chunks of the sounds cooked in chunks after their first, fetched ahead of their playheads. */
+    readonly chunks: DownloadSum;
+    /** The AudioWorklet, fetched on the first gesture. */
+    readonly worklet: DownloadSum;
+    /** The service worker, the web manifest and the icons (a publish build's PWA, after the first frame). */
+    readonly pwa: DownloadSum;
+  };
+}
+
+/** One page's boot: its total and its parts. */
+export interface DownloadBoot extends DownloadSum {
+  readonly engine: DownloadSum;
+  /** The cooked first group (everything no streaming group holds; a chunked sound's first chunk is its own output). */
+  readonly cooked: DownloadSum;
+  /** index.html, play.js, game.js. */
+  readonly shell: DownloadSum;
+  /** The Basis transcoder (fetched when the first group has Basis textures). */
+  readonly basis: DownloadSum;
+}
+
+/** What each page of a build downloads (Downloads), from its size table. */
+export function downloadsOf(files: readonly SizeRow[]): Downloads {
+  const rows = files.map((f) => ({ ...f, path: f.path.split("\\").join("/") }));
+  const sum = (test: (path: string) => boolean): DownloadSum =>
+    rows.filter((f) => test(f.path)).reduce((a, f) => ({ files: a.files + 1, bytes: a.bytes + f.bytes, compressed: a.compressed + f.compressed }), { files: 0, bytes: 0, compressed: 0 });
+  const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
+  const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p);
+  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p));
+  const shell = sum((p) => /^(index\.html|play\.js|game\.js)$/.test(p));
+  const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
+  const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
+  const lanes = sum((p) => LANES_ENGINE.test(p));
+  return {
+    boot: { single: page(sum((p) => SINGLE_ENGINE.test(p))), lanes: lanes.files > 0 ? page(lanes) : null },
+    later: {
+      packs: sum(isPack),
+      chunks: sum((p) => SOUND_CHUNK.test(p)),
+      worklet: sum((p) => p === "audio-worklet.js"),
+      pwa: sum((p) => p === "sw.js" || p === "manifest.webmanifest" || p.startsWith("icons/")),
+    },
+  };
+}
+
+/** The download lines `og build` prints under its size table. */
+export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
+  const kb = (n: number) => `${(n / 1000).toFixed(1)} kB`;
+  const boot = (name: string, b: DownloadBoot) =>
+    `  ${name.padEnd(30)} ${String(b.files).padStart(4)} files  ${String(b.compressed).padStart(10)} B  (engine ${kb(b.engine.compressed)}, cooked ${kb(b.cooked.compressed)}, shell ${kb(b.shell.compressed)}, basis ${kb(b.basis.compressed)})`;
+  const lines = [`download (${codec}, what a player fetches; a WebGPU and a WebGL2 page fetch the same files):`];
+  if (d.boot.lanes) lines.push(boot("boot, lanes page (isolated)", d.boot.lanes));
+  lines.push(boot("boot, single-threaded page", d.boot.single));
+  const later = [
+    d.later.packs.files ? `${d.later.packs.files} streaming packs ${d.later.packs.compressed} B (as their groups load)` : "",
+    d.later.chunks.files ? `${d.later.chunks.files} sound chunks ${d.later.chunks.compressed} B (ahead of their playheads)` : "",
+    d.later.worklet.files ? `the audio worklet ${d.later.worklet.compressed} B (first gesture)` : "",
+    d.later.pwa.files ? `the service worker and icons ${d.later.pwa.compressed} B` : "",
+  ].filter(Boolean);
+  if (later.length) lines.push(`  later: ${later.join("; ")}`);
+  return lines.join("\n") + "\n";
+}
+
 export interface WebBuild {
   readonly ok: boolean;
   readonly out: string;
   readonly publish: boolean;
   readonly files: SizeRow[];
   readonly total: { bytes: number; compressed: number };
+  /** What each page downloads (boot and later); `total` is every file of the directory. */
+  readonly downloads?: Downloads;
   readonly probe: { build: string; members: string[] } | null;
   readonly manifest?: BuildManifest;
   readonly reason?: string;
@@ -565,9 +653,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   const icon = icons[icons.length - 1]!.src;
 
-  // What the boot fetches, so its progress is the bytes received.
+  // What the boot fetches, so its progress is the bytes received: the first
+  // group without the chunks of a chunked sound after its first, which the
+  // engine fetches ahead of the playheads (never at boot).
   const wasmBytes = statSync(join(out, "origin-engine_bg.wasm")).size;
-  const firstGroup = walk(join(out, "cooked")).filter((f) => !packs.has(relative(out, f).split("\\").join("/")));
+  const firstGroup = walk(join(out, "cooked")).filter((f) => {
+    const path = relative(out, f).split("\\").join("/");
+    return !packs.has(path) && !SOUND_CHUNK.test(path);
+  });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   const config = {
     engine: ENGINE_VERSION,
@@ -670,12 +763,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
     return { path: relative(out, path), bytes: bytes.length, compressed: c.size, codec: c.codec };
   });
   const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
-  return { ok: true, out, publish, files, total, probe, manifest };
+  return { ok: true, out, publish, files, total, downloads: downloadsOf(files), probe, manifest };
 }
 
 function table(b: WebBuild): string {
   const codec = b.files[0]?.codec ?? "brotli-11";
-  const rows = [["file", "bytes", codec], ...b.files.map((f) => [f.path, String(f.bytes), String(f.compressed)]), ["total", String(b.total.bytes), String(b.total.compressed)]];
+  const rows = [["file", "bytes", codec], ...b.files.map((f) => [f.path, String(f.bytes), String(f.compressed)]), ["total (every file; not a download)", String(b.total.bytes), String(b.total.compressed)]];
   const w = [0, 1, 2].map((i) => Math.max(...rows.map((r) => r[i]!.length)));
   return rows.map((r) => `${r[0]!.padEnd(w[0]!)}  ${r[1]!.padStart(w[1]!)}  ${r[2]!.padStart(w[2]!)}`).join("\n") + "\n";
 }
@@ -708,6 +801,7 @@ if (import.meta.main) {
   if (argv.includes("--json")) process.stdout.write(JSON.stringify(b) + "\n");
   else {
     process.stdout.write(table(b));
+    if (b.downloads) process.stdout.write(downloadLines(b.downloads, b.files[0]?.codec ?? "brotli-11"));
     if (b.probe) process.stdout.write(`probe: ${b.probe.build} build, ${b.probe.members.length} members: ${b.probe.members.join(", ")}\n`);
     process.stdout.write(`${BUILD_MANIFEST}: ${b.manifest!.build} build of ${b.manifest!.game.name}, engine ${b.manifest!.engine.version}, isolation ${b.manifest!.crossOriginIsolation}, version ${b.manifest!.version.slice(0, 16)}\n`);
   }

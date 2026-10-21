@@ -785,7 +785,7 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
 /// the bank (a long advance mixed at once) is read from its file there
 /// and then, on whichever thread mixes, its type and cook stamp checked.
 #[cfg(not(target_arch = "wasm32"))]
-fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
+pub(crate) fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
     let files: Vec<Option<(String, u64)>> = (0..sound.meta.chunk_count)
         .map(|n| {
             let id = og_cook::runtime::chunk_id(&sound.id, n);

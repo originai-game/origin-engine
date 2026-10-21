@@ -29,6 +29,7 @@ import { A11yMirror, type A11yTree } from "./a11y.ts";
 import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
+import type { BootPhases } from "./worker.ts";
 
 export interface ShellOptions {
   /** The play surface. Its pixel size is set from its CSS size and the device pixel ratio. */
@@ -169,6 +170,8 @@ export class Shell {
   readonly transport: "ring" | "message";
   /** What the Worker reported at start. */
   readonly ready: Ready;
+  /** Where the Worker's boot went (worker.ts BootPhases), once the first frame is drawn. */
+  boot: BootPhases | null = null;
   readonly #pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
   readonly #rpcPending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
   readonly #listeners: Array<() => void> = [];
@@ -226,6 +229,7 @@ export class Shell {
         return;
       }
       if (m.type === "frame") {
+        this.boot = (m as { boot?: BootPhases }).boot ?? null;
         this.#onFirstFrame?.();
         return;
       }

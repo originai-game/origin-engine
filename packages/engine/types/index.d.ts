@@ -16364,6 +16364,84 @@ export interface Heard {
   readonly wav: string;
 }
 
+/** The engine's allocator, counted (both hosts install a counting global allocator). */
+export interface ProbeHeap {
+  /**
+   * Bytes allocated and not freed.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly live: number;
+  /**
+   * The most bytes live at once since load.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+  /** Allocations made since load. */
+  readonly allocations: number;
+}
+
+/** The world's size. */
+export interface ProbeWorldMemory {
+  /** Entities alive. */
+  readonly entities: number;
+}
+
+/** The streaming memory budget (og.stream.budget): what the admitted groups' assets take. */
+export interface ProbeStreamMemory {
+  /**
+   * The budget.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly budget: number;
+  /**
+   * What the admitted groups take now.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly used: number;
+  /**
+   * The most they took at once.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+}
+
+/**
+ * What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md).
+ */
+export interface ProbeMemory {
+  /** `web` or `native`. */
+  readonly host: string;
+  /**
+   * The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly linear: number | null;
+  /**
+   * The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly resident: number | null;
+  /** The engine's allocator; null where the host counts nothing. */
+  readonly heap: ProbeHeap | null;
+  /** The world. */
+  readonly world: ProbeWorldMemory;
+  /** The streaming budget. */
+  readonly stream: ProbeStreamMemory | null;
+  /**
+   * The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly audio: number | null;
+}
+
 /**
  * A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture.
  *
@@ -16777,6 +16855,12 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null without audio, or before anything was rendered.
    */
   listen(seconds?: number): Heard | null;
+  /**
+   * What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts.
+   *
+   * @returns Null from a host that gives no figures.
+   */
+  memory(): ProbeMemory | null;
 }
 
 // ── terrain ─────────────────────────────────────────────────────

@@ -79,6 +79,14 @@ export interface PlayOrigin {
   readonly missing: string[];
   /** The store the Player's store.* calls read and write. */
   readonly store: Map<string, { value: unknown; revision: number }>;
+  /**
+   * Every file of the build sent: which page load (`navigated`'s count), ms from that load's
+   * navigation, its sizes (brotli from `files`), and whether the service worker fetched it
+   * (its fetches name sw.js as their referrer).
+   */
+  readonly requests: Array<{ load: number; at: number; path: string; bytes: number; brotli: number; sw?: boolean }>;
+  /** A page load starts now: the requests from here on are its, timed from now. */
+  navigated(): void;
   /** The page's URL, with an optional query (`?webgl=1`). */
   url(query?: string): string;
   stop(): void;
@@ -106,6 +114,9 @@ export function playOrigin(o: { dist: string; id: string; isolated?: boolean; th
   const reports: Array<{ kind: string; at: number; keepalive?: boolean }> = [];
   const missing: string[] = [];
   const store = new Map<string, { value: unknown; revision: number }>();
+  const requests: PlayOrigin["requests"] = [];
+  let loads = 0;
+  let navAt = performance.now();
   const boards = new Map<string, Array<{ name: string; score: number; me?: boolean }>>([
     ["ascent", [{ name: "Wren", score: 212.4 }, { name: "Ilse", score: 245.0 }, { name: "Oswin", score: 301.9 }]],
   ]);
@@ -197,6 +208,11 @@ export function playOrigin(o: { dist: string; id: string; isolated?: boolean; th
         missing.push(url.pathname);
         return new Response("not found", { status: 404 });
       }
+      {
+        const f = o.files?.find((x) => `/${x.path}` === rel);
+        const sw = /\/sw\.js$/.test(req.headers.get("referer") ?? "");
+        requests.push({ load: loads, at: Math.round(performance.now() - navAt), path: rel.slice(1), bytes: f?.bytes ?? 0, brotli: f?.brotli ?? 0, ...(sw ? { sw } : {}) });
+      }
       const headers: Record<string, string> = { "cache-control": "no-store", ...isolation };
       for (const r of rules) if (r.pattern === rel || (r.pattern.endsWith("*") && rel.startsWith(r.pattern.slice(0, -1))) || (r.pattern.startsWith("/*.") && rel.endsWith(r.pattern.slice(2)))) Object.assign(headers, Object.fromEntries(Object.entries(r.headers).map(([k, v]) => [k.toLowerCase(), v])));
       if (!isolated) {
@@ -237,6 +253,11 @@ export function playOrigin(o: { dist: string; id: string; isolated?: boolean; th
     reports,
     missing,
     store,
+    requests,
+    navigated: () => {
+      loads++;
+      navAt = performance.now();
+    },
     url: (query = "") => `http://127.0.0.1:${server.port}${root}${query}`,
     stop: () => server.stop(),
   };

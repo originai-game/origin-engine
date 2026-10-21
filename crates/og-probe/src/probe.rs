@@ -44,7 +44,7 @@ pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSI
 pub const MEMBERS: &[&str] = &[
     "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
     "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump",
-    "commands", "listen",
+    "commands", "listen", "memory",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -182,6 +182,7 @@ pub struct Probe {
     target_missed: bool,
     inbox: Inbox,
     listen: Option<ListenFn>,
+    memory: Option<MemoryFn>,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
     /// A screenshot waiting on its frame: it holds the clock and later steps.
@@ -222,6 +223,11 @@ pub struct Heard {
 
 /// The host's `listen` hook.
 pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
+
+/// The host's `memory` hook: what the engine holds, as the IDL's
+/// `ProbeMemory` (the host, the wasm linear memory or the process's resident
+/// memory, the counted heap, the world, the streaming budget, the audio).
+pub type MemoryFn = Box<dyn Fn(&World) -> Value>;
 
 /// A script's output path, relative to wherever the host writes outputs:
 /// an absolute path or a `..` component is refused, so a script (or a
@@ -362,6 +368,7 @@ impl Probe {
             reloader: None,
             facts: None,
             listen: None,
+            memory: None,
             stamp: 0.0,
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
@@ -461,6 +468,17 @@ impl Probe {
             "rms": h.rms,
             "wav": base64::encode(&h.wav),
         }))
+    }
+
+    /// Gives `memory` the host's figures ([`MemoryFn`]).
+    pub fn set_memory(&mut self, memory: impl Fn(&World) -> Value + 'static) {
+        self.memory = Some(Box::new(memory));
+    }
+
+    /// `memory`: what the engine holds (`ProbeMemory`); `None` from a host
+    /// that gave no figures.
+    pub fn memory(&self, world: &World) -> Option<Value> {
+        self.memory.as_ref().map(|f| f(world))
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.

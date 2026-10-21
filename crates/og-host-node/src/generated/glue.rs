@@ -1863,6 +1863,13 @@ pub fn og_engine_probe_listen(env: Env, engine_probe: u32, seconds: Option<f64>)
     <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
 }
 
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_memory")]
+pub fn og_engine_probe_memory(env: Env, engine_probe: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_memory(&Host, engine_probe)
+}
+
 #[napi(js_name = "og_terrain_load")]
 pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

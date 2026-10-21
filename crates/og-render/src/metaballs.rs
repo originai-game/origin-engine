@@ -12,6 +12,7 @@
 //! each; groups (and lone fluids) are packed into [`FIELDS`] of them, so up
 //! to [`MAX_FLUIDS`] fluids are drawn a frame; more are not drawn.
 
+use crate::deferred::{AsModule, Deferred};
 use glam::{Vec2, Vec3, Vec4};
 use std::sync::Arc;
 
@@ -156,8 +157,8 @@ const BLOB_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout 
 };
 
 pub(crate) struct MetaballRenderer {
-    field_pipeline: wgpu::RenderPipeline,
-    composite_pipeline: wgpu::RenderPipeline,
+    field_pipeline: Deferred<wgpu::RenderPipeline>,
+    composite_pipeline: Deferred<wgpu::RenderPipeline>,
     layout: wgpu::BindGroupLayout,
     blobs: wgpu::Buffer,
     params: wgpu::Buffer,
@@ -168,16 +169,19 @@ pub(crate) struct MetaballRenderer {
 }
 
 impl MetaballRenderer {
+    /// Makes one of its pipelines no frame used yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        crate::deferred::warm_one(&[&self.field_pipeline, &self.composite_pipeline])
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
         samples: u32,
     ) -> MetaballRenderer {
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("metaballs"),
-            source: wgpu::ShaderSource::Wgsl(metaballs_source(frame_wgsl).into()),
-        });
+        // Made when a frame first draws metaballs (deferred.rs).
+        let module = crate::deferred::module(device, "metaballs", metaballs_source(frame_wgsl));
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("metaballs"),
             entries: &[
@@ -210,63 +214,70 @@ impl MetaballRenderer {
             bind_group_layouts: &[Some(frame_layout)],
             immediate_size: 0,
         });
-        let field_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("metaball field"),
-            layout: Some(&field_layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs_field"),
-                compilation_options: Default::default(),
-                buffers: &[Some(BLOB_LAYOUT)],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_field"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: crate::HDR_FORMAT,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
+        let field_pipeline = {
+            let (device, field_layout, module) =
+                (device.clone(), field_layout.clone(), module.clone());
+            Deferred::new(move || {
+                let module = module.module();
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("metaball field"),
+                    layout: Some(&field_layout),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some("vs_field"),
+                        compilation_options: Default::default(),
+                        buffers: &[Some(BLOB_LAYOUT)],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some("fs_field"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: crate::HDR_FORMAT,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                            }),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
                     }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
         let composite_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("metaball composite"),
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
             immediate_size: 0,
         });
-        let composite_pipeline = crate::hdr_pipeline(
-            device,
-            crate::HdrPipeline {
-                label: "metaball composite",
-                layout: &composite_layout,
-                module: &module,
-                vs: "vs_composite",
-                fs: "fs_composite",
-                buffers: &[],
-                cull: None,
-                depth_write: false,
-                depth_compare: wgpu::CompareFunction::Always,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                samples,
-            },
-        );
+        let composite_pipeline =
+            crate::deferred_hdr(device, &composite_layout, module, move |layout, module| {
+                crate::HdrPipeline {
+                    label: "metaball composite",
+                    layout,
+                    module,
+                    vs: "vs_composite",
+                    fs: "fs_composite",
+                    buffers: &[],
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::Always,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    samples,
+                }
+            });
         let blobs = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("metaballs"),
             size: 4096,

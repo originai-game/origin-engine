@@ -26,6 +26,7 @@
 //! where a polygonised surface needs a density grid and a mesh rebuilt
 //! every frame on the CPU for WebGL2.
 
+use crate::deferred::{AsModule, Deferred};
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
 
@@ -149,10 +150,10 @@ pub(crate) struct Fluid3dRenderer {
     sphere_layout: wgpu::BindGroupLayout,
     blur_layout: wgpu::BindGroupLayout,
     composite_layout: wgpu::BindGroupLayout,
-    depth: wgpu::RenderPipeline,
-    thick: wgpu::RenderPipeline,
-    blur: wgpu::RenderPipeline,
-    composite: wgpu::RenderPipeline,
+    depth: Deferred<wgpu::RenderPipeline>,
+    thick: Deferred<wgpu::RenderPipeline>,
+    blur: Deferred<wgpu::RenderPipeline>,
+    composite: Deferred<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     uniform: wgpu::Buffer,
     blur_uniforms: [wgpu::Buffer; 2],
@@ -216,6 +217,11 @@ fn group(
 }
 
 impl Fluid3dRenderer {
+    /// Makes one of its pipelines no frame used yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        crate::deferred::warm_one(&[&self.depth, &self.thick, &self.blur, &self.composite])
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
@@ -246,14 +252,9 @@ impl Fluid3dRenderer {
             label: Some("fluid 3d blur"),
             entries: &[uniform_entry(0), texture_entry(1, false)],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("fluid 3d"),
-            source: wgpu::ShaderSource::Wgsl(fluid_source(shared_wgsl).into()),
-        });
-        let blur_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("fluid 3d blur"),
-            source: wgpu::ShaderSource::Wgsl(FLUID_BLUR_WGSL.into()),
-        });
+        // Made when a fluid is first drawn (deferred.rs).
+        let module = crate::deferred::module(device, "fluid 3d", fluid_source(shared_wgsl));
+        let blur_module = crate::deferred::module(device, "fluid 3d blur", FLUID_BLUR_WGSL.into());
         let sphere_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("fluid 3d spheres"),
             bind_group_layouts: &[Some(frame_layout), Some(&sphere_layout)],
@@ -269,43 +270,47 @@ impl Fluid3dRenderer {
             bind_group_layouts: &[Some(&blur_layout)],
             immediate_size: 0,
         });
-        let attributes = wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4];
-        let instance_layout = Some(wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Instance>() as u64,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &attributes,
-        });
-        let sphere = |label, fs, format, blend, depth: bool| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&sphere_pl),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs_sphere"),
-                    compilation_options: Default::default(),
-                    buffers: std::slice::from_ref(&instance_layout),
-                },
-                primitive: Default::default(),
-                depth_stencil: depth.then(|| wgpu::DepthStencilState {
-                    format: crate::DEPTH_FORMAT,
-                    depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some(fs),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
+        let sphere = |label: &'static str, fs: &'static str, format, blend, depth: bool| {
+            let (device, sphere_pl, module) = (device.clone(), sphere_pl.clone(), module.clone());
+            Deferred::new(move || {
+                let module = module.module();
+                let attributes = wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4];
+                let instance_layout = Some(wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Instance>() as u64,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &attributes,
+                });
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&sphere_pl),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some("vs_sphere"),
+                        compilation_options: Default::default(),
+                        buffers: std::slice::from_ref(&instance_layout),
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: depth.then(|| wgpu::DepthStencilState {
+                        format: crate::DEPTH_FORMAT,
+                        depth_write_enabled: Some(true),
+                        depth_compare: Some(wgpu::CompareFunction::Less),
+                        stencil: Default::default(),
+                        bias: Default::default(),
+                    }),
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some(fs),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format,
+                            blend,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
             })
         };
         let depth = sphere(
@@ -330,7 +335,7 @@ impl Fluid3dRenderer {
             }),
             false,
         );
-        let blur = crate::post::fullscreen_pipeline(
+        let blur = crate::post::deferred_fullscreen(
             device,
             "fluid 3d blur",
             &blur_module,
@@ -339,22 +344,22 @@ impl Fluid3dRenderer {
             crate::post::LINDEPTH_FORMAT,
             None,
         );
-        let composite = crate::hdr_pipeline(
-            device,
-            crate::HdrPipeline {
-                label: "fluid 3d composite",
-                layout: &composite_pl,
-                module: &module,
-                vs: "vs_full",
-                fs: "fs_composite",
-                buffers: &[],
-                cull: None,
-                depth_write: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                blend: None,
-                samples,
-            },
-        );
+        let composite =
+            crate::deferred_hdr(device, &composite_pl, module, move |layout, module| {
+                crate::HdrPipeline {
+                    label: "fluid 3d composite",
+                    layout,
+                    module,
+                    vs: "vs_full",
+                    fs: "fs_composite",
+                    buffers: &[],
+                    cull: None,
+                    depth_write: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    blend: None,
+                    samples,
+                }
+            });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("fluid 3d"),
             mag_filter: wgpu::FilterMode::Linear,

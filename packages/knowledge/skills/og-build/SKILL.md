@@ -239,8 +239,11 @@ stream "night-market" {
 }
 ```
 
-The cook refuses any other kind (a skinned model, a chunked sound, a scene)
-in a group, naming the scene and the asset. Prove a group in a script:
+A sound cooked in chunks may join a group too: its first chunk goes in
+the pack and every other chunk stays a file of its own, read ahead of the
+playheads once the group is resident (og-audio §5). The cook refuses any
+other kind (a skinned model, a scene) in a group, naming the scene and
+the asset. Prove a group in a script:
 move the camera into its trigger (`teleport`, or the game's own command),
 `advance` a few ticks, then `dump_stream` lists each group's state,
 memory and the assets kept past an unload (`retained`), and
@@ -263,8 +266,27 @@ sound {
 }
 ```
 
-Compare `og cook`'s byte count before and after: the bundle is the
-player's download.
+**What a player downloads** is what `og build --publish` prints under its
+size table, brotli `-q 11` per file as the size gate measures the engine:
+
+```text
+download (brotli-11, what a player fetches; a WebGPU and a WebGL2 page fetch the same files):
+  boot, lanes page (isolated)      92 files     4323854 B  (engine 2976.8 kB, cooked 1044.3 kB, shell 85.5 kB, basis 217.3 kB)
+  boot, single-threaded page       91 files     4284988 B  (engine 2937.9 kB, cooked 1044.3 kB, shell 85.5 kB, basis 217.3 kB)
+  later: 20 sound chunks 2427050 B (ahead of their playheads); the audio worklet 875 B (first gesture); the service worker and icons 32634 B
+```
+
+The boot is everything fetched before the first frame: one engine module
+(the lanes module on a cross-origin isolated page, else the
+single-threaded one), the shell, the Basis transcoder and the cooked first
+group (everything no streaming group holds). A sound cooked in chunks
+costs the boot its first chunk only (about `chunk` seconds of QOA): the
+rest are fetched ahead of its playheads, and none before it plays; in a
+streaming group it costs the boot nothing (its first chunk comes in the
+group's pack). The
+table's `total` is every file of the directory (both engine modules, the
+licences, the icons), never a download. Compare the boot line before and
+after a change; `--json` carries the same as `downloads`.
 
 **The lanes** spread physics, skinning, culling and extraction over the
 cores with results identical to one thread (og-game §14). Natively

@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-897 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+902 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -229,6 +229,7 @@ Field units the docs and Tune use.
 | [`EngineProbe.dump`](probe.md#member-EngineProbe-dump) | method | probe | `og_engine_probe_dump` |
 | [`EngineProbe.hello`](probe.md#member-EngineProbe-hello) | method | probe | `og_engine_probe_hello` |
 | [`EngineProbe.listen`](probe.md#member-EngineProbe-listen) | method | probe | `og_engine_probe_listen` |
+| [`EngineProbe.memory`](probe.md#member-EngineProbe-memory) | method | probe | `og_engine_probe_memory` |
 | [`EngineProbe.reload`](probe.md#member-EngineProbe-reload) | method | probe | `og_engine_probe_reload` |
 | [`EngineProbe.restore`](probe.md#member-EngineProbe-restore) | method | probe | `og_engine_probe_restore` |
 | [`EngineProbe.snapshot`](probe.md#member-EngineProbe-snapshot) | method | probe | `og_engine_probe_snapshot` |
@@ -771,11 +772,15 @@ Field units the docs and Tune use.
 | [`PROBE_VERSION`](probe.md#const-PROBE_VERSION) | constant | probe | — |
 | [`PROBE_WIRE_VERSION`](probe.md#const-PROBE_WIRE_VERSION) | constant | probe | — |
 | [`ProbeEntityRef`](probe.md#type-ProbeEntityRef) | struct | probe | — |
+| [`ProbeHeap`](probe.md#type-ProbeHeap) | struct | probe | — |
+| [`ProbeMemory`](probe.md#type-ProbeMemory) | struct | probe | — |
 | [`ProbeOperation`](probe.md#type-ProbeOperation) | union | probe | — |
 | [`ProbeProgramResult`](probe.md#type-ProbeProgramResult) | struct | probe | — |
 | [`ProbeState`](probe.md#type-ProbeState) | struct | probe | — |
+| [`ProbeStreamMemory`](probe.md#type-ProbeStreamMemory) | struct | probe | — |
 | [`ProbeTimings`](probe.md#type-ProbeTimings) | struct | probe | — |
 | [`ProbeTunable`](probe.md#type-ProbeTunable) | struct | probe | — |
+| [`ProbeWorldMemory`](probe.md#type-ProbeWorldMemory) | struct | probe | — |
 | [`PROFILE_2D`](physics.md#const-PROFILE_2D) | constant | physics | — |
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
 | [`ProgressDesc`](ui.md#type-ProgressDesc) | desc struct | ui | — |

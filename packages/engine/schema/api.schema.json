@@ -6902,6 +6902,10 @@
         "BuildProfile",
         "Capture",
         "Heard",
+        "ProbeHeap",
+        "ProbeWorldMemory",
+        "ProbeStreamMemory",
+        "ProbeMemory",
         "SweepDesc",
         "SweepFrame",
         "SweepResult",
@@ -7253,6 +7257,14 @@
               ],
               "returns": "Option<Heard>",
               "returnsDoc": "Null without audio, or before anything was rendered.",
+              "publish": false
+            },
+            {
+              "name": "memory",
+              "doc": "What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts.",
+              "params": [],
+              "returns": "Option<ProbeMemory>",
+              "returnsDoc": "Null from a host that gives no figures.",
               "publish": false
             }
           ]
@@ -27647,6 +27659,165 @@
         "peak",
         "rms",
         "wav"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeHeap": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The engine's allocator, counted (both hosts install a counting global allocator).",
+      "type": "object",
+      "properties": {
+        "live": {
+          "type": "number",
+          "description": "Bytes allocated and not freed.",
+          "x-og-unit": "bytes"
+        },
+        "peak": {
+          "type": "number",
+          "description": "The most bytes live at once since load.",
+          "x-og-unit": "bytes"
+        },
+        "allocations": {
+          "type": "number",
+          "description": "Allocations made since load."
+        }
+      },
+      "required": [
+        "live",
+        "peak",
+        "allocations"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeWorldMemory": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The world's size.",
+      "type": "object",
+      "properties": {
+        "entities": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities alive."
+        }
+      },
+      "required": [
+        "entities"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeStreamMemory": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The streaming memory budget (og.stream.budget): what the admitted groups' assets take.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "type": "number",
+          "description": "The budget.",
+          "x-og-unit": "bytes"
+        },
+        "used": {
+          "type": "number",
+          "description": "What the admitted groups take now.",
+          "x-og-unit": "bytes"
+        },
+        "peak": {
+          "type": "number",
+          "description": "The most they took at once.",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "budget",
+        "used",
+        "peak"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeMemory": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md).",
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "`web` or `native`."
+        },
+        "linear": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively.",
+          "x-og-unit": "bytes"
+        },
+        "resident": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's.",
+          "x-og-unit": "bytes"
+        },
+        "heap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProbeHeap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The engine's allocator; null where the host counts nothing."
+        },
+        "world": {
+          "$ref": "#/$defs/ProbeWorldMemory",
+          "description": "The world."
+        },
+        "stream": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProbeStreamMemory"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The streaming budget."
+        },
+        "audio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio.",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "host",
+        "linear",
+        "resident",
+        "heap",
+        "world",
+        "stream",
+        "audio"
       ],
       "additionalProperties": false
     },

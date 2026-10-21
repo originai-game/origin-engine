@@ -18,8 +18,10 @@
 // - the error card (§6): the reason, the last 200 log lines and the world
 //   dump (state in a publish build), with Reload and Copy report;
 // - the probe: `globalThis.__runtime_probe__` (protocol 5, every member a
-//   Promise, plus `lanes` and `error`: what stopped the engine, a panic with
-//   its tick and lane, an error or a hang) and the platform's `og-probe`
+//   Promise, plus `lanes`, `memory()` (what the engine holds), `boot`
+//   (where the Worker's boot went) and
+//   `error`: what stopped the engine, a panic with its tick and lane, an
+//   error or a hang) and the platform's `og-probe`
 //   postMessage wire; the played
 //   frames' timings on `globalThis.__og_timings__` (`og run --device`);
 // - PWA: the service worker (publish builds) and the add-to-home-screen hint
@@ -474,7 +476,11 @@ export async function play(): Promise<PlayHandle> {
   const probe: Record<string, unknown> = { version: 5, substrate: "origin-engine", lanes: Object.freeze({ ...lanes }) };
   // `error`: what stopped the engine (a panic with its tick and lane, an error, a hang), null while it runs.
   Object.defineProperty(probe, "error", { get: () => shell.error, enumerable: true });
+  // `boot`: where the Worker's boot went (src/web/worker.ts BootPhases), null before the first frame.
+  Object.defineProperty(probe, "boot", { get: () => shell.boot, enumerable: true });
   for (const m of MEMBERS) probe[m] = (...args: unknown[]) => shell.probe(m, probeParams(m, args));
+  // `memory`: what the engine holds (ProbeMemory), from the Worker in every build (a publish probe has no `memory`).
+  probe["memory"] = () => shell.call("memory");
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
   (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);

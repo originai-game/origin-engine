@@ -395,3 +395,73 @@ fn chunk_distances_rank_chunks_by_how_soon_a_playhead_reaches_them() {
     let second = 34.0 + 2.0 / 60.0;
     assert!((d[&9] - (9.0 * chunk - second) / 2.0).abs() < 1e-3, "{d:?}");
 }
+
+#[test]
+fn a_chunked_sound_in_a_streaming_group_takes_its_stand_in_handle() {
+    // A chunked sound in a streaming group: silence of its length until the
+    // group is resident, then its first chunk behind the same handle, the
+    // others asked for from the playheads as for any chunked sound; when the
+    // group unloads it is silent again and asks for nothing, and a chunk
+    // still on its way is let go.
+    let file = track();
+    let parts = qoa::split(&file, PER_CHUNK).unwrap();
+    let bank = SoundBank::new();
+    let frames = bank
+        .insert_qoa("probe", &file)
+        .map(|h| bank.get(h).unwrap().frames)
+        .unwrap();
+    let sound = bank.insert_silent("music", RATE, 2, frames).unwrap();
+    assert!(!bank.audible(sound));
+    assert!(bank.keep_chunks(&Default::default()).is_empty());
+    // A head of another length is refused; the right one takes the handle.
+    let short = qoa::split(
+        &qoa::encode(&vec![0i16; 2 * 5120 * 40], 2, RATE).unwrap(),
+        PER_CHUNK,
+    )
+    .unwrap();
+    assert!(
+        bank.replace_chunked(
+            sound,
+            "music",
+            &short[0],
+            PER_CHUNK as u32,
+            short.len() as u32
+        )
+        .is_err()
+    );
+    assert!(
+        bank.replace_chunked(
+            sound,
+            "music",
+            &parts[0],
+            PER_CHUNK as u32,
+            parts.len() as u32
+        )
+        .unwrap()
+    );
+    assert!(bank.audible(sound) && bank.get(sound).unwrap().streamed());
+    assert_eq!(bank.get(sound).unwrap().resident_chunks(), vec![0]);
+    let mut want = std::collections::BTreeMap::new();
+    want.insert(sound, std::collections::BTreeSet::from([1u32, 2]));
+    let missing = bank.keep_chunks(&want);
+    assert_eq!(
+        missing.iter().map(|(h, _, n)| (*h, *n)).collect::<Vec<_>>(),
+        vec![(sound, 1), (sound, 2)]
+    );
+    assert!(bank.put_chunk(sound, 1, &parts[1]).unwrap());
+    // The group unloads: silent, nothing asked for, a late chunk let go.
+    assert!(bank.silence(sound));
+    assert!(bank.keep_chunks(&want).is_empty());
+    assert!(!bank.put_chunk(sound, 2, &parts[2]).unwrap());
+    assert!(
+        !bank
+            .replace_chunked(
+                u64::MAX,
+                "gone",
+                &parts[0],
+                PER_CHUNK as u32,
+                parts.len() as u32
+            )
+            .unwrap()
+    );
+}

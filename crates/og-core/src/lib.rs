@@ -23,6 +23,7 @@ compile_error!(
 // The derive names `::og_core`; this lets the crate use it on its own types.
 extern crate self as og_core;
 
+pub mod alloc;
 pub mod error;
 pub mod handle;
 pub mod hash;

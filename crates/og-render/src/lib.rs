@@ -42,6 +42,7 @@ mod capture;
 mod clusters;
 mod compact;
 mod cull_gpu;
+mod deferred;
 mod effects;
 mod environment;
 mod fluid3d;
@@ -144,6 +145,7 @@ pub use weather::{
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
 
+use deferred::{AsModule, Deferred};
 use frame::{CASCADES, Cascade, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
@@ -1281,9 +1283,9 @@ pub struct Renderer {
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,
-    sky_pipeline: wgpu::RenderPipeline,
+    sky_pipeline: Deferred<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
-    sky_look_pipeline: wgpu::RenderPipeline,
+    sky_look_pipeline: Deferred<wgpu::RenderPipeline>,
     water: water::WaterRenderer,
     fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
@@ -1291,16 +1293,16 @@ pub struct Renderer {
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
-    sprite_pipeline: wgpu::RenderPipeline,
-    sprite_additive_pipeline: wgpu::RenderPipeline,
+    sprite_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_additive_pipeline: Deferred<wgpu::RenderPipeline>,
     /// Alpha-blended sprites kept out of the tone curve, and the cover
     /// that sets the HDR alpha to 1 before the first of them
     /// ([`UNTONEMAPPED_BLEND`]).
-    sprite_untonemapped_pipeline: wgpu::RenderPipeline,
-    sprite_cover_pipeline: wgpu::RenderPipeline,
-    sprite_glow_pipeline: wgpu::RenderPipeline,
-    msdf_pipeline: wgpu::RenderPipeline,
-    ribbon_pipelines: [wgpu::RenderPipeline; 2],
+    sprite_untonemapped_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_cover_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
+    msdf_pipeline: Deferred<wgpu::RenderPipeline>,
+    ribbon_pipelines: [Deferred<wgpu::RenderPipeline>; 2],
     fx_layout: wgpu::BindGroupLayout,
     fx_buffer: wgpu::Buffer,
     sprite_fx_layout: wgpu::BindGroupLayout,
@@ -1537,6 +1539,25 @@ fn still_camera(prev: &Mat4, cur: &Mat4) -> bool {
 pub(crate) fn hdr_pipeline(device: &wgpu::Device, p: HdrPipeline) -> wgpu::RenderPipeline {
     hdr_pipeline_with(device, &[], p)
 }
+
+/// [`hdr_pipeline`] made when a pass first sets it (deferred.rs): `state`
+/// describes it over the layout and module it is handed.
+pub(crate) fn deferred_hdr(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    module: impl AsModule + 'static,
+    state: impl for<'a> FnOnce(&'a wgpu::PipelineLayout, &'a wgpu::ShaderModule) -> HdrPipeline<'a>
+    + 'static,
+) -> Deferred<wgpu::RenderPipeline> {
+    let (device, layout) = (device.clone(), layout.clone());
+    Deferred::new(move || hdr_pipeline(&device, state(&layout, module.module())))
+}
+
+/// The sprite pass's vertex buffers.
+const SPRITE_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(SPRITE_LAYOUT)];
+/// The ribbon pass's vertex buffers.
+const RIBBON_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
+    &[Some(ribbons::RIBBON_LAYOUT)];
 
 /// [`hdr_pipeline`] with pipeline-overridable constants for both stages.
 fn hdr_pipeline_with(
@@ -2270,13 +2291,15 @@ impl Renderer {
             "pbr",
             lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
-        let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
+        // Parsed when the first pipeline that uses it is made (deferred.rs).
+        let sky_shader = deferred::module(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
         let sprite_shader = shader(
             &device,
             "sprite",
             format!("{FRAME_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}"),
         );
-        let ribbon_shader = shader(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
+        let ribbon_shader =
+            deferred::module(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
         let shadow_shader = shader(
             &device,
             "shadow",
@@ -2328,21 +2351,28 @@ impl Renderer {
             shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false, false),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
-        let sky_state = |fs| HdrPipeline {
-            label: "sky",
-            layout: &sky_pl,
-            module: &sky_shader,
-            vs: "vs_sky",
-            fs,
-            buffers: &[],
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: None,
-            samples,
+        let sky_state = |fs: &'static str| {
+            deferred_hdr(
+                &device,
+                &sky_pl,
+                sky_shader.clone(),
+                move |layout, module| HdrPipeline {
+                    label: "sky",
+                    layout,
+                    module,
+                    vs: "vs_sky",
+                    fs,
+                    buffers: &[],
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: None,
+                    samples,
+                },
+            )
         };
-        let sky_pipeline = hdr_pipeline(&device, sky_state("fs_sky"));
-        let sky_look_pipeline = hdr_pipeline(&device, sky_state("fs_sky_look"));
+        let sky_pipeline = sky_state("fs_sky");
+        let sky_look_pipeline = sky_state("fs_sky_look");
         let ibl = ibl::IblGenerator::new(&device);
         let water =
             water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
@@ -2366,30 +2396,30 @@ impl Renderer {
                 operation: wgpu::BlendOperation::Add,
             },
         };
-        let sprite_buffers = [Some(SPRITE_LAYOUT)];
-        let sprite_state = |label, fs, blend| HdrPipeline {
-            label,
-            layout: &sprite_pl,
-            module: &sprite_shader,
-            vs: "vs",
-            fs,
-            buffers: &sprite_buffers,
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: Some(blend),
-            samples,
+        let sprite_state = |label: &'static str, fs: &'static str, blend| {
+            deferred_hdr(
+                &device,
+                &sprite_pl,
+                sprite_shader.clone(),
+                move |layout, module| HdrPipeline {
+                    label,
+                    layout,
+                    module,
+                    vs: "vs",
+                    fs,
+                    buffers: SPRITE_BUFFERS,
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: Some(blend),
+                    samples,
+                },
+            )
         };
-        let sprite_pipeline = hdr_pipeline(
-            &device,
-            sprite_state("sprite", "fs", wgpu::BlendState::ALPHA_BLENDING),
-        );
-        let sprite_additive_pipeline =
-            hdr_pipeline(&device, sprite_state("sprite additive", "fs", additive));
-        let sprite_untonemapped_pipeline = hdr_pipeline(
-            &device,
-            sprite_state("sprite untonemapped", "fs_untonemapped", UNTONEMAPPED_BLEND),
-        );
+        let sprite_pipeline = sprite_state("sprite", "fs", wgpu::BlendState::ALPHA_BLENDING);
+        let sprite_additive_pipeline = sprite_state("sprite additive", "fs", additive);
+        let sprite_untonemapped_pipeline =
+            sprite_state("sprite untonemapped", "fs_untonemapped", UNTONEMAPPED_BLEND);
         // The colour kept, the alpha replaced by 1, over every pixel. No
         // groups: whichever sprite or array group is bound stays valid.
         let cover_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -2397,12 +2427,14 @@ impl Renderer {
             bind_group_layouts: &[],
             immediate_size: 0,
         });
-        let sprite_cover_pipeline = hdr_pipeline(
+        let sprite_cover_pipeline = deferred_hdr(
             &device,
-            HdrPipeline {
+            &cover_pl,
+            sprite_shader.clone(),
+            move |layout, module| HdrPipeline {
                 label: "sprite cover",
-                layout: &cover_pl,
-                module: &sprite_shader,
+                layout,
+                module,
                 vs: "vs_cover",
                 fs: "fs_cover",
                 buffers: &[],
@@ -2420,60 +2452,69 @@ impl Renderer {
                 samples,
             },
         );
-        let msdf_pipeline = hdr_pipeline(
-            &device,
-            sprite_state("msdf text", "fs_msdf", wgpu::BlendState::ALPHA_BLENDING),
-        );
+        let msdf_pipeline = sprite_state("msdf text", "fs_msdf", wgpu::BlendState::ALPHA_BLENDING);
         // The glow buffer: no depth, one sample, added.
-        let sprite_glow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sprite glow"),
-            layout: Some(&sprite_pl),
-            vertex: wgpu::VertexState {
-                module: &sprite_shader,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &sprite_buffers,
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &sprite_shader,
-                entry_point: Some("fs_glow"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: HDR_FORMAT,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent::REPLACE,
+        let sprite_glow_pipeline = {
+            let (device, sprite_pl, sprite_shader) =
+                (device.clone(), sprite_pl.clone(), sprite_shader.clone());
+            Deferred::new(move || {
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("sprite glow"),
+                    layout: Some(&sprite_pl),
+                    vertex: wgpu::VertexState {
+                        module: &sprite_shader,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: SPRITE_BUFFERS,
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &sprite_shader,
+                        entry_point: Some("fs_glow"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent::REPLACE,
+                            }),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
                     }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(&device).as_ref(),
-        });
-        let ribbon_buffers = [Some(ribbons::RIBBON_LAYOUT)];
-        let ribbon_state = |blend| HdrPipeline {
-            label: "ribbon",
-            layout: &ribbon_pl,
-            module: &ribbon_shader,
-            vs: "vs",
-            fs: "fs",
-            buffers: &ribbon_buffers,
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: Some(blend),
-            samples,
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
+        let ribbon_state = |blend| {
+            deferred_hdr(
+                &device,
+                &ribbon_pl,
+                ribbon_shader.clone(),
+                move |layout, module| HdrPipeline {
+                    label: "ribbon",
+                    layout,
+                    module,
+                    vs: "vs",
+                    fs: "fs",
+                    buffers: RIBBON_BUFFERS,
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: Some(blend),
+                    samples,
+                },
+            )
         };
         let ribbon_pipelines = [
-            hdr_pipeline(&device, ribbon_state(additive)),
-            hdr_pipeline(&device, ribbon_state(wgpu::BlendState::ALPHA_BLENDING)),
+            ribbon_state(additive),
+            ribbon_state(wgpu::BlendState::ALPHA_BLENDING),
         ];
         let particles = particles_gpu::ParticleRenderer::new(
             &device,
@@ -7444,6 +7485,39 @@ impl Renderer {
     /// request for the last frame rendered.
     pub fn request_culling_counts(&mut self) {
         self.culling_counts = true;
+    }
+
+    /// Makes one pipeline no frame has drawn with yet, the likeliest to be
+    /// drawn soon first (the sprites and the overlay, the post passes, then
+    /// sky, ribbons, 2D lights, glass, water, terrain, metaballs, fluids);
+    /// false when every pipeline is made. The renderer makes a pipeline when
+    /// a pass first sets it (deferred.rs), so a frame compiles only what it
+    /// draws; a host with idle time (the web page behind its play gate,
+    /// where WebGL2 compiles each program synchronously) calls this until
+    /// it answers false, so a pass met later does not stop a frame. The
+    /// frames are the same either way.
+    pub fn warm(&mut self) -> bool {
+        deferred::warm_one(&[
+            &self.sprite_pipeline,
+            &self.msdf_pipeline,
+            &self.sprite_cover_pipeline,
+            &self.sprite_untonemapped_pipeline,
+            &self.sprite_additive_pipeline,
+            &self.sprite_glow_pipeline,
+        ]) || self.overlay.warm()
+            || self.post.warm()
+            || deferred::warm_one(&[
+                &self.sky_pipeline,
+                &self.sky_look_pipeline,
+                &self.ribbon_pipelines[0],
+                &self.ribbon_pipelines[1],
+            ])
+            || self.lights_2d.warm()
+            || self.glass.warm()
+            || self.water.warm()
+            || self.terrain.warm()
+            || self.metaballs.warm()
+            || self.fluid3d.warm()
     }
 
     /// Natively: waits for the GPU culling counts of the frame `stats` came
