@@ -1708,8 +1708,22 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   the finer's, so the finer one fades in and out by the fraction between
   them (a tonal art map's levels): the strokes wrap round spheres, stay
   on the objects as the camera moves, and keep about their pixel spacing
-  from near to far. The sky keeps the screen pattern. The space is a
-  setting, not a pass (`chain_bits` unchanged). og-tests
+  from near to far. *The footprint* (the octave's and the canvas level's
+  measure) is taken along the depth gradient: the longer of the steps to
+  the neighbours across and down, each rebuilt at its own depth and taken
+  on the side whose depth is nearer (a silhouette does not count), never
+  less than the pixel's width across the ray nor more than 32 times it
+  (`FOOTPRINT_STRETCH`), so on a floor seen at a grazing angle the
+  pattern is never finer than its spacing along the depth either; the
+  marks' edges and the strokes' widths follow the two steps themselves
+  (seen on each plane, `plane_steps`), one screen pixel across the mark
+  in whatever direction it runs, so the coarser octave stays crisp across
+  the floor (in object space the instance's own steps between texels on
+  it, else the footprint's square). Measured across the pixel alone (round
+  four), a long receding floor took an octave too fine along its depth,
+  whose sub-pixel dots and strokes aliased into faint bands as the
+  octaves faded (owed row 55). The sky keeps the screen pattern. The
+  space is a setting, not a pass (`chain_bits` unchanged). og-tests
   `stylise-surface`: a pencil drawing of clay forms (hatching and a paper
   canvas on the surfaces, depth ink with its thresholds set);
   `stylise-halftone-surface`: the toon scene's dots on the surfaces, with
@@ -1875,7 +1889,9 @@ of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
 (`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
 halftone, as its check asks (ink marks painted onto surfaces).
 Round five adds `stylise-outline-voxels`, `stylise-toon-physical`,
-`sprites-untonemapped` and `stylise-bands-tint` (`metal`).
+`sprites-untonemapped` and `stylise-bands-tint` (`metal`). The footprint
+along the depth gradient (owed row 55) re-recorded `stylise-surface`,
+`stylise-object` and `stylise-halftone-surface`.
 
 Round three delivered what round two left: hatching and halftone on the
 surfaces (strokes follow the tone and the form), the canvas on the
@@ -1885,10 +1901,9 @@ delivered object space (a moving object carries its marks), drop
 shadows bent over hollows and ridges narrower than themselves, hatching
 from depth (`hatchingDepth`), the halftone-on-surface scene, a preset in
 surface space (`inked-comic-3d`) and the looks frames' HUD naming their
-preset. Still open: the octave fade shows as faint bands on a long
-receding floor (the footprint is measured across the pixel, not along
-the depth gradient; `stylise-halftone-surface` shows it on the far
-floor); object space leaves terrain, scattered copies and vertex-offset
+preset. The octave fade's faint bands on a long receding floor are gone
+since the footprint is measured along the depth gradient (owed row 55).
+Still open: object space leaves terrain, scattered copies and vertex-offset
 materials in world space and does not cut alpha holes; a bent shadow
 bridges features narrower than a cell of its 4 × 2 grid.
 
