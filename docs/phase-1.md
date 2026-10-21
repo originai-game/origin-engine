@@ -701,6 +701,60 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, vox-stylise: `.vox` key frames read, stylise's footprint along the depth (ee07a3c1)
+
+Rows 63 and 55, on lane-4.
+
+- **Row 55, stylise in surface space (725b9a4e).** The footprint that
+  picks a pattern's octave and the canvas level was one pixel's width
+  across the view ray; on a floor seen at a low angle the finer
+  octave's marks were smaller than a pixel along the depth, aliased, and
+  the aliasing changed as one octave faded into the next: the moiré arcs
+  on `stylise-halftone-surface`'s far floor. stylise.wgsl now measures
+  the footprint along the depth gradient (the longer of the steps to the
+  neighbouring pixels across and down, each rebuilt at its own depth,
+  a silhouette on one side ignored, capped at 32× the width across the
+  ray), and dot edges and stroke widths follow the two screen-space
+  steps on each projection plane, so marks stay a pixel wide and crisp
+  (object space uses the instance's own steps, an even footprint at
+  instance edges). Re-recorded on metal: `stylise-halftone-surface`
+  (RMSE 0.078 from the old shader: the arcs gone, the dots in even
+  receding rows that flatten to wide ellipses towards the horizon, the
+  tone smooth, the dots near sphere rims a little coarser),
+  `stylise-surface` (0.035) and `stylise-object` (0.044): the hatched
+  floor shadows are legible crossed strokes instead of a dense grey and
+  the far canvas grain is calmer. Every other og-tests scene renders
+  exactly as on main's shader (checked before the scope correction).
+  Row 55 is closed.
+- **Row 63, `.vox` animation (431d9da1, 900158dc).** The importer read
+  only the first of an `nTRN`'s per-frame dicts, so a part moving
+  across frames stayed put. og-cook now keeps every key sorted by `_f`
+  and held until the next (MagicaVoxel's sampling, as ogt_vox does it;
+  not checked against a file the editor wrote), walks the scene graph
+  once per frame up to the last key, splits each part into runs of one
+  model at one rotation (a rotation change is its own mesh, swapped in
+  like a frame's model), gives a moving part a STEP translation channel
+  on its joint beside the scale channel (a hidden frame holds the nearest
+  shown frame's position), takes `voxOrigin bottom` from the lowest
+  voxel over every frame, and leaves a file static when its keys change
+  nothing: all seven `.vox` files in the repo convert to byte-identical
+  glTF. Tests: two unit tests, the cook test
+  `a_keyed_transform_cooks_to_a_moving_joint` (fails on the old importer:
+  the keyed file cooked as static), and the og-tests scene
+  `vox-keyframes` (it writes a `.vox`, cooks it, samples the clip with
+  og-anim and skins the part as og-runtime does; og-tests gains og-cook
+  and og-anim as native-only dependencies, the scene in a `NATIVE_SCENES`
+  list that `og-gfx --all` includes and the browser set leaves out).
+  Its frame on metal: two copies of a grey slab with a blue post; on
+  the left (frame 0) the red block rests on the slab left of the post,
+  on the right (frame 2) it is lifted clear of the slab right of the
+  post, its shadow on the slab. Not done: a visibility track so a folded
+  frame costs no joint and no draw (a new channel type through og-anim's
+  sampling, blending, graph layers and retargeting, a glTF extension, a
+  schema bump and the runtime skipping hidden draws), a cost matter
+  deferred with the optimisation rows; `_loop` and MagicaVoxel's
+  playback range are still not read (`voxFps` and `voxClip` stand in).
+
 ## Wave 13, no-renderer: a playtest without a renderer passes on its other checks and says so (71c0e9dd)
 
 The engine side of the CPU sandbox decision (lane-1): without a GPU
@@ -4926,7 +4980,7 @@ resource only the owner can give.
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes), left to the coordinator by both physics lanes rounds | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open (round three, 1f0ecdc3, measured natively only; `og.physics.stats` through the web host is unmeasured too) |
 | 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` landed with ci-green (53b876f7) and has not run for real (row 82); wave 7's and waves 8 and 9's runs are recorded in their Main gate sections |
 | 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | closed: wave 11's second wave-end run (e7d6cb5e, `--record og-ui,...`) recorded og-ui's 85 frames on lavapipe and every one is within tolerance of `metal` (worst `kit-desktop-widgets` RMSE 0.0086, 0.159 %), so og-ui keeps no vulkan-cpu copy at all (36b326c3; Main gate, wave 11) |
-| 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | open (still open after stylisation round four: og-render README, `stylise-halftone-surface` shows it on the far floor) |
+| 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | closed at 725b9a4e (Wave 13, vox-stylise): the footprint measured along the depth gradient; three stylise frames re-recorded |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 58 | og-ui's cooked-font text frames in the browser tiers (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their fonts, which og-tests-web cannot) | P4 UI text | M | engine, phase 4 | open |
@@ -4934,7 +4988,7 @@ resource only the owner can give.
 | 60 | og-ui accessibility: the slider's and spinbutton's mirror carry no `aria-valuemin`/`-max` (the tree has no bounds); a reader's adjust checked through the native range's `input` event in Chrome, not with VoiceOver itself | P4 UI shell, UI four | S | engine, phase 4 | open |
 | 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | open |
 | 62 | Platform ask 12: the game wizard's style step (a catalogue entry from the premise, the look written, its three checks for the blind critic; `docs/platform-asks.md`) | P4 knowledge 3 | M | platform | open, waiting on the platform |
-| 63 | `.vox` animation, the rest (og-cook README §What phase 2 owes): MagicaVoxel's `nTRN` key frames are not read (a transform's first frame places it throughout, so a part moving across frames does not move), and every folded frame still costs a joint and a draw (its vertices run through the skinning shader at scale 0; a visibility track in og-anim would make a fold free) | W7 cook-vox | M | engine, phase 4 | open |
+| 63 | `.vox` animation, the rest (og-cook README §What phase 2 owes): MagicaVoxel's `nTRN` key frames are not read (a transform's first frame places it throughout, so a part moving across frames does not move), and every folded frame still costs a joint and a draw (its vertices run through the skinning shader at scale 0; a visibility track in og-anim would make a fold free) | W7 cook-vox | M | engine, phase 4 | the key frames closed at 431d9da1 and 900158dc (Wave 13, vox-stylise); the visibility track (a folded frame's joint and draw) deferred with the optimisation rows; `_loop` and the playback range still not read |
 | 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | closed at 3c036fa4 (api-surface round two): the reverse check fails on an undeclared member, with a one-entry allow-list (`World.id`), and found 17 column factories and three constants never exported; the shell crash path tested under bun (tests/web-shell-crash.test.ts); the runtime `Engine` class stays unchecked (the host's lifecycle object) |
 | 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | closed at a2e48f3f and ae9ae608 (api-surface round two): `field name str.48` in IDL records through every generated output, the cooked-scene string load test in og-runtime, the web-host half of the cross-host string test (run by the stream against the measure lane's module at cf5f2b9, and by the full lane since) |
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |
