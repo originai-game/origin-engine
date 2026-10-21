@@ -33,19 +33,22 @@ const settings = (publish: Partial<ProjectSettings["publish"]> = {}): ProjectSet
 const read = (dir: string, f: string) => readFileSync(join(dir, f), "utf8");
 
 /**
- * The wasm-bindgen init calls in a directory's shipped scripts that pass
- * positional arguments, which wasm-bindgen 0.2.129's glue warns about on
- * every call ("using deprecated parameters …; pass a single object
- * instead"): wasm-bindgen-rayon's pool Worker helper made one per pool
- * Worker until scripts/rayon-worker.sh (examples/WEB-FINDINGS.md #8).
+ * The wasm-bindgen init calls in a build's `snippets/` (the scripts
+ * wasm-bindgen copies from crates: wasm-bindgen-rayon's pool Worker
+ * helper) that pass positional arguments, which wasm-bindgen 0.2.129's
+ * glue warns about on every call ("using deprecated parameters …; pass a
+ * single object instead"): the helper made one per pool Worker until
+ * scripts/rayon-worker.sh (examples/WEB-FINDINGS.md #8). The engine's own
+ * calls (src/web/host.ts) pass one object.
  */
 function positionalInits(dir: string): string[] {
+  dir = join(dir, "snippets");
   const found: string[] = [];
   const walk = (d: string) => {
     for (const name of readdirSync(d)) {
       const p = join(d, name);
       if (statSync(p).isDirectory()) walk(p);
-      else if (name.endsWith(".js") && !name.startsWith("origin-engine")) {
+      else if (name.endsWith(".js")) {
         // A call of the glue's default export or initSync whose argument is not one object literal.
         for (const m of readFileSync(p, "utf8").matchAll(/\b(?:default|initSync)\(\s*(?![{)\s])[^)]*\)/g)) found.push(`${p.slice(dir.length + 1)}: ${m[0]}`);
       }
