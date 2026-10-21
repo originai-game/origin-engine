@@ -148,7 +148,13 @@ string "results.time" "タイム {time}"
   other loaded table's, then `UiDesc.fallbackFonts` (fonts for scripts no
   table names: a Hebrew or Devanagari face), then the skin's. A box (tofu)
   in a frame means a font lacks the character: add it to the subset and
-  to `chars`. One label is drawn in one font, so the font that covers a
+  to `chars`. The engine's log says so on the tick a character is first
+  drawn, once per character, naming it, the font's asset and what its atlas
+  holds (`WARN tick 2603 a frame drew "−" U+2212, which font
+  skins/neon/ChakraPetch-BoldItalic.ttf lacks (its atlas holds charset
+  latin punct)`): the packs cook `latin punct`, which has the hyphen-minus
+  `-` but not the minus sign U+2212 nor the arrows U+2190 to U+2193. One
+  label is drawn in one font, so the font that covers a
   Hebrew word must also have the digits beside it.
 - Player-typed text (a name, a chat line) is not in any table: cook the
   CJK face with `runtime true` in its import settings and the characters
