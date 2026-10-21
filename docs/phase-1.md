@@ -59,7 +59,7 @@ merged.
   hash unchanged at 12448362945291953010); math_digest,
   bouncing_boxes_hash and anim_hash unchanged in the stream's runs.
 - **Perf**: not run (the perf lane).
-- **vulkan-cpu**: the first real run of
+- **vulkan-cpu**: not run for wave 10. The first real run of `scripts/wave-end.sh` (its lavapipe stages, recording og-ui's frames) was started at a91e6139 and stopped in its cross-build stage, because it holds both gate locks for the whole run and wave 11's merges would have waited behind it; it runs at wave 11's end (row 82). Before that, the first real run of
   `scripts/wave-end.sh` (row 82). Copies that predate this wave's metal
   re-records: og-ui's `widget-set`, `kit-phone-widgets`,
   `kit-phone-shooter`, `kit-phone-racing` and the ten `kit-skin-*` frames
