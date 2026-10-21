@@ -596,3 +596,103 @@ fn ranges_carry_their_bounds_and_value() {
         .value_max = Some(150.0);
     assert_ne!(moved.digest(), before);
 }
+
+/// A group's accessible name is the desc's `label` where it gives one (a
+/// localised game's word), not its id; an icon's is its `label`, and an
+/// empty one is decoration, so a card is named by its text and the one
+/// label that says its stars, never by the icons' English names
+/// (Brasswick #11 and #12).
+#[test]
+fn groups_and_icons_take_the_names_their_descs_give() {
+    let mut ui = Ui::new(UiDesc::default());
+    let (mut tab, mut lang, mut pick) = (0usize, 1usize, 0usize);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.column("Settings", Element::default(), |ui| {
+            ui.tabs(
+                "Section",
+                &["Sonido", "Pantalla"],
+                &mut tab,
+                TabsDesc {
+                    label: "Apartado".into(),
+                    ..TabsDesc::default()
+                },
+            );
+            ui.select(
+                "Phone",
+                &["Sonido", "Pantalla"],
+                &mut pick,
+                &SelectDesc {
+                    label: "Apartado".into(),
+                    ..SelectDesc::default()
+                },
+            );
+            ui.radio(
+                "Languages",
+                &["English", "Español"],
+                &mut lang,
+                RadioDesc {
+                    label: "Idiomas".into(),
+                    ..RadioDesc::default()
+                },
+            );
+            ui.radio("Plain", &["A", "B"], &mut lang, RadioDesc::default());
+        });
+        ui.grid(
+            "Levels",
+            GridDesc {
+                count: 1,
+                ..GridDesc::default()
+            },
+            None,
+            |ui, _| {
+                ui.label("Name", "1. La escalera", LabelDesc::default());
+                for k in 0..3u32 {
+                    let label = if k == 0 { "2 de 3 estrellas" } else { "" };
+                    ui.icon(
+                        og_ui::ui_idi("Star", k),
+                        "star",
+                        IconDesc {
+                            label: Some(label.into()),
+                            ..IconDesc::default()
+                        },
+                    );
+                }
+            },
+        );
+        ui.end();
+    }
+    let tree = ui.a11y().clone();
+    let named = |path: &str| {
+        let n = node(&tree, path);
+        (n.role.clone(), n.name.clone())
+    };
+    assert_eq!(
+        named("Settings/Section"),
+        ("tablist".into(), "Apartado".into())
+    );
+    assert_eq!(
+        named("Settings/Phone"),
+        ("combobox".into(), "Apartado".into())
+    );
+    assert_eq!(
+        named("Settings/Languages"),
+        ("radiogroup".into(), "Idiomas".into())
+    );
+    assert_eq!(
+        named("Settings/Plain"),
+        ("radiogroup".into(), "Plain".into()),
+        "without a label a group is still named by its id"
+    );
+    let cell = tree
+        .nodes
+        .iter()
+        .find(|n| n.path.starts_with("Levels/") && n.path.ends_with("Cell#0"))
+        .unwrap_or_else(|| panic!("no card in {:#?}", tree.nodes));
+    assert_eq!(cell.name, "1. La escalera 2 de 3 estrellas");
+    assert!(
+        !tree.nodes.iter().any(|n| n.path.ends_with("Star#1")),
+        "an icon labelled empty is decoration: {:#?}",
+        tree.nodes
+    );
+}

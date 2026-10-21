@@ -12398,6 +12398,12 @@ export interface ImageDesc {
    * @range 0..
    */
   readonly aspect?: number;
+  /**
+   * What a screen reader calls it (and the probe's text): a picture that means something (a portrait, a star earned) names it in the game's words; empty is decoration.
+   *
+   * @default ""
+   */
+  readonly label?: string;
 }
 
 /**
@@ -13577,6 +13583,12 @@ export interface TabsDesc {
    * @default null
    */
   readonly width?: Size | null;
+  /**
+   * What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's.
+   *
+   * @default ""
+   */
+  readonly label?: string;
 }
 
 /** A choice control's response and the chosen index after this tick's input. */
@@ -13611,6 +13623,12 @@ export interface SelectDesc {
    * @default false
    */
   readonly disabled?: boolean;
+  /**
+   * What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's.
+   *
+   * @default ""
+   */
+  readonly label?: string;
 }
 
 /**
@@ -13656,7 +13674,7 @@ export interface StepperResult {
 }
 
 /**
- * How a radio group lays out.
+ * How a radio group lays out, and its name.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -13667,6 +13685,12 @@ export interface RadioDesc {
    * @default false
    */
   readonly horizontal?: boolean;
+  /**
+   * What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's.
+   *
+   * @default ""
+   */
+  readonly label?: string;
 }
 
 /** A checkbox list's response and values after this tick's input. */
@@ -13794,7 +13818,7 @@ export interface CooldownDesc {
 }
 
 /**
- * An icon's size and ink.
+ * An icon's size, ink and name.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -13813,6 +13837,12 @@ export interface IconDesc {
    * @default null
    */
   readonly tint?: Paint | null;
+  /**
+   * What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table.
+   *
+   * @default null
+   */
+  readonly label?: string | null;
 }
 
 /**
@@ -14799,7 +14829,7 @@ export interface SettingsDesc {
    */
   readonly muteLabel?: string;
   /**
-   * The graphics preset's heading.
+   * The graphics preset's heading, also the presets' group's accessible name.
    *
    * @default "Quality"
    */
@@ -14864,6 +14894,18 @@ export interface SettingsDesc {
    * @default "Done"
    */
   readonly doneLabel?: string;
+  /**
+   * What a screen reader calls the row of tabs (the select on a phone): the group's accessible name, never drawn.
+   *
+   * @default "Section"
+   */
+  readonly sectionLabel?: string;
+  /**
+   * What a screen reader calls the list of languages: the group's accessible name, never drawn.
+   *
+   * @default "Languages"
+   */
+  readonly languagesLabel?: string;
 }
 
 /** The settings screen's answer this tick. */
@@ -14910,7 +14952,7 @@ export interface Ability {
 }
 
 /**
- * A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button.
+ * A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button. What a game leaves out it does not draw: no hearts with maxLives 0 (and no health), no coins or score capsule without coins or score.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -14922,23 +14964,23 @@ export interface PlatformerHudDesc {
    */
   readonly lives?: number;
   /**
-   * Lives at most (hearts drawn).
+   * Lives at most (hearts drawn); 0 draws no hearts and no capsule for them (a game without lives).
    *
    * @default 3
    */
   readonly maxLives?: number;
   /**
-   * Coins collected.
+   * Coins collected; null or left out draws no coins capsule.
    *
-   * @default 0
+   * @default null
    */
-  readonly coins?: number;
+  readonly coins?: number | null;
   /**
-   * The score.
+   * The score; null or left out draws no score capsule.
    *
-   * @default 0
+   * @default null
    */
-  readonly score?: number;
+  readonly score?: number | null;
   /**
    * The level's name; empty is none.
    *
@@ -15768,13 +15810,13 @@ export interface LevelInfo {
 }
 
 /**
- * A level select: a grid of level cards with stars and locks, the total stars.
+ * A level select: a grid of level cards with stars and locks, the total stars, and a Back button. Back closes it from every input: the button, a press on the scrim around it, Escape and the pad's B.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface LevelSelectDesc {
   /**
-   * Its title.
+   * Its title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t).
    *
    * @default "Levels"
    */
@@ -15791,13 +15833,33 @@ export interface LevelSelectDesc {
    * @default 0
    */
   readonly columns?: number;
+  /**
+   * The button that closes it.
+   *
+   * @default "Back"
+   */
+  readonly backLabel?: string;
+  /**
+   * What a screen reader says for a card's stars (and the total's): `{stars}` is replaced by the stars earned, `{max}` by the most there are. The stars themselves are drawn, never this text.
+   *
+   * @default "{stars} of {max} stars"
+   */
+  readonly starsLabel?: string;
+  /**
+   * What a screen reader calls a locked card (it shows only a lock): `{name}` is replaced by the level's name or number.
+   *
+   * @default "{name}, locked"
+   */
+  readonly lockedLabel?: string;
 }
 
 /** A level select's answer this tick. */
 export interface LevelSelectResult {
   /** The level picked this tick. */
   readonly chosen: number | null;
-  /** Back was pressed. */
+  /**
+   * The player asked to close it: its Back button, a press on the scrim, Escape or the pad's B.
+   */
   readonly closed: boolean;
 }
 
@@ -19810,10 +19872,10 @@ export declare namespace og {
      */
     function inventoryScreen(id: string, desc?: InventoryDesc): InventoryResult;
     /**
-     * The level select template.
+     * The level select template: a card picked answers `chosen`; its Back button, a press on the scrim around it, Escape and the pad's B answer `closed`.
      *
      * @param id Its id.
-     * @param desc The levels.
+     * @param desc The levels and the screen's words.
      */
     function levelSelect(id: string, desc?: LevelSelectDesc): LevelSelectResult;
     /**

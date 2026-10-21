@@ -8071,6 +8071,7 @@ module ui {
     field aspect f32 "Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it." {
       min 0
     }
+    field label String "What a screen reader calls it (and the probe's text): a picture that means something (a portrait, a star earned) names it in the game's words; empty is decoration."
   }
 
   struct ZoomViewDesc {
@@ -8746,6 +8747,7 @@ module ui {
     desc true
     field fill bool "Equal segments across the width."
     field width Option.Size "Its width; null fits (grows with fill)."
+    field label String "What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
   }
 
   struct ChoiceResult {
@@ -8760,6 +8762,7 @@ module ui {
     field placeholder String "Shown while nothing is chosen."
     field width Option.Size "Its width; null grows from 160."
     field disabled bool "Neutral and inert."
+    field label String "What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's."
   }
 
   struct StepperDesc {
@@ -8782,9 +8785,10 @@ module ui {
   }
 
   struct RadioDesc {
-    doc "How a radio group lays out."
+    doc "How a radio group lays out, and its name."
     desc true
     field horizontal bool "Options in a row (the default is a column)."
+    field label String "What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
   }
 
   struct CheckListResult {
@@ -8836,13 +8840,14 @@ module ui {
   }
 
   struct IconDesc {
-    doc "An icon's size and ink."
+    doc "An icon's size, ink and name."
     desc true
     field size f32 "Its size; 0 is 24." {
       unit cssPx
       min 0
     }
     field tint Option.Paint "Its ink; null is fg."
+    field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
   }
 
   struct MapMarker {
@@ -9650,7 +9655,7 @@ module ui {
     field muteLabel String "The mute toggle." {
       default "Mute everything"
     }
-    field qualityLabel String "The graphics preset's heading." {
+    field qualityLabel String "The graphics preset's heading, also the presets' group's accessible name." {
       default "Quality"
     }
     field lowLabel String "The low preset." {
@@ -9683,6 +9688,12 @@ module ui {
     field doneLabel String "The button that closes the screen." {
       default "Done"
     }
+    field sectionLabel String "What a screen reader calls the row of tabs (the select on a phone): the group's accessible name, never drawn." {
+      default "Section"
+    }
+    field languagesLabel String "What a screen reader calls the list of languages: the group's accessible name, never drawn." {
+      default "Languages"
+    }
   }
 
   struct SettingsResult {
@@ -9704,14 +9715,14 @@ module ui {
   }
 
   struct PlatformerHudDesc {
-    doc "A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button."
+    doc "A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button. What a game leaves out it does not draw: no hearts with maxLives 0 (and no health), no coins or score capsule without coins or score."
     desc true
     field lives u32 "Lives left."
-    field maxLives u32 "Lives at most (hearts drawn)." {
+    field maxLives u32 "Lives at most (hearts drawn); 0 draws no hearts and no capsule for them (a game without lives)." {
       default 3
     }
-    field coins u32 "Coins collected."
-    field score u32 "The score."
+    field coins Option.u32 "Coins collected; null or left out draws no coins capsule."
+    field score Option.u32 "The score; null or left out draws no score capsule."
     field level String "The level's name; empty is none."
     field timeLeft Option.f32 "Seconds left; null hides the timer."
     field health Option.f32 "A health bar instead of hearts, 0 to 1; null shows hearts."
@@ -10001,19 +10012,28 @@ module ui {
   }
 
   struct LevelSelectDesc {
-    doc "A level select: a grid of level cards with stars and locks, the total stars."
+    doc "A level select: a grid of level cards with stars and locks, the total stars, and a Back button. Back closes it from every input: the button, a press on the scrim around it, Escape and the pad's B."
     desc true
-    field title String "Its title." {
+    field title String "Its title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
       default "Levels"
     }
     field levels List.LevelInfo "The levels."
     field columns u32 "Cards across; 0 fits the width."
+    field backLabel String "The button that closes it." {
+      default "Back"
+    }
+    field starsLabel String "What a screen reader says for a card's stars (and the total's): `{stars}` is replaced by the stars earned, `{max}` by the most there are. The stars themselves are drawn, never this text." {
+      default "{stars} of {max} stars"
+    }
+    field lockedLabel String "What a screen reader calls a locked card (it shows only a lock): `{name}` is replaced by the level's name or number." {
+      default "{name}, locked"
+    }
   }
 
   struct LevelSelectResult {
     doc "A level select's answer this tick."
     field chosen Option.u32 "The level picked this tick."
-    field closed bool "Back was pressed."
+    field closed bool "The player asked to close it: its Back button, a press on the scrim, Escape or the pad's B."
   }
 
   struct StatRow {
@@ -10265,10 +10285,10 @@ module ui {
   }
 
   fn levelSelect {
-    doc "The level select template."
+    doc "The level select template: a card picked answers `chosen`; its Back button, a press on the scrim around it, Escape and the pad's B answer `closed`."
     host false
     param id String "Its id."
-    param desc LevelSelectDesc "The levels."
+    param desc LevelSelectDesc "The levels and the screen's words."
     returns LevelSelectResult
   }
 
