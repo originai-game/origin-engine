@@ -4,7 +4,10 @@
 // twice, once with every wanted tile decoded before each frame
 // (`terrain_stream:resident`) and once streamed on the decode thread within
 // a quarter-MiB tile budget (`terrain_stream:stream:0.25`), and the world
-// hash is the same after every one of those ticks.
+// hash is the same after every one of those ticks. Since 441f4e6e the first
+// frame that draws a streamed terrain settles its tiles as a capture does,
+// so both runs hold every wanted tile at the station's first frame and the
+// streamed run streams what the walk wants after it.
 //
 // Ways this could fail: a tick reads resident tiles (the hero's height,
 // collision or og.terrain.sample changes while tiles are in flight), so the
@@ -66,18 +69,24 @@ test(
     writeFileSync(join(work, "determinism.json"), JSON.stringify({ resident, streamed }, null, 2) + "\n");
 
     // Both runs did what they were told: the resident one had every wanted
-    // tile on the first frame at the station, the streamed one was still
-    // decoding them, within its own budget.
+    // tile on the first frame at the station, and so had the streamed one,
+    // because the first frame that draws a streamed terrain settles its
+    // tiles as a capture does (web findings #5: no frame draws a terrain
+    // before any of its tiles arrived); its budget is its own, and the
+    // tiles the hero's walk wants after that frame stream within it.
     expect([resident.first.mode, resident.first.budget, resident.first.terrains]).toEqual(["resident", 0, 1]);
     expect([streamed.first.mode, streamed.first.budget, streamed.first.terrains]).toEqual(["stream", 0.25 * 1048576, 1]);
     expect(resident.first.resident).toBeGreaterThan(0);
     expect([resident.first.waiting, resident.first.inFlight]).toEqual([0, 0]);
-    expect(streamed.first.waiting).toBeGreaterThan(0);
-    expect(streamed.first.resident).toBeLessThan(resident.first.resident);
-    // By the end the streamed run has caught up.
+    expect([streamed.first.waiting, streamed.first.inFlight]).toEqual([0, 0]);
+    expect(streamed.first.resident).toBe(resident.first.resident);
+    // The settle decoded them on the stream's own thread; by the end the
+    // streamed run has nothing waiting (the station's walk stays within
+    // the tiles the first frame wanted, so nothing more streams here).
+    expect(streamed.first.decoded).toBeGreaterThan(0);
     expect(streamed.last.waiting).toBe(0);
     expect(streamed.last.resident).toBe(resident.last.resident);
-    expect(streamed.last.decoded).toBeGreaterThan(0);
+    expect(streamed.last.decoded).toBeGreaterThanOrEqual(streamed.first.decoded);
 
     expect(resident.ticks).toBeGreaterThan(TICKS - 1);
     expect(resident.hashes.length).toBe(TICKS);
