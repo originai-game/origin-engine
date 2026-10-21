@@ -936,6 +936,11 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
 /// One tick of a skinned screen panel: a title and four buttons. Answers
 /// whether `Last` was clicked.
 fn menu_step(ui: &mut Ui, input: InputFrame) -> bool {
+    menu_step_as(ui, input, false)
+}
+
+/// [`menu_step`] with the panel's `instant`.
+fn menu_step_as(ui: &mut Ui, input: InputFrame, instant: bool) -> bool {
     ui.begin(input, Viewport::new(800.0, 600.0));
     let mut clicked = false;
     ui.anchor(
@@ -945,6 +950,7 @@ fn menu_step(ui: &mut Ui, input: InputFrame) -> bool {
             direction: Direction::Column,
             gap: 8.0,
             background: Some(Srgba::rgb(32, 48, 64)),
+            instant,
             ..AnchorDesc::default()
         },
         |ui| {
@@ -1022,4 +1028,50 @@ fn a_staggered_panels_controls_take_presses_once_the_panel_has_arrived() {
         rect_of(&early, "Menu") != panel_end && !pressed && !clicked,
         "a press on Last while the panel pops in is not taken"
     );
+}
+
+#[test]
+fn an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_it_comes_back() {
+    // Ways it could fail: `instant` is ignored (the opening title behind the
+    // web's play gate stays part-way through the skin's entrance and
+    // stagger, examples/WEB-FINDINGS.md #1), it only skips the panel's own
+    // entrance and leaves the cascade, or it sticks to the panel so a title
+    // the player comes back to never enters again.
+    let (mut settled, _) = skinned_ui();
+    for _ in 0..120 {
+        menu_step(&mut settled, InputFrame::default());
+    }
+    let (panel_end, last_end) = (rect_of(&settled, "Menu"), rect_of(&settled, "Last"));
+    let (mut ui, _) = skinned_ui();
+    menu_step_as(&mut ui, InputFrame::default(), true);
+    assert_eq!(
+        (rect_of(&ui, "Menu"), rect_of(&ui, "Last")),
+        (panel_end, last_end),
+        "the first tick of an instant panel is its settled frame"
+    );
+    let (x, y) = (last_end.0 + last_end.2 / 2.0, last_end.1 + last_end.3 / 2.0);
+    let release = InputFrame {
+        pointer: Vec2::new(x, y),
+        pointer_inside: true,
+        released: true,
+        ..InputFrame::default()
+    };
+    assert!(
+        !menu_step_as(&mut ui, press_at(x, y), true) && menu_step_as(&mut ui, release, true),
+        "Last clicks on the ticks right after it appeared"
+    );
+    // Gone for a tick (the player left the title), then back without
+    // `instant`: the skin's entrance plays again.
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.end();
+    menu_step_as(&mut ui, InputFrame::default(), false);
+    assert_ne!(
+        rect_of(&ui, "Menu"),
+        panel_end,
+        "a panel that comes back enters with the skin"
+    );
+    // Without `instant` the first tick is the entrance's first (the old behaviour).
+    let (mut plain, _) = skinned_ui();
+    menu_step(&mut plain, InputFrame::default());
+    assert_ne!(rect_of(&plain, "Last"), last_end, "a plain panel enters");
 }

@@ -325,7 +325,11 @@ Skins add the rest themselves: dialog and panel entrances with staggered
 controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `pressSpring 0.55 120` lines of a
 skin's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
 a shake and the error sound on a press of a disabled button. Reduced motion
-keeps every shake still and turns the rest into fades. How long and how
+keeps every shake still and turns the rest into fades. The screen the game
+opens on is built settled (`instant: true` on its `mainMenu`, `anchor` or
+`transition` while it is that screen): the web draws it behind the play
+gate, where an entrance would stand part-way until the tap (og-platform-sdk
+§3). How long and how
 much is og-taste §5 and §6; camera shake is never for UI (og-feel §4).
 
 ## 7. Text: labels, fields, areas, input methods

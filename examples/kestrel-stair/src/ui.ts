@@ -504,6 +504,7 @@ export const Ui = defineSystem(
       const sub = g.chaptersOpen ? "-chapters" : g.recordsOpen ? "-records" : "";
       const screen = (g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play") + (g.phase === Phase.Play ? "" : sub);
       const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 700 }).shown;
+      if (shown !== "title") g.leftTitle = true;
       if (shown.startsWith("title")) {
         og.ui.setNavigation(true);
         if (shown === "title-chapters") chapters(world, g);
@@ -516,7 +517,9 @@ export const Ui = defineSystem(
             { id: "records", label: say(world, "title.records") },
             { id: "settings", label: say(world, "title.settings") },
           ];
-          const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer") });
+          // The title the game opens on is built settled: the web draws it behind the play gate, where the
+          // skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+          const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer"), instant: !g.leftTitle });
           // FINDINGS #14 is fixed: the menu's first item takes the focus as it appears, so Enter,
           // Space and the pad's A answer at once (the game put it there itself before).
           if (!g.settingsOpen && g.phase === Phase.Title) {
