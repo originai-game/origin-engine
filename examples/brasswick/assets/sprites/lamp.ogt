@@ -1,0 +1,15 @@
+type flipbook
+version 1
+---
+# A checkpoint lamp (tools/make-assets.ts): dark, then lit and flickering.
+texture "lamp.png"
+pivot 0.5 0
+grid 16 32 4 1
+clip dark {
+  frames 0
+  fps 1
+}
+clip lit {
+  frames 1 2 3 2
+  fps 8
+}

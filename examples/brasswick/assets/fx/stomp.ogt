@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# A tick stomped: sparks and soot (tools/make-assets.ts).
+maxParticles 32
+shape point
+spread 180
+rate 0
+burst 0 18
+duration 0.1
+looping false
+lifetime 0.18 0.4
+speed 3 6
+size 0.12 0.2
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.85 0.6 1
+  key 1 0.8 0.35 0.2 0
+}
+drag 4
+gravity 0 -6 0
+texture "fx/spark.png"
+blend additive
+glow 1
+render sprite 12

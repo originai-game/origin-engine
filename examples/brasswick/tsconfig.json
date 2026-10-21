@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "types": [],
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "paths": {
+      "@origingame/engine": ["../../packages/engine/types/index.d.ts"],
+      "@origingame/engine/playtest": ["../../packages/engine/src/playtest.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "tools/**/*.ts", "host.d.ts", "../../packages/engine/src/env.d.ts"]
+}
