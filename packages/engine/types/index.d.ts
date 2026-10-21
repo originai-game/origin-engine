@@ -9177,7 +9177,7 @@ export interface Animation {
  */
 export interface GraphDesc {
   /**
-   * The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README).
+   * The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line).
    *
    * @default ""
    */
@@ -11026,7 +11026,7 @@ export interface NavRebuild {
 
 
 // ── ai ──────────────────────────────────────────────────────────
-// Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+// Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
 // An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
 // Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
 
@@ -18357,7 +18357,7 @@ export declare namespace og {
      */
     function flowAt(world: World, field: Navigation, point: Vector3): Vector3;
     /**
-     * A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models.
+     * A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook.
      *
      * @param world The world.
      * @param path The navmesh asset, such as `levels/arena.nav.ogt`.
@@ -18414,7 +18414,7 @@ export declare namespace og {
   /** An agent's state or running node changed (systems read it the tick after). */
   const AiChanged: EventType<AiChanged>;
   /**
-   * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+   * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
    * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
    */

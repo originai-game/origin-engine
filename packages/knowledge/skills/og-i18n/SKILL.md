@@ -17,7 +17,10 @@ Two games written from this package alone (`examples/lantern-vale`,
 tables: `og polish` found no locale gaps in either, the results template
 showed its localised Best and New best, a name was typed partly through an
 input method, and a skin copied without its CJK `fallback` was refused by
-the cook with the line named.
+the cook with the line named. The Kestrel Stair (`examples/kestrel-stair`)
+ships English and Japanese: its Noto Sans JP subset cut by the ui-kit's
+`tools/subset-font.py` needed no other step, and its locales playtest
+finds no English word of a template left in Japanese on eight screens.
 
 ## 1. One table per locale
 

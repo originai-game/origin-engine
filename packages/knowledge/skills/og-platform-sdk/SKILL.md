@@ -21,7 +21,12 @@ conflict read again and written back) and proves Continue across a
 relaunch with a `store: "keep"` playtest; Lantern Vale
 (`examples/lantern-vale`) keeps its settings through
 `og.platform.saveSettings`. The relaunch worked the first time it was
-asked for as §4 says.
+asked for as §4 says. The Kestrel Stair (`examples/kestrel-stair`) keeps
+its whole world at a waystone (`world.snapshot()`, about 78 KB of text, in
+parts under the store's 64 KiB a key) and continues it after a
+`store: "keep"` relaunch, its progress at the revision read with a
+conflict merged, and a won climb on an ascending leaderboard. A save
+slot's helper: see runtime-ui-2.
 
 ## 1. Requests, answered later
 

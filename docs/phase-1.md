@@ -357,6 +357,53 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 10, dogfood-3: The Kestrel Stair, the third dogfood game (9605360)
+
+examples/kestrel-stair, a 3D third-person action-adventure of about five
+minutes written from the knowledge package alone (engine e16e9cec, then
+main f1a31849 merged at the end): a courier climbs a ruined hillside
+monastery to deliver a letter to the summit bell before 19:30; thorn imps
+chase, bite and flee when hurt, stone wardens close in and slam after a
+wind-up; three sigils raise the summit gate. It exercises what the first
+two games did not: a glTF level written by code with slopes, stairs,
+ledges and a crypt under `og.CharacterController`; a navmesh baked from
+the level, behaviour trees and state machines, steering avoidance; three
+skinned bodies with different rigs sharing one clip library, retargeted
+at cook time for the hero and at run time for the enemies (one through a
+`type rig` file), blend trees, root motion on the warden's lunge; a cape,
+four banners and a crypt chain with a lamp; spatial sources, a reverb
+run by the game in the crypt, a streamed synthesised track; a look
+extending `watercolor-wash` with a day-night clock and
+`luminous-layered-painting` for the ending; the paper skin with
+`cutscene`, `tutorialOverlay`, `inventoryScreen`, `levelSelect` and
+`leaderboardScreen`; English and Japanese (Noto Sans JP subset by the
+ui-kit script); a save slot through `world.snapshot()`/`world.restore()`
+across a relaunch and a leaderboard entry through `og.platform`. 13
+playtests, nine metal frames (title, intro, explore, strike, crypt, bag,
+chapters, records, results), a two-process replay on one hash, the
+relaunch, the a11y tree. `og polish`: taste 98 (contrast 97), feel 79
+(frame time 0 to 9 on a machine busy with other builds; step 7.5 ms
+median, p95 10 to 30 ms). On main after the merge: 13 of 13.
+
+FINDINGS.md: 21 findings, 1 blocker, 12 annoyances, 8 nits; top five #7,
+#10, #19, #13, #6 (with #2). Three were fixed by wave 10 before the merge
+and confirmed after it: #16 (`sliding` true on level ground) and #17
+(stairs and slopes) by the shared mover, #18 (the templates' words) by
+row 76. Wave 11's streams took the rest: nav-ai (#7 the unplanned
+NavAgent snapped to polygon 0, blocker; #5 restarting a behaviour; #8
+Perception hearing its own agent; #9 NavMeshInfo's bounds; #3 `check`
+against a field; #1 the third-person archetype named), physics-anim-2
+(#10 cloth, ropes and the rest reading the entity's own Transform as
+world space; #4 SquashDesc.impact a Vector2 in 3D; #11 no hit flash on a
+glTF instance; #21 no reverb zone), runtime-ui-2 (#19 a resource field
+write costing in proportion to the whole resource, 34 ms a tick as
+og-core shows it; #6 `world.get`/`set` refused inside a system by the
+declaration alone; #13 a 77 KB snapshot over the store's 64 KiB a key;
+#14 the title menu taking no focus; #15 `levelSelect` ignoring
+`columns` and clipping names, `inventoryScreen` off by one; #20 polish's
+contrast measure on short text in wide labels), knowledge-3 (#2 the
+navmesh, behaviour and animation-graph grammars; #12 clip markers).
+
 ## Wave 10, cook-determinism: basisu's padding bytes, a torn pipeline cache (033182e)
 
 Row 80 (`cooking_twice_gives_identical_bytes` failing 2 of 5 on the CI
