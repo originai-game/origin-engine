@@ -1,0 +1,44 @@
+// args from the basis cmake file
+fn build_with_common_settings() -> cc::Build {
+    let mut build = cc::Build::new();
+    build
+        .flag_if_supported("-fvisibility=hidden")
+        .flag_if_supported("-fno-strict-aliasing")
+        // Vendored (a path dependency, whose warnings cargo prints on
+        // every build): basisu's own warnings are upstream's to fix.
+        .warnings(false)
+        .cargo_warnings(false);
+
+    build
+}
+
+fn main() {
+    build_with_common_settings()
+        .cpp(true)
+        .define("BASISD_SUPPORT_KTX2_ZSTD", "0")
+        //.define("BASISU_SUPPORT_SSE", "1") TODO: expose this in a futher release
+        .flag_if_supported("--std=c++11")
+        .file("vendor/basis_universal/encoder/pvpngreader.cpp")
+        .file("vendor/basis_universal/encoder/jpgd.cpp")
+        .file("vendor/basis_universal/encoder/basisu_uastc_enc.cpp")
+        .file("vendor/basis_universal/encoder/basisu_ssim.cpp")
+        .file("vendor/basis_universal/encoder/basisu_resampler.cpp")
+        .file("vendor/basis_universal/encoder/basisu_resample_filters.cpp")
+        .file("vendor/basis_universal/encoder/basisu_pvrtc1_4.cpp")
+        .file("vendor/basis_universal/encoder/basisu_opencl.cpp")
+        .file("vendor/basis_universal/encoder/basisu_kernels_sse.cpp")
+        .file("vendor/basis_universal/encoder/basisu_gpu_texture.cpp")
+        .file("vendor/basis_universal/encoder/basisu_frontend.cpp")
+        .file("vendor/basis_universal/encoder/basisu_etc.cpp")
+        .file("vendor/basis_universal/encoder/basisu_enc.cpp")
+        .file("vendor/basis_universal/encoder/basisu_comp.cpp")
+        .file("vendor/basis_universal/encoder/basisu_bc7enc.cpp")
+        .file("vendor/basis_universal/encoder/basisu_basis_file.cpp")
+        .file("vendor/basis_universal/encoder/basisu_backend.cpp")
+        .file("vendor/basis_universal/transcoder/basisu_transcoder.cpp")
+        .file("vendor/transcoding_wrapper.cpp")
+        .file("vendor/encoding_wrapper.cpp")
+        .compile("basisuniversal");
+
+    // We regenerate binding code and check it in. (See generate_bindings.sh)
+}

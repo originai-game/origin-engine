@@ -2,6 +2,9 @@
 resolver = "2"
 members = ["crates/og-core", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-cook", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-i18n", "crates/og-ui", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-web"]
 
+# A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
+exclude = ["third_party"]
+
 [workspace.package]
 edition = "2024"
 license = "MIT"
@@ -212,3 +215,11 @@ codegen-units = 16
 codegen-units = 16
 [profile.dev.package.og-tests]
 codegen-units = 16
+
+# basisu's UASTC RDO pass hashed its key's padding (stack garbage), so the
+# cook's UASTC bytes followed what a thread had run before: the upstream fix,
+# carried until a basis-universal-sys release has it
+# (third_party/basis-universal-sys/Cargo.toml, crates/og-cook/README.md
+# §Determinism).
+[patch.crates-io]
+basis-universal-sys = { path = "third_party/basis-universal-sys" }
