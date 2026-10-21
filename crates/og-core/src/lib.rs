@@ -7,7 +7,7 @@
 //! | [`reflect`] | [`Reflect`] and `#[derive(Reflect)]`, [`Schema`] and its JSON, packed [`Layout`]s |
 //! | [`ogt`] | the `.ogt` text format: [`ogt::Document`] reader and canonical writer |
 //! | [`rng`] | [`Rng`], the deterministic generator shared with the platform scaffolds |
-//! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow` |
+//! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow`, and [`math::world_pose`] down a parent chain |
 //! | [`time`] | [`Time`], the fixed-tick clock |
 //! | [`hash`] | [`hash::StableHasher`], the stable 64-bit hash for world and layout hashes |
 //!

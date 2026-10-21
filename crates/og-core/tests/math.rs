@@ -334,3 +334,37 @@ fn deterministic_rotation_matches_its_definition() {
     let (s, c) = sin_cos(0.5);
     assert_eq!((q.x, q.y, q.z, q.w), (0.0, s, 0.0, c));
 }
+
+/// `world_pose` down a chain of three: a grandparent moved and doubled, a
+/// parent turned a quarter about +Y, a child offset along +X. A missing
+/// transform and a cycle end the chain.
+#[test]
+fn world_pose_composes_down_the_parent_chain() {
+    use og_core::math::{Pose, Quat, world_pose};
+    let quarter = quat_from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
+    // 0: the child, 1: its parent, 2: the grandparent, 3: no transform.
+    let parents = [Some(1usize), Some(2), None, None];
+    let poses: [Option<Pose>; 4] = [
+        None,
+        Some((Vec3::new(0.0, 1.0, 0.0), quarter, Vec3::ONE)),
+        Some((Vec3::new(10.0, 0.0, 0.0), Quat::IDENTITY, Vec3::splat(2.0))),
+        None,
+    ];
+    let local = (Vec3::X, Quat::IDENTITY, Vec3::ONE);
+    let (p, q, s) = world_pose(0, local, |c| parents[c], |c| poses[c]);
+    // The parent turns +X to -Z and lifts it 1; the grandparent doubles
+    // that and moves it 10 along +X.
+    assert!((p - Vec3::new(10.0, 2.0, -2.0)).length() < 1e-5, "{p}");
+    assert!(q.dot(quarter).abs() > 1.0 - 1e-6, "{q}");
+    assert_eq!(s, Vec3::splat(2.0));
+    // A root is its own pose, bit for bit.
+    let root = world_pose(2, local, |_| None::<usize>, |c| poses[c]);
+    assert_eq!(root, local);
+    // A parent without a transform ends the chain.
+    let (p, _, _) = world_pose(0, local, |c| (c == 0).then_some(3), |c| poses[c]);
+    assert_eq!(p, Vec3::X);
+    // A cycle ends after 256 steps instead of looping.
+    let unit = (Vec3::new(0.0, 0.0, 1.0), Quat::IDENTITY, Vec3::ONE);
+    let (p, _, _) = world_pose(0usize, local, |c| Some(1 - c), |_| Some(unit));
+    assert_eq!(p, Vec3::new(1.0, 0.0, 256.0));
+}

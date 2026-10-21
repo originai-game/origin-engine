@@ -13880,7 +13880,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Attenuate and pan by the entity's og.Transform relative to the listener.",
+                doc: "Attenuate and pan by the entity's world transform (its og.Transform down og.Parent) relative to the listener.",
                 variants: &[],
                 capacity: 0,
             },

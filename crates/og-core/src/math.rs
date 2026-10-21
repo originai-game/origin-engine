@@ -380,3 +380,41 @@ pub fn quat_from_axis_angle(axis: Vec3, angle: f32) -> Quat {
     let (s, c) = sin_cos(angle * 0.5);
     Quat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)
 }
+
+/// A transform as `og.Transform` holds it: position, rotation and scale
+/// (three.js Object3D's `position`, `quaternion` and `scale`).
+pub type Pose = (Vec3, Quat, Vec3);
+
+/// The world pose of `node`, whose own transform is `local`: its parents'
+/// transforms applied down the parent chain (`parent_of`), as the renderer
+/// composes `og.MatrixWorld` from `og.Transform` down `og.Parent`. One
+/// helper for every simulation system that places a child (physics' soft
+/// bodies, audio's sources, listener and zones), so they agree bit for bit:
+/// plain products in a fixed order, no transcendental.
+///
+/// A parent's scale scales the child's offset and multiplies its scale
+/// (exact for uniform scales; a matrix with shear has no pose). A parent
+/// without a transform (`pose_of` gives `None`) ends the chain there, and
+/// so does a chain longer than 256 (a cycle).
+pub fn world_pose<K: Copy>(
+    node: K,
+    local: Pose,
+    parent_of: impl Fn(K) -> Option<K>,
+    pose_of: impl Fn(K) -> Option<Pose>,
+) -> Pose {
+    let (mut p, mut q, mut s) = local;
+    let mut cur = node;
+    for _ in 0..256 {
+        let Some(parent) = parent_of(cur) else {
+            break;
+        };
+        let Some((position, quaternion, scale)) = pose_of(parent) else {
+            break;
+        };
+        p = position + quaternion * (scale * p);
+        q = (quaternion * q).normalize();
+        s *= scale;
+        cur = parent;
+    }
+    (p, q, s)
+}
