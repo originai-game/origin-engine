@@ -19416,7 +19416,7 @@ export declare namespace og {
      */
     function navigate(world: World, intent: NavIntent): void;
     /**
-     * Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+     * Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through.
      */
     function back(): boolean;
     /**

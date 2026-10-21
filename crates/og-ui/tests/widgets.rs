@@ -9,6 +9,8 @@
 //!   field is being edited (Space must type);
 //! - a dialog lets focus or presses reach what is under it, ignores Back,
 //!   closes while locked, or does not give focus back when it closes;
+//! - a HUD drawn before a dialog takes Back from it (`Ui::back` answering
+//!   while a dialog Back closes is open), so Escape never closes pause;
 //! - a select does not open, choose, or close on a press outside;
 //! - a virtualised list builds rows out of view, cannot reach its last row,
 //!   or does not scroll a keyboard-focused row into view;
@@ -367,6 +369,79 @@ fn a_dialog_traps_focus_blocks_what_is_under_it_and_closes_on_back() {
     assert!(
         rig.state.open,
         "focus came back to Open, so Enter opens it again"
+    );
+}
+
+/// A HUD under a pause dialog, as og.ui.racingHud draws: it asks
+/// `Ui::back` before the dialog is built this tick.
+#[derive(Default)]
+struct Paused {
+    open: bool,
+    locked: bool,
+    hud_back: u32,
+    dismissed: u32,
+}
+
+fn hud_under_pause(ui: &mut Ui, s: &mut Paused) {
+    ui.set_navigation(false);
+    if ui.back() {
+        s.hud_back += 1;
+        s.open = true;
+    }
+    let desc = ModalDesc {
+        title: "Paused".into(),
+        locked: s.locked,
+        ..ModalDesc::default()
+    };
+    let m = ui.modal("Pause", s.open, &desc, |ui| {
+        if ui.button("Resume", "Resume", ButtonDesc::default()).clicked {
+            s.open = false;
+        }
+    });
+    if m.dismissed {
+        s.dismissed += 1;
+        s.open = false;
+    }
+}
+
+#[test]
+fn a_hud_never_takes_back_while_a_dialog_is_open() {
+    let mut rig = Rig::new(Paused::default());
+    let b = &mut hud_under_pause;
+    rig.idle(1, b);
+    rig.key(UiKey::Escape, b);
+    assert_eq!(
+        rig.state.hud_back, 1,
+        "no dialog: Back reaches the HUD (it pauses)"
+    );
+    assert!(rig.state.open);
+    rig.idle(30, b);
+    rig.key(UiKey::Escape, b);
+    assert_eq!(
+        rig.state.hud_back, 1,
+        "the HUD asked first, but the open dialog keeps Back"
+    );
+    assert_eq!(rig.state.dismissed, 1, "Escape closed the pause dialog");
+    assert!(!rig.state.open);
+    rig.idle(30, b);
+    rig.step(pad(0, GamepadFrame::B), b);
+    assert_eq!(rig.state.hud_back, 2, "closed again: the pad's B pauses");
+    rig.idle(30, b);
+    rig.step(pad(0, GamepadFrame::B), b);
+    assert_eq!(
+        (rig.state.hud_back, rig.state.dismissed),
+        (2, 2),
+        "the pad's B closes it too"
+    );
+    // A locked dialog does not close on Back, so Back reaches the game.
+    rig.state.locked = true;
+    rig.state.open = true;
+    rig.idle(30, b);
+    rig.key(UiKey::Escape, b);
+    assert_eq!(
+        (rig.state.hud_back, rig.state.dismissed),
+        (3, 2),
+        "under a locked dialog Back is the game's"
     );
 }
 

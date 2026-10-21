@@ -630,6 +630,7 @@ impl Ui {
             n.hidden = !pr.visible;
             n.backdrop = true;
             n.scope = true;
+            n.locked = desc.locked;
             n.fx = Some(crate::motion::Fx {
                 alpha: e,
                 inert: pr.progress < 1.0 || !open,

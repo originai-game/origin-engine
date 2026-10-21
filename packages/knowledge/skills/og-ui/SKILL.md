@@ -186,7 +186,11 @@ for tests.
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise
-`og.ui.back()` answers true once (open pause on it). A gameplay HUD whose keys
+`og.ui.back()` answers true once (open pause on it). While a dialog or menu
+is open `og.ui.back()` answers false even when asked before the dialog is
+built that tick, so a HUD drawn under pause or the settings never takes the
+Back that closes them (a locked dialog, which Back does not close, lets it
+through). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
 dialogs turn navigation back on while open. What opens takes the focus:
 a dialog (every modal template: pause, settings, shop, results, confirm)

@@ -180,7 +180,7 @@ module ui {
 | [`og.ui.toast`](#fn-toast) | function | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it. |
 | [`og.ui.dismissToast`](#fn-dismissToast) | function | Start a toast's exit. |
 | [`og.ui.navigate`](#fn-navigate) | function | Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. A move queued while the focus is on nothing puts the focus on the first control, whatever its direction, and no further: moves asked again before the focus lands (each tick until og.ui.focus answers a path) land on that same first control. |
-| [`og.ui.back`](#fn-back) | function | Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. |
+| [`og.ui.back`](#fn-back) | function | Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through. |
 | [`og.ui.setPlayers`](#fn-setPlayers) | function | Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it. |
 | [`og.ui.focus`](#fn-focus) | function | The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none. |
 | [`A11yNode`](#type-A11yNode) | struct | One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out). |
@@ -2374,7 +2374,7 @@ fn navigate {
 
 ### `og.ui.back`
 
-Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through.
 
 ```ts
 og.ui.back(): boolean
@@ -2386,7 +2386,7 @@ Binding symbol `og_ui_back` · publish builds: kept
 
 ```ogt
 fn back {
-  doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it."
+  doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through."
   returns bool
 }
 ```
