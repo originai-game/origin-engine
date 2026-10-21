@@ -701,6 +701,37 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, web-boot-2: the opening title drawn finished behind the play gate (b5350d48)
+
+The web-boot stream's leftover (lane-5), cut to this one item on
+2026-10-22 (the pipeline warm-up after the tap dropped as optimisation).
+Kestrel plays no fade of its own: its skin's `motion { enter slideUp;
+stagger 40 }` slides the title panel in and staggers its buttons from
+tick 1 over about 30 ticks, and the gate frame is a still from ticks 2
+to 9, so the panel was frozen part-way; Hollowbell (`enter slideDown`)
+and Lantern Vale (`enter scale`, stagger 35) do the same, and no API
+let a game turn a panel's skin entrance off (`og.ui.transition`'s
+`instant` does not reach it). New `instant` field on `AnchorDesc` and
+`MainMenuDesc`: the panel shows finished the first time it is built, no
+entrance, no stagger, its buttons usable at once, and only on that
+first build (a panel that comes back enters normally); og-ui
+`open_anchor`, og-runtime's mapping, the kit's `mainMenu`; the three
+games pass `instant: !g.leftTitle`, so only the opening title is
+affected. Kestrel's tick 1 now shows the whole settled title; the
+games' 25 metal frames are byte-identical. Docs: og-platform-sdk §3
+says what the frame behind the gate is and how a title is built, og-ui
+§6 and web-export §The shell point to it. Test: og-ui
+`an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_it_comes_back`
+(skin.rs; fails with `instant` ignored). One WebGPU run made before the
+scope cut reached the stream: Kestrel's capture behind the gate went
+from RMSE 0.119 to 0.025 against the metal title, the rest being the
+title's slow camera between tick 1 and the reference's tick 72. Not
+done: the archetype templates and the kit build their titles with
+`mainMenu` too and still play the entrance behind the gate (several
+record their title at 0.3 s, so switching them moves references);
+Lantern Vale's first ticks look foggier and brighter while the exposure
+settles (the engine's adaptation, not the game's).
+
 ## Wave 13, dogfood-5: Meridian Loop, a night time trial on a neon circuit (7b927dd9)
 
 The fifth dogfood round (lane-3): a fourth game of a genre the three
