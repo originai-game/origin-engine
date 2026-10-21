@@ -12,7 +12,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
-import { COUNTDOWN, Phase, Prefs, Race, Sound, TapeChunk, TAPE_TICKS } from "./components.ts";
+import { COUNTDOWN, Phase, Prefs, Race, Racer, Sound, TapeChunk, TAPE_TICKS } from "./components.ts";
 import { POSE_BYTES } from "./tape.ts";
 import { readTape, writeTape } from "./tapes.ts";
 import { hideGhost } from "./ghost.ts";
@@ -129,6 +129,8 @@ function endLap(world: World, r: RaceV, prefs: Value<typeof Prefs>): void {
   if (r.lap > LAPS) {
     r.phase = Phase.Finished;
     r.total = r.clock;
+    const pts = Math.round(100000 / (r.total / 60));
+    if (pts > r.recordPoints) r.recordPoints = pts;
     r.ghostActive = false;
     if (r.runBest > 0) submitLap(world, r, r.runBest);
     return;
@@ -166,12 +168,13 @@ export function deltaText(ticks: number): string {
 /** The race's tick: countdown, progress, splits, laps, resets, the poses, the ghost. */
 export const RaceSystem = defineSystem(
   "Race",
-  { reads: [Prefs, og.Input, og.Gamepad], writes: [Race, TapeChunk, og.Transform, og.Velocity, og.Vehicle] },
+  { reads: [Prefs, og.Input, og.Gamepad], writes: [Race, TapeChunk, Racer, og.Transform, og.Velocity, og.Vehicle] },
   (_q, time, world) => {
     const r = must(world.resource(Race));
     if (r.held || time.scaledDt === 0) return;
     const prefs = must(world.resource(Prefs));
     if (r.deltaShow > 0) r.deltaShow -= 1;
+    if (!prefs.ghost && r.ghostActive) r.ghostActive = false;
     if (r.phase === Phase.Countdown) {
       r.countdown -= 1;
       if (r.countdown > 0 && r.countdown % 60 === 0) r.sfx |= Sound.Beep;
@@ -219,7 +222,8 @@ export const RaceSystem = defineSystem(
     const s = SAMPLES[i]!;
     const q4 = tr.quaternion;
     const upY = 1 - 2 * (q4.x * q4.x + q4.z * q4.z);
-    const off = p.y < s.y - 1.6 || upY < 0.25 || Math.abs(across(i, p.x, p.z)) > WIDTH / 2 + 4;
+    // In the gap the road is gone: down there (under the lip's height) is off it too.
+    const off = (s.gap && p.y < 1.2) || p.y < s.y - 1.6 || upY < 0.25 || Math.abs(across(i, p.x, p.z)) > WIDTH / 2 + 4;
     r.offTicks = off ? r.offTicks + 1 : 0;
     const inp = must(world.resource(og.Input));
     const pad = must(world.resource(og.Gamepad));

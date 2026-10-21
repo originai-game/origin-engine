@@ -58,6 +58,8 @@ export const Race = defineResource("Race", {
   recordS1: u32(0),
   recordS2: u32(0),
   recordS3: u32(0),
+  /** The best run's points (the results' score). */
+  recordPoints: u32(0),
   /** The last split's delta against the record (ticks, negative faster) and which split (1, 2, 3 for the line). */
   delta: i32(0),
   deltaAt: u32(0),

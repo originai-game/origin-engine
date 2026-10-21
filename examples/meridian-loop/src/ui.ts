@@ -19,7 +19,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { GameSettings, Value, World } from "@origingame/engine";
-import { Phase, Prefs, Race, Sound, TapeChunk } from "./components.ts";
+import { Phase, Prefs, Race, Racer, Sound, TapeChunk } from "./components.ts";
 import { deltaText, lapText, startRace } from "./race.ts";
 import { answers, readAll, readBoard } from "./save.ts";
 import { uiSounds } from "./sound.ts";
@@ -226,6 +226,11 @@ function settings(world: World, r: RaceV, p: PrefsV): void {
   }
 }
 
+/** The run's points: 100,000 over its total seconds (a 1:36.2 run scores 1,039). */
+export function points(ticks: number): number {
+  return ticks === 0 ? 0 : Math.round(100000 / (ticks / 60));
+}
+
 /** Stars for the run's best lap against the medal times (seconds). */
 export const MEDALS = [40, 37, 35] as const;
 export function stars(r: RaceV): number {
@@ -239,8 +244,9 @@ function results(world: World, r: RaceV): "again" | "board" | "title" | null {
   const res = og.ui.resultsScreen("Results", {
     open: r.phase === Phase.Finished && r.finishedFor >= RESULTS_DELAY,
     title: say(world, r.newRecord ? "results.record" : "results.finished"),
-    score: Math.round((r.total * 1000) / 60) / 1000,
-    best: r.record / 60,
+    // The template counts a whole number up and shows no unit (FINDINGS #9): the run's points, 100,000 over the total seconds.
+    score: points(r.total),
+    best: r.recordPoints,
     newBest: r.newRecord,
     bestLabel: say(world, "results.best", { best: r.record > 0 ? lapText(r.record) : "—" }),
     newBestLabel: say(world, "results.newBest"),
@@ -278,7 +284,7 @@ function startRaceReset(world: World, r: RaceV): void {
 /** The screens, the hold, the platform. */
 export const Ui = defineSystem(
   "Ui",
-  { reads: [og.Input, og.Gamepad], writes: [Race, Prefs, TapeChunk, og.Transform, og.Velocity, og.Vehicle, og.Audio] },
+  { reads: [og.Input, og.Gamepad], writes: [Race, Prefs, TapeChunk, Racer, og.Transform, og.Velocity, og.Vehicle, og.Audio] },
   (_q, time, world) => {
     const r = must(world.resource(Race));
     const p = must(world.resource(Prefs));
