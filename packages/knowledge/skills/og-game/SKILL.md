@@ -74,7 +74,10 @@ Mistakes the games made, or would have, before reading the right page:
   typed-array access whatever the resource's size, and `world.resource(R)`
   answers the same handle wherever it is called: keep the run's state in
   one resource and write its fields where they change, never through a
-  plain copy (og-core §4 has the cost model).
+  plain copy (og-core §4 has the cost model: a field read or write about
+  0.03 µs, the first read after an engine call about 2 µs while the record
+  is fetched again, writes sent in one call before the next engine call
+  and when the system returns).
 - **A look replaces resources whole.** `GameDesc.look` and
   `og.render.applyLook` set every field of each resource the look names
   (the rest to their defaults), so a per-game value written before the

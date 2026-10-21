@@ -75,8 +75,8 @@ export function spawnVoices(world: World, g: Value<typeof Game>): void {
 /** Plays each requested sound once; steps, hits and swings vary their pitch a little. */
 export const Voices = defineSystem("Voices", { writes: [Game, Sfx, og.AudioSource, og.Rng], after: ["Fx"] }, (q, _time, world) => {
   const g = must(world.resource(Game));
-  // The last system: every system has seen this tick's start. (Written only when it changes:
-  // a write to Game costs in proportion to the whole resource, src/state.ts.)
+  // The last system: every system has seen this tick's start. (Written only when it changes;
+  // FINDINGS #19, fixed: a field write is a typed store now, flushed at the system's end.)
   if (g.start) g.start = false;
   if (g.sfx === 0) return;
   const rng = must(world.resource(og.Rng));

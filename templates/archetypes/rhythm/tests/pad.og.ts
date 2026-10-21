@@ -15,7 +15,7 @@ const FACE = ["x", "a", "b"];
 export default playtest({
   name: "the d-pad and the face buttons hit the lanes; Start pauses, A resumes",
   commands: sorted([
-    pad("down", 1.0),
+    // The title's first item holds the focus when the menu opens (og-ui §4), so A plays at once; no d-pad press first.
     pad("a", 1.1),
     "1.4:get:Game:started.json",
     ...notes.filter((n) => n.beat < 8).map((n) => pad(n.beat < 4 ? DPAD[n.lane]! : FACE[n.lane]!, t0 + n.beat * BEAT)),

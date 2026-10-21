@@ -6,7 +6,7 @@ Sound: inside the tick, the engine's og.audio system (after the game's systems a
 
 The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
 
-Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).
+Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.
 
 - **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -32,7 +32,7 @@ module audio {
 | [`AudioBus`](#type-AudioBus) | enum | The bus a source plays on; every bus passes through master. |
 | [`AudioBus()`](#column-AudioBus) | column kind | An AudioBus field: the variant's index. |
 | [`og.AudioSource`](#record-AudioSource) | component | A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded. |
-| [`og.AudioListener`](#record-AudioListener) | component | Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used. |
+| [`og.AudioListener`](#record-AudioListener) | component | Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used. |
 | [`og.Audio`](#record-Audio) | resource | Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. |
 | [`og.AudioBusFx`](#record-AudioBusFx) | component | A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through. |
 | [`og.ReverbZone`](#record-ReverbZone) | component | A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener. |
@@ -97,7 +97,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `loop` | `boolean` | `false` | — | — | — | Loop between loopStart and loopEnd, seamlessly. |
 | `loopStart` | `number` | `0` | ≥ 0 | `s` | — | Where a loop restarts. |
 | `loopEnd` | `number` | `0` | ≥ 0 | `s` | — | Where a loop wraps; 0 is the sound's end. |
-| `spatial` | `boolean` | `false` | — | — | — | Attenuate and pan by the entity's og.Transform relative to the listener. |
+| `spatial` | `boolean` | `false` | — | — | — | Attenuate and pan by the entity's world transform (its og.Transform down og.Parent) relative to the listener. |
 | `refDistance` | `number` | `1` | ≥ 0 | `m` | tunable | Full volume up to this distance, as Web Audio's PannerNode.refDistance. |
 | `maxDistance` | `number` | `100` | ≥ 0 | `m` | tunable | No quieter past this distance, as Web Audio's PannerNode.maxDistance. |
 | `rolloffFactor` | `number` | `1` | ≥ 0 | — | tunable | How fast volume falls with distance, in Web Audio's inverse model: ref / (ref + rolloff * (clamp(d, ref, max) - ref)). |
@@ -144,7 +144,7 @@ component AudioSource {
     min 0
     unit s
   }
-  field spatial bool "Attenuate and pan by the entity's og.Transform relative to the listener."
+  field spatial bool "Attenuate and pan by the entity's world transform (its og.Transform down og.Parent) relative to the listener."
   field refDistance f32 "Full volume up to this distance, as Web Audio's PannerNode.refDistance." {
     default 1
     min 0
@@ -206,7 +206,7 @@ component AudioSource {
 
 ### `og.AudioListener` (component)
 
-Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used.
+Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used.
 
 Token `og.AudioListener`, registered under the schema name `og.AudioListener`; its value type is `AudioListener`.
 
@@ -216,7 +216,7 @@ Token `og.AudioListener`, registered under the schema name `og.AudioListener`; i
 
 ```ogt
 component AudioListener {
-  doc "Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used."
+  doc "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used."
   field volume f32 "A gain on every spatial source this listener hears." {
     default 1
     min 0
@@ -443,7 +443,7 @@ component AudioBusFx {
 
 A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
 
-Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).
+Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed at their world transforms (og.Transform down og.Parent): a zone on a child of a moving room moves with it.
 
 Token `og.ReverbZone`, registered under the schema name `og.ReverbZone`; its value type is `ReverbZone`.
 
@@ -461,7 +461,7 @@ Token `og.ReverbZone`, registered under the schema name `og.ReverbZone`; its val
 ```ogt
 component ReverbZone {
   doc "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener."
-  doc "Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener)."
+  doc "Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed at their world transforms (og.Transform down og.Parent): a zone on a child of a moving room moves with it."
   field size Vector3 "The box's full size along the entity's axes, centred on it (times og.Transform.scale)." {
     default 10 4 10
     unit m

@@ -460,28 +460,20 @@ impl Chains<'_> {
 /// The world position and rotation of `e`, whose own `og.Transform` is
 /// `local` (position, quaternion): its parents' transforms applied down the
 /// `og.Parent` chain (`parent_of`), as the renderer composes
-/// `og.MatrixWorld`. A parent's scale scales the child's offset; a parent
-/// without `og.Transform` (`transform_of` gives `None`) ends the chain
-/// there, and so does a chain longer than 256 (a cycle).
+/// `og.MatrixWorld` ([`og_core::math::world_pose`], which audio uses too).
+/// A parent's scale scales the child's offset; a parent without
+/// `og.Transform` (`transform_of` gives `None`) ends the chain there, and so
+/// does a chain longer than 256 (a cycle).
 pub fn world_pose(
     e: Entity,
     local: (Vec3, Quat),
     parent_of: impl Fn(Entity) -> Option<Entity>,
     transform_of: impl Fn(Entity) -> Option<Transform>,
 ) -> (Vec3, Quat) {
-    let (mut p, mut q) = local;
-    let mut cur = e;
-    for _ in 0..256 {
-        let Some(parent) = parent_of(cur) else {
-            break;
-        };
-        let Some(t) = transform_of(parent) else {
-            break;
-        };
-        p = t.position + t.quaternion * (t.scale * p);
-        q = (t.quaternion * q).normalize();
-        cur = parent;
-    }
+    let (p, q, _) =
+        og_core::math::world_pose(e, (local.0, local.1, Vec3::ONE), parent_of, |parent| {
+            transform_of(parent).map(|t| (t.position, t.quaternion, t.scale))
+        });
     (p, q)
 }
 

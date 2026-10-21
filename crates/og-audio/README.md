@@ -56,7 +56,7 @@ change both sides make together). `sound` is a `Sound` handle stored as
 | 5 | `loop` | u32 | 0 | 0/1 | loop between `loopStart` and `loopEnd`, seamlessly |
 | 6 | `loopStart` | f32 | 0 | s | where a loop restarts |
 | 7 | `loopEnd` | f32 | 0 | s | where a loop wraps; 0 is the sound's end |
-| 8 | `spatial` | u32 | 0 | 0/1 | attenuate and pan by the entity's `Transform` relative to the listener |
+| 8 | `spatial` | u32 | 0 | 0/1 | attenuate and pan by the entity's world transform (its `Transform` down `og.Parent`) relative to the listener |
 | 9 | `refDistance` | f32 | 1 | m, tunable | full volume up to here |
 | 10 | `maxDistance` | f32 | 100 | m, tunable | no quieter past here |
 | 11 | `rolloffFactor` | f32 | 1 | tunable | Web Audio's inverse model: `ref / (ref + rolloff · (clamp(d, ref, max) − ref))` |
@@ -68,9 +68,11 @@ change both sides make together). `sound` is a `Sound` handle stored as
 |--:|---|---|---|---|
 | 0 | `volume` | f32 | 1 (0–4, tunable) | gain on every spatial source it hears |
 
-Position and orientation come from the entity's `og.Transform` (three.js
-convention: the listener looks down −Z, +X is right). The first listener in
-query order is used; with none, the origin looking down −Z.
+Position and orientation come from the entity's world transform: its
+`og.Transform` composed down `og.Parent` (§Tick semantics), so a listener
+under a camera rig hears from the rig (three.js convention: the listener
+looks down −Z, +X is right). The first listener in query order is used;
+with none, the origin looking down −Z.
 
 ### `og.Audio` (resource)
 
@@ -108,7 +110,7 @@ last sent; negative before the first tick).
 
 - `install` appends `og.audio` to the schedule; install it **after** the
   game's systems so it sees the tick's changes. It reads `og.Audio`,
-  `og.AudioListener`, `og.Transform`; writes `og.AudioSource` (only to reset
+  `og.AudioListener`, `og.Transform`, `og.Parent`; writes `og.AudioSource` (only to reset
   `playing`), `og.AudioPlayback`, `og.AudioStream` and the two events.
 - Per tick, in order: bus commands for changed `og.Audio` gains; stops for
   playheads whose AudioSource was removed; for each playing source (query
@@ -119,6 +121,14 @@ last sent; negative before the first tick).
 - A one-shot of `F` frames at rate `R` and pitch `p` started in tick `S`
   sends `SoundEnded` in tick `S + ceil(F·tickRate / (R·p)) − 1`, the tick
   whose audio interval contains its last frame (0.5 s at 60 Hz: tick S+29).
+- Sources, the listener and reverb zones are placed at their world
+  transforms: an entity's `og.Transform` composed down its `og.Parent`
+  chain (`og_core::math::world_pose`, the helper og-physics places soft
+  bodies with, as the renderer composes `og.MatrixWorld`; a parent's scale
+  scales the child's offset, a parent without a Transform ends the
+  chain). A parented source follows its parent: a sound on a child
+  entity is heard where its parent carries it, every tick, as a function
+  of that tick's transforms (row 86). Nothing parented, nothing composed.
 - Spatial gain and pan are computed here, in f32 with glam's scalar math,
   so they are part of the stream and identical on every host. Pan is the
   x component of the listener-space direction (−1 hard left, 1 hard right).
@@ -405,6 +415,9 @@ in `tests/support/`). Each was broken once and failed, then restored:
 | `one_second_of_a_busy_mix_renders_in_bounded_time` | 32 voices (16 streamed stereo QOA, half spatial, assorted pitch), 1 s at 48 kHz in 128-frame quanta: < 50 ms release, < 1000 ms debug | disabling the QOA frame cache |
 | `a_late_sink_hears_the_playing_loop_and_a_despawn_silences_it` | a sink attached at tick 100 gets one resync and hears the loop within 16 frames; attaching changes no hash; a despawn silences within a tick and a fade | no resync on attach; ignoring `live` |
 | `the_scripted_scene_renders_to_a_wav` | 2.5 s of the scene, sound from frame 0, no sample above 1.0; writes `audio-scene.wav` and its waveform | — |
+| `tests/parented.rs`: `a_source_on_a_child_follows_its_moving_parent` | a source 2 m ahead of a cart moving x −10 to 10 sends, every tick, the same gain, pan and cutoff bits as a source placed there itself, the same stream hash, twice | each entity's own `Transform` again (`Places::world`) |
+| `a_listener_under_a_rig_hears_from_the_rig` | a listener under a rig at x 10 turned +90° about Y hears a source at (10, 0, 3) hard left at gain 1/3; the rig moved and turned back, 6 m right and 3 m behind | the same |
+| `a_zone_under_a_parent_is_where_its_parent_puts_it` | a radius-1 zone under a hall at x 20 scaled 2: weight 0 at the origin, 1 at 1.5 m from the hall; the hall moved to the origin takes its zone | the same |
 
 Measured on an M4 Pro: 1 s of the 32-voice mix renders in 17.5 ms
 (release, 1.7 % of real time) and 336 ms (debug). Evidence:
@@ -438,9 +451,9 @@ crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
 --audio` and chunked streaming of long sounds have landed (§E6, §Chunked
 sounds). Still owed:
 
-- **Propagation**: Doppler, HRTF for headphones, cone directivity,
-  `MatrixWorld` (parented sources and listeners) instead of the local
-  `Transform`.
+- **Propagation**: Doppler, HRTF for headphones, cone directivity.
+  (Parented sources, listeners and zones are composed down `og.Parent`
+  since row 86: §Tick semantics.)
 - Better resampling (windowed sinc), voice virtualisation (a culled voice
   resuming where it would be), retrigger without a level change.
 - Decoding off the engine Worker (the mixer decodes QOA frames as voices

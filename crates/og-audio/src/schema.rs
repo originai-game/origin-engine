@@ -59,7 +59,7 @@ pub struct AudioSource {
     /// Where a loop wraps, in seconds of the sound; 0 is the sound's end.
     #[reflect(name = "loopEnd", min = 0, unit = "s")]
     pub loop_end: f32,
-    /// Attenuate and pan by the entity's Transform relative to the AudioListener.
+    /// Attenuate and pan by the entity's world transform (its Transform down og.Parent) relative to the AudioListener.
     pub spatial: bool,
     /// Distance below which a spatial source plays at full volume.
     #[reflect(name = "refDistance", min = 0, default = 1, unit = "m", tunable)]
@@ -132,8 +132,10 @@ impl AudioSource {
     }
 }
 
-/// Where spatial sources are heard from: the entity's Transform. The first
-/// listener in query order is used; without one, the origin looking down -Z.
+/// Where spatial sources are heard from: the entity's world transform (its
+/// Transform composed down og.Parent, so a listener under a camera rig hears
+/// from the rig). The first listener in query order is used; without one,
+/// the origin looking down -Z.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.AudioListener")]
 pub struct AudioListener {
@@ -307,6 +309,16 @@ pub struct AudioStream {
     pub bus_sent: og_core::glam::Vec4,
     /// A hash of the bus effects last sent.
     pub fx: u64,
+}
+
+/// The engine's `og.Parent`, mirrored so the system can place sources,
+/// listeners and zones on child entities at their world transform. Same
+/// name and layout, so it adopts the host's registration.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.Parent")]
+pub struct Parent {
+    /// The parent (an entity's bits).
+    pub entity: u64,
 }
 
 /// The engine's `og.Transform`, mirrored so the system can read positions.
