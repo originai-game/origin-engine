@@ -113,7 +113,12 @@ neon UI reads as two games.
   placeholder, which draws in `fgSubtle` on the field's frame, and an
   accent badge, `accentInk` on `accentSoft` over a panel (the results
   screen's "New best"), so a copied pack whose `fgSubtle`, `fill`,
-  `accentInk` or `accentSoft` moves must keep those pairs at 4.5:1 too).
+  `accentInk` or `accentSoft` moves must keep those pairs at 4.5:1 too;
+  it also reads the primary and secondary labels from a rendered frame,
+  where thin strokes may never reach their colour: a pixel font's one-pixel
+  strokes fall between pixels and took half their ink, so the pixel pack
+  thickens them with `textWeight body 0.5` and cooks DotGothic16 at
+  `px_range 8`; a copy of the pack made before that needs both lines).
 - Saturated colour on large areas tires the eye: keep saturation for small
   things (the accent, icons, effects) and keep grounds calmer.
 - Status colours mean status: never use `danger` red as decoration.

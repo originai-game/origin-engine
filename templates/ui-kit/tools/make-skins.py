@@ -365,7 +365,12 @@ def pixel_pack():
         tile=(16, 16, 0.06, 6, ["panel"]),
         shadows=dict(panel=(6, 6, 0, 0, "#000000b0"), card=(4, 4, 0, 0, "#00000080"), button=(0, 4, 0, 0, "#000000a0"),
                      capsule=(3, 3, 0, 0, "#00000080"), tooltip=(3, 3, 0, 0, "#00000080")),
-        text=dict(textShadow=[("display", 3, 3, 0, "#000000c0"), ("body", 1, 1, 0, "#00000080")]),
+        # DotGothic16's one-dot strokes are one pixel wide at the body's 16 px
+        # but sit between device pixels, so no pixel took more than about half
+        # the ink: the gold primary button's label read 2.9:1 (hollowbell
+        # FINDINGS #20). Half a pixel each side fills them.
+        text=dict(textShadow=[("display", 3, 3, 0, "#000000c0"), ("body", 1, 1, 0, "#00000080")],
+                  textWeight=[("body", 0.5)]),
         press=(1.0, 1.0, 3), hover=(-1, 1.0),
         motion=dict(enter="slideDown", stagger=0, toast="slideUp", progress=240, shake=4, pop=0.0),
         icons="pixel",
@@ -882,6 +887,8 @@ def skin_text(s, d):
         L.append(f'textShadow {role} {dx} {dy} {blur} "{c}"')
     for role, size, ink, a in s["text"].get("textGlow", []):
         L.append(f"textGlow {role} {size} {ink} {a}")
+    for role, w in s["text"].get("textWeight", []):
+        L.append(f"textWeight {role} {w}")
     L.append("press {} {} {}".format(*s["press"]))
     L.append("hover {} {}".format(*s["hover"]))
     m = s["motion"]
@@ -898,12 +905,14 @@ def skin_text(s, d):
     return "\n".join(L) + "\n"
 
 
-def font_import(display, glows=False):
+def font_import(display, glows=False, weighted=False):
     em = 48 if display else 32
     # A role with a textGlow reads its glow from the distance field, which
-    # reaches half px_range atlas pixels: 12 lets it spread 6 (4 lets 2).
-    rng = 12 if glows else 4
-    why = "; px_range 12 for its text glow" if glows else ""
+    # reaches half px_range atlas pixels: 12 lets it spread 6 (4 lets 2). A
+    # textWeight thickens inside that reach less 0.75 px (og-render's
+    # overlay.wgsl): at 16 px from a 48 px em, 8 allows 0.58 px, 4 none.
+    rng = 12 if glows else 8 if weighted else 4
+    why = "; px_range 12 for its text glow" if glows else "; px_range 8 for its textWeight" if weighted else ""
     return (
         "type import\nversion 1\n---\n"
         f"# Latin-1 and the typographic punctuation the kit shows; {em} px per em in the atlas{why}.\n"
@@ -965,9 +974,10 @@ def main():
         for role in ("body", "display", "numeric"):
             imports[roles[role]] = imports.get(roles[role], False) or role != "body"
         glowing = {roles[role] for role, *_ in s["text"].get("textGlow", [])}
+        weighted = {roles[role] for role, _ in s["text"].get("textWeight", [])}
         for name, display in imports.items():
             with open(os.path.join(d, name + ".ogt"), "w") as f:
-                f.write(font_import(display, name in glowing))
+                f.write(font_import(display, name in glowing, name in weighted))
         print("wrote", d)
 
 

@@ -337,6 +337,12 @@ pub struct Skin {
     /// Per font role (body, display, mono).
     pub text_shadows: [Option<Shadow>; 3],
     pub text_glows: [Option<Glow>; 3],
+    /// Per font role: thickening at the glyphs' edge in device pixels
+    /// (`textWeight`), so a pixel font's one-pixel strokes, which fall
+    /// between device pixels and so never reach their full ink, fill whole
+    /// pixels (at a phone's 3 device pixels per CSS pixel a stroke is three
+    /// wide and gains a third, not double).
+    pub text_weights: [f32; 3],
     pub press: Option<Press>,
     pub hover: Option<Hover>,
     pub motion: SkinMotion,
@@ -736,6 +742,7 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 /// glow button 6 accent 0.5                    # part size ink alpha
 /// textShadow display 0 2 0 "#000000a0"        # role dx dy blur colour
 /// textGlow display 3 accent 0.6
+/// textWeight body 0.5                         # role, thickening in device px (a pixel font's thin strokes)
 /// press 1.04 0.92 2                           # sx sy dy
 /// hover -2 1.02                               # dy scale (both move on springs: motion below)
 /// motion {
@@ -1042,6 +1049,14 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                     })?,
                     alpha: p.num(3)?.clamp(0.0, 1.0),
                 });
+            }
+            "textWeight" => {
+                let i = role_index(&p, p.word(0)?)?;
+                let w = p.num(1)?;
+                if !(0.0..=2.0).contains(&w) {
+                    return Err(p.err("takes the thickening in device pixels, 0 to 2"));
+                }
+                theme.skin.text_weights[i] = w;
             }
             "press" => {
                 theme.skin.press = Some(Press {

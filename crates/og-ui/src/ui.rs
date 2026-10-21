@@ -3192,6 +3192,9 @@ impl Ui {
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.skin_index();
                         let tracking = tc.tracking();
+                        // The skin's thickening for the role (`textWeight`, device
+                        // pixels: what a stroke between two pixels lacks), shadow included.
+                        let weight = t.skin.text_weights[role] * sk / dpr;
                         // A skin's text glow: the font's distance field, under the glyphs.
                         let glow = t.skin.text_glows[role].map(|g| {
                             let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);
@@ -3218,7 +3221,7 @@ impl Ui {
                                         ),
                                         clip: text_clip,
                                         tracking,
-                                        weight: 0.0,
+                                        weight,
                                         glow,
                                         placements: pc.placements.clone(),
                                     });
@@ -3523,7 +3526,7 @@ impl Ui {
                     bounds: Rect::new(x + ox, top, if one { w } else { pc.width * size }, lh),
                     clip,
                     tracking,
-                    weight: 0.0,
+                    weight: t.skin.text_weights[0] * sk / dpr,
                     glow: None,
                     placements: pc.placements,
                 });

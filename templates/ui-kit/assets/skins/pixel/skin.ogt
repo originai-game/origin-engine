@@ -101,6 +101,7 @@ shadow capsule 3 3 0 0 "#00000080"
 shadow tooltip 3 3 0 0 "#00000080"
 textShadow display 3 3 0 "#000000c0"
 textShadow body 1 1 0 "#00000080"
+textWeight body 0.5
 press 1.0 1.0 3
 hover -1 1.0
 motion {
