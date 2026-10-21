@@ -111,15 +111,20 @@ test.skipIf(SLOW)("a publish build ships the engine variant of the game's profil
   expect([two.game.profile, two.variant]).toEqual(["2d", "2d"]);
   expect(same(join(work, "a", "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"))).toBe(true);
   expect(same(join(work, "a", "origin-engine.js"), join(pkg, "dist", "web-publish-2d", "origin-engine.js"))).toBe(true);
-  // The same project declared 3d takes the 3D module; the lanes variant is the one module of both.
+  // Its lanes variant is the 2D lanes module, from the same directory (owed row 71).
+  expect(same(join(work, "a", "origin-engine-lanes_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine-lanes_bg.wasm"))).toBe(true);
+  expect(same(join(work, "a", "origin-engine-lanes.js"), join(pkg, "dist", "web-publish-2d", "origin-engine-lanes.js"))).toBe(true);
+  // The same project declared 3d takes the 3D module and the 3D lanes module.
   const out = join(work, "three-d");
   const b = await webBuild(project, entry, out, true, { ...settings(), profile: "3d" });
   expect(b.ok).toBe(true);
   expect([b.manifest!.game.profile, b.manifest!.variant]).toEqual(["3d", "3d"]);
   expect(same(join(out, "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"))).toBe(true);
-  expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(work, "a", "origin-engine-lanes_bg.wasm"))).toBe(true);
-  // The two variants differ (each has only its profile's physics), and a dev build takes the full module.
+  expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(pkg, "dist", "web-publish", "origin-engine-lanes_bg.wasm"))).toBe(true);
+  // The variants differ (each has only its profile's physics), single-threaded
+  // and lanes alike, and a dev build takes the full module.
   expect(same(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"))).toBe(false);
+  expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(work, "a", "origin-engine-lanes_bg.wasm"))).toBe(false);
   const dev = await webBuild(project, entry, join(work, "dev"), false, settings());
   expect(dev.ok && dev.manifest!.variant === "full").toBe(true);
 }, 120_000);

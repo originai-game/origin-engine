@@ -15,7 +15,11 @@ Two games written from this package alone (`examples/lantern-vale`,
 results templates (the results with a localised Best and New best) and a
 text field with input-method composition, and none needed wiring beyond
 its desc; a skin pack copied into the game restyled every screen, and
-`og polish` measured taste 99 for both.
+`og polish` measured taste 99 for both. The Kestrel Stair
+(`examples/kestrel-stair`) used the cutscene, tutorial overlay,
+inventory with drag and drop, level select, leaderboard with its honest
+states, settings, results and pause: each worked from its desc, the paper pack
+restyled them all, and every word they draw came from its string tables.
 
 ## 1. The rule of the kit
 

@@ -16,7 +16,11 @@ adventure, and `examples/hollowbell`, a 2D platformer) hold these rules
 for a whole game, not a toy: each ends a full session run in two processes
 on one world hash, a player's name and a save live in `str` fields as
 world state, and a resource or column a system did not declare is refused
-with the system and the record named, so the fix is one line.
+with the system and the record named, so the fix is one line. A third,
+The Kestrel Stair (`examples/kestrel-stair`, 3D third-person), restored
+`world.snapshot()` after a relaunch with `world.restore()`: 93 entities
+came back with their cloth, navmesh paths and behaviour state, and a full
+session in two processes ended on one hash.
 
 ## 1. Game code is TypeScript, and only TypeScript
 

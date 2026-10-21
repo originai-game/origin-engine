@@ -301,6 +301,7 @@ export const NOT_API: Record<string, string> = {
   "og.AudioPlayback": "an engine-owned component dump_entity shows while a voice plays; game code never names it",
   "og.AudioStream": "an engine-owned component dump_entity shows on a streamed voice; game code never names it",
   "og.physics.queries": "the engine system dump_world lists that records the colliders a system's queries see",
+  "og.events": "the key of a glTF animation's extras the cook reads a clip's markers from (og-game §9), a name in the glTF file",
   "og.TimeScale": "the engine-owned resource that keeps og.Time's scale and hit stop; dumps list it and the probe's get and set reach it, game code reads og.Time",
 };
 
@@ -512,14 +513,63 @@ export interface Grammar {
   readonly region?: readonly [RegExp, RegExp];
   /** Keys a block may write that the parser accepts without naming them: each with why. */
   readonly unnamed?: Readonly<Record<string, string>>;
+  /** Keys whose next words are names the author chooses (a state, a route, a motion), not grammar: how many. */
+  readonly names?: Readonly<Record<string, number>>;
+  /** The keys the parser reads, from its region; default: its match arms' first keys (`"grid" =>`). */
+  readonly reads?: (region: string) => string[];
+  /** The skill that writes the grammar out (default og-game), for the messages. */
+  readonly home?: string;
 }
 
-/** The grammars og-game writes out (§8 tilesets and maps, §10 emitters) and the parsers they come from. */
+const quotedIn = (s: string) => [...s.matchAll(/"([A-Za-z_]\w*)"/g)].map((m) => m[1]!);
+
+/**
+ * Every key a parser reads by name: each alternative of a match arm
+ * (`"enter" | "exit" =>`, `Some("all") =>`), a block lookup (`.get("agent")`,
+ * `.get_all("box")`, `f32_of(agent, "radius"`, `opt_f32(b, "reach"`), a key
+ * compared (`.key != "child"`), a `matches!` list, an option list
+ * (`check_options(e, &["speed"])`) and the list of keys og.ai writes itself.
+ */
+export function readKeys(region: string): string[] {
+  const id = '"([A-Za-z_]\\w*)"';
+  const one = [
+    new RegExp(`${id}(?=(?:\\s*\\|\\s*"[A-Za-z_]\\w*")*\\s*=>)`, "g"),
+    new RegExp(`Some\\(${id}\\)\\s*=>`, "g"),
+    new RegExp(`\\.get(?:_all)?\\(${id}\\)`, "g"),
+    new RegExp(`(?:_of|opt_f32)\\([^,()]*(?:\\([^()]*\\))?,\\s*${id}`, "g"),
+    new RegExp(`\\.key\\s*[!=]=\\s*${id}`, "g"),
+  ];
+  const lists = [/matches!\(\s*[^,]+,\s*((?:"\w+"\s*\|?\s*)+)\)/g, /check_options\(\w+,\s*&\[([^\]]*)\]/g, /BUILTIN_KEYS: &\[&str\] = &\[([^\]]*)\]/g];
+  return [...one.flatMap((re) => [...region.matchAll(re)].map((m) => m[1]!)), ...lists.flatMap((re) => [...region.matchAll(re)].flatMap((m) => quotedIn(m[1]!)))];
+}
+
+/**
+ * The grammars the skills write out (og-game §8 tilesets and maps, §9 a
+ * model's animation settings and the animation graph, §10 emitters; og-ai
+ * §1 the navmesh, §3 behaviours) and the parsers they come from.
+ */
 export const GRAMMARS: readonly Grammar[] = [
   { type: "tileset", source: "crates/og-tilemap/src/tileset.rs" },
   { type: "tilemap", source: "crates/og-tilemap/src/map.rs", region: [/pub fn parse\(text/, /^pub fn world_to_cell/m] },
   { type: "particles", source: "crates/og-cook/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" } },
   { type: "import", block: "tilemap", source: "crates/og-cook/src/cook/tilemap.rs", region: [/pub fn parse\(block/, /pub fn describe/] },
+  { type: "import", block: "animation", source: "crates/og-cook/src/cook/anim.rs", region: [/pub fn parse\(block/, /^fn asset_path/m] },
+  {
+    type: "animgraph",
+    source: "crates/og-anim/src/graph.rs",
+    region: [/pub fn from_document/, /\/\/\/ The slot of a parameter/],
+    reads: readKeys,
+    names: { param: 1, clip: 1, blend1d: 2, blend2d: 3, child: 1, state: 2, entry: 1, transition: 2, when: 1, weight: 1 },
+  },
+  { type: "navmesh", source: "crates/og-cook/src/cook/e6.rs", region: [/pub\(super\) fn cook_navmesh/, /og_nav::bake::bake\(/], reads: readKeys, home: "og-ai" },
+  {
+    type: "behaviour",
+    source: "crates/og-ai/src/asset.rs",
+    reads: readKeys,
+    home: "og-ai",
+    // A label, a route, a state, a key, an operand or a speed's field are the author's; a command's arguments too.
+    names: { selector: 1, sequence: 1, steps: 1, parallel: 1, route: 1, patrol: 1, state: 1, initial: 1, to: 1, key: 1, set: 1, check: 1, move_to: 1, chase: 1, flee: 1, speed: 1, command: Infinity },
+  },
 ];
 
 /** The Tiled fields a skill's `<!-- grammar: tiled -->` table names, and the importer that reads them. */
@@ -586,8 +636,9 @@ export function grammarDrift(skills: ReadonlyMap<string, string>, read: (path: s
       }
       source = source.slice(a, a + b);
     }
-    const quoted = new Set([...source.matchAll(/"([A-Za-z_]\w*)"/g)].map((m) => m[1]!));
-    const arms = new Set([...source.matchAll(/"([A-Za-z_]\w*)"\s*(?:\|[^=]*)?=>/g)].map((m) => m[1]!));
+    const home = g.home ?? "og-game";
+    const quoted = new Set(quotedIn(source));
+    const arms = new Set(g.reads ? g.reads(source) : [...source.matchAll(/"([A-Za-z_]\w*)"\s*(?:\|[^=]*)?=>/g)].map((m) => m[1]!));
     const written: string[] = [];
     let blocks = 0;
     for (const [skill, text] of skills) {
@@ -607,6 +658,7 @@ export function grammarDrift(skills: ReadonlyMap<string, string>, read: (path: s
           l.words.forEach((w, i) => {
             if (!/^[A-Za-z_]\w*$/.test(w) || w === "true" || w === "false") return;
             if (i > 0 && NAMING.has(l.words[i - 1]!)) return;
+            if (i > 0 && i <= (g.names?.[l.words[0]!] ?? 0)) return;
             if (i === 0 && g.unnamed && w in g.unnamed) return;
             if (!quoted.has(w)) problems.push(`skills/${skill}/SKILL.md: a \`type ${g.type}\` block${g.block ? `'s ${g.block} block` : ""} writes \`${w}\` (${l.text.trim()}), which ${g.source} does not read; fix the grammar to the parser's`);
           });
@@ -614,12 +666,12 @@ export function grammarDrift(skills: ReadonlyMap<string, string>, read: (path: s
       }
     }
     if (blocks === 0) {
-      problems.push(`skills: no skill writes a \`type ${g.type}\` block${g.block ? ` with a ${g.block} block` : ""}; og-game's grammar of it is gone`);
+      problems.push(`skills: no skill writes a \`type ${g.type}\` block${g.block ? ` with ${/^[aeiou]/.test(g.block) ? "an" : "a"} ${g.block} block` : ""}; ${home}'s grammar of it is gone`);
       continue;
     }
     const all = written.join("\n");
     for (const k of arms) {
-      if (!new RegExp(`(?<![\\w-])${k}(?![\\w-])`).test(all)) problems.push(`${g.source}: reads \`${k}\`, which no \`type ${g.type}\` block in the skills writes or names; add it to og-game's grammar`);
+      if (!new RegExp(`(?<![\\w-])${k}(?![\\w-])`).test(all)) problems.push(`${g.source}: reads \`${k}\`, which no \`type ${g.type}\`${g.block ? ` ${g.block}` : ""} block in the skills writes or names; add it to ${home}'s grammar`);
     }
   }
 

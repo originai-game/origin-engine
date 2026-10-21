@@ -22,7 +22,7 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 | `game.js` | The engine Worker: the runtime and the game. |
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host. A dev build takes `dist/web` (every member, both physics profiles). `--publish` takes the publish variant of the project's `profile` (§Variants): `dist/web-publish` for `3d`, `dist/web-publish-2d` for `2d`, each with only its profile's physics (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`); og-build.json's `variant` names it. |
-| `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the web host (§Lanes), the same engine built with wasm atomics and shared memory, and wasm-bindgen-rayon's Worker script. |
+| `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the web host of the project's `profile` (§Lanes, §Variants), the same engine built with wasm atomics and shared memory, taken from the same directory as `origin-engine_bg.wasm` (`dist/web-publish` or `dist/web-publish-2d`), and wasm-bindgen-rayon's Worker script. |
 | `basis/` | Binomial's Basis transcoder and its licence. |
 | `cooked/` | The project's cooked bundle (`og cook`, run by `og build`), split by streaming group: the first group (everything no scene's `stream` block holds, the `#proxy` stand-ins included) and one pack per streaming group, `cooked/stream/<name>.ogb`. A grouped output's own file is left out, because the engine reads it from its pack. |
 | `icons/` | `publish.icon` as `icons/icon.png`, or the brand tile at 192 and 512 px. |
@@ -68,7 +68,8 @@ dates, no absolute paths, files in sorted order
   `hello`, so a publish build proves its trim.
 - `variant` is the engine module `wasm` is (§Variants): `3d` or `2d`, the
   publish variant of `game.profile` with only that profile's physics, or
-  `full` for a dev build (every member, both profiles).
+  `full` for a dev build (every member, both profiles). The lanes module
+  `lanes` names, when there is one, is the same profile's.
 - `crossOriginIsolation`: `required` (the game needs SharedArrayBuffer; a
   page served without isolation still starts, single-threaded, with a
   warning in the log),
@@ -190,8 +191,9 @@ isolated. So the default `origin-engine_bg.wasm` stays single-threaded
 downloads one of them, so the 4 MiB brotli budget holds per download: the
 size gate measures each (`scripts/size-gate.sh`; on 2026-10-19 the publish
 wasm was 3,153,927 B and the lanes wasm 3,156,913 B brotli, 75 % of the
-budget; the lanes round grew the single-threaded wasm by about 4 KB). The
-single-threaded module is now one per physics profile (§Variants). The
+budget; the lanes round grew the single-threaded wasm by about 4 KB). Both
+are one per physics profile (§Variants): the single-threaded module since
+owed row 44, the lanes module since owed row 71. The
 lanes build needs nightly-only flags on the stable toolchain
 (`scripts/wasm-lanes.sh`: `RUSTC_BOOTSTRAP=1`, `-Z build-std` with
 `rust-src`, its flags appended to the caller's `RUSTFLAGS`, an inherited
@@ -200,10 +202,11 @@ maximum, 2 GiB, which the browser reserves up front; the single-threaded
 module has none and may grow to wasm32's 4 GiB where the browser allows,
 so a game past 2 GiB of wasm memory runs out of memory on lanes only.
 A `--publish` build that would ship lanes but finds the lanes files
-missing from `dist/web-publish` says so in one warning on stderr, naming
-the file, and ships single-threaded; `scripts/build.sh` in the gate's mode
+missing from its profile's directory (`dist/web-publish` or
+`dist/web-publish-2d`) says so in one warning on stderr, naming the file,
+and ships single-threaded; `scripts/build.sh` in the gate's mode
 (`OG_GATE=1`) stops instead when `scripts/wasm-crates.txt` marks
-og-host-web `lanes` and the gate left no lanes wasm.
+og-host-web `lanes` and the gate left either profile's lanes wasm out.
 
 **The choice at boot.** The shell (`src/web/shell.ts` `laneChoice`) takes
 the lanes variant when the build offers it, `crossOriginIsolated` is true
@@ -274,37 +277,55 @@ response, so its page is isolated wherever it is a secure context.
 
 ## Variants
 
-One engine module per download (owed row 44). A publish build ships the
-variant of the game's physics profile (project.ogt `profile`), so a page
-never downloads the physics of the other profile:
+One engine module per download (owed rows 44 and 71). A publish build
+ships the variants of the game's physics profile (project.ogt `profile`),
+single-threaded and lanes, so a page never downloads the physics of the
+other profile:
 
-| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-20, with main's physical materials) |
+| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-21 at 9d220790, shipping `wasm` profile) |
 |---|---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 2,853,865 B (68 %) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,shaping` | rapier2d | 2,688,261 B (64 %) |
-| lanes | `dist/web-publish/origin-engine-lanes*` | `--features publish` (both profiles), wasm atomics (§Lanes) | both | 3,230,782 B (77 %, the largest download) |
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 3,055,713 B (72.9 %) |
+| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | the same, wasm atomics (§Lanes) | rapier3d (`parallel`) | 3,095,052 B (73.8 %, the largest download) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,shaping` | rapier2d | 2,894,396 B (69.0 %) |
+| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | the same, wasm atomics | rapier2d (`parallel`) | 2,928,498 B (69.8 %) |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both | not shipped |
+
+Until owed row 71 the lanes variant was one module with both profiles in
+`dist/web-publish`, 3,472,308 B (82.8 %) at the same commit and the largest
+download by 417 kB; split per profile it is 377,256 B smaller for a 3D
+page and 543,810 B for a 2D one (scripts/wasm-crates.txt `lanes` lines,
+tests/evidence/P4/wasm-size/README.md).
 
 `og build --publish` copies the variant of `profile` as
 `origin-engine.js` and `origin-engine_bg.wasm` (the shell and the service
 worker see one module either way) and records it in og-build.json
 (`variant`: `3d`, `2d`, or `full` for a dev build); a `2d` project whose
 package has no `dist/web-publish-2d` fails the build with the fix rather
-than shipping the 3D module. The lanes variant is one module with both
-profiles, as before: the page takes it instead of the single-threaded
-module when it is cross-origin isolated. Everything else is the same in
-both variants (the renderer, animation, UI, audio, navigation): only
+than shipping the 3D module. Its lanes files come from the same directory,
+so they are the same profile's: the output keeps the names it always had
+(`origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/`), and
+the shell, the service worker and the platform's page see no difference;
+what changed is the package's layout, where `dist/web-publish-2d` gained
+its own lanes files and `dist/web-publish`'s lanes module lost rapier2d.
+A both-profile lanes module is no longer built: it cost a third lanes build
+per gate for no page (anything outside `og build` that took
+`dist/web-publish`'s lanes module for a 2D world takes
+`dist/web-publish-2d`'s now). Everything else is the same in
+every variant (the renderer, animation, UI, audio, navigation): only
 og-physics' `physics2d` and `physics3d` features differ, the one cargo
 switch that already existed. A world of the other profile is refused when
 it is created ("og.Physics.profile 2: this engine was built without the
-physics2d feature"), which `og build` never ships.
+physics2d feature"), which `og build` never ships; the lanes modules
+refuse it the same way (`packages/engine/tests/hosts.test.ts`, which also
+steps each profile's scene on its lanes module, on one thread and with
+1,024 bodies on four Workers, to the native host's world).
 
 The size budget (design §7, `scripts/budgets.txt`) is per download: each
 variant is held to it, and the size that counts is the largest one a
 player downloads, not the sum of every wasm the gate builds
 (`scripts/size-gate.sh` prints each with its download and the largest;
-docs/ci.md §Updating a budget). The gate builds all three
-(`scripts/wasm-crates.txt` `variant` lines, docs/ci.md §Switches).
+docs/ci.md §Updating a budget). The gate builds all four
+(`scripts/wasm-crates.txt` `variant` and `lanes` lines, docs/ci.md §Switches).
 
 ## Errors
 

@@ -7,9 +7,9 @@
 # With no arguments it measures every file listed in target/og-wasm/opt.txt,
 # which scripts/check.sh's wasm-opt step writes. The budget is per download:
 # a page downloads one engine module, never two, so each measured file (the
-# 3D publish variant, the 2D one, the lanes variant: docs/web-export.md
-# §Variants and §Lanes) is held to it, and the figure that matters is the
-# largest of them, not their sum. Writes $OG_EVIDENCE_DIR/size-gate.json
+# 3D and 2D publish variants and the 3D and 2D lanes variants:
+# docs/web-export.md §Variants and §Lanes) is held to it, and the figure
+# that matters is the largest of them, not their sum. Writes $OG_EVIDENCE_DIR/size-gate.json
 # (each file with its download, and max_brotli_bytes). A module
 # measured before (same SHA-256 and brotli) takes its recorded size, unless
 # OG_SIZE_GATE_FRESH is set (scripts/check.sh --all sets it).
@@ -51,7 +51,8 @@ download_of() {
   case "$1" in
     *-publish.wasm) echo "3D publish" ;;
     *-publish2d.wasm) echo "2D publish" ;;
-    *-lanes.wasm) echo "lanes" ;;
+    *-lanes2d.wasm) echo "2D lanes" ;;
+    *-lanes.wasm) echo "3D lanes" ;;
     *) echo "-" ;;
   esac
 }

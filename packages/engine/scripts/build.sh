@@ -3,11 +3,12 @@
 # this machine into native/origin-engine.<platform>-<arch>.node and
 # native/og.<platform>-<arch>, and the web host (wasm-bindgen --target web)
 # into dist/web/ (every member, both physics profiles), dist/web-publish/
-# (the 3D publish variant, with the lanes variant beside it:
+# (the 3D publish variant, with the 3D lanes variant beside it:
 # origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/; wasm
 # atomics, scripts/wasm-lanes.sh, docs/web-export.md §Lanes) and
-# dist/web-publish-2d/ (the 2D publish variant; docs/web-export.md
-# §Variants). Honours CARGO_TARGET_DIR. Incremental.
+# dist/web-publish-2d/ (the 2D publish variant and the 2D lanes variant
+# beside it; docs/web-export.md §Variants). Honours CARGO_TARGET_DIR.
+# Incremental.
 #
 #   sh scripts/build.sh                     dev when the gate has built, else release
 #   OG_RELEASE=1 sh scripts/build.sh        release: what ships (scripts/pack.sh sets it)
@@ -102,20 +103,29 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
     cp "$gate_wasm/opt/og_host_web-publish2d.wasm" "$here/dist/web-publish-2d/origin-engine_bg.wasm"
   elif [ -n "$variant_2d" ]; then
     echo "build.sh: $gate_wasm/opt/og_host_web-publish2d.wasm is missing, but scripts/wasm-crates.txt declares the publish2d variant: a 2d game's publish build would have no engine; run the gate's wasm-build and wasm-opt steps again (docs/web-export.md §Variants)" >&2
-    exit 1
+    # The functional lane runs with the gate's web module stale (OG_WASM_STALE=1,
+    # scripts/check.sh): it ships what the last wasm-build produced and skips
+    # the tests that load the web module; a module the gate has never built is
+    # then a warning, not a stop.
+    [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
   fi
-  # The gate builds the lanes variant whenever scripts/wasm-crates.txt marks
-  # og-host-web `lanes`; without it every publish build here would quietly
-  # ship single-threaded, so a missing one stops the build.
+  # The gate builds a lanes variant per game profile whenever
+  # scripts/wasm-crates.txt marks og-host-web `lanes` (its `lanes` lines:
+  # `lanes` the 3D one beside the 3D publish module, `lanes2d` the 2D one);
+  # without them every publish build here would quietly ship
+  # single-threaded, so a missing one stops the build.
   lanes_expected="$(awk '{ sub(/#.*/, "") } $1 == "og-host-web" && $3 == "publish" && $4 == "lanes" { print 1 }' "$root/scripts/wasm-crates.txt")"
-  if [ -f "$gate_wasm/opt/og_host_web-lanes.wasm" ]; then
-    cp "$gate_wasm/bindgen/og_host_web-lanes/origin-engine-lanes.js" "$here/dist/web-publish/"
-    cp -R "$gate_wasm/bindgen/og_host_web-lanes/snippets" "$here/dist/web-publish/"
-    cp "$gate_wasm/opt/og_host_web-lanes.wasm" "$here/dist/web-publish/origin-engine-lanes_bg.wasm"
-  elif [ -n "$lanes_expected" ]; then
-    echo "build.sh: $gate_wasm/opt/og_host_web-lanes.wasm is missing, but scripts/wasm-crates.txt marks og-host-web lanes: dist/web-publish would ship single-threaded; run the gate's wasm-build and wasm-opt steps again (docs/ci.md §The lanes wasm)" >&2
-    exit 1
-  fi
+  for v in "lanes web-publish" "lanes2d web-publish-2d"; do
+    set -- $v
+    if [ -f "$gate_wasm/opt/og_host_web-$1.wasm" ]; then
+      cp "$gate_wasm/bindgen/og_host_web-$1/origin-engine-lanes.js" "$here/dist/$2/"
+      cp -R "$gate_wasm/bindgen/og_host_web-$1/snippets" "$here/dist/$2/"
+      cp "$gate_wasm/opt/og_host_web-$1.wasm" "$here/dist/$2/origin-engine-lanes_bg.wasm"
+    elif [ -n "$lanes_expected" ]; then
+      echo "build.sh: $gate_wasm/opt/og_host_web-$1.wasm is missing, but scripts/wasm-crates.txt marks og-host-web lanes: dist/$2 would ship single-threaded; run the gate's wasm-build and wasm-opt steps again (docs/ci.md §The lanes wasm)" >&2
+      [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
+    fi
+  done
   exit 0
 fi
 # From here on the wasm compiles (the wasm profile, release-based): never beside a running gate.
@@ -143,18 +153,24 @@ for v in "publish physics3d web-publish" "publish2d physics2d web-publish-2d"; d
   fi
 done
 set --
-# The lanes variant: the publish build again with wasm atomics, in its own
-# target directory (scripts/wasm-lanes.sh), bound as origin-engine-lanes and
-# optimised with --enable-threads.
-rm -rf "$here/dist/web-publish/snippets" "$here/dist/web-publish/origin-engine-lanes"*
-"$root/scripts/wasm-lanes.sh" --profile wasm -q -p og-host-web --lib --features publish
-lanes="$("$root/scripts/wasm-lanes.sh" --target-dir)/wasm32-unknown-unknown/wasm/og_host_web.wasm"
-wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine-lanes "$lanes"
-rm -f "$here/dist/web-publish/origin-engine-lanes"*.d.ts
-if command -v wasm-opt >/dev/null 2>&1; then
-  "$root/scripts/wasm-opt.sh" --threads "$here/dist/web-publish/origin-engine-lanes_bg.wasm" "$here/dist/web-publish/origin-engine-lanes_bg.wasm"
-else
-  echo "build.sh: no wasm-opt; the lanes variant in dist/web-publish is not size-optimised (scripts/install-tools.sh installs it)" >&2
-fi
+# The lanes variants, one per game profile beside its publish module: the
+# publish build again with wasm atomics, in their own target directory
+# (scripts/wasm-lanes.sh), bound as origin-engine-lanes and optimised with
+# --enable-threads. The 2D one first, so cargo's last output there is the
+# 3D one, as in the gate's wasm-build.
+for v in "physics2d web-publish-2d" "physics3d web-publish"; do
+  set -- $v
+  rm -rf "$here/dist/$2/snippets" "$here/dist/$2/origin-engine-lanes"*
+  "$root/scripts/wasm-lanes.sh" --profile wasm -q -p og-host-web --lib --no-default-features --features "publish,$1,shaping"
+  lanes="$("$root/scripts/wasm-lanes.sh" --target-dir)/wasm32-unknown-unknown/wasm/og_host_web.wasm"
+  wasm-bindgen --target web --out-dir "$here/dist/$2" --out-name origin-engine-lanes "$lanes"
+  rm -f "$here/dist/$2/origin-engine-lanes"*.d.ts
+  if command -v wasm-opt >/dev/null 2>&1; then
+    "$root/scripts/wasm-opt.sh" --threads "$here/dist/$2/origin-engine-lanes_bg.wasm" "$here/dist/$2/origin-engine-lanes_bg.wasm"
+  else
+    echo "build.sh: no wasm-opt; the lanes variant in dist/$2 is not size-optimised (scripts/install-tools.sh installs it)" >&2
+  fi
+done
+set --
 cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib
 wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine "$wasm"

@@ -854,14 +854,14 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `text` | `string` | `""` | — | — | — | The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README). |
+| `text` | `string` | `""` | — | — | — | The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line). |
 | `clips` | `readonly ClipInfo[]` | `[]` | — | — | — | The clips a `clip <motion> "<name>"` line may name, by ClipInfo.name: usually og.load.animation's `clips`. |
 
 ```ogt
 struct GraphDesc {
   doc "A blend-tree graph to register."
   desc true
-  field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README)."
+  field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line)."
   field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
 }
 ```

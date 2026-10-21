@@ -12,7 +12,8 @@
 # Per platform with an addon in native/: @origingame/engine-<platform>-<arch>
 # (origin-engine.node, and the og binary when native/og.<platform>-<arch>
 # exists), then @origingame/engine itself (the TypeScript API, the runtime,
-# the web hosts in dist/web, dist/web-publish and dist/web-publish-2d, the player shell, the Basis
+# the web hosts in dist/web, dist/web-publish and dist/web-publish-2d (each
+# publish directory with its profile's lanes variant), the player shell, the Basis
 # transcoder; no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
 set -eu
@@ -27,8 +28,10 @@ if [ "$(cat "$here/native/build-profile" 2>/dev/null)" != release ]; then
 fi
 rm -rf "$out"
 mkdir -p "$out/stage"
-for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js; do
-  [ -f "$here/$f" ] || { echo "pack: $here/$f is missing; run OG_RELEASE=1 sh scripts/build.sh first" >&2; exit 1; }
+for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
+    dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js dist/web-publish/snippets \
+    dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets; do
+  [ -e "$here/$f" ] || { echo "pack: $here/$f is missing; run OG_RELEASE=1 sh scripts/build.sh first" >&2; exit 1; }
 done
 sum() { if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
 packed=""

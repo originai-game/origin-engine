@@ -20,7 +20,13 @@ without its CJK `fallback` named the line and og-taste §1;
 the same frames every time, `store: "keep"` relaunches and two-process
 replays worked the first time they were asked for, and `og polish` scored
 taste 99 for both and feel 90 and 92, naming the section that fixes each
-finding.
+finding. The third, The Kestrel Stair (`examples/kestrel-stair`, 3D
+third-person), cooked 62 assets cold in 8.5 s (110 outputs, 9.9 MB) and
+about 0.1 s after a change, without a warning, its refusals naming the
+line; two processes of a full session (chases, bites, strikes, a rest, the
+gate, the bell) ended on one world hash, and `og polish` found every
+input answered within a tick and every damage moment with hit stop, shake,
+a number and a sound (taste 98, feel 79).
 
 ## 1. The loop
 

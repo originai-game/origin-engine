@@ -20,7 +20,13 @@ In Hollowbell (`examples/hollowbell`, a 2D platformer written from this
 package alone) `og polish` measured every input answered within a tick and every damage moment with hit stop,
 shake, a number and a sound (feel 92; Lantern Vale, a 3D adventure, 90).
 An `og.CameraZone` held its boss arena, and flipbook frame events put the
-footsteps and the strikes on their exact frames.
+footsteps and the strikes on their exact frames. The Kestrel Stair
+(`examples/kestrel-stair`, a 3D third-person game) measured the same in
+`og polish` (input latency and hit feedback 100; feel 79, the rest lost to
+frame time): hit stop by weight, a shake, a number and a sound on every
+strike landing on its clip's `hit` marker, and the 3D character controller
+at full speed every tick (3.2 m/s walking) over level ground, an 18° ramp,
+a 34° path and stairs, refusing a 63° scree.
 
 ## 1. Answer on the same tick
 
