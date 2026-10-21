@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# 57.6 s of stereo: streamed in 4-second chunks (og-audio §5).
+sound {
+  stream true
+  chunk 4
+}
