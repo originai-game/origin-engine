@@ -1425,7 +1425,9 @@ to 64 KiB a key: a record in one key, the world in a slot
   (examples/hollowbell's `src/save.ts`).
 
 Test either across a relaunch with a playtest's `store: "keep"` and
-`then` (og-platform-sdk §4).
+`then` (og-platform-sdk §4). A watch replay (the start's snapshot and a
+tape of inputs) and a ghost (a tape of poses) are og-core §2's
+"Recording, replaying and ghosts".
 
 ## 18. Where to look things up
 
