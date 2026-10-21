@@ -6,7 +6,9 @@
 //   the restored world does not go on as the saved one did → "a save
 //   restored between ticks hashes as the saved world …"
 // - inside a system the snapshot panics on the system's own columns, the
-//   restore lands mid-tick, or a bad save is not refused at the call →
+//   restore lands mid-tick, the restored world runs the saving tick's
+//   systems before the saver again (meridian-loop FINDINGS #12), or a bad
+//   save is not refused at the call →
 //   "inside a system a snapshot is taken at once and a restore waits …"
 // - the session goes back with the save (the player's volume, the probe's
 //   scheduled steps jumping with og.Time) → "a restore keeps the session …"
@@ -150,9 +152,15 @@ test("inside a system a snapshot is taken at once and a restore waits for the ti
   expect(x(engine, "sv-1")).toBeCloseTo(atSave, 5);
   expect(run(engine).saveAt).toBe(10);
   expect(engine.world.find("sv-0")).not.toBeNull();
-  // It goes on from there: tick 10 runs again (it saves again) and the world moves.
+  // It goes on from there: the next step completes tick 10 as it went on
+  // when it saved (the systems after SvSaveLoad: none of the game's, so it
+  // neither moves again nor saves again), then tick 11 moves the world.
+  saved = null;
   engine.advance(1);
   expect(engine.world.tick).toBe(11);
+  expect(x(engine, "sv-1")).toBeCloseTo(atSave, 5);
+  expect(saved).toBeNull();
+  engine.advance(1);
   expect(x(engine, "sv-1")).toBeGreaterThan(atSave);
   expect(engine.takeLog().filter((l) => l.warning).map((l) => l.text)).toEqual([]);
   engine.destroy();

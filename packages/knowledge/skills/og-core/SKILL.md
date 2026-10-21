@@ -65,9 +65,13 @@ build, publish included, and `world.restore(save)` puts it back, so the
 restored world hashes as the saved one did, on either host. The session
 stays across a restore (input, the player's volumes, the platform's calls,
 the language, scheduled command steps); og.Time takes the saved tick.
-Inside a system the snapshot is the world as that system sees it (its own
-queued spawns and despawns are not in it) and a restore applies when the
-tick ends. A save whose types' fields changed is refused naming them, or
+Inside a system the snapshot is the world in the middle of that tick, as
+that system sees it (its own queued spawns and despawns are not in it),
+and it names the system: the world restored from it completes the tick on
+its next step (the systems after that one, then the engine's, physics
+included) and then goes on tick for tick as the run that saved did, so a
+replay from it matches. Make the snapshot the system's last write of the
+tick. A restore asked for in a system applies when the tick ends. A save whose types' fields changed is refused naming them, or
 mapped by name with `{ migrate: true }`. Only what is in the world is
 saved: progress in module variables is lost. The text is a few tens of
 KiB (11 KiB for a few entities, 25 KiB for a 2D level of 189, 78 KB for a
@@ -143,6 +147,19 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   escapes: `set:Prefs.name=""`), a scene gives it one quoted string, and
   snapshots and the world hash carry its bytes, so a name never lives in a
   module variable or as numbers of code points.
+  A `str` holds 1 to 4,096 bytes: a larger capacity typechecks and is
+  refused when the game starts (`a string field holds 1 to 4096 bytes`).
+- A field holds one value: a component has no array or list field. A few
+  values are numbered fields (`p0`..`p7`, as og.CameraRail's rail points);
+  a list is an entity per element with its own component, looped over by
+  a query (a ring of skid marks, the laps of a race); a long record (a
+  lap's taped inputs) is text in `str(4096)` chunks, an entity each.
+- A handle is a 64-bit number (an `og.load` answer, a texture, a sound,
+  a geometry, a material, an entity): keep it in a field of its own kind,
+  `Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()` or
+  `Entity()` (each handle type of the API has its factory), in a
+  component or a resource. A `u32` field refuses one (`4294967298 is not
+  a u32`).
 - Per-entity calls (`world.get`, `world.set`) are for commands, setup and
   the few named entities a system touches (a camera, a listener, the
   player), not for hot loops. A system's `reads` and `writes` borrow
@@ -153,6 +170,14 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   (naming the view), and the entity is read and written through the view's
   arrays at its row (`a.entities`). Take per-entity calls first, views
   after, or keep to one of the two in a system.
+- A system has one query: every component in its `reads` and `writes`
+  together, so an entity matches only when it has all of them (and none of
+  `without`). A component declared only to `world.get` one named entity
+  (the player's car) narrows the loop to entities that also have it, often
+  to none, with no error. `world.query` is refused inside a system, by
+  design (a system reaches only what it declared): loop over each
+  archetype in a system of its own that declares only its components, and
+  pass what crosses between them through a resource.
 - Order systems with `after` and `before` by name; declaration order is the
   default.
 

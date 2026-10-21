@@ -43,6 +43,12 @@
 //! world from the components. The touching pairs a step ends with are
 //! carried to the next tick as [`Contact`] events, which is how Started/Ended
 //! are derived.
+//!
+//! The block carries the geometry of convex-hull, triangle-mesh and
+//! height-field colliders by its asset key (shape, handle, scale), not its
+//! triangles: meshes are assets, and decoding rebuilds those shapes from
+//! the meshes registered then. Forces and impulses game code queued for the
+//! next step ([`PhysicsSystem::apply_impulse`] and friends) are in it too.
 
 #[cfg(not(any(feature = "physics2d", feature = "physics3d")))]
 compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (both are default)");

@@ -227,9 +227,12 @@ impl<'w> SystemContext<'w> {
 
     /// The whole world as [`World::snapshot`] writes it, as this system sees
     /// it: what earlier systems wrote this tick is in it; the structural
-    /// changes this system queued (they apply when it returns) are not.
+    /// changes this system queued (they apply when it returns) are not. It
+    /// names this system, so a world restored from it completes the tick:
+    /// its next step runs the systems after this one, then ends the tick
+    /// (make it the system's last write of the tick for a replay to match).
     pub fn snapshot(&self) -> Vec<u8> {
-        self.world.snapshot_in_system()
+        self.world.snapshot_in_system(&self.system.name)
     }
 
     /// [`World::check_snapshot`] for a restore this system asks for.

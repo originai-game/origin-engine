@@ -32,6 +32,14 @@ struct Log {
 }
 
 fn build(seed: u32) -> World {
+    build_with(seed, None)
+}
+
+/// A system that runs between "heat" and "log".
+type Middle = Box<dyn Fn(&mut og_ecs::SystemContext<'_>) -> og_core::Result<()> + Send>;
+
+/// [`build`], with `middle` (named "saver") scheduled between its two systems.
+fn build_with(seed: u32, middle: Option<Middle>) -> World {
     let mut w = World::new(&WorldDesc {
         seed,
         tick_rate: 30,
@@ -83,6 +91,10 @@ fn build(seed: u32) -> World {
         },
     )
     .unwrap();
+    if let Some(middle) = middle {
+        w.add_system(SystemDesc::new("saver").read::<Heat>(), middle)
+            .unwrap();
+    }
     w.add_system(
         SystemDesc::new("log").read::<Ping>().write::<Log>(),
         |ctx| {
@@ -379,7 +391,12 @@ fn a_system_snapshots_the_world_while_it_holds_its_columns() {
     let bytes = taken.lock().unwrap().take().unwrap();
     // The spawn the system queued applied when it returned: one more now than in the snapshot.
     assert_eq!(w.entities().len(), live + 1);
+    // The snapshot names the system that took it, so the world it restores
+    // into schedules it too.
     let mut b = build(5);
+    let refused = b.restore(&bytes).unwrap_err();
+    assert!(refused.to_string().contains("'saver'"), "{refused}");
+    b.add_system(SystemDesc::new("saver"), |_| Ok(())).unwrap();
     b.restore(&bytes).unwrap();
     assert_eq!(b.entities().len(), live);
     // Its own write through the held column is in it.
@@ -390,4 +407,64 @@ fn a_system_snapshots_the_world_while_it_holds_its_columns() {
         .map(|a| a.read::<f64>(heat_t).unwrap()[0])
         .collect();
     assert!(heats.iter().all(|&t| t == 42.0), "{heats:?}");
+}
+
+/// A snapshot a system takes is mid-tick: the systems before it have run
+/// this tick, the ones after it (and the end of the tick) have not. The
+/// world restored from it completes that tick on its next step (the
+/// systems after the saver, the tick's events as they were, then Time),
+/// so it goes on exactly as the world that saved did (meridian-loop
+/// FINDINGS #12: before, it ran the whole tick again, the systems before
+/// the saver twice, and a replay from it diverged).
+#[test]
+fn a_world_restored_from_a_system_snapshot_completes_that_tick_and_goes_on_the_same() {
+    use std::sync::{Arc, Mutex};
+    let taken: Arc<Mutex<Option<Vec<u8>>>> = Arc::default();
+    let saver = |out: Option<Arc<Mutex<Option<Vec<u8>>>>>| -> Middle {
+        Box::new(move |ctx| {
+            if let Some(out) = &out
+                && ctx.time().tick == 6
+            {
+                *out.lock().unwrap() = Some(ctx.snapshot());
+            }
+            Ok(())
+        })
+    };
+    let mut a = build_with(5, Some(saver(Some(taken.clone()))));
+    churn(&mut a, &mut Rng::new(4), 3);
+    while a.time().tick < 12 {
+        a.send(Ping { from: a.time().tick }).unwrap();
+        a.step().unwrap();
+    }
+    let bytes = taken.lock().unwrap().take().expect("taken at tick 6");
+
+    let mut b = build_with(5, Some(saver(None)));
+    b.restore(&bytes).unwrap();
+    assert_eq!(b.time().tick, 6);
+    // Not stepped since, it saves the same mid-tick snapshot again.
+    assert_eq!(b.snapshot(), bytes);
+    let mid = b.world_hash();
+    let mut first = true;
+    while b.time().tick < 12 {
+        // The input the run had: a host event before every tick but the
+        // completed one (sent before tick 6 began, it is in the snapshot).
+        if !first {
+            b.send(Ping { from: b.time().tick }).unwrap();
+        }
+        first = false;
+        b.step().unwrap();
+    }
+    assert_ne!(mid, b.world_hash());
+    assert_eq!(b.world_hash(), a.world_hash());
+    assert_eq!(b.snapshot(), a.snapshot());
+
+    // A migrating restore into a world without the saver starts the next
+    // tick afresh and says so.
+    let mut c = build(5);
+    let report = c.restore_migrating(&bytes).unwrap();
+    assert!(
+        report.warnings.iter().any(|w| w.contains("saver")),
+        "{report:?}"
+    );
+    assert_eq!(c.time().tick, 6);
 }
