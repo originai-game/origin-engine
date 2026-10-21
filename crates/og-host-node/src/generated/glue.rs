@@ -1191,6 +1191,18 @@ pub fn og_platform_save_settings(env: Env, world: u32, value: String) -> String 
     <Host as PlatformApi>::og_platform_save_settings(&Host, world, value)
 }
 
+#[napi(js_name = "og_platform_save_slot")]
+pub fn og_platform_save_slot(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_save_slot(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_load_slot")]
+pub fn og_platform_load_slot(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_load_slot(&Host, world, desc)
+}
+
 #[napi(js_name = "og_platform_result")]
 pub fn og_platform_result(env: Env, world: u32, request: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

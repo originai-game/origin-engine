@@ -401,6 +401,10 @@ export interface HostAbi<A, V> {
   og_platform_load_settings(world: number): number;
   /** `og.platform.saveSettings` */
   og_platform_save_settings(world: number, value: string): string;
+  /** `og.platform.saveSlot` */
+  og_platform_save_slot(world: number, desc: string | undefined): string;
+  /** `og.platform.loadSlot` */
+  og_platform_load_slot(world: number, desc: string | undefined): string;
   /** `og.platform.result` */
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
@@ -819,6 +823,8 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_ai_mark",
   "og_platform_load_settings",
   "og_platform_save_settings",
+  "og_platform_save_slot",
+  "og_platform_load_slot",
   "og_platform_result",
   "og_platform_info",
   "og_platform_now",

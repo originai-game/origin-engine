@@ -634,7 +634,7 @@ export interface World {
    */
   instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>;
   /**
-   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. The store takes any JSON value up to 64 KiB a key, so keep the text beside what a title screen shows of the slot: `og.platform.storeSet(world, { key: "slot1", value: { name, chimes, world: text } })`, then og.platform.storeGet and world.restore of `value.world` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not. Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not. Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
    *
    * @returns The save, or why not (the world could not be read).
    */
@@ -11469,6 +11469,52 @@ export interface AiMarkDesc {
   readonly model?: string;
 }
 
+/**
+ * A save slot: a long text (a world.snapshot()) kept across as many store keys as it needs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SaveSlotDesc {
+  /**
+   * The slot's name: 1 to 60 of letters, digits, `.`, `_` and `-` (`slot1`). Its keys are the name itself (the manifest) and `<slot>.a0`, `<slot>.a1`, ... or `<slot>.b0`, ... (the parts).
+   *
+   * @default ""
+   */
+  readonly slot?: string;
+  /**
+   * The text: at most 512 KiB of UTF-8 (eight parts of 64 KiB).
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * What a title screen shows of the slot (`{ place, hour }`), kept in the manifest so loadSlot with metaOnly reads it without the parts: any JSON, at most 4 KiB encoded.
+   *
+   * @default null
+   */
+  readonly meta?: unknown;
+}
+
+/**
+ * Which slot to read, and how much of it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadSlotDesc {
+  /**
+   * The slot's name, as saveSlot wrote it.
+   *
+   * @default ""
+   */
+  readonly slot?: string;
+  /**
+   * Read the manifest alone: the answer's text stays null (a title's Continue label, before the player asks for the world).
+   *
+   * @default false
+   */
+  readonly metaOnly?: boolean;
+}
+
 /** Why a call failed. */
 export interface PlatformError {
   /**
@@ -11524,6 +11570,8 @@ export interface PlatformInfo {
    */
   readonly clock: string;
 }
+
+
 
 
 
@@ -18561,6 +18609,22 @@ export declare namespace og {
      * @returns Refused for a value that is not an object or is too large.
      */
     function saveSettings(world: World, value: unknown): Result<number>;
+    /**
+     * Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §17.
+     *
+     * @param world The world.
+     * @param desc The slot, the text and what a title shows of it.
+     * @returns Refused for a malformed slot name, a text over 512 KiB or a meta over 4 KiB. The answer arrives when the manifest is written: data `{ slot, parts, bytes, revision }`; an error is the first refused part's, or the manifest's (`conflict`: another save of the slot landed meanwhile; the slot holds that one).
+     */
+    function saveSlot(world: World, desc?: SaveSlotDesc): Result<number>;
+    /**
+     * Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it.
+     *
+     * @param world The world.
+     * @param desc The slot, and whether to read its meta alone.
+     * @returns Refused for a malformed slot name. The answer's data is `{ slot, text, meta, parts, bytes, revision }`: text and meta null for a slot never saved, text null with metaOnly; `invalid` for a key that holds no slot manifest or parts that do not match it.
+     */
+    function loadSlot(world: World, desc?: LoadSlotDesc): Result<number>;
     /**
      * The answer to a call, once it arrived.
      *

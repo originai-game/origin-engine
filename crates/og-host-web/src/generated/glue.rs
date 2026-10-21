@@ -994,6 +994,16 @@ pub fn og_platform_save_settings(world: u32, value: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_save_slot(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_load_slot(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_load_slot(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_result(world: u32, request: u32) -> String {
     <Host as PlatformApi>::og_platform_result(&Host, world, request)
 }

@@ -1,11 +1,12 @@
 // The save slot across a relaunch (og-game §17, og-platform-sdk §2,
 // store: "keep"). Resting at the crypt terrace's waystone restores the
 // courier's strength, marks chapter II reached and saves the whole world
-// (world.snapshot(), about 78 KB of text, written in parts under the
-// store's 64 KiB a key: FINDINGS #13) beside what the title shows of it. Rest
+// (world.snapshot(), about 78 KB of text, in og.platform.saveSlot's parts
+// under the store's 64 KiB a key: FINDINGS #13, fixed) beside what the
+// title shows of it. Rest
 // and quit returns to the title. The relaunch reads the slot on its first
 // tick: the title offers Continue with the place and the hour (the primary
-// action, focused); Continue reads the parts and world.restore()s them, so
+// action, focused); Continue reads the slot and world.restore()s it, so
 // the courier stands by that waystone with the sigil and the hillwort it
 // carried, the session's settings are read again, a toast welcomes it back; and the Chapters screen has chapter
 // II unlocked from the stored progress.
@@ -55,12 +56,13 @@ export default playtest({
     t.equal(run.warnings.join("; "), "", "the first process ran without warnings");
     const rested = game(run, "rested.json");
     t.equal([rested.hp, rested.saves, rested.savePlace, rested.chaptersReached & 2], [100, 1, 1, 2], "resting restored strength, reached chapter II and saved there");
-    t.ok(rested.saveBytes > 0 && rested.saveParts === Math.ceil(rested.saveBytes / 60000), `the world (${rested.saveBytes} characters) went in ${rested.saveParts} parts`);
+    // og.platform.saveSlot (FINDINGS #13, fixed): parts of a key's 64 KiB, then the manifest.
+    t.ok(rested.saveBytes > 65536 && rested.saveParts === Math.ceil(rested.saveBytes / 65534), `the world (${rested.saveBytes} characters) went in ${rested.saveParts} parts`);
     const calls = run.json<{ calls: Array<{ method: string; args: { key?: string; value?: unknown } }> }>("calls.json").calls;
     const keys = calls.filter((c) => c.method === "store.set").map((c) => c.args.key);
-    t.ok(keys.includes("slot") && keys.includes("slot.0") && keys.includes("slot.1"), `the slot and its parts were written (${keys.join(", ")})`);
-    const slot = calls.find((c) => c.method === "store.set" && c.args.key === "slot")!.args.value as { place: number; parts: number };
-    t.equal([slot.place, slot.parts], [1, rested.saveParts], "the slot names its waystone and its parts");
+    t.equal(keys.filter((k) => k?.startsWith("run")), ["run.a0", "run.a1", "run"], `the slot's parts, then its manifest (${keys.join(", ")})`);
+    const slot = calls.find((c) => c.method === "store.set" && c.args.key === "run")!.args.value as { meta: { place: number }; parts: number };
+    t.equal([slot.meta.place, slot.parts], [1, rested.saveParts], "the manifest names its waystone and its parts");
     t.equal(game(run, "quit.json").phase, TITLE, "Rest and quit went to the title");
 
     const next = run.then[0]!;

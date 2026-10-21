@@ -65,9 +65,14 @@ Inside a system the snapshot is the world as that system sees it (its own
 queued spawns and despawns are not in it) and a restore applies when the
 tick ends. A save whose types' fields changed is refused naming them, or
 mapped by name with `{ migrate: true }`. Only what is in the world is
-saved: progress in module variables is lost. Put the text in the
-platform's store beside what a title screen shows of the slot (og-game
-§17, og-platform-sdk §2).
+saved: progress in module variables is lost. The text is a few tens of
+KiB (11 KiB for a few entities, 25 KiB for a 2D level of 189, 78 KB for a
+3D world of 93 with cloths, minds and skinned characters), often over the
+store's 64 KiB a key: save it with `og.platform.saveSlot(world, { slot,
+text, meta })`, which spreads it over as many keys as it needs and writes
+the slot's manifest last, so a save cut short leaves the last one whole,
+and read it back with `og.platform.loadSlot` (og-game §17, og-platform-sdk
+§2).
 
 ## 3. Every failure is a value
 

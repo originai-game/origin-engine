@@ -2,10 +2,12 @@
 // later tick, its number kept in Game or Prefs:
 //
 // - The save slot: resting at a waystone writes the whole world
-//   (world.snapshot(), og-game §17) in parts (`slot.0`, `slot.1`: it is
-//   over a key's 64 KiB), then `slot` with what the title shows of it (the
-//   place, the hour) and the parts' count. Continue reads the parts and
-//   world.restore()s their text. The world
+//   (world.snapshot(), og-game §17) to the slot `run` with
+//   og.platform.saveSlot, its meta what the title shows of it (the place,
+//   the hour). The world's text is over a key's 64 KiB, so the slot takes
+//   two parts (`run.a0`, `run.a1`, or the b bank) and the manifest `run`;
+//   the title reads the meta alone, and Continue reads the slot and
+//   world.restore()s its text. The world
 //   is saved with Game.fromSave set, so the tick after a restore knows it
 //   happened and puts back what is the session's, not the save's (the
 //   settings and the progress are read again; request numbers cleared).
@@ -38,11 +40,13 @@ interface Progress {
   bestScore?: number;
 }
 
-interface Slot {
+interface SlotMeta {
   place?: number;
   hour?: number;
-  parts?: number;
 }
+
+/** The slot the run is saved in (og.platform.saveSlot). */
+const SLOT = "run";
 
 function asked(r: { ok: true; value: number } | { ok: false; reason: string }): number {
   return r.ok ? r.value : 0;
@@ -50,20 +54,16 @@ function asked(r: { ok: true; value: number } | { ok: false; reason: string }): 
 
 /** Tick 0: the slot (for the title's Continue), the progress and the settings. */
 export function readAll(world: World, g: GameV, p: PrefsV): void {
-  g.slotRequest = asked(og.platform.storeGet(world, "slot"));
+  g.slotRequest = asked(og.platform.loadSlot(world, { slot: SLOT, metaOnly: true }));
   g.progressRequest = asked(og.platform.storeGet(world, "progress"));
   p.loadRequest = og.platform.loadSettings(world);
 }
 
-/** The most text one store key takes here: the store refuses a value over 64 KiB. */
-const PART = 60000;
-
 /**
  * Rests at waystone `i`: the whole world saved in the slot, with the place
  * and the hour. This world snapshots to about 78 KB of text, over the
- * store's 64 KiB a key (og-game §17 puts it in one key; FINDINGS #13), so
- * the text goes in parts (`slot.0`, `slot.1`, ...) and `slot` holds what
- * the title shows and how many parts there are, written last.
+ * store's 64 KiB a key: og.platform.saveSlot spreads it over the keys it
+ * needs (FINDINGS #13, fixed: the game split it into parts itself before).
  */
 export function saveSlot(world: World, g: GameV, i: number): void {
   g.saves += 1;
@@ -81,34 +81,21 @@ export function saveSlot(world: World, g: GameV, i: number): void {
     return;
   }
   const text = snap.value;
-  const parts = Math.ceil(text.length / PART);
   g.saveBytes = text.length;
-  for (let k = 0; k < parts; k++) {
-    const r = og.platform.storeSet(world, { key: `slot.${k}`, value: text.slice(k * PART, (k + 1) * PART) });
-    if (!r.ok) {
-      og.ui.toast(world, r.reason, { tone: "danger" });
-      return;
-    }
-  }
-  const value: Slot = { place: i, hour: Math.round(g.hour * 100) / 100, parts };
-  const r = og.platform.storeSet(world, { key: "slot", value });
+  const meta: SlotMeta = { place: i, hour: Math.round(g.hour * 100) / 100 };
+  const r = og.platform.saveSlot(world, { slot: SLOT, text, meta });
   if (!r.ok) {
     og.ui.toast(world, r.reason, { tone: "danger" });
     return;
   }
   g.saveRequest = r.value;
   g.hasSave = true;
-  g.saveParts = parts;
 }
 
-/** Continue: the slot's parts read; the world is restored when every one has landed. */
+/** Continue: the slot read; the world is restored when its answer lands. */
 export function continueRun(world: World, g: GameV): void {
-  const n = Math.min(4, g.saveParts);
-  g.partRequest0 = n > 0 ? asked(og.platform.storeGet(world, "slot.0")) : 0;
-  g.partRequest1 = n > 1 ? asked(og.platform.storeGet(world, "slot.1")) : 0;
-  g.partRequest2 = n > 2 ? asked(og.platform.storeGet(world, "slot.2")) : 0;
-  g.partRequest3 = n > 3 ? asked(og.platform.storeGet(world, "slot.3")) : 0;
-  g.restoring = n > 0;
+  g.slotLoad = asked(og.platform.loadSlot(world, { slot: SLOT }));
+  g.restoring = g.slotLoad !== 0;
 }
 
 /** The progress as the store should hold it. */
@@ -149,12 +136,12 @@ export function answers(world: World, g: GameV, p: PrefsV, applyPrefs: (s: Recor
   const slot = take(g.slotRequest);
   if (slot) {
     g.slotRequest = 0;
-    const v = (slot.ok ? (slot.data as { value?: Slot }).value : null) ?? null;
-    if (v && typeof v.parts === "number" && v.parts > 0) {
+    const d = slot.ok ? (slot.data as { meta?: SlotMeta | null; parts?: number }) : null;
+    if (d?.meta && (d.parts ?? 0) > 0) {
       g.hasSave = true;
-      g.saveParts = v.parts;
-      g.savePlace = Math.max(0, Math.min(WAYSTONES.length - 1, v.place ?? 0));
-      g.saveClock = v.hour ?? 0;
+      g.saveParts = d.parts ?? 0;
+      g.savePlace = Math.max(0, Math.min(WAYSTONES.length - 1, d.meta.place ?? 0));
+      g.saveClock = d.meta.hour ?? 0;
     }
   }
   const prog = take(g.progressRequest);
@@ -183,17 +170,18 @@ export function answers(world: World, g: GameV, p: PrefsV, applyPrefs: (s: Recor
     writeProgress(world, g);
   }
   const saved = take(g.saveRequest);
-  if (saved) g.saveRequest = 0;
-  if (g.restoring) {
-    const reqs = [g.partRequest0, g.partRequest1, g.partRequest2, g.partRequest3].filter((n) => n !== 0);
-    const got = reqs.map((n) => og.platform.result(world, n));
-    if (got.every((r) => r !== null)) {
-      g.restoring = false;
-      g.partRequest0 = g.partRequest1 = g.partRequest2 = g.partRequest3 = 0;
-      const text = got.map((r) => (r!.ok && typeof (r!.data as { value?: unknown }).value === "string" ? ((r!.data as { value: string }).value) : "")).join("");
-      const r = world.restore(text);
-      if (!r.ok) og.ui.toast(world, r.reason, { tone: "danger" });
-    }
+  if (saved) {
+    g.saveRequest = 0;
+    if (saved.ok) g.saveParts = (saved.data as { parts: number }).parts;
+    else og.ui.toast(world, saved.error?.message ?? "the save failed", { tone: "danger" });
+  }
+  const loaded = g.restoring ? take(g.slotLoad) : null;
+  if (loaded) {
+    g.restoring = false;
+    g.slotLoad = 0;
+    const text = loaded.ok ? (loaded.data as { text?: string | null }).text : null;
+    const r = typeof text === "string" ? world.restore(text) : { ok: false as const, reason: loaded.error?.message ?? "the slot is empty" };
+    if (!r.ok) og.ui.toast(world, r.reason, { tone: "danger" });
   }
   const settings = take(p.loadRequest);
   if (settings) {
@@ -236,13 +224,13 @@ export function afterRestore(world: World, g: GameV, p: PrefsV): boolean {
   g.loads += 1;
   g.saveRequest = 0;
   g.restoring = false;
-  g.partRequest0 = g.partRequest1 = g.partRequest2 = g.partRequest3 = 0;
+  g.slotLoad = 0;
   g.submitRequest = 0;
   g.recordsRequest = 0;
   g.progressWrite = 0;
   g.progressAgain = false;
   g.progressRequest = asked(og.platform.storeGet(world, "progress"));
-  g.slotRequest = asked(og.platform.storeGet(world, "slot"));
+  g.slotRequest = asked(og.platform.loadSlot(world, { slot: SLOT, metaOnly: true }));
   p.loadRequest = og.platform.loadSettings(world);
   g.paused = false;
   g.settingsOpen = false;

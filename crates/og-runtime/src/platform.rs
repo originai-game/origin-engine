@@ -18,7 +18,7 @@ use og_core::Reflect;
 use og_ecs::{SystemDesc, World};
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The system's name in the schedule (before the game's systems).
 pub const PLATFORM_SYSTEM: &str = "og.platform";
@@ -53,6 +53,40 @@ struct Record {
     answer: Option<(Value, u64)>,
     /// Fire and forget (telemetry): never answered.
     oneway: bool,
+    /// A slot call (saveSlot, loadSlot): answered by the engine when its
+    /// store calls are, never sent to the host.
+    internal: bool,
+}
+
+/// A slot call in progress: the store calls it made and what they answered.
+struct SlotCall {
+    slot: String,
+    stage: Stage,
+}
+
+enum Stage {
+    /// Both: the manifest's store.get is in flight.
+    Manifest(SlotOp),
+    /// saveSlot: the parts' store.set calls left, then the manifest to write.
+    Parts {
+        left: BTreeSet<u32>,
+        manifest: Value,
+        revision: u64,
+    },
+    /// saveSlot: the manifest's store.set.
+    Write { parts: usize, bytes: usize },
+    /// loadSlot: the parts' store.get calls, in order, and their texts.
+    Read {
+        parts: Vec<u32>,
+        got: BTreeMap<u32, String>,
+        manifest: Value,
+        revision: u64,
+    },
+}
+
+enum SlotOp {
+    Save { text: String, meta: Value },
+    Load { meta_only: bool },
 }
 
 #[derive(Default)]
@@ -69,6 +103,9 @@ struct Platform {
     /// it on by the ticks since. Set when the host attaches and by every
     /// answer that carries a time, at the tick's start the answer is applied.
     base: Option<(f64, u64)>,
+    /// Slot calls in progress by request, and the store calls each made.
+    slots: BTreeMap<u32, SlotCall>,
+    sub: BTreeMap<u32, u32>,
 }
 
 thread_local! {
@@ -90,49 +127,63 @@ fn tick_now(world: u32) -> Result<u64, String> {
 
 fn call(world: u32, method: &str, args: Value, oneway: bool) -> Result<u32, String> {
     let tick = tick_now(world)?;
-    with(world, |p| {
-        if !oneway {
-            let waiting = p
-                .log
-                .values()
-                .filter(|r| r.answer.is_none() && !r.oneway)
-                .count();
-            if waiting >= MAX_PENDING {
-                return Err(format!(
-                    "{method}: {waiting} platform calls are waiting for the host's answers; at most {MAX_PENDING} wait at once"
-                ));
-            }
+    with(world, |p| issue(p, method, args, tick, oneway, false))
+}
+
+/// Logs a call and queues it for the host (an internal one is the
+/// engine's to answer and is not sent).
+fn issue(
+    p: &mut Platform,
+    method: &str,
+    args: Value,
+    tick: u64,
+    oneway: bool,
+    internal: bool,
+) -> Result<u32, String> {
+    if !oneway {
+        let waiting = p
+            .log
+            .values()
+            .filter(|r| r.answer.is_none() && !r.oneway)
+            .count();
+        if waiting >= MAX_PENDING {
+            return Err(format!(
+                "{method}: {waiting} platform calls are waiting for the host's answers; at most {MAX_PENDING} wait at once"
+            ));
         }
-        p.next = p.next.wrapping_add(1).max(1);
-        let id = p.next;
-        p.log.insert(
-            id,
-            Record {
-                method: method.to_string(),
-                args,
-                tick,
-                answer: None,
-                oneway,
-            },
-        );
+    }
+    p.next = p.next.wrapping_add(1).max(1);
+    let id = p.next;
+    p.log.insert(
+        id,
+        Record {
+            method: method.to_string(),
+            args,
+            tick,
+            answer: None,
+            oneway,
+            internal,
+        },
+    );
+    if !internal {
         p.outbox.push(id);
-        if p.log.len() > MAX_LOG {
-            let old: Vec<u32> = p
-                .log
-                .iter()
-                .filter(|(_, r)| r.answer.is_some() || r.oneway)
-                .map(|(k, _)| *k)
-                .take(p.log.len() - MAX_LOG)
-                .collect();
-            for k in old {
-                p.log.remove(&k);
-            }
-            // A one-way call dropped before the host took it is not sent.
-            let log = &p.log;
-            p.outbox.retain(|id| log.contains_key(id));
+    }
+    if p.log.len() > MAX_LOG {
+        let old: Vec<u32> = p
+            .log
+            .iter()
+            .filter(|(_, r)| r.answer.is_some() || r.oneway)
+            .map(|(k, _)| *k)
+            .take(p.log.len() - MAX_LOG)
+            .collect();
+        for k in old {
+            p.log.remove(&k);
         }
-        Ok(id)
-    })
+        // A one-way call dropped before the host took it is not sent.
+        let log = &p.log;
+        p.outbox.retain(|id| log.contains_key(id));
+    }
+    Ok(id)
 }
 
 fn request(world: u32, method: &str, args: Value) -> String {
@@ -350,6 +401,344 @@ pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
     request(world, "ai.mark", args)
 }
 
+// ── save slots (saveSlot, loadSlot) ──────────────────────────────────────
+
+/// The longest slot name: room for a part's suffix (`.b7`) in a key.
+const MAX_SLOT_NAME: usize = 60;
+/// The most parts a slot's text takes, and so the longest text.
+const MAX_PARTS: usize = 8;
+/// The largest `meta`, encoded.
+const MAX_META: usize = 4 * 1024;
+/// What a manifest says it is.
+const MANIFEST: &str = "og.slot";
+
+fn valid_slot(slot: &str) -> Result<(), String> {
+    if slot.len() <= MAX_SLOT_NAME && valid_key(slot) {
+        Ok(())
+    } else {
+        Err(format!(
+            "'{slot}' is not a slot name: 1 to {MAX_SLOT_NAME} of letters, digits, '.', '_' and '-'"
+        ))
+    }
+}
+
+/// `text` cut on character boundaries into parts whose JSON string is at
+/// most a store value.
+fn split(text: &str) -> Vec<&str> {
+    let budget = MAX_VALUE - 2;
+    let mut parts = Vec::new();
+    let (mut start, mut size) = (0, 0);
+    for (at, c) in text.char_indices() {
+        let n = match c {
+            '"' | '\\' | '\n' | '\r' | '\t' | '\u{8}' | '\u{c}' => 2,
+            c if (c as u32) < 0x20 => 6,
+            c => c.len_utf8(),
+        };
+        if size + n > budget {
+            parts.push(&text[start..at]);
+            (start, size) = (at, 0);
+        }
+        size += n;
+    }
+    if start < text.len() || parts.is_empty() {
+        parts.push(&text[start..]);
+    }
+    parts
+}
+
+fn checksum(text: &str) -> String {
+    format!("{:016x}", og_core::hash::hash_bytes(text.as_bytes()))
+}
+
+fn part_key(slot: &str, bank: &str, i: usize) -> String {
+    format!("{slot}.{bank}{i}")
+}
+
+fn start_slot(world: u32, method: &str, slot: &str, args: Value, op: SlotOp) -> String {
+    let tick = match tick_now(world) {
+        Ok(t) => t,
+        Err(e) => return refuse(e),
+    };
+    let started = with(world, |p| {
+        let outer = issue(p, method, args, tick, false, true)?;
+        let get = match issue(p, "store.get", json!({ "key": slot }), tick, false, false) {
+            Ok(id) => id,
+            Err(e) => {
+                p.log.remove(&outer);
+                return Err(e);
+            }
+        };
+        p.sub.insert(get, outer);
+        p.slots.insert(
+            outer,
+            SlotCall {
+                slot: slot.to_string(),
+                stage: Stage::Manifest(op),
+            },
+        );
+        Ok(outer)
+    });
+    match started {
+        Ok(id) => ok(json!(id)),
+        Err(e) => refuse(e),
+    }
+}
+
+pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
+    let d = match parse(desc.as_deref()) {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
+    let slot = d["slot"].as_str().unwrap_or("").to_string();
+    if let Err(e) = valid_slot(&slot) {
+        return refuse(e);
+    }
+    let text = d["text"].as_str().unwrap_or("").to_string();
+    let parts = split(&text).len();
+    if parts > MAX_PARTS {
+        return refuse(format!(
+            "the text is {} bytes, {parts} parts of a store key's 64 KiB; a slot holds at most {MAX_PARTS} (512 KiB)",
+            text.len()
+        ));
+    }
+    let meta = d.get("meta").cloned().unwrap_or(Value::Null);
+    let meta_size = meta.to_string().len();
+    if meta_size > MAX_META {
+        return refuse(format!(
+            "the meta is {meta_size} bytes encoded; a slot's meta is at most {MAX_META}"
+        ));
+    }
+    let args = json!({ "slot": slot, "bytes": text.len(), "parts": parts, "meta": meta });
+    start_slot(world, "slot.save", &slot, args, SlotOp::Save { text, meta })
+}
+
+pub fn og_platform_load_slot(world: u32, desc: Option<String>) -> String {
+    let d = match parse(desc.as_deref()) {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
+    let slot = d["slot"].as_str().unwrap_or("").to_string();
+    if let Err(e) = valid_slot(&slot) {
+        return refuse(e);
+    }
+    let meta_only = d["metaOnly"].as_bool().unwrap_or(false);
+    let args = json!({ "slot": slot, "metaOnly": meta_only });
+    start_slot(world, "slot.load", &slot, args, SlotOp::Load { meta_only })
+}
+
+fn failure(code: &str, message: String) -> Value {
+    json!({ "ok": false, "error": { "code": code, "message": message, "retryable": RETRYABLE.contains(&code) } })
+}
+
+/// A store call's failure as the slot call's, with the slot named.
+fn failed_with(answer: &Value, what: &str) -> Value {
+    let mut a = answer.clone();
+    let e = &mut a["error"];
+    let message = e["message"].as_str().unwrap_or("").to_string();
+    e["message"] = json!(format!("{what}: {message}"));
+    a
+}
+
+/// Advances the slot call that made store call `sub`, now answered with
+/// `answer`: Some(the slot call and its answer) when it is done.
+fn advance_slot(p: &mut Platform, sub: u32, answer: &Value, tick: u64) -> Option<(u32, Value)> {
+    let outer = p.sub.remove(&sub)?;
+    let mut call = p.slots.remove(&outer)?;
+    let ok = answer["ok"].as_bool() == Some(true);
+    let slot = call.slot.clone();
+    let done = |v: Value| Some((outer, v));
+    match call.stage {
+        Stage::Manifest(op) => {
+            if !ok {
+                return done(failed_with(answer, &format!("reading slot '{slot}'")));
+            }
+            let value = answer["data"]["value"].clone();
+            let revision = answer["data"]["revision"].as_u64().unwrap_or(0);
+            let is_manifest = value[MANIFEST].as_u64() == Some(1);
+            match op {
+                SlotOp::Load { meta_only } => {
+                    if value.is_null() {
+                        return done(json!({ "ok": true, "data": {
+                            "slot": slot, "text": null, "meta": null, "parts": 0, "bytes": 0, "revision": 0,
+                        } }));
+                    }
+                    if !is_manifest {
+                        return done(failure(
+                            "invalid",
+                            format!(
+                                "the key '{slot}' holds no slot manifest: write the slot with og.platform.saveSlot"
+                            ),
+                        ));
+                    }
+                    let parts = value["parts"].as_u64().unwrap_or(0) as usize;
+                    let bank = value["bank"].as_str().unwrap_or("a").to_string();
+                    if meta_only || parts == 0 {
+                        return done(json!({ "ok": true, "data": {
+                            "slot": slot, "text": if meta_only { Value::Null } else { json!("") },
+                            "meta": value["meta"].clone(), "parts": parts,
+                            "bytes": value["bytes"].as_u64().unwrap_or(0), "revision": revision,
+                        } }));
+                    }
+                    let mut subs = Vec::new();
+                    for i in 0..parts.min(MAX_PARTS) {
+                        match issue(
+                            p,
+                            "store.get",
+                            json!({ "key": part_key(&slot, &bank, i) }),
+                            tick,
+                            false,
+                            false,
+                        ) {
+                            Ok(id) => {
+                                p.sub.insert(id, outer);
+                                subs.push(id);
+                            }
+                            Err(e) => return done(failure("failed", e)),
+                        }
+                    }
+                    call.stage = Stage::Read {
+                        parts: subs,
+                        got: BTreeMap::new(),
+                        manifest: value,
+                        revision,
+                    };
+                }
+                SlotOp::Save { text, meta } => {
+                    if !value.is_null() && !is_manifest {
+                        return done(failure(
+                            "invalid",
+                            format!(
+                                "the key '{slot}' holds something else than a slot: save the slot under another name"
+                            ),
+                        ));
+                    }
+                    let bank = if value["bank"].as_str() == Some("a") {
+                        "b"
+                    } else {
+                        "a"
+                    };
+                    let parts = split(&text);
+                    let mut left = BTreeSet::new();
+                    for (i, part) in parts.iter().enumerate() {
+                        let args = json!({ "key": part_key(&slot, bank, i), "value": part, "revision": 0, "create": false });
+                        match issue(p, "store.set", args, tick, false, false) {
+                            Ok(id) => {
+                                p.sub.insert(id, outer);
+                                left.insert(id);
+                            }
+                            Err(e) => return done(failure("failed", e)),
+                        }
+                    }
+                    let manifest = json!({
+                        (MANIFEST): 1, "bank": bank, "parts": parts.len(), "bytes": text.len(),
+                        "hash": checksum(&text), "meta": meta,
+                    });
+                    call.stage = Stage::Parts {
+                        left,
+                        manifest,
+                        revision,
+                    };
+                }
+            }
+        }
+        Stage::Parts {
+            mut left,
+            manifest,
+            revision,
+        } => {
+            left.remove(&sub);
+            if !ok {
+                // The parts still in flight are no one's now.
+                for id in &left {
+                    p.sub.remove(id);
+                }
+                return done(failed_with(answer, &format!("writing slot '{slot}'")));
+            }
+            if left.is_empty() {
+                // At the revision read: another save landing meanwhile is a
+                // conflict, and a slot never written must still be new.
+                let args = json!({ "key": slot, "value": manifest, "revision": revision, "create": revision == 0 });
+                let parts = manifest["parts"].as_u64().unwrap_or(0) as usize;
+                let bytes = manifest["bytes"].as_u64().unwrap_or(0) as usize;
+                match issue(p, "store.set", args, tick, false, false) {
+                    Ok(id) => {
+                        p.sub.insert(id, outer);
+                        call.stage = Stage::Write { parts, bytes };
+                    }
+                    Err(e) => return done(failure("failed", e)),
+                }
+            } else {
+                call.stage = Stage::Parts {
+                    left,
+                    manifest,
+                    revision,
+                };
+            }
+        }
+        Stage::Write { parts, bytes } => {
+            if !ok {
+                let mut a = failed_with(answer, &format!("writing slot '{slot}'"));
+                if a["error"]["code"].as_str() == Some("conflict") {
+                    a["error"]["message"] = json!(format!(
+                        "another save of slot '{slot}' landed while this one was written: the slot holds that one; load it, or save again"
+                    ));
+                }
+                return done(a);
+            }
+            return done(json!({ "ok": true, "data": {
+                "slot": slot, "parts": parts, "bytes": bytes,
+                "revision": answer["data"]["revision"].as_u64().unwrap_or(0),
+            } }));
+        }
+        Stage::Read {
+            parts,
+            mut got,
+            manifest,
+            revision,
+        } => {
+            if !ok {
+                for id in &parts {
+                    p.sub.remove(id);
+                }
+                return done(failed_with(answer, &format!("reading slot '{slot}'")));
+            }
+            got.insert(
+                sub,
+                answer["data"]["value"].as_str().unwrap_or("").to_string(),
+            );
+            if got.len() < parts.len() {
+                call.stage = Stage::Read {
+                    parts,
+                    got,
+                    manifest,
+                    revision,
+                };
+            } else {
+                let text: String = parts
+                    .iter()
+                    .filter_map(|id| got.get(id).map(String::as_str))
+                    .collect();
+                let whole = Some(text.len() as u64) == manifest["bytes"].as_u64()
+                    && manifest["hash"].as_str() == Some(checksum(&text).as_str());
+                if !whole {
+                    return done(failure(
+                        "invalid",
+                        format!(
+                            "slot '{slot}''s parts do not match its manifest (two devices saving it at once): save the slot again"
+                        ),
+                    ));
+                }
+                return done(json!({ "ok": true, "data": {
+                    "slot": slot, "text": text, "meta": manifest["meta"].clone(),
+                    "parts": parts.len(), "bytes": text.len(), "revision": revision,
+                } }));
+            }
+        }
+    }
+    p.slots.insert(outer, call);
+    None
+}
+
 /// An answer's or a hello's time: finite UTC milliseconds above 0.
 fn time_of(v: &Value) -> Option<f64> {
     v["time"].as_f64().filter(|t| t.is_finite() && *t > 0.0)
@@ -483,7 +872,7 @@ pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
         let open = p
             .log
             .get(&request)
-            .is_some_and(|r| r.answer.is_none() && !r.oneway)
+            .is_some_and(|r| r.answer.is_none() && !r.oneway && !r.internal)
             && !p.inbox.iter().any(|(id, _)| *id == request);
         if open {
             p.inbox.push((request, v));
@@ -533,23 +922,37 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                 let ms = tick_ms(engine_id);
                 let arrived = with(engine_id, |p| {
                     let inbox = std::mem::take(&mut p.inbox);
-                    inbox
-                        .into_iter()
-                        .filter_map(|(id, v)| {
-                            if !p.log.contains_key(&id) {
-                                return None;
+                    let mut arrived = Vec::new();
+                    for (id, v) in inbox {
+                        if !p.log.contains_key(&id) {
+                            continue;
+                        }
+                        let ok = v["ok"].as_bool() == Some(true);
+                        if let Some(t) = time_of(&v) {
+                            rebase(p, t, tick, v["clock"].as_str(), ms);
+                        }
+                        if let Some(c) = v["clock"].as_str() {
+                            p.clock = Some(c.to_string());
+                        }
+                        // A slot call's store call: the slot call moves on,
+                        // and only its own answer is sent.
+                        let slot = p.sub.contains_key(&id);
+                        let done = slot.then(|| advance_slot(p, id, &v, tick)).flatten();
+                        if let Some(r) = p.log.get_mut(&id) {
+                            r.answer = Some((v, tick));
+                        }
+                        if let Some((outer, answer)) = done {
+                            let ok = answer["ok"].as_bool() == Some(true);
+                            if let Some(r) = p.log.get_mut(&outer) {
+                                r.answer = Some((answer, tick));
                             }
-                            let ok = v["ok"].as_bool() == Some(true);
-                            if let Some(t) = time_of(&v) {
-                                rebase(p, t, tick, v["clock"].as_str(), ms);
-                            }
-                            if let Some(c) = v["clock"].as_str() {
-                                p.clock = Some(c.to_string());
-                            }
-                            p.log.get_mut(&id)?.answer = Some((v, tick));
-                            Some((id, ok))
-                        })
-                        .collect::<Vec<_>>()
+                            arrived.push((outer, ok));
+                        }
+                        if !slot {
+                            arrived.push((id, ok));
+                        }
+                    }
+                    arrived
                 });
                 for (request, ok) in arrived {
                     ctx.send(PlatformAnswered { request, ok })?;
@@ -680,5 +1083,166 @@ mod tests {
         let sent: Value =
             serde_json::from_str(&og_platform_telemetry(e, "t".into(), None)).unwrap();
         assert_eq!(sent["ok"], json!(true), "{sent}");
+    }
+
+    /// A store as a host keeps it: key → (value, revision). Answers every
+    /// call taken, except the store.set calls `fail` names by key.
+    fn serve(e: u32, store: &mut BTreeMap<String, (Value, u64)>, fail: &[&str]) -> usize {
+        let calls: Vec<Value> = serde_json::from_str(&og_platform_take(e)).unwrap();
+        for c in &calls {
+            let id = c["request"].as_u64().unwrap() as u32;
+            let a = &c["args"];
+            let key = a["key"].as_str().unwrap_or("").to_string();
+            let answer = match c["method"].as_str().unwrap() {
+                "store.get" => {
+                    let (value, revision) = store.get(&key).cloned().unwrap_or((Value::Null, 0));
+                    json!({ "ok": true, "data": { "key": key, "value": value, "revision": revision } })
+                }
+                "store.set" if fail.contains(&key.as_str()) => {
+                    json!({ "ok": false, "error": { "code": "offline", "message": "no network" } })
+                }
+                "store.set" => {
+                    let at = store.get(&key).map_or(0, |v| v.1);
+                    let create = a["create"].as_bool() == Some(true);
+                    let revision = a["revision"].as_u64().unwrap_or(0);
+                    if (create && at != 0) || (!create && revision != 0 && revision != at) {
+                        json!({ "ok": false, "error": { "code": "conflict", "message": "moved", "revision": at } })
+                    } else {
+                        store.insert(key.clone(), (a["value"].clone(), at + 1));
+                        json!({ "ok": true, "data": { "key": key, "revision": at + 1 } })
+                    }
+                }
+                m => panic!("unexpected {m}"),
+            };
+            assert!(og_platform_answer(e, id, answer.to_string()));
+        }
+        calls.len()
+    }
+
+    /// Serves and ticks until request `id` is answered.
+    fn settle(e: u32, id: u32, store: &mut BTreeMap<String, (Value, u64)>, fail: &[&str]) -> Value {
+        for _ in 0..8 {
+            serve(e, store, fail);
+            advance(e, 1);
+            let r: Value = serde_json::from_str(&og_platform_result(e, id)).unwrap();
+            if !r.is_null() {
+                return r;
+            }
+        }
+        panic!("request {id} was never answered");
+    }
+
+    fn request_id(answer: &str) -> u32 {
+        value(answer).as_u64().unwrap() as u32
+    }
+
+    #[test]
+    fn a_slot_takes_a_text_over_a_key_in_banks_and_a_save_cut_short_leaves_the_last_one() {
+        let e = engine_at_60();
+        host(e, 1.0, "fixed");
+        let mut store = BTreeMap::new();
+        // Never saved: no text, no meta.
+        let id = request_id(&og_platform_load_slot(
+            e,
+            Some(json!({ "slot": "slot1" }).to_string()),
+        ));
+        let r = settle(e, id, &mut store, &[]);
+        assert_eq!(r["ok"], json!(true), "{r}");
+        assert_eq!(r["data"]["text"], Value::Null, "{r}");
+        // 150 KB with quotes and non-ASCII: three parts, each a store value.
+        let text: String = (0..150_000).map(|i| ['a', '"', '灯', 'z'][i % 4]).collect();
+        let save = |e, text: &str, place: u32| {
+            request_id(&og_platform_save_slot(
+                e,
+                Some(
+                    json!({ "slot": "slot1", "text": text, "meta": { "place": place } })
+                        .to_string(),
+                ),
+            ))
+        };
+        let r = settle(e, save(e, &text, 1), &mut store, &[]);
+        assert_eq!(r["ok"], json!(true), "{r}");
+        let parts = r["data"]["parts"].as_u64().unwrap();
+        assert!(parts >= 3, "{r}");
+        assert!(store.contains_key("slot1.a0") && !store.contains_key("slot1.b0"));
+        for (k, (v, _)) in &store {
+            assert!(v.to_string().len() <= MAX_VALUE, "{k} is over a key");
+        }
+        // Only the slot call's answer reaches the game as an event; its own
+        // record was never sent to the host.
+        let dump = dump(e);
+        let slot_call = dump["calls"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["method"] == "slot.save")
+            .unwrap();
+        assert_eq!(slot_call["state"], json!("answered"));
+        // A second save goes in the other bank; one of its parts refused,
+        // the manifest still names the first, whole.
+        let other: String = text.chars().rev().collect();
+        let r = settle(e, save(e, &other, 2), &mut store, &["slot1.b1"]);
+        assert_eq!(r["ok"], json!(false), "{r}");
+        assert_eq!(r["error"]["code"], json!("offline"), "{r}");
+        assert!(
+            r["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("writing slot 'slot1'"),
+            "{r}"
+        );
+        let id = request_id(&og_platform_load_slot(
+            e,
+            Some(json!({ "slot": "slot1" }).to_string()),
+        ));
+        let r = settle(e, id, &mut store, &[]);
+        assert_eq!(r["data"]["text"].as_str(), Some(text.as_str()));
+        assert_eq!(r["data"]["meta"], json!({ "place": 1 }));
+        // Saved again in full: the b bank, and the meta alone reads without the parts.
+        let r = settle(e, save(e, &other, 2), &mut store, &[]);
+        assert_eq!(r["ok"], json!(true), "{r}");
+        assert_eq!(store["slot1"].0["bank"], json!("b"));
+        let id = request_id(&og_platform_load_slot(
+            e,
+            Some(json!({ "slot": "slot1", "metaOnly": true }).to_string()),
+        ));
+        let r = settle(e, id, &mut store, &[]);
+        assert_eq!(
+            [r["data"]["meta"].clone(), r["data"]["text"].clone()],
+            [json!({ "place": 2 }), Value::Null]
+        );
+        let id = request_id(&og_platform_load_slot(
+            e,
+            Some(json!({ "slot": "slot1" }).to_string()),
+        ));
+        assert_eq!(
+            settle(e, id, &mut store, &[])["data"]["text"].as_str(),
+            Some(other.as_str())
+        );
+        // A part changed under the manifest is refused, not joined.
+        store.get_mut("slot1.b0").unwrap().0 = json!("tampered");
+        let id = request_id(&og_platform_load_slot(
+            e,
+            Some(json!({ "slot": "slot1" }).to_string()),
+        ));
+        let r = settle(e, id, &mut store, &[]);
+        assert_eq!(r["error"]["code"], json!("invalid"), "{r}");
+        // Refused at the call: a bad name, a text over eight parts.
+        let bad: Value = serde_json::from_str(&og_platform_save_slot(
+            e,
+            Some(json!({ "slot": "a b", "text": "x" }).to_string()),
+        ))
+        .unwrap();
+        assert_eq!(bad["ok"], json!(false));
+        let huge = "x".repeat(MAX_PARTS * MAX_VALUE);
+        let bad: Value = serde_json::from_str(&og_platform_save_slot(
+            e,
+            Some(json!({ "slot": "s", "text": huge }).to_string()),
+        ))
+        .unwrap();
+        assert!(
+            bad["reason"].as_str().unwrap().contains("at most 8"),
+            "{bad}"
+        );
     }
 }

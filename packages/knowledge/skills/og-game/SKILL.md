@@ -1168,7 +1168,8 @@ og.render.look(world)?.name;                                              // the
 
 A save is either the whole world or a record the game writes; both go in
 the platform's store (og-platform-sdk §2), which takes any JSON value up
-to 64 KiB a key.
+to 64 KiB a key: a record in one key, the world in a slot
+(`og.platform.saveSlot`, any size up to 512 KiB).
 
 - **The world** (`world.snapshot()`, `world.restore(save)`): every entity,
   component, name, resource (og.Time and og.Rng too), pending event and
@@ -1180,14 +1181,36 @@ to 64 KiB a key.
   is the save: a puzzle mid-move, a sandbox, a run that resumes exactly.
 
   ```ts
-  // Save (a lantern lit, Save and quit): beside what the title shows of the slot.
+  // Save (a lantern lit, Save and quit): the world, and what the title shows of the slot.
   const s = world.snapshot();
-  const asked = s.ok ? og.platform.storeSet(world, { key: "slot1", value: { name, chimes, world: s.value } }) : s;
-  if (asked.ok) run.saveRequest = asked.value;
-  // Continue, once storeGet's answer landed:
-  const back = world.restore(answer.data.value.world);   // in a system: applies when the tick ends
-  if (!back.ok) toast(back.reason);                       // a save from a build whose types changed names them
+  const asked = s.ok ? og.platform.saveSlot(world, { slot: "slot1", text: s.value, meta: { name, chimes } }) : s;
+  if (asked.ok) run.saveRequest = asked.value;              // one request for the whole slot
+  // The title, on its first tick: the meta alone, no parts read.
+  run.slotRequest = must(og.platform.loadSlot(world, { slot: "slot1", metaOnly: true }));
+  // Continue: the text, once loadSlot's answer landed.
+  run.loadRequest = must(og.platform.loadSlot(world, { slot: "slot1" }));
+  const back = world.restore(answer.data.text);            // in a system: applies when the tick ends
+  if (!back.ok) toast(back.reason);                        // a save from a build whose types changed names them
   ```
+
+  How big a save is, and so where it goes: a world of a few entities
+  snapshots to about 11 KiB of text (most of it the table of every
+  registered type), Hollowbell (a 2D platformer of 189 entities) to about
+  25 KiB, Kestrel Stair (a 3D world of 93 entities: five skinned
+  characters on graphs, five cloths and a rope, five navmesh agents with
+  minds) to about 78 KB. The store takes 64 KiB a key (a platform limit,
+  with 64 keys and 1 MiB per player and game), so a world goes through
+  `og.platform.saveSlot`/`loadSlot`, never one `storeSet`: the slot's
+  text is cut into parts of a key each (at most eight: 512 KiB), written
+  in the bank of keys its last save did not use (`slot1.a0..`,
+  `slot1.b0..`), and the manifest (`slot1`: the bank, the parts, the
+  length, a checksum and your `meta`) last, at the revision read, so a
+  save cut short leaves the last one whole and another device's save
+  landing meanwhile is a `conflict`, never a mix. One request answers
+  for all of it; loadSlot checks the parts against the manifest. The
+  text is already deflated: a tighter encoding was measured (deflate at
+  its highest level saves 0.7 %, LZMA 31 % at the cost of a second
+  decoder in every build) and not taken.
 
   A restore asked for in a system or a command applies when the tick
   ends; in `start`, at once. A saved type whose fields changed since (a
@@ -1199,7 +1222,7 @@ to 64 KiB a key.
   session's own state (a best score read from the store, an open menu)
   where a restore cannot roll them back: reset them after it. Asset
   handles are saved as numbers: load in `start`, in the same order every
-  launch. Hollowbell's world saves to about 25 KiB; an empty one to 11.
+  launch.
 - **A record** (`storeSet(world, { key: "save", value: { chimes, glimmers,
   checkpoint } })`): a few hundred bytes of what progress means, rebuilt
   into a world on Continue. Smaller, readable on a title screen, and it

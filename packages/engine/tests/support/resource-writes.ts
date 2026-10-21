@@ -49,7 +49,7 @@ if (names.length !== 200) throw new Error(`${names.length} fields`);
 
 type Rec = Record<string, unknown>;
 const json = (world: World, key: string, value: unknown) => {
-  const answer = JSON.parse(boundHost()!.abi.og_engine_write_resource(world.id, "RwRun", JSON.stringify({ [key]: value }))) as { ok: boolean; reason?: string };
+  const answer = JSON.parse(boundHost()!.abi.og_engine_write_resource((world as unknown as { id: number }).id, "RwRun", JSON.stringify({ [key]: value }))) as { ok: boolean; reason?: string };
   if (!answer.ok) throw new Error(answer.reason);
 };
 

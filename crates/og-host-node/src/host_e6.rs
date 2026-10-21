@@ -114,6 +114,12 @@ impl PlatformApi for NodeHost {
     fn og_platform_save_settings(&self, world: u32, value: String) -> String {
         rt::og_platform_save_settings(world, value)
     }
+    fn og_platform_save_slot(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_save_slot(world, desc)
+    }
+    fn og_platform_load_slot(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_load_slot(world, desc)
+    }
     fn og_platform_result(&self, world: u32, request: u32) -> String {
         rt::og_platform_result(world, request)
     }

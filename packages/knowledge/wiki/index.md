@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-891 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+895 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -335,6 +335,7 @@ Field units the docs and Tune use.
 | [`ListRange`](ui.md#type-ListRange) | struct | ui | — |
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
+| [`LoadSlotDesc`](platform.md#type-LoadSlotDesc) | desc struct | platform | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
 | [`LocaleInfo`](i18n.md#type-LocaleInfo) | struct | i18n | — |
 | [`LOCK_ROTATION_X`](physics.md#const-LOCK_ROTATION_X) | constant | physics | — |
@@ -529,10 +530,12 @@ Field units the docs and Tune use.
 | [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
 | [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
 | [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
+| [`og.platform.loadSlot`](platform.md#fn-loadSlot) | function | platform | `og_platform_load_slot` |
 | [`og.platform.now`](platform.md#fn-now) | function | platform | `og_platform_now` |
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
 | [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
+| [`og.platform.saveSlot`](platform.md#fn-saveSlot) | function | platform | `og_platform_save_slot` |
 | [`og.platform.storeGet`](platform.md#fn-storeGet) | function | platform | `og_platform_store_get` |
 | [`og.platform.storeList`](platform.md#fn-storeList) | function | platform | `og_platform_store_list` |
 | [`og.platform.storeSet`](platform.md#fn-storeSet) | function | platform | `og_platform_store_set` |
@@ -831,6 +834,7 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.state`](probe.md#member-RuntimeProbe-state) | method | probe | `og_runtime_probe_state` |
 | [`RuntimeProbe.tick`](probe.md#member-RuntimeProbe-tick) | method | probe | `og_runtime_probe_tick` |
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
+| [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |

@@ -502,6 +502,10 @@ pub trait PlatformApi: Wire {
     fn og_platform_load_settings(&self, world: u32) -> u32;
     /// `og.platform.saveSettings`
     fn og_platform_save_settings(&self, world: u32, value: String) -> String;
+    /// `og.platform.saveSlot`
+    fn og_platform_save_slot(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.loadSlot`
+    fn og_platform_load_slot(&self, world: u32, desc: Option<String>) -> String;
     /// `og.platform.result`
     fn og_platform_result(&self, world: u32, request: u32) -> String;
     /// `og.platform.info`
@@ -949,6 +953,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_ai_mark",
     "og_platform_load_settings",
     "og_platform_save_settings",
+    "og_platform_save_slot",
+    "og_platform_load_slot",
     "og_platform_result",
     "og_platform_info",
     "og_platform_now",
