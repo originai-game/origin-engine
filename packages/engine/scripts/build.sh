@@ -103,7 +103,11 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
     cp "$gate_wasm/opt/og_host_web-publish2d.wasm" "$here/dist/web-publish-2d/origin-engine_bg.wasm"
   elif [ -n "$variant_2d" ]; then
     echo "build.sh: $gate_wasm/opt/og_host_web-publish2d.wasm is missing, but scripts/wasm-crates.txt declares the publish2d variant: a 2d game's publish build would have no engine; run the gate's wasm-build and wasm-opt steps again (docs/web-export.md §Variants)" >&2
-    exit 1
+    # The functional lane runs with the gate's web module stale (OG_WASM_STALE=1,
+    # scripts/check.sh): it ships what the last wasm-build produced and skips
+    # the tests that load the web module; a module the gate has never built is
+    # then a warning, not a stop.
+    [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
   fi
   # The gate builds a lanes variant per game profile whenever
   # scripts/wasm-crates.txt marks og-host-web `lanes` (its `lanes` lines:
@@ -119,7 +123,7 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
       cp "$gate_wasm/opt/og_host_web-$1.wasm" "$here/dist/$2/origin-engine-lanes_bg.wasm"
     elif [ -n "$lanes_expected" ]; then
       echo "build.sh: $gate_wasm/opt/og_host_web-$1.wasm is missing, but scripts/wasm-crates.txt marks og-host-web lanes: dist/$2 would ship single-threaded; run the gate's wasm-build and wasm-opt steps again (docs/ci.md §The lanes wasm)" >&2
-      exit 1
+      [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
     fi
   done
   exit 0
