@@ -838,7 +838,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     .overlay
                     .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
                 let clip = t.clip.map(|c| o.add_clip(c));
-                o.texts.push(og_render::Text { clip, ..text });
+                o.texts.push(og_render::Text {
+                    clip,
+                    layer: og_render::screen_layer(text.layer),
+                    ..text
+                });
             } else {
                 if t.outline > 0.0 {
                     scene.text_outlines.push(og_render::TextOutline {

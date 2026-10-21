@@ -17,7 +17,7 @@ import type { Entity, World } from "@origingame/engine";
 import { CHIMES, Game, HEARTS, Phase, Prefs, Tuning } from "./components.ts";
 import { Enemies, touchHero } from "./enemies.ts";
 import { Control } from "./hero.ts";
-import { Areas, Backdrop, Bells, Effects, Flickers, Hazards, Lanterns, Lifts, MapShade, Moles, Pickups, Pools, Stones } from "./props.ts";
+import { Areas, Backdrop, Bells, Effects, Flickers, Hazards, Lanterns, Lifts, Moles, Pickups, Stones } from "./props.ts";
 import { spawnVoices, Voices } from "./sound.ts";
 import { continueRun, LANGUAGES, newRun, setLanguage, setName, toTitle, Ui, WARP_LIFT } from "./ui.ts";
 import { buildHollow, loadArt, must } from "./world.ts";
@@ -153,7 +153,7 @@ function name(world: World, args: readonly string[]): void {
 export default og.game({
   look: "looks/hollowbell.ogt",
   resources: [Game, Tuning, Prefs],
-  systems: [...og.systems.cameras, Ui, Control, Enemies, Pickups, Lanterns, Bells, Moles, Lifts, Stones, Hazards, Areas, MapShade, Pools, Flickers, Backdrop, Effects, Voices],
+  systems: [...og.systems.cameras, Ui, Control, Enemies, Pickups, Lanterns, Bells, Moles, Lifts, Stones, Hazards, Areas, Flickers, Backdrop, Effects, Voices],
   // The pixel look: no antialiasing (the look says so too).
   render: { antialias: "off" },
   start,

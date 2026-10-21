@@ -11,7 +11,7 @@
 
 import { og, BODY_DYNAMIC, BODY_KINEMATIC, SHAPE_BOX, SHAPE_SPHERE, bool, defineComponent, f32, str, u32 } from "@origingame/engine";
 import type { Entity, FlipbookInfo, TextureArrayInfo, TileObject, Value, World } from "@origingame/engine";
-import { Bell, Bits, Draw, Enemy, Flicker, Fx, FxKind, Game, Hero, Item, Kind, Lantern, Layer, Lift, Mole, Pickup, Pool, Stone, Tuning } from "./components.ts";
+import { Bell, Bits, Draw, Enemy, Flicker, Fx, FxKind, Game, Hero, Item, Kind, Lantern, Layer, Lift, Mole, Pickup, Stone, Tuning } from "./components.ts";
 
 export function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -21,8 +21,8 @@ export function must<T>(r: { ok: true; value: T } | { ok: false; reason: string 
 /** The map's size in cells (one cell, 16 px, is one world unit). Its top-left corner sits at (0, MAP_H). */
 export const MAP_W = 96;
 export const MAP_H = 48;
-/** The camera's view: 14 cells tall, a 224-line pixel grid (looks/hollowbell.ogt) at 16 px a cell. */
-export const VIEW_H = 14;
+/** The camera's view: 15 cells tall, the 240-line pixel grid (looks/hollowbell.ogt) at 16 px a cell, 3x at 720p (FINDINGS.md #7, fixed: it was the 224-line preset's 14). */
+export const VIEW_H = 15;
 
 /** The hero's body: a box from the feet up. */
 export const HERO_BOX = { w: 0.7, h: 1.25 } as const;
@@ -127,10 +127,10 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
   const lighting = must(world.resource(og.Lighting2D));
   lighting.enabled = true;
   lighting.ambient = { r: 1, g: 1, b: 1 };
-  // The actors, props and effects take the light. The sky (Draw.sky), the map and its light pools
-  // (Draw.pools) are below the lit range: og.Lighting2D never lights a tilemap's layers anyway
-  // (FINDINGS.md #9), so the map is tinted and the pools add the light back.
-  lighting.minLayer = Draw.pools + 1;
+  // The map, the actors, props and effects take the light; the sky (Draw.sky) is below the lit
+  // range. FINDINGS.md #9 (og.Lighting2D never lit a tilemap's layers) is fixed in the engine, so
+  // the map's tint (MapShade) and the light-pool sprites it needed are gone.
+  lighting.minLayer = Draw.sky + 1;
   lighting.maxLayer = 50;
   lighting.resolution = 0.5;
 
@@ -144,13 +144,7 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
   must(world.insert(sky, Sky));
 
   const tiles = must(og.load.texture(world, "tiles/hollow.png"));
-  const poolTexture = must(og.load.texture(world, "fx/pool.png"));
   const spark = must(og.load.texture(world, "fx/spark.png"));
-  const pool = (name: string, x: number, y: number, color: { r: number; g: number; b: number }, radius: number, strength: number, kind = 0, index = 0) => {
-    const e = spawn(world, `${name}-pool`, x, y);
-    must(world.insert(e, og.Sprite, { texture: poolTexture, width: radius * 2, height: radius * 2, color, blend: "additive", layer: Draw.pools, opacity: strength }));
-    must(world.insert(e, Pool, { kind, index, strength, radius }));
-  };
   const embers = must(og.load.emitter(world, "fx/embers.ogt"));
   const motes = must(og.load.emitter(world, "fx/motes.ogt"));
   let enemies = 0;
@@ -162,7 +156,6 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
         g.spawnX = p.x;
         g.spawnY = p.y;
         spawnHero(world, g, art, p.x, p.y, t.lightRadius);
-        pool("hero", p.x, p.y + 0.7, { r: 1, g: 0.85, b: 0.6 }, t.lightRadius, 0.28, 1);
         break;
       case "bell": {
         const e = spawn(world, "bell", p.x, p.y);
@@ -177,8 +170,7 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
         must(world.insert(e, og.Flipbook, { sheet: art.mole.sheet, clip: 0 }));
         must(world.insert(e, Mole));
         // The mole's candle.
-        must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.75, b: 0.4 }, intensity: 0.9, radius: 3.5, falloff: 1.5 }));
-        pool("mole", p.x, p.y + 0.8, { r: 1, g: 0.75, b: 0.4 }, 3.2, 0.3);
+        must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.75, b: 0.4 }, intensity: 1.8, radius: 3.5, falloff: 1.3 }));
         break;
       }
       case "chime":
@@ -214,7 +206,6 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
         must(world.insert(e, og.Sprite, { array: art.items.array, arrayLayer: Layer.LanternDark, width: 1, height: 1, anchor: { x: 0.5, y: 0 }, layer: Draw.props }));
         must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.8, b: 0.45 }, intensity: 0, radius: 5, falloff: 1.5 }));
         must(world.insert(e, Lantern, { index }));
-        pool(o.name, p.x, p.y + 0.6, { r: 1, g: 0.75, b: 0.4 }, 4, 0.32, 2, index);
         break;
       }
       case "torch":
@@ -223,16 +214,15 @@ export function buildHollow(world: World, art: Art, g: Value<typeof Game>): void
         const index = Number(o.name.split("-")[1] ?? 0);
         const e = spawn(world, o.name, p.x, p.y);
         must(world.insert(e, og.Light2D, torch
-          ? { color: { r: 1, g: 0.62, b: 0.3 }, intensity: 1.3, radius: 6, falloff: 1.6, sourceRadius: 0.3 }
-          : { color: { r: 0.45, g: 0.75, b: 1 }, intensity: 0.7, radius: 3, falloff: 1.8, sourceRadius: 0.15 }));
-        must(world.insert(e, Flicker, { base: torch ? 1.3 : 0.7, rate: torch ? 9 + (index % 4) : 2, phase: index * 1.7 }));
+          ? { color: { r: 1, g: 0.62, b: 0.3 }, intensity: 3, radius: 6, falloff: 1.3, sourceRadius: 0.3 }
+          : { color: { r: 0.45, g: 0.75, b: 1 }, intensity: 1.4, radius: 3, falloff: 1.5, sourceRadius: 0.15 }));
+        must(world.insert(e, Flicker, { base: torch ? 3 : 1.4, rate: torch ? 9 + (index % 4) : 2, phase: index * 1.7 }));
         if (torch) {
           must(world.insert(e, og.ParticleSystem, { emitter: embers, seed: 100 + index }));
-          // The flame glows: the map's own flame tile is tinted with the dark (FINDINGS.md #9).
+          // The flame glows in the 2D glow buffer over the map's flame tile, which its own light now lights (FINDINGS.md #9, fixed).
           const flame = spawn(world, `${o.name}-flame`, p.x, p.y + 0.15);
           must(world.insert(flame, og.Sprite, { texture: spark, width: 0.45, height: 0.6, color: { r: 1, g: 0.75, b: 0.4 }, blend: "additive", glow: 1.4, layer: Draw.props }));
         }
-        pool(o.name, p.x, p.y, torch ? { r: 1, g: 0.6, b: 0.28 } : { r: 0.4, g: 0.7, b: 1 }, torch ? 5 : 2.6, torch ? 0.34 : 0.3);
         break;
       }
       case "occluder": {
@@ -305,7 +295,9 @@ function spawnHero(world: World, g: Value<typeof Game>, art: Art, x: number, y: 
   // Its run stutters on flat ground: every few ticks its velocity drops to almost 0 and it
   // accelerates again (FINDINGS.md #16); no skin or snap setting made it steadier.
   must(world.insert(e, og.PlatformerController, { oneWayLayers: Bits.Plank, wallJumps: false, coyoteTime: 0.1, jumpBuffer: 0.12, maxFallSpeed: 18 }));
-  must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.86, b: 0.6 }, intensity: 1.1, radius: light, falloff: 1.4, sourceRadius: 0.2 }));
+  must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.86, b: 0.6 }, intensity: 2.4, radius: light, falloff: 1.2, sourceRadius: 0.2 }));
+  // Steady (rate 0: 0.894 of the base), out in daylight, where it would light the village's hills.
+  must(world.insert(e, Flicker, { base: 2.7, rate: 0, phase: 0, dusk: true }));
   const half = viewHalfWidth(world);
   must(world.insert(e, og.Follow2D, {
     offset: { x: 0, y: 1.2 },

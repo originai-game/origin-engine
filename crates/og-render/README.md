@@ -406,6 +406,16 @@ three times as far as one with 4); og-ui's skins use it for `textGlow`
 and `references/<tier>/text-glow.png`; the cost is
 `tests/evidence/P2/ui/text-glow-cost.md`). The weight stays within the
 field's reach too, so a thin field never fills the glyph's quad.
+*The UI's layer* (`UI_LAYER` 1000, `UI_OVERLAY_LAYER`, `screen_layer`):
+og-runtime emits og.ui's painter levels from `UI_OVERLAY_LAYER` (2^20) up
+and a game's screen sprites and screen text at `screen_layer(layer)`:
+their own layer up to `UI_LAYER`, under every UI element, and lifted by
+2^21 above it, over every one (a HUD icon of sprites on a UI panel), the
+order among screen layers kept. They all drew under the UI whatever their
+layer before (hollowbell FINDINGS #8). og-ui's `tests/screen_layers.rs`
+and `references/<tier>/screen-layers.png`: a panel, a sprite at 999
+under it, one at 999 half past its edge, one at 1001 on it and one at
+1002 over that one.
 `Overlay::sprite_arrays` draws overlay sprites from a layer of a texture
 array, one draw per array (see [The 2D batch](#the-2d-batch-e4)).
 `Overlay::glass` holds glass panels (`Glass`: a rounded rectangle, a blur
@@ -905,7 +915,19 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 - **2D lighting**: `Lighting2d` with `Light2d`s shadowed by `Occluder2d`s
   (soft penumbrae) and an order-independent glow buffer; only the lit
   sprite layer range is affected; `SpriteFx` adds flash, glow, lit and soft
-  per sprite.
+  per sprite. Tile layers in the range are lit as its sprites are
+  (`TileLayer::lit`, true unless the map's layer opts out: og-tilemap's
+  `lit false`, a Tiled layer's bool property `lit`, the blob's
+  `layer_flag::UNLIT`): every tile instance carries the lit flag the
+  sprite shader reads (`fx.y`), so the ambient, the lights and the
+  occluders' shadows reach a tilemap on every tier, the same pipeline.
+  Before, tiles were never lit (hollowbell FINDINGS #9: a dark cave of
+  tiles drew as authored). Tests: `tests/sprites2d.rs`
+  `tile_layers_in_the_lit_range_take_the_2d_light` (near, far, behind a
+  wall, opted out, out of the range; broken once by an unlit flag) and
+  the og-tests scene `tilemap-lit` (a dark cave of three tile layers, a
+  torch and a crystal, a pillar's and a ledge's shadows on the back wall,
+  a window's sky layer kept as authored).
 - **Skinning and blendshapes**: `SkinData` + `JointPalette` (storage buffer
   on the full tier; on WebGL2 one `Rgba32Float` vertex texture, the morph
   deltas in its first rows and the palette after them),
@@ -1475,7 +1497,20 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   `width`/`height` inside the renderer are the scene's. The TAA history
   follows the scene size, the offscreen target and the overlay stay at the
   output's. With `snap`, og-runtime moves the 2D camera and every world
-  sprite by whole logical pixels.
+  sprite by whole logical pixels. *The fit* (`PixelScale::fit`,
+  `PixelFit`): the height decides the scale, `upscale` when `height ×
+  upscale` fits the output's height (a hard request, with the border it
+  implies), else and for 0 the largest that does; the width is the
+  aspect's columns rounded, at most the output's width over the scale, so
+  at most one column gives way to the scale. 240 rows at 1280 × 720 were
+  427 columns, 1281 pixels at 3x, and fell back to 2x inside a 213-pixel
+  border with `upscale` 3 ignored (hollowbell FINDINGS #7); they are 426
+  columns at 3x, a 1-pixel border each side. Every other height of the
+  look presets fits as before at 720p. Tests: `stylise.rs`'s
+  `the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column` (720p,
+  1080p, a phone both ways, every fit inside its output); og-tests
+  `stylise-palette` and `stylise-retro` (240 rows) were re-recorded at
+  3x.
 - **A look change is a cut**: when the primitives that are on change
   between two frames (`Stylise::chain_bits`: a pass added or removed, the
   pixel grid, retro 3D, the material style; not their settings), the

@@ -47,6 +47,11 @@ pub struct Layer {
     pub repeat_y: bool,
     /// The sprite layer offset it draws at (the owner's base plus this).
     pub z: i32,
+    /// Taken by 2D lighting when its sprite layer is in the lit range, as
+    /// the sprites there are (true by default); `lit false` in a layer
+    /// block, or a Tiled layer's bool property `lit` false, keeps it as
+    /// authored (a sky, a far backdrop).
+    pub lit: bool,
 }
 
 impl Layer {
@@ -65,6 +70,7 @@ impl Layer {
             repeat_x: false,
             repeat_y: false,
             z,
+            lit: true,
         }
     }
 }
@@ -347,6 +353,13 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
                     .first()
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| err(p.line, "collision is true or false"))?
+            }
+            "lit" => {
+                l.lit = p
+                    .values
+                    .first()
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| err(p.line, "lit is true or false"))?
             }
             "repeat" => {
                 for v in &p.values {

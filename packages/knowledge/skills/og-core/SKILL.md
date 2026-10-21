@@ -9,6 +9,15 @@ in the browser (wasm in a Worker) and headless on the native host under
 `og run`. These rules are what makes that true; breaking one produces a game
 that works on one host, one seed or one machine and not the next.
 
+## What works
+
+Two games written from this package alone (`examples/lantern-vale`, a 3D
+adventure, and `examples/hollowbell`, a 2D platformer) hold these rules
+for a whole game, not a toy: each ends a full session run in two processes
+on one world hash, a player's name and a save live in `str` fields as
+world state, and a resource or column a system did not declare is refused
+with the system and the record named, so the fix is one line.
+
 ## 1. Game code is TypeScript, and only TypeScript
 
 A game is `src/*.ts` against `@origingame/engine`. Never add Rust, a second

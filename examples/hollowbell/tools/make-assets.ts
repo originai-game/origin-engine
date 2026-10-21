@@ -327,16 +327,17 @@ function rockTile(m: number): Pix {
 
 function backTile(v: number): Pix {
   const t = new Pix(T, T);
-  t.rect(0, 0, T, T, "night");
-  // Low-contrast blocks of the cave's far wall.
+  // Low-contrast blocks of the cave's far wall, drawn as they look in full light: og.Lighting2D's
+  // ambient and lights darken and colour the map (FINDINGS.md #9, fixed), so the dark is theirs.
+  t.rect(0, 0, T, T, "rock");
   const off = v % 2 === 0 ? 0 : 8;
   for (let y = 0; y < T; y += 8) {
-    t.rect(0, y + 7, T, 1, "ink");
-    for (let x = (off + (y === 0 ? 0 : 4)) % 8; x < T; x += 8) t.rect(x, y, 1, 7, "ink");
+    t.rect(0, y + 7, T, 1, "shade");
+    for (let x = (off + (y === 0 ? 0 : 4)) % 8; x < T; x += 8) t.rect(x, y, 1, 7, "shade");
   }
   for (let i = 0; i < 6; i++) {
     const h = hashn(v, i, 31);
-    t.set(h % T, (h >>> 8) % T, "shade");
+    t.set(h % T, (h >>> 8) % T, "rockHi");
   }
   if (v === 3) {
     // A root hanging over the wall.
@@ -1079,16 +1080,6 @@ function motes(): void {
   spark.oval(3.5, 3.5, 2, 2, "cream");
   spark.oval(3.5, 3.5, 1, 1, "white");
   writePixel("fx/spark.png", spark);
-  // A soft round pool of light (white, its alpha falling off with the square of the distance): drawn additive and tinted
-  // over the darkened map where a light shines (src/props.ts Pools; FINDINGS.md #9).
-  const pool = new Pix(64, 64);
-  for (let y = 0; y < 64; y++) {
-    for (let x = 0; x < 64; x++) {
-      const d = Math.hypot(x - 31.5, y - 31.5) / 32;
-      if (d < 1) pool.set(x, y, "white", Math.round((1 - d) * (1 - d) * 255));
-    }
-  }
-  writePixel("fx/pool.png", pool);
   const puff = new Pix(8, 8);
   puff.oval(3.5, 3.5, 3.2, 3.2, "tan");
   puff.oval(3, 3, 1.8, 1.8, "sand");

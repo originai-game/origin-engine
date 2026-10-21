@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-890 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+891 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -962,6 +962,7 @@ Field units the docs and Tune use.
 | [`TypeStep`](ui.md#type-TypeStep) | struct | ui | — |
 | [`TypeStepName`](ui.md#type-TypeStepName) | enum | ui | — |
 | [`u32()`](reflect.md#column-u32) | column kind | reflect | — |
+| [`UI_LAYER`](render.md#const-UI_LAYER) | constant | render | — |
 | [`UiAction`](ui.md#type-UiAction) | callback | ui | — |
 | [`UiBuild`](ui.md#type-UiBuild) | callback | ui | — |
 | [`UiDesc`](ui.md#type-UiDesc) | desc struct | ui | — |

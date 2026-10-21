@@ -82,6 +82,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
   coherence(files, problems);
   apiNames(roots, files, problems);
   looks(roots, files, problems);
+  grammar(roots, files, problems);
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
 }
@@ -493,6 +494,180 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
   }
   if (seen.size === 0) problems.push(`${at}: no styles`);
+}
+
+/**
+ * A text format the skills write out line by line, held to the parser that
+ * reads it: every `.ogt` block of that `type` in a skill (a ```text code
+ * block) and the parser's source.
+ */
+export interface Grammar {
+  /** The block's `type` line. */
+  readonly type: string;
+  /** For `type import`: the nested block (`tilemap { ... }`) whose lines are this grammar. */
+  readonly block?: string;
+  /** The parser, relative to the engine repository. */
+  readonly source: string;
+  /** The part of the source that parses it: from the first match to the second. */
+  readonly region?: readonly [RegExp, RegExp];
+  /** Keys a block may write that the parser accepts without naming them: each with why. */
+  readonly unnamed?: Readonly<Record<string, string>>;
+}
+
+/** The grammars og-game writes out (§8 tilesets and maps, §10 emitters) and the parsers they come from. */
+export const GRAMMARS: readonly Grammar[] = [
+  { type: "tileset", source: "crates/og-tilemap/src/tileset.rs" },
+  { type: "tilemap", source: "crates/og-tilemap/src/map.rs", region: [/pub fn parse\(text/, /^pub fn world_to_cell/m] },
+  { type: "particles", source: "crates/og-cook/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" } },
+  { type: "import", block: "tilemap", source: "crates/og-cook/src/cook/tilemap.rs", region: [/pub fn parse\(block/, /pub fn describe/] },
+];
+
+/** The Tiled fields a skill's `<!-- grammar: tiled -->` table names, and the importer that reads them. */
+export const TILED = {
+  source: "crates/og-cook/src/cook/tilemap.rs",
+  region: [/pub fn import_tiled/, /^fn tiled_data/m] as const,
+  /** Fields the importer reads that are structure, not settings: each with why. */
+  structural: { layers: "a group layer's children, flattened", objects: "an object layer's objects" } as Record<string, string>,
+};
+
+/** Keys after which the next word is a name the author chooses, not grammar. */
+const NAMING = new Set(["terrain", "layer", "object", "kind", "prop"]);
+
+interface Line {
+  readonly words: string[];
+  readonly depth: number;
+  readonly text: string;
+}
+
+/** An `.ogt` block's lines as tokens: strings dropped, comments cut, numbers kept as written. */
+function ogtLines(block: string): Line[] {
+  const out: Line[] = [];
+  let depth = 0;
+  for (const raw of block.split("\n")) {
+    const words: string[] = [];
+    const re = /"(?:[^"\\]|\\.)*"|\S+/g;
+    let opens = false;
+    for (const m of raw.matchAll(re)) {
+      const t = m[0];
+      if (t.startsWith("#")) break;
+      if (t === "{") opens = true;
+      else if (t === "}") depth--;
+      else words.push(t.startsWith('"') ? '""' : t);
+    }
+    out.push({ words, depth, text: raw });
+    if (opens) depth++;
+  }
+  return out;
+}
+
+/** The ```text blocks of a markdown file. */
+function textBlocks(md: string): string[] {
+  return [...md.matchAll(/^```text\n([\s\S]*?)^```/gm)].map((m) => m[1]!);
+}
+
+/**
+ * Every problem between the grammars the skills write and their parsers:
+ * a bare word a block writes (a key, or a word value such as `blob47`)
+ * that the parser never names in quotes, and a key the parser matches
+ * (`"grid" =>`) that no block of its type writes, in code or comment. So a
+ * key renamed, added or dropped on either side fails here.
+ */
+export function grammarDrift(skills: ReadonlyMap<string, string>, read: (path: string) => string | undefined): string[] {
+  const problems: string[] = [];
+  for (const g of GRAMMARS) {
+    let source = read(g.source);
+    if (source === undefined) continue;
+    if (g.region) {
+      const a = g.region[0].exec(source)?.index ?? -1;
+      const b = a < 0 ? -1 : source.slice(a).search(g.region[1]);
+      if (a < 0 || b < 0) {
+        problems.push(`${g.source}: the ${g.type} parser's region (${g.region[0]} to ${g.region[1]}) is not found; update GRAMMARS in scripts/validate.ts`);
+        continue;
+      }
+      source = source.slice(a, a + b);
+    }
+    const quoted = new Set([...source.matchAll(/"([A-Za-z_]\w*)"/g)].map((m) => m[1]!));
+    const arms = new Set([...source.matchAll(/"([A-Za-z_]\w*)"\s*(?:\|[^=]*)?=>/g)].map((m) => m[1]!));
+    const written: string[] = [];
+    let blocks = 0;
+    for (const [skill, text] of skills) {
+      for (const block of textBlocks(text)) {
+        const lines = ogtLines(block);
+        if (lines[0]?.words.join(" ") !== `type ${g.type}`) continue;
+        let body = lines.slice(lines.findIndex((l) => l.words[0] === "---") + 1);
+        if (g.block) {
+          const start = body.findIndex((l) => l.depth === 0 && l.words[0] === g.block && l.text.includes("{"));
+          if (start < 0) continue;
+          const end = body.findIndex((l, i) => i > start && l.depth === 0);
+          body = body.slice(start + 1, end < 0 ? undefined : end);
+        }
+        blocks++;
+        written.push(body.map((l) => l.text).join("\n"));
+        for (const l of body) {
+          l.words.forEach((w, i) => {
+            if (!/^[A-Za-z_]\w*$/.test(w) || w === "true" || w === "false") return;
+            if (i > 0 && NAMING.has(l.words[i - 1]!)) return;
+            if (i === 0 && g.unnamed && w in g.unnamed) return;
+            if (!quoted.has(w)) problems.push(`skills/${skill}/SKILL.md: a \`type ${g.type}\` block${g.block ? `'s ${g.block} block` : ""} writes \`${w}\` (${l.text.trim()}), which ${g.source} does not read; fix the grammar to the parser's`);
+          });
+        }
+      }
+    }
+    if (blocks === 0) {
+      problems.push(`skills: no skill writes a \`type ${g.type}\` block${g.block ? ` with a ${g.block} block` : ""}; og-game's grammar of it is gone`);
+      continue;
+    }
+    const all = written.join("\n");
+    for (const k of arms) {
+      if (!new RegExp(`(?<![\\w-])${k}(?![\\w-])`).test(all)) problems.push(`${g.source}: reads \`${k}\`, which no \`type ${g.type}\` block in the skills writes or names; add it to og-game's grammar`);
+    }
+  }
+
+  // Tiled: the table after `<!-- grammar: tiled -->`.
+  const importer = read(TILED.source);
+  if (importer !== undefined) {
+    const a = TILED.region[0].exec(importer)?.index ?? -1;
+    const b = a < 0 ? -1 : importer.slice(a).search(TILED.region[1]);
+    const region = a < 0 || b < 0 ? undefined : importer.slice(a, a + b);
+    if (!region) problems.push(`${TILED.source}: the Tiled importer's region is not found; update TILED in scripts/validate.ts`);
+    const named = new Set<string>();
+    let tables = 0;
+    for (const [skill, text] of skills) {
+      for (const m of text.matchAll(/<!-- grammar: tiled -->\n((?:\|.*\n?)+)/g)) {
+        tables++;
+        for (const row of m[1]!.split("\n").slice(2)) {
+          const first = row.split("|")[1] ?? "";
+          for (const n of first.matchAll(/`([^`]+)`/g)) {
+            named.add(n[1]!);
+            if (region && !region.includes(`"${n[1]}"`)) problems.push(`skills/${skill}/SKILL.md: the Tiled table names \`${n[1]}\`, which ${TILED.source}'s Tiled importer does not read`);
+          }
+        }
+      }
+    }
+    if (tables === 0) problems.push("skills: no skill has the Tiled table (`<!-- grammar: tiled -->`); og-game §8's list of what the cook reads of a Tiled map is gone");
+    else if (region) {
+      const read = [
+        ...region.matchAll(/\bprops\s*\.get\("(\w+)"\)/g),
+        ...region.matchAll(/\bf\(l, "(\w+)"/g),
+        ...region.matchAll(/\bl\s*\.get\("(\w+)"\)/g),
+      ].map((m) => m[1]!);
+      for (const k of new Set(read)) {
+        if (!named.has(k) && !(k in TILED.structural)) problems.push(`${TILED.source}: the Tiled importer reads \`${k}\`, which og-game's Tiled table does not name; add a row`);
+      }
+    }
+  }
+  return problems;
+}
+
+function grammar(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+  const repo = join(roots.pkg, "..", "..");
+  if (!existsSync(join(repo, "crates"))) return; // the published package: the parsers are not beside it
+  const skills = new Map<string, string>();
+  for (const f of files) {
+    const m = /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path);
+    if (m && isText(f.bytes)) skills.set(m[1]!, decoder.decode(f.bytes));
+  }
+  problems.push(...grammarDrift(skills, (p) => (existsSync(join(repo, p)) ? readFileSync(join(repo, p), "utf8") : undefined)));
 }
 
 export function bundle(roots: Roots = defaultRoots()): { schemaVersion: 1; files: Record<string, string> } {

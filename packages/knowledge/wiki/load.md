@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3349</sub>
+<sub>`api.ogt` line 3350</sub>
 
 ## Contents
 
@@ -50,7 +50,7 @@ module load {
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle. |
 | [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
-| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
+| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
@@ -99,7 +99,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3453</sub>
+<sub>`api.ogt` line 3454</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -129,7 +129,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3460</sub>
+<sub>`api.ogt` line 3461</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -157,7 +157,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3467</sub>
+<sub>`api.ogt` line 3468</sub>
 
 <a id="fn-gltf"></a>
 
@@ -192,7 +192,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3473</sub>
+<sub>`api.ogt` line 3474</sub>
 
 <a id="fn-scene"></a>
 
@@ -222,7 +222,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3482</sub>
+<sub>`api.ogt` line 3483</sub>
 
 <a id="fn-font"></a>
 
@@ -252,7 +252,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3489</sub>
+<sub>`api.ogt` line 3490</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -282,7 +282,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3496</sub>
+<sub>`api.ogt` line 3497</sub>
 
 <a id="fn-sound"></a>
 
@@ -315,7 +315,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3503</sub>
+<sub>`api.ogt` line 3504</sub>
 
 <a id="fn-lut"></a>
 
@@ -345,7 +345,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3511</sub>
+<sub>`api.ogt` line 3512</sub>
 
 <a id="fn-environment"></a>
 
@@ -375,13 +375,13 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3518</sub>
+<sub>`api.ogt` line 3519</sub>
 
 <a id="fn-emitter"></a>
 
 ### `og.load.emitter`
 
-A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
+A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
 
 ```ts
 og.load.emitter(world: World, path: string): Result<ParticleEmitter>
@@ -398,14 +398,14 @@ Binding symbol `og_load_emitter` · publish builds: kept
 
 ```ogt
 fn emitter {
-  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
+  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `fx/sparks.ogt`."
   returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture or texture array it cannot load."
 }
 ```
 
-<sub>`api.ogt` line 3525</sub>
+<sub>`api.ogt` line 3526</sub>
 
 <a id="fn-shader"></a>
 
@@ -435,7 +435,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3532</sub>
+<sub>`api.ogt` line 3533</sub>
 
 <a id="fn-texture"></a>
 
@@ -468,7 +468,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3539</sub>
+<sub>`api.ogt` line 3540</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -501,7 +501,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 3547</sub>
+<sub>`api.ogt` line 3548</sub>
 
 <a id="fn-skin"></a>
 
@@ -531,7 +531,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3555</sub>
+<sub>`api.ogt` line 3556</sub>
 
 <a id="fn-look"></a>
 
@@ -561,7 +561,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3562</sub>
+<sub>`api.ogt` line 3563</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -591,7 +591,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3569</sub>
+<sub>`api.ogt` line 3570</sub>
 
 <a id="fn-palette"></a>
 
@@ -621,7 +621,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 3576</sub>
+<sub>`api.ogt` line 3577</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -651,7 +651,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3583</sub>
+<sub>`api.ogt` line 3584</sub>
 
 <a id="fn-status"></a>
 
@@ -681,7 +681,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3590</sub>
+<sub>`api.ogt` line 3591</sub>
 
 <a id="fn-error"></a>
 
@@ -711,7 +711,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3597</sub>
+<sub>`api.ogt` line 3598</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -741,7 +741,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3604</sub>
+<sub>`api.ogt` line 3605</sub>
 
 <a id="fn-animation"></a>
 
@@ -774,7 +774,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3611</sub>
+<sub>`api.ogt` line 3612</sub>
 
 <a id="fn-rig"></a>
 
@@ -804,7 +804,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3619</sub>
+<sub>`api.ogt` line 3620</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -834,7 +834,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3626</sub>
+<sub>`api.ogt` line 3627</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -864,7 +864,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3633</sub>
+<sub>`api.ogt` line 3634</sub>
 
 ## Components, resources and events
 
@@ -887,7 +887,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3448</sub>
+<sub>`api.ogt` line 3449</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -910,7 +910,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3640</sub>
+<sub>`api.ogt` line 3641</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -935,7 +935,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3646</sub>
+<sub>`api.ogt` line 3647</sub>
 
 ## Types
 
@@ -951,7 +951,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 3355</sub>
+<sub>`api.ogt` line 3356</sub>
 
 <a id="type-Font"></a>
 
@@ -965,7 +965,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 3356</sub>
+<sub>`api.ogt` line 3357</sub>
 
 <a id="type-Sound"></a>
 
@@ -979,7 +979,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 3357</sub>
+<sub>`api.ogt` line 3358</sub>
 
 <a id="type-Skin"></a>
 
@@ -993,7 +993,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 3358</sub>
+<sub>`api.ogt` line 3359</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1007,7 +1007,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 3359</sub>
+<sub>`api.ogt` line 3360</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1032,7 +1032,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 3382</sub>
+<sub>`api.ogt` line 3383</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1058,7 +1058,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 3389</sub>
+<sub>`api.ogt` line 3390</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1083,7 +1083,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3397</sub>
+<sub>`api.ogt` line 3398</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1106,7 +1106,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3405</sub>
+<sub>`api.ogt` line 3406</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1139,7 +1139,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3412</sub>
+<sub>`api.ogt` line 3413</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1170,7 +1170,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3424</sub>
+<sub>`api.ogt` line 3425</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1201,7 +1201,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 3437</sub>
+<sub>`api.ogt` line 3438</sub>
 
 ## Column kinds
 
@@ -1222,7 +1222,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 3361</sub>
+<sub>`api.ogt` line 3362</sub>
 
 ```ogt
 column Asset {
@@ -1233,7 +1233,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 3368</sub>
+<sub>`api.ogt` line 3369</sub>
 
 ```ogt
 column Sound {
@@ -1244,4 +1244,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 3375</sub>
+<sub>`api.ogt` line 3376</sub>

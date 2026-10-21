@@ -50,8 +50,6 @@ pub const UI_STATE: &str = "og.ui";
 /// The system that plays the UI's event sounds (before og.audio, so they
 /// start in the tick of their input).
 pub const UI_SOUND: &str = "og.ui.sound";
-/// The sprite layer the UI's painter level 0 draws on: above game sprites.
-pub const UI_LAYER: i32 = 1 << 20;
 
 thread_local! {
     /// The engine whose UI frame is open (between `og.ui.begin` and `og.ui.end`).
@@ -1578,7 +1576,9 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
     frame.emit(
         &og_ui::EmitDesc {
             atlas,
-            layer: UI_LAYER,
+            // Over the game's screen layers up to og_render::UI_LAYER, under
+            // those above it (og_render::screen_layer).
+            layer: og_render::UI_OVERLAY_LAYER,
         },
         overlay,
     );

@@ -67,7 +67,7 @@ const TILED: &str = r#"{
   "layers": [
     { "type": "tilelayer", "name": "ground", "width": 4, "height": 3, "opacity": 0.5, "visible": true,
       "offsetx": 8, "offsety": 16, "parallaxx": 0.5, "parallaxy": 1,
-      "properties": [ { "name": "collision", "type": "bool", "value": true }, { "name": "z", "type": "int", "value": -5 } ],
+      "properties": [ { "name": "collision", "type": "bool", "value": true }, { "name": "z", "type": "int", "value": -5 }, { "name": "lit", "type": "bool", "value": false } ],
       "data": [2, 2147483651, 0, 0,  1073741826, 0, 0, 0,  0, 0, 0, 0] },
     { "type": "tilelayer", "name": "walls", "width": 4, "height": 3, "visible": true,
       "properties": [ { "name": "autotile", "type": "string", "value": "wall" } ],
@@ -193,11 +193,18 @@ fn tilesets_and_maps_from_three_sources_cook_and_load() {
     let g = &tm.layers[0];
     assert_eq!(&g.cells[..5], &[2, 3 | FLIP_X, 0, 0, 2 | FLIP_Y]);
     assert_eq!(
-        (g.offset, g.parallax, g.opacity, g.z, g.collision),
-        (Vec2::new(0.5, -1.0), Vec2::new(0.5, 1.0), 0.5, -5, true)
+        (g.offset, g.parallax, g.opacity, g.z, g.collision, g.lit),
+        (
+            Vec2::new(0.5, -1.0),
+            Vec2::new(0.5, 1.0),
+            0.5,
+            -5,
+            true,
+            false
+        )
     );
     let w = &tm.layers[1];
-    assert_eq!((w.terrain.as_deref(), w.z), (Some("wall"), 1));
+    assert_eq!((w.terrain.as_deref(), w.z, w.lit), (Some("wall"), 1, true));
     assert_eq!(w.cells, vec![0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1]);
     assert_eq!(
         (tm.layers[2].tileset, tm.layers[2].cells[3]),

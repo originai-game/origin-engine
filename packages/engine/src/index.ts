@@ -100,6 +100,7 @@ export const MAX_POINTERS: typeof Api.MAX_POINTERS = 5;
 export const MAX_GAMEPADS: typeof Api.MAX_GAMEPADS = 4;
 export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 256;
 export const MAX_CLUSTER_LIGHTS: typeof Api.MAX_CLUSTER_LIGHTS = 64;
+export const UI_LAYER: typeof Api.UI_LAYER = 1000;
 export const BODY_DYNAMIC: typeof Api.BODY_DYNAMIC = 0;
 export const BODY_STATIC: typeof Api.BODY_STATIC = 1;
 export const BODY_KINEMATIC: typeof Api.BODY_KINEMATIC = 2;

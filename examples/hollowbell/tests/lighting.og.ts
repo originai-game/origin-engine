@@ -1,10 +1,10 @@
 // 2D light. The village is in daylight (og.Lighting2D's ambient near 1);
-// walking into the upper hollow eases it down to the area's 0.2 and the map
-// is tinted with it (src/props.ts MapShade: og.Lighting2D lights sprites
-// but not a tilemap's layers, FINDINGS.md #9). In a frame of the
-// dark cave the pool round Wren's lantern and a torch's are far brighter
-// than the rock between; the brighter wick widens Wren's light from 4.5 m
-// to 7.
+// walking into the upper hollow eases it down to the area's 0.2, and the
+// map takes it as the sprites do (FINDINGS.md #9, fixed: og.Lighting2D now
+// lights a tilemap's layers in its range, so the map keeps its colour and
+// no tint or light-pool sprites stand in). In a frame of the dark cave the
+// map round Wren's lantern and a torch is far brighter than the rock
+// between; the brighter wick widens Wren's light from 4.5 m to 7.
 import { playtest } from "@origingame/engine/playtest";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -27,7 +27,7 @@ function lum(img: Image, cx: number, cy: number, r: number): number {
 }
 
 export default playtest({
-  name: "daylight in the village, the dark hollow, light pools round the lantern and a torch, the wick's wider light",
+  name: "daylight in the village, the dark hollow, the map lit round the lantern and a torch, the wick's wider light",
   commands: script(
     "0.3:play",
     "1.0:get:Game:village.json",
@@ -53,8 +53,8 @@ export default playtest({
     const dark = value<{ ambient: [number, number, number] }>(run, "dark.json").ambient;
     t.ok(dark[0] < 0.3 && dark[2] >= dark[0], `og.Lighting2D's ambient follows, cooler (${dark.map((c) => c.toFixed(2)).join(", ")})`);
     const tint = value<{ color: [number, number, number] }>(run, "tint.json").color;
-    t.ok(tint[0] < 0.3, `the map is tinted with it (${tint.map((c) => c.toFixed(2)).join(", ")})`);
-    // Where things are on the frame: 1280x720, the 14-cell view 3x of 224 lines, centred.
+    t.ok(tint.every((c) => c === 1), `the map keeps its colour; the light does the dark (${tint.map((c) => c.toFixed(2)).join(", ")})`);
+    // Where things are on the frame: 1280x720, the 15-cell view 3x of 240 lines (426 columns), centred.
     const img = decodePng(readFileSync(join(outDir(), "dark.png")));
     const cam = value<{ position: [number, number, number] }>(run, "camera.json").position;
     const px = 3 * 16; // screen pixels per world unit
@@ -65,7 +65,7 @@ export default playtest({
     const hero = lum(img, hx + 30, hy, 6);
     const torch = lum(img, tx, ty + 40, 6);
     const rock = lum(img, dx, dy, 6);
-    t.ok(hero > rock * 2 && torch > rock * 2, `light pools: by Wren ${hero.toFixed(0)}, under the torch ${torch.toFixed(0)}, the rock between ${rock.toFixed(0)}`);
+    t.ok(hero > rock * 2 && torch > rock * 2, `the lit map: by Wren ${hero.toFixed(0)}, under the torch ${torch.toFixed(0)}, the rock between ${rock.toFixed(0)}`);
     const wick = game(run, "wick.json");
     t.ok(wick.wick && value<{ radius: number }>(run, "light.json").radius > 6.5, `the wick widened the light (${value<{ radius: number }>(run, "light.json").radius.toFixed(2)} m)`);
   },

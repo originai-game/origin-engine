@@ -760,7 +760,11 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
                     layer,
                 });
             }
-            o.sprites.push(og_render::Sprite { clip, ..q.sprite });
+            o.sprites.push(og_render::Sprite {
+                clip,
+                layer: og_render::screen_layer(q.sprite.layer),
+                ..q.sprite
+            });
             continue;
         }
         let index = scene.sprites.len() as u32;

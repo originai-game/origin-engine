@@ -17,7 +17,7 @@
 // - Effects: one-shot emitters moved where Game.fx asks and restarted.
 
 import { og, defineSystem } from "@origingame/engine";
-import { Bell, Draw, Fx, FxKind, Flicker, Game, HEARTS, Item, Lantern, Layer, Lift, Mole, Phase, Pickup, Pool, Sound, Stone, Tuning } from "./components.ts";
+import { Bell, Draw, Fx, FxKind, Flicker, Game, HEARTS, Item, Lantern, Layer, Lift, Mole, Phase, Pickup, Sound, Stone, Tuning } from "./components.ts";
 import { fx, heal, hurtHero, pop, say } from "./feel.ts";
 import { Area, BELL_CLIP, Hazard, MOLE_CLIP, Sky, must } from "./world.ts";
 
@@ -187,13 +187,14 @@ export const Stones = defineSystem("Stones", { reads: [Game], writes: [Stone, og
 export const Flickers = defineSystem("Flickers", { reads: [Game, Flicker], writes: [og.Light2D] }, (q, time, world) => {
   const g = must(world.resource(Game));
   const s = time.elapsed;
-  void g;
+  // The lights light the map as well as the sprites now (FINDINGS.md #9, fixed): a dusk light fades out in daylight.
+  const dark = Math.max(0, Math.min(1, (1 - g.ambient) / 0.6));
   for (const a of q.archetypes()) {
     const f = a.column(Flicker);
     const light = a.column(og.Light2D);
     for (let i = 0; i < a.count; i++) {
       const p = f.phase[i]! + s * f.rate[i]!;
-      light.intensity[i] = f.base[i]! * (0.86 + 0.1 * Math.sin(p) + 0.04 * Math.sin(p * 2.7 + 1));
+      light.intensity[i] = f.base[i]! * (0.86 + 0.1 * Math.sin(p) + 0.04 * Math.sin(p * 2.7 + 1)) * (f.dusk[i] ? dark : 1);
     }
   }
 });
@@ -337,44 +338,3 @@ export const Effects = defineSystem("Effects", { writes: [Game, Fx, og.Transform
   g.fx = 0;
 });
 
-/**
- * The map in the dark: og.Lighting2D lights sprites but never a tilemap's
- * layers (FINDINGS.md #9), so the map is tinted to the ambient
- * light here, and the Pools below add the lights' glow back over it.
- */
-export const MapShade = defineSystem("MapShade", { reads: [Game], writes: [og.Tilemap], after: ["Areas"] }, (q, _time, world) => {
-  const g = must(world.resource(Game));
-  const warm = Math.min(1, Math.max(0, (g.ambient - 0.2) / 0.8));
-  for (const a of q.archetypes()) {
-    const tm = a.column(og.Tilemap);
-    for (let i = 0; i < a.count; i++) {
-      tm.color[i * 3] = g.ambient * (0.75 + 0.25 * warm);
-      tm.color[i * 3 + 1] = g.ambient * (0.75 + 0.2 * warm);
-      tm.color[i * 3 + 2] = g.ambient * (0.95 - 0.05 * warm);
-    }
-  }
-});
-
-export const Pools = defineSystem("Pools", { reads: [Game, Tuning], writes: [Pool, og.Sprite, og.Transform], after: ["Lanterns"] }, (q, _time, world) => {
-  const g = must(world.resource(Game));
-  // Pools show in the dark only: none at full daylight.
-  const dark = Math.max(0, Math.min(1, (1 - g.ambient) / 0.6));
-  for (const a of q.archetypes()) {
-    const pool = a.column(Pool);
-    const sp = a.column(og.Sprite);
-    const tr = a.column(og.Transform);
-    for (let i = 0; i < a.count; i++) {
-      const kind = pool.kind[i]!;
-      let on = 1;
-      if (kind === 1) {
-        tr.position[i * 3] = g.heroX;
-        tr.position[i * 3 + 1] = g.heroY + 0.7;
-        sp.width[i] = sp.height[i] = g.light * 1.7;
-      } else if (kind === 2) {
-        on = ((g.litMask >>> pool.index[i]!) & 1) === 1 ? 1 : 0;
-      }
-      sp.opacity[i] = pool.strength[i]! * dark * on;
-      sp.visible[i] = sp.opacity[i]! > 0.01 ? 1 : 0;
-    }
-  }
-});

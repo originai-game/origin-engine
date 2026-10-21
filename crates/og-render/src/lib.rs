@@ -123,8 +123,8 @@ pub use skin::{
 };
 pub use stylise::{
     DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
-    MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelScale, Quantize,
-    Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
+    MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelFit, PixelScale,
+    Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
@@ -2743,27 +2743,15 @@ impl Renderer {
     }
 
     /// The size the scene is drawn at this frame: the output's, or the
-    /// stylisation's logical grid (`pixel`: `height` rows, the width from
-    /// the output's aspect, both at most the output), with the whole-number
-    /// upscale and the scaled frame's offset in the output.
+    /// stylisation's logical grid ([`PixelScale::fit`]), with the
+    /// whole-number upscale and the scaled frame's offset in the output.
     fn pixel_grid(&self, pixel: Option<PixelScale>) -> ((u32, u32), u32, (u32, u32)) {
         let out = (self.out_width, self.out_height);
         let Some(p) = pixel.filter(|p| p.height > 0) else {
             return (out, 1, (0, 0));
         };
-        let h = p.height.min(out.1).max(1);
-        let w = ((h as f32 * out.0 as f32 / out.1 as f32).round() as u32).clamp(1, out.0);
-        let fit = (out.0 / w).min(out.1 / h).max(1);
-        let up = if p.upscale > 0 {
-            p.upscale.min(fit)
-        } else {
-            fit
-        };
-        let offset = (
-            out.0.saturating_sub(w * up) / 2,
-            out.1.saturating_sub(h * up) / 2,
-        );
-        ((w, h), up, offset)
+        let f = p.fit(out);
+        ((f.width, f.height), f.upscale, f.offset)
     }
 
     /// Draws the scene at `width` × `height` from now on (the output keeps

@@ -13,6 +13,16 @@ and every call works (or answers `unavailable`) everywhere, so the game
 never branches on where it runs. The API is in `reference/platform.md`;
 the platform's `og-platform` skill is the Player and readiness side.
 
+## What works
+
+Hollowbell (`examples/hollowbell`, written from this package alone) keeps
+its run in the store (`og.platform.storeSet` at the revision it read, a
+conflict read again and written back) and proves Continue across a
+relaunch with a `store: "keep"` playtest; Lantern Vale
+(`examples/lantern-vale`) keeps its settings through
+`og.platform.saveSettings`. The relaunch worked the first time it was
+asked for as §4 says.
+
 ## 1. Requests, answered later
 
 Every call returns a request number at once; the answer arrives at the

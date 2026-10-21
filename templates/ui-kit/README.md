@@ -138,7 +138,11 @@ subsets the Noto fonts to exactly the tables' characters (rerun it after
 changing a string; the sources are noto-cjk's `Sans/OTC/NotoSansCJK-Regular.ttc`
 2.004 and NotoSansArabic v2.012's `googlefonts/variable/NotoSansArabic[wdth,wght].ttf`,
 which reproduce the committed subsets but for `head.modified`), leaving the greeting out of zh-CN's and ja's and
-`menu.mixed` out of every locale's. `tests/locales.og.ts` compares each of
+`menu.mixed` out of every locale's. Its subsets hold the kit's strings only;
+a game makes its own from a whole face with `tools/subset-font.py <source
+font> <out font> [--locale <tag>] [--cjk-only]` (og-i18n §3), copied into
+the game's `tools/`: it reads the game's tables, writes the subset and its
+import settings, and names every character the source lacks. `tests/locales.og.ts` compares each of
 the three screens in each locale with
 `crates/og-ui/references/<tier>/kit-locale-*`.
 

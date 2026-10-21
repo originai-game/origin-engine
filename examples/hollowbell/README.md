@@ -50,8 +50,8 @@ the texture arrays, the particles, the sounds and the music.
 | A Tiled map | `maps/hollow.tmj` (96 x 48 cells of 16 px, one cell one metre) over `tiles/hollow.ogt`: far hills on Tiled's `parallaxx`/`parallaxy` and `repeat x`, the cave's back wall, the rock as an auto-tiled blob47 terrain whose solid tiles become merged static colliders, planks, animated torches, and 100-odd objects the game spawns from | `tools/make-assets.ts` `tiledMap`, `src/world.ts` |
 | 2D physics | Wren on `og.PlatformerController` (coyote time, jump buffer, variable height, one-way planks on their own collision layer with Down to drop through, an air jump from the cloak, riding the lift); the lift a kinematic body; stones as dynamic bodies the mallet knocks about; enemies as kinematic sensor bodies; the strike an `og.physics.overlap` of the mallet's box on the enemy and stone layers | `src/hero.ts`, `src/props.ts`, `src/enemies.ts` |
 | Flipbooks | Wren (idle, run with `step` events, jump, fall, attack with its `hit` event, hurt), the beetle (walk, wind-up, dash, hurt), the moth, the mole, the bell (`toll` events); faced with `flipX`, the run's rate matched to the speed | `sprites/*.ogt`, `src/hero.ts`, `src/enemies.ts` |
-| 2D light and shadow | `og.Lighting2D` with the ambient eased per area (daylight in the village, 0.14 in the deep hollow), `og.Light2D` on Wren (wider with the wick), the torches, crystals, lanterns, chimes and the mole's candle; `og.Occluder2D` rocks and `castShadow` enemies; the map tinted and light pools added over it, as the 2D light does not reach tile layers (FINDINGS #9) | `src/world.ts`, `src/props.ts` |
-| Looks, the pixel grid and a palette | `GameDesc.look` applies `looks/hollowbell.ogt` (extends `16bit-pixel`: the 224-line grid, pixel snap, the game's own 32-colour `.hex` palette through a Bayer dither, the 2D glow, a vignette); `og.render.applyLook` swaps in `looks/dawn.ogt` (extends `8bit-pixel` with the engine's `@palettes/handheld4`) for the results | `assets/looks/` |
+| 2D light and shadow | `og.Lighting2D` with the ambient eased per area (daylight in the village, 0.14 in the deep hollow), `og.Light2D` on Wren (wider with the wick), the torches, crystals, lanterns, chimes and the mole's candle; `og.Occluder2D` rocks and `castShadow` enemies; the map's tile layers lit like the sprites (the cave's back wall drawn as it looks in full light, the dark the ambient's), Wren's lantern fading out in daylight (FINDINGS #9, fixed in the engine: the map was tinted and light-pool sprites added over it) | `src/world.ts`, `src/props.ts` |
+| Looks, the pixel grid and a palette | `GameDesc.look` applies `looks/hollowbell.ogt` (extends `16bit-pixel` on a 240-line grid, 3x at 720p (FINDINGS #7, fixed), pixel snap, the game's own 32-colour `.hex` palette through a Bayer dither, the 2D glow, a vignette); `og.render.applyLook` swaps in `looks/dawn.ogt` (extends `8bit-pixel` with the engine's `@palettes/handheld4`) for the results | `assets/looks/` |
 | Texture arrays | the pickups (glimmers spinning, chimes shimmering, hearts, the lanterns) are world `og.Sprite`s on layers of `sprites/items.ogt`; the HUD's chimes are screen sprites (`og.render.sprite` with `screen`) of the same array; the caves' motes are a particle emitter drawing `fx/motes-array.ogt`'s layers at random | `src/props.ts`, `src/ui.ts`, `fx/motes.ogt` |
 | Particles | hit sparks, landing dust, a chime's fountain, the gloam's burst (one-shot emitters moved and restarted by `startTick`), torch embers, cave motes | `fx/*.ogt`, `src/props.ts` `Effects` |
 | Feel | strikes: hit stop, a white flash and squash, knock-back, shake and kick, a floating number, sparks and a sound; hurts: a red flash, knock-back, blinking, hit stop; the gloam's fall: a long stop, slow motion for 40 real ticks, a punch; jumps stretch, landings squash and puff; swings buffered; a telegraphed charge | `src/feel.ts`, `src/enemies.ts`, `src/hero.ts` |
@@ -76,7 +76,7 @@ the texture arrays, the particles, the sounds and the music.
 | `name.og.ts` | New game's dialog: a name typed and composed through an input method into a `str` field, the field named by its label, Begin |
 | `win.og.ts` | the bell refuses two chimes and rings with three (tolls from flipbook events); the results under the dawn look with a new best in the store; Play again under the game's look |
 | `locales.og.ts` | the title, HUD, pause, talk, shop and results in Chinese, then English |
-| `lighting.og.ts` | daylight in the village, the dark hollow, light pools brighter than the rock in a frame, the wick's wider light |
+| `lighting.og.ts` | daylight in the village, the dark hollow, the map lit round the lantern and a torch, brighter than the rock in a frame, the wick's wider light |
 | `music.og.ts` | the music cooked in chunks, looping on its bus and heard from the title; the mix unclipped in play |
 | `replay.og.ts` | a session with strikes, a touch, the lift, the gloam's slow motion, a save and the bell, run twice in fresh processes, ends on one world hash |
 | `frames.og.ts` | nine reference frames at 1280 x 720 (`references/metal/`): title, play, a strike, the talk, the shop, pause, the settings in Chinese, the gloam, the results |
@@ -108,12 +108,12 @@ saves, the score, the look and the accessibility counts.
 `src/components.ts` the state; `src/world.ts` the hollow built from the
 map; `src/hero.ts` Wren (`Control`); `src/enemies.ts` the creatures;
 `src/props.ts` pickups, lanterns, the lift, stones, lights, the bell, the
-mole, the pit, areas, the map's shade, light pools, the sky, effects;
+mole, the pit, areas, the sky, effects;
 `src/ui.ts` the screens; `src/save.ts` the store; `src/sound.ts` the
 voices and music; `src/feel.ts` shared juice; `src/main.ts` the game, its
 commands and facts. Systems in tick order: `og.systems.cameras`, Ui,
 Control, Enemies, Pickups, Lanterns, Bells, Moles, Lifts, Stones, Hazards,
-Areas, MapShade, Pools, Flickers, Backdrop, Effects, Voices.
+Areas, Flickers, Backdrop, Effects, Voices.
 
 ## The map
 
