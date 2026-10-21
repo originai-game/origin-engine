@@ -88,6 +88,18 @@ primary button labels, FINDINGS #20, since fixed in the pack), feel 92
 frame time 72, step about 7 ms median and 10–12 ms p95, render about
 3.3 ms).
 
+**Frame time** (wave 12, `tests/evidence/P4/perf-games/hollowbell.md`,
+measured on a machine at a load average of about 23): the 600-tick play
+run's step 1.09 ms median and 2.85 ms p95 and render 1.14 / 2.56 on the
+release addon, 3.80 / 9.62 and 3.12 / 6.61 on the dev one (`og run .
+--json` prints them, with every system's mean). The engine's share
+(og.i18n.t copying its tables, each sprite decoded to JSON a frame) is
+gone; what is left is the game's: the `Ui` system (the HUD and screens
+rebuilt each tick, 0.28 ms release, 0.91 dev) leads, then `Control`.
+Building only the screen that is showing, and translating a HUD label
+when its value changes rather than every tick, is where a heavier HUD
+would save (og-game §14).
+
 ## Commands (for scripts and agents)
 
 | Action | Does |

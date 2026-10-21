@@ -71,6 +71,21 @@ after a string table changes.
 | `replay.og.ts` | a session with all of the above replays to the same hash |
 | `frames.og.ts` | seven reference frames at 1280 x 720 (`references/metal/`) |
 
+**Frame time** (wave 12, `tests/evidence/P4/perf-games/lantern-vale.md`,
+on a machine at a load average of about 23): the 600-tick play run's
+step is 1.28 ms median and 3.08 ms p95 on the release addon (4.12 / 9.33
+dev); the render is the GPU's time for the look, 3 to 7 ms median there
+on a GPU shared with a simulator. Turning the look's features off one at
+a time, bloom is about half of it (6.1 to 3.5 ms median) and auto
+exposure the next (to 5.1); all five of bloom, auto exposure, ink, fog
+and the vignette off, 1.6 ms. A lower `bloomIntensity` does not make
+bloom cheaper; a second look without it, applied with
+`og.render.applyLook` where the GPU is small, does (og-game §14 and
+§15). On the step, `Slimes` and `Hero` read and write each slime's and
+rock's components with `world.get` and `world.set` every tick (8 % of a
+dev frame in those calls); one query over the slimes' columns is the
+og-game §14 way.
+
 ## Commands (for scripts and agents)
 
 | Action | Does |
