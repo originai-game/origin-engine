@@ -468,6 +468,46 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 12, render-audio-3: the mesh flash on the instance record, parented audio (5bedf86)
+
+Rows 85 and 86. Merged after main's e7d6cb5e.
+
+- 7ab860a0, row 85: a flashing `og.Mesh` puts its `flash` and `flashColor`
+  into its instance record (the one `og.Model` uses since 5bbf4909), so
+  a flashing mesh is one draw with its unflashed twins and the 16-level
+  material copies are gone; the amount is continuous, the colour 8 bits
+  per channel, `og.tween.flash` unchanged for callers (`og.Mesh` has no
+  tint, so none was added). The copies had a second defect: each was
+  made once and kept its material as it was then, so a material updated
+  mid-flash (a dissolve) flashed stale. `crates/og-runtime/tests/
+  mesh_flash.rs` fails on the old code. A scripted frame of fx-showcase's
+  stylised station with three flashes against the old path: the rim
+  sphere at 0.5 within 1/255 (an old level), the toon sphere at 0.3
+  within 2/255 (against the old 0.3125: the continuous amount is the
+  intended one), the dissolve box correctly fully dissolved where the
+  stale copy drew white fragments; whole frame RMSE 0.0045. No og-tests
+  reference moves (those scenes never go through `og.Mesh`); no template
+  or example frame should (topdown and the archetypes flash sprites,
+  Kestrel flashes models, fx-showcase a material); Kestrel and topdown
+  at RMSE 0 or near, fx-showcase within tolerance.
+- f89f1885, row 86: sources, the listener and reverb zones are placed at
+  their `og.Transform` composed down `og.Parent` (source gain, pan,
+  distance dulling and the occlusion ray, the listener's position and
+  rotation, zone weights), through one helper, `og_core::math::world_pose`,
+  that `og_physics::world_pose` keeps calling in the same order (physics
+  bit-for-bit unchanged); og-audio mirrors `og.Parent` through a new
+  query and composes nothing when nothing is parented. Tests in
+  `crates/og-audio/tests/parented.rs` (a source on a moving parent, a
+  listener under a turned rig, a scaled zone under a parent; all fail
+  with the old reading) and a `world_pose` test in og-core. The og-audio
+  README's owed line closed; og-audio §6. A game's hash moves only with
+  parented audio (none of the templates or examples has any); a bare
+  og-audio world registers one more type.
+- Left out: the browser tiers not checked for the mesh flash (the wave's
+  end); rows 85 and 86 closed here.
+
+Functional lane on the merge: see the wave 12 gate section.
+
 ## Wave 11, runtime-ui-2: typed resource handles, borrows by view, save slots, focus, grids, polish's ink (ce93d34)
 
 From The Kestrel Stair's findings. Merged at ce93d34b (a fast-forward).
@@ -4254,8 +4294,8 @@ resource only the owner can give.
 | 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open: the first real run, started at a91e6139, stopped in its cross-build stage (it holds both gate locks for the whole run, and wave 11's merges would have waited); it is in progress at wave 11's end, at the merged tree (Main gate, wave 11) |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
 | 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | open |
-| 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | open |
-| 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | open |
+| 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
+| 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
 
 ## 0. Rules that shape the plan
 
