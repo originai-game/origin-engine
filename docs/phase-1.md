@@ -110,6 +110,22 @@ perf-games. The round sections below have each.
   suites after it) and main was pushed at e3a7ac9d. shadow-flags'
   merge and lane follow, then this wave's `--all` and web-reference.
 
+**The day's wrap-up (2026-10-22, main at 0e0d71af):** the kit-2d merge
+is the last of the day (its lane passed in 95 s after the package's
+test matchers gained `toBeLessThanOrEqual` and `toMatchObject`;
+20954c20 re-recorded the level select's frames). Three streams were
+stopped mid-way at the owner's request and their work committed as WIP
+on their branches, pushed to origin: `kit-words` (the kit HUDs' words,
+the kit's tables and subsets, Meridian Loop on the new HUD fields and
+retuned to the vehicle defaults; Meridian Loop's `ghost`, `lap`,
+`rerun`, `locales` and `frames` playtests fail on main until it lands),
+`platformer-2d` (Brasswick's runtime findings 6, 5, 3, 13, 8, 7, 2, 14,
+1) and `dogfood-7` (a local-multiplayer party game, begun). `perf-2`
+stays parked. Still owed at this point: the wave's end (`--all` and
+web-reference at the last merge), Brasswick's and Meridian Loop's
+browser frames on both tiers and the published-page harness on the
+new games, and the rounds for the three stopped streams.
+
 **Wave-end figures (waves 12 and 13 so far, the measure worktree at
 d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
 benchmarks, both set aside on 2026-10-22):**
