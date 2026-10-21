@@ -159,8 +159,9 @@ pub(crate) struct RenderState {
     pub runtime_fonts: BTreeMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
-    /// A frame drew text its fonts lack (warned once).
-    pub missing_warned: bool,
+    /// The characters a frame drew that their fonts lack, each warned of
+    /// once, on the tick it was first drawn.
+    pub missing_warned: std::collections::BTreeSet<char>,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
@@ -198,7 +199,7 @@ impl RenderState {
             ui_pages: BTreeMap::new(),
             runtime_fonts: BTreeMap::new(),
             notes: Vec::new(),
-            missing_warned: false,
+            missing_warned: Default::default(),
             feel: Default::default(),
             atmo: Default::default(),
             env: Default::default(),

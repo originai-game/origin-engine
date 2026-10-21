@@ -342,3 +342,86 @@ fn generate_tangents_follows_the_uvs() {
     assert_eq!(kept.vertices[0].tangent, [0.0, 1.0, 0.0, 1.0]);
     assert_eq!(kept.vertices[1].tangent, [1.0, 0.0, 0.0, 1.0]);
 }
+
+/// ground-grid (meridian-loop #15): og.render.planeGeometry's `uvRepeat`
+/// tiles a texture across a 1,600 m ground, a grid line every 10 m, the
+/// posts on them every 10 m too. Without the repeat (1) the one tile is
+/// stretched over the whole plane and no line is in view.
+#[test]
+fn ground_grid_repeats_every_10_m() {
+    let report = match gfx::check("ground-grid", &out_dir()) {
+        Ok(r) => r,
+        Err(e) => panic!("{e}"),
+    };
+    println!("{report}");
+    let tiled = frame(&scenes::ground_grid(160.0));
+    let stretched = frame(&scenes::ground_grid(1.0));
+    let (outliers, rmse) = diff(&tiled, &stretched, 24);
+    assert!(
+        outliers > (tiled.width * tiled.height / 20) as usize,
+        "the repeat draws lines the stretched tile has not: {outliers} outliers, RMSE {rmse}"
+    );
+}
+
+/// The outline's cyan: bright green and blue, well above the red.
+fn is_cyan(p: &[u8]) -> bool {
+    p[1] > 180 && p[2] > 180 && p[1] as i32 - p[0] as i32 > 40
+}
+
+/// Pixels of the outline's cyan in the ground-only part of
+/// `stylise-outline-ground`'s frame: its left 40 %,
+/// from 6 rows under the horizon (the first row from the top whose left
+/// column is no longer the background) to the bottom.
+fn cyan_on_the_ground(img: &RgbaImage) -> (usize, usize) {
+    let px = |x: u32, y: u32| &img.pixels[((y * img.width + x) * 4) as usize..][..3];
+    let horizon = (0..img.height)
+        .find(|&y| px(4, y) != px(4, 0))
+        .expect("the ground is in view");
+    let (mut cyan, mut all) = (0, 0);
+    for y in (horizon + 6)..img.height {
+        for x in 0..img.width * 2 / 5 {
+            let p = px(x, y);
+            all += 1;
+            if is_cyan(p) {
+                cyan += 1;
+            }
+        }
+    }
+    (cyan, all)
+}
+
+/// stylise-outline-ground (meridian-loop #7): neon-vector's outline over a
+/// 1,600 m ground at a grazing angle is drawn only where something ends:
+/// with `outlineDistance` 120 the ground under a chase camera was one cyan
+/// wash, at a constant 1.5 px a pale band some 30 px tall along the
+/// horizon. Now neither: no cyan on the plane-only part of the ground. The
+/// barriers keep their lines.
+#[test]
+fn a_large_ground_keeps_its_outline_only_where_it_ends() {
+    let report = match gfx::check("stylise-outline-ground", &out_dir()) {
+        Ok(r) => r,
+        Err(e) => panic!("{e}"),
+    };
+    println!("{report}");
+    for (width, distance) in [(1.4, 120.0), (1.5, 0.0)] {
+        let img = frame(&og_tests::stylise_scenes::outline_ground_scene(
+            width, distance,
+        ));
+        let (cyan, all) = cyan_on_the_ground(&img);
+        assert!(
+            cyan * 1000 < all,
+            "outlineDistance {distance}: {cyan} of {all} ground pixels are outline"
+        );
+        let barriers = img
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| is_cyan(&p[..]))
+            .count();
+        assert!(
+            barriers > 2000,
+            "the barriers are lined: {barriers} cyan pixels"
+        );
+    }
+}

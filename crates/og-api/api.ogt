@@ -1817,7 +1817,7 @@ module render {
       min 0
     }
     field outlineColor Color "This material's outline colour (linear)."
-    field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's." {
+    field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette; a face seen at a grazing angle (a box's side nearly edge-on, a large ground plane) is not lined across, only where it ends. Creases inside an object are Stylise.inkDepth's." {
       min 0
       max 31
     }
@@ -2621,12 +2621,12 @@ module render {
     field outlineColor Color "The outline colour for materials without their own (linear)." {
       default 0.02 0.02 0.03
     }
-    field outlineWidth f32 "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean." {
+    field outlineWidth f32 "The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean. A surface seen at a grazing angle is lined only where it ends: a 1,600 m ground under a chase camera keeps its far edge and nothing else (no band along the horizon)." {
       min 0
       max 31
       tunable true
     }
-    field outlineDistance f32 "The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide." {
+    field outlineDistance f32 "The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide." {
       min 0
       unit m
     }
@@ -3208,6 +3208,9 @@ module render {
       min 0
       unit m
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
   }
 
   struct PlaneGeometryDesc {
@@ -3222,6 +3225,9 @@ module render {
       default 1
       min 0
       unit m
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
     }
   }
 
@@ -3241,26 +3247,29 @@ module render {
       default 16
       min 2
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160." {
+      default 1 1
+    }
   }
 
   fn boxGeometry {
     doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
     param world World "The world whose renderer owns the geometry."
-    param desc BoxGeometryDesc "Its extents."
+    param desc BoxGeometryDesc "Its extents and texture repeat."
     returns Result.Geometry
   }
 
   fn planeGeometry {
     doc "Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too."
     param world World "The world whose renderer owns the geometry."
-    param desc PlaneGeometryDesc "Its extents."
+    param desc PlaneGeometryDesc "Its extents and texture repeat."
     returns Result.Geometry
   }
 
   fn sphereGeometry {
     doc "Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh)."
     param world World "The world whose renderer owns the geometry."
-    param desc SphereGeometryDesc "Its radius and tessellation."
+    param desc SphereGeometryDesc "Its radius, tessellation and texture repeat."
     returns Result.Geometry
   }
 
@@ -8180,6 +8189,9 @@ module ui {
     field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false." {
       optional true
     }
+    field covered UiRect "Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back." {
+      optional true
+    }
     field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
   }
 
@@ -9287,7 +9299,7 @@ module ui {
   }
 
   fn back {
-    doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it."
+    doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through."
     returns bool
   }
 
@@ -9784,8 +9796,16 @@ module ui {
     }
   }
 
+  struct RaceSplit {
+    doc "One split of a racing HUD: a sector's time and its delta against the reference (the record's split)."
+    desc true
+    field label String "Its name (`S1`, a sector's), the game's own word."
+    field time Option.f32 "Its time in seconds, shown as m:ss.mmm; null is not yet run (a dash)."
+    field delta Option.f32 "Against the reference in seconds, shown signed (`-0.412`, `+1.050`, with the ASCII minus every pack draws): negative is ahead, in success ink; positive behind, in danger ink; null shows none."
+  }
+
   struct RacingHudDesc {
-    doc "A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map."
+    doc "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits."
     desc true
     field speed f32 "The speed, in `unit`."
     field maxSpeed f32 "The dial's top." {
@@ -9804,16 +9824,42 @@ module ui {
     field position u32 "The player's place." {
       default 1
     }
-    field racers u32 "Cars in the race." {
+    field racers u32 "Cars in the race; 0 hides the place (a time trial)." {
       default 8
     }
     field time f32 "The race time in seconds."
+    field delta Option.f32 "A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it."
     field best Option.f32 "The best lap in seconds; null hides it."
-    field boost f32 "The boost meter." {
+    field splits List.RaceSplit "Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none."
+    field boost f32 "The boost meter, 0 to 1." {
       unit ratio
+    }
+    field boostMeter bool "Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false." {
+      default true
     }
     field map Option.MinimapDesc "A mini-map; null is none."
     field touch bool "Show touch controls (steering arrows, Brake, Boost) on phones and tablets."
+    field lapLabel String "The caption under the lap. Every word of the HUD is a field with its English default (unit too): a localised game passes its string table's (og.i18n.t)." {
+      default "lap"
+    }
+    field bestLabel String "The best lap's line; `{best}` is replaced by the best lap as m:ss.mmm. A localised game passes its string table's, with `{best}` in it." {
+      default "Best {best}"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
+    field boostLabel String "The boost meter's label and the touch Boost pedal." {
+      default "Boost"
+    }
+    field brakeLabel String "The touch Brake pedal." {
+      default "Brake"
+    }
+    field leftLabel String "The touch steering arrow left." {
+      default "Left"
+    }
+    field rightLabel String "The touch steering arrow right." {
+      default "Right"
+    }
   }
 
   struct DialogueLine {
@@ -9977,15 +10023,23 @@ module ui {
     field value String "The value, as shown."
   }
 
+  enum ScoreFormat {
+    doc "How a results screen shows its score and best."
+    variant points "A whole number grouped with commas (12,840), counted up from 0; the best is the higher."
+    variant time "Seconds as m:ss.mmm (1:36.233), counted up from 0:00.000: a time trial's result. Lower is better: the best is the lower, and a best of 0 is none (no best line)."
+  }
+
   struct ResultsDesc {
-    doc "A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook."
+    doc "A results screen: the title, stars that land one by one, the score counting up (points, or a time with `format` time) under its label, the best (a badge for a new best), stats, actions and a share hook."
     desc true
     field open bool "Whether it is shown."
     field title String "Its title." {
       default "Level complete"
     }
-    field score f64 "The score."
-    field best f64 "The best score."
+    field score f64 "The score: points, or seconds with `format` time."
+    field best f64 "The best score: points, or seconds with `format` time (0 is none)."
+    field format ScoreFormat "How the score and best are shown: points (the default) or a time."
+    field scoreLabel String "A caption over the score (`Total time`, `Score`); empty is none. A localised game passes its string table's."
     field newBest bool "This run set the best."
     field stars u32 "Stars earned."
     field maxStars u32 "Stars possible; 0 hides them." {
@@ -9995,7 +10049,7 @@ module ui {
     field actions List.MenuItem "The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`)."
     field shareText String "Text a share would post; empty hides Share."
     field onShare Option.UiAction "Called with the share text when Share is pressed (the shell posts it)."
-    field bestLabel String "The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it." {
+    field bestLabel String "The best score's line; `{best}` is replaced by the best score, formatted as the score is (m:ss.mmm with `format` time). A localised game passes its string table's (og.i18n.t), with `{best}` in it." {
       default "Best {best}"
     }
     field newBestLabel String "The badge a new best shows." {
@@ -10182,7 +10236,7 @@ module ui {
     doc "The racing HUD template."
     host false
     param id String "Its id."
-    param desc RacingHudDesc "Speed, gear, laps, place, times and boost."
+    param desc RacingHudDesc "Speed, gear, laps, place, times, splits, boost and its words."
     returns HudResult
   }
 
@@ -10219,7 +10273,7 @@ module ui {
   }
 
   fn resultsScreen {
-    doc "The results template: stars, the score counting up, the best, stats, actions and Share."
+    doc "The results template: stars, the score (points or a time) counting up under its label, the best, stats, actions and Share."
     host false
     param id String "Its id."
     param desc ResultsDesc "Score, stars, stats and actions."

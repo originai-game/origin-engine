@@ -211,29 +211,6 @@ fn kerning(face: &ttf_parser::Face, glyphs: &[(u32, ttf_parser::GlyphId)]) -> Ve
     out
 }
 
-/// The code points a charset word names.
-// A charset is a list of ranges and some charsets are one range: clippy's
-// single_range_in_vec_init reads `vec![a..=b]` as a mistaken `(a..=b).collect()`.
-#[allow(clippy::single_range_in_vec_init)]
-fn charset(word: &str) -> Option<Vec<std::ops::RangeInclusive<u32>>> {
-    Some(match word {
-        "ascii" => vec![0x20..=0x7e],
-        "latin" => vec![0x20..=0x7e, 0xa0..=0xff],
-        "punct" => vec![0x2000..=0x206f],
-        "cjk-punct" => vec![0x3000..=0x303f, 0xff00..=0xffef],
-        "kana" => vec![0x3040..=0x30ff],
-        "hangul" => vec![0x1100..=0x11ff, 0x3130..=0x318f, 0xac00..=0xd7af],
-        "arabic" => vec![
-            0x0600..=0x06ff,
-            0x0750..=0x077f,
-            0xfb50..=0xfdff,
-            0xfe70..=0xfeff,
-        ],
-        "all" => vec![0..=0x10ffff],
-        _ => return None,
-    })
-}
-
 struct Glyph {
     codepoint: u32,
     advance: f32,
@@ -352,7 +329,7 @@ pub fn cook(
     in_font.dedup();
     let mut wanted: Vec<u32> = Vec::new();
     for word in &s.charset {
-        let ranges = charset(word).ok_or_else(|| {
+        let ranges = crate::format::charset(word).ok_or_else(|| {
             CookError(format!(
                 "unknown charset '{word}' (known: ascii, latin, punct, cjk-punct, kana, hangul, arabic, all)"
             ))

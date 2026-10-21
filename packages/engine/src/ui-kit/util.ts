@@ -65,6 +65,14 @@ export function clock(seconds: number, millis = false): string {
   return millis ? `${head}.${Math.floor((rest - whole) * 1000).toString().padStart(3, "0")}` : head;
 }
 
+/** A finished time as m:ss.mmm, cut to the millisecond as race timing is, but never a millisecond short by a float's last bit (96.233 s is 1:36.233, where 96.233 * 1000 is 96232.99999999999); negative is 0:00.000. */
+export function lapTime(seconds: number): string {
+  const ms = Math.floor(Math.max(0, seconds) * 1000 + 1e-6);
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor(ms / 1000) % 60;
+  return `${m}:${s.toString().padStart(2, "0")}.${(ms % 1000).toString().padStart(3, "0")}`;
+}
+
 /** A HUD capsule: a translucent dark pill (material-thick) that keeps text legible over any art. */
 export function capsule(id: string, build: () => void, desc: { gap?: number; padX?: number; height?: number } = {}): Api.Response {
   const { t } = frame();

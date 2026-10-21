@@ -82,6 +82,75 @@ the slot's manifest last, so a save cut short leaves the last one whole,
 and read it back with `og.platform.loadSlot` (og-game §17, og-platform-sdk
 §2).
 
+### Recording, replaying and ghosts
+
+The engine has no in-game recorder: determinism is the recorder. The same
+world and the same inputs give the same run to the tick, so a game records
+its own inputs and replays them. Three things are called "replay": the
+probe's and playtests' re-runs (`og run --commands`, `--seed`: tests,
+og-build §4), a **watch replay** (the player's run driven again) and a
+**ghost** (a past run drawn beside the player). The last two are game code;
+examples/meridian-loop does both (`src/replay.ts`, `src/tape.ts`,
+`src/tapes.ts`, `src/ghost.ts`; `tests/replay.og.ts` checks the replay
+crosses the line on the race's own ticks).
+
+Watch replay: snapshot the start, tape the inputs, restore and feed the tape.
+
+```ts
+// 1. The start, taken by the FIRST system of a tick (later in a tick, the
+//    restored world skips the rest of that tick and runs a different race).
+r.replayMark = true;                       // saved set: the restored world knows it is a replay
+const snap = world.snapshot();
+r.replayMark = false;
+const asked = snap.ok ? og.platform.saveSlot(world, { slot: "replay", text: snap.value }) : snap;
+if (asked.ok) r.replaySave = asked.value;  // its answer comes on a later tick (og.platform.result)
+
+// 2. Every tick: the intent drives the car only through its quantised code,
+//    live and replayed alike, so the tape reproduces it exactly.
+const code = r.replaying ? codeAt(tape, r.runLen) : encode({ steer, throttle, brake });
+const i = decode(code);                     // steer 33 steps, throttle 17, brake 5: 12 bits
+world.set(car, og.Vehicle, { steer: i.steer, throttle: i.throttle, brake: i.brake });
+if (!r.replaying) putCode(tape, r.runLen, code);   // two characters a tick
+r.runLen += 1;
+
+// 3. At the finish: the tape beside the start.
+og.platform.storeSet(world, { key: "replay.tape", value: { ticks: r.runLen, inputs: tapeText } });
+
+// 4. Watch replay: loadSlot, then world.restore(text) when it answers (it
+//    applies when the tick ends). The next tick sees replayMark set: clear
+//    it, set replaying, read "replay.tape" back, feed it from tick 0.
+```
+
+Keep the tape and the replay's flags in components and resources (a
+restore rolls back everything else). A component has no array field and a
+`str` field holds at most 4,096 bytes, so a tape of a few thousand ticks
+is cut into `str` chunks, one entity each, written through the column's
+bytes by the system that owns them (§4). The start is the whole world:
+triangle-mesh colliders make it large (a 956 m circuit's world is 400 KB),
+so it goes through `saveSlot`, which spreads it over the store's keys.
+Request numbers are not carried across a restore: ask the store again
+after it.
+
+A ghost: record poses, draw a model. While a lap runs, tape the car's pose
+every second tick (position and yaw, pitch, roll: 15 characters); from the
+next lap draw a model with no body where the best lap's car was at the
+same time into its lap, between the two poses around it:
+
+```ts
+if (into % 2 === 0) putPose(cur, into / 2, { ...car.position, ...euler(car.quaternion) });
+const f = into / 2, i0 = Math.floor(f), u = f - i0;
+const a = poseAt(best, i0), b = poseAt(best, i0 + 1);
+world.set(ghost, og.Transform, {
+  position: { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, z: a.z + (b.z - a.z) * u },
+  quaternion: quat(lerpAngle(a.yaw, b.yaw, u), lerpAngle(a.pitch, b.pitch, u), lerpAngle(a.roll, b.roll, u)),
+});
+```
+
+Do not re-drive a second physics body from the tape for a ghost: it takes
+part in the simulation the player drives in (a second og.Vehicle's wheel
+rays land on whatever collider is under them, the player's car included),
+so the player's run is no longer the one taped.
+
 ## 3. Every failure is a value
 
 Engine calls that can fail return `Result<T>`: `{ ok: true, value }` or

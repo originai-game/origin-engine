@@ -61,12 +61,12 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | A shooter HUD | `og.ui.shooterHud(id, { health, armor, ammo, reserve, abilities, map, touch })` | `paused`, `action` (ability id, `fire`), stick |
 | A puzzle HUD | `og.ui.puzzleHud(id, { level, score, target, stars, moves, timeLeft })` | `paused` |
 | An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators, tapLabel })` | `action: "tap"` or `"buy:<id>"` |
-| A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, time, best, boost, map, touch })` | `paused`, steering, `held` |
+| A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, racers, time, delta, best, splits, boost, map, touch })` (a time trial: `racers: 0` hides the place, `boostMeter: false` the meter, `delta` and `splits: [{ label, time, delta }]` show its sectors; the words `lapLabel`, `bestLabel`, `pauseLabel`, `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`, `unit` from the string table, og-i18n §2) | `paused`, steering, `held` |
 | Dialogue or a cutscene | `og.ui.cutscene(id, { open, lines, index })` | the next `index`, `finished`, `skipped` |
 | A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
 | An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
 | Level select | `og.ui.levelSelect(id, { levels })` | `chosen`, `closed` |
-| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2) | `selected` (`retry`, `next`, `menu`, `share`) |
+| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, scoreLabel, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2); a time trial passes `format: "time"` with the score and best in seconds: the headline counts up as m:ss.mmm (1:36.233) and the lower time is the best | `selected` (`retry`, `next`, `menu`, `share`) |
 | A leaderboard | `og.ui.leaderboardScreen(id, { scopes, entries, loading, error })` | `scope`, `changed`, `retry`, `closed` |
 | Onboarding | `og.ui.tutorialOverlay(id, { open, steps, index })` (each step names an element id) | the next `index`, `finished`, `skipped` |
 | Loading | `og.ui.loadingScreen(id, { title, progress, tips })` | nothing |
@@ -197,7 +197,11 @@ for tests.
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise
-`og.ui.back()` answers true once (open pause on it). A gameplay HUD whose keys
+`og.ui.back()` answers true once (open pause on it). While a dialog or menu
+is open `og.ui.back()` answers false even when asked before the dialog is
+built that tick, so a HUD drawn under pause or the settings never takes the
+Back that closes them (a locked dialog, which Back does not close, lets it
+through). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
 dialogs turn navigation back on while open. What opens takes the focus:
 a dialog (every modal template: pause, settings, shop, results, confirm)
@@ -230,6 +234,13 @@ game uses; a scroll list cuts its rows at the edge per pixel.
 
 Anchored groups sit inside the safe area (notch, home indicator) at
 `topLeft` … `bottomRight` or `center`, inset by the density's gutter.
+They also keep out of the host's own control over the canvas: on a
+published page the web shell's round Back to the Portal sits top left
+(about 12, 12 to 52, 52 CSS px) and says where in
+`og.ui.frameViewport().covered`, so a group it would overlap moves along
+its edge past it (the racing HUD's place and lap to its right). A game
+drawing its own top-left corner reads `covered` the same way; preview it
+with `og.ui.previewViewport(world, { ..., covered: { x: 12, y: 12, width: 40, height: 40 } })`.
 `og.ui.frameViewport().breakpoint` is `phonePortrait`, `phoneLandscape`,
 `tablet` or `desktop`; templates rearrange themselves by it (tabs become a
 select, side panels move under, touch controls appear when `touch` is set).

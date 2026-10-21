@@ -2893,7 +2893,7 @@ export interface StandardMaterialDesc {
    */
   readonly outlineColor?: Color;
   /**
-   * This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette. Creases inside an object are Stylise.inkDepth's.
+   * This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette; a face seen at a grazing angle (a box's side nearly edge-on, a large ground plane) is not lined across, only where it ends. Creases inside an object are Stylise.inkDepth's.
    *
    * @default 0
    * @range 0..31
@@ -4259,14 +4259,14 @@ export interface MaterialStyle {
    */
   outlineColor: Color;
   /**
-   * The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean.
+   * The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one, so voxel and flat-shaded models stay clean. A surface seen at a grazing angle is lined only where it ends: a 1,600 m ground under a chase camera keeps its far edge and nothing else (no band along the horizon).
    *
    * @range 0..31
    * @tunable
    */
   outlineWidth: number;
   /**
-   * The distance at which outlines are outlineWidth wide: nearer they grow, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide.
+   * The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide.
    *
    * @range 0..
    * @unit m (metres)
@@ -5368,6 +5368,12 @@ export interface BoxGeometryDesc {
    * @unit m (metres)
    */
   readonly depth?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -5392,6 +5398,12 @@ export interface PlaneGeometryDesc {
    * @unit m (metres)
    */
   readonly height?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 /**
@@ -5422,6 +5434,12 @@ export interface SphereGeometryDesc {
    * @range 2..
    */
   readonly heightSegments?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs run 0 to uvRepeat instead of 0 to 1 (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). A ground grid every 10 m on a 1,600 m plane is uvRepeat 160 160.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
 }
 
 
@@ -12652,6 +12670,10 @@ export interface Viewport {
    * Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false.
    */
   readonly macKeys?: boolean;
+  /**
+   * Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back.
+   */
+  readonly covered?: UiRect;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
 }
@@ -15205,7 +15227,33 @@ export interface IdleHudDesc {
 }
 
 /**
- * A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map.
+ * One split of a racing HUD: a sector's time and its delta against the reference (the record's split).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RaceSplit {
+  /**
+   * Its name (`S1`, a sector's), the game's own word.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its time in seconds, shown as m:ss.mmm; null is not yet run (a dash).
+   *
+   * @default null
+   */
+  readonly time?: number | null;
+  /**
+   * Against the reference in seconds, shown signed (`-0.412`, `+1.050`, with the ASCII minus every pack draws): negative is ahead, in success ink; positive behind, in danger ink; null shows none.
+   *
+   * @default null
+   */
+  readonly delta?: number | null;
+}
+
+/**
+ * A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15253,7 +15301,7 @@ export interface RacingHudDesc {
    */
   readonly position?: number;
   /**
-   * Cars in the race.
+   * Cars in the race; 0 hides the place (a time trial).
    *
    * @default 8
    */
@@ -15265,18 +15313,36 @@ export interface RacingHudDesc {
    */
   readonly time?: number;
   /**
+   * A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it.
+   *
+   * @default null
+   */
+  readonly delta?: number | null;
+  /**
    * The best lap in seconds; null hides it.
    *
    * @default null
    */
   readonly best?: number | null;
   /**
-   * The boost meter.
+   * Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none.
+   *
+   * @default []
+   */
+  readonly splits?: readonly RaceSplit[];
+  /**
+   * The boost meter, 0 to 1.
    *
    * @default 0
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly boost?: number;
+  /**
+   * Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false.
+   *
+   * @default true
+   */
+  readonly boostMeter?: boolean;
   /**
    * A mini-map; null is none.
    *
@@ -15289,6 +15355,48 @@ export interface RacingHudDesc {
    * @default false
    */
   readonly touch?: boolean;
+  /**
+   * The caption under the lap. Every word of the HUD is a field with its English default (unit too): a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "lap"
+   */
+  readonly lapLabel?: string;
+  /**
+   * The best lap's line; `{best}` is replaced by the best lap as m:ss.mmm. A localised game passes its string table's, with `{best}` in it.
+   *
+   * @default "Best {best}"
+   */
+  readonly bestLabel?: string;
+  /**
+   * The pause button's name (what a screen reader says; the button shows its icon).
+   *
+   * @default "Pause"
+   */
+  readonly pauseLabel?: string;
+  /**
+   * The boost meter's label and the touch Boost pedal.
+   *
+   * @default "Boost"
+   */
+  readonly boostLabel?: string;
+  /**
+   * The touch Brake pedal.
+   *
+   * @default "Brake"
+   */
+  readonly brakeLabel?: string;
+  /**
+   * The touch steering arrow left.
+   *
+   * @default "Left"
+   */
+  readonly leftLabel?: string;
+  /**
+   * The touch steering arrow right.
+   *
+   * @default "Right"
+   */
+  readonly rightLabel?: string;
 }
 
 /**
@@ -15714,7 +15822,14 @@ export interface StatRow {
 }
 
 /**
- * A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook.
+ * How a results screen shows its score and best.
+ * - `"points"`: A whole number grouped with commas (12,840), counted up from 0; the best is the higher.
+ * - `"time"`: Seconds as m:ss.mmm (1:36.233), counted up from 0:00.000: a time trial's result. Lower is better: the best is the lower, and a best of 0 is none (no best line).
+ */
+export type ScoreFormat = "points" | "time";
+
+/**
+ * A results screen: the title, stars that land one by one, the score counting up (points, or a time with `format` time) under its label, the best (a badge for a new best), stats, actions and a share hook.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15732,17 +15847,29 @@ export interface ResultsDesc {
    */
   readonly title?: string;
   /**
-   * The score.
+   * The score: points, or seconds with `format` time.
    *
    * @default 0
    */
   readonly score?: number;
   /**
-   * The best score.
+   * The best score: points, or seconds with `format` time (0 is none).
    *
    * @default 0
    */
   readonly best?: number;
+  /**
+   * How the score and best are shown: points (the default) or a time.
+   *
+   * @default "points"
+   */
+  readonly format?: ScoreFormat;
+  /**
+   * A caption over the score (`Total time`, `Score`); empty is none. A localised game passes its string table's.
+   *
+   * @default ""
+   */
+  readonly scoreLabel?: string;
   /**
    * This run set the best.
    *
@@ -15786,7 +15913,7 @@ export interface ResultsDesc {
    */
   readonly onShare?: UiAction | null;
   /**
-   * The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it.
+   * The best score's line; `{best}` is replaced by the best score, formatted as the score is (m:ss.mmm with `format` time). A localised game passes its string table's (og.i18n.t), with `{best}` in it.
    *
    * @default "Best {best}"
    */
@@ -17803,21 +17930,21 @@ export declare namespace og {
      * Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too.
      *
      * @param world The world whose renderer owns the geometry.
-     * @param desc Its extents.
+     * @param desc Its extents and texture repeat.
      */
     function boxGeometry(world: World, desc?: BoxGeometryDesc): Result<Geometry>;
     /**
      * Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too.
      *
      * @param world The world whose renderer owns the geometry.
-     * @param desc Its extents.
+     * @param desc Its extents and texture repeat.
      */
     function planeGeometry(world: World, desc?: PlaneGeometryDesc): Result<Geometry>;
     /**
      * Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh).
      *
      * @param world The world whose renderer owns the geometry.
-     * @param desc Its radius and tessellation.
+     * @param desc Its radius, tessellation and texture repeat.
      */
     function sphereGeometry(world: World, desc?: SphereGeometryDesc): Result<Geometry>;
     /**
@@ -19528,7 +19655,7 @@ export declare namespace og {
      */
     function navigate(world: World, intent: NavIntent): void;
     /**
-     * Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+     * Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through.
      */
     function back(): boolean;
     /**
@@ -19658,7 +19785,7 @@ export declare namespace og {
      * The racing HUD template.
      *
      * @param id Its id.
-     * @param desc Speed, gear, laps, place, times and boost.
+     * @param desc Speed, gear, laps, place, times, splits, boost and its words.
      */
     function racingHud(id: string, desc?: RacingHudDesc): HudResult;
     /**
@@ -19690,7 +19817,7 @@ export declare namespace og {
      */
     function levelSelect(id: string, desc?: LevelSelectDesc): LevelSelectResult;
     /**
-     * The results template: stars, the score counting up, the best, stats, actions and Share.
+     * The results template: stars, the score (points or a time) counting up under its label, the best, stats, actions and Share.
      *
      * @param id Its id.
      * @param desc Score, stars, stats and actions.

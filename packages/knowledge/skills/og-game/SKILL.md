@@ -857,6 +857,18 @@ Every effect is off until the game turns it on, as data:
   ```ts
   const amber = og.render.standardMaterial(world, { color: { r: 1, g: 1, b: 1 }, roughness: 0.02, transmission: 1, thickness: 1, ior: 1.5, attenuationColor: { r: 0.95, g: 0.45, b: 0.08 }, attenuationDistance: 0.35 });
   ```
+- **Texture repeat** — three.js's `texture.repeat` is the geometry's
+  `uvRepeat` here: `og.render.planeGeometry`, `boxGeometry` and
+  `sphereGeometry` scale their UVs from 0..1 to 0..`uvRepeat`, and material
+  textures sample with repeat wrapping, so the texture tiles. A ground grid
+  every 10 m on a 1,600 m plane (`references/metal/ground-grid.png` in
+  og-tests):
+
+  ```ts
+  const ground = must(og.render.planeGeometry(world, { width: 1600, height: 1600, uvRepeat: { x: 160, y: 160 } }));
+  const grid = og.render.standardMaterial(world, { map: must(og.load.texture(world, "textures/grid.png")), roughness: 0.9 });
+  // turn it -pi/2 about x for a floor
+  ```
 - **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`. `og.ui` draws in the same
@@ -1445,7 +1457,9 @@ to 64 KiB a key: a record in one key, the world in a slot
   (examples/hollowbell's `src/save.ts`).
 
 Test either across a relaunch with a playtest's `store: "keep"` and
-`then` (og-platform-sdk §4).
+`then` (og-platform-sdk §4). A watch replay (the start's snapshot and a
+tape of inputs) and a ghost (a tape of poses) are og-core §2's
+"Recording, replaying and ghosts".
 
 ## 18. Where to look things up
 

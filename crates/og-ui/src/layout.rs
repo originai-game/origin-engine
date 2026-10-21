@@ -698,6 +698,9 @@ pub(crate) struct Node {
     pub backdrop: bool,
     /// A focus scope (dialog, open menu): focus stays inside while it is the topmost.
     pub scope: bool,
+    /// A scope Back does not close (a locked dialog): while it is the
+    /// topmost, Back reaches `Ui::back`.
+    pub locked: bool,
     /// Drawn after the background.
     pub shapes: Vec<Shape>,
     /// Widget data its children read (a list's row height, a grid's cell size).
@@ -761,6 +764,7 @@ impl Node {
             hidden: false,
             backdrop: false,
             scope: false,
+            locked: false,
             shapes: Vec::new(),
             aux: [0.0; 3],
             heading: false,

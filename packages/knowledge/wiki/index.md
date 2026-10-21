@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-906 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+908 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -796,6 +796,7 @@ Field units the docs and Tune use.
 | [`Query.count`](world.md#member-Query-count) | method | world | `og_query_count` |
 | [`QueryDesc`](world.md#type-QueryDesc) | desc struct | world | — |
 | [`QueryFilter`](physics.md#type-QueryFilter) | desc struct | physics | — |
+| [`RaceSplit`](ui.md#type-RaceSplit) | desc struct | ui | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |
 | [`RadioDesc`](ui.md#type-RadioDesc) | desc struct | ui | — |
 | [`RagdollBoneDesc`](physics.md#type-RagdollBoneDesc) | desc struct | physics | — |
@@ -847,6 +848,7 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
+| [`ScoreFormat`](ui.md#type-ScoreFormat) | enum | ui | — |
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |

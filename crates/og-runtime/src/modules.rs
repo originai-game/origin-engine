@@ -318,6 +318,7 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         // og_node_attach_offscreen, leaves it to the platform, as
         // `native_keys` does for the rendered one).
         mac_keys: viewport["macKeys"].as_bool().unwrap_or(cfg!(target_os = "macos")),
+        covered: ui_rect(&viewport["covered"]),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
@@ -332,6 +333,7 @@ fn viewport_json(v: &Viewport) -> Value {
         "highContrast": v.high_contrast,
         "reducedTransparency": v.reduced_transparency,
         "macKeys": v.mac_keys,
+        "covered": rect_json(&v.covered),
         "breakpoint": v.breakpoint().name(),
     })
 }
@@ -528,6 +530,16 @@ pub(crate) fn mesh_of(data: &og_render::MeshData) -> MeshDesc {
 
 fn f(v: &Value, k: &str, d: f32) -> f32 {
     v[k].as_f64().map_or(d, |x| x as f32)
+}
+
+/// A `UiRect` (`{ x, y, width, height }`); anything else is the empty one.
+fn ui_rect(v: &Value) -> og_ui::Rect {
+    og_ui::Rect::new(
+        f(v, "x", 0.0),
+        f(v, "y", 0.0),
+        f(v, "width", 0.0),
+        f(v, "height", 0.0),
+    )
 }
 
 fn insets(v: &Value) -> Insets {
@@ -2297,6 +2309,7 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
                     high_contrast: v["highContrast"].as_bool().unwrap_or(false),
                     reduced_transparency: v["reducedTransparency"].as_bool().unwrap_or(false),
                     mac_keys: v["macKeys"].as_bool().unwrap_or(false),
+                    covered: ui_rect(&v["covered"]),
                 },
             );
         } else {
