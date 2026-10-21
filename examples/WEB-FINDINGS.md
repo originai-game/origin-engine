@@ -290,6 +290,40 @@ Beside the table:
     examples/hollowbell --publish --out /tmp/hb` (its `total` line).
     Workaround: the table above sums the files a lanes page fetches.
 
+## Fixed
+
+The publish-testing round (branch `publish-testing`), on the four below;
+the rest stand.
+
+6. Fixed: `packages/engine/tests/web/published.ts` runs a script of
+   input and capture steps (the playtests' syntax; `--playtest` takes a
+   playtest file) on `og build --publish`'s output, served as the platform
+   opens a release (`tests/web/play-origin.ts`, now shared with
+   dogfood.ts), through the shipped probe's `tick`, `state` and `capture`
+   and real input events, on a clock the harness gives the engine Worker
+   (one tick a frame, held while a capture lands; the build unchanged); a
+   command-channel step is refused. Hollowbell's title is tick-exact
+   against metal (RMSE 0 on WebGPU and WebGL2), New game, a typed name
+   and Begin reach the game, ArrowRight moves Wren; the kit's gallery is
+   exact, and its saved 简体中文 comes back after a reload (#10); the
+   console stays clean (#7, #8). Documented in og-build §6 and
+   docs/web-export.md §The `og` commands around the export.
+7. Fixed: the textarea is aria-hidden only while no field is focused;
+   focused, it is named after the field's mirrored node (aria-label,
+   placeholder, its text) and owned by the field's dialog, the mirror's
+   own element for the field stepping aside (`A11yMirror.standIn`).
+   `tests/web-text-entry.test.ts`; published.ts finds the focus in a named
+   text box and no "Blocked aria-hidden" with Chrome's accessibility on.
+8. Fixed: `scripts/rayon-worker.sh` (called by build.sh wherever a lanes
+   module lands in dist) rewrites the helper's init to
+   `pkg.default({ module_or_path, memory })`; the pinned versions stay.
+   `tests/web-export.test.ts` checks the shipped scripts; a lanes page logs
+   nothing (published.ts, dogfood.ts).
+10. Fixed: the kit asks `og.platform.loadSettings` on its first tick and
+    applies what it saved (`followSettings`); `tests/settings-saved.og.ts`
+    proves it across a `store: "keep"` relaunch, published.ts across a
+    reload. og-platform-sdk §3 and og-i18n §5 now say settings are a pair.
+
 ## What worked well
 
 - **Publishing was one command and silent.** `og build --publish` built
