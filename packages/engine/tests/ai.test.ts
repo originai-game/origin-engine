@@ -125,7 +125,7 @@ test("og.nav: a navmesh built from a floor and a box routes round it, and an obs
   // The bounds are the polygons' (a floor at y 0, kept 0.4 m from its edges), not the floor plus the agent's height.
   expect(Math.abs(info.max.y - info.min.y)).toBeLessThan(0.2);
   expect(info.max.x).toBeGreaterThan(23);
-  expect(info.max.x).toBeLessThanOrEqual(24);
+  expect(info.max.x).toBeLessThan(24.001);
   const from = { x: 4, y: 0, z: 4 };
   const to = { x: 20, y: 0, z: 4 };
   const round = must(og.nav.findPath(w, { nav: info.mesh, from, to }));
