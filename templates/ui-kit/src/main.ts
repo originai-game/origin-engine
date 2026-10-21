@@ -209,10 +209,11 @@ const ITEMS = [
   { id: "gem", name: "Gem", icon: "gem", count: 20, description: "Spent at the wheel." },
 ];
 
+// Their names are the tables' `hud.<id>`.
 const GENERATORS = [
-  { id: "farm", name: "Farm", icon: "leaf", base: 15, rate: 1 },
-  { id: "mill", name: "Mill", icon: "gear", base: 120, rate: 8 },
-  { id: "forge", name: "Forge", icon: "fire", base: 900, rate: 47 },
+  { id: "farm", icon: "leaf", base: 15, rate: 1 },
+  { id: "mill", icon: "gear", base: 120, rate: 8 },
+  { id: "forge", icon: "fire", base: 900, rate: 47 },
 ];
 
 const CUTSCENE = [
@@ -753,7 +754,12 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     case "pause":
     case "platformer": {
       if (screen === "platformer" && !d.paused) d.time = Math.max(0, d.time - dt);
-      const h = og.ui.platformerHud("Hud", { lives: d.lives, maxLives: 3, coins: d.coins, score: d.score, level: tr(world, "hud.level"), timeLeft: d.time, touch: true });
+      // Every word of a HUD from the active table: its own (pauseLabel, jumpLabel; og-i18n §2) and the game's.
+      const h = og.ui.platformerHud("Hud", {
+        lives: d.lives, maxLives: 3, coins: d.coins, score: d.score, level: tr(world, "hud.level"), timeLeft: d.time, touch: true,
+        pauseLabel: tr(world, "hud.pause"),
+        jumpLabel: tr(world, "hud.jump"),
+      });
       if (h.paused) d.paused = true;
       if (h.action === "jump") d.coins += 1;
       const p = og.ui.pauseMenu("Pause", {
@@ -816,21 +822,29 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     case "shooter": {
       const tick = og.ui.tick();
       const h = og.ui.shooterHud("Hud", {
-        health: d.hp, maxHealth: 100, armor: 35, maxArmor: 50, ammo: 18, magazine: 30, reserve: 120, weapon: "Carbine", kills: 7,
+        health: d.hp, maxHealth: 100, armor: 35, maxArmor: 50, ammo: 18, magazine: 30, reserve: 120, weapon: tr(world, "hud.weapon"), kills: 7,
         abilities: [
           { id: "dash", key: "Q", remaining: (tick % 300) / 300 },
           { id: "heal", icon: "potion", remaining: 0 },
           { id: "blast", icon: "bolt", remaining: 0.6 },
         ],
-        map: { markers: [{ x: 0.5, y: 0.5, player: true }, { x: 0.3, y: 0.25, tone: "danger" }, { x: 0.72, y: 0.4, tone: "danger" }], label: "Sector 4" },
+        map: { markers: [{ x: 0.5, y: 0.5, player: true }, { x: 0.3, y: 0.25, tone: "danger" }, { x: 0.72, y: 0.4, tone: "danger" }], label: tr(world, "hud.sector") },
         touch: true,
+        killsLabel: tr(world, "hud.kills"),
+        fireLabel: tr(world, "hud.fire"),
+        pauseLabel: tr(world, "hud.pause"),
       });
       if (h.paused) d.screen = 0;
       if (h.action === "fire") hurt(world, d, 5);
       break;
     }
     case "puzzle": {
-      const h = og.ui.puzzleHud("Hud", { level: "Level 7", score: 680, target: 1000, moves: 12, timeLeft: 48 });
+      const h = og.ui.puzzleHud("Hud", {
+        level: tr(world, "hud.stage"), score: 680, target: 1000, moves: 12, timeLeft: 48,
+        movesLabel: tr(world, "hud.moves"),
+        targetLabel: tr(world, "hud.target"),
+        pauseLabel: tr(world, "hud.pause"),
+      });
       if (h.paused) d.screen = 0;
       break;
     }
@@ -841,9 +855,12 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       const cost = (i: number) => Math.round(GENERATORS[i]!.base * Math.pow(1.15, gens[i]!));
       const tick = og.ui.tick();
       const h = og.ui.idleHud("Hud", {
-        currencies: [{ id: "gold", name: "Gold", amount: d.gold, perSecond: rate, icon: "coin" }, { id: "gems", name: "Gems", amount: 12, icon: "gem" }],
-        generators: GENERATORS.map((g, i) => ({ id: g.id, name: g.name, icon: g.icon, level: gens[i]!, cost: cost(i), affordable: d.gold >= cost(i), progress: gens[i]! > 0 ? ((tick * (i + 1)) % 120) / 120 : 0 })),
-        tapLabel: "Tap",
+        currencies: [{ id: "gold", name: tr(world, "hud.gold"), amount: d.gold, perSecond: rate, icon: "coin" }, { id: "gems", name: tr(world, "hud.gems"), amount: 12, icon: "gem" }],
+        generators: GENERATORS.map((g, i) => ({ id: g.id, name: tr(world, `hud.${g.id}`), icon: g.icon, level: gens[i]!, cost: cost(i), affordable: d.gold >= cost(i), progress: gens[i]! > 0 ? ((tick * (i + 1)) % 120) / 120 : 0 })),
+        tapLabel: tr(world, "hud.tap"),
+        levelLabel: tr(world, "hud.generatorLevel"),
+        rateLabel: tr(world, "hud.rate"),
+        pauseLabel: tr(world, "hud.pause"),
       });
       if (h.action === "tap") {
         d.gold += 1;
@@ -867,6 +884,14 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         speed: 180 + 60 * Math.sin(s), gear: "4", lap: 2, laps: 3, position: 3, racers: 8, time: 83.417 + s, best: 41.2, boost: 0.62,
         map: { size: 128, markers: [{ x: 0.62, y: 0.3, player: true }, { x: 0.55, y: 0.24 }, { x: 0.7, y: 0.42 }], label: "" },
         touch: true,
+        unit: tr(world, "hud.unit"),
+        lapLabel: tr(world, "hud.lap"),
+        bestLabel: tr(world, "hud.best"),
+        pauseLabel: tr(world, "hud.pause"),
+        boostLabel: tr(world, "hud.boost"),
+        brakeLabel: tr(world, "hud.brake"),
+        leftLabel: tr(world, "hud.left"),
+        rightLabel: tr(world, "hud.right"),
       });
       if (h.paused) d.screen = 0;
       break;

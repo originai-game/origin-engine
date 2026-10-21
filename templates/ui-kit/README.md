@@ -108,10 +108,13 @@ pack's directory into a game's `assets/skins/`, keep
 ## Locales
 
 The main menu, pause and confirm screens, the settings screen, the shop,
-the inventory, the leaderboard, the tutorial and the cutscene (the
-templates' own words through their descs' label fields: `settings.*`,
-`shop.*`, `inventory.*`, `leaderboard.*`, `tutorial.*`, `cutscene.*`; the
-tutorial's `"{step} of {count}"` filled by the template) and the
+the inventory, the leaderboard, the tutorial, the cutscene and the five
+HUDs (the templates' own words through their descs' label fields:
+`settings.*`, `shop.*`, `inventory.*`, `leaderboard.*`, `tutorial.*`,
+`cutscene.*`, `hud.*`; the tutorial's `"{step} of {count}"` and the HUDs'
+`"Target {target}"`, `"Lv {level}"`, `"+{rate}/s"` and `"Best {best}"`
+filled by the template; the HUDs' level, weapon, sector and generator
+names are the tables' `hud.*` too) and the
 settings' language list read their text
 from `og.i18n` (`assets/strings/{en,zh-CN,ja,ko,ar}.ogt`,
 `type strings`): `og.i18n.t(world, "menu.play")`, with plurals and
@@ -149,7 +152,10 @@ font> <out font> [--locale <tag>] [--cjk-only]` (og-i18n §3), copied into
 the game's `tools/`: it reads the game's tables, writes the subset and its
 import settings, and names every character the source lacks. `tests/locales.og.ts` compares each of
 the three screens in each locale with
-`crates/og-ui/references/<tier>/kit-locale-*`.
+`crates/og-ui/references/<tier>/kit-locale-*`, and reads the five HUDs in
+each locale on a desktop and on a tablet (touch controls shown): in zh-CN,
+ja, ko and ar none shows a Latin word but the ability key `Q` and ja's and
+ko's `km/h`.
 
 `mixed:on` adds `menu.mixed` under those three screens: one label of CJK,
 Latin and Arabic (`原点探险 Origin Quest مغامرة صغيرة` in zh-CN), its
