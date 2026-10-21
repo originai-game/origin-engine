@@ -620,6 +620,76 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, web-boot: the title behind the gate, the WebGL2 first frame, the boot's bytes and an engine memory readout (69c75852)
+
+Wave 13's first stream took the web findings about boot and the build
+(examples/WEB-FINDINGS.md #1, #2, #9, #11, #12), on lane-5. Measured
+with `tests/web/dogfood.ts --boot` (new, with `--label` and a log of
+every request; the Worker's boot timings on `__runtime_probe__.boot`)
+in headless Chrome 150, 1280×720, localhost, the median of 3 runs on a
+machine at load about 15; "before" is the dogfood round's release wasm
+with the current TypeScript, "after" one `OG_RELEASE=1` build made
+before the merge. Three findings did not hold as the brief stated them.
+
+- **#1, the title behind the gate (2b46f6f8).** After the first tick
+  the Worker takes one more tick per round of store answers, up to 8,
+  waiting up to 300 ms before the first frame and applying later
+  answers for 5 s; ordinary ticks with answers applied as usual, so a
+  replay is unaffected, no API change (`tests/settle.test.ts`).
+  Translated behind the gate: false before, true after for Hollowbell
+  (both tiers) and Kestrel (日本語, with its save slot), at 4 to 26 ms on
+  the first frame. Kestrel's own menu fade is still part-way in that
+  frame: game-side.
+- **#2, chunked music (8b088cc6).** The premise was wrong: chunks were
+  already fetched only near the playhead, one music chunk (63 to 123
+  kB) per game at boot, and the real boot is 4.48 / 4.58 / 5.54 MB
+  (Lantern Vale, Hollowbell, Kestrel), not the 6.8 to 10.4 MB the
+  dogfood round summed from the directory. What landed: a chunked sound
+  may live in a streaming group (its first chunk in the pack, the rest
+  read while the group is resident) and the boot progress bar no longer
+  counts chunks it never fetches. Boot download and first frame are
+  unchanged (Kestrel at 20 Mbit/s 3,385 → 3,393 ms); no game's music
+  moved into a group, since title music plays at boot.
+- **#11, the WebGL2 first frame (f976f3e0, ca95b156).** The cause was
+  52 GL programs compiled one by one at renderer creation, most for
+  passes the first frame never draws (water, fluids, terrain, 2D
+  lights, glass, bloom, 11 effect passes). Pipelines are made when first
+  drawn and the rest warmed in idle time behind the gate (Lantern Vale:
+  29 in about 0.7 s on WebGL2, 35 in 0.17 s on WebGPU); the renderer's
+  creation fell from 461 to 546 ms to 127 to 155 ms.
+  `KHR_parallel_shader_compile` cannot help, wgpu reads each shader's
+  status at once. A pipeline not yet warmed compiles on its first draw,
+  so a very fast tap can still hitch once.
+
+| Game | WebGL2 first frame, before → after | WebGPU |
+|---|---|---|
+| Lantern Vale | 1,405 → 703 ms | 488 → 338 ms |
+| Hollowbell | 1,118 → 701 ms | 433 → 358 ms |
+| Kestrel Stair | 1,197 → 705 ms | 649 → 373 ms |
+
+- **#12, `og build`'s totals (854ce5d6)** print each page's boot
+  download (lanes and single-threaded, brotli, split by engine, cooked,
+  shell and Basis) and what comes later; both tiers fetch the same
+  files (og-build §7, web-export). Hollowbell: 4,323,854 B on the lanes
+  page, not the directory's 9.7 MB.
+- **#9, engine memory (b8f5110b).** The native host had no member to
+  match, so both hosts gained probe member `memory`, one shape: wasm
+  memory on the web or process memory natively, the engine's heap (both
+  hosts count allocations now), entities, streaming budget, audio; a
+  publish page answers through `__runtime_probe__.memory()`. At boot
+  28 to 39 MiB of wasm memory on WebGPU, 35 to 50 on WebGL2; after 600
+  ticks of Kestrel 54 MiB, heap peak 49 MiB (`tests/hosts.test.ts` on
+  both hosts).
+
+Frames: Hollowbell's 9 on WebGL2 match `metal` (worst RMSE 0.00014);
+Lantern Vale's same 2 of 7 as the dogfood round before webgl2-render-2
+(its misses were #3 and #5). Each wasm module grew about 16 kB brotli;
+the 3D lanes module is 3,174,528 B, 75.7 % of the budget (the size gate
+measures it at the wave's end). The stream re-applied its harness
+changes onto main's `play-origin.ts` split and kept both texts of
+og-platform-sdk §3's rule (the coordinator reads that page at the
+merge).
+
 ## Wave 13, publish-testing: the published page under a script, the text entry's name, clean pool Workers and the kit's settings (71d0d574)
 
 Wave 13's third stream took the web findings about what ships and the
