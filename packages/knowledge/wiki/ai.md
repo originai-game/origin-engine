@@ -18,7 +18,7 @@ module ai {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7118</sub>
+<sub>`api.ogt` line 7174</sub>
 
 ## Contents
 
@@ -74,7 +74,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 7290</sub>
+<sub>`api.ogt` line 7346</sub>
 
 <a id="fn-parse"></a>
 
@@ -104,7 +104,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 7297</sub>
+<sub>`api.ogt` line 7353</sub>
 
 <a id="fn-get"></a>
 
@@ -136,7 +136,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 7304</sub>
+<sub>`api.ogt` line 7360</sub>
 
 <a id="fn-set"></a>
 
@@ -170,7 +170,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 7312</sub>
+<sub>`api.ogt` line 7368</sub>
 
 <a id="fn-restart"></a>
 
@@ -200,7 +200,7 @@ fn restart {
 }
 ```
 
-<sub>`api.ogt` line 7321</sub>
+<sub>`api.ogt` line 7377</sub>
 
 <a id="fn-noise"></a>
 
@@ -230,7 +230,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 7328</sub>
+<sub>`api.ogt` line 7384</sub>
 
 <a id="fn-describe"></a>
 
@@ -260,7 +260,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 7335</sub>
+<sub>`api.ogt` line 7391</sub>
 
 ## Components, resources and events
 
@@ -310,7 +310,7 @@ component AiAgent {
 }
 ```
 
-<sub>`api.ogt` line 7137</sub>
+<sub>`api.ogt` line 7193</sub>
 
 <a id="record-Perception"></a>
 
@@ -411,7 +411,7 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 7163</sub>
+<sub>`api.ogt` line 7219</sub>
 
 <a id="record-Perceivable"></a>
 
@@ -440,7 +440,7 @@ component Perceivable {
 }
 ```
 
-<sub>`api.ogt` line 7233</sub>
+<sub>`api.ogt` line 7289</sub>
 
 <a id="record-AiChanged"></a>
 
@@ -467,7 +467,7 @@ event AiChanged {
 }
 ```
 
-<sub>`api.ogt` line 7245</sub>
+<sub>`api.ogt` line 7301</sub>
 
 ## Types
 
@@ -483,7 +483,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Behaviour "A loaded behaviour tree or state machine."
 ```
 
-<sub>`api.ogt` line 7124</sub>
+<sub>`api.ogt` line 7180</sub>
 
 <a id="type-BehaviourInfo"></a>
 
@@ -512,7 +512,7 @@ struct BehaviourInfo {
 }
 ```
 
-<sub>`api.ogt` line 7253</sub>
+<sub>`api.ogt` line 7309</sub>
 
 <a id="type-NoiseDesc"></a>
 
@@ -544,7 +544,7 @@ struct NoiseDesc {
 }
 ```
 
-<sub>`api.ogt` line 7263</sub>
+<sub>`api.ogt` line 7319</sub>
 
 <a id="type-AiDescription"></a>
 
@@ -579,7 +579,7 @@ struct AiDescription {
 }
 ```
 
-<sub>`api.ogt` line 7277</sub>
+<sub>`api.ogt` line 7333</sub>
 
 ## Column kinds
 
@@ -598,7 +598,7 @@ column Behaviour {
 }
 ```
 
-<sub>`api.ogt` line 7126</sub>
+<sub>`api.ogt` line 7182</sub>
 
 ## Constants
 
@@ -612,16 +612,16 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>`api.ogt` line 7133</sub>
+<sub>`api.ogt` line 7189</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>`api.ogt` line 7134</sub>
+<sub>`api.ogt` line 7190</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>`api.ogt` line 7135</sub>
+<sub>`api.ogt` line 7191</sub>

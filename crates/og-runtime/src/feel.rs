@@ -994,11 +994,11 @@ pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
             ));
         }
         let target = Target::resolve(&schema, index, entity, "scale").map_err(err)?;
-        let impact = v2(&d["impact"], Vec2::new(1.25, 0.8));
+        let impact = v3(&d["impact"], Vec3::new(1.25, 0.8, 0.0));
         let rest = v3(&d["rest"], Vec3::ONE);
         let tick = 1.0 / eng.state.borrow().rate.max(1) as f32;
         let squash = og_tween::presets::Squash {
-            impact: [impact.x, impact.y],
+            impact: impact.to_array(),
             rest: rest.to_array(),
             duration: f(&d, "duration", 0.18),
             ease: ease_of(&d["ease"], Ease::BackOut)?,
@@ -1025,7 +1025,9 @@ pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
         let d = parse(desc.as_deref())?;
         let entity = entity_of(&d["entity"])?;
         let mut found = None;
-        for name in ["og.Sprite", "og.Mesh"] {
+        // A glTF instance flashes alone: og.Model's flash rides in its
+        // instances' records (kestrel-stair #11).
+        for name in ["og.Sprite", "og.Mesh", "og.Model"] {
             let (index, schema) = component_schema(&eng, name)?;
             if has(&eng, entity, index)? {
                 found = Some((index, schema));
@@ -1033,7 +1035,7 @@ pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
             }
         }
         let (index, schema) = found.ok_or_else(|| {
-            format!("entity {entity} has neither og.Sprite nor og.Mesh (or is not alive)")
+            format!("entity {entity} has none of og.Sprite, og.Mesh and og.Model (or is not alive)")
         })?;
         let amount = Target::resolve(&schema, index, entity, "flash").map_err(err)?;
         let color = Target::resolve(&schema, index, entity, "flashColor").map_err(err)?;

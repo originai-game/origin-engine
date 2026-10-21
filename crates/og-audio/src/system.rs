@@ -6,7 +6,7 @@
 use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode, fx};
 use crate::schema::{
     Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT,
-    SoundEnded, SoundStarted, Transform, end_reason,
+    ReverbZone, SoundEnded, SoundStarted, Transform, end_reason,
 };
 use crate::sound::SoundBank;
 use og_core::Result;
@@ -208,6 +208,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
     world.register::<AudioPlayback>()?;
     world.register::<AudioStream>()?;
     world.register::<AudioBusFx>()?;
+    world.register::<ReverbZone>()?;
     crate::music::register(world)?;
     if !world.has_resource::<Audio>() {
         world.insert_resource(Audio::default())?;
@@ -245,6 +246,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             .read::<AudioListener>()
             .read::<Transform>()
             .read::<AudioBusFx>()
+            .write::<ReverbZone>()
             .write::<AudioSource>()
             .write::<AudioPlayback>()
             .write::<AudioStream>()
@@ -269,7 +271,9 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             )
             .query(QueryDesc::new().read::<AudioListener>().read::<Transform>())
             // 4: bus effects.
-            .query(QueryDesc::new().read::<AudioBusFx>()),
+            .query(QueryDesc::new().read::<AudioBusFx>())
+            // 5: reverb zones.
+            .query(QueryDesc::new().write::<ReverbZone>().read::<Transform>()),
         move |ctx| run(ctx, &system_link, occluder.as_ref()),
     )?;
     Ok(link)
@@ -525,6 +529,44 @@ fn standing(priority: u32, gain: f32, newness: u64) -> Standing {
     (priority, gain.max(0.0).to_bits(), newness)
 }
 
+/// The reverb zones around a listener at `ear` (query 5): each zone's
+/// weight written back when it changed, and the strongest (ties to the
+/// first in query order) easing the shared reverb's room and damping in
+/// `room` and its bus's send in `chosen` towards its own by its weight.
+fn zones(
+    ctx: &SystemContext<'_>,
+    ear: Vec3,
+    chosen: &mut [Option<AudioBusFx>; BUS_COUNT],
+    room: &mut Audio,
+) -> Result<()> {
+    let entities: Vec<Entity> = ctx.query(5)?.flat_map(|a| a.entities().to_vec()).collect();
+    let mut best: Option<(ReverbZone, f32)> = None;
+    for e in entities {
+        let z = ctx.get::<ReverbZone>(e)?;
+        let w = z.weight_at(&ctx.get::<Transform>(e)?, ear);
+        if w.to_bits() != z.weight.to_bits() {
+            ctx.set(e, ReverbZone { weight: w, ..z })?;
+        }
+        if w > 0.0 && best.is_none_or(|(_, b)| w > b) {
+            best = Some((z, w));
+        }
+    }
+    let Some((z, w)) = best else {
+        return Ok(());
+    };
+    let ease = |open: f32, zone: f32| open + (zone.clamp(0.0, 1.0) - open) * w;
+    room.reverb_room = ease(room.reverb_room.clamp(0.0, 1.0), z.room);
+    room.reverb_damping = ease(room.reverb_damping.clamp(0.0, 1.0), z.damping);
+    let b = z.bus.min(BUS_COUNT as u32 - 1) as usize;
+    let mut f = chosen[b].unwrap_or(AudioBusFx {
+        bus: b as u32,
+        ..AudioBusFx::default()
+    });
+    f.reverb = ease(f.reverb.clamp(0.0, 1.0), z.send);
+    chosen[b] = Some(f);
+    Ok(())
+}
+
 fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder>) -> Result<()> {
     let tick = ctx.time().tick;
     let resync = link.begin(tick);
@@ -553,23 +595,6 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     }
     stream.bus_sent = Vec4::from_array(gains.map(|g| g.max(0.0)));
 
-    // Bus effects: every parameter again when any changed.
-    let mut chosen: [Option<AudioBusFx>; BUS_COUNT] = [None; BUS_COUNT];
-    let fx_entities: Vec<Entity> = ctx.query(4)?.flat_map(|a| a.entities().to_vec()).collect();
-    for e in fx_entities {
-        let f = ctx.get::<AudioBusFx>(e)?;
-        let b = f.bus.min(BUS_COUNT as u32 - 1) as usize;
-        if chosen[b].is_none() {
-            chosen[b] = Some(f);
-        }
-    }
-    let fx_now = fx_state(&chosen, &audio);
-    let fx_now_hash = fx_hash(&fx_now);
-    if fx_now_hash != stream.fx {
-        commands.extend(fx_commands(&fx_now, tick));
-        stream.fx = fx_now_hash;
-    }
-
     // The listener.
     let mut ear = Ear {
         position: Vec3::ZERO,
@@ -582,6 +607,25 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         ear.position = t.position;
         ear.inverse = t.quaternion.normalize().inverse();
         ear.volume = ctx.get::<AudioListener>(e)?.volume.max(0.0);
+    }
+
+    // Bus effects: every parameter again when any changed.
+    let mut chosen: [Option<AudioBusFx>; BUS_COUNT] = [None; BUS_COUNT];
+    let fx_entities: Vec<Entity> = ctx.query(4)?.flat_map(|a| a.entities().to_vec()).collect();
+    for e in fx_entities {
+        let f = ctx.get::<AudioBusFx>(e)?;
+        let b = f.bus.min(BUS_COUNT as u32 - 1) as usize;
+        if chosen[b].is_none() {
+            chosen[b] = Some(f);
+        }
+    }
+    let mut room = audio;
+    zones(ctx, ear.position, &mut chosen, &mut room)?;
+    let fx_now = fx_state(&chosen, &room);
+    let fx_now_hash = fx_hash(&fx_now);
+    if fx_now_hash != stream.fx {
+        commands.extend(fx_commands(&fx_now, tick));
+        stream.fx = fx_now_hash;
     }
 
     // Playheads whose AudioSource was removed.

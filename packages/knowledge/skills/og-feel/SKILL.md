@@ -71,7 +71,9 @@ moving. It never shortens one already running.
 | Finishing blow, a death | 12–20, paired with slow motion |
 
 - Pair a hit stop with a flash (`og.tween.flash`, 0.08–0.15 s) and a small
-  shake; the stop is what sells the contact.
+  shake; the stop is what sells the contact. The flash takes a sprite, a
+  mesh or a glTF instance (its og.Model: that instance alone flashes, the
+  others sharing its materials do not).
 - Pair it with a knock-back too: on the hit's tick set the
   character's `og.PlatformerController.impulse` to `{ x: away * 6, y: 7 }`
   (m/s; taken once on the next step, so it flies when the stop ends) and
@@ -120,6 +122,9 @@ and roll grow with trauma squared, so small values stay subtle.
 `og.tween.squash(world, { entity, impact, duration, ease })` sets
 og.Transform.scale to rest × impact on the tick it is called and eases
 back (default backOut, 0.18 s). Keep the area roughly constant: x × y ≈ 1.
+On a 3D model give z too, bulging with x so the volume holds: a hit taken
+is `{ x: 1.15, y: 0.8, z: 1.15 }`. Left out (or 0), z stays at rest, which
+is what a sprite wants.
 
 | Moment | impact (x, y) | duration |
 |---|---|---|

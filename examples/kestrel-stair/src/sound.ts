@@ -5,12 +5,15 @@
 // entities (src/world.ts, src/foes.ts) and are heard from the listener on
 // the camera (src/view.ts). "The Kestrel Stair" (2:40, cooked in 4-second
 // chunks and streamed) loops on the music bus, ducked under the effects.
-// The crypt is a reverb zone: inside it the effects bus sends far more to
-// the shared reverb and the room grows (src/fx.ts eases it).
+// The crypt is a reverb zone (og.ReverbZone, FINDINGS #21 fixed): with the
+// listener inside, the engine eases the shared reverb's room and damping
+// and the effects bus's send towards the crypt's, fading over a metre and a
+// half past its walls; og.Audio and the bus keep the open air's.
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Sound as SoundHandle, Value, World } from "@origingame/engine";
 import { Game, Sfx, Sound } from "./components.ts";
+import { CRYPT_ROOM } from "./layout.ts";
 import { must } from "./world.ts";
 
 /** The UI's sounds, for og.ui.configure (src/ui.ts). */
@@ -60,6 +63,12 @@ export function spawnVoices(world: World, g: Value<typeof Game>): void {
   must(world.insert(music, og.AudioSource, { sound: track, bus: "music", loop: true, volume: 0.55, priority: 250 }));
   must(world.insert(must(world.spawn({ name: "music-bus" })), og.AudioBusFx, { bus: "music", duck: true, duckBus: "sfx", duckDepth: 8, duckRelease: 0.5 }));
   must(world.insert(must(world.spawn({ name: "sfx-bus" })), og.AudioBusFx, { bus: "sfx", reverb: 0.12 }));
+  const audio = must(world.resource(og.Audio));
+  audio.reverbRoom = 0.5;
+  audio.reverbDamping = 0.5;
+  const b = CRYPT_ROOM;
+  const crypt = must(world.spawn({ name: "crypt-reverb", position: { x: (b.min[0] + b.max[0]) / 2, y: (b.min[1] + b.max[1]) / 2, z: (b.min[2] + b.max[2]) / 2 } }));
+  must(world.insert(crypt, og.ReverbZone, { size: { x: b.max[0] - b.min[0], y: b.max[1] - b.min[1], z: b.max[2] - b.min[2] }, fade: 1.5, bus: "sfx", send: 0.55, room: 0.92, damping: 0.25 }));
   must(world.insert(must(world.spawn({ name: "master-bus" })), og.AudioBusFx, { bus: "master", threshold: -1, ratio: 20, attack: 0.001 }));
 }
 

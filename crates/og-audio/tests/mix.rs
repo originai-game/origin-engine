@@ -26,13 +26,18 @@
 //!   off, fades in over the first samples, loses its startAt inside the
 //!   tick, or ends on another tick than the rest of the clip does →
 //!   `a_start_part_way_plays_the_clip_from_its_offset_to_the_sample`
+//! - a reverb zone does not reach the stream, ignores where the listener
+//!   is, jumps at its edge instead of fading, leaves the open air changed
+//!   behind it, or eases differently on a second run or after a restore →
+//!   `a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is`
 
 mod support;
 
+use og_audio::command::fx;
 use og_audio::{
-    Audio, AudioBusFx, AudioDesc, AudioLink, AudioSource, AudioStream, Bus, HeadlessMode,
-    HeadlessSink, Music, MusicBeat, SoundBank, SoundEnded, SoundStarted, Transform, end_reason,
-    install,
+    Audio, AudioBusFx, AudioDesc, AudioLink, AudioListener, AudioSource, AudioStream, Bus,
+    HeadlessMode, HeadlessSink, Music, MusicBeat, Op, ReverbZone, SoundBank, SoundEnded,
+    SoundStarted, Transform, end_reason, install,
 };
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World, WorldDesc};
@@ -255,6 +260,172 @@ fn a_reverb_send_leaves_a_tail() {
         wet > 3e-3,
         "the send leaves a tail 0.2–0.5 s after the click: {wet}"
     );
+}
+
+/// The shared reverb as the last fx commands set it: (room, damping, the
+/// sfx bus's send), or `None` when no packet carried any.
+fn reverb_sent(link: &AudioLink) -> Option<(f32, f32, f32)> {
+    let mut out = None;
+    for packet in link.drain() {
+        let mut got = out.unwrap_or((-1.0, -1.0, -1.0));
+        let mut any = false;
+        for c in packet.commands.iter().filter(|c| c.op == Op::Fx) {
+            any = true;
+            match (c.bus, c.voice) {
+                (0, fx::ROOM) => got.0 = c.gain,
+                (0, fx::DAMPING) => got.1 = c.gain,
+                (2, fx::REVERB) => got.2 = c.gain,
+                _ => {}
+            }
+        }
+        if any {
+            out = Some(got);
+        }
+    }
+    out
+}
+
+/// kestrel-stair #21: an og.ReverbZone eases the shared reverb (room,
+/// damping, a bus's send) towards its own while the listener is inside,
+/// fading over `fade` metres past its edge, as a function of the
+/// listener's position each tick.
+#[test]
+fn a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is() {
+    let bank = SoundBank::new();
+    let click = insert(&bank, "click", 1, &synth(480, 1, sine(1000.0, 0.8)));
+    let setup = || {
+        let (mut world, link) = world_with(&bank, |w| {
+            w.register::<AudioListener>().unwrap();
+        });
+        *world.resource_mut::<Audio>().unwrap() = Audio {
+            reverb_room: 0.5,
+            reverb_damping: 0.5,
+            ..Audio::default()
+        };
+        world
+            .spawn((AudioBusFx {
+                bus: Bus::Sfx as u32,
+                reverb: 0.0,
+                ..AudioBusFx::default()
+            },))
+            .unwrap();
+        let ear = world
+            .spawn((Transform::default(), AudioListener::default()))
+            .unwrap();
+        // A crypt: a 10 x 4 x 10 m box 20 m ahead, turned a quarter.
+        let crypt = world
+            .spawn((
+                Transform {
+                    position: Vec3::new(0.0, 0.0, -20.0),
+                    quaternion: og_core::glam::Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+                    ..Transform::default()
+                },
+                ReverbZone {
+                    size: Vec3::new(10.0, 4.0, 10.0),
+                    fade: 4.0,
+                    send: 0.6,
+                    room: 0.9,
+                    damping: 0.2,
+                    ..ReverbZone::default()
+                },
+            ))
+            .unwrap();
+        link.attach();
+        (world, link, ear, crypt)
+    };
+    let at = |world: &mut World, ear: Entity, z: f32| {
+        world
+            .insert(
+                ear,
+                Transform {
+                    position: Vec3::new(0.0, 1.0, z),
+                    ..Transform::default()
+                },
+            )
+            .unwrap();
+        world.step().unwrap();
+    };
+    let near = |a: (f32, f32, f32), b: (f32, f32, f32)| {
+        (a.0 - b.0).abs() < 1e-5 && (a.1 - b.1).abs() < 1e-5 && (a.2 - b.2).abs() < 1e-5
+    };
+    let (mut world, link, ear, crypt) = setup();
+    // Far outside: the open air, untouched.
+    at(&mut world, ear, 0.0);
+    let open = reverb_sent(&link).expect("the first tick sends every parameter");
+    assert!(near(open, (0.5, 0.5, 0.0)), "open air {open:?}");
+    assert_eq!(world.get::<ReverbZone>(crypt).unwrap().weight, 0.0);
+    // Two metres from its edge, half of a 4 m fade: halfway.
+    at(&mut world, ear, -13.0);
+    let half = reverb_sent(&link).expect("the zone changed the reverb");
+    assert!(
+        near(half, (0.7, 0.35, 0.3)),
+        "at the fade's middle {half:?}"
+    );
+    let w = world.get::<ReverbZone>(crypt).unwrap().weight;
+    assert!((w - 0.5).abs() < 1e-5, "weight {w}");
+    // Inside: the crypt's own.
+    at(&mut world, ear, -18.0);
+    let inside = reverb_sent(&link).expect("deeper in, the zone's own");
+    assert!(near(inside, (0.9, 0.2, 0.6)), "inside {inside:?}");
+    assert_eq!(world.get::<ReverbZone>(crypt).unwrap().weight, 1.0);
+    // Standing still sends nothing more.
+    at(&mut world, ear, -18.0);
+    assert_eq!(reverb_sent(&link), None, "no change, no commands");
+    // Out again: the open air comes back exactly.
+    at(&mut world, ear, 0.0);
+    let back = reverb_sent(&link).expect("leaving restores the open air");
+    assert!(near(back, open), "back outside {back:?}");
+    // The open air's own settings were never written.
+    let audio = *world.resource::<Audio>().unwrap();
+    assert_eq!((audio.reverb_room, audio.reverb_damping), (0.5, 0.5));
+
+    // The same walk twice is the same stream; a restore mid-walk goes on
+    // as the walk did.
+    let walk = |restore_at: Option<usize>| {
+        let (mut world, _link, ear, _) = setup();
+        let mut saved = None;
+        for (i, z) in (0..120).map(|i| (i, -(i as f32) * 0.25)) {
+            if Some(i) == restore_at {
+                saved = Some(world.snapshot());
+            }
+            at(&mut world, ear, z);
+        }
+        let end = (
+            world.resource::<AudioStream>().unwrap().hash,
+            world.world_hash(),
+        );
+        if let Some(bytes) = saved {
+            world.restore(&bytes).unwrap();
+            for z in (restore_at.unwrap()..120).map(|i| -(i as f32) * 0.25) {
+                at(&mut world, ear, z);
+            }
+            assert_eq!(
+                (
+                    world.resource::<AudioStream>().unwrap().hash,
+                    world.world_hash()
+                ),
+                end,
+                "restored mid-walk"
+            );
+        }
+        end
+    };
+    assert_eq!(walk(None), walk(Some(55)));
+
+    // It reaches the mix: a click inside the zone rings, outside it does not.
+    let tail = |z: f32| {
+        let (mut world, link, ear, _) = setup();
+        link.detach();
+        at(&mut world, ear, z);
+        world.spawn((AudioSource::new(click),)).unwrap();
+        let mut sink = capture(&mut world, &link);
+        step(&mut world, &mut sink, 60);
+        let pcm = sink.pcm().to_vec();
+        rms(&window(&pcm, 9_600, 24_000))
+    };
+    let (dry, wet) = (tail(0.0), tail(-20.0));
+    assert!(dry < 1e-4, "outside, no send: {dry}");
+    assert!(wet > 3e-3, "inside the crypt the click rings: {wet}");
 }
 
 #[test]

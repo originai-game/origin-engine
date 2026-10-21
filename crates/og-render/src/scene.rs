@@ -429,6 +429,43 @@ pub struct Instance {
     /// one material (tiles, skins) stay one batch, one draw. `None`: the
     /// material's layers. A material without array maps ignores it.
     pub material_layer: Option<u32>,
+    /// Its own hit flash and tint on top of its material's look, carried in
+    /// the instance record (one material, one draw, whatever each instance
+    /// shows): a glTF model's instances share their materials.
+    pub fx: InstanceFx,
+}
+
+/// An instance's own look, beside its transform in the instance record and
+/// read by the lit shaders on every tier (pbr_fs.wgsl, physical.wgsl):
+/// the hit flash mixes the lit colour towards `flash_color`, the tint
+/// multiplies the material's base colour. Colours travel as 8 bits a
+/// channel. [`InstanceFx::NONE`] (the default) shades exactly as the
+/// material does.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InstanceFx {
+    /// The hit flash, 0 to 1: the lit colour mixed towards `flash_color` by
+    /// this much (0: none).
+    pub flash: f32,
+    /// The flash's linear colour.
+    pub flash_color: Vec3,
+    /// A linear colour, 0 to 1, multiplied with the material's base colour
+    /// (white: none).
+    pub tint: Vec3,
+}
+
+impl InstanceFx {
+    /// No flash, a white tint: the material's own look.
+    pub const NONE: InstanceFx = InstanceFx {
+        flash: 0.0,
+        flash_color: Vec3::ONE,
+        tint: Vec3::ONE,
+    };
+}
+
+impl Default for InstanceFx {
+    fn default() -> Self {
+        InstanceFx::NONE
+    }
 }
 
 /// How a [`Camera`] projects the world onto the target.
@@ -2187,6 +2224,7 @@ impl RenderScene {
             material,
             transform,
             material_layer: None,
+            fx: InstanceFx::NONE,
         });
     }
 

@@ -914,7 +914,10 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
         );
     }
     for (stage, signature) in [
-        ("@vertex", "vs(v: VertexIn, i: InstanceIn) -> VertexOut {"),
+        (
+            "@vertex",
+            "vs(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> VertexOut {",
+        ),
         ("@fragment", "fs(in: VertexOut) -> @location(0) vec4<f32> {"),
         (
             "@vertex",

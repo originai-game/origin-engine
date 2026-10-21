@@ -67,6 +67,7 @@ pub use schema::*;
 pub use schema_ext::*;
 pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
 
+pub use gather::world_pose;
 use gather::{Ids, QUERIES, Scene};
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind, Result};
@@ -482,7 +483,7 @@ impl PhysicsSystem {
         let (shared, ids) = (self.shared.clone(), self.ids.clone());
         let run = move |ctx: &mut SystemContext<'_>| {
             let settings = *ctx.resource::<Physics>()?;
-            let scene = gather::gather(&|i| ctx.query(i), &ids)?;
+            let scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), &ids)?;
             let mut shared = lock(&shared);
             shared.recorded = Some((settings, scene));
             shared.recorded_query = None;
@@ -687,7 +688,11 @@ impl PhysicsSystem {
     /// later changes to the world.
     pub fn query(&self, world: &World) -> Result<PhysicsQuery> {
         let settings = *world.resource::<Physics>()?;
-        let scene = gather::gather(&|i| world.query(&QUERIES[i].desc(false)), &self.ids)?;
+        let scene = gather::gather(
+            &|i| world.query(&QUERIES[i].desc(false)),
+            &|e, id| world.get_bytes(e, id),
+            &self.ids,
+        )?;
         let inner = Arc::new(QueryInner::build_outside(
             settings.profile,
             &scene,
@@ -1051,7 +1056,7 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     let started = stats::now_ms();
     let mut laps = stats::Laps::start();
-    let scene: Scene = gather::gather(&|i| ctx.query(i), ids)?;
+    let scene: Scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), ids)?;
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
     let threads = og_lanes::threads();

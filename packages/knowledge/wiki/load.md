@@ -99,7 +99,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3454</sub>
+<sub>`api.ogt` line 3466</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -129,7 +129,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3461</sub>
+<sub>`api.ogt` line 3473</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -157,7 +157,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 3468</sub>
+<sub>`api.ogt` line 3480</sub>
 
 <a id="fn-gltf"></a>
 
@@ -192,7 +192,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 3474</sub>
+<sub>`api.ogt` line 3486</sub>
 
 <a id="fn-scene"></a>
 
@@ -222,7 +222,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 3483</sub>
+<sub>`api.ogt` line 3495</sub>
 
 <a id="fn-font"></a>
 
@@ -252,7 +252,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 3490</sub>
+<sub>`api.ogt` line 3502</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -282,7 +282,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3497</sub>
+<sub>`api.ogt` line 3509</sub>
 
 <a id="fn-sound"></a>
 
@@ -315,7 +315,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 3504</sub>
+<sub>`api.ogt` line 3516</sub>
 
 <a id="fn-lut"></a>
 
@@ -345,7 +345,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 3512</sub>
+<sub>`api.ogt` line 3524</sub>
 
 <a id="fn-environment"></a>
 
@@ -375,7 +375,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 3519</sub>
+<sub>`api.ogt` line 3531</sub>
 
 <a id="fn-emitter"></a>
 
@@ -405,7 +405,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 3526</sub>
+<sub>`api.ogt` line 3538</sub>
 
 <a id="fn-shader"></a>
 
@@ -435,7 +435,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 3533</sub>
+<sub>`api.ogt` line 3545</sub>
 
 <a id="fn-texture"></a>
 
@@ -468,7 +468,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 3540</sub>
+<sub>`api.ogt` line 3552</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -501,7 +501,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 3548</sub>
+<sub>`api.ogt` line 3560</sub>
 
 <a id="fn-skin"></a>
 
@@ -531,7 +531,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 3556</sub>
+<sub>`api.ogt` line 3568</sub>
 
 <a id="fn-look"></a>
 
@@ -561,7 +561,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3563</sub>
+<sub>`api.ogt` line 3575</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -591,7 +591,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3570</sub>
+<sub>`api.ogt` line 3582</sub>
 
 <a id="fn-palette"></a>
 
@@ -621,7 +621,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 3577</sub>
+<sub>`api.ogt` line 3589</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -651,7 +651,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3584</sub>
+<sub>`api.ogt` line 3596</sub>
 
 <a id="fn-status"></a>
 
@@ -681,7 +681,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 3591</sub>
+<sub>`api.ogt` line 3603</sub>
 
 <a id="fn-error"></a>
 
@@ -711,7 +711,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 3598</sub>
+<sub>`api.ogt` line 3610</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -741,7 +741,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3605</sub>
+<sub>`api.ogt` line 3617</sub>
 
 <a id="fn-animation"></a>
 
@@ -774,7 +774,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 3612</sub>
+<sub>`api.ogt` line 3624</sub>
 
 <a id="fn-rig"></a>
 
@@ -804,7 +804,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 3620</sub>
+<sub>`api.ogt` line 3632</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -834,7 +834,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 3627</sub>
+<sub>`api.ogt` line 3639</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -864,7 +864,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 3634</sub>
+<sub>`api.ogt` line 3646</sub>
 
 ## Components, resources and events
 
@@ -874,16 +874,33 @@ fn tilemap {
 
 Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
 
+The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
+
 Token `og.Model`, registered under the schema name `og.Model`; its value type is `Model`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `asset` | `Asset` | `0` | — | — | — | The glTF asset. |
+| `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF). |
+| `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). |
+| `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour. |
 
 ```ogt
 component Model {
   doc "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one."
+  doc "The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck."
   field asset Asset "The glTF asset."
+  field tint Color "A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF)." {
+    default 1 1 1
+  }
+  field flash f32 "A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
+    min 0
+    max 1
+    tunable true
+  }
+  field flashColor Color "The flash's linear colour." {
+    default 1 1 1
+  }
 }
 ```
 
@@ -910,7 +927,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3641</sub>
+<sub>`api.ogt` line 3653</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -935,7 +952,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3647</sub>
+<sub>`api.ogt` line 3659</sub>
 
 ## Types
 

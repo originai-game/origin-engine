@@ -29,6 +29,7 @@ bodies move in the xy plane and rotate about z; a transform keeps its z.
 | `Grains`, `grains`, `set_grains`, `pool_bodies` | where the step's work runs on the lanes (below) |
 | `PhysicsQuery` | `raycast(&RaycastDesc)`, `shape_cast(&ShapeCastDesc)`, `overlap(&OverlapDesc)` over the colliders as the world holds them when it was built; `QueryFilter { mask, include_sensors, exclude }` |
 | `raycast`, `shape_cast`, `overlap` | the same, on a view built for one call |
+| `world_pose(e, local, parent_of, transform_of)` | an entity's world position and rotation down the `og.Parent` chain (`og.Parent` is registered here by schema, like `og.Transform`) |
 | `SYSTEM_NAME` | `og.physics`, the system's and the state block's name |
 
 ## Records (for `api.ogt`)
@@ -49,7 +50,14 @@ are `u32` constants in `src/schema.rs`.
 | `og.SensorEntered`, `og.SensorExited` | event | `sensor`, `other` |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
-A collider without a `RigidBody` is static at its transform. Events sent in
+A collider without a `RigidBody` is static at its transform. Bodies and
+colliders are roots: their `og.Transform` is world space. Ropes, cloths,
+fluids, water and ragdolls may sit on a child entity: the gather places
+them at the entity's world pose, its transform after its parents' down
+the `og.Parent` chain (`world_pose`, as the renderer composes
+`og.MatrixWorld`; the runtime's ragdoll targets and water heights use the
+same), so a cape on a body's child follows the body (`tests/soft.rs`;
+kestrel-stair #10). Events sent in
 tick N are read in tick N+1.
 
 ## Determinism and the state block

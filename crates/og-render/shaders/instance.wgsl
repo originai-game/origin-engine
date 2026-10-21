@@ -1,7 +1,8 @@
 // An instance's transform as the instance buffers hold it (instances.rs
-// `GpuTransform`): the x, y and z of its four columns (then, in 4 more
-// bytes, an array-map instance's layer); their w is (0, 0, 0, 1), an
-// instance's transform being affine.
+// `GpuTransform`): the x, y and z of its four columns (then, in 16 more
+// bytes, an array-map instance's layer and the instance's look, pbr.wgsl
+// `InstanceFxIn`); their w is (0, 0, 0, 1), an instance's transform being
+// affine.
 fn instance_matrix(c0: vec3<f32>, c1: vec3<f32>, c2: vec3<f32>, c3: vec3<f32>) -> mat4x4<f32> {
   return mat4x4<f32>(vec4<f32>(c0, 0.0), vec4<f32>(c1, 0.0), vec4<f32>(c2, 0.0), vec4<f32>(c3, 1.0));
 }

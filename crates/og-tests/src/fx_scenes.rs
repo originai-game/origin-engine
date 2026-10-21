@@ -11,12 +11,12 @@ use og_render::{
     AmbientOcclusion, AoMethod, Background, Beam, Bloom, Burst, Camera, ChromaticAberration,
     ColorCurve, ColorGrading, ColorLut, ColorSpace, Curve, Decal, DepthOfField, DirectionalLight,
     DofQuality, EmitterHandle, EmitterShape, Environment, Exposure, FilmGrain, Glow, GodRays,
-    JointPalette, Light, Light2d, LightKind, Lighting2d, Material, MeshData, Mips, MotionBlur,
-    Occluder2d, Outline, ParticleAlign, ParticleBlend, ParticleCollision, ParticleEmitter,
-    ParticleNoise, ParticleRender, ParticleSystem, ProceduralSky, RenderScene, Ribbon, RibbonPoint,
-    RibbonUv, SheetMode, SimulationSpace, SkinData, SkinnedInstance, Sprite, SpriteFx, SpriteSheet,
-    StandardMaterial, Text, TextureData, TextureHandle, Tonemap, Trail, TrailStyle, Vertex,
-    Vignette, shapes,
+    Instance, InstanceFx, JointPalette, Light, Light2d, LightKind, Lighting2d, Material, MeshData,
+    Mips, MotionBlur, Occluder2d, Outline, ParticleAlign, ParticleBlend, ParticleCollision,
+    ParticleEmitter, ParticleNoise, ParticleRender, ParticleSystem, ProceduralSky, RenderScene,
+    Ribbon, RibbonPoint, RibbonUv, SheetMode, SimulationSpace, SkinData, SkinnedInstance, Sprite,
+    SpriteFx, SpriteSheet, StandardMaterial, Text, TextureData, TextureHandle, Tonemap, Trail,
+    TrailStyle, Vertex, Vignette, shapes,
 };
 
 /// Advances every clock of the scene to `tick`: the scene's, each particle
@@ -1688,6 +1688,80 @@ pub fn skinning_scene() -> RenderScene {
         ..Default::default()
     };
     scene
+}
+
+/// Per-instance looks (kestrel-stair #11): three instances of one glTF
+/// model, its materials shared, the middle one flashing white and the right
+/// one tinted amber; in front, two skinned cylinders of one mesh and
+/// material, the right one flashing red. Each look rides in its instance's
+/// record (`InstanceFx`): one draw per (mesh, material), whatever each
+/// instance shows.
+pub fn model_flash_scene() -> Result<RenderScene, String> {
+    let model = load("trickster.glb")?;
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 40.0);
+    let parts = model.add_to(&mut scene);
+    let scale = 2.0 / (model.max - model.min).max_element().max(1e-3);
+    let looks = [
+        InstanceFx::NONE,
+        InstanceFx {
+            flash: 0.6,
+            ..InstanceFx::NONE
+        },
+        InstanceFx {
+            tint: Vec3::new(1.0, 0.6, 0.25),
+            ..InstanceFx::NONE
+        },
+    ];
+    for (i, fx) in looks.into_iter().enumerate() {
+        let m =
+            Mat4::from_translation(Vec3::new(-2.4 + i as f32 * 2.4, -model.min.y * scale, -0.6))
+                * Mat4::from_rotation_y(0.5)
+                * Mat4::from_scale(Vec3::splat(scale));
+        for &(mesh, material) in &parts.parts {
+            scene.instances.push(Instance {
+                mesh,
+                material,
+                transform: m,
+                material_layer: None,
+                fx,
+            });
+        }
+    }
+    let (mesh, skin) = skinned_cylinder(0.18, 24, 24);
+    let cylinder = scene.add_skinned_mesh(mesh, skin);
+    let flesh = scene.add_material(Material {
+        base_color: [0.75, 0.3, 0.55, 1.0],
+        roughness: 0.45,
+        ..Default::default()
+    });
+    for i in 0..2u32 {
+        scene
+            .joint_palettes
+            .push(bend_palette(-0.2 + i as f32 * 0.4, 0.3));
+        let mut inst = SkinnedInstance::new(
+            cylinder,
+            flesh,
+            Mat4::from_translation(Vec3::new(-1.0 + i as f32 * 2.0, 0.0, 1.6))
+                * Mat4::from_scale(Vec3::splat(0.6)),
+            i,
+        );
+        if i == 1 {
+            inst.fx = InstanceFx {
+                flash: 0.5,
+                flash_color: Vec3::new(1.0, 0.1, 0.05),
+                ..InstanceFx::NONE
+            };
+        }
+        scene.skinned_instances.push(inst);
+    }
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.4, 6.4),
+        target: Vec3::new(0.0, 1.0, 0.0),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    Ok(scene)
 }
 
 // ---------------------------------------------------------------------------

@@ -94,7 +94,7 @@ export const Game = defineResource("Game", {
   gateOpen: bool(false),
   gateLift: f32(0, { unit: "m" }),
   inCrypt: bool(false, { doc: "The courier is inside the crypt: the reverb zone." }),
-  reverb: f32(0.12, { doc: "The effects bus's reverb send, eased towards the zone's." }),
+  reverb: f32(0, { doc: "How much of the crypt's reverb zone the listener hears (its og.ReverbZone.weight), 0 to 1." }),
   capeHang: f32(0, { unit: "m", doc: "The cape's hem below its pins (og.physics.clothPoints)." }),
   capeBehind: f32(0, { unit: "m", doc: "How far the cape's hem trails behind the courier." }),
   bannerSway: f32(0, { unit: "m", doc: "How far banner-0's free corner hangs out from its pinned corner." }),

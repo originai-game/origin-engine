@@ -3171,7 +3171,7 @@
         },
         {
           "name": "flash",
-          "doc": "Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash).",
+          "doc": "Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.",
           "params": [
             {
               "name": "world",
@@ -3187,7 +3187,7 @@
             }
           ],
           "returns": "Result<Tween>",
-          "returnsDoc": "Refused for an entity with neither og.Sprite nor og.Mesh.",
+          "returnsDoc": "Refused for an entity with none of og.Sprite, og.Mesh and og.Model.",
           "publish": true
         }
       ],
@@ -3344,6 +3344,7 @@
         "AudioListener",
         "Audio",
         "AudioBusFx",
+        "ReverbZone",
         "Music",
         "MusicBeat",
         "SoundStarted",
@@ -14012,13 +14013,39 @@
     "Model": {
       "x-og-kind": "component",
       "x-og-module": "load",
-      "description": "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.",
+      "description": "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.\nThe glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.",
       "type": "object",
       "properties": {
         "asset": {
           "$ref": "#/$defs/Asset",
           "description": "The glTF asset.",
           "default": 0
+        },
+        "tint": {
+          "$ref": "#/$defs/Color",
+          "description": "A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "flash": {
+          "type": "number",
+          "description": "A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "flashColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The flash's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
         }
       },
       "additionalProperties": false
@@ -15272,7 +15299,7 @@
     "Rope": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.",
+      "description": "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.",
       "type": "object",
       "properties": {
         "segments": {
@@ -15389,7 +15416,7 @@
     "Cloth": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
+      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
       "type": "object",
       "properties": {
         "columns": {
@@ -18491,12 +18518,9 @@
           "default": 0
         },
         "impact": {
-          "$ref": "#/$defs/Vector2",
-          "description": "The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump).",
-          "default": {
-            "x": 1.25,
-            "y": 0.8
-          }
+          "x-og-type": "Partial<Vector3>",
+          "description": "The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0.",
+          "default": {}
         },
         "rest": {
           "$ref": "#/$defs/Vector3",
@@ -18525,7 +18549,7 @@
     "FlashDesc": {
       "x-og-kind": "desc",
       "x-og-module": "tween",
-      "description": "A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0.",
+      "description": "A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0.",
       "type": "object",
       "properties": {
         "entity": {
@@ -19265,6 +19289,78 @@
           "maximum": 5,
           "x-og-unit": "s",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReverbZone": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.\nDeterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed by their og.Transform (root entities, as the listener).",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The box's full size along the entity's axes, centred on it (times og.Transform.scale).",
+          "default": {
+            "x": 10,
+            "y": 4,
+            "z": 10
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "A sphere of this radius about the entity instead of the box (times the largest of og.Transform.scale); 0 uses the box.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "How far past the volume's surface the zone fades out, linearly; 0 is a hard edge.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "bus": {
+          "$ref": "#/$defs/AudioBus",
+          "description": "The bus whose reverb send the zone sets.",
+          "default": "sfx"
+        },
+        "send": {
+          "type": "number",
+          "description": "That bus's send to the reverb inside (its AudioBusFx.reverb outside).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "room": {
+          "type": "number",
+          "description": "The reverb's room size inside (Audio.reverbRoom outside).",
+          "default": 0.85,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "The reverb's damping of high frequencies inside (Audio.reverbDamping outside).",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of this zone the listener hears, 0 to 1: 1 inside, 0 past the fade (written by og.audio each tick).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "readOnly": true
         }
       },
       "additionalProperties": false
