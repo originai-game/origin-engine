@@ -60,6 +60,6 @@ export default playtest({
     const jumped = game(run, "jumped.json");
     t.ok(jumped.jumps === 1 && !jumped.grounded, "Jump jumped");
     t.equal(game(run, "lit.json").lit, 1, "holding Kindle by a beacon lit it");
-    t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels");
+    t.frame("play.png", () => t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels"));
   },
 });

@@ -49,6 +49,6 @@ export default playtest({
     t.equal(game(run, "waited.json").turns, up.turns + 1, "Wait waited a turn");
     const title = run.json<{ elements: Element[] }>("title.json").elements;
     t.ok(title.some((e) => e.id === "play") && title.every((e) => e.y + e.height <= 844 - 34 && e.y >= 47), "the title's menu sits inside the safe area");
-    t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels");
+    t.frame("play.png", () => t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels"));
   },
 });

@@ -19,6 +19,11 @@
 //   through the probe's `reload` (snapshot, swap, restore), printing one JSON
 //   line per reload with the latency from the file write to the first frame
 //   of the new bundle.
+// - Without a renderer (no usable adapter, as in the platform's engine and
+//   probe sandboxes, or OG_RENDERER=none) the run is the same run: the play
+//   surface keeps --size, a `screenshot` writes no PNG and is listed in
+//   --json's `unchecked` ("no renderer, frame unchecked"), the tier is
+//   `none`, and the exit status does not change.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -147,6 +152,9 @@ if (!opened.ok) fail(`--audio ${audioOut}: ${opened.reason}`);
 const sink: AudioSink = opened.value;
 const outputs: string[] = [];
 const warnings: string[] = [];
+// The screenshots taken without a renderer: the probe's FRAME_UNCHECKED notes.
+const unchecked: string[] = [];
+const UNCHECKED = /^[\d.]+s screenshot: no renderer, frame unchecked \((.+)\)$/;
 
 function decode(base64: string): Uint8Array {
   const bin = atob(base64);
@@ -175,6 +183,10 @@ function drain(): void {
   for (const l of engine.takeLog()) {
     const line = `${l.warning ? "WARN" : "INFO"} tick ${l.tick}: ${l.text}`;
     if (l.warning) warnings.push(line);
+    else {
+      const frame = UNCHECKED.exec(l.text);
+      if (frame) unchecked.push(frame[1]!);
+    }
     process.stderr.write(line + "\n");
   }
 }
@@ -183,7 +195,7 @@ let tier = "none";
 if (deferStart) {
   const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
   if (attached.ok) tier = attached.value!;
-  else process.stderr.write(`WARN no renderer (${attached.reason}); screenshot and capture refuse\n`);
+  else process.stderr.write(`INFO no renderer (${attached.reason}): the run is the same, a screenshot writes no frame and reports it unchecked, capture answers null\n`);
   // The first tick boundary: GameDesc.start, with the surface in place.
   const started = engine.advance(0);
   if (!started.ok) fail(started.reason);
@@ -350,6 +362,7 @@ const summary = {
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
   quit,
+  unchecked,
   audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },
   outputs,
   warnings,

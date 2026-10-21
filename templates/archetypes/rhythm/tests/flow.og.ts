@@ -49,6 +49,6 @@ export default playtest({
     t.equal(m.combo, 0, "the combo broke");
     t.equal(m.judged, 12, "twelve notes judged; the empty press judged nothing");
     t.equal(m.taps, 11, "eleven presses heard");
-    t.equal(run.png("play.png").width, 1280, "play.png captured");
+    t.frame("play.png", () => t.equal(run.png("play.png").width, 1280, "play.png captured"));
   },
 });

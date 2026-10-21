@@ -2597,7 +2597,7 @@ export type Side = "front" | "back" | "double";
  * - `"vulkan"`: Native Vulkan on a GPU.
  * - `"vulkan-cpu"`: Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.
  * - `"metal"`: Native Metal.
- * - `"none"`: No renderer: frames are not produced and capture refuses.
+ * - `"none"`: No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null.
  */
 export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "vulkan-cpu" | "metal" | "none";
 
@@ -16070,7 +16070,7 @@ export interface AlertDesc {
 
 /**
  * The actions the engine ships. Arguments follow the action, separated by `:`.
- * - `"screenshot"`: `screenshot[:path][:full|:N]`: capture the next frame.
+ * - `"screenshot"`: `screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked.
  * - `"listen"`: `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV.
  * - `"touch_move_to"`: `touch_move_to:<ui id>`: move the pointer to a UI element.
  * - `"touch_move"`: `touch_move:x,y`: move the pointer to CSS pixel coordinates.
@@ -16829,7 +16829,7 @@ export interface EngineProbe extends RuntimeProbe {
   /** Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build. */
   hello(): Hello;
   /**
-   * The frame of the current tick, rendered offscreen and read back as a PNG.
+   * The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
    * Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
    * On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
    *

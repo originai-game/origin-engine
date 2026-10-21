@@ -34,12 +34,16 @@ export default playtest({
     t.equal([clearing.phase, clearing.chain], [PHASE.clear, 1], "the first frame of play is the swap's own line clearing");
     const cascade = matchOf(run, "cascade.json");
     t.equal([cascade.phase, cascade.chain], [PHASE.clear, 2], "the last is the cascade clearing");
-    for (const f of FILES) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    t.frame(FILES, () => {
+      for (const f of FILES) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    });
     // The calm ground: away from the board the frame is the brand ink #14161b.
-    const dealt = decodePng(readFileSync(join(outDir(), "dealt.png")));
-    const at = (700 * dealt.width + 20) * 4;
-    const ink = [dealt.rgba[at]!, dealt.rgba[at + 1]!, dealt.rgba[at + 2]!];
-    t.ok(Math.abs(ink[0]! - 0x14) <= 3 && Math.abs(ink[1]! - 0x16) <= 3 && Math.abs(ink[2]! - 0x1b) <= 3, `the corner is the brand ink (${ink.join(", ")})`);
+    t.frame("dealt.png", () => {
+      const dealt = decodePng(readFileSync(join(outDir(), "dealt.png")));
+      const at = (700 * dealt.width + 20) * 4;
+      const ink = [dealt.rgba[at]!, dealt.rgba[at + 1]!, dealt.rgba[at + 2]!];
+      t.ok(Math.abs(ink[0]! - 0x14) <= 3 && Math.abs(ink[1]! - 0x16) <= 3 && Math.abs(ink[2]! - 0x1b) <= 3, `the corner is the brand ink (${ink.join(", ")})`);
+    });
     checkFrames(run, t, FILES, "");
   },
 });

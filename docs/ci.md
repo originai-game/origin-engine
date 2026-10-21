@@ -482,6 +482,33 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   `SKIPPED: og api check not available yet`; with `required` the same
   situation fails the gate. Flip it in the commit that lands `og api check`.
 
+## Switches in the environment
+
+- `OG_RENDERER=none` takes the renderer away natively: og-render's
+  `Renderer::new` and `with_surface` answer `NoAdapter` ("OG_RENDERER=none:
+  this process runs without a renderer", `og_render::renderer_disabled`),
+  as on a machine with no usable adapter. That is the platform's `engine`
+  and `probe` sandboxes (docs/design.md §5: they carry no renderer), and the
+  switch makes the path testable on a machine with a GPU. Without a
+  renderer the run is the same run: the simulation, the probe, `dump_*`,
+  snapshots and the world hash are identical (rendering never feeds back
+  into simulation; the native host keeps the play surface at `--size`); a
+  `screenshot` step writes no PNG and logs, not as a warning, `<t>s
+  screenshot: no renderer, frame unchecked (<file>)` (og-probe's
+  `FRAME_UNCHECKED`); `hello.tier` is `none` and `capture` answers null.
+  `og run --json` reports `tier: "none"` and the frames in `unchecked`;
+  `og test` runs every playtest check outside `t.frame`, prints one
+  `~ <file>: no renderer, frame unchecked` line per screenshot and the
+  count in its summary, and exits as it would on the other checks alone;
+  `og polish` reports frame time `n/a (no renderer)`; `og doctor` reports
+  the renderer `none`, not as a problem. Any other value, or none, leaves
+  the adapters alone; the web host always has its canvas's. The gfx
+  suites (og-tests, og-ui's reference frames, `og-gfx`) need a renderer and
+  fail under the switch. `packages/engine/tests/no-renderer.test.ts` and
+  og-runtime's `tests/no_renderer.rs` hold the contract; frames are verified
+  where there is a renderer: the author's machine, the browser-check
+  sandbox, an executor with a GPU.
+
 ## Browser reference tiers
 
 og-tests' gfx references cover `metal` (and `webgl2` for four scenes,

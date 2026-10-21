@@ -848,8 +848,14 @@ icons) is.
   lane runs it.
 - `og doctor` (no arguments) checks what the author's loop needs: bun
   (node is optional when bun is present), the engine package, its native
-  addon, both web host wasm files, and a 64×64 frame rendered headless
-  (Metal, Vulkan or lavapipe: the executor path that needs no sandbox).
+  addon, both web host wasm files, and reports whether a 64×64 frame
+  renders headless (Metal or Vulkan). No renderer is reported as `none`,
+  not as a problem: the platform's `engine` and `probe` sandboxes carry
+  none, and there `og run`, `og test` and the probe run the same game with
+  each screenshot a frame unchecked (docs/ci.md §Switches in the
+  environment); frames are verified on the author's machine, in the
+  browser-check sandbox (the published page above) or on an executor with
+  a GPU.
   Inside the engine repository it also compares rustc, cargo and
   wasm-bindgen with `rust-toolchain.toml` and `Cargo.lock`; outside, those
   lines say `skipped`. Each problem prints one line naming its fix, and the

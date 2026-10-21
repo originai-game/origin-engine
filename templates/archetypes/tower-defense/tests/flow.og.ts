@@ -49,6 +49,8 @@ export default playtest({
     t.ok(fought.shots >= 6, `the thorns shot at what they saw (${fought.shots} shots)`);
     t.ok(fought.kills >= 3, `visitors were turned away (${fought.kills})`);
     t.ok(fought.gold > set.gold, `bounties filled the purse (${set.gold} to ${fought.gold})`);
-    for (const f of ["title.png", "play.png", "wave.png"]) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    t.frame(["title.png", "play.png", "wave.png"], () => {
+      for (const f of ["title.png", "play.png", "wave.png"]) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    });
   },
 });

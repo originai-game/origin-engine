@@ -30,7 +30,7 @@ export default playtest({
     t.ok(over.leaks >= 2, `${over.leaks} visitors reached the doorstep`);
     t.equal(over.kills, 0, "nothing was turned away");
     t.equal(run.json<{ value: { scale: number } }>("time.json").value.scale, 1, "the end card leaves the time scale at 1");
-    t.equal(run.png("lost.png").width, 1280, "the end card was captured");
+    t.frame("lost.png", () => t.equal(run.png("lost.png").width, 1280, "the end card was captured"));
     const again = game(run, "again.json");
     t.equal(again.phase, PLAY, "Play again started another round");
     t.equal(again.rounds, 2, "the second round");

@@ -1807,6 +1807,7 @@ dependencies = [
  "og-render",
  "og-runtime",
  "pollster",
+ "serde_json",
 ]
 
 [[package]]

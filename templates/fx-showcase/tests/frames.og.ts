@@ -34,7 +34,9 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    for (const f of FILES) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    t.frame(FILES, () => {
+      for (const f of FILES) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    });
     const stage = run.json<{ components: { Stage: { station: number } } }>("stage.json").components.Stage;
     t.equal(stage.station, 4, "the last station is stylised");
     // The E5 stations are built when first shown (src/e5.ts): none was, so the world holds none of them.
@@ -43,12 +45,14 @@ export default playtest({
     // The HUD's accent bar is opaque linear (1, 0.62, 0.08): sRGB (255, 207,
     // 79) exactly on every station, after tone mapping, the LUT, vignette,
     // aberration, grain, bloom and TAA, because the overlay comes after them.
-    for (const f of FILES) {
-      const img = decodePng(readFileSync(join(outDir(), f)));
-      const at = (18 * img.width + 19) * 4;
-      const px = [img.rgba[at]!, img.rgba[at + 1]!, img.rgba[at + 2]!];
-      t.ok(Math.abs(px[0]! - 255) <= 2 && Math.abs(px[1]! - 207) <= 2 && Math.abs(px[2]! - 79) <= 2, `${f}: the HUD bar is exactly its colour (${px.join(", ")})`);
-    }
+    t.frame(FILES, () => {
+      for (const f of FILES) {
+        const img = decodePng(readFileSync(join(outDir(), f)));
+        const at = (18 * img.width + 19) * 4;
+        const px = [img.rgba[at]!, img.rgba[at + 1]!, img.rgba[at + 2]!];
+        t.ok(Math.abs(px[0]! - 255) <= 2 && Math.abs(px[1]! - 207) <= 2 && Math.abs(px[2]! - 79) <= 2, `${f}: the HUD bar is exactly its colour (${px.join(", ")})`);
+      }
+    });
     checkFrames(run, t, FILES, "");
   },
 });

@@ -1,7 +1,8 @@
 // `og doctor`'s engine checks, as one JSON line: does this package's native
 // addon load, is the web host's wasm built, and can this machine render a
-// frame headless (the executor path that needs no E2B sandbox: Metal on a
-// Mac, Vulkan on a GPU or lavapipe on Linux).
+// frame headless (Metal on a Mac, Vulkan on a GPU). No renderer is a
+// supported configuration, not a problem: the playtests' frames are then
+// unchecked (OG_RENDERER=none makes any machine so).
 //
 //   bun src/node/doctor.ts
 

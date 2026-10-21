@@ -2,13 +2,15 @@
 // installs @origingame/engine and @origingame/engine-linux-x64 from the
 // tarballs scripts/pack.sh made into a copy of the runner archetype inside
 // the `origin-runner-probe` sandbox, cooks it with the packed og, runs
-// `og run --headless` with a screenshot and a world dump on Mesa lavapipe,
+// `og run --headless` with a screenshot and a world dump (on Mesa lavapipe
+// where the sandbox has it; without a renderer the run is the same and the
+// screenshot is a frame unchecked, docs/ci.md §Switches in the environment),
 // and downloads them. Reads E2B_API_KEY from the platform checkout's .env,
 // as tools/bench/e2b-run.ts does.
 //
 //   bun scripts/e2b-addon.ts [--out <dir>] [--template origin-runner-probe]
 //
-// Prints a JSON report and writes <out>/sandbox-frame.png, sandbox-world.json, sandbox-run.json.
+// Prints a JSON report and writes <out>/sandbox-frame.png (with a renderer), sandbox-world.json, sandbox-run.json.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -77,13 +79,17 @@ try {
   report.run = { exitCode: run.exitCode, stdout: run.stdout.split("\n").slice(-6), stderr: run.stderr.split("\n").slice(-6) };
   mkdirSync(out, { recursive: true });
   if (run.exitCode === 0) {
-    const png = (await sb.files.read("/tmp/og/game/out/frame.png", { format: "bytes" })) as Uint8Array;
-    writeFileSync(join(out, "sandbox-frame.png"), png);
+    const summary = JSON.parse(run.stdout.split("\n").pop() ?? "{}") as { tier?: string; unchecked?: string[] };
+    report.tier = summary.tier;
+    if (summary.tier !== "none") {
+      const png = (await sb.files.read("/tmp/og/game/out/frame.png", { format: "bytes" })) as Uint8Array;
+      writeFileSync(join(out, "sandbox-frame.png"), png);
+      report.frameBytes = png.length;
+    } else report.unchecked = summary.unchecked;
     const world = (await sb.files.read("/tmp/og/game/out/world.json")) as string;
     writeFileSync(join(out, "sandbox-world.json"), world);
     const w = JSON.parse(world) as { tick: number; hash: string; entities: number };
     report.world = { tick: w.tick, hash: w.hash, entities: w.entities };
-    report.frameBytes = png.length;
   }
 } finally {
   await sb.kill();

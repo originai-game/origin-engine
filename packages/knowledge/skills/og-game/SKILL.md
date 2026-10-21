@@ -62,7 +62,12 @@ The order the games found productive:
    say what it shows. Do this after every change that shows on screen.
 7. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
    asserting on facts, `get:` answers and dumps, one per feature, and a
-   frames playtest comparing screenshots with `references/<tier>/`.
+   frames playtest comparing screenshots with `references/<tier>/`, its
+   frame reads inside `t.frame`: in a sandbox without a renderer each
+   screenshot is reported "no renderer, frame unchecked" and passes while
+   every other check runs, and the frames are verified where there is a
+   renderer (the author's machine, the browser-check sandbox, an executor
+   with a GPU).
 8. **Polish** (og-build §5): `og polish` until its findings are gone; each
    names the section that fixes it (og-taste §10, og-feel §13).
 

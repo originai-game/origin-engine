@@ -2083,7 +2083,7 @@ A string: one of the variants below. The zero value is `"webgpu"`.
 | `"vulkan"` | Native Vulkan on a GPU. |
 | `"vulkan-cpu"` | Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU. |
 | `"metal"` | Native Metal. |
-| `"none"` | No renderer: frames are not produced and capture refuses. |
+| `"none"` | No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null. |
 
 ```ogt
 enum RenderTier {
@@ -2093,7 +2093,7 @@ enum RenderTier {
   variant vulkan "Native Vulkan on a GPU."
   variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
   variant metal "Native Metal."
-  variant none "No renderer: frames are not produced and capture refuses."
+  variant none "No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null."
 }
 ```
 

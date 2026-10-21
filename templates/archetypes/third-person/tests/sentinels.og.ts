@@ -43,6 +43,6 @@ export default playtest({
     t.equal(grabbed.hurts, grabbed.grabs, "and counts as a heart lost");
     t.ok(grabbed.grabs <= 2, `spared a moment after each grab: at most two in 4.4 s (${grabbed.grabs})`);
     t.equal(grabbed.phase, 1, "the run goes on with hearts left");
-    t.equal(run.png("alarm.png").width, 1280, "alarm.png captured");
+    t.frame("alarm.png", () => t.equal(run.png("alarm.png").width, 1280, "alarm.png captured"));
   },
 });

@@ -19,16 +19,18 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    const load = (f: string) => decodePng(readFileSync(join(outDir(), f)));
-    const plain = load("looks-plain.png");
-    const none = load("looks-none.png");
-    const back = difference(plain, none);
-    t.ok(back.rmse <= 0.01, `look:none restores the plain diorama (RMSE ${back.rmse.toFixed(5)})`);
-    // Every preset changes the frame: none is a no-op by accident.
-    for (const slug of LOOK_PRESETS) {
-      const d = difference(plain, load(`looks-${slug}.png`));
-      t.ok(d.rmse > 0.002, `${slug} changes the frame (RMSE ${d.rmse.toFixed(5)} against the plain diorama)`);
-    }
+    t.frame(["looks-plain.png", "looks-none.png", ...LOOK_PRESETS.map((slug) => `looks-${slug}.png`)], () => {
+      const load = (f: string) => decodePng(readFileSync(join(outDir(), f)));
+      const plain = load("looks-plain.png");
+      const none = load("looks-none.png");
+      const back = difference(plain, none);
+      t.ok(back.rmse <= 0.01, `look:none restores the plain diorama (RMSE ${back.rmse.toFixed(5)})`);
+      // Every preset changes the frame: none is a no-op by accident.
+      for (const slug of LOOK_PRESETS) {
+        const d = difference(plain, load(`looks-${slug}.png`));
+        t.ok(d.rmse > 0.002, `${slug} changes the frame (RMSE ${d.rmse.toFixed(5)} against the plain diorama)`);
+      }
+    });
     checkFrames(run, t, LOOK_FRAMES, "");
   },
 });

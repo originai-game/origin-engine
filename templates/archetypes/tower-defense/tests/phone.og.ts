@@ -42,6 +42,8 @@ export default playtest({
     }
     const pause = ui.elements.find((e) => e.id === "Pause");
     t.ok(pause !== undefined && pause.y >= 47, "the pause button sits below the notch");
-    for (const f of ["title.png", "play.png"]) t.equal(run.png(f).height, 2532, `${f} is a phone frame`);
+    t.frame(["title.png", "play.png"], () => {
+      for (const f of ["title.png", "play.png"]) t.equal(run.png(f).height, 2532, `${f} is a phone frame`);
+    });
   },
 });
