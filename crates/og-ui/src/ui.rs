@@ -2299,6 +2299,7 @@ impl Ui {
             .partition(|&&f| matches!(self.nodes[f].float, Float::Anchored { .. }));
         let mut spots: Vec<(usize, Rect)> = Vec::new();
         for f in groups.into_iter().chain([NONE]).chain(rest) {
+            // NONE marks the groups' end: place them, then go on to the rest.
             if f == NONE {
                 if !covered.is_empty() {
                     for k in 0..spots.len() {
