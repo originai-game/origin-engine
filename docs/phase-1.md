@@ -701,6 +701,81 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, vehicle-physics: wheel rays on the chassis's layers, forces and a centre of mass, light snapshots, a mid-tick save that completes its tick (e9eae253)
+
+Meridian Loop's physics and API findings (lane-5): 3 (the blocker), 2,
+1, 16, 11, 12, 4, 5, 6 and 14.
+
+- **#3.** The wheel-ray filter in vehicle3.rs had no collision groups;
+  the rays now use the chassis collider's layers and mask. Test
+  `cars_on_layers_that_do_not_meet_pass_through_each_other` (the second
+  car sat at y 2.05 on the first's roof; both at 0.875 on the road now;
+  a control case keeps cars on meeting layers stacked).
+- **#2.** Four one-shot calls on the pattern of `og.camera.shake`:
+  `og.physics.applyForce` and `applyImpulse` (an optional world point),
+  `applyTorque`, `applyTorqueImpulse`, queued and applied by the tick's
+  physics step in call order (a force lasts one step, an impulse applies
+  at once, a hit stop drops forces and keeps impulses, pending pushes
+  are in snapshots and the hash, refused without an `og.RigidBody`);
+  `og.RigidBody.centerOfMass` (an offset, the inertia the shape's);
+  rapier's raycast car copied into og-physics
+  (`raycast_vehicle.rs`, Apache-2.0, unchanged but for making roll
+  influence and skid info public) so `og.Vehicle.rollInfluence` exposes
+  the controller's own roll setting, default 0 (rapier's 0.1 flips the
+  default car at full lock above about 20 m/s). Tests: forces.rs (6,
+  the 2D profile, the hit stop, the snapshot, a weighted box righting
+  itself) and a vehicles test (0.1 tips the car, 0 or a lowered centre
+  keeps it upright).
+- **#1.** Defaults for a 1,000 kg car: `engineForce` 2,500 N per driven
+  wheel, `maxSpeed` 40, `brakeForce` 2,000 (now newtons per wheel,
+  applied as force × the tick, where it was rapier's per-step impulse
+  cap), `wheelMass` 20; 4.7 m/s after 1 s, about 8 m/s² braking. og-feel
+  §12 gains a vehicle table (road car, arcade racer, truck, kart) and
+  tells authors to set `og.RigidBody.mass`. The reported `maxSpeed`
+  overshoot did not reproduce (20.00 for 20 on flat ground).
+- **#16.** `WheelPose` gains `slip` (1 − rapier's skid info) and
+  `sideSpeed`; `og.Vehicle` a written `slip`, the largest of its
+  wheels'; 0 in 2D.
+- **#11.** The physics save wrote the whole rapier world, triangles
+  included; it now cuts out the geometry of mesh, convex-hull and
+  height-field colliders and stores each one's handle and scale, the
+  decode rebuilding them from the registered asset (a save naming an
+  unregistered mesh is refused, naming it). saves.rs: a 7,200-triangle
+  ground with a hull and a height field, 630,593 bytes before, 12,239
+  now, the same hash and future after the restore.
+- **#12.** The restore completes the tick: a snapshot taken inside a
+  system names that system (snapshot format 4), and after restoring it
+  the next step runs the systems after that one, physics included, with
+  the tick's own events, then ends the tick (deferring the snapshot was
+  impossible, `snapshot()` returns its text at once). Take the snapshot
+  as the system's last write: anything after the call is not in the
+  save (`world.snapshot`/`restore`, og-core §2, og-game §17). Tests:
+  og-ecs snapshot.rs (completion and refusal) and
+  `crates/og-runtime/tests/mid_tick_save.rs` (saved in a system at tick
+  8, restored at tick 3, the same hash at tick 30, `applyImpulse`
+  through the host ABI). Not checked: on the frame that completes a
+  restored tick, UI drawn by systems before the saver is probably
+  missing for that one frame.
+- **#4, #5, #6 (docs).** `str` holds at most 4,096 bytes and there is no
+  array field (numbered fields, an entity per item, or chunked text);
+  handles go in their own field kinds (`Asset()`, `Texture()`,
+  `Sound()`, `Entity()`), never `u32`; a system's query requires every
+  component of its reads and writes, and `world.query` stays refused
+  inside a system by design (a system reaches what it declared). IDL
+  docs and og-core §4.
+- **#14.** `og.Model.visible` (default true); the renderer skips every
+  draw of a hidden model, static or animated
+  (`a_hidden_model_draws_nothing_posed_or_not`).
+
+After the merge: the layouts of `og.RigidBody`, `og.Vehicle` and
+`og.Model` changed, so an existing save holding them needs `{ migrate:
+true }`; the physics save format changed, so physics worlds' hashes
+differ from earlier recorded ones and an older engine refuses a
+format-4 snapshot; `tests/save.test.ts` was edited to the mid-tick
+behaviour; Meridian Loop pins `rollInfluence: 0.1` and `brakeForce`
+156,000 N to keep its tuned handling (not bit-exact: its suite, its
+`LAP1 = 2046` in ghost.og.ts and its frames are checked at the merge).
+
 ## Wave 13, ui-five: text editing by grapheme, bounds in the a11y tree, miter joins, the kit on the icon set (e6c445bc)
 
 Rows 59, 60 and 61, on lane-2.
