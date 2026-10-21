@@ -170,5 +170,6 @@ test.skipIf(STALE_WASM)("the probe's memory answers the same shape on both hosts
   expect(node.memory.resident!).toBeGreaterThan(node.memory.heap!.live);
   // The engine Worker's `memory` call is the probe's answer.
   expect(web.worker!.world.entities).toBe(10000);
-  expect(web.worker!.linear).toBe(web.memory.linear);
+  // Read a moment later, after the probe's call grew the memory or not: never smaller.
+  expect(web.worker!.linear!).toBeGreaterThanOrEqual(web.memory.linear!);
 }, 120_000);

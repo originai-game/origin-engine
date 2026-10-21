@@ -486,7 +486,21 @@ earlier build; a build that fails after replacing it removes what it wrote.
   the install hint) are Chinese when `navigator.language` is `zh*`, else
   English.
 - **Marks** for tests and telemetry: `performance` marks `og:ready`,
-  `og:first-frame` and `og:start`.
+  `og:first-frame` and `og:start`; where the Worker's boot went is
+  `__runtime_probe__.boot` (src/web/worker.ts `BootPhases`: `wasm`,
+  `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`,
+  ms each), sent with the first frame.
+- **Pipelines behind the gate**: the renderer makes a pipeline when a pass
+  first draws with it (og-render's README §Pipelines made on first use),
+  so the first frame compiles only what it draws: on the WebGL2 fallback,
+  where every program compiles synchronously, the renderer's creation went
+  from about 500 ms to 130 ms and the dogfood games' first frame from 1.1
+  to 1.4 s to 0.7 s. After the first frame the Worker makes the rest, one
+  a task in idle time, until none is left or the gate's tap starts play
+  (`og_web_warm`; the Worker's console says how many and how long:
+  Lantern Vale's 29 on WebGL2 in about 0.7 s, its 35 on WebGPU in 0.17 s);
+  a pass the warm-up did not reach is made by the frame that first draws
+  with it.
 - **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
   has no adapter), `replay-seed=<u32>`, `autoplay=0` (a harness drives the
   clock through the probe: no gate, no first tick, no service worker).

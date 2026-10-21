@@ -25,6 +25,8 @@ if (host === "node") {
 const created = createEngine((await import("../../examples/hello.ts")).default as unknown as GameToken);
 if (!created.ok) throw new Error(created.reason);
 const engine = created.value;
+const spawned = engine.command("spawn_wave", ["10000"]);
+if (!spawned.ok) throw new Error(spawned.reason);
 const advanced = engine.advance(60);
 if (!advanced.ok) throw new Error(advanced.reason);
 const memory = (engine.probe as unknown as { memory(): unknown }).memory();

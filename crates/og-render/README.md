@@ -612,6 +612,30 @@ is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
 (`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
 and adapter, compared with 15 % tolerance.
 
+### Pipelines made on first use
+
+A pipeline is a program to compile, and on WebGL2 wgpu compiles and links
+each one synchronously when it is made (ANGLE's compile, then the status
+read that waits for it). `Renderer::new` used to make every fixed pipeline
+up front, 52 programs on the WebGL2 page of the dogfood games, most of them
+for passes the first frame does not draw (water, metaballs, 3D fluids,
+terrain, 2D lights, glass, ribbons, the sprite variants, bloom, TAA and the
+eleven effect passes): 400 to 550 ms before the first frame. Each is now a
+`Deferred` (`src/deferred.rs`), made from the same descriptor when a pass
+first sets it, and the shader modules only those passes use are parsed
+then too (`deferred::module`), so a frame compiles only what it draws and
+every frame is the frame it was (the pipelines are the same objects, made
+later). `Renderer::warm()` makes the rest one per call, the likeliest
+first, and answers false when none is left: the web Worker calls it in
+idle time behind the play gate (`og_web_warm`), so a pass met later does
+not stop a frame to compile. Measured in headless Chrome 150 on the three
+dogfood games' publish builds (`packages/engine/tests/web/dogfood.ts
+--boot`, three runs each, median, 2026-10-21): the WebGL2 renderer's
+creation went from 507 / 546 / 461 ms to 129 / 155 / 127 ms (Lantern Vale,
+Hollowbell, Kestrel Stair) and the first frame from 1,405 / 1,118 / 1,197
+ms to 703 / 701 / 705 ms; WebGPU's creation from 22 / 13 / 21 ms to 10 /
+10 / 9 ms.
+
 ### Lit pipeline variants
 
 The standard lit shader (`pbr.wgsl`, `pbr_fs.wgsl`, `pbr_prepass.wgsl`)

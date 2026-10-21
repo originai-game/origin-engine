@@ -752,7 +752,7 @@ export function startWorker(game: GameToken): void {
       if (more) {
         made++;
         setTimeout(step, 0);
-      } else if (made > 0) log(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
+      } else if (made > 0) console.info(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
     };
     setTimeout(step, 0);
   };
