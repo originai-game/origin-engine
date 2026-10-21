@@ -228,7 +228,7 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
 }
 
 // A point or spot light, as pbr.wgsl's local_light.
-fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> Shade {
+fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> Shade {
   var o: Shade;
   o.diffuse = vec3<f32>(0.0);
   o.specular = vec3<f32>(0.0);
@@ -245,7 +245,8 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     atten *= t * t;
   }
   if (atten <= 0.0 || dot(n, l) <= 0.0) { return o; }
-  let radiance = light.color_kind.rgb * atten * local_shadow(light, p, n);
+  var radiance = light.color_kind.rgb * atten;
+  if (receives) { radiance *= local_shadow(light, p, n); }
   let b = physical_brdf(s, k, n, v, l);
   o.diffuse = b.diffuse * radiance;
   o.specular = b.specular * radiance;
@@ -398,8 +399,9 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   // The directional light.
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
+  let receives = look_receives(in.look);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), n_dot_l); }
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0 && receives) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), n_dot_l); }
   let sun = physical_brdf(s, k, n, v, l);
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
   var specular = sun.specular * frame.light_color.rgb * shadow;
@@ -413,7 +415,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
     let first = word & 0xffffffu;
     let count = word >> 24u;
     for (var c = 0u; c < count; c++) {
-      let o = physical_local(light_list[cluster_ref(first + c)], s, k, in.world_pos, n, v);
+      let o = physical_local(light_list[cluster_ref(first + c)], s, k, in.world_pos, n, v, receives);
       diffuse += o.diffuse;
       specular += o.specular;
     }

@@ -11013,8 +11013,8 @@
         },
         "receiveShadow": {
           "type": "boolean",
-          "description": "Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows.",
-          "default": false
+          "description": "Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley.",
+          "default": true
         },
         "visible": {
           "type": "boolean",
@@ -13812,13 +13812,13 @@
         },
         "castShadow": {
           "type": "boolean",
-          "description": "Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows.",
-          "default": false
+          "description": "Whether the models instantiated from it cast shadows: world.instantiate of the handle and a scene's `model` line give their og.Model this castShadow. On when omitted, so a model loaded without a desc casts as it always has; false turns it off for the model (og.Model.castShadow turns it off for one instance). The flags belong to the asset: another og.load.gltf of the same path answers the same handle and sets them again, for the models instantiated after it.",
+          "default": true
         },
         "receiveShadow": {
           "type": "boolean",
-          "description": "Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows.",
-          "default": false
+          "description": "Whether the models instantiated from it receive shadows (og.Model.receiveShadow, as castShadow): on when omitted; false lights them as if unshadowed by every light.",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -14090,6 +14090,16 @@
             "g": 1,
             "b": 1
           }
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false).",
+          "default": true
+        },
+        "receiveShadow": {
+          "type": "boolean",
+          "description": "Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table.",
+          "default": true
         }
       },
       "additionalProperties": false
