@@ -303,7 +303,8 @@ pub struct Report {
     pub ignored: Vec<String>,
     /// Outputs deleted because their source is gone or failed.
     pub removed: Vec<String>,
-    /// Problems that do not stop the cook: a locale's missing string keys.
+    /// Problems that do not stop the cook: a locale's missing string keys,
+    /// a Tiled map's custom property the importer does not read.
     pub warnings: Vec<String>,
     pub elapsed_ms: f64,
 }
@@ -1614,6 +1615,18 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);
+        }
+    }
+    // A Tiled map's custom properties the importer does not read.
+    for s in sources
+        .iter()
+        .filter(|s| s.kind == Kind::Tilemap && s.rel.to_ascii_lowercase().ends_with(".tmj"))
+    {
+        for what in tilemap::tiled_unread(&String::from_utf8_lossy(&s.bytes)) {
+            warnings.push(format!("assets/{}: {what}", s.rel));
+            if let Some(r) = reports.iter_mut().find(|r| r.source == s.rel) {
+                r.notes.push(what);
+            }
         }
     }
     reports.sort_by(|a, b| a.source.cmp(&b.source));

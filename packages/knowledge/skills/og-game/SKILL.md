@@ -531,12 +531,21 @@ cook reads of a layer and an object:
 | `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
 | `lit` | tile layer custom property (bool) | false keeps the layer out of og.Lighting2D (a sky or window layer); default true |
 | `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
-| `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y; a property of another name (`repeat`) is not read |
+| `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y (`repeat` is not a name the cook reads) |
 | `parallaxx`, `parallaxy` | Tiled's own layer fields (Layer Properties, Parallax Factor) | the layer's parallax |
 | `offsetx`, `offsety` | Tiled's own layer and group fields | the layer's offset, a group's added to its layers' |
 | `opacity`, `visible` | Tiled's own layer fields | as named |
 | `type` or `class` | an object's | TileObject.kind |
 | any other | an object's custom properties | TileObject.properties, every value as text |
+| `solid` | an embedded tileset's tile custom property (bool) | the tile collides as a whole cell |
+
+`og cook` warns on every custom property it does not read, naming the
+property, its layer, object or tile and the names read there: a tile
+layer's other than the six names above (or one whose value has another
+type: a `collision` written as the string "true"), a tile's other than
+`solid`, the map's, a group's, an object layer's or an image layer's own
+(none is imported), and an object's class-typed one (no text to give). A
+warning fails nothing; the map cooks without the property.
 
 Objects keep their name, size and position (a tile object is anchored at
 its bottom, as Tiled draws it). Positions arrive in map-local world units,
