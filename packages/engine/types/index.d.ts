@@ -4754,7 +4754,7 @@ export interface TextDesc {
    */
   readonly outlineColor?: Color;
   /**
-   * Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise.
+   * Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it.
    *
    * @default false
    */
@@ -4973,7 +4973,7 @@ export interface SpriteDesc {
    */
   readonly sliceScale?: number;
   /**
-   * Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only.
+   * Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it.
    *
    * @default false
    */
@@ -5399,6 +5399,11 @@ export declare const MAX_LIGHTS: 256;
  * The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there.
  */
 export declare const MAX_CLUSTER_LIGHTS: 64;
+
+/**
+ * The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way.
+ */
+export declare const UI_LAYER: 1000;
 
 /**
  * What the renderer can do on this device. Backend limits are reported here, never by missing members.

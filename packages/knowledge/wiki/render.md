@@ -94,6 +94,7 @@ module render {
 | [`og.render.sphereGeometry`](#fn-sphereGeometry) | function | Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh). |
 | [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
 | [`MAX_CLUSTER_LIGHTS`](#const-MAX_CLUSTER_LIGHTS) | constant | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
+| [`UI_LAYER`](#const-UI_LAYER) | constant | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way. |
 | [`RenderCapabilities`](#type-RenderCapabilities) | struct | What the renderer can do on this device. Backend limits are reported here, never by missing members. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
@@ -346,7 +347,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3260</sub>
+<sub>`api.ogt` line 3261</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -378,7 +379,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3267</sub>
+<sub>`api.ogt` line 3268</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -410,7 +411,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3277</sub>
+<sub>`api.ogt` line 3278</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -442,7 +443,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3285</sub>
+<sub>`api.ogt` line 3286</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -476,7 +477,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3293</sub>
+<sub>`api.ogt` line 3294</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -506,7 +507,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3302</sub>
+<sub>`api.ogt` line 3303</sub>
 
 <a id="fn-look"></a>
 
@@ -534,7 +535,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3309</sub>
+<sub>`api.ogt` line 3310</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -562,7 +563,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3315</sub>
+<sub>`api.ogt` line 3316</sub>
 
 <a id="fn-text"></a>
 
@@ -592,7 +593,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3321</sub>
+<sub>`api.ogt` line 3322</sub>
 
 ## Components, resources and events
 
@@ -2847,7 +2848,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `align` | `TextAlign` | `"start"` | — | — | — | How each line sits on `position`: start puts its left end there, center its middle, end its right end. |
 | `outline` | `number` | `0` | 0 … 1 | — | — | World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines). |
 | `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The outline's linear colour. |
-| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. |
+| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole. |
 
 ```ogt
@@ -2881,7 +2882,7 @@ struct TextDesc {
     max 1
   }
   field outlineColor Color "The outline's linear colour."
-  field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise."
+  field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
   field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
 }
 ```
@@ -2975,7 +2976,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
 | `slice` | `[number, number, number, number] \| null` | `null` | — | — | — | Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole. |
 | `sliceScale` | `number` | `0.0625` | ≥ 0 | — | — | Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets. |
-| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. |
+| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole. |
 
 ```ogt
@@ -3044,7 +3045,7 @@ struct SpriteDesc {
     default 0.0625
     min 0
   }
-  field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only."
+  field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
   field clip Option.Array.f32.4 "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole."
 }
 ```
@@ -3278,7 +3279,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3247</sub>
+<sub>`api.ogt` line 3248</sub>
 
 <a id="type-Shader"></a>
 
@@ -3292,7 +3293,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3275</sub>
+<sub>`api.ogt` line 3276</sub>
 
 ## Column kinds
 
@@ -3475,6 +3476,7 @@ column StyliseSpace {
 |---|---|---|---|
 | <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `256` | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
 | <a id="const-MAX_CLUSTER_LIGHTS"></a>`MAX_CLUSTER_LIGHTS` | `number` | `64` | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
+| <a id="const-UI_LAYER"></a>`UI_LAYER` | `number` | `1000` | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way. |
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
@@ -3487,3 +3489,9 @@ const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one s
 ```
 
 <sub>`api.ogt` line 3245</sub>
+
+```ogt
+const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
+```
+
+<sub>`api.ogt` line 3246</sub>

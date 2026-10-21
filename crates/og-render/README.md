@@ -406,6 +406,16 @@ three times as far as one with 4); og-ui's skins use it for `textGlow`
 and `references/<tier>/text-glow.png`; the cost is
 `tests/evidence/P2/ui/text-glow-cost.md`). The weight stays within the
 field's reach too, so a thin field never fills the glyph's quad.
+*The UI's layer* (`UI_LAYER` 1000, `UI_OVERLAY_LAYER`, `screen_layer`):
+og-runtime emits og.ui's painter levels from `UI_OVERLAY_LAYER` (2^20) up
+and a game's screen sprites and screen text at `screen_layer(layer)`:
+their own layer up to `UI_LAYER`, under every UI element, and lifted by
+2^21 above it, over every one (a HUD icon of sprites on a UI panel), the
+order among screen layers kept. They all drew under the UI whatever their
+layer before (hollowbell FINDINGS #8). og-ui's `tests/screen_layers.rs`
+and `references/<tier>/screen-layers.png`: a panel, a sprite at 999
+under it, one at 999 half past its edge, one at 1001 on it and one at
+1002 over that one.
 `Overlay::sprite_arrays` draws overlay sprites from a layer of a texture
 array, one draw per array (see [The 2D batch](#the-2d-batch-e4)).
 `Overlay::glass` holds glass panels (`Glass`: a rounded rectangle, a blur

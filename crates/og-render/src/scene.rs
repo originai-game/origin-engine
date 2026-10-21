@@ -1040,6 +1040,30 @@ pub struct Overlay {
     pub clips: Vec<[f32; 4]>,
 }
 
+/// The UI's layer among screen sprites and screen text (the IDL's
+/// `UI_LAYER`): a game's overlay content at or below it draws under every
+/// UI element, above it over every one (a HUD element of sprites on a UI
+/// panel), in its layers' order. The overlay itself sorts by layer only;
+/// og-runtime places the UI at [`UI_OVERLAY_LAYER`] and a game's screen
+/// layers by [`screen_layer`].
+pub const UI_LAYER: i32 = 1000;
+
+/// The overlay layer the UI's painter level 0 draws on (level n on this plus
+/// n): above every screen layer up to [`UI_LAYER`].
+pub const UI_OVERLAY_LAYER: i32 = 1 << 20;
+
+/// The overlay layer of a game's screen sprite or screen text of `layer`:
+/// its own at or below [`UI_LAYER`], under the UI; above it, lifted past
+/// every painter level the UI can use (2^20 of them), the order among
+/// screen layers kept.
+pub fn screen_layer(layer: i32) -> i32 {
+    if layer > UI_LAYER {
+        layer.saturating_add(1 << 21)
+    } else {
+        layer
+    }
+}
+
 impl Overlay {
     /// An empty overlay of `width`×`height` CSS pixels at `scale` device
     /// pixels per CSS pixel.

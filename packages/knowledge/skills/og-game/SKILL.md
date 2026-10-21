@@ -445,7 +445,11 @@ Every effect is off until the game turns it on, as data:
   ```
 - **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
   in CSS pixels from the top-left over the finished frame, untouched by
-  post effects, with an optional `clip`; `og.ui` uses the same layer.
+  post effects, with an optional `clip`. `og.ui` draws in the same
+  overlay at `UI_LAYER` (1000): screen sprites and text at a layer up to
+  1000 draw under every UI element, above 1000 over every one (modals and
+  the screen transition too), so a HUD icon made of sprites sits on a UI
+  panel at `layer: UI_LAYER + 1` while its screen shows.
 
 `templates/fx-showcase` shows every one of these on its first five stations;
 every field is in `reference/render.md`. Floating text,
