@@ -433,7 +433,10 @@ fn a_world_restored_from_a_system_snapshot_completes_that_tick_and_goes_on_the_s
     let mut a = build_with(5, Some(saver(Some(taken.clone()))));
     churn(&mut a, &mut Rng::new(4), 3);
     while a.time().tick < 12 {
-        a.send(Ping { from: a.time().tick }).unwrap();
+        a.send(Ping {
+            from: a.time().tick,
+        })
+        .unwrap();
         a.step().unwrap();
     }
     let bytes = taken.lock().unwrap().take().expect("taken at tick 6");
@@ -449,7 +452,10 @@ fn a_world_restored_from_a_system_snapshot_completes_that_tick_and_goes_on_the_s
         // The input the run had: a host event before every tick but the
         // completed one (sent before tick 6 began, it is in the snapshot).
         if !first {
-            b.send(Ping { from: b.time().tick }).unwrap();
+            b.send(Ping {
+                from: b.time().tick,
+            })
+            .unwrap();
         }
         first = false;
         b.step().unwrap();
