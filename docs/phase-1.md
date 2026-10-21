@@ -701,6 +701,56 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, dogfood-5: Meridian Loop, a night time trial on a neon circuit (7b927dd9)
+
+The fifth dogfood round (lane-3): a fourth game of a genre the three
+did not cover, written from the knowledge package alone, in
+`examples/meridian-loop`. A generated 956 m loop with banked bends and a
+jump over a gap; a car on `og.Vehicle` with keyboard and pad; a lap
+timer with two sector splits, each with its delta against the record;
+the best lap's ghost replayed from recorded poses; a watch-replay that
+saves the world during the countdown, restores it and feeds the
+recorded inputs, reproducing the race tick for tick (laps of 2,046,
+1,859 and 1,841 ticks matched); the record, its ghost, the settings and
+a leaderboard through `og.platform`; English and German; engine audio
+pitched by the revs, a tyre squeal, smoke and skid marks; the title,
+pause, settings, results and leaderboard screens; every asset from
+`tools/make-assets.ts`. 10 playtests and 14 metal frames (10 from
+frames.og.ts, 4 from published.og.ts); 9 of 10 passed on the last full
+run before the merge, `replay`'s lap count failing because its script
+ended at 90 s before the second lap (moved to 110 s and rerun alone:
+two laps, a 1,710-tick record; the suite reruns on main after the
+merge). One WebGPU play through dogfood.ts (its play plan committed):
+boot download 5,288,182 B brotli over 58 files (the engine 3.16 MB,
+cooked 1.70 MB, one music chunk), first frame 696 ms with lanes on, 60
+ticks/s, step p95 2.65 ms, the language back after a reload, the end
+report on Back, no console error.
+
+**Findings (examples/meridian-loop/FINDINGS.md): 18, 1 blocker, 10
+annoyances, 7 nits.** The blocker, #3: `og.Vehicle`'s wheel rays land on
+any collider below them whatever its `layers` and `mask`, so two cars
+that must not touch stand on each other (the ghost is poses, not a
+second car). Physics and API: #2 no force, torque, impulse or
+centre-of-mass control, so the car rolled over at moderate lock; #1
+og-feel §12 has no vehicle row and the vehicle's defaults drive a
+chassis of a few kilograms; #16 WheelPose has no slip; #11
+`world.snapshot()` carries the level's triangle-mesh colliders (400 KB
+of the 512 KiB slot); #12 a snapshot taken inside a system and restored
+skips the rest of that tick, undocumented, and a replay from it
+diverges; #6 a system's query is every component of its reads and
+writes and `world.query` is refused inside a system, neither said; #4 no
+array field and `str` at most 4,096 bytes, unsaid; #5 which column holds
+an asset handle, unsaid; #14 `og.Model` has no `visible`; #15 no
+texture repeat. UI: #8 `racingHud`'s words are English and fixed with no
+place for a time trial's numbers; #9 it takes Back under an open dialog,
+so Escape never closes pause over it; #10 `resultsScreen`'s score is a
+whole number counted up, so a time cannot be the headline; #13 the
+missing-glyph warning always says tick 0, once a process; #7 the
+neon-vector outline washes a large ground plane; #18 the shell's Back
+button covers the HUD's top-left on the published page; #17 nothing in
+the package says how a game records and replays its play or makes a
+ghost. The fixes are the next streams.
+
 ## Wave 13, vox-stylise: `.vox` key frames read, stylise's footprint along the depth (ee07a3c1)
 
 Rows 63 and 55, on lane-4.
