@@ -816,6 +816,160 @@ pub(crate) trait Metrics {
     fn metrics_for(&self, role: FontRole, text: &str) -> &FontMetrics;
 }
 
+/// What layout measures text with: the fonts, and the measurements kept
+/// from the frames before ([`TextCache`]).
+pub(crate) struct Measure<'a> {
+    pub fonts: &'a dyn Metrics,
+    pub texts: &'a mut TextCache,
+}
+
+/// Everything a text's measurement depends on besides its string and the
+/// fonts: the font role, the type size and tracking, wrapping, the
+/// ellipsis and its line limit, and (for its lines) the width it breaks at.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct TextKey {
+    font: FontRole,
+    size: u32,
+    tracking: u32,
+    wrap: bool,
+    ellipsis: bool,
+    max_lines: u32,
+    /// The width the lines break or cut at (`None`: only at `\n`).
+    width: Option<u32>,
+}
+
+impl TextKey {
+    fn of(t: &TextContent, width: Option<f32>) -> TextKey {
+        TextKey {
+            font: t.font,
+            size: t.step.size.to_bits(),
+            tracking: t.step.tracking_em.to_bits(),
+            wrap: t.wrap,
+            ellipsis: t.ellipsis,
+            max_lines: t.max_lines,
+            width: width.map(f32::to_bits),
+        }
+    }
+}
+
+/// One kept measurement and the frame that last used it.
+#[derive(Clone, Debug)]
+struct Kept<V> {
+    key: TextKey,
+    value: V,
+    frame: u64,
+}
+
+/// Text measurements kept across frames while a text's string, font, size
+/// and width are unchanged: a HUD lays out the same texts every tick, and
+/// measuring each again (its widest line and longest word, its line breaks
+/// and ellipsis) was about a third of `og.ui.end`. What a frame did not use
+/// goes at its [`TextCache::sweep`]; new fonts clear it
+/// ([`crate::Ui::set_fonts`]), the only other input a measurement has.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TextCache {
+    /// A text's preferred and minimum width ([`size_w`]).
+    widths: std::collections::HashMap<String, Vec<Kept<(f32, f32)>>>,
+    /// A text's lines at a width ([`distribute_w`]).
+    lines: std::collections::HashMap<String, Vec<Kept<Vec<Line>>>>,
+    frame: u64,
+}
+
+/// The kept value of `text` under `key`, or `measure`'s, kept.
+fn kept<V: Clone>(
+    map: &mut std::collections::HashMap<String, Vec<Kept<V>>>,
+    frame: u64,
+    text: &str,
+    key: TextKey,
+    measure: impl FnOnce() -> V,
+) -> V {
+    if let Some(list) = map.get_mut(text) {
+        if let Some(k) = list.iter_mut().find(|k| k.key == key) {
+            k.frame = frame;
+            return k.value.clone();
+        }
+        let value = measure();
+        list.push(Kept {
+            key,
+            value: value.clone(),
+            frame,
+        });
+        return value;
+    }
+    let value = measure();
+    map.insert(
+        text.to_owned(),
+        vec![Kept {
+            key,
+            value: value.clone(),
+            frame,
+        }],
+    );
+    value
+}
+
+impl TextCache {
+    fn widths(&mut self, t: &TextContent, measure: impl FnOnce() -> (f32, f32)) -> (f32, f32) {
+        kept(
+            &mut self.widths,
+            self.frame,
+            &t.text,
+            TextKey::of(t, None),
+            measure,
+        )
+    }
+
+    fn lines(
+        &mut self,
+        t: &TextContent,
+        width: Option<f32>,
+        measure: impl FnOnce() -> Vec<Line>,
+    ) -> Vec<Line> {
+        kept(
+            &mut self.lines,
+            self.frame,
+            &t.text,
+            TextKey::of(t, width),
+            measure,
+        )
+    }
+
+    /// Ends a frame: what it did not measure goes.
+    pub(crate) fn sweep(&mut self) {
+        let frame = self.frame;
+        for map in [&mut self.widths as &mut dyn Sweep, &mut self.lines] {
+            map.sweep(frame);
+        }
+        self.frame += 1;
+    }
+
+    /// Forgets every measurement (the fonts changed).
+    pub(crate) fn clear(&mut self) {
+        self.widths.clear();
+        self.lines.clear();
+    }
+
+    /// How many measurements are kept (tests).
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
+        self.widths.values().map(Vec::len).sum::<usize>()
+            + self.lines.values().map(Vec::len).sum::<usize>()
+    }
+}
+
+trait Sweep {
+    fn sweep(&mut self, frame: u64);
+}
+
+impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
+    fn sweep(&mut self, frame: u64) {
+        self.retain(|_, list| {
+            list.retain(|k| k.frame == frame);
+            !list.is_empty()
+        });
+    }
+}
+
 pub(crate) fn preorder(nodes: &[Node], root: usize) -> Vec<usize> {
     let mut order = Vec::new();
     let mut stack = vec![root];
@@ -931,10 +1085,11 @@ fn gaps(gap: f32, n: usize) -> f32 {
     gap * n.saturating_sub(1) as f32
 }
 
-fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
+fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let n = &nodes[i];
+    let fonts = measure.fonts;
     let (pref, min) = match &n.content {
-        Content::Text(t) => {
+        Content::Text(t) => measure.texts.widths(t, || {
             let m = fonts.metrics_for(t.font, &t.text);
             let pref = widest_line(&t.text, m, t.step.size, t.tracking());
             let min = if t.ellipsis {
@@ -947,7 +1102,7 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
                 pref
             };
             (pref, min)
-        }
+        }),
         Content::Rich(rc) => crate::rich::rich_widths(rc, fonts),
         Content::Image { .. } => (0.0, 0.0),
         Content::None => {
@@ -1041,22 +1196,29 @@ fn main_sizes(
     sizes
 }
 
-fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
+fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let inner = (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0);
+    let fonts = measure.fonts;
     if let Content::Text(t) = &nodes[i].content {
-        let m = fonts.metrics_for(t.font, &t.text);
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.
-        let mut lines = break_lines(
-            &t.text,
-            m,
-            t.step.size,
-            t.tracking(),
-            t.wrap.then_some(inner + 0.5),
-        );
-        if t.ellipsis {
-            truncate_lines(&mut lines, t, m, inner + 0.5);
-        }
+        let width = inner + 0.5;
+        let lines = measure
+            .texts
+            .lines(t, (t.wrap || t.ellipsis).then_some(width), || {
+                let m = fonts.metrics_for(t.font, &t.text);
+                let mut lines = break_lines(
+                    &t.text,
+                    m,
+                    t.step.size,
+                    t.tracking(),
+                    t.wrap.then_some(width),
+                );
+                if t.ellipsis {
+                    truncate_lines(&mut lines, t, m, width);
+                }
+                lines
+            });
         nodes[i].lines = lines;
         return;
     }
@@ -1377,14 +1539,14 @@ pub(crate) fn layout(
     nodes: &mut [Node],
     root: usize,
     area: Rect,
-    fonts: &dyn Metrics,
+    measure: &mut Measure<'_>,
     scroll: &dyn Fn(u64) -> (f32, f32),
     dpr: f32,
     clip: Rect,
 ) {
     let order = preorder(nodes, root);
     for &i in order.iter().rev() {
-        size_w(nodes, i, fonts);
+        size_w(nodes, i, measure);
     }
     nodes[root].w = match nodes[root].el.width {
         Size::Fixed(v) => v,
@@ -1396,7 +1558,7 @@ pub(crate) fn layout(
         }
     };
     for &i in &order {
-        distribute_w(nodes, i, fonts);
+        distribute_w(nodes, i, measure);
     }
     for &i in order.iter().rev() {
         size_h(nodes, i);
@@ -1435,5 +1597,91 @@ pub(crate) fn layout(
         nodes[i].clip = parent_clip;
         nodes[i].clip_src = src;
         nodes[i].rect = rect.snapped(dpr);
+    }
+}
+
+#[cfg(test)]
+mod text_cache {
+    use super::{Content, Rect};
+    use crate::{Fonts, InputFrame, LabelDesc, Size, Ui, UiDesc, UiFont, Viewport};
+
+    /// One frame of three labels (a wrapping one at `width`, one cut with
+    /// an ellipsis, one unwrapped), `count` in the last: each text's lines,
+    /// their widths and its rectangle.
+    fn frame(ui: &mut Ui, width: f32, count: u32) -> Vec<(Vec<(String, f32)>, Rect)> {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "wrap",
+            "the quick brown fox jumps over the lazy dog",
+            LabelDesc {
+                width: Size::Fixed(width),
+                ..LabelDesc::default()
+            },
+        );
+        ui.label(
+            "cut",
+            "a title too long for its slot",
+            LabelDesc {
+                width: Size::Fixed(width / 2.0),
+                ellipsis: true,
+                nowrap: true,
+                ..LabelDesc::default()
+            },
+        );
+        ui.label("count", &format!("score {count}"), LabelDesc::default());
+        ui.end();
+        ui.nodes
+            .iter()
+            .filter(|n| matches!(n.content, Content::Text(_)))
+            .map(|n| {
+                let lines = n.lines.iter().map(|l| (l.text.clone(), l.width));
+                (lines.collect(), n.rect)
+            })
+            .collect()
+    }
+
+    fn fresh() -> Ui {
+        Ui::new(UiDesc {
+            fonts: Fonts {
+                body: UiFont::unrendered(0.55),
+                ..Fonts::default()
+            },
+            ..UiDesc::default()
+        })
+    }
+
+    #[test]
+    fn a_kept_measurement_lays_out_as_a_fresh_one() {
+        // Frames whose widths and counts change and come back: each laid
+        // out by one Ui that keeps its measurements equals a Ui laying it
+        // out for the first time.
+        let mut kept = fresh();
+        for (width, count) in [(120.0, 1), (120.0, 1), (200.0, 1), (120.0, 2), (90.0, 3)] {
+            let laid = frame(&mut kept, width, count);
+            assert_eq!(laid, frame(&mut fresh(), width, count), "width {width}");
+            // The wrapping text wraps and the cut one is cut.
+            assert!(laid[0].0.len() > 1, "{laid:?}");
+            assert!(laid[1].0[0].0.ends_with('…') || laid[1].0[0].0.ends_with("..."));
+        }
+    }
+
+    #[test]
+    fn an_unchanged_text_is_measured_once_and_a_gone_one_is_dropped() {
+        let mut ui = fresh();
+        frame(&mut ui, 120.0, 1);
+        // Each label's widths and lines.
+        let first = ui.texts.len();
+        assert_eq!(first, 6, "{:?}", ui.texts);
+        frame(&mut ui, 120.0, 1);
+        assert_eq!(ui.texts.len(), first, "the same frame keeps what it had");
+        // A new count measures the new text; the old one goes at the sweep.
+        frame(&mut ui, 120.0, 2);
+        assert_eq!(ui.texts.len(), first);
+        assert!(ui.texts.lines.contains_key("score 2"));
+        assert!(!ui.texts.lines.contains_key("score 1"));
+        // New fonts forget every measurement.
+        let fonts = ui.fonts().clone();
+        ui.set_fonts(fonts);
+        assert_eq!(ui.texts.len(), 0);
     }
 }

@@ -4,8 +4,8 @@ use crate::draw::{DrawCmd, DrawItem, EmitDesc, assign_levels, emit};
 use crate::id::{Id, child_key};
 use crate::input::{InputFrame, Nav};
 use crate::layout::{
-    Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets, Metrics, NONE,
-    Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
+    Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets, Measure, Metrics,
+    NONE, Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
 };
 use crate::motion::Fx;
 use crate::skin::{Ink, Ornament, SkinPart, Slice, SliceFill};
@@ -737,6 +737,8 @@ pub struct Ui {
     /// The writing direction: right to left mirrors the layout and turns
     /// text alignment round (og.i18n's locale, or og.ui.configure).
     pub(crate) direction: og_i18n::Direction,
+    /// Text measurements kept from the frames before (layout's).
+    pub(crate) texts: crate::layout::TextCache,
 }
 
 impl Default for Ui {
@@ -808,6 +810,7 @@ impl Ui {
             skin_name: String::new(),
             gesture: false,
             direction: og_i18n::Direction::Ltr,
+            texts: Default::default(),
         }
     }
 
@@ -1018,6 +1021,7 @@ impl Ui {
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.fonts = fonts;
         self.fonts.link();
+        self.texts.clear();
     }
 
     /// The writing direction (left to right by default).
@@ -2237,11 +2241,15 @@ impl Ui {
                 scroll.get(&k).copied().unwrap_or(0.0),
             )
         };
+        let mut measure = Measure {
+            fonts: &self.fonts,
+            texts: &mut self.texts,
+        };
         layout(
             &mut self.nodes,
             0,
             screen,
-            &self.fonts,
+            &mut measure,
             &offset,
             dpr,
             screen,
@@ -2265,7 +2273,7 @@ impl Ui {
                     &mut self.nodes,
                     f,
                     screen,
-                    &self.fonts,
+                    &mut measure,
                     &offset,
                     dpr,
                     screen,
@@ -2281,7 +2289,7 @@ impl Ui {
                 ),
                 _ => safe,
             };
-            layout(&mut self.nodes, f, area, &self.fonts, &offset, dpr, screen);
+            layout(&mut self.nodes, f, area, &mut measure, &offset, dpr, screen);
             let (w, h) = (self.nodes[f].w, self.nodes[f].h);
             let gap = self.theme.space.xs;
             let (x, y) = match float {
@@ -2325,12 +2333,13 @@ impl Ui {
                 &mut self.nodes,
                 f,
                 placed,
-                &self.fonts,
+                &mut measure,
                 &offset,
                 dpr,
                 screen,
             );
         }
+        self.texts.sweep();
 
         let mut order = preorder(&self.nodes, 0);
         for &f in &self.floating {
