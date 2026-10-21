@@ -357,6 +357,60 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 10, cook-determinism: basisu's padding bytes, a torn pipeline cache (033182e)
+
+Row 80 (`cooking_twice_gives_identical_bytes` failing 2 of 5 on the CI
+runner): the cause was inside basisu, the C++ texture encoder, not the
+cook. Its UASTC rate-distortion pass keeps a hash map whose key is an
+8-byte and a 4-byte field hashed over all 16 bytes, so the four padding
+bytes, never written, go into the hash with whatever the stack held: the
+pass could miss a key it had just inserted and the blocks it picked
+followed what that cook thread had run before. The UASTC textures
+(`stone_n`, trickster's 1 and 2) differed, which moved their hashes in
+the manifest, and the test named only the first differing file, the
+manifest (it sorts first). Found with valgrind in a trixie container
+(8,282 uninitialised-value errors, all at that map's insert and find in
+`uastc_rdo_blocks`); upstream has the same fix; our `basis-universal-sys`
+0.3.1 bundles basisu 1.16, older than it. Never reproduced on the Mac
+(clang's garbage repeats): 45 cooks at 2, 8 and 12 threads, 26 under
+emulation, 9 loops under load, all equal. The candidate causes ruled out:
+the cook times were never in `.cook.ogt` (they live in `.cook-times.ogt`,
+which the test excluded), every result, note, warning and removed entry
+is collected by plan index, no hash map's order reaches a file, groups
+are assigned before anything cooks.
+
+- 0b245141: upstream's one-line fix carried as a trimmed copy of
+  `basis-universal-sys` 0.3.1 in `third_party/basis-universal-sys`
+  (4.2 MB: encoder, transcoder, `zstd.h`, licences), swapped in by
+  `[patch.crates-io]` with `third_party` excluded from the workspace;
+  valgrind then reports 0 errors and the Mac's cooked bytes do not change.
+  The alternative not taken: UASTC RDO off by default (blobs 10 to 33 %
+  larger, the template's `cooked/` 2,068 to 2,164 KB, the cook about twice
+  as fast); `-ftrivial-auto-var-init=zero` is not enough (gcc does not
+  zero the temporaries the map is called with).
+- 9ffc36cb: og-render's pipeline cache wrote every renderer's save of the
+  same key to the same `<key>.tmp`, so two concurrent saves (two og-gfx
+  runs, or bun test processes on the addon's default
+  `~/.cache/origin-engine/pipelines`) could leave a torn file; each save
+  writes its own temp file now.
+- 78b8d0d8: `every_thread_count_cooks_the_same_bytes` (30 cooks of a
+  smaller template copy, 10 each on 1, 2 and 8 threads, the three series
+  at once, every file against the first one-thread cook, the cook times
+  compared by asset list; 9 s in a dev build; an injected
+  thread-dependent byte fails it on the first two-thread run);
+  `cooking_twice_gives_identical_bytes` lists every differing file with
+  sizes and the first differing byte; the README's §Determinism and tests
+  table.
+- Row 81 (the particle test's one SIGSEGV on Lavapipe): nothing unsafe
+  or racy in og-render's CPU particle path or the test (slots sized to
+  `max_particles`, the upload buffer recreated on change, no buffer
+  resized while mapped, the readback after the GPU finished); the test
+  runs two renderers with their own Vulkan devices on two threads at
+  once, so a Mesa/Lavapipe thread-safety crash is the best reading, not
+  confirmed (the run's log was gone). No change.
+
+Functional lane on the merge: 5 of 5 in 156 s.
+
 ## Wave 10, ci-green: CI on GitHub Actions, then off for the build-out (53b876f)
 
 Branch `ci-green`, merging main as it moved (45722335, 9b61c2ad,
@@ -3761,8 +3815,8 @@ resource only the owner can give.
 | 77 | Palette round two: the archetype skins' buttons and fields under 4.5:1 (sparkorb's primary button 3.42:1, lampdive's danger button 2.58:1 and its field placeholder 3.57:1, pathguard's primary 3.30:1; row 69's test holds only the status tones and the accent badge), and the examples' own skins, outside `pack_contrast.rs` (Hollowbell's danger 4.26:1; Lantern Vale's success 3.15, warn 2.72, info 4.07:1) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
 | 78 | Badges the palette round left: the neutral badge (scifi 2.15:1, neon 2.81:1; printed by `pack_contrast.rs`, not enforced) and the light packs' badges on a dark stage (about 2:1; the test holds a badge in its panel, and on the screen only where screen and panel are both dark or both light) | W10 cook-ui-words | S | engine, phase 4 (UI) | open |
 | 79 | Hollowbell's cutscene "Skip" is still English in Chinese: the mole's talk does not pass `CutsceneDesc.skipLabel` (77cb5b0a); it needs a table key and 过 in the game's Chinese subset (FINDINGS #12) | W10 cook-ui-words | S | example (Hollowbell) | open |
-| 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | open; a stream, `cook-determinism`, is on it now (wave 10) |
-| 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open |
+| 80 | The cook's manifest differs between thread counts: og-cook's `cooking_twice_gives_identical_bytes` (an all-cores cook against a one-thread cook of the game template, byte for byte) failed 2 of 5 runs on GitHub's two-vCPU runner | W10 ci-green | S | engine, phase 4 (cook) | closed at 0b245141 (basisu's padding bytes, the vendored one-line fix) with 78b8d0d8's thread-count test; the pipeline cache's torn file at 9ffc36cb |
+| 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open; read by cook-determinism (033182e): no defect in the engine's code, two Vulkan devices on two threads at once on Lavapipe the best reading; if it recurs, run the second 600-tick run after the first there |
 | 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
 
