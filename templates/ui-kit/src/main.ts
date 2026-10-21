@@ -225,7 +225,9 @@ const TUTORIAL = [
 ];
 
 /** Level cards: 12 levels, stars from a fixed pattern, the last three locked. */
-const LEVELS = Array.from({ length: 12 }, (_, i) => ({ name: `${i + 1}`, stars: i < 9 ? [3, 2, 3, 1, 3, 2, 0, 1, 2][i]! : 0, locked: i >= 9 }));
+/** Named levels: a name takes a wider card in smaller type, wrapped to two lines (the first is long enough to wrap). */
+const LEVEL_NAMES = ["The Lower Court of the Abbey", "Mossy Well", "Old Mill", "Fog Marsh", "Crow Tower", "Salt Caves", "Ember Ridge", "Frost Gate", "Sky Bridge", "Star Vault", "Bell Loft", "The Summit"];
+const LEVELS = LEVEL_NAMES.map((name, i) => ({ name, stars: i < 9 ? [3, 2, 3, 1, 3, 2, 0, 1, 2][i]! : 0, locked: i >= 9 }));
 
 /** The lobby's heroes, and each player's colour (the pad's focus ring). */
 const HEROES = ["Knight", "Ranger", "Mage", "Rogue", "Bard", "Monk", "Smith", "Thief"];
@@ -864,6 +866,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       const slots = [d.inv0, d.inv1, d.inv2, d.inv3, d.inv4, d.inv5];
       const r = og.ui.inventoryScreen("Inventory", {
         slots: 24,
+        columns: 6,
         items: ITEMS.map((it, i) => ({ ...it, slot: slots[i]! })),
         hintLabel: tr(world, "inventory.hint"),
         countLabel: tr(world, "inventory.count"),
@@ -884,7 +887,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     }
     case "levels": {
-      const r = og.ui.levelSelect("Levels", { levels: LEVELS });
+      const r = og.ui.levelSelect("Levels", { levels: LEVELS, columns: 4 });
       if (r.chosen !== null) {
         d.level = r.chosen + 1;
         d.screen = screenIndex("results");

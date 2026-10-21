@@ -124,10 +124,12 @@ pub struct ListRange {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct GridDesc {
     pub count: u32,
-    /// Cell size; 0: 64 CSS px (and at least the touch target).
+    /// Cell size; 0: 64 CSS px (and at least the touch target). With
+    /// `columns` and a width other than fit, the cells share the grid's
+    /// width instead (the height stays).
     pub cell_width: f32,
     pub cell_height: f32,
-    /// 0: as many as fit.
+    /// Cells across, exactly; 0: as many as fit.
     pub columns: u32,
     /// 0: `space.sm`.
     pub gap: f32,
@@ -1228,7 +1230,7 @@ impl Ui {
         let id = id.into();
         let t = self.theme;
         let floor = self.min_target();
-        let cw = if desc.cell_width > 0.0 {
+        let asked = if desc.cell_width > 0.0 {
             desc.cell_width
         } else {
             64.0
@@ -1237,20 +1239,34 @@ impl Ui {
         let ch = if desc.cell_height > 0.0 {
             desc.cell_height
         } else {
-            cw
+            asked
         }
         .max(floor);
         let gap = if desc.gap > 0.0 { desc.gap } else { t.space.sm };
         let key = self.key_for(id.as_str());
-        let inner_w = self
+        // The width the cells had last frame (the grid's, inside its padding).
+        let known_w = self
             .hit(key)
-            .map(|h| h.rect.width)
-            .unwrap_or(self.viewport.width)
-            - desc.padding.horizontal();
-        let columns = if desc.columns > 0 {
-            desc.columns
+            .map(|h| h.rect.width - desc.padding.horizontal());
+        // `columns` across, exactly: a fit grid is that many cells of the
+        // asked width; any other width is shared by them (wider cells, or
+        // narrower down to the touch target), rounded down to 1/64 px so a
+        // row never spills into the next. Else as many as fit.
+        let (columns, cw) = if desc.columns > 0 {
+            let c = desc.columns;
+            let cw = match known_w {
+                Some(w) if !matches!(desc.width, Size::Fit { .. }) => {
+                    (((w + gap) / c as f32 - gap) * 64.0).floor() / 64.0
+                }
+                _ => asked,
+            };
+            (c, cw.max(floor))
         } else {
-            (((inner_w + gap) / (cw + gap)).floor() as u32).max(1)
+            let inner_w = known_w.unwrap_or(self.viewport.width - desc.padding.horizontal());
+            (
+                (((inner_w + gap) / (asked + gap)).floor() as u32).max(1),
+                asked,
+            )
         };
         let view = self.view_height(key, desc.height) - desc.padding.vertical();
         let off = self.state.scroll.get(&key).copied().unwrap_or(0.0);

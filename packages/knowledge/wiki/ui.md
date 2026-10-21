@@ -5354,9 +5354,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `count` | `number` | `0` | — | — | — | How many cells there are. |
-| `cellWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's width; 0 is 64 (never under the 44 px touch target). |
+| `cellWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height. |
 | `cellHeight` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's height; 0 is its width. |
-| `columns` | `number` | `0` | — | — | — | Cells across; 0 is as many as fit. |
+| `columns` | `number` | `0` | — | — | — | Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit. |
 | `gap` | `number` | `0` | ≥ 0 | `cssPx` | — | Space between cells; 0 is space.sm. |
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits (exactly the columns when columns is set). |
 | `height` | `Size \| null` | `null` | — | — | — | Its height; null grows. |
@@ -5368,7 +5368,7 @@ struct GridDesc {
   doc "A virtualised grid of equal cells (inventories, level select), scrolling vertically."
   desc true
   field count u32 "How many cells there are."
-  field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target)." {
+  field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height." {
     unit cssPx
     min 0
   }
@@ -5376,7 +5376,7 @@ struct GridDesc {
     unit cssPx
     min 0
   }
-  field columns u32 "Cells across; 0 is as many as fit."
+  field columns u32 "Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit."
   field gap f32 "Space between cells; 0 is space.sm." {
     unit cssPx
     min 0

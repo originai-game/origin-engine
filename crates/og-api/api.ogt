@@ -8566,7 +8566,7 @@ module ui {
     doc "A virtualised grid of equal cells (inventories, level select), scrolling vertically."
     desc true
     field count u32 "How many cells there are."
-    field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target)." {
+    field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height." {
       unit cssPx
       min 0
     }
@@ -8574,7 +8574,7 @@ module ui {
       unit cssPx
       min 0
     }
-    field columns u32 "Cells across; 0 is as many as fit."
+    field columns u32 "Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit."
     field gap f32 "Space between cells; 0 is space.sm." {
       unit cssPx
       min 0

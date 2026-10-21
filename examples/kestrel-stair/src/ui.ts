@@ -358,8 +358,8 @@ function tutorialSteps(world: World) {
 }
 
 function chapters(world: World, g: GameV): void {
-  // A card draws its name in display type on a 104 px square, and `columns` is not applied
-  // (FINDINGS #15): the chapters are named by numerals there.
+  // FINDINGS #15 is fixed: two columns are two wide cards, and a name is read whole or wrapped,
+  // so the chapters are named again (numerals only before).
   const levels: LevelInfo[] = CHAPTERS.map((c, i) => ({
     name: say(world, `chapter.${c.key}`),
     stars: (g.chapterStars >> (i * 2)) & 3,

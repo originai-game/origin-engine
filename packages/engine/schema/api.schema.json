@@ -23676,7 +23676,7 @@
         },
         "cellWidth": {
           "type": "number",
-          "description": "A cell's width; 0 is 64 (never under the 44 px touch target).",
+          "description": "A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height.",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "cssPx"
@@ -23692,7 +23692,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Cells across; 0 is as many as fit.",
+          "description": "Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit.",
           "default": 0
         },
         "gap": {

@@ -1911,3 +1911,103 @@ fn a_menu_that_appears_takes_the_focus_and_a_move_from_nothing_lands_on_its_firs
         "from nothing to the first item, then down one"
     );
 }
+
+/// Kestrel-stair FINDINGS #15: a grid lays out exactly `columns` cells a
+/// row, whatever its width: a fit grid that many cells of the asked width,
+/// a growing one with the cells sharing its width (wider than asked, or
+/// narrower down to the touch target), so a level select's two columns
+/// are two and an inventory's six are six.
+#[test]
+fn a_grid_lays_out_exactly_its_columns_whatever_its_width() {
+    struct G {
+        columns: u32,
+        width: Size,
+        cell: f32,
+    }
+    let b = &mut |ui: &mut Ui, g: &mut G| {
+        ui.open(
+            "Box",
+            Element {
+                width: Size::Fixed(500.0),
+                ..Element::default()
+            },
+        );
+        ui.grid(
+            "Grid",
+            GridDesc {
+                count: 13,
+                cell_width: g.cell,
+                columns: g.columns,
+                width: g.width,
+                height: Some(Size::Fixed(560.0)),
+                ..GridDesc::default()
+            },
+            None,
+            |_, _| {},
+        );
+        ui.close();
+    };
+    let rows = |rig: &Rig<G>| -> Vec<Vec<(f32, f32)>> {
+        let mut rows: Vec<Vec<(f32, f32)>> = Vec::new();
+        for i in 0..13 {
+            let Some(e) = rig.ui.frame().element(&format!("Box/Grid/Cell#{i}")) else {
+                continue;
+            };
+            match rows.last_mut() {
+                Some(r) if (r[0].1 - e.y).abs() < 0.5 => r.push((e.width, e.y)),
+                _ => rows.push(vec![(e.width, e.y)]),
+            }
+        }
+        rows
+    };
+    // Two columns in 500 px: two cards of (500 + 8) / 2 - 8 = 246 px, not four of 104.
+    let mut rig = Rig::new(G {
+        columns: 2,
+        width: Size::grow(),
+        cell: 104.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(
+        r.iter().take(6).all(|row| row.len() == 2),
+        "rows of two: {r:?}"
+    );
+    assert!(
+        (r[0][0].0 - 246.0).abs() < 0.1,
+        "the cards share the width: {r:?}"
+    );
+    // Six columns of 104 asked in 500 px: six narrower cells a row, not four.
+    let mut rig = Rig::new(G {
+        columns: 6,
+        width: Size::grow(),
+        cell: 104.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(
+        r.iter().take(2).all(|row| row.len() == 6),
+        "rows of six: {r:?}"
+    );
+    assert!(r[0][0].0 >= 44.0 && r[0][0].0 < 104.0, "{r:?}");
+    // A fit grid: the columns at the asked width.
+    let mut rig = Rig::new(G {
+        columns: 3,
+        width: Size::fit(),
+        cell: 72.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(
+        r.iter().take(4).all(|row| row.len() == 3) && r[0][0].0 == 72.0,
+        "{r:?}"
+    );
+    // No columns: as many of the asked width as fit (500 / 112 → 4).
+    let mut rig = Rig::new(G {
+        columns: 0,
+        width: Size::grow(),
+        cell: 104.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(r[0].len() == 4 && r[0][0].0 == 104.0, "{r:?}");
+}

@@ -69,8 +69,11 @@ export default playtest({
       t.equal(focused.length, 1, `Tab ${k}: one element is focused`);
       if (focused[0]) walked.push(path(els, focused[0]));
     }
-    const expected = Array.from({ length: TABS }, (_, k) => order[k % order.length]!);
-    t.equal(walked, expected, "Tab walks the focusable elements in the tree's order, then wraps");
+    // The menu's first item takes the focus as it opens (og-ui §4: what opens takes the focus), so Tab walks on from it.
+    const start = order.indexOf(menu.filter((e) => has(e, "focused")).map((e) => path(menu, e))[0] ?? "");
+    t.equal(order[start], "Menu/Items/play", "the main menu's first item has the focus as it opens");
+    const expected = Array.from({ length: TABS }, (_, k) => order[(start + 1 + k) % order.length]!);
+    t.equal(walked, expected, "Tab walks the focusable elements in the tree's order from there, then wraps");
     const d = demo(run, "menu.json");
     t.equal(d.a11yFocus, order.length, "og.ui.a11y's focus order is as long as the probe's");
     t.equal(d.a11yNodes, menu.filter((e) => e.role !== "").length, "og.ui.a11y has a node for each element with a role");

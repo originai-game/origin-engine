@@ -87,10 +87,17 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
   for (const it of desc.items ?? []) bySlot.set(it.slot ?? 0, it);
   let sel = kit.memory(`${id}.sel`, -1);
   const out: { selected: number | null; moved: Api.SlotMove | null; used: string | null; closed: boolean } = { selected: null, moved: null, used: null, closed: false };
-  out.closed = screen(id, desc.title ?? "Inventory", 680, () => {
+  const cell = phone ? 64 : 72;
+  const columns = desc.columns ?? 0;
+  // Wide enough for the stated columns at the slot size (the grid shares
+  // what is left between them if the screen is narrower): the dialog's
+  // padding, the detail panel and the gap beside the grid, and room for
+  // its scrollbar.
+  const chrome = 2 * t.xl + 200 + t.lg;
+  const width = columns > 0 ? Math.max(680, chrome + columns * (cell + t.sm) - t.sm + 2 * t.sm) : 680;
+  out.closed = screen(id, desc.title ?? "Inventory", width, () => {
     const body = (): void => {
-      const cell = phone ? 64 : 72;
-      const g = kit.grid("Slots", { count: slots, cellWidth: cell, columns: desc.columns ?? 0, height: px(phone ? 300 : 340), width: grow(), selected: sel >= 0 ? sel : null }, (i) => {
+      const g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(phone ? 300 : 340), width: grow(), selected: sel >= 0 ? sel : null }, (i) => {
         const it = bySlot.get(i);
         if (!it) return;
         picture("Picture", it.icon, it.name ?? "", cell * 0.5);
@@ -133,14 +140,22 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
       iconOr("Star", "star", 18, token("accent"));
       kit.label("Count", `${earned} / ${levels.length * 3}`, { font: "mono", color: token("fgMuted"), nowrap: true });
     });
+    // A numeral is the card's face, in display type on a square card; a
+    // name takes a wider card and a smaller step, wrapped to two lines (cut
+    // with an ellipsis past them), so it is read, never clipped. With
+    // `columns` the cards share the screen's width, so two columns are two
+    // wide cards.
+    const named = levels.some((l) => [...(l.name ?? "")].length > 3);
     const cell = phone ? 84 : 104;
-    const g = kit.grid("Levels", { count: levels.length, cellWidth: cell, columns: desc.columns ?? 0, height: fit(0, phone ? 420 : 400), width: grow() }, (i) => {
+    const g = kit.grid("Levels", { count: levels.length, cellWidth: named ? (phone ? 136 : 168) : cell, cellHeight: cell, columns: desc.columns ?? 0, height: fit(0, phone ? 420 : 400), width: grow() }, (i) => {
       const l = levels[i]!;
       if (l.locked) {
         iconOr("Lock", "lock", 28, token("fgSubtle"));
         return;
       }
-      kit.label("Name", l.name ?? `${i + 1}`, { step: "xl3", font: "display", nowrap: true });
+      const name = l.name ?? `${i + 1}`;
+      if ([...name].length > 3) kit.label("Name", name, { step: phone ? "base" : "lg", font: "display", align: "center", width: grow(), maxLines: 2, ellipsis: true });
+      else kit.label("Name", name, { step: "xl3", font: "display", nowrap: true });
       kit.row("Stars", { gap: 2 }, () => {
         for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < (l.stars ?? 0) ? "accent" : "fillStrong"));
       });

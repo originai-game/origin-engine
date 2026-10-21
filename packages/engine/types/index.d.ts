@@ -13311,7 +13311,7 @@ export interface GridDesc {
    */
   readonly count?: number;
   /**
-   * A cell's width; 0 is 64 (never under the 44 px touch target).
+   * A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height.
    *
    * @default 0
    * @range 0..
@@ -13327,7 +13327,7 @@ export interface GridDesc {
    */
   readonly cellHeight?: number;
   /**
-   * Cells across; 0 is as many as fit.
+   * Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit.
    *
    * @default 0
    */
