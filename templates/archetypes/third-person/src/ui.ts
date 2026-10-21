@@ -409,6 +409,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad, og.Pointers],
 
   const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "dissolve", durationMs: 600 }).shown;
+  if (shown !== "title") g.leftTitle = true;
   if (shown === "title") {
     og.ui.setNavigation(true);
     const r = og.ui.mainMenu("Title", {
@@ -419,6 +420,9 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad, og.Pointers],
         { id: "settings", label: say(world, "title.settings") },
       ],
       footer: say(world, og.ui.frameViewport().coarsePointer ? "title.footer.touch" : "title.footer"),
+      // The title the game opens on is built settled: the web draws it behind the play gate, where
+      // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+      instant: !g.leftTitle,
     });
     if (!g.settingsOpen && r.selected === "play" && g.phase === Phase.Title) startRun(world, g);
     if (r.selected === "settings") g.settingsOpen = true;
