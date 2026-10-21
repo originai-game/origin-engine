@@ -562,6 +562,64 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 12, perf-games: the three games timed by system, and the engine's share of their frames cut (2b896be5)
+
+Wave 12's fifth stream measured the three dogfood games on the release
+addon (lane-4) and fixed what the profiles showed, one commit each,
+with the three screenshots and the world hash per game identical
+before and after. The machine never went under load 8 for a whole run
+(the lavapipe VM at 15 to 27 until 23:10, then 7 to 16 with the gate and
+an iOS simulator on it), so the figures below are from the second
+window, before and after interleaved in 6 unpaced rounds and 3 paced at
+60 Hz; "before" is main plus only the measuring commit. Method and
+breakdowns in `tests/evidence/P4/perf-games/` (a README and one file
+per game).
+
+- **Timing by system (2b61462a)**: every system is timed by name; `og run
+  --json` gains `frames` (step and render median, p95, max) and `systems`
+  (each system's mean ms), and the probe's dump fills in its per-system
+  `ms` (og-game §14).
+- **Cloth and rope (465ab16d)** stop searching the level mesh beyond the
+  point's radius: Kestrel's og.physics 0.98 → 0.49 ms release, 1.19 →
+  0.49 dev, 3.67 → 0.93 with the lanes off.
+- **`og.i18n.t` (381e3d59)** no longer copies every string table per
+  call (7 to 9 % of the frame; the `Ui` system now costs about half).
+- **Sprites, flipbooks, afterimages and tile layers (2c35ae03)** are
+  read in place instead of decoded to JSON each frame: Hollowbell's
+  share 16.6 → 5.2 % release, 25.8 → 15.9 % dev; a test checks every
+  engine record's fields read the same as the JSON.
+- **Record calls (f3ad73cb)** stop copying their layout and their
+  answer; **the UI theme's JSON (3b2d1c21)** is built once while the
+  theme is unchanged; **system match counts (0b87fc55)** are recounted
+  only after a structural change; **drop shadows over terrain
+  (b2d8ef7d)** sample heights only (Lantern Vale 6.6 → 3.2 % of a dev
+  frame).
+
+| Game | Addon | step median | step p95 | render median | render p95 (unpaced; paced) |
+|---|---|---|---|---|---|
+| Hollowbell | release | 0.66 → 0.53 | 1.36 → 1.09 | 0.70 → 0.60 | 1.15 → 1.42; 1.36 → 0.89 |
+| Hollowbell | dev | 3.06 → 2.06 | 4.58 → 3.70 | 2.92 → 1.90 | 3.61 → 2.60 |
+| Kestrel Stair | release | 1.98 → 1.28 | 2.90 → 2.31 | 1.21 → 1.50 | 2.63 → 4.40; 1.71 → 1.26 |
+| Kestrel Stair | dev | 5.29 → 2.98 | 8.85 → 4.00 | 2.24 → 1.98 | 3.69 → 2.50 |
+| Lantern Vale | release | 0.90 → 0.71 | 1.88 → 1.78 | 2.14 → 3.71 | 7.17 → 7.79; 1.48 → 1.60 |
+| Lantern Vale | dev | 2.77 → 2.13 | 4.55 → 4.98 (paced 3.90 → 2.78) | 2.49 → 2.27 | 3.29 → 3.71 |
+
+All three meet the targets at that load; `og polish` scores frame time
+100 on release for all three, on dev Hollowbell 0 → 91 (the "before"
+run hit a load spike), Kestrel 81 → 100, Lantern Vale 82 → 85. Unpaced
+render includes the wait for the GPU (Metal command buffers), which is
+why some unpaced "after" renders rose while the paced ones fell. Under
+load 20 to 25 with the lanes on, Kestrel's release step p95 was 17.7
+ms, 4.45 with `OG_LANES=off`. Each game's README gained a frame-time
+paragraph with game-side advice (Hollowbell: the `Ui` system; Kestrel:
+per-entity `world.get`/`world.set` and the banners' cloth iterations;
+Lantern Vale: bloom about half its GPU frame, auto exposure next, and
+the per-entity calls in `Slimes` and `Hero`). Tried and dropped:
+remembering a sprite's drop-shadow fit while nothing moves (Lantern
+Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
+sites; sharing the fields inside `Layout` did the same). Owed: rows 89
+and 90.
+
 ## Wave 13, publish-testing: the published page under a script, the text entry's name, clean pool Workers and the kit's settings (71d0d574)
 
 Wave 13's third stream took the web findings about what ships and the
@@ -4647,6 +4705,8 @@ resource only the owner can give.
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
 | 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | open |
 | 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | open |
+| 89 | perf-games' tables and `og polish` rows on an idle machine (load under 8 for the whole run): every run of 2b896be5 shared the machine with the lavapipe VM, the gate or an iOS simulator | W12 perf-games | S | engine, phase 4 (a wave-end measurement) | open |
+| 90 | perf-games' follow-ups: the lanes on a loaded machine (Kestrel's physics 0.93 ms serial, 2.9 to 4.2 ms on the pool at load 20 to 25; the grains were measured idle); release sprite extraction still looks each field up by name (about 5 % of Hollowbell's frame); `og.ui.end` re-measures every text each tick; Lantern Vale's dev playtests' step spikes (p95 7 to 9.5 ms against a 2.2 ms median), unprofiled | W12 perf-games | M | engine, phase 4 (perf) | open |
 
 ## 0. Rules that shape the plan
 
