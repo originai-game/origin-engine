@@ -106,6 +106,10 @@ shadow capsule 3 3 0 0 "#00000080"
 shadow tooltip 3 3 0 0 "#00000080"
 textShadow display 3 3 0 "#000000c0"
 textShadow body 1 1 0 "#00000080"
+# The pack's thickening of its one-pixel strokes, so a primary label takes its full
+# accentFg ink on the gold (FINDINGS.md #20, fixed in the pack; with px_range 8 in
+# DotGothic16-Regular.ttf.ogt). The pale-gold accent and the 16 px ramp stay as the look.
+textWeight body 0.5
 press 1.0 1.0 3
 hover -1 1.0
 motion {
