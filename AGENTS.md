@@ -90,7 +90,14 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   container beside each other, and every one of them then fails on
   timeouts. An agent's loop is `cargo check -p <crate>` and the unit tests
   of the crate it edits, run one at a time; it commits on its branch and
-  reports. The coordinator (the one session that merges into main) is the
+  reports. Nothing broader: no sweep of other projects' reference frames
+  through `og run --commands`, no "every frame unmoved" check across
+  templates and games, no browser runs to confirm a native change, no
+  wasm or release build to measure (the owner's instruction, 2026-10-22:
+  development is what agents are for; the coordinator's functional lane
+  after the merge is the check of every reference frame, and the wave's
+  end measures). A frame an agent re-records is one its change must
+  move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
   only runner of the gate, the review and the reference captures, once per
   merge, serially. The same applies to a human beside running agents.
 - **One profile per lane.** Everything in the gate that runs native code
