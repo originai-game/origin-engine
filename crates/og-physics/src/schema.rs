@@ -55,7 +55,10 @@ impl Transform {
 pub const BODY_DYNAMIC: u32 = 0;
 /// `RigidBody.kind`: never moves; collides with dynamic bodies.
 pub const BODY_STATIC: u32 = 1;
-/// `RigidBody.kind`: moved by game code through its Transform; its Velocity (if any) is how fast it pushes.
+/// `RigidBody.kind`: not moved by the solver. With an og.Velocity the step
+/// moves it by it each tick and writes its Transform back; a Transform game
+/// code writes moves it there first (a teleport). Without one it stays
+/// where its Transform puts it.
 pub const BODY_KINEMATIC: u32 = 2;
 
 /// `RigidBody.lock` bits: no translation along x, y, z; no rotation about x, y, z.
@@ -72,7 +75,7 @@ pub const LOCK_ROTATION_Z: u32 = 32;
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.RigidBody")]
 pub struct RigidBody {
-    /// 0 dynamic (simulated, written back), 1 static (never moves), 2 kinematic (moved by game code through its Transform).
+    /// 0 dynamic (simulated, written back), 1 static (never moves), 2 kinematic (moved by its Velocity each tick, or by game code through its Transform).
     #[reflect(min = 0, max = 2, label = "Kind")]
     pub kind: u32,
     /// Mass in kilograms; 0 derives it from the collider's density and volume.
@@ -276,8 +279,8 @@ impl Collider {
 }
 
 /// Linear and angular velocity. Written back for dynamic bodies every tick
-/// (added to them by the step when missing); read for kinematic ones. Set
-/// it to launch or stop a body.
+/// (added to them by the step when missing); a kinematic body moves by it
+/// each tick (never added, never written). Set it to launch or stop a body.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.Velocity")]
 pub struct Velocity {

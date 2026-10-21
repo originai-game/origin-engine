@@ -42,7 +42,7 @@ are `u32` constants in `src/schema.rs`.
 | `og.Transform` | component | `position: vec3`, `quaternion: quat`, `scale: vec3` (registered by schema, so the engine's own is adopted) |
 | `og.RigidBody` | component | `kind` (0 dynamic, 1 static, 2 kinematic), `mass` (0: from density), `linear_damping`, `angular_damping`, `gravity_scale`, `lock` (bits: translation x 1, y 2, z 4; rotation x 8, y 16, z 32), `ccd` |
 | `og.Collider` | component | `shape` (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh), `size`, `radius`, `height`, `mesh`, `offset`, `rotation`, `friction`, `restitution`, `density`, `sensor`, `layers`, `mask` |
-| `og.Velocity` | component | `linear`, `angular`; written for dynamic bodies, read for kinematic ones, set it to launch or stop a body |
+| `og.Velocity` | component | `linear`, `angular`; written for dynamic bodies; a kinematic body moves by it (below); set it to launch or stop a body |
 | `og.Physics` | resource | `profile`, `gravity`, `substeps` (1–16), `solver_iterations` (1–32), `rest_speed` |
 | `og.CollisionStarted` | event | `a`, `b` (entity ids, a < b), `point`, `normal` (from a to b) |
 | `og.CollisionEnded` | event | `a`, `b` |
@@ -71,8 +71,14 @@ the components, in query order (archetype creation order, then row order):
 - a changed `og.RigidBody`, `og.Collider` or `og.Transform.scale` rebuilds
   that body (it loses its contacts' warm starts);
 - a transform or velocity that game code changed since physics wrote it
-  moves the rapier body (a teleport); kinematic bodies follow their
-  transform and velocity every tick;
+  moves the rapier body (a teleport);
+- a kinematic body takes its velocity every tick, and the step moves it
+  by it: one with a nonzero `og.Velocity` has its transform written back
+  like a dynamic body (a lift, a conveyor, a turning gear need no game
+  code), one without stays where its transform puts it (game code moving
+  it by hand, its velocity zero). Either way it pushes dynamic bodies, and
+  a controller standing on it is carried by how far it moved
+  (`tests/bodies.rs`, `tests/controllers.rs`);
 - a mesh registered with new geometry rebuilds the colliders made from it;
   the same geometry again changes nothing.
 
@@ -165,8 +171,11 @@ six 2D fluids and 24 ragdolls in each profile going limp and recovering,
 each with every pass split by `Grains::always`, with lanes off and with
 the measured grains: one hash and one snapshot), `tests/pile.rs` (a pen at
 `pool_bodies` stepped with lanes on and off), `tools/wasm-determinism`
-(physics_hash 18126409214070009362 before and after rounds two and three,
-natively with lanes off, on four and eight threads and with every pass
+(physics_hash 18126409214070009362 before and after rounds two and three;
+6597690808174327434 once the platformer moved itself, its 2D scenario's
+walker running and landing differently by design, and 947364242694612608
+with `og.PlatformerController.impulse` in its record; the kinematic rule
+leaves it; natively with lanes off, on four and eight threads and with every pass
 split on four and on eight; the wasm's builds hash the same scenarios) and
 `packages/engine/tests/lanes.test.ts` (a 1,000-box pile through the native
 engine with lanes off and on four threads). The lanes wasm itself is
@@ -228,7 +237,7 @@ reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
 |---|---|
 | `og.Joint` | fixed, revolute (limits, velocity or position motor), prismatic, spring, rope and ball joints between a body and another (`other`) or a world point; the second frame keeps the pose it was made in; `value` is written back |
 | `og.CharacterController` | a kinematic capsule moved by `move` after the step: slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies; writes `grounded`, `velocity`, `ground` |
-| `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms; sends `og.CharacterEvent` |
+| `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms, an `impulse` the game sets (a knock-back) taken once; its own move (below); sends `og.CharacterEvent` |
 | `og.Vehicle` | 3D: rapier's raycast vehicle with a top-speed fade and reverse braking; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
@@ -247,6 +256,30 @@ per feature: `cargo run --release -p og-physics --example soft_costs`
 `--example anim_physics_costs` (`tests/evidence/P2/anim-physics/costs.md`),
 and for the 3D fluid `--example fluid3d_costs`
 (`tests/evidence/P2/sph/costs.md`).
+
+### The platformer's move (`src/platformer.rs`)
+
+`og.PlatformerController` moves its shape itself, not through rapier's
+`KinematicCharacterController` (which `og.CharacterController` still
+uses). That controller casts with its skin as parry's target distance, and
+parry 0.31's support-map cast with a target distance is off by up to the
+distance (a 0.7 × 1.25 box 2 cm over a 74 m floor travels 1.98 cm, not
+1 cm), while a cast starting within it falls back on a contact query that
+returns nothing at some places. A run grazing the floor then met it at
+random with a tilted normal and the controller's 2D slope rule (2D has no
+horizontal tangent) took the whole step: the run stuttered to 0 m/s every
+few ticks (examples/hollowbell #16); and a shape put exactly on a floor
+fell 11 mm into it and stuck (#15). Exact casts (no target distance) from
+a millimetre away or more measure to 2e-5 m, so the move keeps its `skin`
+itself: rising, up then across; otherwise lifted two skins (less under a
+ceiling), across (up a walkable slope keeping its x speed, stopped by a
+wall, along a ceiling never up), then down by the lift and the fall onto
+walkable ground within `snapDistance` more, a skin over it (a steeper
+slope slides it down). `tests/platformer_ground.rs`: a run holds
+`maxSpeed` tick after tick on one box, on twelve adjacent boxes and on a
+tilemap's collision rectangles, runs up and down a 30° hill at its speed
+and is stopped by a 60° one, and a controller written to the floor's
+height at 190 places stands a skin over it and runs.
 
 ### Phase 2: cloth self-collision, fluid groups, 2D ragdolls
 

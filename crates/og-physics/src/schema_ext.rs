@@ -247,6 +247,12 @@ pub struct PlatformerController {
     pub jump: bool,
     /// Held to drop through a one-way platform.
     pub down: bool,
+    /// A velocity change to take on the next step (a knock-back, a spring, a
+    /// recoil): added to `velocity`, then set back to zero. One with an
+    /// upward y leaves the ground; the run's acceleration and gravity act
+    /// on the result from then on.
+    #[reflect(unit = "m/s")]
+    pub impulse: Vec2,
     /// The top running speed.
     #[reflect(name = "maxSpeed", min = 0, unit = "m/s", default = 8, tunable)]
     pub max_speed: f32,
@@ -383,6 +389,7 @@ impl Default for PlatformerController {
             move_x: 0.0,
             jump: false,
             down: false,
+            impulse: Vec2::ZERO,
             max_speed: 8.0,
             acceleration: 70.0,
             deceleration: 80.0,

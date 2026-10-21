@@ -26,7 +26,7 @@ module physics {
 |---|---|---|
 | [`BODY_DYNAMIC`](#const-BODY_DYNAMIC) | constant | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
 | [`BODY_STATIC`](#const-BODY_STATIC) | constant | RigidBody.kind: never moves; collides with dynamic bodies. |
-| [`BODY_KINEMATIC`](#const-BODY_KINEMATIC) | constant | RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes. |
+| [`BODY_KINEMATIC`](#const-BODY_KINEMATIC) | constant | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
 | [`LOCK_TRANSLATION_X`](#const-LOCK_TRANSLATION_X) | constant | RigidBody.lock bit: no translation along x. |
 | [`LOCK_TRANSLATION_Y`](#const-LOCK_TRANSLATION_Y) | constant | RigidBody.lock bit: no translation along y. |
 | [`LOCK_TRANSLATION_Z`](#const-LOCK_TRANSLATION_Z) | constant | RigidBody.lock bit: no translation along z. |
@@ -44,7 +44,7 @@ module physics {
 | [`PROFILE_3D`](#const-PROFILE_3D) | constant | Physics.profile: rapier3d. |
 | [`og.RigidBody`](#record-RigidBody) | component | A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one. |
 | [`og.Collider`](#record-Collider) | component | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale. |
-| [`og.Velocity`](#record-Velocity) | component | Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body. |
+| [`og.Velocity`](#record-Velocity) | component | Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body. |
 | [`og.Physics`](#record-Physics) | resource | The physics settings of the world. The profile is the project's; the same components serve both profiles. |
 | [`og.CollisionStarted`](#record-CollisionStarted) | event | Two solid colliders started touching during the tick. |
 | [`og.CollisionEnded`](#record-CollisionEnded) | event | Two solid colliders stopped touching, or one of them went away. |
@@ -145,7 +145,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4928</sub>
+<sub>`api.ogt` line 4931</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -175,7 +175,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 4935</sub>
+<sub>`api.ogt` line 4938</sub>
 
 <a id="fn-overlap"></a>
 
@@ -205,7 +205,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 4942</sub>
+<sub>`api.ogt` line 4945</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -237,7 +237,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 4949</sub>
+<sub>`api.ogt` line 4952</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -267,7 +267,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 5003</sub>
+<sub>`api.ogt` line 5006</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -297,7 +297,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 5010</sub>
+<sub>`api.ogt` line 5013</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -327,7 +327,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 5017</sub>
+<sub>`api.ogt` line 5020</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -357,7 +357,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 5024</sub>
+<sub>`api.ogt` line 5027</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -391,7 +391,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 5031</sub>
+<sub>`api.ogt` line 5034</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -421,7 +421,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 5040</sub>
+<sub>`api.ogt` line 5043</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -451,7 +451,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 5047</sub>
+<sub>`api.ogt` line 5050</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -483,7 +483,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 5054</sub>
+<sub>`api.ogt` line 5057</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -513,7 +513,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 5062</sub>
+<sub>`api.ogt` line 5065</sub>
 
 <a id="fn-stats"></a>
 
@@ -541,7 +541,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 5090</sub>
+<sub>`api.ogt` line 5093</sub>
 
 ## Components, resources and events
 
@@ -557,7 +557,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `number` | `0` | 0 … 2 | — | label “Kind” | BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform). |
+| `kind` | `number` | `0` | 0 … 2 | — | label “Kind” | BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform). |
 | `mass` | `number` | `0` | ≥ 0 | `kg` | tunable | Mass; 0 derives it from the collider's density and volume. |
 | `linearDamping` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast linear velocity decays (0: none). |
 | `angularDamping` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast angular velocity decays (0: none). |
@@ -569,7 +569,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 component RigidBody {
   doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
   doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
-  field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform)." {
+  field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform)." {
     min 0
     max 2
     label "Kind"
@@ -701,7 +701,7 @@ component Collider {
 
 ### `og.Velocity` (component)
 
-Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
 
 Token `og.Velocity`, registered under the schema name `og.Velocity`; its value type is `Velocity`.
 
@@ -712,7 +712,7 @@ Token `og.Velocity`, registered under the schema name `og.Velocity`; its value t
 
 ```ogt
 component Velocity {
-  doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body."
+  doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body."
   field linear Vector3 "The linear velocity (2D uses x and y)." {
     unit mps
     tunable true
@@ -1133,6 +1133,7 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 | `moveX` | `number` | `0` | -1 … 1 | — | — | The run input, -1 (left) to 1 (right). Set it every tick. |
 | `jump` | `boolean` | `false` | — | — | — | Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump. |
 | `down` | `boolean` | `false` | — | — | — | Held to drop through a one-way platform. |
+| `impulse` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | — | A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks. |
 | `maxSpeed` | `number` | `8` | ≥ 0 | `mps` | tunable | The top running speed. |
 | `acceleration` | `number` | `70` | ≥ 0 | `mps2` | tunable | How fast it reaches maxSpeed on the ground. |
 | `deceleration` | `number` | `80` | ≥ 0 | `mps2` | tunable | How fast it stops on the ground without input. |
@@ -1179,6 +1180,9 @@ component PlatformerController {
   }
   field jump bool "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump."
   field down bool "Held to drop through a one-way platform."
+  field impulse Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks." {
+    unit mps
+  }
   field maxSpeed f32 "The top running speed." {
     default 8
     min 0
@@ -1385,7 +1389,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 4194</sub>
+<sub>`api.ogt` line 4197</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1526,7 +1530,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 4210</sub>
+<sub>`api.ogt` line 4213</sub>
 
 <a id="record-Rope"></a>
 
@@ -1615,7 +1619,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 4316</sub>
+<sub>`api.ogt` line 4319</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1721,7 +1725,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 4382</sub>
+<sub>`api.ogt` line 4385</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -1845,7 +1849,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 4458</sub>
+<sub>`api.ogt` line 4461</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2014,7 +2018,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 4547</sub>
+<sub>`api.ogt` line 4550</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2079,7 +2083,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 4673</sub>
+<sub>`api.ogt` line 4676</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2156,7 +2160,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 4716</sub>
+<sub>`api.ogt` line 4719</sub>
 
 <a id="record-Splash"></a>
 
@@ -2187,7 +2191,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 4769</sub>
+<sub>`api.ogt` line 4772</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2255,7 +2259,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 4781</sub>
+<sub>`api.ogt` line 4784</sub>
 
 ## Types
 
@@ -2283,7 +2287,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 4826</sub>
+<sub>`api.ogt` line 4829</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2318,7 +2322,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4834</sub>
+<sub>`api.ogt` line 4837</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2345,7 +2349,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 4850</sub>
+<sub>`api.ogt` line 4853</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2387,7 +2391,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 4860</sub>
+<sub>`api.ogt` line 4863</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2426,7 +2430,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4882</sub>
+<sub>`api.ogt` line 4885</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2453,7 +2457,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 4900</sub>
+<sub>`api.ogt` line 4903</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2483,7 +2487,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4910</sub>
+<sub>`api.ogt` line 4913</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2507,7 +2511,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 4921</sub>
+<sub>`api.ogt` line 4924</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2532,7 +2536,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 4957</sub>
+<sub>`api.ogt` line 4960</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2575,7 +2579,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 4966</sub>
+<sub>`api.ogt` line 4969</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2599,7 +2603,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 4988</sub>
+<sub>`api.ogt` line 4991</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2622,7 +2626,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 4995</sub>
+<sub>`api.ogt` line 4998</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -2647,7 +2651,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 5069</sub>
+<sub>`api.ogt` line 5072</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -2678,7 +2682,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 5078</sub>
+<sub>`api.ogt` line 5081</sub>
 
 ## Constants
 
@@ -2686,7 +2690,7 @@ struct PhysicsStats {
 |---|---|---|---|
 | <a id="const-BODY_DYNAMIC"></a>`BODY_DYNAMIC` | `number` | `0` | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
 | <a id="const-BODY_STATIC"></a>`BODY_STATIC` | `number` | `1` | RigidBody.kind: never moves; collides with dynamic bodies. |
-| <a id="const-BODY_KINEMATIC"></a>`BODY_KINEMATIC` | `number` | `2` | RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes. |
+| <a id="const-BODY_KINEMATIC"></a>`BODY_KINEMATIC` | `number` | `2` | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
 | <a id="const-LOCK_TRANSLATION_X"></a>`LOCK_TRANSLATION_X` | `number` | `1` | RigidBody.lock bit: no translation along x. |
 | <a id="const-LOCK_TRANSLATION_Y"></a>`LOCK_TRANSLATION_Y` | `number` | `2` | RigidBody.lock bit: no translation along y. |
 | <a id="const-LOCK_TRANSLATION_Z"></a>`LOCK_TRANSLATION_Z` | `number` | `4` | RigidBody.lock bit: no translation along z. |
@@ -2738,7 +2742,7 @@ const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodi
 <sub>`api.ogt` line 3646</sub>
 
 ```ogt
-const BODY_KINEMATIC u32 2 "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
+const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
 <sub>`api.ogt` line 3647</sub>
@@ -2891,76 +2895,76 @@ const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 4187</sub>
+<sub>`api.ogt` line 4190</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 4188</sub>
+<sub>`api.ogt` line 4191</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 4189</sub>
+<sub>`api.ogt` line 4192</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 4190</sub>
+<sub>`api.ogt` line 4193</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 4191</sub>
+<sub>`api.ogt` line 4194</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 4192</sub>
+<sub>`api.ogt` line 4195</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 4206</sub>
+<sub>`api.ogt` line 4209</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 4207</sub>
+<sub>`api.ogt` line 4210</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 4208</sub>
+<sub>`api.ogt` line 4211</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 4377</sub>
+<sub>`api.ogt` line 4380</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 4378</sub>
+<sub>`api.ogt` line 4381</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 4379</sub>
+<sub>`api.ogt` line 4382</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 4380</sub>
+<sub>`api.ogt` line 4383</sub>

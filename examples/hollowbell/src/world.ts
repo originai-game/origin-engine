@@ -292,8 +292,8 @@ function spawnHero(world: World, g: Value<typeof Game>, art: Art, x: number, y: 
   must(world.insert(e, og.Sprite, { texture: art.hero.texture, width: 1.5, height: 1.5, anchor: { x: 0.5, y: 0 }, layer: Draw.hero }));
   must(world.insert(e, og.Flipbook, { sheet: art.hero.sheet, clip: HERO_CLIP.idle }));
   must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: HERO_BOX.w, y: HERO_BOX.h, z: 1 }, offset: { x: 0, y: HERO_BOX.h / 2, z: 0 }, layers: Bits.Hero, mask: Bits.World | Bits.Stone | Bits.Plank }));
-  // Its run stutters on flat ground: every few ticks its velocity drops to almost 0 and it
-  // accelerates again (FINDINGS.md #16); no skin or snap setting made it steadier.
+  // Its run holds maxSpeed on flat ground with every default skin and snap (FINDINGS.md #16, fixed:
+  // it stuttered to 0 m/s every few ticks).
   must(world.insert(e, og.PlatformerController, { oneWayLayers: Bits.Plank, wallJumps: false, coyoteTime: 0.1, jumpBuffer: 0.12, maxFallSpeed: 18 }));
   must(world.insert(e, og.Light2D, { color: { r: 1, g: 0.86, b: 0.6 }, intensity: 2.4, radius: light, falloff: 1.2, sourceRadius: 0.2 }));
   // Steady (rate 0: 0.894 of the base), out in daylight, where it would light the village's hills.

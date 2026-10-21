@@ -1862,6 +1862,14 @@
           "default": false
         },
         {
+          "name": "impulse",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
           "name": "maxSpeed",
           "column": "f32",
           "default": 8,

@@ -5720,7 +5720,7 @@ export declare const BODY_DYNAMIC: 0;
 export declare const BODY_STATIC: 1;
 
 /**
- * RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes.
+ * RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it.
  */
 export declare const BODY_KINEMATIC: 2;
 
@@ -5783,7 +5783,7 @@ export declare const PROFILE_3D: 3;
  */
 export interface RigidBody {
   /**
-   * BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform).
+   * BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform).
    *
    * @range 0..2
    * @label Kind
@@ -5932,7 +5932,7 @@ export interface Collider {
 }
 
 /**
- * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+ * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
  *
  * The value of the `Velocity` component (token `og.Velocity`).
  */
@@ -6370,6 +6370,12 @@ export interface PlatformerController {
   jump: boolean;
   /** Held to drop through a one-way platform. */
   down: boolean;
+  /**
+   * A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks.
+   *
+   * @unit mps (metres per second)
+   */
+  impulse: Vector2;
   /**
    * The top running speed.
    *
@@ -17566,7 +17572,7 @@ export declare namespace og {
    */
   const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"u32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
-   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body.
    */
   const Velocity: ComponentType<{ readonly linear: FieldSpec<"Vector3">; readonly angular: FieldSpec<"Vector3"> }, Velocity>;
   /**
@@ -17596,7 +17602,7 @@ export declare namespace og {
   /**
    * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
    */
-  const PlatformerController: ComponentType<{ readonly moveX: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayLayers: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
+  const PlatformerController: ComponentType<{ readonly moveX: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly impulse: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayLayers: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
   /**
    * Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick.
    */

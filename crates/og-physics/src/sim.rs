@@ -452,6 +452,15 @@ fn simulated(b: &Body) -> bool {
     b.body.kind == BODY_DYNAMIC && b.control.is_none()
 }
 
+/// A kinematic body with a nonzero og.Velocity: the step moves it by it
+/// and writes its Transform back.
+fn moves_itself(b: &Body) -> bool {
+    b.body.kind == BODY_KINEMATIC
+        && b.control.is_none()
+        && b.velocity
+            .is_some_and(|v| v.linear != Vec3::ZERO || v.angular != Vec3::ZERO)
+}
+
 /// The dynamic bodies' poses before the step, for the rest rule, in body
 /// order (by ranges of bodies on the lanes).
 fn rest_poses(scene: &Scene, sim: &Sim, handles: &Handles<'_>) -> Vec<rp::Pose> {
@@ -501,10 +510,9 @@ fn plan(b: &Body, tracked: &BTreeMap<u64, Tracked>, stale: &BTreeSet<u64>) -> Pl
                 // A controller moved it after the last step: the step
                 // takes it there, pushing what is in the way.
                 next = Some(pose(b.position, b.quaternion));
-            } else if kind == BODY_KINEMATIC
-                || t.position != b.position
-                || t.quaternion != b.quaternion
-            {
+            } else if t.position != b.position || t.quaternion != b.quaternion {
+                // Game code moved it (a kinematic body moving by its
+                // velocity is where physics wrote it, so it is not moved).
                 position = Some(pose(b.position, b.quaternion));
             }
             let velocity = (b.control.is_none()
@@ -928,6 +936,10 @@ fn read_body(
                 Some((position, quaternion, Some(velocity))),
             )
         }
+    } else if moves_itself(b) {
+        // A kinematic body moving by its velocity: where the step took it.
+        let (position, quaternion) = unpose(bodies[h].position(), b.position);
+        (None, Some((position, quaternion, None)))
     } else {
         (None, None)
     };
