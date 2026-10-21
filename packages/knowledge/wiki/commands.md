@@ -167,7 +167,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 
 | Variant | Doc |
 |---|---|
-| `"screenshot"` | `screenshot[:path][:full\|:N]`: capture the next frame. |
+| `"screenshot"` | `screenshot[:path][:full\|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked. |
 | `"listen"` | `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV. |
 | `"touch_move_to"` | `touch_move_to:<ui id>`: move the pointer to a UI element. |
 | `"touch_move"` | `touch_move:x,y`: move the pointer to CSS pixel coordinates. |
@@ -199,7 +199,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 ```ogt
 enum CoreAction {
   doc "The actions the engine ships. Arguments follow the action, separated by `:`."
-  variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame."
+  variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked."
   variant listen "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV."
   variant touch_move_to "`touch_move_to:<ui id>`: move the pointer to a UI element."
   variant touch_move "`touch_move:x,y`: move the pointer to CSS pixel coordinates."

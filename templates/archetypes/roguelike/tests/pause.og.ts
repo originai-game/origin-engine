@@ -52,6 +52,8 @@ export default playtest({
     const resumed = game(run, "resumed.json");
     t.equal(resumed.paused, false, "Resume closed the pause menu");
     t.equal(resumed.turns, 2, "and the next step takes a turn");
-    for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    t.frame(["pause.png", "settings-zh.png", "play-zh.png"], () => {
+      for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    });
   },
 });

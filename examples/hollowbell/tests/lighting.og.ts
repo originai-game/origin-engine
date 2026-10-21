@@ -55,17 +55,19 @@ export default playtest({
     const tint = value<{ color: [number, number, number] }>(run, "tint.json").color;
     t.ok(tint.every((c) => c === 1), `the map keeps its colour; the light does the dark (${tint.map((c) => c.toFixed(2)).join(", ")})`);
     // Where things are on the frame: 1280x720, the 15-cell view 3x of 240 lines (426 columns), centred.
-    const img = decodePng(readFileSync(join(outDir(), "dark.png")));
-    const cam = value<{ position: [number, number, number] }>(run, "camera.json").position;
-    const px = 3 * 16; // screen pixels per world unit
-    const at = (x: number, y: number): [number, number] => [Math.round(640 + (x - cam[0]) * px), Math.round(360 - (y - cam[1]) * px)];
-    const [hx, hy] = at(cave.heroX, cave.heroY + 0.7);
-    const [tx, ty] = at(38.5, 48 - 25.4 - 0.6);
-    const [dx, dy] = at(cave.heroX - 6, cave.heroY - 1.5);
-    const hero = lum(img, hx + 30, hy, 6);
-    const torch = lum(img, tx, ty + 40, 6);
-    const rock = lum(img, dx, dy, 6);
-    t.ok(hero > rock * 2 && torch > rock * 2, `the lit map: by Wren ${hero.toFixed(0)}, under the torch ${torch.toFixed(0)}, the rock between ${rock.toFixed(0)}`);
+    t.frame("dark.png", () => {
+      const img = decodePng(readFileSync(join(outDir(), "dark.png")));
+      const cam = value<{ position: [number, number, number] }>(run, "camera.json").position;
+      const px = 3 * 16; // screen pixels per world unit
+      const at = (x: number, y: number): [number, number] => [Math.round(640 + (x - cam[0]) * px), Math.round(360 - (y - cam[1]) * px)];
+      const [hx, hy] = at(cave.heroX, cave.heroY + 0.7);
+      const [tx, ty] = at(38.5, 48 - 25.4 - 0.6);
+      const [dx, dy] = at(cave.heroX - 6, cave.heroY - 1.5);
+      const hero = lum(img, hx + 30, hy, 6);
+      const torch = lum(img, tx, ty + 40, 6);
+      const rock = lum(img, dx, dy, 6);
+      t.ok(hero > rock * 2 && torch > rock * 2, `the lit map: by Wren ${hero.toFixed(0)}, under the torch ${torch.toFixed(0)}, the rock between ${rock.toFixed(0)}`);
+    });
     const wick = game(run, "wick.json");
     t.ok(wick.wick && value<{ radius: number }>(run, "light.json").radius > 6.5, `the wick widened the light (${value<{ radius: number }>(run, "light.json").radius.toFixed(2)} m)`);
   },

@@ -233,7 +233,8 @@ const t: PlaytestChecks = {
 /** The file a frame read without a renderer was after, if `e` is one: a FrameUnchecked, or a missing screenshot read from disk. */
 function missedFrame(e: unknown): string | null {
   if (rendered) return null;
-  if (e instanceof FrameUnchecked) return e.file;
+  // By name too: a playtest's bundle carries its own copy of the class.
+  if (e instanceof FrameUnchecked || (e instanceof Error && e.name === "FrameUnchecked")) return (e as FrameUnchecked).file;
   const err = e as { code?: string; path?: string } | null;
   if (err && err.code === "ENOENT" && typeof err.path === "string" && missedPaths.has(resolve(err.path))) return err.path.slice(out.length + 1);
   return null;

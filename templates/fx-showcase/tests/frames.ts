@@ -104,29 +104,33 @@ export function referencesDir(): string {
 
 /** Compares each screenshot with its reference (`<prefix><file>`), or records it. */
 export function checkFrames(run: PlaytestRun, t: PlaytestChecks, files: readonly string[], prefix: string): void {
-  const refs = referencesDir();
-  t.ok(existsSync(refs) || process.env.OG_FX_CAPTURE !== undefined, `the references directory exists at ${refs}`);
-  const own = join(refs, run.tier);
-  const asked = process.env.OG_FX_CAPTURE;
-  const records = (f: string) => asked !== undefined && (asked === "1" || asked.split(",").includes(prefix + f));
-  for (const f of files) {
-    const actual = join(outDir(), f);
-    // Each file on its own: this tier's reference where it has one (or is being recorded), metal's otherwise.
-    const mine = join(own, prefix + f);
-    const ref = records(f) || existsSync(mine) ? mine : join(refs, "metal", prefix + f);
-    if (ref !== mine) process.stdout.write(`  note: no ${run.tier} reference for ${prefix}${f}; comparing with metal\n`);
-    if (records(f)) {
-      mkdirSync(own, { recursive: true });
-      copyFileSync(actual, ref);
-      t.ok(true, `recorded ${ref}`);
-      continue;
+  // Read only where there is a renderer: without one (tier `none`) each frame is
+  // reported "no renderer, frame unchecked" and every other check still runs.
+  t.frame(files, () => {
+    const refs = referencesDir();
+    t.ok(existsSync(refs) || process.env.OG_FX_CAPTURE !== undefined, `the references directory exists at ${refs}`);
+    const own = join(refs, run.tier);
+    const asked = process.env.OG_FX_CAPTURE;
+    const records = (f: string) => asked !== undefined && (asked === "1" || asked.split(",").includes(prefix + f));
+    for (const f of files) {
+      const actual = join(outDir(), f);
+      // Each file on its own: this tier's reference where it has one (or is being recorded), metal's otherwise.
+      const mine = join(own, prefix + f);
+      const ref = records(f) || existsSync(mine) ? mine : join(refs, "metal", prefix + f);
+      if (ref !== mine) process.stdout.write(`  note: no ${run.tier} reference for ${prefix}${f}; comparing with metal\n`);
+      if (records(f)) {
+        mkdirSync(own, { recursive: true });
+        copyFileSync(actual, ref);
+        t.ok(true, `recorded ${ref}`);
+        continue;
+      }
+      if (!existsSync(ref)) {
+        t.ok(false, `${ref} is missing: record it with OG_FX_CAPTURE=1 og test templates/fx-showcase`);
+        continue;
+      }
+      const d = difference(decodePng(readFileSync(actual)), decodePng(readFileSync(ref)));
+      process.stdout.write(`  ${f}: ${(d.outliers * 100).toFixed(3)} % outliers, RMSE ${d.rmse.toFixed(5)} against ${ref}\n`);
+      t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${f} matches ${prefix}${f}: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
     }
-    if (!existsSync(ref)) {
-      t.ok(false, `${ref} is missing: record it with OG_FX_CAPTURE=1 og test templates/fx-showcase`);
-      continue;
-    }
-    const d = difference(decodePng(readFileSync(actual)), decodePng(readFileSync(ref)));
-    process.stdout.write(`  ${f}: ${(d.outliers * 100).toFixed(3)} % outliers, RMSE ${d.rmse.toFixed(5)} against ${ref}\n`);
-    t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${f} matches ${prefix}${f}: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
-  }
+  });
 }

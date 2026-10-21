@@ -20,8 +20,12 @@ export default playtest({
     "2.2:dump_world:world.json;2.3:dump_ui:ui.json;2.5:quit",
   check(run, t) {
     t.ok(run.quit, "the script reached quit");
-    const frame = run.png("smoke.png");
-    t.ok(frame.width > 0 && frame.height > 0, `a ${frame.width}x${frame.height} frame was captured`);
+    // Frames are read inside t.frame: without a renderer (og test in a sandbox
+    // with no GPU) the frame is reported unchecked and every other check runs.
+    t.frame("smoke.png", () => {
+      const frame = run.png("smoke.png");
+      t.ok(frame.width > 0 && frame.height > 0, `a ${frame.width}x${frame.height} frame was captured`);
+    });
     const world = run.json<{ entities: number; systems: Array<{ name: string; matched: number | null }> }>("world.json");
     t.ok(world.entities >= 5, `the scene spawned with the crate (${world.entities} entities)`);
     t.ok(world.systems.some((s) => s.name === "Rotate" && s.matched === 1), "Rotate matches the trickster");

@@ -474,7 +474,7 @@ fn hello {
 
 #### `EngineProbe.capture`
 
-The frame of the current tick, rendered offscreen and read back as a PNG.
+The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
 
 Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
 
@@ -495,7 +495,7 @@ Binding symbol `og_engine_probe_capture` · publish builds: kept
 
 ```ogt
 fn capture {
-  doc "The frame of the current tick, rendered offscreen and read back as a PNG."
+  doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
   doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
   doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
   publish true

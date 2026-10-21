@@ -72,7 +72,9 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings (every key is in every table)");
     t.ok(run.quit, "the script reached quit");
-    for (const f of files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    t.frame(files, () => {
+      for (const f of files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    });
     checkFrames(run, t, files, "kit-locale-");
 
     const texts = (file: string) => new Set(ui(run, file).map((e) => e.text).filter((x) => x !== ""));
