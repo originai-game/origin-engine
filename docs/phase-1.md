@@ -377,6 +377,108 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 11, physics-anim-2: world-space cloth, a 3D squash, a model's own flash, reverb zones (7b1973a)
+
+From The Kestrel Stair's findings. Merged at 7b1973a7 after nav-ai, the
+nine generated wiki pages that conflicted regenerated and the game's
+strike frame re-recorded on the merged engine (the warden flashing white
+and the court's imp standing where nav-ai leaves it).
+
+- 12fa298a, #10: ropes, cloths, fluids, water lines and ragdolls are
+  placed at their entity's world position composed down the `og.Parent`
+  chain (`og_physics::world_pose`), as are the runtime's ragdoll targets
+  and water-height reads; rigid bodies and colliders keep treating their
+  Transform as world space ("bodies are roots"), now stated in the
+  physics README. A cloth pinned to a child follows its parent's move,
+  turn and a grandparent (`tests/soft.rs`). The game's cape is a child of
+  the body again, its per-tick placement gone.
+- 17851d64, #4: `SquashDesc.impact` is a `Partial<Vector3>` (z left out
+  or 0 stays at rest, so 2D calls are unchanged; the IDL refuses an
+  explicit default on a Partial, so the defaults 1.25, 0.8, 0 are in the
+  doc text); og-feel §5.
+- 5bbf4909, #11: the instance record grows from 52 to 64 bytes for a
+  per-instance flash amount, flash colour and tint (`og_render::InstanceFx`,
+  skinned instances too), applied by every lit shader (full, lean,
+  array-map, physical); `og.Model` gains `tint`, `flash` and `flashColor`
+  and `og.tween.flash` takes an og.Model entity. All 80 metal gfx frames
+  but the new scene unchanged; `model-flash` (three instances of one
+  model, one flashing white, one tinted amber, two skinned cylinders, one
+  flashing red) recorded on metal, its test checking the flash adds no
+  draw and leaves the twin untouched. The game's struck foe flashes white
+  alone; its combat test checks the other warden stays unflashed.
+- a4169c06, #21: `og.ReverbZone` (a box or sphere with a fade distance,
+  bus, send, room size and damping); each tick og.audio writes how far
+  inside each zone the listener is (`weight`) and the strongest zone
+  blends the shared reverb's room, damping and its bus's send towards
+  its own, `og.Audio` and `og.AudioBusFx` keeping the open-air values; a
+  function of the listener's position, so deterministic and restored;
+  og-audio §4 and §6, `tests/mix.rs`. The game's crypt is a zone and its
+  Fx system's hand-rolled easing is gone.
+- Frames re-recorded on metal: the game's `strike` (0.0147 on the branch,
+  0.0301 after the merge with nav-ai's), `chapters`, `records` and
+  `results` (0.0218, 0.0196, 0.0218: the summit look's own sky light now
+  shows, the old easing having kept writing 0.45 over its 0.7); og-tests
+  `model-flash` new. Under tolerance: `explore` 0.0026, `crypt` 0.0054,
+  `bag` 0.0057.
+- Hashes move by design, since `world_hash` includes the registered
+  types: physics registers `og.Parent`, audio `og.ReverbZone`, and
+  `og.Model`'s layout grew; the determinism tool was not run on the
+  branch (the wave's end). Game replays still end two runs on one hash.
+- Left out: `og.Mesh`'s flash still draws through a copy of its material
+  at 16 levels (moving it onto the instance record would move frames);
+  zones and the listener read their own `og.Transform` (parented audio
+  stays owed in the og-audio README); `model-flash` and the four game
+  frames owed on vulkan-cpu and the browser tiers (the wave's end).
+
+Functional lane on the merge: see the wave 11 gate section.
+
+## Wave 11, nav-ai: the unplanned agent, restart, perception, bounds, checks against fields (a7cd639)
+
+From The Kestrel Stair's findings. Merged at a7cd639f.
+
+- 8af9ea4e, #7 (blocker): a new `og.NavAgent` no longer stands on
+  polygon 0. Before it moves, its position is checked against its
+  current polygon; if that does not hold it, the nearest polygon within
+  its height and twice its radius (at least 1 m) is used, which also
+  covers an agent the game teleports; an agent at rest is not moved at
+  all. The test puts polygon 0 on a high terrace and idle agents on a
+  court and a lower terrace: they keep their positions, each reaches a
+  target on its own level, and one teleported while idle walks from
+  where it lands; against the old code it reproduces the finding (the
+  agent at y 8.1). #9: `NavMeshInfo` bounds come from the polygons
+  (before, the top was the floor's origin plus the agent's height).
+- 2f4b2f41, #5: `og.ai.restart(world, entity)` in the IDL, both hosts
+  and the runtime: at the next think a machine goes back to its initial
+  state and runs `enter` again, a tree starts at its root, timers,
+  cooldowns and the blackboard reset, what it saw and heard is forgotten,
+  the speed it started with kept. #8: an agent no longer hears its own
+  entity's sounds or anything parented under it, `NoiseDesc.source`
+  excludes game noises the same way, and a parented sound is heard at
+  its world position (it was heard at its local one). #3: a `check` can
+  compare against a key, `Component.field` or `Resource.field`, read on
+  every evaluation, a missing reference failing the check with a warning;
+  a cook test and a runtime test.
+- 5daa77c8, 94e043d4, #1: og-game, og-feel and og-ai name
+  `templates/archetypes/third-person` as the 3D action pattern; the
+  "see nav-ai" placeholder knowledge-3 left in og-ai filled, and its
+  habit changed to "idle or seeking" since an idle agent is safe now.
+- Workarounds removed: the game's (2d4cda64: foes spawn idle with their
+  minds on, `Foe.warm`/`awake`/`spare` gone, each behaviour loads once
+  and reset calls `og.ai.restart`, the flee and reach thresholds are
+  Tuning fields the behaviours read) and the third-person archetype's
+  two-handle swap (807ad88d). The game's foes playtest runs 0.8 s later
+  (foes wait out their patrol's first pause), its move playtest stops the
+  court's imp patrolling, `strike.png` re-recorded (the terrace warden
+  standing where it was placed).
+- Determinism: the tool does not link og-nav or og-ai; its host debug run
+  matches the recorded values. The game's world hashes move by design
+  (foes idle instead of seeking); its replay test still ends two runs on
+  one hash.
+- Left out: og-nav's README costs table not re-measured.
+
+Functional lane on the merge: 5 of 5 in 160 s; the Kestrel Stair,
+third-person, topdown and Lantern Vale suites passing after it.
+
 ## Wave 10, lanes-per-profile: a lanes module per physics profile (0e77b6b)
 
 Row 71. One `og_host_web-lanes.wasm` carried both physics profiles and
