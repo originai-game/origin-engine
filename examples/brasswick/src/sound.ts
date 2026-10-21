@@ -21,13 +21,14 @@ export function spawnVoices(world: World): void {
 }
 
 /** Plays each requested sound once: a voice still playing is stopped this tick and restarted the next (the archetypes' Voices). */
-export const Voices = defineSystem("Voices", { reads: [Voice], writes: [Sfx, og.AudioSource, og.Rng] }, (q, _time, world) => {
+export const Voices = defineSystem("Voices", { writes: [Voice, Sfx, og.AudioSource, og.Rng] }, (q, _time, world) => {
   const sfx = must(world.resource(Sfx));
   if (sfx.bits === 0) return;
   const rng = must(world.resource(og.Rng));
   let left = sfx.bits;
   for (const a of q.archetypes()) {
     const voice = a.column(Voice).bit;
+    const count = a.column(Voice).plays;
     const src = a.column(og.AudioSource);
     for (let i = 0; i < a.count; i++) {
       const b = voice[i]!;
@@ -38,6 +39,7 @@ export const Voices = defineSystem("Voices", { reads: [Voice], writes: [Sfx, og.
         // Repeated sounds vary a little (og-audio §1).
         if (b === Sound.Step || b === Sound.Gear || b === Sound.Shove) src.pitch[i] = rng.range(0.92, 1.08);
         src.playing[i] = 1;
+        count[i] = count[i]! + 1;
         sfx.plays += 1;
         left &= ~b;
       }
