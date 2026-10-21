@@ -249,7 +249,8 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
     const delta = desc.delta ?? null;
     if (delta !== null) kit.label("Delta", deltaText(delta), { step: "lg", font: "mono", color: deltaInk(delta), nowrap: true });
     if (desc.best !== null && desc.best !== undefined) {
-      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", clock(desc.best, true)), { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+      // A finished lap: m:ss.mmm as lapTime cuts it (30.717 s is 0:30.717, where the running clock's floor reads 0:30.716).
+      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", lapTime(desc.best)), { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
     }
     const splits = desc.splits ?? [];
     if (splits.length > 0) {
