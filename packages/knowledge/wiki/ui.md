@@ -2764,7 +2764,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 10179</sub>
+<sub>`api.ogt` line 10212</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2795,7 +2795,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 10187</sub>
+<sub>`api.ogt` line 10220</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2826,7 +2826,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 10195</sub>
+<sub>`api.ogt` line 10228</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2857,7 +2857,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 10203</sub>
+<sub>`api.ogt` line 10236</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2888,7 +2888,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 10211</sub>
+<sub>`api.ogt` line 10244</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2919,7 +2919,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 10219</sub>
+<sub>`api.ogt` line 10252</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2950,7 +2950,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 10227</sub>
+<sub>`api.ogt` line 10260</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2981,7 +2981,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 10235</sub>
+<sub>`api.ogt` line 10268</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3012,7 +3012,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 10243</sub>
+<sub>`api.ogt` line 10276</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3043,7 +3043,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 10251</sub>
+<sub>`api.ogt` line 10284</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3074,7 +3074,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 10259</sub>
+<sub>`api.ogt` line 10292</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3105,7 +3105,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 10267</sub>
+<sub>`api.ogt` line 10300</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3136,7 +3136,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 10275</sub>
+<sub>`api.ogt` line 10308</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3167,7 +3167,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 10283</sub>
+<sub>`api.ogt` line 10316</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3198,7 +3198,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 10291</sub>
+<sub>`api.ogt` line 10324</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3229,7 +3229,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 10299</sub>
+<sub>`api.ogt` line 10332</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3260,7 +3260,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 10307</sub>
+<sub>`api.ogt` line 10340</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3291,7 +3291,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 10315</sub>
+<sub>`api.ogt` line 10348</sub>
 
 ## Types
 
@@ -6808,6 +6808,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `timeLeft` | `number \| null` | `null` | — | — | — | Seconds left; null hides the timer. |
 | `health` | `number \| null` | `null` | — | — | — | A health bar instead of hearts, 0 to 1; null shows hearts. |
 | `touch` | `boolean` | `false` | — | — | — | Show touch controls (a d-pad and Jump) on phones and tablets. |
+| `jumpLabel` | `string` | `"Jump"` | — | — | — | The touch Jump button. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t). |
+| `pauseLabel` | `string` | `"Pause"` | — | — | — | The pause button's name (what a screen reader says; the button shows its icon). |
 
 ```ogt
 struct PlatformerHudDesc {
@@ -6823,6 +6825,12 @@ struct PlatformerHudDesc {
   field timeLeft Option.f32 "Seconds left; null hides the timer."
   field health Option.f32 "A health bar instead of hearts, 0 to 1; null shows hearts."
   field touch bool "Show touch controls (a d-pad and Jump) on phones and tablets."
+  field jumpLabel String "The touch Jump button. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+    default "Jump"
+  }
+  field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+    default "Pause"
+  }
 }
 ```
 
@@ -6853,7 +6861,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 9721</sub>
+<sub>`api.ogt` line 9727</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -6878,6 +6886,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `crosshair` | `boolean` | `true` | — | — | — | Draw a crosshair at the centre. |
 | `map` | `MinimapDesc \| null` | `null` | — | — | — | A mini-map top left; null is none. |
 | `touch` | `boolean` | `false` | — | — | — | Show touch controls (a stick and Fire) on phones and tablets. |
+| `killsLabel` | `string` | `"kills"` | — | — | — | The word after the kill count. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t). |
+| `fireLabel` | `string` | `"Fire"` | — | — | — | The touch Fire button. |
+| `pauseLabel` | `string` | `"Pause"` | — | — | — | The pause button's name (what a screen reader says; the button shows its icon). |
 
 ```ogt
 struct ShooterHudDesc {
@@ -6900,10 +6911,19 @@ struct ShooterHudDesc {
   }
   field map Option.MinimapDesc "A mini-map top left; null is none."
   field touch bool "Show touch controls (a stick and Fire) on phones and tablets."
+  field killsLabel String "The word after the kill count. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+    default "kills"
+  }
+  field fireLabel String "The touch Fire button." {
+    default "Fire"
+  }
+  field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+    default "Pause"
+  }
 }
 ```
 
-<sub>`api.ogt` line 9730</sub>
+<sub>`api.ogt` line 9736</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -6921,6 +6941,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `stars` | `readonly number[]` | `[]` | — | — | — | The scores for one, two and three stars; empty is a third, two thirds and all of the target. |
 | `moves` | `number \| null` | `null` | — | — | — | Moves left; null hides it. |
 | `timeLeft` | `number \| null` | `null` | — | — | — | Seconds left; null hides it. |
+| `movesLabel` | `string` | `"moves left"` | — | — | — | The caption under the moves left. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t). |
+| `targetLabel` | `string` | `"Target {target}"` | — | — | — | The line beside the stars; `{target}` is replaced by the target, formatted (1,000). A localised game passes its string table's, with `{target}` in it. |
+| `pauseLabel` | `string` | `"Pause"` | — | — | — | The pause button's name (what a screen reader says; the button shows its icon). |
 
 ```ogt
 struct PuzzleHudDesc {
@@ -6934,10 +6957,19 @@ struct PuzzleHudDesc {
   field stars List.u32 "The scores for one, two and three stars; empty is a third, two thirds and all of the target."
   field moves Option.u32 "Moves left; null hides it."
   field timeLeft Option.f32 "Seconds left; null hides it."
+  field movesLabel String "The caption under the moves left. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+    default "moves left"
+  }
+  field targetLabel String "The line beside the stars; `{target}` is replaced by the target, formatted (1,000). A localised game passes its string table's, with `{target}` in it." {
+    default "Target {target}"
+  }
+  field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+    default "Pause"
+  }
 }
 ```
 
-<sub>`api.ogt` line 9752</sub>
+<sub>`api.ogt` line 9767</sub>
 
 <a id="type-Currency"></a>
 
@@ -6967,7 +6999,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 9765</sub>
+<sub>`api.ogt` line 9789</sub>
 
 <a id="type-Generator"></a>
 
@@ -7003,7 +7035,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 9775</sub>
+<sub>`api.ogt` line 9799</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -7018,6 +7050,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `currencies` | `readonly Currency[]` | `[]` | — | — | — | The currencies, the first the main one. |
 | `generators` | `readonly Generator[]` | `[]` | — | — | — | The generators. |
 | `tapLabel` | `string` | `"Tap"` | — | — | — | The tap target's label; empty hides it. |
+| `levelLabel` | `string` | `"Lv {level}"` | — | — | — | A generator's level badge; `{level}` is replaced by its level. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t), with `{level}` in it. |
+| `rateLabel` | `string` | `"+{rate}/s"` | — | — | — | A currency's rate; `{rate}` is replaced by its per-second amount, formatted (+12/s is `+{rate}/s`). A localised game passes its string table's, with `{rate}` in it. |
+| `pauseLabel` | `string` | `"Pause"` | — | — | — | The pause button's name (what a screen reader says; the button shows its icon). |
 
 ```ogt
 struct IdleHudDesc {
@@ -7028,10 +7063,19 @@ struct IdleHudDesc {
   field tapLabel String "The tap target's label; empty hides it." {
     default "Tap"
   }
+  field levelLabel String "A generator's level badge; `{level}` is replaced by its level. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t), with `{level}` in it." {
+    default "Lv {level}"
+  }
+  field rateLabel String "A currency's rate; `{rate}` is replaced by its per-second amount, formatted (+12/s is `+{rate}/s`). A localised game passes its string table's, with `{rate}` in it." {
+    default "+{rate}/s"
+  }
+  field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+    default "Pause"
+  }
 }
 ```
 
-<sub>`api.ogt` line 9789</sub>
+<sub>`api.ogt` line 9813</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -7057,7 +7101,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 9799</sub>
+<sub>`api.ogt` line 9832</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -7153,7 +7197,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 9807</sub>
+<sub>`api.ogt` line 9840</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -7179,7 +7223,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 9865</sub>
+<sub>`api.ogt` line 9898</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -7217,7 +7261,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 9873</sub>
+<sub>`api.ogt` line 9906</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -7240,7 +7284,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 9890</sub>
+<sub>`api.ogt` line 9923</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -7274,7 +7318,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 9897</sub>
+<sub>`api.ogt` line 9930</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -7332,7 +7376,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 9909</sub>
+<sub>`api.ogt` line 9942</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -7355,7 +7399,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 9940</sub>
+<sub>`api.ogt` line 9973</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -7387,7 +7431,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 9947</sub>
+<sub>`api.ogt` line 9980</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -7431,7 +7475,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 9958</sub>
+<sub>`api.ogt` line 9991</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -7452,7 +7496,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 9980</sub>
+<sub>`api.ogt` line 10013</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -7477,7 +7521,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 9986</sub>
+<sub>`api.ogt` line 10019</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -7505,7 +7549,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 9994</sub>
+<sub>`api.ogt` line 10027</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -7533,7 +7577,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 10003</sub>
+<sub>`api.ogt` line 10036</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -7554,7 +7598,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 10013</sub>
+<sub>`api.ogt` line 10046</sub>
 
 <a id="type-StatRow"></a>
 
@@ -7578,7 +7622,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 10019</sub>
+<sub>`api.ogt` line 10052</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -7601,7 +7645,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 10026</sub>
+<sub>`api.ogt` line 10059</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -7663,7 +7707,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 10032</sub>
+<sub>`api.ogt` line 10065</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -7691,7 +7735,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 10063</sub>
+<sub>`api.ogt` line 10096</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7731,7 +7775,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 10072</sub>
+<sub>`api.ogt` line 10105</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7756,7 +7800,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 10090</sub>
+<sub>`api.ogt` line 10123</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7782,7 +7826,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 10098</sub>
+<sub>`api.ogt` line 10131</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7824,7 +7868,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 10106</sub>
+<sub>`api.ogt` line 10139</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7847,7 +7891,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 10126</sub>
+<sub>`api.ogt` line 10159</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7880,7 +7924,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 10133</sub>
+<sub>`api.ogt` line 10166</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7916,7 +7960,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 10147</sub>
+<sub>`api.ogt` line 10180</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -7937,7 +7981,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 10162</sub>
+<sub>`api.ogt` line 10195</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -7967,4 +8011,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 10168</sub>
+<sub>`api.ogt` line 10201</sub>

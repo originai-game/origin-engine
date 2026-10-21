@@ -70,7 +70,9 @@ string "results.time" "タイム {time}"
 - Numbers, times and prices go through arguments, not string building.
 - og.ui's templates have words of their own (Retry, Share, "Best 1,200",
   "New best", Cancel, Settings, Buy, Skip, "1 of 3", a racing HUD's
-  "lap", "Best 1:36.233", Pause and Boost): each is a field of
+  "lap", "Best 1:36.233", Pause and Boost, the other HUDs' Jump, Fire,
+  "kills", "moves left", "Target 1,000", "Lv 3" and "+12/s"): each is a
+  field of
   the template's desc with the English default, so a localised game passes
   its table's: `ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`,
   `actions`; `ConfirmDesc.confirmLabel`, `cancelLabel`; `SettingsDesc.title`,
@@ -90,12 +92,19 @@ string "results.time" "タイム {time}"
   ("Best {best}", the best lap as m:ss.mmm), `pauseLabel` (the pause
   button's name), `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`
   (the touch pedals and arrows) and `unit`, and its `splits`' labels
-  (`S1`) are the game's. `bestLabel: og.i18n.t(world, "results.best")`
+  (`S1`) are the game's; `PlatformerHudDesc.pauseLabel`, `jumpLabel`
+  (the touch Jump); `ShooterHudDesc.killsLabel` (after the count),
+  `fireLabel`, `pauseLabel`; `PuzzleHudDesc.movesLabel` (under the moves
+  left), `targetLabel` ("Target {target}"), `pauseLabel`;
+  `IdleHudDesc.tapLabel`, `levelLabel` ("Lv {level}", a generator's
+  badge), `rateLabel` ("+{rate}/s"), `pauseLabel`. Names, levels,
+  weapons, currencies and a map's label are the game's data, from its
+  table too. `bestLabel: og.i18n.t(world, "results.best")`
   with `"Best {best}"` / `"最佳 {best}"` in the tables (the template fills
   `{best}`, formatted); `stepLabel` the same with `"{step} of {count}"` /
   `"第 {step} 步，共 {count} 步"`. templates/ui-kit passes every one of
   these words from its five tables (`settings.*`, `shop.*`, `inventory.*`,
-  `leaderboard.*`, `tutorial.*`, `cutscene.*`).
+  `leaderboard.*`, `tutorial.*`, `cutscene.*`, the HUDs' `hud.*`).
 - Emphasis inside a sentence is rich-text markup in the message itself
   (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
   `og.ui.richText`): each translation bolds or colours its own words, in

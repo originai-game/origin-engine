@@ -2,7 +2,9 @@
 // set of anchored groups over the game in the safe area, plus the touch
 // controls they show on phones and tablets. HUDs turn keyboard and gamepad
 // navigation off (the keys move the player); Back still answers `paused`,
-// except under an open dialog, which keeps it (og.ui.back).
+// except under an open dialog, which keeps it (og.ui.back). Every word a HUD
+// draws or names is a field of its desc with the English default (og-i18n
+// §2), so a game in another language has none of the kit's English left.
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
@@ -15,7 +17,8 @@ function hud(): Hud {
   return { paused: kit.back(), action: null, moveX: 0, moveY: 0, held: [] };
 }
 
-function pauseButton(out: Hud, label = "Pause"): void {
+/** The pause button: its icon, named by the desc's `pauseLabel` (what a screen reader says). */
+function pauseButton(out: Hud, label: string): void {
   const r = kit.actionButton("Pause", label, { size: 44, icon: "pause" });
   if (r.clicked) out.paused = true;
 }
@@ -77,9 +80,9 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
       kit.label("Count", fmt(desc.coins ?? 0), { font: "mono", nowrap: true });
     });
     capsule("Score", () => kit.label("Points", fmt(desc.score ?? 0), { font: "mono", nowrap: true }));
-    pauseButton(out);
+    pauseButton(out, desc.pauseLabel ?? "Pause");
   });
-  if ((desc.touch ?? false) && touch) touchControls(out, { dpad: true, buttons: [{ id: "jump", label: "Jump", primary: true }] });
+  if ((desc.touch ?? false) && touch) touchControls(out, { dpad: true, buttons: [{ id: "jump", label: desc.jumpLabel ?? "Jump", primary: true }] });
   return out;
 }
 
@@ -112,9 +115,9 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
   kit.anchor(`${id}.top`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     capsule("Kills", () => {
       kit.label("Count", fmt(desc.kills ?? 0), { font: "mono", nowrap: true });
-      kit.label("Unit", "kills", { step: "meta", color: token("fgMuted"), nowrap: true });
+      kit.label("Unit", desc.killsLabel ?? "kills", { step: "meta", color: token("fgMuted"), nowrap: true });
     });
-    pauseButton(out);
+    pauseButton(out, desc.pauseLabel ?? "Pause");
   });
  kit.anchor(`${id}.ammo`, { anchor: showTouch ? "topRight" : "bottomRight", offsetY: showTouch ? 56 : 0, direction: "column", cross: "end", gap: t.xs }, () => {
     const mag = desc.magazine ?? 0;
@@ -136,7 +139,7 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
     });
   }
   if (desc.crosshair ?? true) crosshair();
-  if (showTouch) touchControls(out, { buttons: [{ id: "fire", label: "Fire", primary: true }] });
+  if (showTouch) touchControls(out, { buttons: [{ id: "fire", label: desc.fireLabel ?? "Fire", primary: true }] });
   return out;
 }
 
@@ -148,21 +151,21 @@ export function puzzleHud(id: string, desc: Api.PuzzleHudDesc = {}): Api.HudResu
   const marks = desc.stars && desc.stars.length > 0 ? desc.stars : [Math.round(target / 3), Math.round((2 * target) / 3), target];
   kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.xs }, () => {
     if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
-    if (desc.moves !== null && desc.moves !== undefined) stat("Moves", `${desc.moves}`, "moves left", "xl3");
+    if (desc.moves !== null && desc.moves !== undefined) stat("Moves", `${desc.moves}`, desc.movesLabel ?? "moves left", "xl3");
   });
   kit.anchor(`${id}.score`, { anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, () => {
     kit.label("Score", fmt(score), { step: "displaySm", font: "display", align: "center", width: grow() });
     kit.meter("Progress", score, target, { kind: "accent", width: grow(), segments: 3 });
     kit.row("Stars", { gap: t.sm, cross: "center" }, () => {
       marks.slice(0, 3).forEach((m, i) => iconOr(kit.idi("Star", i), "star", 20, token(score >= m ? "accent" : "fillStrong")));
-      kit.label("Target", `Target ${fmt(target)}`, { step: "meta", color: token("fgMuted"), nowrap: true });
+      kit.label("Target", (desc.targetLabel ?? "Target {target}").replaceAll("{target}", fmt(target)), { step: "meta", color: token("fgMuted"), nowrap: true });
     });
   });
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
       capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "fg"), nowrap: true }));
     }
-    pauseButton(out);
+    pauseButton(out, desc.pauseLabel ?? "Pause");
   });
   return out;
 }
@@ -177,10 +180,10 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
       capsule(c.id ?? kit.idi("Currency", i), () => {
         if (c.icon) iconOr("Icon", c.icon, 20, token("accent"));
         kit.label("Amount", fmt(c.amount ?? 0), { step: i === 0 ? "lg" : "body", font: "mono", nowrap: true });
-        if ((c.perSecond ?? 0) !== 0) kit.label("Rate", `+${fmt(c.perSecond ?? 0)}/s`, { step: "meta", color: token("success"), nowrap: true });
+        if ((c.perSecond ?? 0) !== 0) kit.label("Rate", (desc.rateLabel ?? "+{rate}/s").replaceAll("{rate}", fmt(c.perSecond ?? 0)), { step: "meta", color: token("success"), nowrap: true });
       }, { height: i === 0 ? t.controlLg : t.controlMd });
     });
-    pauseButton(out);
+    pauseButton(out, desc.pauseLabel ?? "Pause");
   });
   if (desc.tapLabel !== "") {
     kit.anchor(`${id}.tap`, { anchor: phone ? "top" : "center", offsetY: phone ? 96 : 0, offsetX: phone ? 0 : -150 }, () => {
@@ -197,7 +200,7 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
         kit.column("Text", { width: grow(), gap: t.xxs }, () => {
           kit.row("Head", { gap: t.sm, cross: "center", width: grow() }, () => {
             kit.label("Name", g.name ?? g.id ?? "", { step: "lg", nowrap: true, width: grow() });
-            kit.badge("Level", `Lv ${g.level ?? 0}`, "neutral");
+            kit.badge("Level", (desc.levelLabel ?? "Lv {level}").replaceAll("{level}", `${g.level ?? 0}`), "neutral");
           });
           kit.meter("Cycle", g.progress ?? 0, 1, { kind: "accent", height: 4, width: grow() });
         });

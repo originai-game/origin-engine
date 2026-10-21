@@ -14963,6 +14963,18 @@ export interface PlatformerHudDesc {
    * @default false
    */
   readonly touch?: boolean;
+  /**
+   * The touch Jump button. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Jump"
+   */
+  readonly jumpLabel?: string;
+  /**
+   * The pause button's name (what a screen reader says; the button shows its icon).
+   *
+   * @default "Pause"
+   */
+  readonly pauseLabel?: string;
 }
 
 /** What a HUD answered this tick. */
@@ -15065,6 +15077,24 @@ export interface ShooterHudDesc {
    * @default false
    */
   readonly touch?: boolean;
+  /**
+   * The word after the kill count. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "kills"
+   */
+  readonly killsLabel?: string;
+  /**
+   * The touch Fire button.
+   *
+   * @default "Fire"
+   */
+  readonly fireLabel?: string;
+  /**
+   * The pause button's name (what a screen reader says; the button shows its icon).
+   *
+   * @default "Pause"
+   */
+  readonly pauseLabel?: string;
 }
 
 /**
@@ -15109,6 +15139,24 @@ export interface PuzzleHudDesc {
    * @default null
    */
   readonly timeLeft?: number | null;
+  /**
+   * The caption under the moves left. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "moves left"
+   */
+  readonly movesLabel?: string;
+  /**
+   * The line beside the stars; `{target}` is replaced by the target, formatted (1,000). A localised game passes its string table's, with `{target}` in it.
+   *
+   * @default "Target {target}"
+   */
+  readonly targetLabel?: string;
+  /**
+   * The pause button's name (what a screen reader says; the button shows its icon).
+   *
+   * @default "Pause"
+   */
+  readonly pauseLabel?: string;
 }
 
 /**
@@ -15224,6 +15272,24 @@ export interface IdleHudDesc {
    * @default "Tap"
    */
   readonly tapLabel?: string;
+  /**
+   * A generator's level badge; `{level}` is replaced by its level. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t), with `{level}` in it.
+   *
+   * @default "Lv {level}"
+   */
+  readonly levelLabel?: string;
+  /**
+   * A currency's rate; `{rate}` is replaced by its per-second amount, formatted (+12/s is `+{rate}/s`). A localised game passes its string table's, with `{rate}` in it.
+   *
+   * @default "+{rate}/s"
+   */
+  readonly rateLabel?: string;
+  /**
+   * The pause button's name (what a screen reader says; the button shows its icon).
+   *
+   * @default "Pause"
+   */
+  readonly pauseLabel?: string;
 }
 
 /**
