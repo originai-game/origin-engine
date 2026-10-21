@@ -16,7 +16,7 @@
 import { og, defineSystem, BODY_KINEMATIC, SHAPE_CAPSULE } from "@origingame/engine";
 import type { Behaviour, ClipAsset, Entity, Value, World } from "@origingame/engine";
 import { foeRig } from "./anim.ts";
-import { Ending, Foe, Game, Hero, Kind, OneByOne, Phase, Sound, Tuning } from "./components.ts";
+import { Ending, Foe, Game, Hero, Kind, Phase, Sound, Tuning } from "./components.ts";
 import { begin, flush } from "./state.ts";
 import { hurtHero } from "./hero.ts";
 import { FOES, MIND } from "./layout.ts";
@@ -254,7 +254,7 @@ function reset(world: World, g: GameV): void {
  */
 export const Foes = defineSystem(
   "Foes",
-  { reads: [Tuning, og.AnimationEvent, OneByOne], writes: [Game, Foe, Hero, og.Transform, og.NavAgent, og.AiAgent, og.Perception, og.AnimationGraph, og.AnimationPlayer, og.Skeleton, og.Collider, og.AudioSource, og.ParticleSystem, og.PostEffects, og.Camera, og.Mesh, og.PointLight, og.Steering], after: ["Hero"] },
+  { reads: [Tuning, og.AnimationEvent], writes: [Game, Foe, Hero, og.Transform, og.NavAgent, og.AiAgent, og.Perception, og.AnimationGraph, og.AnimationPlayer, og.Skeleton, og.Collider, og.AudioSource, og.ParticleSystem, og.PostEffects, og.Camera, og.Mesh, og.PointLight, og.Steering], after: ["Hero"] },
   (_q, time, world) => {
     const g = begin(world);
     try {

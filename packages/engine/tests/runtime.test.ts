@@ -295,3 +295,50 @@ test("a handle read in a per-tick system costs one engine call, reads in a loop 
   expect(warm).toBeLessThan(1);
   engine.destroy();
 });
+
+// Kestrel-stair FINDINGS #6: a system's declaration borrows nothing; a column
+// is borrowed when the system takes its view, until the system returns.
+const OneAtATime = defineSystem("RtOneAtATime", { reads: [Vel], writes: [Pos] }, (_q, _time, world) => {
+  // No view taken: the entity's Pos column is free for world.get/world.set.
+  const e = world.find("mover-0") as Entity;
+  const got = world.get(e, Pos);
+  if (!got.ok) throw new Error(got.reason);
+  const set = world.set(e, Pos, { p: { x: got.value.p.x + 10, y: 0, z: 0 } });
+  if (!set.ok) throw new Error(set.reason);
+});
+let heldAnswer = "";
+let seenBySet = 0;
+const ViewThenGet = defineSystem("RtViewThenGet", { reads: [Vel], writes: [Pos] }, (q, _time, world) => {
+  const e = world.find("mover-0") as Entity;
+  // Before the view: a write the view then sees.
+  const set = world.set(e, Pos, { p: { x: 100, y: 0, z: 0 } });
+  if (!set.ok) throw new Error(set.reason);
+  for (const a of q.archetypes()) {
+    const p = a.column(Pos).p;
+    seenBySet = p[0]!;
+    p[0] = 200;
+  }
+  // After the view: the column is held; the refusal says why and the way through.
+  const got = world.get(e, Pos);
+  heldAnswer = got.ok ? "answered" : got.reason;
+});
+
+test("a system's declared components are borrowed only when it takes a view, so world.get/world.set reach a matched entity before", () => {
+  const engine = start(og.game({ systems: [OneAtATime], commands: { spawn: spawnMovers } }) as unknown as GameToken);
+  engine.command("spawn", ["2"]);
+  expect(engine.advance(3)).toEqual({ ok: true, value: 3 });
+  const got = engine.world.get(engine.world.find("mover-0") as Entity, Pos);
+  expect(got.ok && got.value.p.x).toBe(30);
+  engine.destroy();
+
+  const viewing = start(og.game({ systems: [ViewThenGet], commands: { spawn: spawnMovers } }) as unknown as GameToken);
+  viewing.command("spawn", ["2"]);
+  expect(viewing.advance(1)).toEqual({ ok: true, value: 1 });
+  expect(seenBySet).toBe(100);
+  expect(heldAnswer).toContain("world.get of 'RtPos' is refused: this system took a column view of 'RtPos'");
+  expect(heldAnswer).toContain("or call world.get before taking the view");
+  // The view's write is the world's once the system returned.
+  const after = viewing.world.get(viewing.world.find("mover-0") as Entity, Pos);
+  expect(after.ok && after.value.p.x).toBe(200);
+  viewing.destroy();
+});

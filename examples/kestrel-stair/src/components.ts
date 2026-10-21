@@ -253,12 +253,7 @@ export const Sfx = defineComponent("Sfx", {
   plays: u32(0),
 });
 
-/**
- * No entity has it. A system that works on named entities one by one
- * (world.get / world.set: the courier, the camera's listener, a lamp)
- * lists it among its reads, so its query matches nothing: a component a
- * system writes is borrowed by every archetype its query matches, and
- * world.get / world.set of it then refuse, even if the system never takes
- * a view (FINDINGS #6).
- */
-export const OneByOne = defineComponent("OneByOne", { unused: u32(0) });
+// FINDINGS #6 is fixed: a system's declared components are borrowed only
+// when it takes a view of them, so the systems that work on named entities
+// one by one (world.get / world.set: the courier, the camera's listener, a
+// lamp) no longer list a component no entity has (OneByOne) to match nothing.

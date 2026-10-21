@@ -8,7 +8,7 @@
 // intensity), eased over half a second either way.
 
 import { og, defineSystem } from "@origingame/engine";
-import { Game, OneByOne } from "./components.ts";
+import { Game } from "./components.ts";
 import { begin, flush } from "./state.ts";
 import { BRAZIERS, CRYPT, CRYPT_ROOM } from "./layout.ts";
 import { entity, must } from "./world.ts";
@@ -18,7 +18,7 @@ const ROOM = { crypt: { send: 0.55, room: 0.92, damping: 0.25, sky: 0.12 }, open
 
 export const Fx = defineSystem(
   "Fx",
-  { reads: [OneByOne], writes: [Game, og.Transform, og.PointLight, og.Audio, og.AudioBusFx, og.Environment], after: ["View"] },
+  { writes: [Game, og.Transform, og.PointLight, og.Audio, og.AudioBusFx, og.Environment], after: ["View"] },
   (_q, time, world) => {
     const g = begin(world);
     try {

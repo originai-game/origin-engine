@@ -7,7 +7,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
-import { Ending, Game, MAX_HP, Near, OneByOne, Phase, Pickup, Scene, Sound, Tuning } from "./components.ts";
+import { Ending, Game, MAX_HP, Near, Phase, Pickup, Scene, Sound, Tuning } from "./components.ts";
 import { begin, flush } from "./state.ts";
 import { BELL, CHAPTERS, GATE, HERBS, SIGILS, WAYSTONES } from "./layout.ts";
 import { saveSlot } from "./save.ts";
@@ -145,7 +145,7 @@ function reset(world: World, g: GameV): void {
 
 export const Pickups = defineSystem(
   "Pickups",
-  { reads: [og.Input, og.Gamepad, Tuning, OneByOne], writes: [Game, Pickup, og.Transform, og.Mesh, og.PointLight, og.ParticleSystem, og.Collider, og.AudioSource, og.Camera], after: ["Foes"] },
+  { reads: [og.Input, og.Gamepad, Tuning], writes: [Game, Pickup, og.Transform, og.Mesh, og.PointLight, og.ParticleSystem, og.Collider, og.AudioSource, og.Camera], after: ["Foes"] },
   (_q, time, world) => {
     const g = begin(world);
     try {

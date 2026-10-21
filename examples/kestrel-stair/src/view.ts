@@ -9,7 +9,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Vector3 } from "@origingame/engine";
-import { Game, OneByOne, Phase, Scene, Tuning } from "./components.ts";
+import { Game, Phase, Scene, Tuning } from "./components.ts";
 import { begin, flush } from "./state.ts";
 import { BELL, START } from "./layout.ts";
 import { entity, LAYER, must } from "./world.ts";
@@ -21,7 +21,7 @@ export function spawnListener(world: import("@origingame/engine").World): void {
 
 export const View = defineSystem(
   "View",
-  { reads: [Game, Tuning, OneByOne], writes: [og.Camera, og.Transform], after: ["Pickups"] },
+  { reads: [Game, Tuning], writes: [og.Camera, og.Transform], after: ["Pickups"] },
   (_q, time, world) => {
     const g = begin(world);
     try {

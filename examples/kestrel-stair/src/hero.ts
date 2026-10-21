@@ -10,7 +10,7 @@
 import { og, defineSystem, CHARACTER_JUMPED, CHARACTER_LANDED, SHAPE_CAPSULE, SHAPE_SPHERE } from "@origingame/engine";
 import type { ClipAsset, Entity, Value, World } from "@origingame/engine";
 import { courierRig } from "./anim.ts";
-import { Ending, Foe, Game, Hero, MAX_HP, OneByOne, Phase, Sound, Tuning } from "./components.ts";
+import { Ending, Foe, Game, Hero, MAX_HP, Phase, Sound, Tuning } from "./components.ts";
 import { begin, flush } from "./state.ts";
 import { strikeFoe } from "./foes.ts";
 import { START } from "./layout.ts";
@@ -122,7 +122,7 @@ export function hurtHero(world: World, g: GameV, t: TuneV, damage: number, from:
 export const HeroMove = defineSystem(
   "Hero",
   {
-    reads: [og.Input, og.Gamepad, Tuning, og.CharacterEvent, og.AnimationEvent, OneByOne],
+    reads: [og.Input, og.Gamepad, Tuning, og.CharacterEvent, og.AnimationEvent],
     writes: [Game, Hero, Foe, og.CharacterController, og.Transform, og.AnimationGraph, og.AnimationPlayer, og.ParticleSystem, og.PostEffects, og.Camera, og.NavAgent, og.AiAgent, og.Mesh, og.Collider, og.Skeleton, og.AudioSource, og.PointLight],
     after: ["Ui"],
   },

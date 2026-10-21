@@ -23,7 +23,7 @@
 
 import { og, defineSystem } from "@origingame/engine";
 import type { GameSettings, LevelInfo, Look, Sound as SoundHandle, Value, World } from "@origingame/engine";
-import { Ending, Game, Hero, HOURS, MAX_HP, Near, OneByOne, Phase, Prefs, Scene, Sound, Tuning } from "./components.ts";
+import { Ending, Game, Hero, HOURS, MAX_HP, Near, Phase, Prefs, Scene, Sound, Tuning } from "./components.ts";
 import { placeHero } from "./hero.ts";
 import { CHAPTERS, chapterAt, WAYSTONES } from "./layout.ts";
 import { eatHerb } from "./pickups.ts";
@@ -469,7 +469,7 @@ function results(world: World, g: GameV): "again" | "title" | "records" | null {
 /** The screens, the run's start, clock and end, the hold, the looks, the platform. */
 export const Ui = defineSystem(
   "Ui",
-  { reads: [Tuning, og.Input, og.Gamepad, OneByOne], writes: [Game, Prefs, Hero, og.Transform, og.CharacterController, og.Audio, og.DayNight, og.RenderSettings, og.PostEffects, og.Stylise, og.MaterialStyle, og.Fog, og.Sky, og.Environment] },
+  { reads: [Tuning, og.Input, og.Gamepad], writes: [Game, Prefs, Hero, og.Transform, og.CharacterController, og.Audio, og.DayNight, og.RenderSettings, og.PostEffects, og.Stylise, og.MaterialStyle, og.Fog, og.Sky, og.Environment] },
   (_q, time, world) => {
     const g = begin(world);
     try {

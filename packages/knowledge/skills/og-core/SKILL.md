@@ -134,10 +134,16 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   escapes: `set:Prefs.name=""`), a scene gives it one quoted string, and
   snapshots and the world hash carry its bytes, so a name never lives in a
   module variable or as numbers of code points.
-- Per-entity calls (`world.get`, `world.set`) are for commands and setup, not
-  for hot loops. Inside a system a component it writes is borrowed by its
-  views: `world.get` of it refuses, so read and write it through the
-  archetype's columns.
+- Per-entity calls (`world.get`, `world.set`) are for commands, setup and
+  the few named entities a system touches (a camera, a listener, the
+  player), not for hot loops. A system's `reads` and `writes` borrow
+  nothing by themselves: a column is borrowed when the system takes its
+  view (`a.column(C)`), and held until the system returns. So `world.get`
+  and `world.set` reach any entity its declarations match until the system
+  takes that archetype's column of the component; after it, they refuse
+  (naming the view), and the entity is read and written through the view's
+  arrays at its row (`a.entities`). Take per-entity calls first, views
+  after, or keep to one of the two in a system.
 - Order systems with `after` and `before` by name; declaration order is the
   default.
 

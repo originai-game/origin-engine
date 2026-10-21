@@ -347,8 +347,14 @@ pub(crate) struct ViewRecord {
     pub count: u32,
     pub tick: u32,
     pub entities: *const Entity,
+    /// The columns borrowed so far: a running system's are borrowed when
+    /// the view's `column` first asks for them (`lazy`), a world query's
+    /// when the view is made.
     pub columns: Vec<(String, ColumnPtr)>,
     pub types: Vec<String>,
+    /// A running system's view: its archetype's place among the system's
+    /// matched archetypes, and the columns it may borrow from it.
+    pub lazy: Option<(usize, Vec<QueryColumn>)>,
 }
 
 pub(crate) enum QueryRec {
@@ -383,6 +389,11 @@ impl<T> Table<T> {
         handle
             .checked_sub(self.base)
             .and_then(|i| self.items.get(i as usize))
+    }
+    pub fn get_mut(&mut self, handle: u32) -> Option<&mut T> {
+        handle
+            .checked_sub(self.base)
+            .and_then(|i| self.items.get_mut(i as usize))
     }
     pub fn clear(&mut self) {
         self.base = self.base.wrapping_add(self.items.len() as u32);
@@ -526,6 +537,18 @@ pub(crate) struct Frame {
     pub engine: u32,
     pub system: usize,
     pub ctx: *mut (),
+    /// The column borrows its views took (`view_columns`), held until the
+    /// system returns: a column is borrowed only once game code takes a
+    /// view of it, so `world.get`/`world.set` reach every column no view
+    /// holds (kestrel-stair FINDINGS #6).
+    pub held: RefCell<Vec<Held>>,
+}
+
+/// One column borrow a view holds. The lifetime is the world's for the
+/// system call: [`run_system`] drops every one before it returns.
+pub(crate) enum Held {
+    Read(#[allow(dead_code)] std::cell::Ref<'static, [u8]>),
+    Write(#[allow(dead_code)] std::cell::RefMut<'static, [u8]>),
 }
 
 impl Frame {
@@ -1605,8 +1628,9 @@ pub fn take_log(id: u32) -> String {
 
 // ── game code calls ─────────────────────────────────────────────────────────
 
-/// Runs one registered system: borrow its columns, publish them as views,
-/// call the dispatcher, then retire the views.
+/// Runs one registered system: publish its archetypes as views (their
+/// columns are borrowed when game code takes them, `view_columns`), call
+/// the dispatcher, then retire the views and release the borrows.
 fn run_system(engine_id: u32, index: usize, ctx: &mut SystemContext<'_>) -> og_core::Result<()> {
     let fail = |m: String| Error::new(ErrorKind::Invalid, m);
     let eng = engine(engine_id).map_err(fail)?;
@@ -1617,47 +1641,22 @@ fn run_system(engine_id: u32, index: usize, ctx: &mut SystemContext<'_>) -> og_c
     };
     let time = ctx.time();
     let tick = time.tick as u32;
-    let mut reads = Vec::new();
-    let mut writes = Vec::new();
     let mut records = Vec::new();
-    for a in ctx.query(0)? {
-        let mut cols = Vec::with_capacity(columns.len());
-        for c in &columns {
-            let ptr = if c.writable {
-                let mut b = a.write_bytes(c.field)?;
-                let p = ColumnPtr {
-                    ptr: b.as_mut_ptr(),
-                    len: b.len(),
-                    writable: true,
-                };
-                writes.push(b);
-                p
-            } else {
-                let b = a.read_bytes(c.field)?;
-                let p = ColumnPtr {
-                    ptr: b.as_ptr() as *mut u8,
-                    len: b.len(),
-                    writable: false,
-                };
-                reads.push(b);
-                p
-            };
-            cols.push((c.component.clone(), ptr));
-        }
-        records.push(ViewRecord {
-            count: a.len() as u32,
-            tick,
-            entities: a.entities().as_ptr(),
-            columns: cols,
-            types: Vec::new(),
-        });
+    for (k, a) in ctx.query(0)?.enumerate() {
         let st = eng.state.borrow();
         let types = a
             .types()
             .iter()
             .filter_map(|id| st.names_by_id.get(id.index() as usize).cloned())
             .collect();
-        records.last_mut().expect("just pushed").types = types;
+        records.push(ViewRecord {
+            count: a.len() as u32,
+            tick,
+            entities: a.entities().as_ptr(),
+            columns: Vec::new(),
+            types,
+            lazy: Some((k, columns.clone())),
+        });
     }
     let matched: u32 = records.iter().map(|r| r.count).sum();
     let query = HANDLES.with(|t| {
@@ -1672,6 +1671,7 @@ fn run_system(engine_id: u32, index: usize, ctx: &mut SystemContext<'_>) -> og_c
         engine: engine_id,
         system: index,
         ctx: ctx as *mut SystemContext<'_> as *mut (),
+        held: RefCell::new(Vec::new()),
     };
     let prev = FRAME.with(|f| f.replace(&frame));
     let was_stepping = eng.stepping.replace(true);
@@ -1700,8 +1700,9 @@ fn run_system(engine_id: u32, index: usize, ctx: &mut SystemContext<'_>) -> og_c
         s.matched = matched;
         s.ms = ms;
     }
-    drop(writes);
-    drop(reads);
+    // The borrows end with the system call, after the host has copied
+    // writable views back (`invalidate`).
+    frame.held.borrow_mut().clear();
     result.map(|_| ()).map_err(fail)
 }
 
@@ -2021,27 +2022,91 @@ pub fn write_resource_bytes(world: u32, resource: &str, bytes: &[u8]) -> String 
 // ── views ───────────────────────────────────────────────────────────────────
 
 /// The columns of `component` in view `view`, in field order, or why not.
+/// A running system's view borrows them here, the first time they are
+/// asked for, and holds them until the system returns.
 pub fn view_columns(view: u32, component: &str) -> Result<Vec<ColumnPtr>, String> {
     HANDLES.with(|t| {
-        let t = t.borrow();
-        let (_, rec) = t.views.get(view).ok_or(
-            "stale view: views last for the system call (or, outside systems, until the next structural change) they were handed out in",
-        )?;
+        let mut t = t.borrow_mut();
+        let stale = "stale view: views last for the system call (or, outside systems, until the next structural change) they were handed out in";
+        let (engine_id, rec) = t.views.get_mut(view).ok_or(stale)?;
         let cols: Vec<ColumnPtr> = rec
             .columns
             .iter()
             .filter(|(c, _)| c == component)
             .map(|(_, p)| *p)
             .collect();
-        if cols.is_empty() {
+        if !cols.is_empty() {
+            return Ok(cols);
+        }
+        let wanted: Vec<QueryColumn> = rec
+            .lazy
+            .as_ref()
+            .map(|(_, specs)| {
+                specs
+                    .iter()
+                    .filter(|c| c.component == component)
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        if wanted.is_empty() {
             return Err(if rec.types.iter().any(|t| t == component) {
                 format!("'{component}' is not among the reads or writes this view was made with")
             } else {
                 format!("this archetype has no '{component}'")
             });
         }
-        Ok(cols)
+        let arch = rec.lazy.as_ref().map_or(0, |(k, _)| *k);
+        let frame = running(*engine_id).ok_or(stale)?;
+        // SAFETY: the frame is published while its system runs; the
+        // archetypes cannot move until it returns (structural changes wait).
+        let ctx = unsafe { frame.ctx() };
+        let a = ctx
+            .query(0)
+            .map_err(err)?
+            .nth(arch)
+            .ok_or(stale)?;
+        let mut out = Vec::with_capacity(wanted.len());
+        let mut held = frame.held.borrow_mut();
+        for c in &wanted {
+            let (ptr, guard) = if c.writable {
+                let mut b = a.write_bytes(c.field).map_err(|e| taken(e, component))?;
+                let p = ColumnPtr {
+                    ptr: b.as_mut_ptr(),
+                    len: b.len(),
+                    writable: true,
+                };
+                // SAFETY: the borrow lives in the frame, which `run_system`
+                // clears before the world's borrow for the call ends.
+                (p, Held::Write(unsafe { std::mem::transmute::<std::cell::RefMut<'_, [u8]>, std::cell::RefMut<'static, [u8]>>(b) }))
+            } else {
+                let b = a.read_bytes(c.field).map_err(|e| taken(e, component))?;
+                let p = ColumnPtr {
+                    ptr: b.as_ptr() as *mut u8,
+                    len: b.len(),
+                    writable: false,
+                };
+                // SAFETY: as above.
+                (p, Held::Read(unsafe { std::mem::transmute::<std::cell::Ref<'_, [u8]>, std::cell::Ref<'static, [u8]>>(b) }))
+            };
+            held.push(guard);
+            out.push(ptr);
+            rec.columns.push((component.to_string(), ptr));
+        }
+        Ok(out)
     })
+}
+
+/// A view's column the running code already borrows otherwise (an engine
+/// call in progress holds it): the reason, with what to do.
+fn taken(e: Error, component: &str) -> String {
+    if e.kind() == ErrorKind::Access {
+        format!(
+            "the column view of '{component}' is refused: the engine holds that column for a call in progress; take the view outside that call"
+        )
+    } else {
+        err(e)
+    }
 }
 
 /// The entities of view `view` as (index, generation) pairs; empty for a
@@ -2102,6 +2167,7 @@ pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u3
             entities: a.entities().as_ptr(),
             columns: cols,
             types,
+            lazy: None,
         };
         out.push(HANDLES.with(|t| t.borrow_mut().views.push((eng.id, rec))));
     }

@@ -430,7 +430,9 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
             let e = entity(entity_id)?;
             let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
             // SAFETY: the frame is published while its system runs.
-            let bytes = unsafe { f.ctx() }.get_bytes(e, id).map_err(err)?;
+            let bytes = unsafe { f.ctx() }
+                .get_bytes(e, id)
+                .map_err(|e| held_by_view(e, &comp, "world.get"))?;
             Ok(layout.decode(&bytes))
         })());
     }
@@ -443,6 +445,17 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
     })())
 }
 
+/// `world.get`/`world.set` inside a system on an entity whose column of
+/// `comp` a view of the system holds: the reason, with the way through.
+fn held_by_view(e: og_core::Error, comp: &str, call: &str) -> String {
+    if e.kind() == og_core::ErrorKind::Access && e.reason().contains("is borrowed") {
+        return format!(
+            "{call} of '{comp}' is refused: this system took a column view of '{comp}' (a.column) on this entity's archetype, and the view holds the column until the system returns; read and write the entity through that view's arrays (its row: a.entities), or call {call} before taking the view"
+        );
+    }
+    err(e)
+}
+
 pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> String {
     if let Some(f) = running(world) {
         return result_void((|| {
@@ -452,9 +465,10 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
             let value = parse(Some(&value))?;
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };
-            let current = ctx.get_bytes(e, id).map_err(err)?;
+            let held = |e| held_by_view(e, &comp, "world.set");
+            let current = ctx.get_bytes(e, id).map_err(held)?;
             let bytes = layout.encode(Some(&current), Some(&value))?;
-            ctx.set_bytes(e, id, &bytes).map_err(err)
+            ctx.set_bytes(e, id, &bytes).map_err(held)
         })());
     }
     result_void((|| {
