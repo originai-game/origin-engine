@@ -73,11 +73,27 @@ vulkan-cpu bullet follows its pass).
 - **Perf**: not run (the perf lane); Hollowbell's own `og polish` frame
   time is the only number of the wave, taken on a loaded machine (its
   README says so).
-- **vulkan-cpu** (the og-lavapipe image): the pass is running at
-  517d8c4e; this bullet takes its result. Owed before it: row 74's
-  frames; og-ui's `kit-skin-pixel` and `kit-skin-pixel-phone`, whose
-  vulkan-cpu copies (abd61fb8) predate the pixel pack's label weight
-  (ui-runtime re-recorded them on `metal`); row 54's og-ui text frames.
+- **vulkan-cpu** (the og-lavapipe image, og-gfx and the node addon
+  cross-built with zigbuild at 517d8c4e): every og-tests scene captured
+  and judged by the reference-frame rule, applied whole this time: a copy
+  kept only where lavapipe differs from `metal` by design. Kept
+  (RMSE/outliers against `metal`): `atmosphere-moon` 0.0130,
+  `atmosphere-night` 0.0131, `sprites-array` 0.0126,
+  `sprites-shadow-terrain` 2.4 %, `stylise-pixel` 0.0226, `stylise-print`
+  1.7 %, `terrain-grass` 0.7 %, `terrain-near` 1.2 %, `water-underwater`
+  0.0225; added `tilemap-lit` (0.0265, 6.3 %: the lit tiles' light map
+  on llvmpipe) and `stylise-palette` (0.0116, 0.55 %); dropped 50 copies
+  within tolerance of `metal` (RMSE 0.0009 to 0.0067, up to 0.33 %
+  outliers), `stylise-retro` (0.0027), `taa` and `taa-sharp` (0.0014)
+  among them. fx-showcase's three 240-line looks presets keep copies
+  (pixel-3d-hybrid 0.0103, low-resolution-3d 7.8 %,
+  monochrome-dither-3d 0.0138). Hollowbell: eight of nine frames keep a
+  copy (1.0 to 2.9 % outliers: the lit cave's light map and the pixel
+  grid on llvmpipe), `results` judged against `metal` (0.0036). Both
+  playtest suites then pass on lavapipe (looks 78 checks, frames 21
+  checks). Still not run on lavapipe: og-ui's reference frames (row 54,
+  and row 74's `screen-layers`, `kit-skin-pixel` and
+  `kit-skin-pixel-phone`).
 - **Not run here**: the phone paths of `--device`, the three.js
   comparison (row 51), the lanes wasm's physics step in Chrome (row 52),
   the native device latency tests (row 40).
@@ -3505,7 +3521,7 @@ resource only the owner can give.
 | 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open |
 | 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | open |
 | 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | open |
-| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | open |
+| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | closed for og-tests, Hollowbell and the looks on vulkan-cpu and for every browser frame (the waves 8 and 9 gate: web-reference 373 s, lavapipe at 517d8c4e); open only for og-ui `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu, with row 54 |
 | 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | open |
 | 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | open |
 
