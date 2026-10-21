@@ -169,6 +169,9 @@ pub struct Layout {
     pub schema: String,
     pub kind: RecordKind,
     pub fields: Vec<FieldLayout>,
+    /// `(field, byte offset)` by field name, built on the first
+    /// [`Layout::slot`] (the fields never change after construction).
+    pub(crate) by_name: std::sync::OnceLock<Vec<(usize, usize)>>,
 }
 
 /// The variants of an IDL enum column (`AudioBus`), from the engine's records.
@@ -249,6 +252,7 @@ impl Layout {
             schema: schema.to_string(),
             kind,
             fields: out,
+            by_name: Default::default(),
         };
         // Defaults must encode: refuse a bad one at declaration.
         layout.encode(None, None)?;
@@ -299,6 +303,7 @@ impl Layout {
             schema: decl.schema.to_string(),
             kind,
             fields,
+            by_name: Default::default(),
         })
     }
 
@@ -327,6 +332,7 @@ impl Layout {
                     variants: f.variants.clone(),
                 })
                 .collect(),
+            by_name: Default::default(),
         }
     }
 
@@ -360,6 +366,31 @@ impl Layout {
 
     pub fn field(&self, name: &str) -> Option<(usize, &FieldLayout)> {
         self.fields.iter().enumerate().find(|(_, f)| f.name == name)
+    }
+
+    /// The field named `key` and its byte offset in packed form, by binary
+    /// search over the names (a per-frame reader's lookup).
+    pub fn slot(&self, key: &str) -> Option<(&FieldLayout, usize)> {
+        let index = self.by_name.get_or_init(|| {
+            let mut at = 0;
+            let mut index: Vec<(usize, usize)> = self
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(i, f)| {
+                    let slot = (i, at);
+                    at += f.ty.size();
+                    slot
+                })
+                .collect();
+            index.sort_by(|a, b| self.fields[a.0].name.cmp(&self.fields[b.0].name));
+            index
+        });
+        let k = index
+            .binary_search_by(|(i, _)| self.fields[*i].name.as_str().cmp(key))
+            .ok()?;
+        let (i, at) = index[k];
+        Some((&self.fields[i], at))
     }
 
     /// Byte offset of field `i` in packed form.
@@ -421,6 +452,140 @@ impl Layout {
         let at = self.offset(i);
         let f = &self.fields[i];
         decode_field(f, &bytes[at..at + f.ty.size()])
+    }
+}
+
+/// A record read field by field, as its JSON would answer: implemented by
+/// the decoded [`Value`] and by [`Row`], the packed bytes read in place
+/// (per-frame extraction reads a few fields of every sprite or row, where
+/// decoding each record's whole JSON map was most of the cost).
+pub trait Rec {
+    /// `value[key].as_f64()`.
+    fn num(&self, key: &str) -> Option<f64>;
+    /// `value[key].as_i64()`.
+    fn int(&self, key: &str) -> Option<i64>;
+    /// `value[key].as_u64()`.
+    fn uint(&self, key: &str) -> Option<u64>;
+    /// `value[key]` as a flag: a bool as itself, a number as `!= 0`, else `None`.
+    fn flag(&self, key: &str) -> Option<bool>;
+    /// `value[key][lane].as_f64()` (a vector's `x`, a colour's `r`).
+    fn lane(&self, key: &str, lane: &str) -> Option<f64>;
+    /// `value[key].as_str()`.
+    fn text(&self, key: &str) -> Option<std::borrow::Cow<'_, str>>;
+}
+
+impl Rec for Value {
+    fn num(&self, key: &str) -> Option<f64> {
+        self[key].as_f64()
+    }
+    fn int(&self, key: &str) -> Option<i64> {
+        self[key].as_i64()
+    }
+    fn uint(&self, key: &str) -> Option<u64> {
+        self[key].as_u64()
+    }
+    fn flag(&self, key: &str) -> Option<bool> {
+        match &self[key] {
+            Value::Bool(b) => Some(*b),
+            Value::Number(n) => Some(n.as_f64().is_some_and(|x| x != 0.0)),
+            _ => None,
+        }
+    }
+    fn lane(&self, key: &str, lane: &str) -> Option<f64> {
+        self[key][lane].as_f64()
+    }
+    fn text(&self, key: &str) -> Option<std::borrow::Cow<'_, str>> {
+        self[key].as_str().map(std::borrow::Cow::Borrowed)
+    }
+}
+
+/// A record's packed bytes read in place through its layout: each read
+/// answers what the same read of [`Layout::decode`]'s JSON would (a
+/// non-finite float is JSON's null; an enum is its variant's name).
+#[derive(Clone, Copy)]
+pub struct Row<'a> {
+    pub layout: &'a Layout,
+    pub bytes: &'a [u8],
+}
+
+/// A finite f64 as a JSON number answers it (`json!` makes NaN and the
+/// infinities null).
+fn finite(x: f64) -> Option<f64> {
+    x.is_finite().then_some(x)
+}
+
+impl<'a> Row<'a> {
+    pub fn new(layout: &'a Layout, bytes: &'a [u8]) -> Row<'a> {
+        Row { layout, bytes }
+    }
+
+    /// The field named `key` and its bytes.
+    fn field(&self, key: &str) -> Option<(&'a FieldLayout, &'a [u8])> {
+        let (f, at) = self.layout.slot(key)?;
+        self.bytes.get(at..at + f.ty.size()).map(|b| (f, b))
+    }
+
+    /// A field as an integer when its JSON is one (an enum index past its
+    /// variants is the number itself).
+    fn integer(f: &FieldLayout, b: &[u8]) -> Option<i128> {
+        let u32_at = || u32::from_le_bytes(b[..4].try_into().expect("4 bytes"));
+        match f.kind {
+            Kind::U32 => Some(i128::from(u32_at())),
+            Kind::I32 => Some(i128::from(u32_at() as i32)),
+            Kind::Enum => {
+                let i = u32_at() as usize;
+                (i >= f.variants.len()).then_some(i as i128)
+            }
+            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => Some(
+                i128::from(u64::from_le_bytes(b[..8].try_into().expect("8 bytes"))),
+            ),
+            _ => None,
+        }
+    }
+}
+
+impl Rec for Row<'_> {
+    fn num(&self, key: &str) -> Option<f64> {
+        let (f, b) = self.field(key)?;
+        match f.kind {
+            Kind::F32 => finite(f64::from(f32_at(b, 0))),
+            Kind::F64 => finite(f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))),
+            _ => Row::integer(f, b).map(|i| i as f64),
+        }
+    }
+    fn int(&self, key: &str) -> Option<i64> {
+        let (f, b) = self.field(key)?;
+        Row::integer(f, b).and_then(|i| i64::try_from(i).ok())
+    }
+    fn uint(&self, key: &str) -> Option<u64> {
+        let (f, b) = self.field(key)?;
+        Row::integer(f, b).and_then(|i| u64::try_from(i).ok())
+    }
+    fn flag(&self, key: &str) -> Option<bool> {
+        let (f, b) = self.field(key)?;
+        match f.kind {
+            Kind::Bool => Some(b.iter().any(|x| *x != 0)),
+            Kind::F32 | Kind::F64 => self.num(key).map(|x| x != 0.0),
+            _ => Row::integer(f, b).map(|i| i != 0),
+        }
+    }
+    fn lane(&self, key: &str, lane: &str) -> Option<f64> {
+        let (f, b) = self.field(key)?;
+        let i = f.kind.keys().iter().position(|k| *k == lane)?;
+        finite(f64::from(f32_at(b, i)))
+    }
+    fn text(&self, key: &str) -> Option<std::borrow::Cow<'_, str>> {
+        let (f, b) = self.field(key)?;
+        match f.kind {
+            Kind::Str => Some(std::borrow::Cow::Borrowed(og_core::unpack_str(b))),
+            Kind::Enum => {
+                let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
+                f.variants
+                    .get(i)
+                    .map(|n| std::borrow::Cow::Borrowed(n.as_str()))
+            }
+            _ => None,
+        }
     }
 }
 
@@ -569,6 +734,54 @@ mod tests {
 
     /// An engine record's text field (`str.24` in the IDL) is stored at the
     /// IDL's capacity, and its default encodes and decodes as the text.
+    #[test]
+    fn a_row_reads_what_the_decoded_json_answers() {
+        // Every engine record, at its defaults and with its bytes scrambled
+        // (NaNs, infinities, enum indices past their variants, odd text).
+        let mut seed = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut checked = 0;
+        for decl in og_api::host::RECORDS {
+            let Ok(layout) = Layout::from_decl(decl) else {
+                continue;
+            };
+            let defaults = layout.encode(None, None).unwrap();
+            let scrambled: Vec<u8> = (0..defaults.len())
+                .map(|_| {
+                    seed ^= seed << 13;
+                    seed ^= seed >> 7;
+                    seed ^= seed << 17;
+                    seed as u8
+                })
+                .collect();
+            for bytes in [&defaults, &scrambled] {
+                let value = layout.decode(bytes);
+                let row = Row::new(&layout, bytes);
+                let names = layout.fields.iter().map(|f| f.name.as_str());
+                for key in names.chain(["missing"]) {
+                    let at = format!("{}.{key}", layout.schema);
+                    assert_eq!(
+                        row.num(key).map(f64::to_bits),
+                        value.num(key).map(f64::to_bits),
+                        "{at} num"
+                    );
+                    assert_eq!(row.int(key), value.int(key), "{at} int");
+                    assert_eq!(row.uint(key), value.uint(key), "{at} uint");
+                    assert_eq!(row.flag(key), value.flag(key), "{at} flag");
+                    assert_eq!(row.text(key), value.text(key), "{at} text");
+                    for lane in ["x", "y", "z", "w", "r", "g", "b", "elements"] {
+                        assert_eq!(
+                            row.lane(key, lane).map(f64::to_bits),
+                            value.lane(key, lane).map(f64::to_bits),
+                            "{at}.{lane}"
+                        );
+                    }
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked > 500, "{checked} fields read");
+    }
+
     #[test]
     fn an_engine_record_text_field_takes_the_idl_capacity() {
         let fields: &'static [FieldDecl] = Box::leak(Box::new([

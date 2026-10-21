@@ -16,7 +16,7 @@
 //! shake, punch, kick and zones to the frame only: rendering never feeds
 //! back into the simulation.
 
-use super::codec::Layout;
+use super::codec::{Layout, Rec, Row};
 use super::engine::{Engine, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
 use super::{ok, ok_void, parse, refuse};
@@ -60,16 +60,28 @@ fn wire_void(r: Result<(), String>) -> String {
     }
 }
 
-fn f(v: &Value, key: &str, default: f32) -> f32 {
-    v[key].as_f64().map_or(default, |x| x as f32)
+fn f<R: Rec + ?Sized>(v: &R, key: &str, default: f32) -> f32 {
+    v.num(key).map_or(default, |x| x as f32)
 }
 
-fn on(v: &Value, key: &str, default: bool) -> bool {
-    match &v[key] {
-        Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().is_some_and(|x| x != 0.0),
-        _ => default,
-    }
+fn on<R: Rec + ?Sized>(v: &R, key: &str, default: bool) -> bool {
+    v.flag(key).unwrap_or(default)
+}
+
+/// `v2(&v[key], default)` of a record read in place.
+fn v2_of<R: Rec + ?Sized>(v: &R, key: &str, default: Vec2) -> Vec2 {
+    let lane = |l: &str, d: f32| v.lane(key, l).map_or(d, |x| x as f32);
+    Vec2::new(lane("x", default.x), lane("y", default.y))
+}
+
+/// `rgb(&v[key], default)` of a record read in place.
+fn rgb_of<R: Rec + ?Sized>(v: &R, key: &str, default: Vec3) -> Vec3 {
+    let lane = |l: &str, d: f32| v.lane(key, l).map_or(d, |x| x as f32);
+    Vec3::new(
+        lane("r", default.x),
+        lane("g", default.y),
+        lane("b", default.z),
+    )
 }
 
 fn v2(v: &Value, default: Vec2) -> Vec2 {
@@ -1810,7 +1822,10 @@ pub(crate) struct FeelRender {
     flashes: BTreeMap<(usize, u8, [u32; 3]), og_render::MaterialHandle>,
 }
 
-fn decoded_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Value)> {
+/// Every row of a component as `(entity bits, packed bytes)`, in query
+/// order: read in place with [`Row`] (decoding each to JSON was most of a
+/// 2D frame's extraction: Hollowbell's 200 sprites).
+fn byte_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Vec<u8>)> {
     let q = QueryDesc {
         read: vec![layout.schema.clone()],
         ..QueryDesc::default()
@@ -1821,12 +1836,7 @@ fn decoded_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Value
     let entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
     entities
         .into_iter()
-        .filter_map(|e| {
-            world
-                .get_bytes(e, id)
-                .ok()
-                .map(|b| (e.to_bits(), layout.decode(&b)))
-        })
+        .filter_map(|e| world.get_bytes(e, id).ok().map(|b| (e.to_bits(), b)))
         .collect()
 }
 
@@ -1969,21 +1979,22 @@ fn sheet_frame(
 /// (`None` while the array's streaming group is not resident: nothing is
 /// drawn), else its texture.
 fn sprite_image(
-    v: &Value,
+    v: &Row<'_>,
     textures: &[og_render::TextureHandle],
     arrays: &[super::assets::LoadedArray],
 ) -> Option<Image> {
-    match super::fx::handle_index(&v["array"]) {
+    let handle = |key: &str| v.num(key).and_then(super::assets::index_of);
+    match handle("array") {
         Some(i) => {
             let loaded = arrays.get(i)?;
-            let layer = v["arrayLayer"].as_u64().unwrap_or(0) as u32;
+            let layer = v.uint("arrayLayer").unwrap_or(0) as u32;
             Some(Image::Array(
                 loaded.handle?,
                 layer.min(loaded.layers.saturating_sub(1)),
             ))
         }
         None => Some(Image::Texture(
-            super::fx::handle_index(&v["texture"]).and_then(|i| textures.get(i).copied()),
+            handle("texture").and_then(|i| textures.get(i).copied()),
         )),
     }
 }
@@ -2008,22 +2019,27 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     };
     let scene_tick = world.time().tick;
     let scaled_now = world.time_scale().elapsed;
-    let flips: BTreeMap<u64, Value> = decoded_rows(world, r.flipbook.0, &r.flipbook.1)
+    let flips: BTreeMap<u64, Vec<u8>> = byte_rows(world, r.flipbook.0, &r.flipbook.1)
         .into_iter()
         .collect();
-    let sprites = decoded_rows(world, r.sprite.0, &r.sprite.1);
-    let afterimages: BTreeMap<u64, Value> = decoded_rows(world, r.afterimage.0, &r.afterimage.1)
+    let sprites = byte_rows(world, r.sprite.0, &r.sprite.1);
+    let afterimages: BTreeMap<u64, Vec<u8>> = byte_rows(world, r.afterimage.0, &r.afterimage.1)
         .into_iter()
         .collect();
     let ghosts = lock(&feel.shared).ghosts.clone();
-    if rs.feel.blob.is_none() && sprites.iter().any(|(_, v)| f(v, "shadow", 0.0) > 0.0) {
+    if rs.feel.blob.is_none()
+        && sprites
+            .iter()
+            .any(|(_, b)| f(&Row::new(&r.sprite.1, b), "shadow", 0.0) > 0.0)
+    {
         rs.feel.blob = Some(blob_texture(&mut rs.scene));
     }
     let blob = rs.feel.blob;
     let textures = rs.textures.clone();
     let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
-    for (e, v) in sprites {
+    for (e, bytes) in &sprites {
+        let (e, v) = (*e, Row::new(&r.sprite.1, bytes));
         if !on(&v, "visible", true) {
             continue;
         }
@@ -2038,15 +2054,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let Some(mut image) = sprite_image(&v, &textures, arrays) else {
             continue;
         };
-        let lo = v2(&v["uvMin"], Vec2::ZERO);
-        let hi = v2(&v["uvMax"], Vec2::ONE);
+        let lo = v2_of(&v, "uvMin", Vec2::ZERO);
+        let hi = v2_of(&v, "uvMax", Vec2::ONE);
         let mut uv = [lo.x, lo.y, hi.x, hi.y];
-        let mut anchor = v2(&v["anchor"], Vec2::splat(0.5));
+        let mut anchor = v2_of(&v, "anchor", Vec2::splat(0.5));
         let flipbook = flips.get(&e).map(|fb| {
+            let fb = Row::new(&r.flipbook.1, fb);
             (
-                bits(&fb["sheet"]),
-                fb["clip"].as_u64().unwrap_or(0) as u32,
-                fb["frame"].as_u64().unwrap_or(0) as u32,
+                fb.num("sheet").map_or(0, |x| x as u64),
+                fb.uint("clip").unwrap_or(0) as u32,
+                fb.uint("frame").unwrap_or(0) as u32,
             )
         });
         if let Some((img, fuv, pivot)) =
@@ -2057,14 +2074,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             anchor = pivot;
         }
         let (uv, anchor) = flipped(uv, anchor, flip);
-        let c = rgb(&v["color"], Vec3::ONE);
+        let c = rgb_of(&v, "color", Vec3::ONE);
         let opacity = f(&v, "opacity", 1.0);
-        let layer = v["layer"].as_i64().unwrap_or(0) as i32;
+        let layer = v.int("layer").unwrap_or(0) as i32;
         let key = on(&v, "sortY", false).then_some(-pos.y);
-        let fc = rgb(&v["flashColor"], Vec3::ONE);
+        let fc = rgb_of(&v, "flashColor", Vec3::ONE);
         let flash = [fc.x, fc.y, fc.z, f(&v, "flash", 0.0).clamp(0.0, 1.0)];
         let glow = f(&v, "glow", 0.0).max(0.0);
-        let additive = v["blend"].as_str() == Some("additive");
+        let additive = v.text("blend").as_deref() == Some("additive");
         let tone_mapped = on(&v, "toneMapped", true);
         let base = og_render::Sprite {
             texture: image.texture(),
@@ -2080,11 +2097,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         // The blob shadow: under every sprite of the layer.
         let shadow = f(&v, "shadow", 0.0);
         if shadow > 0.0 {
-            let mut ss = v2(&v["shadowSize"], Vec2::ZERO);
+            let mut ss = v2_of(&v, "shadowSize", Vec2::ZERO);
             if ss == Vec2::ZERO {
                 ss = Vec2::new(0.8, 0.3) * base.size.x;
             }
-            let off = v2(&v["shadowOffset"], Vec2::ZERO);
+            let off = v2_of(&v, "shadowOffset", Vec2::ZERO);
             push(
                 scene,
                 SpriteOut {
@@ -2113,11 +2130,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         }
         // Afterimages: oldest first, under the sprite.
         if let (Some(a), Some(list)) = (afterimages.get(&e), ghosts.get(&e)) {
-            let count = a["count"].as_u64().unwrap_or(4).max(1) as f32;
-            let interval = a["interval"].as_u64().unwrap_or(3).max(1) as f32;
-            let tint = rgb(&a["color"], Vec3::ONE);
-            let op = f(a, "opacity", 0.5);
-            let add = on(a, "additive", false);
+            let a = Row::new(&r.afterimage.1, a);
+            let count = a.uint("count").unwrap_or(4).max(1) as f32;
+            let interval = a.uint("interval").unwrap_or(3).max(1) as f32;
+            let tint = rgb_of(&a, "color", Vec3::ONE);
+            let op = f(&a, "opacity", 0.5);
+            let add = on(&a, "additive", false);
             for g in list.iter().rev() {
                 let age = scene_tick.saturating_sub(g.tick) as f32 / (count * interval);
                 let alpha = op * (1.0 - age).clamp(0.0, 1.0);
@@ -2128,7 +2146,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     sheet_frame(&feel, (&textures, arrays), g.sheet, g.clip, g.frame).unwrap_or((
                         image,
                         [lo.x, lo.y, hi.x, hi.y],
-                        v2(&v["anchor"], Vec2::splat(0.5)),
+                        v2_of(&v, "anchor", Vec2::splat(0.5)),
                     ));
                 let (guv, ganchor) = flipped(guv, ganchor, g.flip);
                 push(
@@ -2158,8 +2176,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 );
             }
         }
-        let sx = v2(&v["sliceX"], Vec2::ZERO);
-        let sy = v2(&v["sliceY"], Vec2::ZERO);
+        let sx = v2_of(&v, "sliceX", Vec2::ZERO);
+        let sy = v2_of(&v, "sliceY", Vec2::ZERO);
         let size_of = match image {
             Image::Texture(t) => t.and_then(|t| scene.texture_size(t)),
             Image::Array(h, _) => arrays.iter().find(|a| a.handle == Some(h)).map(|a| a.size),
@@ -2283,7 +2301,7 @@ fn tile_layers(
     h: &mut Hierarchy,
     now: f64,
 ) {
-    let rows = decoded_rows(world, r.tilemap.0, &r.tilemap.1);
+    let rows = byte_rows(world, r.tilemap.0, &r.tilemap.1);
     if rows.is_empty() {
         return;
     }
@@ -2296,11 +2314,12 @@ fn tile_layers(
         ..
     } = rs;
     let mut keep = BTreeSet::new();
-    for (e, v) in rows {
+    for (e, bytes) in &rows {
+        let (e, v) = (*e, Row::new(&r.tilemap.1, bytes));
         if !on(&v, "visible", true) {
             continue;
         }
-        let (Some(live), map) = (tiles.live.get(&e), bits(&v["map"])) else {
+        let (Some(live), map) = (tiles.live.get(&e), v.num("map").map_or(0, |x| x as u64)) else {
             continue;
         };
         if live.map != map {
@@ -2310,9 +2329,9 @@ fn tile_layers(
             continue;
         };
         let origin = h.world_of(e).w_axis.truncate();
-        let tint = rgb(&v["color"], Vec3::ONE);
+        let tint = rgb_of(&v, "color", Vec3::ONE);
         let opacity = f(&v, "opacity", 1.0);
-        let base = v["layer"].as_i64().unwrap_or(-10) as i32;
+        let base = v.int("layer").unwrap_or(-10) as i32;
         let (cw, ch) = live.state.chunks();
         let world_size = asset.asset.world_size();
         for (li, layer) in asset.asset.layers.iter().enumerate() {
