@@ -182,10 +182,63 @@ numbers.
 
 | Option | Lanes brotli | of 4 MiB | What it costs |
 |---|---:|---:|---|
-| A lanes module per physics profile, as the publish variants are (`--no-default-features --features publish,physics3d,shaping` with atomics; 2D likewise), each in its profile's `dist/web-publish*` | 3D 3,088,792, 2D 2,919,700 | 73.6 %, 69.6 % | no behaviour or feature: a page already downloads its profile's publish module. It changes what ships: scripts/wasm-crates.txt (a lanes variant per profile), check.sh's wasm-build, wasm-opt and opt.txt naming, size-gate's downloads, wasm-lanes.sh's target dir per variant (one fingerprint per unit), packages/engine build.sh, pack.sh, web-build.ts (lanes files from the profile's directory), doctor.ts, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md §Variants and §Lanes; one more lanes build per full gate. Measured at 5e50479f with this branch's two trims |
+| A lanes module per physics profile, as the publish variants are (`--no-default-features --features publish,physics3d,shaping` with atomics; 2D likewise), each in its profile's `dist/web-publish*` (taken in wave 10, owed row 71: below) | 3D 3,088,792, 2D 2,919,700 | 73.6 %, 69.6 % | no behaviour or feature: a page already downloads its profile's publish module. It changes what ships: scripts/wasm-crates.txt (a lanes variant per profile), check.sh's wasm-build, wasm-opt and opt.txt naming, size-gate's downloads, wasm-lanes.sh's target dir per variant (one fingerprint per unit), packages/engine build.sh, pack.sh, web-build.ts (lanes files from the profile's directory), doctor.ts, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md §Variants and §Lanes; one more lanes build per full gate. Measured at 5e50479f with this branch's two trims |
 | `-Zlocation-detail=none` in scripts/wasm-lanes.sh (it already builds std with RUSTC_BOOTSTRAP) | 3,397,518 | 81.0 % | a lane's panic report and every crash in a lanes page lose their file, line and column (PanicReport.location `<redacted>:0:0`); -68.5 kB, mostly from panic sites wasm-opt can then merge. `-Zlocation-detail=file,line` (no column) is -12.3 kB |
 | field docs out of the publish build's record table | not measured | | changes what the reflection serves in a published game (the docs reach og-core's schemas, the probe's `help` and Tune) |
 | og-runtime at opt-level z | -71.7 kB (E7) | | its per-tick systems and the frame's dispatch: frame time (tests/evidence/E7/wasm-size.md) |
 | `-Z build-std-features=panic_immediate_abort` | | | no panic hook: a lane's panic would no longer wake the engine thread with its message (og-lanes' crash design) |
 | `-Z build-std-features=optimize_for_size` | | | std's unstable sorts become another algorithm, so equal keys can land in another order (rapier sorts with `sort_unstable_by_key`): a hash could change |
 | GLSL precompiled for the GL tier | | | naga's WGSL front end and GLSL writer (192 kB alone) would leave the module, but every engine and game material shader would ship translated per tier: a cook and loader change, not a trim |
+
+## Wave 10: a lanes module per physics profile (owed row 71)
+
+Branch `lanes-per-profile`, Apple M4 Pro, 2026-10-21, at main 9d220790
+(after the ci-green merge), other streams building beside it (load average
+8 to 20). The option above, taken: `scripts/wasm-crates.txt` now has a
+`lanes` line per profile, `lanes2d` (`publish,physics2d,shaping`) and
+`lanes` (`publish,physics3d,shaping`), both through `scripts/wasm-lanes.sh`
+into `target/wasm-mt`, and `og build --publish` takes the lanes files from
+its profile's directory (`dist/web-publish` or `dist/web-publish-2d`) as it
+takes the single-threaded module. Measured with
+`OG_WASM_PROFILE=wasm scripts/check.sh --only size-gate` before and after
+(the shipping profile, brotli -q 11, the size gate's own numbers), and with
+`OG_WASM_PROFILE=wasm-gate` for the path-aware lane's:
+
+| Download | Before (`wasm`) | of 4 MiB | After (`wasm`) | of 4 MiB | Δ | After (`wasm-gate`) |
+|---|---:|---:|---:|---:|---:|---:|
+| lanes, both profiles (gone) | 3,472,308 | 82.8 % | | | | |
+| 3D lanes (`og_host_web-lanes`) | | | 3,095,052 | 73.8 % | -377,256 against the one lanes module | 3,278,998 |
+| 2D lanes (`og_host_web-lanes2d`) | | | 2,928,498 | 69.8 % | -543,810 against the one lanes module | 3,106,406 |
+| 3D publish | 3,055,713 | 72.9 % | 3,055,713 | 72.9 % | 0 | 3,218,005 |
+| 2D publish | 2,894,396 | 69.0 % | 2,894,396 | 69.0 % | 0 | 3,045,414 |
+| the largest download | 3,472,308 (lanes) | 82.8 % | 3,095,052 (3D lanes) | 73.8 % | -377,256 | 3,278,998 |
+
+Raw after wasm-opt: lanes 13,186,979 B before; 3D lanes 11,401,997 B,
+2D lanes 10,800,500 B after. Each lanes module is now its profile's
+publish module plus 34 to 39 kB of brotli (rayon, wasm-bindgen-rayon, the
+relay, rapier's `parallel` paths and the thread setup), where the one
+lanes module was the 3D publish module plus 417 kB, most of it rapier2d,
+parry2d and og-physics' dim2 (tables above). The single-threaded modules
+are byte for byte what they were (no source changed).
+
+What the extra lanes build costs (docs/ci.md §The lanes wasm): cold, the
+both-profile lanes build took 3 min 20 s in `wasm`; after it the 2D one
+took 1 min 56 s and the 3D one 1 min 46 s (std and the dependencies
+shared in `target/wasm-mt`). In `wasm-gate`, cold, 63 s then 39 s; after
+an og-physics edit 14 s each, after an og-runtime edit 8.5 s each; in
+`wasm` 64 and 83 s after an og-physics edit. With nothing changed each
+relinks og-host-web (6 s), as the publish variants do in their shared
+directory. wasm-opt and brotli of the extra module run beside the others.
+
+Determinism: `tools/wasm-determinism/run.sh` builds the tool twice more in
+the lanes configuration (`scripts/wasm-lanes.sh`, og-physics with one
+profile each), binds each with wasm-bindgen and runs it under node on one
+lane; every build agrees, the 2D world hash on the 2D lanes build and the
+3D ones on the 3D (lanes-per-profile-determinism.md; 23 s per lanes build
+after an og-physics change). `packages/engine/tests/hosts.test.ts` loads
+each profile's lanes module under bun: its profile's physics scene
+(64 bodies on the engine thread, and 1,024 on a wasm-bindgen-rayon pool of
+four Workers, where all 600 steps went to the pool) ends in the native
+host's snapshot, which restored natively has the native world hash
+(2D 967187ae3438d30b at 64 bodies), and a world of the other profile is
+refused ("built without the physics3d feature" on the 2D module).

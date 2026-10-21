@@ -90,7 +90,10 @@ codegen units, which measured (2026-10-21, cold, Apple M4 Pro) wasm-build
 293 → 205 s and wasm-opt 113 → 85 s with modules 5.3–5.9 % larger
 (publish 2,947,818 → 3,106,805 B brotli, 2D 2,783,920 → 2,932,177, lanes
 3,320,578 → 3,516,299), so a size gate the path-aware lane passes, the
-shipping build passes by that margin. `OG_WASM_PROFILE=wasm|wasm-gate`
+shipping build passes by that margin. With a lanes module per profile
+(9d220790 and owed row 71): 3D publish 3,055,713 → 3,218,005, 2D publish
+2,894,396 → 3,045,414, 3D lanes 3,095,052 → 3,278,998, 2D lanes 2,928,498
+→ 3,106,406 (5.3–6.1 %). `OG_WASM_PROFILE=wasm|wasm-gate`
 overrides; each profile has its own target subdirectory.
 
 wasm-opt and size-gate also keep results by content in
@@ -157,14 +160,14 @@ had grown `target/` to 143 GB.
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | every | yes | yes | yes | |
 | `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
 | `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
-| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variant (`publish` with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, §The lanes wasm) of crates marked `publish lanes`; copies to `target/og-wasm/raw/` | full | | | yes | |
-| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes) variants, `opt-all.txt` every one | full | | | yes | |
+| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variants of crates marked `publish lanes` (one per `lanes` line: og-host-web's `lanes2d` then `lanes`, the 2D and the 3D publish features with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, which the two share; §The lanes wasm); copies to `target/og-wasm/raw/` | full | | | yes | |
+| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant, `-lanes*`; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes, one of each per game profile) variants, `opt-all.txt` every one | full | | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | every | yes | yes | yes | |
 | `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | | |
 | `bun-functional` | `bun run test` in each `packages/*` with the last full lane's wasm (`OG_GATE=1`, as bun-test) when `target/og-wasm/opt-all.txt` exists, else only `packages/knowledge` and `packages/create` (CI's functional job builds no wasm, so it runs those two) | functional | | yes | | |
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | | yes | |
-| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | | yes (node from `actions/setup-node`) | |
+| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hashes on the host and on wasm32 scalar and simd128 under node, the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work), and the lanes wasm once per physics profile (`scripts/wasm-lanes.sh`, og-physics with `physics3d` or `physics2d` alone as the 3D and 2D lanes modules are built, bound by wasm-bindgen and run on one lane under node: the 2D world hash on the 2D lanes build, the 3D ones on the 3D) | full | | | yes (node from `actions/setup-node`) | |
 | perf | `scripts/perf.sh`: `cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf` against this machine's baselines (og-tests: `crates/og-tests/perf/<tier>-<adapter>/`, og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`); `--measure` records instead, copies the numbers to `target/evidence/perf/` and restores the tree | `make perf` | | | | `--measure` (below) |
 | `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` and `--webgl --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
 
@@ -429,12 +432,36 @@ needs the `rust-src` component (`rust-toolchain.toml`). The first build
 compiles std and every dependency again: 9 min on the M4 Pro at a load
 average around 30; afterwards a change costs about 30 s. rustc warns
 `unstable feature specified for -Ctarget-feature: atomics` for every
-crate; that is expected. wasm-bindgen writes `snippets/` (the pool's
-Worker script) beside `origin-engine-lanes.js`; build.sh copies it into
-`dist/web-publish`, and `scripts/pack.sh` refuses a package without the
-lanes files. In the gate's mode (`OG_GATE=1`) build.sh exits 1 when
-`scripts/wasm-crates.txt` marks og-host-web `lanes` and the gate left no
-`og_host_web-lanes.wasm`.
+crate; that is expected.
+
+There is one lanes module per game profile (owed row 71,
+docs/web-export.md §Variants): `scripts/wasm-crates.txt`'s `lanes` lines
+build `og_host_web-lanes2d.wasm` (`publish,physics2d,shaping`) and then
+`og_host_web-lanes.wasm` (`publish,physics3d,shaping`), both in
+`target/wasm-mt`, where cargo keys each unit by its features: std and
+every dependency are shared, and only og-physics, og-runtime and
+og-host-web's own units are built once per profile. What the second lanes
+build costs, measured on the M4 Pro at a load average of 10 to 18
+(2026-10-21): in the path-aware lane's `wasm-gate` profile, 39 s the
+first time (after the 2D one, 63 s with std and the dependencies) and,
+after an edit, 14 s for an og-physics change and 8.5 s for an og-runtime
+one, the same as the 2D build's; in the shipping `wasm` profile (`--all`,
+CI), 1 min 46 s the first time (the one both-profile lanes module took
+3 min 20 s cold) and 64 to 83 s after an og-physics change. With nothing
+changed, each relinks og-host-web, 6 s, as the publish variants do.
+wasm-opt optimises the extra module beside the others (the step took 105 s
+for all five modules cold in `wasm-gate`) and size-gate compresses it beside
+them (25 s), so the wall clock of a full gate grows by about the one
+cargo build. The determinism step's two lanes builds (§What runs where) cost 23 s
+each after an og-physics change, beside the scalar build's 37 s.
+
+wasm-bindgen writes `snippets/` (the pool's Worker script) beside
+`origin-engine-lanes.js`; build.sh copies each lanes module with its
+`snippets/` into its profile's directory (`dist/web-publish`,
+`dist/web-publish-2d`), and `scripts/pack.sh` refuses a package without
+either profile's lanes files. In the gate's mode (`OG_GATE=1`) build.sh
+exits 1 when `scripts/wasm-crates.txt` marks og-host-web `lanes` and the
+gate left no `og_host_web-lanes.wasm` or no `og_host_web-lanes2d.wasm`.
 
 A Rust panic inside a lane aborts the pool Worker it runs on. The lanes
 wasm's engine thread waits for a parallel call on og-lanes' own latch, not
@@ -482,8 +509,15 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   §Variants): `publish` (`publish,physics3d,shaping`, the 3D module in
   `dist/web-publish`) and `publish2d` (`publish,physics2d,shaping`, the 2D module
   in `dist/web-publish-2d`); `build.sh` under the gate stops when a declared
-  variant's wasm is missing. The lanes variant keeps `--features publish`
-  (both profiles).
+  variant's wasm is missing.
+- A line `lanes NAME CRATE FEATURES` does the same for the lanes variant
+  (§The lanes wasm): one lanes module per line, through
+  `scripts/wasm-lanes.sh`, raw name `<crate>-NAME.wasm` (NAME starts with
+  `lanes`), bound as `origin-engine-lanes` and measured as its own download.
+  og-host-web has two, in build order: `lanes2d` (the 2D lanes module,
+  `dist/web-publish-2d`) and `lanes` (the 3D one, `dist/web-publish`), with
+  their publish variant's features. Without `lanes` lines a crate marked
+  `lanes` builds one lanes module with `--features publish`.
 - `wasm_artifacts optional|required`: flip to `required` when `og-host-web`
   becomes a cdylib, so the size gate can no longer pass by measuring nothing.
 - `drift_check optional|required`: `og api check` counts as available when
@@ -752,8 +786,8 @@ It writes `dist/test-a11y/out/a11y-<tier>.json`.
 
 Budgets come from `docs/design.md` §7 and live in `scripts/budgets.txt`.
 `wasm_core_brotli_bytes` is per download: a page downloads one engine
-module (the 3D or the 2D publish variant by the game's profile, or the
-lanes variant on an isolated page; docs/web-export.md §Variants), so each
+module (the 3D or the 2D publish variant by the game's profile, or that
+profile's lanes variant on an isolated page; docs/web-export.md §Variants), so each
 is held to it and the size gate's figure is the largest of them
 (`max_brotli_bytes` in `size-gate.json`, the `max` line of its table),
 never the sum of every wasm the gate builds. The table prints each
