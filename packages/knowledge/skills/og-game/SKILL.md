@@ -40,7 +40,7 @@ change, without a warning, and its refusals named the line and the fix.
 
 ## Writing a game from this package
 
-The order both games found productive:
+The order the games found productive:
 
 1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
    seed. The scaffold writes it; change it there and nowhere else.
@@ -48,27 +48,32 @@ The order both games found productive:
    and from the start a command for each state a test must reach (`play`,
    `warp:<where>`) and facts for what it must check.
 3. **Assets by script**: `tools/make-assets.*` writes every texture,
-   tileset, map, flipbook, emitter, sound and look deterministically (both
-   games and every archetype do), with import settings beside each source
+   tileset, map, flipbook, emitter, sound and look deterministically (every
+   game and archetype does), with import settings beside each source
    (§5, §8, §10). Rerun it after a change; never hand-edit its outputs.
 4. **Cook** (`og cook`, og-build §1): read every refusal, it names the line
    and the fix.
-5. **Run with commands** (og-build §1, §4): `og run . --headless
+5. **In 3D, the navmesh before the minds** (og-ai §1): bake it from the
+   level (its glTF's `model` line), load it in `start` and check
+   `og.nav.nearest` at every spawn and route point; only then write the
+   behaviours.
+6. **Run with commands** (og-build §1, §4): `og run . --headless
    --commands "...;screenshot:x.png;...;quit"`, then open each frame and
    say what it shows. Do this after every change that shows on screen.
-6. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
+7. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
    asserting on facts, `get:` answers and dumps, one per feature, and a
    frames playtest comparing screenshots with `references/<tier>/`.
-7. **Polish** (og-build §5): `og polish` until its findings are gone; each
+8. **Polish** (og-build §5): `og polish` until its findings are gone; each
    names the section that fixes it (og-taste §10, og-feel §13).
 
-Three mistakes both games made before reading the right page:
+Mistakes the games made, or would have, before reading the right page:
 
 - **The resource handle.** A system reads or writes a resource only when
   it lists it among its `reads` or `writes` (og-core §4: undeclared, it
   throws naming the system and the record). Fetch `world.resource(R)` in
   the call that uses it and pass that handle to the helpers it calls,
-  rather than fetching it again in each one.
+  rather than fetching it again in each one. What a field's read and
+  write cost: see runtime-ui-2.
 - **A look replaces resources whole.** `GameDesc.look` and
   `og.render.applyLook` set every field of each resource the look names
   (the rest to their defaults), so a per-game value written before the
@@ -78,6 +83,10 @@ Three mistakes both games made before reading the right page:
   `og-out/test/<name>/`, and a playtest reads them back by the name its
   step gave (`run.json("shop.json")`). Give every step's file its own
   name, so a check reads the step it means (og-build §1, §3).
+- **An agent off the mesh.** Place every navmesh agent at its
+  `og.nav.nearest` point, seeking a target on the mesh, and have a
+  playtest read each agent's position and `status` a few ticks in: still
+  where it was put, its height too, and not `NAV_UNREACHABLE` (og-ai §2).
 
 ## 1. The skills
 
