@@ -25026,6 +25026,106 @@
           ],
           "description": "Called when the screen closes after changes (persist here).",
           "default": null
+        },
+        "title": {
+          "type": "string",
+          "description": "The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t).",
+          "default": "Settings"
+        },
+        "audioLabel": {
+          "type": "string",
+          "description": "The Audio tab.",
+          "default": "Audio"
+        },
+        "graphicsLabel": {
+          "type": "string",
+          "description": "The Graphics tab.",
+          "default": "Graphics"
+        },
+        "controlsLabel": {
+          "type": "string",
+          "description": "The Controls tab.",
+          "default": "Controls"
+        },
+        "languageLabel": {
+          "type": "string",
+          "description": "The Language tab.",
+          "default": "Language"
+        },
+        "masterLabel": {
+          "type": "string",
+          "description": "The master volume's slider.",
+          "default": "Master"
+        },
+        "musicLabel": {
+          "type": "string",
+          "description": "The music volume's slider.",
+          "default": "Music"
+        },
+        "effectsLabel": {
+          "type": "string",
+          "description": "The effects volume's slider.",
+          "default": "Effects"
+        },
+        "muteLabel": {
+          "type": "string",
+          "description": "The mute toggle.",
+          "default": "Mute everything"
+        },
+        "qualityLabel": {
+          "type": "string",
+          "description": "The graphics preset's heading.",
+          "default": "Quality"
+        },
+        "lowLabel": {
+          "type": "string",
+          "description": "The low preset.",
+          "default": "Low"
+        },
+        "mediumLabel": {
+          "type": "string",
+          "description": "The medium preset.",
+          "default": "Medium"
+        },
+        "highLabel": {
+          "type": "string",
+          "description": "The high preset.",
+          "default": "High"
+        },
+        "fpsLabel": {
+          "type": "string",
+          "description": "The frame-rate toggle.",
+          "default": "Show frame rate"
+        },
+        "motionLabel": {
+          "type": "string",
+          "description": "The reduced-motion toggle.",
+          "default": "Reduce motion"
+        },
+        "contrastLabel": {
+          "type": "string",
+          "description": "The high-contrast toggle.",
+          "default": "High contrast"
+        },
+        "sensitivityLabel": {
+          "type": "string",
+          "description": "The look sensitivity's slider.",
+          "default": "Sensitivity"
+        },
+        "invertLabel": {
+          "type": "string",
+          "description": "The invert-Y checkbox.",
+          "default": "Invert vertical look"
+        },
+        "vibrationLabel": {
+          "type": "string",
+          "description": "The vibration checkbox.",
+          "default": "Vibration"
+        },
+        "doneLabel": {
+          "type": "string",
+          "description": "The button that closes the screen.",
+          "default": "Done"
         }
       },
       "additionalProperties": false
@@ -25755,6 +25855,31 @@
           ],
           "description": "Called with the bought item's id.",
           "default": null
+        },
+        "priceLabel": {
+          "type": "string",
+          "description": "The detail panel's price line. Every word of the shop is a field with its English default (title and currency too): a localised game passes its string table's (og.i18n.t).",
+          "default": "Price"
+        },
+        "buyLabel": {
+          "type": "string",
+          "description": "The Buy button.",
+          "default": "Buy"
+        },
+        "shortLabel": {
+          "type": "string",
+          "description": "The Buy button while the balance is short of the price.",
+          "default": "Not enough"
+        },
+        "ownedLabel": {
+          "type": "string",
+          "description": "An owned item's badge and button.",
+          "default": "Owned"
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "The detail panel when the category has no items.",
+          "default": "Nothing for sale here"
         }
       },
       "additionalProperties": false

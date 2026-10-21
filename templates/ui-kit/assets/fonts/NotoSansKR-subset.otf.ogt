@@ -4,7 +4,7 @@ version 1
 # The characters the UI kit's string tables use (tools/make-locale-fonts.py).
 font {
   charset ascii cjk-punct
-  chars "가간개갤계기까나뉴니다돌되된라래러레로롯료리릴메모방버사삭상설소속수스슬습시앗어없오요은을의이인일작장저전정제종지진집취코퀘트플하할행험황"
+  chars "가간감개갤거건격계고과구그기까나낮높뉴니다대도돌동되된두디라래러레로롯료리릴마매메모물반방버보부비사삭상설소속수스슬습시악앗액어언없오완요움유은을음의이인일임작잔장저전점정제조족종줄중지직진질집취코퀘터통트판표프플픽하할행험화황효"
   em_px 32
   px_range 4
 }

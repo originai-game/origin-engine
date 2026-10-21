@@ -9427,6 +9427,66 @@ module ui {
     field languages List.LanguageOption "The languages offered; empty hides the Language tab."
     field onChange Option.SettingsChanged "Called on every change (apply it at once: volume, contrast)."
     field onSave Option.SettingsChanged "Called when the screen closes after changes (persist here)."
+    field title String "The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Settings"
+    }
+    field audioLabel String "The Audio tab." {
+      default "Audio"
+    }
+    field graphicsLabel String "The Graphics tab." {
+      default "Graphics"
+    }
+    field controlsLabel String "The Controls tab." {
+      default "Controls"
+    }
+    field languageLabel String "The Language tab." {
+      default "Language"
+    }
+    field masterLabel String "The master volume's slider." {
+      default "Master"
+    }
+    field musicLabel String "The music volume's slider." {
+      default "Music"
+    }
+    field effectsLabel String "The effects volume's slider." {
+      default "Effects"
+    }
+    field muteLabel String "The mute toggle." {
+      default "Mute everything"
+    }
+    field qualityLabel String "The graphics preset's heading." {
+      default "Quality"
+    }
+    field lowLabel String "The low preset." {
+      default "Low"
+    }
+    field mediumLabel String "The medium preset." {
+      default "Medium"
+    }
+    field highLabel String "The high preset." {
+      default "High"
+    }
+    field fpsLabel String "The frame-rate toggle." {
+      default "Show frame rate"
+    }
+    field motionLabel String "The reduced-motion toggle." {
+      default "Reduce motion"
+    }
+    field contrastLabel String "The high-contrast toggle." {
+      default "High contrast"
+    }
+    field sensitivityLabel String "The look sensitivity's slider." {
+      default "Sensitivity"
+    }
+    field invertLabel String "The invert-Y checkbox." {
+      default "Invert vertical look"
+    }
+    field vibrationLabel String "The vibration checkbox." {
+      default "Vibration"
+    }
+    field doneLabel String "The button that closes the screen." {
+      default "Done"
+    }
   }
 
   struct SettingsResult {
@@ -9627,6 +9687,21 @@ module ui {
     field items List.ShopItem "What is for sale."
     field categories List.String "Category tabs; empty is one list."
     field onBuy Option.UiAction "Called with the bought item's id."
+    field priceLabel String "The detail panel's price line. Every word of the shop is a field with its English default (title and currency too): a localised game passes its string table's (og.i18n.t)." {
+      default "Price"
+    }
+    field buyLabel String "The Buy button." {
+      default "Buy"
+    }
+    field shortLabel String "The Buy button while the balance is short of the price." {
+      default "Not enough"
+    }
+    field ownedLabel String "An owned item's badge and button." {
+      default "Owned"
+    }
+    field emptyLabel String "The detail panel when the category has no items." {
+      default "Nothing for sale here"
+    }
   }
 
   struct ShopResult {

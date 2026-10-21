@@ -57,12 +57,20 @@ string "results.time" "タイム {time}"
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
 - og.ui's templates have words of their own (Retry, Share, "Best 1,200",
-  "New best", Cancel): each is a field of the template's desc with the
-  English default (`ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`,
-  `actions`; `ConfirmDesc.confirmLabel`, `cancelLabel`), so a localised
-  game passes its table's: `bestLabel: og.i18n.t(world, "results.best")`
+  "New best", Cancel, Settings, Buy): each is a field of the template's
+  desc with the English default, so a localised game passes its table's:
+  `ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`, `actions`;
+  `ConfirmDesc.confirmLabel`, `cancelLabel`; `SettingsDesc.title`,
+  `audioLabel`, `graphicsLabel`, `controlsLabel`, `languageLabel`,
+  `masterLabel`, `musicLabel`, `effectsLabel`, `muteLabel`, `qualityLabel`,
+  `lowLabel`, `mediumLabel`, `highLabel`, `fpsLabel`, `motionLabel`,
+  `contrastLabel`, `sensitivityLabel`, `invertLabel`, `vibrationLabel`,
+  `doneLabel`; `ShopDesc.title`, `currency`, `priceLabel`, `buyLabel`,
+  `shortLabel` (Buy while the balance is short: "Not enough"),
+  `ownedLabel`, `emptyLabel`. `bestLabel: og.i18n.t(world, "results.best")`
   with `"Best {best}"` / `"最佳 {best}"` in the tables (the template fills
-  `{best}`, formatted).
+  `{best}`, formatted); templates/ui-kit passes every settings and shop
+  word from its five tables (`settings.*`, `shop.*`).
 - Emphasis inside a sentence is rich-text markup in the message itself
   (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
   `og.ui.richText`): each translation bolds or colours its own words, in

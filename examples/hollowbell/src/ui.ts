@@ -244,6 +244,12 @@ function shop(world: World, g: GameV): void {
     title: say(world, "shop.title"),
     currency: say(world, "shop.currency"),
     currencyIcon: "coin",
+    // The template's own words from the tables (FINDINGS.md #12, fixed: ShopDesc has the fields now).
+    priceLabel: say(world, "shop.price"),
+    buyLabel: say(world, "shop.buy"),
+    shortLabel: say(world, "shop.short"),
+    ownedLabel: say(world, "shop.owned"),
+    emptyLabel: say(world, "shop.empty"),
     balance: g.glimmers,
     items: WARES.map((w) => ({ id: w.id, name: say(world, `shop.${w.id}`), description: say(world, `shop.${w.id}Doc`), price: w.price, icon: w.icon, owned: owned(w.id) })),
   });
@@ -293,9 +299,10 @@ function naming(world: World, g: GameV, p: PrefsV): void {
 /**
  * The settings: the music and effects sliders, the language, reduced motion
  * and high contrast, and a label mixing Latin and Chinese. Built from widgets
- * rather than og.ui.settingsScreen, whose words (Settings, Audio, Graphics,
- * Master, Mute everything, Done...) stay English in every locale: SettingsDesc
- * has no field for them (FINDINGS.md #11).
+ * rather than og.ui.settingsScreen: FINDINGS.md #11 is fixed (SettingsDesc
+ * has a field for each of its words now), but this dialog stays, as it
+ * shows exactly the settings Hollowbell has on one page (no Graphics or
+ * Controls tab, no master volume) with its prefs and the mixed-script label.
  */
 function settings(world: World, g: GameV, p: PrefsV): void {
   let done = false;

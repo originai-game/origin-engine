@@ -706,6 +706,27 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         open: true,
         settings: settingsOf(d),
         languages: LANGUAGES,
+        // The screen's own words, from the active table (og-i18n §2).
+        title: tr(world, "settings.title"),
+        audioLabel: tr(world, "settings.audio"),
+        graphicsLabel: tr(world, "settings.graphics"),
+        controlsLabel: tr(world, "settings.controls"),
+        languageLabel: tr(world, "settings.language"),
+        masterLabel: tr(world, "settings.master"),
+        musicLabel: tr(world, "settings.music"),
+        effectsLabel: tr(world, "settings.effects"),
+        muteLabel: tr(world, "settings.mute"),
+        qualityLabel: tr(world, "settings.quality"),
+        lowLabel: tr(world, "settings.low"),
+        mediumLabel: tr(world, "settings.medium"),
+        highLabel: tr(world, "settings.high"),
+        fpsLabel: tr(world, "settings.fps"),
+        motionLabel: tr(world, "settings.motion"),
+        contrastLabel: tr(world, "settings.contrast"),
+        sensitivityLabel: tr(world, "settings.sensitivity"),
+        invertLabel: tr(world, "settings.invert"),
+        vibrationLabel: tr(world, "settings.vibration"),
+        doneLabel: tr(world, "settings.done"),
         onSave: (saved) => {
           const req = og.platform.saveSettings(world, saved);
           if (!req.ok) throw new Error(req.reason);
@@ -802,6 +823,12 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     }
     case "shop": {
       const r = og.ui.shopScreen("Shop", {
+        title: tr(world, "shop.title"),
+        priceLabel: tr(world, "shop.price"),
+        buyLabel: tr(world, "shop.buy"),
+        shortLabel: tr(world, "shop.short"),
+        ownedLabel: tr(world, "shop.owned"),
+        emptyLabel: tr(world, "shop.empty"),
         balance: d.balance,
         currency: "coins",
         currencyIcon: "coin",

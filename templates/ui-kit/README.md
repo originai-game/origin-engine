@@ -105,8 +105,10 @@ pack's directory into a game's `assets/skins/`, keep
 
 ## Locales
 
-The main menu, pause and confirm screens and the settings' language list
-read their text from `og.i18n` (`assets/strings/{en,zh-CN,ja,ko,ar}.ogt`,
+The main menu, pause and confirm screens, the settings screen and the shop
+(their own words through `SettingsDesc`'s and `ShopDesc`'s label fields:
+`settings.*`, `shop.*`) and the settings' language list read their text
+from `og.i18n` (`assets/strings/{en,zh-CN,ja,ko,ar}.ogt`,
 `type strings`): `og.i18n.t(world, "menu.play")`, with plurals and
 arguments in ICU form (`{n, plural, other {コイン#枚}}`). Each table names
 its font chain (`fonts "fonts/NotoSansJP-subset.otf"`); the active locale's
@@ -133,7 +135,9 @@ with a `[link=join]` the `players` playtest taps.
 
 `tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>`
 subsets the Noto fonts to exactly the tables' characters (rerun it after
-changing a string), leaving the greeting out of zh-CN's and ja's and
+changing a string; the sources are noto-cjk's `Sans/OTC/NotoSansCJK-Regular.ttc`
+2.004 and NotoSansArabic v2.012's `googlefonts/variable/NotoSansArabic[wdth,wght].ttf`,
+which reproduce the committed subsets but for `head.modified`), leaving the greeting out of zh-CN's and ja's and
 `menu.mixed` out of every locale's. `tests/locales.og.ts` compares each of
 the three screens in each locale with
 `crates/og-ui/references/<tier>/kit-locale-*`.

@@ -14463,6 +14463,126 @@ export interface SettingsDesc {
    * @default null
    */
   readonly onSave?: SettingsChanged | null;
+  /**
+   * The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Settings"
+   */
+  readonly title?: string;
+  /**
+   * The Audio tab.
+   *
+   * @default "Audio"
+   */
+  readonly audioLabel?: string;
+  /**
+   * The Graphics tab.
+   *
+   * @default "Graphics"
+   */
+  readonly graphicsLabel?: string;
+  /**
+   * The Controls tab.
+   *
+   * @default "Controls"
+   */
+  readonly controlsLabel?: string;
+  /**
+   * The Language tab.
+   *
+   * @default "Language"
+   */
+  readonly languageLabel?: string;
+  /**
+   * The master volume's slider.
+   *
+   * @default "Master"
+   */
+  readonly masterLabel?: string;
+  /**
+   * The music volume's slider.
+   *
+   * @default "Music"
+   */
+  readonly musicLabel?: string;
+  /**
+   * The effects volume's slider.
+   *
+   * @default "Effects"
+   */
+  readonly effectsLabel?: string;
+  /**
+   * The mute toggle.
+   *
+   * @default "Mute everything"
+   */
+  readonly muteLabel?: string;
+  /**
+   * The graphics preset's heading.
+   *
+   * @default "Quality"
+   */
+  readonly qualityLabel?: string;
+  /**
+   * The low preset.
+   *
+   * @default "Low"
+   */
+  readonly lowLabel?: string;
+  /**
+   * The medium preset.
+   *
+   * @default "Medium"
+   */
+  readonly mediumLabel?: string;
+  /**
+   * The high preset.
+   *
+   * @default "High"
+   */
+  readonly highLabel?: string;
+  /**
+   * The frame-rate toggle.
+   *
+   * @default "Show frame rate"
+   */
+  readonly fpsLabel?: string;
+  /**
+   * The reduced-motion toggle.
+   *
+   * @default "Reduce motion"
+   */
+  readonly motionLabel?: string;
+  /**
+   * The high-contrast toggle.
+   *
+   * @default "High contrast"
+   */
+  readonly contrastLabel?: string;
+  /**
+   * The look sensitivity's slider.
+   *
+   * @default "Sensitivity"
+   */
+  readonly sensitivityLabel?: string;
+  /**
+   * The invert-Y checkbox.
+   *
+   * @default "Invert vertical look"
+   */
+  readonly invertLabel?: string;
+  /**
+   * The vibration checkbox.
+   *
+   * @default "Vibration"
+   */
+  readonly vibrationLabel?: string;
+  /**
+   * The button that closes the screen.
+   *
+   * @default "Done"
+   */
+  readonly doneLabel?: string;
 }
 
 /** The settings screen's answer this tick. */
@@ -15084,6 +15204,36 @@ export interface ShopDesc {
    * @default null
    */
   readonly onBuy?: UiAction | null;
+  /**
+   * The detail panel's price line. Every word of the shop is a field with its English default (title and currency too): a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Price"
+   */
+  readonly priceLabel?: string;
+  /**
+   * The Buy button.
+   *
+   * @default "Buy"
+   */
+  readonly buyLabel?: string;
+  /**
+   * The Buy button while the balance is short of the price.
+   *
+   * @default "Not enough"
+   */
+  readonly shortLabel?: string;
+  /**
+   * An owned item's badge and button.
+   *
+   * @default "Owned"
+   */
+  readonly ownedLabel?: string;
+  /**
+   * The detail panel when the category has no items.
+   *
+   * @default "Nothing for sale here"
+   */
+  readonly emptyLabel?: string;
 }
 
 /** A shop's answer this tick. */

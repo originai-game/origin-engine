@@ -1,9 +1,9 @@
 // Every screen in Chinese, then English again: the title, the HUD's area
 // toast, the pause menu, the mole's talk and wares, the bell's refusal and
 // the results (og.ui's own words "Best" and "New best" from the tables,
-// ResultsDesc.bestLabel and newBestLabel). The shop's own "Price", "Buy"
-// and "Not enough" stay English: ShopDesc has no field for them (FINDINGS.md #12);
-// the check records it.
+// ResultsDesc.bestLabel and newBestLabel), and the shop's own "Price" and
+// "Buy" / "Not enough" (ShopDesc.priceLabel, buyLabel, shortLabel:
+// FINDINGS.md #12, fixed).
 import { playtest } from "@origingame/engine/playtest";
 import { press, script, texts } from "./lib.ts";
 
@@ -45,7 +45,8 @@ export default playtest({
     t.ok(talk.includes("老洞鼠"), "Old Burrow is 老洞鼠");
     const shop = texts(run, "shop.json");
     t.ok(shop.includes("老洞鼠的货摊") && shop.includes("蛾翼斗篷") && shop.includes("6 微光"), "his wares are Chinese");
-    t.ok(shop.includes("Price") && shop.includes("Not enough"), "the shop template's own Price and Not enough (Buy) stay English (FINDINGS.md #12)");
+    t.ok(shop.includes("价格") && (shop.includes("购买") || shop.includes("微光不够")), "the shop template's own Price and Buy are Chinese (FINDINGS.md #12, fixed)");
+    t.ok(!shop.includes("Price") && !shop.includes("Not enough") && !shop.includes("Buy"), "no English word of the template is left");
     const results = texts(run, "results.json");
     t.ok(results.includes("大钟再次响起") && results.includes("新纪录") && results.some((s) => s.startsWith("最佳 ")) && results.includes("小铃"), "the results are Chinese, the kit's Best and New best included");
     const en = texts(run, "results-en.json");

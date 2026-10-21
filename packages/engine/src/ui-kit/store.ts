@@ -48,22 +48,22 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         const it = items[i]!;
         picture("Picture", it.icon, it.name ?? "", 36);
         kit.label("Name", it.name ?? "", { step: "base", nowrap: true });
-        if (it.owned) kit.badge("Owned", "Owned", "success");
+        if (it.owned) kit.badge("Owned", desc.ownedLabel ?? "Owned", "success");
         else kit.label("Price", fmt(it.price ?? 0), { step: "meta", font: "mono", color: token(balance >= (it.price ?? 0) ? "accentInk" : "fgSubtle"), nowrap: true });
       });
       if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
       const it = items[sel];
       kit.column("Detail", { width: phone ? grow() : px(220), gap: t.sm }, () => {
         if (!it) {
-          kit.label("Empty", "Nothing for sale here", { color: token("fgMuted") });
+          kit.label("Empty", desc.emptyLabel ?? "Nothing for sale here", { color: token("fgMuted") });
           return;
         }
         kit.label("Name", it.name ?? "", { step: "lg", width: grow() });
         if (it.description) kit.label("Description", it.description, { step: "meta", color: token("fgMuted"), width: grow() });
-        kit.keyValue("Price", "Price", `${fmt(it.price ?? 0)} ${desc.currency ?? "coins"}`, true);
+        kit.keyValue("Price", desc.priceLabel ?? "Price", `${fmt(it.price ?? 0)} ${desc.currency ?? "coins"}`, true);
         const short = balance < (it.price ?? 0);
         // Short of the price, Buy still answers: it refuses, shaking with the error sound.
-        const r = kit.button("Buy", it.owned ? "Owned" : short ? "Not enough" : "Buy", { variant: short ? "secondary" : "primary", width: grow(), disabled: it.owned }) as Api.Response;
+        const r = kit.button("Buy", it.owned ? (desc.ownedLabel ?? "Owned") : short ? (desc.shortLabel ?? "Not enough") : (desc.buyLabel ?? "Buy"), { variant: short ? "secondary" : "primary", width: grow(), disabled: it.owned }) as Api.Response;
         if (r.clicked && !it.owned && short) {
           kit.shake({ sound: true });
           out.refused = it.id ?? null;

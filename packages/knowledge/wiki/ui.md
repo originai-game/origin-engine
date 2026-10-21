@@ -2762,7 +2762,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 9842</sub>
+<sub>`api.ogt` line 9917</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2793,7 +2793,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 9850</sub>
+<sub>`api.ogt` line 9925</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2824,7 +2824,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 9858</sub>
+<sub>`api.ogt` line 9933</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2855,7 +2855,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 9866</sub>
+<sub>`api.ogt` line 9941</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2886,7 +2886,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 9874</sub>
+<sub>`api.ogt` line 9949</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2917,7 +2917,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 9882</sub>
+<sub>`api.ogt` line 9957</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2948,7 +2948,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 9890</sub>
+<sub>`api.ogt` line 9965</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2979,7 +2979,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 9898</sub>
+<sub>`api.ogt` line 9973</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3010,7 +3010,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 9906</sub>
+<sub>`api.ogt` line 9981</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3041,7 +3041,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 9914</sub>
+<sub>`api.ogt` line 9989</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3072,7 +3072,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 9922</sub>
+<sub>`api.ogt` line 9997</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3103,7 +3103,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 9930</sub>
+<sub>`api.ogt` line 10005</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3134,7 +3134,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 9938</sub>
+<sub>`api.ogt` line 10013</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3165,7 +3165,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 9946</sub>
+<sub>`api.ogt` line 10021</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3196,7 +3196,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 9954</sub>
+<sub>`api.ogt` line 10029</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3227,7 +3227,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 9962</sub>
+<sub>`api.ogt` line 10037</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3258,7 +3258,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 9970</sub>
+<sub>`api.ogt` line 10045</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3289,7 +3289,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 9978</sub>
+<sub>`api.ogt` line 10053</sub>
 
 ## Types
 
@@ -6624,6 +6624,26 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `languages` | `readonly LanguageOption[]` | `[]` | — | — | — | The languages offered; empty hides the Language tab. |
 | `onChange` | `SettingsChanged \| null` | `null` | — | — | — | Called on every change (apply it at once: volume, contrast). |
 | `onSave` | `SettingsChanged \| null` | `null` | — | — | — | Called when the screen closes after changes (persist here). |
+| `title` | `string` | `"Settings"` | — | — | — | The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t). |
+| `audioLabel` | `string` | `"Audio"` | — | — | — | The Audio tab. |
+| `graphicsLabel` | `string` | `"Graphics"` | — | — | — | The Graphics tab. |
+| `controlsLabel` | `string` | `"Controls"` | — | — | — | The Controls tab. |
+| `languageLabel` | `string` | `"Language"` | — | — | — | The Language tab. |
+| `masterLabel` | `string` | `"Master"` | — | — | — | The master volume's slider. |
+| `musicLabel` | `string` | `"Music"` | — | — | — | The music volume's slider. |
+| `effectsLabel` | `string` | `"Effects"` | — | — | — | The effects volume's slider. |
+| `muteLabel` | `string` | `"Mute everything"` | — | — | — | The mute toggle. |
+| `qualityLabel` | `string` | `"Quality"` | — | — | — | The graphics preset's heading. |
+| `lowLabel` | `string` | `"Low"` | — | — | — | The low preset. |
+| `mediumLabel` | `string` | `"Medium"` | — | — | — | The medium preset. |
+| `highLabel` | `string` | `"High"` | — | — | — | The high preset. |
+| `fpsLabel` | `string` | `"Show frame rate"` | — | — | — | The frame-rate toggle. |
+| `motionLabel` | `string` | `"Reduce motion"` | — | — | — | The reduced-motion toggle. |
+| `contrastLabel` | `string` | `"High contrast"` | — | — | — | The high-contrast toggle. |
+| `sensitivityLabel` | `string` | `"Sensitivity"` | — | — | — | The look sensitivity's slider. |
+| `invertLabel` | `string` | `"Invert vertical look"` | — | — | — | The invert-Y checkbox. |
+| `vibrationLabel` | `string` | `"Vibration"` | — | — | — | The vibration checkbox. |
+| `doneLabel` | `string` | `"Done"` | — | — | — | The button that closes the screen. |
 
 ```ogt
 struct SettingsDesc {
@@ -6634,6 +6654,66 @@ struct SettingsDesc {
   field languages List.LanguageOption "The languages offered; empty hides the Language tab."
   field onChange Option.SettingsChanged "Called on every change (apply it at once: volume, contrast)."
   field onSave Option.SettingsChanged "Called when the screen closes after changes (persist here)."
+  field title String "The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+    default "Settings"
+  }
+  field audioLabel String "The Audio tab." {
+    default "Audio"
+  }
+  field graphicsLabel String "The Graphics tab." {
+    default "Graphics"
+  }
+  field controlsLabel String "The Controls tab." {
+    default "Controls"
+  }
+  field languageLabel String "The Language tab." {
+    default "Language"
+  }
+  field masterLabel String "The master volume's slider." {
+    default "Master"
+  }
+  field musicLabel String "The music volume's slider." {
+    default "Music"
+  }
+  field effectsLabel String "The effects volume's slider." {
+    default "Effects"
+  }
+  field muteLabel String "The mute toggle." {
+    default "Mute everything"
+  }
+  field qualityLabel String "The graphics preset's heading." {
+    default "Quality"
+  }
+  field lowLabel String "The low preset." {
+    default "Low"
+  }
+  field mediumLabel String "The medium preset." {
+    default "Medium"
+  }
+  field highLabel String "The high preset." {
+    default "High"
+  }
+  field fpsLabel String "The frame-rate toggle." {
+    default "Show frame rate"
+  }
+  field motionLabel String "The reduced-motion toggle." {
+    default "Reduce motion"
+  }
+  field contrastLabel String "The high-contrast toggle." {
+    default "High contrast"
+  }
+  field sensitivityLabel String "The look sensitivity's slider." {
+    default "Sensitivity"
+  }
+  field invertLabel String "The invert-Y checkbox." {
+    default "Invert vertical look"
+  }
+  field vibrationLabel String "The vibration checkbox." {
+    default "Vibration"
+  }
+  field doneLabel String "The button that closes the screen." {
+    default "Done"
+  }
 }
 ```
 
@@ -6660,7 +6740,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 9432</sub>
+<sub>`api.ogt` line 9492</sub>
 
 <a id="type-Ability"></a>
 
@@ -6690,7 +6770,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 9439</sub>
+<sub>`api.ogt` line 9499</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -6728,7 +6808,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 9450</sub>
+<sub>`api.ogt` line 9510</sub>
 
 <a id="type-HudResult"></a>
 
@@ -6755,7 +6835,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 9465</sub>
+<sub>`api.ogt` line 9525</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -6805,7 +6885,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 9474</sub>
+<sub>`api.ogt` line 9534</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -6839,7 +6919,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 9496</sub>
+<sub>`api.ogt` line 9556</sub>
 
 <a id="type-Currency"></a>
 
@@ -6869,7 +6949,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 9509</sub>
+<sub>`api.ogt` line 9569</sub>
 
 <a id="type-Generator"></a>
 
@@ -6905,7 +6985,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 9519</sub>
+<sub>`api.ogt` line 9579</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -6933,7 +7013,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 9533</sub>
+<sub>`api.ogt` line 9593</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -6993,7 +7073,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 9543</sub>
+<sub>`api.ogt` line 9603</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -7019,7 +7099,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 9575</sub>
+<sub>`api.ogt` line 9635</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -7053,7 +7133,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 9583</sub>
+<sub>`api.ogt` line 9643</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -7076,7 +7156,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 9597</sub>
+<sub>`api.ogt` line 9657</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -7110,7 +7190,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 9604</sub>
+<sub>`api.ogt` line 9664</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -7129,6 +7209,11 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `items` | `readonly ShopItem[]` | `[]` | — | — | — | What is for sale. |
 | `categories` | `readonly string[]` | `[]` | — | — | — | Category tabs; empty is one list. |
 | `onBuy` | `UiAction \| null` | `null` | — | — | — | Called with the bought item's id. |
+| `priceLabel` | `string` | `"Price"` | — | — | — | The detail panel's price line. Every word of the shop is a field with its English default (title and currency too): a localised game passes its string table's (og.i18n.t). |
+| `buyLabel` | `string` | `"Buy"` | — | — | — | The Buy button. |
+| `shortLabel` | `string` | `"Not enough"` | — | — | — | The Buy button while the balance is short of the price. |
+| `ownedLabel` | `string` | `"Owned"` | — | — | — | An owned item's badge and button. |
+| `emptyLabel` | `string` | `"Nothing for sale here"` | — | — | — | The detail panel when the category has no items. |
 
 ```ogt
 struct ShopDesc {
@@ -7145,10 +7230,25 @@ struct ShopDesc {
   field items List.ShopItem "What is for sale."
   field categories List.String "Category tabs; empty is one list."
   field onBuy Option.UiAction "Called with the bought item's id."
+  field priceLabel String "The detail panel's price line. Every word of the shop is a field with its English default (title and currency too): a localised game passes its string table's (og.i18n.t)." {
+    default "Price"
+  }
+  field buyLabel String "The Buy button." {
+    default "Buy"
+  }
+  field shortLabel String "The Buy button while the balance is short of the price." {
+    default "Not enough"
+  }
+  field ownedLabel String "An owned item's badge and button." {
+    default "Owned"
+  }
+  field emptyLabel String "The detail panel when the category has no items." {
+    default "Nothing for sale here"
+  }
 }
 ```
 
-<sub>`api.ogt` line 9616</sub>
+<sub>`api.ogt` line 9676</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -7171,7 +7271,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 9632</sub>
+<sub>`api.ogt` line 9707</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -7203,7 +7303,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 9639</sub>
+<sub>`api.ogt` line 9714</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -7239,7 +7339,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 9650</sub>
+<sub>`api.ogt` line 9725</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -7260,7 +7360,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 9666</sub>
+<sub>`api.ogt` line 9741</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -7285,7 +7385,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 9672</sub>
+<sub>`api.ogt` line 9747</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -7313,7 +7413,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 9680</sub>
+<sub>`api.ogt` line 9755</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -7341,7 +7441,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 9689</sub>
+<sub>`api.ogt` line 9764</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -7362,7 +7462,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 9699</sub>
+<sub>`api.ogt` line 9774</sub>
 
 <a id="type-StatRow"></a>
 
@@ -7386,7 +7486,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 9705</sub>
+<sub>`api.ogt` line 9780</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -7444,7 +7544,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 9712</sub>
+<sub>`api.ogt` line 9787</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -7472,7 +7572,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 9741</sub>
+<sub>`api.ogt` line 9816</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7508,7 +7608,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 9750</sub>
+<sub>`api.ogt` line 9825</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7533,7 +7633,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 9765</sub>
+<sub>`api.ogt` line 9840</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7559,7 +7659,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 9773</sub>
+<sub>`api.ogt` line 9848</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7585,7 +7685,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 9781</sub>
+<sub>`api.ogt` line 9856</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7608,7 +7708,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 9789</sub>
+<sub>`api.ogt` line 9864</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7641,7 +7741,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 9796</sub>
+<sub>`api.ogt` line 9871</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7677,7 +7777,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 9810</sub>
+<sub>`api.ogt` line 9885</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -7698,7 +7798,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 9825</sub>
+<sub>`api.ogt` line 9900</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -7728,4 +7828,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 9831</sub>
+<sub>`api.ogt` line 9906</sub>
