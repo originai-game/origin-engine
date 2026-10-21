@@ -1,0 +1,34 @@
+type flipbook
+version 1
+---
+# The courier (the runner archetype's sheet, tools/make-assets.py there):
+# 32 x 40 frames standing on their feet (the pivot: the entity's position is
+# the feet, so a squash keeps them down). Clips are numbered in file order:
+# idle 0, run 1, jump 2, fall 3, crash 4 (src/main.ts's CLIP checks them).
+texture "courier.png"
+pivot 0.5 0
+grid 32 40 8 2
+spacing 2
+clip idle {
+  frames 14 15
+  fps 2
+}
+clip run {
+  frames 0 1 2 3 4 5 6 7
+  fps 14
+  event 2 "step"
+  event 6 "step"
+}
+clip jump {
+  frames 8
+  fps 1
+}
+clip fall {
+  frames 9
+  fps 1
+}
+clip crash {
+  frames 10 11 12 13
+  fps 12
+  mode once
+}
