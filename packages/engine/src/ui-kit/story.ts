@@ -29,7 +29,7 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   });
   if (desc.skippable ?? true) {
     kit.anchor(`${id}.skip`, { anchor: "topRight", offsetY: letterbox ? frame().viewport.height * 0.1 : 0 }, () => {
-      if ((kit.button("Skip", "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
+      if ((kit.button("Skip", desc.skipLabel ?? "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
     });
     if (kit.back()) out.skipped = true;
   }
@@ -71,13 +71,14 @@ export function tutorialOverlay(id: string, desc: Api.TutorialDesc = {}): Api.Tu
     background: token("surfaceRaised"),
     radius: t.panel,
   }, () => {
-    kit.label("Count", `${index + 1} of ${steps.length}`, { step: "meta", color: token("fgMuted") });
+    const count = (desc.stepLabel ?? "{step} of {count}").replaceAll("{step}", `${index + 1}`).replaceAll("{count}", `${steps.length}`);
+    kit.label("Count", count, { step: "meta", color: token("fgMuted") });
     if (step.title) kit.label("Title", step.title, { step: "lg", width: grow() });
     if (step.text) kit.label("Text", step.text, { step: "reading", color: token("fgMuted"), width: grow() });
     kit.row("Actions", { width: grow(), gap: t.sm, align: "spaceBetween", cross: "center" }, () => {
-      if ((kit.button("Skip", "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
+      if ((kit.button("Skip", desc.skipLabel ?? "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
       const lastStep = index + 1 >= steps.length;
-      if ((kit.button("Next", lastStep ? "Done" : "Next", { variant: "primary", size: "small" }) as Api.Response).clicked) {
+      if ((kit.button("Next", lastStep ? (desc.doneLabel ?? "Done") : (desc.nextLabel ?? "Next"), { variant: "primary", size: "small" }) as Api.Response).clicked) {
         if (lastStep) out.finished = true;
         else out.index = index + 1;
       }

@@ -66,20 +66,27 @@ string "results.time" "タイム {time}"
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
 - og.ui's templates have words of their own (Retry, Share, "Best 1,200",
-  "New best", Cancel, Settings, Buy): each is a field of the template's
-  desc with the English default, so a localised game passes its table's:
-  `ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`, `actions`;
-  `ConfirmDesc.confirmLabel`, `cancelLabel`; `SettingsDesc.title`,
+  "New best", Cancel, Settings, Buy, Skip, "1 of 3"): each is a field of
+  the template's desc with the English default, so a localised game passes
+  its table's: `ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`,
+  `actions`; `ConfirmDesc.confirmLabel`, `cancelLabel`; `SettingsDesc.title`,
   `audioLabel`, `graphicsLabel`, `controlsLabel`, `languageLabel`,
   `masterLabel`, `musicLabel`, `effectsLabel`, `muteLabel`, `qualityLabel`,
   `lowLabel`, `mediumLabel`, `highLabel`, `fpsLabel`, `motionLabel`,
   `contrastLabel`, `sensitivityLabel`, `invertLabel`, `vibrationLabel`,
   `doneLabel`; `ShopDesc.title`, `currency`, `priceLabel`, `buyLabel`,
   `shortLabel` (Buy while the balance is short: "Not enough"),
-  `ownedLabel`, `emptyLabel`. `bestLabel: og.i18n.t(world, "results.best")`
+  `ownedLabel`, `emptyLabel`; `InventoryDesc.title`, `useLabel`,
+  `hintLabel` (the detail panel with nothing selected), `countLabel`;
+  `LeaderboardDesc.title`, `empty`, `retryLabel` (under `error`, the
+  game's own message); `TutorialDesc.skipLabel`, `nextLabel`, `doneLabel`
+  (Next on the last step), `stepLabel`; `CutsceneDesc.skipLabel`;
+  `LevelSelectDesc.title`. `bestLabel: og.i18n.t(world, "results.best")`
   with `"Best {best}"` / `"最佳 {best}"` in the tables (the template fills
-  `{best}`, formatted); templates/ui-kit passes every settings and shop
-  word from its five tables (`settings.*`, `shop.*`).
+  `{best}`, formatted); `stepLabel` the same with `"{step} of {count}"` /
+  `"第 {step} 步，共 {count} 步"`. templates/ui-kit passes every one of
+  these words from its five tables (`settings.*`, `shop.*`, `inventory.*`,
+  `leaderboard.*`, `tutorial.*`, `cutscene.*`).
 - Emphasis inside a sentence is rich-text markup in the message itself
   (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
   `og.ui.richText`): each translation bolds or colours its own words, in
@@ -96,7 +103,7 @@ string "results.time" "タイム {time}"
   2.5 MB), the source for a Chinese subset and the skins' CJK `fallback`.
   The ui-kit's `NotoSansJP-subset.otf`, `NotoSansKR-subset.otf` and its
   Arabic, Hebrew and Devanagari subsets hold only the ui-kit's own strings
-  (the Japanese one 177 characters, 28 of them kanji): they are no source
+  (the Japanese one 246 characters, 74 of them kanji): they are no source
   for a game's text. A Japanese, Korean, Traditional Chinese or Arabic
   game brings the whole Noto face (notofonts, SIL OFL; Noto Sans CJK's
   Regular `.ttc` holds Japanese as face 0, Korean 1, Simplified 2,

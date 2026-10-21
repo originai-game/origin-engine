@@ -25746,6 +25746,11 @@
           "type": "boolean",
           "description": "Show Skip.",
           "default": true
+        },
+        "skipLabel": {
+          "type": "string",
+          "description": "The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t).",
+          "default": "Skip"
         }
       },
       "additionalProperties": false
@@ -26022,8 +26027,18 @@
         },
         "useLabel": {
           "type": "string",
-          "description": "The detail panel's action; empty hides it.",
+          "description": "The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t).",
           "default": "Use"
+        },
+        "hintLabel": {
+          "type": "string",
+          "description": "The detail panel while no slot is selected.",
+          "default": "Select an item. Drag it to another slot to move it."
+        },
+        "countLabel": {
+          "type": "string",
+          "description": "The detail panel's count line, beside a stacked item's count.",
+          "default": "Count"
         }
       },
       "additionalProperties": false
@@ -26384,6 +26399,11 @@
           "type": "string",
           "description": "Shown when there are no rows.",
           "default": "No scores yet"
+        },
+        "retryLabel": {
+          "type": "string",
+          "description": "The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t).",
+          "default": "Retry"
         }
       },
       "additionalProperties": false
@@ -26470,6 +26490,26 @@
           "maximum": 4294967295,
           "description": "The step shown, from game state.",
           "default": 0
+        },
+        "skipLabel": {
+          "type": "string",
+          "description": "The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t).",
+          "default": "Skip"
+        },
+        "nextLabel": {
+          "type": "string",
+          "description": "The button that shows the next step.",
+          "default": "Next"
+        },
+        "doneLabel": {
+          "type": "string",
+          "description": "That button on the last step.",
+          "default": "Done"
+        },
+        "stepLabel": {
+          "type": "string",
+          "description": "The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it.",
+          "default": "{step} of {count}"
         }
       },
       "additionalProperties": false

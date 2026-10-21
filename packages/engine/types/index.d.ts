@@ -15110,6 +15110,12 @@ export interface CutsceneDesc {
    * @default true
    */
   readonly skippable?: boolean;
+  /**
+   * The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
 }
 
 /** A cutscene's answer this tick. */
@@ -15339,11 +15345,23 @@ export interface InventoryDesc {
    */
   readonly items?: readonly InventoryItem[];
   /**
-   * The detail panel's action; empty hides it.
+   * The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t).
    *
    * @default "Use"
    */
   readonly useLabel?: string;
+  /**
+   * The detail panel while no slot is selected.
+   *
+   * @default "Select an item. Drag it to another slot to move it."
+   */
+  readonly hintLabel?: string;
+  /**
+   * The detail panel's count line, beside a stacked item's count.
+   *
+   * @default "Count"
+   */
+  readonly countLabel?: string;
 }
 
 /** An item dragged from one slot to another. */
@@ -15618,6 +15636,12 @@ export interface LeaderboardDesc {
    * @default "No scores yet"
    */
   readonly empty?: string;
+  /**
+   * The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Retry"
+   */
+  readonly retryLabel?: string;
 }
 
 /** A leaderboard's answer this tick. */
@@ -15682,6 +15706,30 @@ export interface TutorialDesc {
    * @default 0
    */
   readonly index?: number;
+  /**
+   * The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
+  /**
+   * The button that shows the next step.
+   *
+   * @default "Next"
+   */
+  readonly nextLabel?: string;
+  /**
+   * That button on the last step.
+   *
+   * @default "Done"
+   */
+  readonly doneLabel?: string;
+  /**
+   * The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it.
+   *
+   * @default "{step} of {count}"
+   */
+  readonly stepLabel?: string;
 }
 
 /** A tutorial's answer this tick. */
