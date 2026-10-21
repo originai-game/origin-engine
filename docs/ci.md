@@ -183,83 +183,22 @@ it the steps fall back to `cargo test`.
 
 ### CI
 
-**During the build-out the workflow runs by hand only** (`workflow_dispatch`;
-the push, pull_request and schedule triggers are off since 2026-10-21): the
-local gate is the signal for every merge (the functional lane) and every
-wave's end (`--all`, web-reference and the lavapipe pass, or
-`scripts/wave-end.sh`), it is faster than the shared runner and it covers
-more (the browser tiers and the Metal references). What follows describes
-the workflow as it runs when dispatched, and as it will run on push once
-the repository is published.
-
-Every job runs on `ubuntu-latest` (a private repository's runner: 2 vCPU,
-7 GB, about 13 GB of free disk) inside a `debian:trixie` container, and
-`.github/actions/provision` installs what the scripts expect; the lanes are
-the scripts' own. Trixie because its Lavapipe (`mesa-vulkan-drivers`, Mesa
-25.0.7 on LLVM 19.1.7, 256-bit) is the og-lavapipe image's, where the
-`vulkan-cpu` references are recorded (§The wave-end run): on the runner's
-own Ubuntu 24.04 (LLVM 20.1.2) `atmosphere-night` and `atmosphere-moon`
-came out at RMSE 0.01050 and 0.01033 against their references (tolerance
-0.01; a few hundred star pixels), and on trixie they pass with the rest.
-The tier detection reads llvmpipe as `vulkan-cpu`, so the GPU reference
-tests compare with `references/vulkan-cpu/` and, frame by frame, with
-`metal`'s where a scene has no vulkan-cpu frame yet. The container runs
-with `--init` (`og dev`'s signal test waits for the game it stopped to be
-reaped, which the container's bare PID 1 never does) and has the host's
-unused SDKs (dotnet, Android, GHC, CodeQL: about 30 GB) mounted to be
-emptied first.
-
-The provisioning: trixie's build tools, Lavapipe, ALSA's headers (cpal's
-`alsa-sys`), brotli and procps; the Rust toolchain from
-`rust-toolchain.toml` (`actions-rust-lang/setup-rust-toolchain`); `~/.cargo`
-and `target/`'s dependencies cached by `Swatinem/rust-cache`, one cache per
-job, saved on failure too; cargo-nextest (`taiki-e/install-action`); node
-24 (`actions/setup-node`, for `determinism`); and `scripts/install-tools.sh`
-(wasm-bindgen-cli at the `Cargo.lock` version, binaryen, bun, ShellCheck),
-cached under `~/.local`. The workflow sets `CI` (so every step and test
-runs and the wasm is the shipping profile), `OG_GATE_MACHINE_LOCK=0` (one
-gate per runner), an empty `RUSTC_WRAPPER` (no sccache) and
-`CARGO_PROFILE_DEV_DEBUG=line-tables-only`. Two settings answer the
-runner's speed, two vCPU of Lavapipe against the M4 Pro the tests were
-tuned on: `OG_BUN_TEST_TIMEOUT=60000` (every package's `bun run test` passes it to
-`bun test --timeout`, the default for a test that names no timeout of its
-own: render tests in packages/engine took 5 to 25 s against bun's 5 s,
-packages/knowledge's mount test 5.0 s), `OG_TEST_TIME_SCALE=3` (a test
-that names a long limit of its own through `slow()`,
-`packages/engine/tests/support/slow.ts`, gets three times it: the
-fx-showcase terrain station's two 600-tick `og run`s and the chunked music
-through `og run` passed their 240 s),
-and `OG_GATE_JOBS=1` in the gate job (bun-test beside test starved both,
-and twelve render tests and five of the slow integration tests ran out of
-time).
-
-| Job | Runs | When | Measured (2026-10-21) | Timeout |
-|---|---|---|---|---|
-| `quick` | `shellcheck -x scripts/*.sh`, `scripts/check.sh quick` | every PR | 12–15 min with its cache, 23 min cold | 45 min |
-| `functional` | `scripts/check.sh functional` | every PR | 21–36 min (test 25–30 min of it) | 90 min |
-| `gate` | `shellcheck -x scripts/*.sh`, `scripts/check.sh` (with `CI`: `--all`, one step at a time) | every PR and push to main | 60 min with its cache (gate 56 min: wasm-build 8, test 18, wasm-opt 8, bun-test 15, determinism 4), 94 min with a colder one | 240 min |
-| `perf-nightly` | `scripts/perf.sh --measure` | 03:17 UTC, and by hand | 145 min cold (the release build 47, og-tests' eight perf scenes 95 on Lavapipe) | 240 min |
-
-Every job runs the provisioning first (2–5 min, emptying the SDKs most of
-it); the disk then has 30 GB free, and the gate ends with 12 GB free
-beside a 16 GB `target/`, so it needs the room.
-
-The nightly measures and judges nothing: the committed perf baselines are
-the M4 Pro's (`crates/og-tests/perf/metal-apple-m4-pro/`, ...), a shared
-runner's Lavapipe frame times measure the VM rather than the renderer, and
-the comparison against a baseline of its own would move by more than the
-15 % tolerance from run to run. It records each scene's time
-(`OG_PERF_RECORD`) into `target/evidence/perf/` and prints them. Before
-2026-10-21 it compared against baselines that do not exist for the runner,
-failed every test after 46 min of rendering and once ran past its 60 min
-limit.
-
-On failure a job uploads `target/evidence/**` (gate summary, size report,
-gfx actual and diff frames) and any `*.diff.png` as an artifact; the gate
-uploads the size report and summary on every run. The uploads may not fail
-a job (`continue-on-error`): the account's artifact storage quota was
-exhausted in 2026-10, and every upload then fails with "Artifact storage
-quota has been hit".
+**There is no cloud CI during the build-out.** The GitHub Actions workflow
+and its provisioning action were removed on 2026-10-21 (the owner's
+decision: the shared runner was slower than the local gate, billed, and
+added nothing the gate does not cover). The process is the local one: the
+functional lane for every merge, `--all`, web-reference and the lavapipe
+pass (or `scripts/wave-end.sh`) at a wave's end, by the one session that
+merges (AGENTS.md §Build and gate discipline). What the workflow was when
+it last ran green (every job in a `debian:trixie` container with `--init`
+whose Lavapipe matched the og-lavapipe image, a shared provisioning
+action, quick 12.5 min, functional 35 min, gate 60 min and the perf
+nightly 145 min cold on a two-vCPU runner, `OG_BUN_TEST_TIMEOUT`,
+`OG_TEST_TIME_SCALE` and `OG_GATE_JOBS=1` for that runner) is in the
+history at 53b876f7 and 9d220790 and in docs/phase-1.md's ci-green
+section; the environment variables stay honoured by the scripts. When the
+repository is published, the workflow comes back from that history with
+its push, pull_request and nightly triggers.
 
 ## Running the gate locally
 

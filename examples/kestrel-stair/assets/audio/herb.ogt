@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "pickup" (tools/make-assets.ts): og.load.sound(world, "audio/herb.ogt") plays it.
+preset "pickup"
+seed 2
+pitch 1
+length 1
+volume 0.8

@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "levelup" (tools/make-assets.ts): og.load.sound(world, "audio/heal.ogt") plays it.
+preset "levelup"
+seed 4
+pitch 1.2
+length 0.8
+volume 0.7

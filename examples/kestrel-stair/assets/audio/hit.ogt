@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "hit" (tools/make-assets.ts): og.load.sound(world, "audio/hit.ogt") plays it.
+preset "hit"
+seed 4
+pitch 1
+length 1
+volume 1

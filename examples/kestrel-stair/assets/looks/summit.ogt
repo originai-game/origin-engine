@@ -1,0 +1,39 @@
+type look
+version 1
+---
+# The summit at the end: the luminous layered preset's depth bands for the
+# high view back down the stair (a dark near band to a glowing far one,
+# flattened only part way so the bell and the courier keep their shading),
+# over the same watercolour paper. Applied for the ending and the results.
+name "Kestrel Stair, the summit"
+extends "luminous-layered-painting"
+skin "skins/kestrel/skin.ogt"
+antialias taa
+Stylise {
+  depthBands 5
+  depthBandsNear 20
+  depthBandsFar 110
+  depthBandsNearColor "#2d2240"
+  depthBandsFarColor "#ffd59a"
+  depthBandsFlatten 0.35
+  paintRadius 2
+  paintEdgeDarkening 0.5
+  paintCanvas "@canvas/watercolor"
+  paintCanvasStrength 0.4
+}
+RenderSettings {
+  toneMapping agx
+  exposure 1.1
+  bloom true
+  bloomIntensity 0.6
+}
+Environment {
+  map "env/dusk.ogt"
+  intensity 0.7
+}
+Fog {
+  enabled true
+  color "#f2d9b0"
+  density 0.0025
+  start 40
+}

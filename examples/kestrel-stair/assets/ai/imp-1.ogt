@@ -1,0 +1,45 @@
+type behaviour
+version 1
+---
+# A thorn imp (tools/level.ts writes this file from src/layout.ts). It runs
+# its round; seeing the courier it chases at Tuning.impChase and, within
+# reach, winds up (0.25 s) and bites (the game's `bite` command); hurt
+# below half its thorns it flees and keeps away until it heals.
+name "imp-1"
+route round {
+  point 16 0 38
+  point 16 0 16
+  point 6 0 16
+}
+tree {
+  selector {
+    sequence flee {
+      check Foe.hp below 2   # a literal: a check takes no Tuning field (FINDINGS #3)
+      flee {
+        distance 7
+        speed Tuning.impChase
+      }
+    }
+    sequence bite {
+      check sees
+      check Game.phase is 1
+      check targetDistance below 1.25
+      check Foe.cooldown below 0.01
+      wait 0.25
+      command bite {
+        cooldown 1.1
+      }
+    }
+    sequence chase {
+      check sees
+      check Game.phase is 1
+      chase {
+        speed Tuning.impChase
+      }
+    }
+    patrol round {
+      wait 0.8
+      speed Tuning.impPatrol
+    }
+  }
+}

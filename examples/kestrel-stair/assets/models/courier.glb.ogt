@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# The courier has no clips of its own: the cook retargets the clip
+# library's onto its skeleton (Mixamo names, detected), tools/rig.ts.
+animation {
+  library "anims/humanoid.glb"
+}

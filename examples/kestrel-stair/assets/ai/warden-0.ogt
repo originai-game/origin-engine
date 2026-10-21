@@ -1,0 +1,67 @@
+type behaviour
+version 1
+---
+# A stone warden (tools/level.ts writes this file from src/layout.ts). It
+# walks its round slowly; seeing the courier it alerts (the game's
+# `alert`) and closes in; within reach it raises both fists (the slam's
+# long wind-up is the game's, from the `slam` command) and stands
+# recovering; lost, it searches where it last saw the courier, then goes
+# back to its round.
+name "warden-0"
+route round {
+  point 6 4 -2
+  point 6 4 -14
+  point -4 4 -12
+}
+machine {
+  initial patrol
+  state patrol {
+    patrol round {
+      wait 1.6
+      speed Tuning.wardenPatrol
+    }
+    to alert {
+      check sees
+      check Game.phase is 1
+    }
+  }
+  state alert {
+    enter {
+      command alert
+    }
+    chase {
+      speed Tuning.wardenChase
+      reach 1.6
+    }
+    to slam {
+      check targetDistance below 2.3   # a literal: a check takes no Tuning field (FINDINGS #3)
+    }
+    to search {
+      check sees is false
+    }
+    to patrol {
+      check Game.phase not 1
+    }
+  }
+  state slam {
+    enter {
+      command slam
+    }
+    stop
+    to alert {
+      after 1.8
+    }
+  }
+  state search {
+    move_to lastSeen {
+      speed Tuning.wardenPatrol
+    }
+    to alert {
+      check sees
+      check Game.phase is 1
+    }
+    to patrol {
+      after 4
+    }
+  }
+}

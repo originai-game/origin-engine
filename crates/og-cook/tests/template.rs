@@ -5,7 +5,9 @@
 //! Ways this could fail, and the test that catches each:
 //! - output bytes depend on thread scheduling, map order, timestamps or
 //!   uninitialised padding → `cooking_twice_gives_identical_bytes` (one cook
-//!   on all cores, one on one thread, every file compared);
+//!   on all cores, one on one thread, every file compared) and
+//!   `every_thread_count_cooks_the_same_bytes` (thirty cooks of a small
+//!   template on 1, 2 and 8 threads, three at a time);
 //! - the incremental check re-cooks too much (stamps over-broad) or too
 //!   little (stamps miss an input), or rewrites unchanged files →
 //!   `a_gltf_edit_recooks_exactly_its_outputs`;
@@ -107,6 +109,58 @@ fn tree_hash(files: &BTreeMap<String, Vec<u8>>) -> u64 {
     h.finish()
 }
 
+/// What differs between two `cooked/` trees, one line per difference: a
+/// file on one side only, a blob's bytes (its size and first differing
+/// offset), each differing line of the manifest, and the cook times with
+/// the times masked (the same assets, whatever their milliseconds; README
+/// §Cook times: the one file two cooks write differently). Empty: the
+/// same bytes.
+fn differences(a: &BTreeMap<String, Vec<u8>>, b: &BTreeMap<String, Vec<u8>>) -> Vec<String> {
+    let mut out = Vec::new();
+    for k in a.keys().filter(|k| !b.contains_key(*k)) {
+        out.push(format!("cooked/{k}: only in the first cook"));
+    }
+    for k in b.keys().filter(|k| !a.contains_key(*k)) {
+        out.push(format!("cooked/{k}: only in the second cook"));
+    }
+    for (k, x) in a {
+        let Some(y) = b.get(k) else { continue };
+        if k == og_cook::COOK_TIMES {
+            let masked = |t: &[u8]| {
+                og_cook::CookTimes::parse(&String::from_utf8_lossy(t))
+                    .map(|c| c.assets.into_keys().collect::<Vec<_>>())
+            };
+            let (mx, my) = (masked(x), masked(y));
+            if mx != my {
+                out.push(format!(
+                    "cooked/{k}: the assets differ (times masked): {mx:?} against {my:?}"
+                ));
+            }
+        } else if x != y {
+            let at = x.iter().zip(y).position(|(p, q)| p != q);
+            out.push(format!(
+                "cooked/{k}: {} against {} bytes, first difference at {}",
+                x.len(),
+                y.len(),
+                at.map_or("the end of the shorter".to_string(), |i| format!(
+                    "byte {i}"
+                ))
+            ));
+            if k == og_cook::runtime::MANIFEST {
+                let (tx, ty) = (String::from_utf8_lossy(x), String::from_utf8_lossy(y));
+                let (lx, ly): (Vec<&str>, Vec<&str>) = (tx.lines().collect(), ty.lines().collect());
+                for i in 0..lx.len().max(ly.len()) {
+                    let (p, q) = (lx.get(i), ly.get(i));
+                    if p != q {
+                        out.push(format!("  line {}: {p:?} against {q:?}", i + 1));
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 /// The template cooked once (all cores) and shared by the tests, across
 /// their processes (`support::shared`).
 fn cooked() -> &'static support::SharedCook {
@@ -134,13 +188,17 @@ fn cooking_twice_gives_identical_bytes() {
     assert!(second.ok(), "{:?}", second.errors());
     // Every file but the cook times (wall-clock milliseconds, beside the
     // manifest and never shipped) is the same.
-    let mut a = files(&first.root.join("cooked"));
-    let mut b = files(&root.join("cooked"));
-    assert!(a.remove(og_cook::COOK_TIMES).is_some() && b.remove(og_cook::COOK_TIMES).is_some());
-    assert_eq!(a.keys().collect::<Vec<_>>(), b.keys().collect::<Vec<_>>());
-    for (k, v) in &a {
-        assert!(v == &b[k], "cooked/{k} differs between the two cooks");
-    }
+    let a = files(&first.root.join("cooked"));
+    let b = files(&root.join("cooked"));
+    let differences = differences(&a, &b);
+    assert!(
+        differences.is_empty(),
+        "the all-cores and one-thread cooks differ:\n{}",
+        differences.join("\n")
+    );
+    let (mut a, mut b) = (a, b);
+    a.remove(og_cook::COOK_TIMES);
+    b.remove(og_cook::COOK_TIMES);
     let (ha, hb) = (tree_hash(&a), tree_hash(&b));
     assert_eq!(ha, hb);
     // Every output of the second cook was produced from scratch.
@@ -175,6 +233,87 @@ fn cooking_twice_gives_identical_bytes() {
         ratio <= 0.60,
         "cooked template is {:.1} % of its sources (budget 60 %)",
         ratio * 100.0
+    );
+}
+
+/// The template made small enough to cook thirty times: trickster.glb (its
+/// three 1024² textures are most of a cook) left out and its scene entity
+/// given the walker, the two standalone
+/// textures cut to 128², the font's charset to ASCII and the template's own
+/// characters. Every kind of output and both texture encoders remain, and
+/// the font still renders its glyphs on the cook's thread count.
+fn small_template(root: &Path) {
+    copy_dir(&template_assets(), &root.join("assets"));
+    let assets = root.join("assets");
+    std::fs::remove_file(assets.join("models/trickster.glb")).unwrap();
+    let scene = assets.join("scenes/main.ogt");
+    let text = std::fs::read_to_string(&scene).unwrap();
+    let text = text.replace("models/trickster.glb", "models/walker.glb");
+    std::fs::write(&scene, text).unwrap();
+    for t in ["textures/stone.png", "textures/stone_n.png"] {
+        let img = image::open(assets.join(t)).unwrap();
+        img.resize_exact(128, 128, image::imageops::FilterType::Triangle)
+            .save(assets.join(t))
+            .unwrap();
+    }
+    let font = assets.join("fonts/NotoSansSC-Regular-subset.ttf.ogt");
+    let text = std::fs::read_to_string(&font).unwrap();
+    let text = text.replace("charset latin cjk-punct", "charset ascii");
+    assert!(text.contains("charset ascii"), "{text}");
+    std::fs::write(&font, text).unwrap();
+}
+
+/// Thirty cooks of one project, ten each on one, two and eight threads,
+/// the three series at once (so every cook shares the machine with two
+/// others and its pool's schedule moves from run to run): every file each
+/// writes is the first one-thread cook's bytes, the cook times masked
+/// (`differences`).
+#[test]
+fn every_thread_count_cooks_the_same_bytes() {
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook/threads");
+    let _ = std::fs::remove_dir_all(&base);
+    let source = base.join("source");
+    small_template(&source);
+    let cook = |dir: &Path, threads: usize| {
+        let _ = std::fs::remove_dir_all(dir);
+        copy_dir(&source.join("assets"), &dir.join("assets"));
+        let options = CookOptions {
+            threads,
+            ..Default::default()
+        };
+        let report = cook_project(dir, &options).unwrap();
+        assert!(report.ok(), "{threads} threads: {:?}", report.errors());
+        assert_eq!(report.ignored, ["fonts/OFL.txt"], "{threads} threads");
+        files(&dir.join("cooked"))
+    };
+    let reference = cook(&base.join("reference"), 1);
+    // Thirteen outputs, the manifest and the cook times.
+    assert_eq!(reference.len(), 15, "{:?}", reference.keys());
+    let failures: Vec<String> = std::thread::scope(|s| {
+        let series: Vec<_> = [1usize, 2, 8]
+            .into_iter()
+            .map(|threads| {
+                let (base, reference, cook) = (&base, &reference, &cook);
+                s.spawn(move || {
+                    let mut out = Vec::new();
+                    for run in 0..10 {
+                        let dir = base.join(format!("t{threads}-{run}"));
+                        let got = cook(&dir, threads);
+                        for d in differences(reference, &got) {
+                            out.push(format!("{threads} threads, run {run}: {d}"));
+                        }
+                        let _ = std::fs::remove_dir_all(&dir);
+                    }
+                    out
+                })
+            })
+            .collect();
+        series.into_iter().flat_map(|h| h.join().unwrap()).collect()
+    });
+    assert!(
+        failures.is_empty(),
+        "cooks differ from the first one-thread cook:\n{}",
+        failures.join("\n")
     );
 }
 

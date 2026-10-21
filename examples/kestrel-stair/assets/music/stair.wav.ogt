@@ -1,0 +1,9 @@
+type import
+version 1
+---
+# "The Kestrel Stair" (tools/make-assets.ts): cooked in 4-second chunks and
+# streamed, never resident whole (og-audio §5).
+sound {
+  stream true
+  chunk 4
+}

@@ -1,0 +1,7 @@
+type environment
+version 1
+---
+# The late-afternoon sky (tools/make-assets.ts), prefiltered by og cook.
+source "dusk.hdr"
+size 64
+intensity 1

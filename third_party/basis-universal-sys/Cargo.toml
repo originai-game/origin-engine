@@ -1,0 +1,21 @@
+# basis-universal-sys 0.3.1 (crates.io) with basisu's own fix for a UASTC RDO
+# key hashed with its padding, taken from upstream basis_universal (encoder/
+# basisu_uastc_enc.cpp, `selector_bitsequence::m_pad`): the bundled basisu
+# 1.16 predates it, and the padding was stack garbage, so the RDO pass's
+# lookups and the encoded blocks followed what the thread had run before
+# (crates/og-cook/README.md §Determinism). Only what build.rs compiles is
+# kept (no tools, tests, OpenCL headers or zstd sources). The root
+# Cargo.toml's [patch.crates-io] puts it in place of the crates.io one;
+# drop it when a basis-universal-sys release carries the fix.
+[package]
+name = "basis-universal-sys"
+version = "0.3.1"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/aclysma/basis-universal-rs"
+description = "Bindings for the basis-universal Supercompressed GPU Texture Codec by Binomial"
+
+[build-dependencies]
+cc = "1.0"

@@ -98,8 +98,6 @@ dependencies = [
 [[package]]
 name = "basis-universal-sys"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd9bde5e9547958fb0e77d79fc7879edcf91d5e0c8e372ef8959916cf35e8506"
 dependencies = [
  "cc",
 ]

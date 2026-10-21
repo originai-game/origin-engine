@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "door" (tools/make-assets.ts): og.load.sound(world, "audio/gate.ogt") plays it.
+preset "door"
+seed 2
+pitch 0.6
+length 1.6
+volume 1

@@ -1,0 +1,6 @@
+type scene
+version 1
+---
+# The Kestrel Stair's scene: the level, the characters and the props are
+# built in code (src/world.ts) from src/layout.ts.
+name "The Kestrel Stair"
