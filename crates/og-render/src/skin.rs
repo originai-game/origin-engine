@@ -139,8 +139,8 @@ impl PaletteMode {
     /// The WGSL that defines `joint_matrix` for this mode, in bind group `group`.
     pub fn wgsl(self, group: u32) -> String {
         let src = match self {
-            PaletteMode::Storage => include_str!("../shaders/skin_storage.wgsl"),
-            PaletteMode::Texture => include_str!("../shaders/skin_texture.wgsl"),
+            PaletteMode::Storage => wgsl!("skin_storage.wgsl"),
+            PaletteMode::Texture => wgsl!("skin_texture.wgsl"),
         };
         src.replace("SKIN_GROUP", &group.to_string())
     }

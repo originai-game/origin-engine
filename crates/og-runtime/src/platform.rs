@@ -420,6 +420,20 @@ fn rebase(p: &mut Platform, time: f64, tick: u64, clock: Option<&str>, tick_ms: 
     p.base = Some((time, tick));
 }
 
+/// og.Time jumped from tick `from` to `to` (a game restored a save): the
+/// clock keeps the time it had, moving on from `to`.
+pub(crate) fn shift_ticks(engine: u32, from: u64, to: u64) {
+    if from == to {
+        return;
+    }
+    let ms = tick_ms(engine);
+    with(engine, |p| {
+        if let Some((time, at)) = p.base {
+            p.base = Some((time + from.saturating_sub(at) as f64 * ms, to));
+        }
+    });
+}
+
 pub fn og_platform_now(world: u32) -> f64 {
     let Some((time, at)) = with(world, |p| p.base) else {
         return 0.0;

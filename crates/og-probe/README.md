@@ -38,8 +38,12 @@ only: frames, the UI tree and bundle swaps come in through traits.
    `Output { tick, action, path, payload }` (`Png`, `Json`, `Text`, `Wav`) with
    `file_name()` (the script's path or `<action>-<tick:06>.<ext>`) and
    `bytes()`; `take_log()` yields warnings, each naming the fix. A script's
-   path is relative to the host's output directory: an absolute path or a
-   `..` component is refused with a warning and nothing is output.
+   path is relative to the host's output directory: an absolute path, a
+   `..` component or a name starting with `.` (kept for the harness: a
+   playtest's `store: "keep"` store is `.store/platform.json`) is refused
+   with a warning and nothing is output. A file an earlier step of the same
+   script wrote is never overwritten: the later step's goes beside it as
+   `<stem>-2.<ext>` (then `-3`), with a warning naming both steps.
 4. **Hooks, when it has them.** `Capture` over og-render (render the world
    as of the current tick offscreen, PNG bytes; `pick` defaults to `None`
    until the renderer picks), `UiTree` from the UI module, `Reloader` for the
@@ -81,8 +85,8 @@ and when it runs still unknown, warns and the script continues. `type` and
 | `teleport:<entity>:x,y[,z]` | write `og.Transform.position` (two numbers keep z) | — |
 | `frame_entity:<entity>` | turn `og.Camera.quaternion` so its -Z looks at the entity | warns without `og.Camera` |
 | `dump_world[:path]` / `dump_entity:<entity>[:path]` / `dump_ui[:path]` | JSON outputs, as `dump` returns them | `dump_ui` is empty |
-| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `true`/`false` for a bool, `1,2,3`); refused outside the field's `min`/`max` (as a look's cook is; game code's own writes are stored as given), never clamped | — |
-| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema as game code sees it (`og.Time` with its rate and time scale; a light `og.DayNight` drives with the colour and intensity it is drawn with, through the host's `set_derive`): a log line `get <target> = <value>` and a JSON output | `get-<tick>.json`, then `get-<tick>-2.json`, ... for more unnamed ones on one tick |
+| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (an enum takes its variant's name or index; a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `true`/`false` for a bool, `1,2,3`); refused outside the field's `min`/`max` (as a look's cook is; game code's own writes are stored as given), never clamped | — |
+| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema as game code sees it (an enum as its variant's name, `"music"`; `og.Time` with its rate and time scale; a light `og.DayNight` drives with the colour and intensity it is drawn with, through the host's `set_derive`): a log line `get <target> = <value>` and a JSON output | `get-<tick>.json`, then `get-<tick>-2.json`, ... for more unnamed ones on one tick |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` / `quit` | reseed the world's `Rng`, hold and release the clock, take ≤ 3600 ticks now, end the run | — |
 | `listen[:path][:seconds]` | a `Wav` output: the last seconds (default 1, at most 2) of what the mixer rendered | warns without a listen hook |
 | `help` | a `Text` output listing every action, core and registered | — |

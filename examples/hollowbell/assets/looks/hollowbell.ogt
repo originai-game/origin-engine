@@ -1,0 +1,32 @@
+type look
+version 1
+---
+# Hollowbell: the late-console pixel preset on a 240-line grid (3x at
+# 720p, 426 columns: FINDINGS.md #7, fixed, where it fell back to 2x; the
+# camera and sprites snapped to it, no antialiasing), quantised to the
+# game's own 32 colours through a Bayer dither, so the 2D light's warm
+# pools and the dark caves land on the palette the art was drawn in. Sprites with a glow
+# (the torches' flames, the chimes, the sparks) bloom softly in the 2D
+# glow buffer; a light vignette closes the caves in. The skin is the
+# game's copy of the pixel style pack.
+name "Hollowbell"
+extends "16bit-pixel"
+skin "skins/hollowbell/skin.ogt"
+antialias off
+Stylise {
+  pixelHeight 240
+  pixelSnap true
+  posterize 0
+  palette "palettes/hollowbell.hex"
+  dither bayer4
+  ditherStrength 0.55
+}
+RenderSettings {
+  toneMapping none
+}
+PostEffects {
+  glow true
+  glowIntensity 0.8
+  vignette true
+  vignetteIntensity 0.25
+}

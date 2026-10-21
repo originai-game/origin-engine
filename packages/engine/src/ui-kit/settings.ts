@@ -50,40 +50,48 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
   const before = settingsWithDefaults(desc.settings);
   const s = settingsWithDefaults(desc.settings);
   const languages = desc.languages ?? [];
-  const tabs = ["Audio", "Graphics", "Controls", ...(languages.length > 0 ? ["Language"] : [])];
+  // Every word is a field of the desc with its English default (og-i18n §2).
+  const tabs: Array<[key: string, label: string]> = [
+    ["audio", desc.audioLabel ?? "Audio"],
+    ["graphics", desc.graphicsLabel ?? "Graphics"],
+    ["controls", desc.controlsLabel ?? "Controls"],
+    ...(languages.length > 0 ? [["language", desc.languageLabel ?? "Language"] as [string, string]] : []),
+  ];
   let tab = Math.min(kit.memory(`${id}.tab`, 0), tabs.length - 1);
   let dirty = kit.memory(`${id}.dirty`, 0) !== 0;
   let closed = false;
   const width = phone ? grow() : px(Math.min(600, frame().viewport.width - 48));
-  const m = kit.modal(id, desc.open ?? false, { title: "Settings", width, ignoreBackdrop: true }, () => {
+  const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "Settings", width, ignoreBackdrop: true }, () => {
     // Tabs on a wide surface, a select on a phone (one selection grammar).
+    const labels = tabs.map(([, label]) => label);
     const pick = phone
-      ? (kit.select("Section", tabs, tab, { width: grow() }) as Api.ChoiceResult)
-      : (kit.tabs("Section", tabs, tab, { fill: true, width: grow() }) as Api.ChoiceResult);
+      ? (kit.select("Section", labels, tab, { width: grow() }) as Api.ChoiceResult)
+      : (kit.tabs("Section", labels, tab, { fill: true, width: grow() }) as Api.ChoiceResult);
     tab = pick.selected;
     kit.column("Body", { width: grow(), gap: t.sm, height: px(phone ? 300 : 260) }, () => {
       const pct = (v: number): string => `${Math.round(v * 100)}%`;
-      switch (tabs[tab]) {
-        case "Audio": {
-          s.masterVolume = sliderRow("Master", "Master", s.masterVolume, { step: 0.05 }, pct(s.masterVolume));
-          s.musicVolume = sliderRow("Music", "Music", s.musicVolume, { step: 0.05 }, pct(s.musicVolume));
-          s.sfxVolume = sliderRow("Effects", "Effects", s.sfxVolume, { step: 0.05 }, pct(s.sfxVolume));
-          s.muted = (kit.toggle("Mute", s.muted, "Mute everything") as Api.ToggleResult).on;
+      switch (tabs[tab]?.[0]) {
+        case "audio": {
+          s.masterVolume = sliderRow("Master", desc.masterLabel ?? "Master", s.masterVolume, { step: 0.05 }, pct(s.masterVolume));
+          s.musicVolume = sliderRow("Music", desc.musicLabel ?? "Music", s.musicVolume, { step: 0.05 }, pct(s.musicVolume));
+          s.sfxVolume = sliderRow("Effects", desc.effectsLabel ?? "Effects", s.sfxVolume, { step: 0.05 }, pct(s.sfxVolume));
+          s.muted = (kit.toggle("Mute", s.muted, desc.muteLabel ?? "Mute everything") as Api.ToggleResult).on;
           break;
         }
-        case "Graphics": {
-          kit.label("QualityLabel", "Quality", { step: "meta", color: token("fgMuted") });
-          const q = kit.radio("Quality", ["Low", "Medium", "High"], QUALITIES.indexOf(s.quality), { horizontal: !phone });
+        case "graphics": {
+          kit.label("QualityLabel", desc.qualityLabel ?? "Quality", { step: "meta", color: token("fgMuted") });
+          const levels = [desc.lowLabel ?? "Low", desc.mediumLabel ?? "Medium", desc.highLabel ?? "High"];
+          const q = kit.radio("Quality", levels, QUALITIES.indexOf(s.quality), { horizontal: !phone });
           s.quality = QUALITIES[q.selected] ?? "medium";
-          s.showFps = (kit.toggle("Fps", s.showFps, "Show frame rate") as Api.ToggleResult).on;
-          s.reducedMotion = (kit.toggle("Motion", s.reducedMotion, "Reduce motion") as Api.ToggleResult).on;
-          s.highContrast = (kit.toggle("Contrast", s.highContrast, "High contrast") as Api.ToggleResult).on;
+          s.showFps = (kit.toggle("Fps", s.showFps, desc.fpsLabel ?? "Show frame rate") as Api.ToggleResult).on;
+          s.reducedMotion = (kit.toggle("Motion", s.reducedMotion, desc.motionLabel ?? "Reduce motion") as Api.ToggleResult).on;
+          s.highContrast = (kit.toggle("Contrast", s.highContrast, desc.contrastLabel ?? "High contrast") as Api.ToggleResult).on;
           break;
         }
-        case "Controls": {
-          s.sensitivity = sliderRow("Sensitivity", "Sensitivity", s.sensitivity, { min: 0.1, max: 3, step: 0.1 }, s.sensitivity.toFixed(1));
-          s.invertY = kit.checkbox("Invert", s.invertY, "Invert vertical look").on;
-          s.vibration = kit.checkbox("Vibration", s.vibration, "Vibration").on;
+        case "controls": {
+          s.sensitivity = sliderRow("Sensitivity", desc.sensitivityLabel ?? "Sensitivity", s.sensitivity, { min: 0.1, max: 3, step: 0.1 }, s.sensitivity.toFixed(1));
+          s.invertY = kit.checkbox("Invert", s.invertY, desc.invertLabel ?? "Invert vertical look").on;
+          s.vibration = kit.checkbox("Vibration", s.vibration, desc.vibrationLabel ?? "Vibration").on;
           if (s.bindings.length > 0) {
             kit.divider("Rule", false);
             kit.scroll("Bindings", { width: grow(), height: grow() }, () => {
@@ -92,7 +100,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           }
           break;
         }
-        case "Language": {
+        case "language": {
           const at = Math.max(0, languages.findIndex((l) => l.code === s.language));
           const r = kit.radio("Languages", languages.map((l) => l.label ?? l.code ?? ""), at, {});
           s.language = languages[r.selected]?.code ?? s.language;
@@ -101,7 +109,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
       }
     });
     kit.row("Footer", { width: grow(), align: "end" }, () => {
-      if ((kit.button("Done", "Done", { variant: "primary" }) as Api.Response).clicked) closed = true;
+      if ((kit.button("Done", desc.doneLabel ?? "Done", { variant: "primary" }) as Api.Response).clicked) closed = true;
     });
   });
   if (m.dismissed) closed = true;

@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# A landing or a turn: a few puffs of dust along the ground.
+maxParticles 16
+shape box 0.6 0.05 0
+spread 70
+rate 0
+burst 0 6
+duration 0.1
+looping false
+lifetime 0.3 0.5
+speed 0.6 1.4
+size 0.18 0.32
+sizeOverLife 0 0.6 1 0
+colorOverLife {
+  key 0 0.58 0.48 0.38 0.9
+  key 1 0.58 0.48 0.38 0
+}
+gravity 0 0.6 0
+drag 3
+texture "fx/puff.png"
+render sprite 4

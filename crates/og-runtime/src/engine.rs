@@ -457,6 +457,8 @@ pub(crate) struct State {
     /// and their assets (replayed into a reload's world).
     pub feel: Option<super::feel::Feel>,
     pub feel_assets: super::feel::FeelAssets,
+    /// A world.restore asked for inside a tick, applied when it ends.
+    pub pending_restore: Option<super::save::Pending>,
 }
 
 pub(crate) struct Engine {
@@ -1120,6 +1122,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         anim_assets: Default::default(),
         feel: Some(a.feel.clone()),
         feel_assets: Default::default(),
+        pending_restore: None,
     };
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));

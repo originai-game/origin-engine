@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a rising vibrato sweep with an arpeggio: og.load.sound(world, "<this file>") plays it.
+preset "powerup"
+seed 2
+pitch 1.2
+length 1
+volume 0.9

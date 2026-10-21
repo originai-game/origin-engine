@@ -9,6 +9,12 @@
 //! tint. Packs: the six of templates/ui-kit and Ember Vale's copy of the
 //! fantasy pack (templates/archetypes/third-person, `ember`).
 //!
+//! A second test draws every pack's primary and secondary buttons through
+//! og-render with the pack's own cooked fonts and reads each label, in
+//! every state, from the frame as og polish does: the colours above can be
+//! right while the strokes never take them (the pixel pack's primary
+//! labels, hollowbell FINDINGS #20, fixed).
+//!
 //! Two bars. A label on a surface (a screen, a panel, a dialog) reaches
 //! WCAG's 4.5:1 here, as og polish wants it in the frame. A button's label
 //! reaches 7:1 (WCAG AAA) here: a 13 to 15 px label drawn by MSDF over a
@@ -526,6 +532,329 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 if panel.is_some() && tone == Tone::Accent && r < LABEL_BAR {
                     failing.push(format!(
                         "{name}: a {tone_name} badge on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
+                    ));
+                }
+            }
+        }
+    }
+    println!("{}", rows.join("\n"));
+    assert!(failing.is_empty(), "{}", failing.join("\n"));
+}
+
+// ── the labels as the frame shows them ──────────────────────────────────────
+//
+// The test above reads the colours og-ui asks for, which a label's thin
+// strokes may never reach on screen: the pixel pack's DotGothic16 draws
+// one-pixel strokes that fall between device pixels, so no pixel took more
+// than about half the ink, and its gold primary labels (Resume, New game,
+// Buy) read 2.86:1 to 3.04:1 in og polish's frames while the colours above
+// read 9:1 (hollowbell FINDINGS #20; `textWeight body 0.5` with the font at
+// `px_range 8` fixed it). So every pack's primary and secondary buttons are
+// also drawn headless with the pack's own atlas and fonts as the cook makes
+// them, at 1 device pixel per CSS pixel (the worst case: a phone's 3 gives
+// a stroke three pixels), and measured as og polish measures a frame
+// (packages/engine/src/node/polish.ts `textBoxes`): inside the button (its
+// sides left out: `frame_contrast`), the ground is the median luminance and the ink the 1 % of pixels farthest
+// from it. Every label, in every state, reaches 4.5:1.
+
+use og_cook::runtime::{Bundle, CookedFont};
+use og_cook::{CookOptions, cook_project};
+use og_core::glam::Vec3;
+use og_render::{Background, Glyph, Kern, MsdfFont, RenderDesc, RenderTarget, Renderer, Tonemap};
+use og_ui::shape::FontFile;
+use std::sync::Arc;
+
+/// Every pack's fonts cooked into one scratch project with the pack's own
+/// import settings: `(pack, [body, display])`.
+fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-pack-fonts");
+    let _ = std::fs::remove_dir_all(&root);
+    let mut wanted = Vec::new();
+    for (name, dir) in packs() {
+        let file = parse_skin(&std::fs::read_to_string(dir.join("skin.ogt")).expect("skin.ogt"))
+            .expect("parses");
+        let base = |i: usize| {
+            let f = file.fonts[i]
+                .clone()
+                .unwrap_or_else(|| panic!("{name}: font {i}"));
+            f.rsplit('/').next().expect("a file name").to_string()
+        };
+        let files = [base(0), base(1)];
+        for f in &files {
+            let dst = root.join("assets/skins").join(&name).join(f);
+            std::fs::create_dir_all(dst.parent().expect("dir")).expect("dir");
+            std::fs::copy(dir.join(f), &dst).unwrap_or_else(|e| panic!("{name}/{f}: {e}"));
+            let settings = dir.join(format!("{f}.ogt"));
+            if settings.exists() {
+                std::fs::copy(&settings, dst.with_file_name(format!("{f}.ogt"))).expect("settings");
+            }
+        }
+        wanted.push((name, files));
+    }
+    let report = cook_project(&root, &CookOptions::default()).expect("cook");
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).expect("bundle");
+    wanted
+        .into_iter()
+        .map(|(name, [body, display])| {
+            let load = |f: &str| {
+                bundle
+                    .load_font(&format!("skins/{name}/{f}"))
+                    .unwrap_or_else(|e| panic!("{name}/{f}: {e:?}"))
+            };
+            let fonts = [load(&body), load(&display)];
+            (name, fonts)
+        })
+        .collect()
+}
+
+/// A cooked font in the scene as og-runtime adds it (one page, kerned).
+fn add_cooked(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
+    assert_eq!(f.pages.len(), 1, "{}: one page", f.id);
+    let atlas = scene.add_texture(TextureData {
+        mips: Mips::None,
+        color_space: ColorSpace::Linear,
+        ..f.pages[0].clone()
+    });
+    let m = &f.meta;
+    let font = MsdfFont {
+        atlas,
+        distance_range: m.px_range,
+        line_height: m.ascender - m.descender + m.line_gap,
+        glyphs: f
+            .glyphs
+            .iter()
+            .filter_map(|g| {
+                Some(Glyph {
+                    codepoint: char::from_u32(g.codepoint)?,
+                    advance: g.advance,
+                    plane_bounds: [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top],
+                    atlas_bounds: [
+                        g.atlas_x as f32,
+                        g.atlas_y as f32,
+                        (g.atlas_x + g.atlas_w) as f32,
+                        (g.atlas_y + g.atlas_h) as f32,
+                    ],
+                })
+            })
+            .collect(),
+        kerning: f
+            .kerning
+            .iter()
+            .filter_map(|k| {
+                Some(Kern {
+                    left: char::from_u32(k.left)?,
+                    right: char::from_u32(k.right)?,
+                    adjust: k.adjust,
+                })
+            })
+            .collect(),
+    };
+    let metrics = FontMetrics::from_msdf(&font)
+        .with_file(f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))));
+    UiFont {
+        handle: Some(scene.add_font(font)),
+        metrics,
+    }
+}
+
+/// og polish's luminance of an sRGB byte triple.
+fn byte_luminance(p: &[u8]) -> f32 {
+    luminance([0, 1, 2].map(|k| lin(f32::from(p[k]) / 255.0)))
+}
+
+/// og polish's reading of the text in `r` (CSS px at dpr 1): the ground's median
+/// luminance against the mean of the 1 % of pixels farthest from it, on the
+/// side most of them are. `None`: no ink.
+fn frame_contrast(pixels: &[u8], width: u32, r: &Rect) -> Option<f32> {
+    // og polish insets a wide box's rounded ends; this also leaves out a
+    // button's sides, where its frame's border and a press's squash (the
+    // panel showing inside the layout rect) sit, which polish, reading
+    // still frames, would count as the label's ink.
+    let ix = if r.width > 3.0 * r.height {
+        (r.height / 2.0).min(12.0)
+    } else {
+        0.0
+    }
+    .max(0.15 * r.width);
+    let iy = r.height * 0.12;
+    let (x0, y0) = ((r.x + ix).floor() as u32, (r.y + iy).floor() as u32);
+    let (x1, y1) = (
+        (r.x + r.width - ix).ceil() as u32,
+        (r.y + r.height - iy).ceil() as u32,
+    );
+    let mut lum = Vec::new();
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y * width + x) * 4) as usize;
+            lum.push(byte_luminance(&pixels[i..i + 3]));
+        }
+    }
+    let mut sorted = lum.clone();
+    sorted.sort_by(f32::total_cmp);
+    let ground = sorted[sorted.len() / 2];
+    let mut dev: Vec<f32> = lum.iter().map(|v| (v - ground).abs()).collect();
+    let far = {
+        let mut d = dev.clone();
+        d.sort_by(f32::total_cmp);
+        d[((d.len() - 1) as f32 * 0.99).round() as usize]
+    };
+    if far < 0.01 {
+        return None;
+    }
+    let (mut up, mut down, mut up_sum, mut down_sum) = (0, 0, 0.0f32, 0.0f32);
+    for (k, d) in dev.iter_mut().enumerate() {
+        if *d < far {
+            continue;
+        }
+        if lum[k] > ground {
+            up += 1;
+            up_sum += lum[k];
+        } else {
+            down += 1;
+            down_sum += lum[k];
+        }
+    }
+    let ink = if up >= down {
+        up_sum / up.max(1) as f32
+    } else {
+        down_sum / down.max(1) as f32
+    };
+    Some((ink.max(ground) + 0.05) / (ink.min(ground) + 0.05))
+}
+
+#[test]
+fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() {
+    let fonts = cooked_fonts();
+    let mut rows = Vec::new();
+    let mut failing = Vec::new();
+    for ((name, dir), (fname, [body, display])) in packs().into_iter().zip(&fonts) {
+        assert_eq!(&name, fname);
+        let file = parse_skin(&std::fs::read_to_string(dir.join("skin.ogt")).expect("skin.ogt"))
+            .expect("parses");
+        let img = image::open(dir.join("atlas.png"))
+            .expect("atlas.png")
+            .to_rgba8();
+        let labels = [("Primary", "New game"), ("Secondary", "Settings")];
+        for state in ["rest", "hovered", "pressed"] {
+            for (id, _) in labels {
+                let mut scene = RenderScene::new();
+                let skin_atlas = scene.add_texture(TextureData {
+                    width: img.width(),
+                    height: img.height(),
+                    rgba: img.as_raw().clone(),
+                    color_space: ColorSpace::Srgb,
+                    mips: Mips::None,
+                });
+                let shapes = scene.add_texture(og_ui::atlas_texture());
+                let mut ui = Ui::new(UiDesc {
+                    fonts: Fonts {
+                        body: add_cooked(&mut scene, body),
+                        display: Some(add_cooked(&mut scene, display)),
+                        ..Fonts::default()
+                    },
+                    ..UiDesc::default()
+                });
+                ui.set_theme(file.theme(Some(skin_atlas), [0; 6]));
+                let vp = Viewport::new(640.0, 360.0);
+                let step = |ui: &mut Ui, input: InputFrame| {
+                    ui.begin(input, vp);
+                    let surface = ui.theme().palette.surface;
+                    ui.panel(
+                        "G",
+                        PanelDesc {
+                            background: Some(surface),
+                            ..PanelDesc::default()
+                        },
+                        |ui| {
+                            for ((id, text), (_, variant)) in labels.iter().zip(&ROLES[..2]) {
+                                ui.button(
+                                    *id,
+                                    text,
+                                    ButtonDesc {
+                                        variant: *variant,
+                                        ..ButtonDesc::default()
+                                    },
+                                );
+                            }
+                        },
+                    );
+                    ui.end();
+                };
+                for _ in 0..40 {
+                    step(&mut ui, InputFrame::default());
+                }
+                let path = format!("G/{id}");
+                let (x, y) = ui.frame().element(&path).expect("the button").center();
+                let at = InputFrame {
+                    pointer: Vec2::new(x, y),
+                    pointer_inside: true,
+                    ..InputFrame::default()
+                };
+                match state {
+                    "hovered" => (0..20).for_each(|_| step(&mut ui, at.clone())),
+                    "pressed" => {
+                        step(
+                            &mut ui,
+                            InputFrame {
+                                down: true,
+                                pressed: true,
+                                ..at.clone()
+                            },
+                        );
+                        for _ in 0..20 {
+                            step(
+                                &mut ui,
+                                InputFrame {
+                                    down: true,
+                                    ..at.clone()
+                                },
+                            );
+                        }
+                    }
+                    _ => step(&mut ui, InputFrame::default()),
+                }
+                let e = ui.frame().element(&path).expect("the button");
+                let rect = Rect::new(e.x, e.y, e.width, e.height);
+                let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+                ui.frame().emit(
+                    &EmitDesc {
+                        atlas: shapes,
+                        layer: 0,
+                    },
+                    &mut overlay,
+                );
+                scene.overlay = Some(overlay);
+                let bg = ui.theme().palette.bg.linear();
+                scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+                scene.post.tonemap = Tonemap::None;
+                let desc = RenderDesc {
+                    width: vp.width as u32,
+                    height: vp.height as u32,
+                    ..RenderDesc::default()
+                };
+                let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+                renderer
+                    .render(&scene, &RenderTarget::Offscreen)
+                    .expect("render");
+                let image = renderer.read_offscreen().expect("read back");
+                if std::env::var_os("OG_UI_PACK_FRAMES").is_some() {
+                    let f = out_dir().join(format!("pack-label-{name}-{id}-{state}.png"));
+                    image::save_buffer(
+                        &f,
+                        &image.pixels,
+                        image.width,
+                        image.height,
+                        image::ColorType::Rgba8,
+                    )
+                    .expect("write frame");
+                }
+                let r = frame_contrast(&image.pixels, image.width, &rect)
+                    .unwrap_or_else(|| panic!("{name}: no ink in the {id} button, {state}"));
+                rows.push(format!("{name:8} {id:9} {state:7} in the frame {r:6.2}:1"));
+                if r < LABEL_BAR {
+                    failing.push(format!(
+                        "{name}: the {id} button's label, {state}, reads {r:.2}:1 in the frame (under {LABEL_BAR}:1)"
                     ));
                 }
             }

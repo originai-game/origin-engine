@@ -94,6 +94,7 @@ pub const SCENES: &[&str] = &[
     "stylise-toon-physical",
     "sprites-untonemapped",
     "stylise-bands-tint",
+    "tilemap-lit",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -480,6 +481,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
         "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
         // Untonemapped sprites under TAA (its history carries the alpha).
+        // A dark cave of tile layers lit by two Light2d with occluders,
+        // a window's sky layer opting out (hollowbell FINDINGS #9).
+        "tilemap-lit" => g.scene = fx::tilemap_lit_scene(),
         "sprites-untonemapped" => {
             g.scene = crate::stylise_scenes::untonemapped_sprites_scene();
             g.desc.antialias = Antialias::Tier;
@@ -2043,6 +2047,7 @@ pub fn tilemap_256() -> RenderScene {
             color: [1.0; 4],
             repeat: [None, None],
             time: 0.0,
+            lit: true,
         });
     }
     scene.camera = Camera::orthographic_2d(Vec2::new(64.0, 128.0), 45.0);

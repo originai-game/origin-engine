@@ -207,6 +207,18 @@ impl<'w> SystemContext<'w> {
         }
     }
 
+    /// The whole world as [`World::snapshot`] writes it, as this system sees
+    /// it: what earlier systems wrote this tick is in it; the structural
+    /// changes this system queued (they apply when it returns) are not.
+    pub fn snapshot(&self) -> Vec<u8> {
+        self.world.snapshot_in_system()
+    }
+
+    /// [`World::check_snapshot`] for a restore this system asks for.
+    pub fn check_snapshot(&self, bytes: &[u8], migrate: bool) -> Result<()> {
+        self.world.check_snapshot(bytes, migrate)
+    }
+
     pub fn name(&self) -> &str {
         &self.system.name
     }

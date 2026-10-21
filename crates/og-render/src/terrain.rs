@@ -1846,13 +1846,13 @@ fn terrain_passes(
     }
 }
 
-const TERRAIN_WGSL: &str = include_str!("../shaders/terrain.wgsl");
+const TERRAIN_WGSL: &str = wgsl!("terrain.wgsl");
 
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
         "{frame}{tables}{lighting}{TERRAIN_WGSL}{}",
-        include_str!("../shaders/terrain_lit.wgsl")
+        wgsl!("terrain_lit.wgsl")
     )
 }
 
@@ -1892,7 +1892,7 @@ pub(crate) fn terrain_lit_array_source(standard: &str) -> String {
         .find("fn layer_albedo(")
         .expect("terrain_lit.wgsl's layer_albedo");
     let end = s[start..]
-        .find("// The weight of a rule")
+        .find("fn band(")
         .map(|e| start + e)
         .expect("terrain_lit.wgsl's layer_normal_map ends before band");
     format!(
@@ -1923,7 +1923,7 @@ pub(crate) fn terrain_shadow_source() -> String {
     format!(
         "{TERRAIN_WGSL}{}{}",
         crate::SHADOW_PASS_WGSL,
-        include_str!("../shaders/terrain_shadow.wgsl")
+        wgsl!("terrain_shadow.wgsl")
     )
 }
 
@@ -1951,7 +1951,7 @@ mod tests {
         assert_eq!(array.matches("texture_2d_array<f32>;").count(), 5);
         assert!(array.contains("i32(terrain.layers[i].slope.w)"));
         assert!(array.contains("i32(terrain.layers[i].altitude.w)"));
-        let tail = |s: &str| s[s.find("// The weight of a rule").unwrap()..].to_string();
+        let tail = |s: &str| s[s.find("fn band(").unwrap()..].to_string();
         assert_eq!(tail(&array), tail(&standard));
         assert!(!terrain_shadow_array_source().contains("albedo0"));
     }

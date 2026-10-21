@@ -6,6 +6,8 @@ The command channel: actions scheduled on simulation time, from `og run --comman
 
 Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds.
 
+Outputs are relative to the output directory: an absolute path, a `..` component or a name starting with `.` (kept for the harness, such as a playtest's kept store) is refused. A file an earlier step of the script wrote is never overwritten: the later step's is written as `<stem>-2.<ext>` with a warning naming both steps.
+
 - **TypeScript**: functions are the namespace `og.commands`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
 - **Skill**: `og-build`, which teaches the module (how much of it to use, and how to prove it).
@@ -16,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9980</sub>
+<sub>`api.ogt` line 10079</sub>
 
 ## Contents
 
@@ -65,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 10055</sub>
+<sub>`api.ogt` line 10155</sub>
 
 <a id="fn-parse"></a>
 
@@ -93,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 10063</sub>
+<sub>`api.ogt` line 10163</sub>
 
 <a id="fn-help"></a>
 
@@ -121,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 10069</sub>
+<sub>`api.ogt` line 10169</sub>
 
 <a id="fn-schedule"></a>
 
@@ -151,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 10075</sub>
+<sub>`api.ogt` line 10175</sub>
 
 ## Types
 
@@ -185,8 +187,8 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"dump_world"` | `dump_world[:path]`: tables, systems and their matched counts. |
 | `"dump_entity"` | `dump_entity:<name>[:path]`: one entity's components and transform. |
 | `"dump_ui"` | `dump_ui[:path]`: the UI tree with bounds. |
-| `"set"` | `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped. |
-| `"get"` | `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...). |
+| `"set"` | `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped. |
+| `"get"` | `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (an enum as its variant's name, `"music"`; og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...). |
 | `"seed"` | `seed:<n>`: reseed the Rng resource. |
 | `"pause"` | `pause`: hold the clock; advance still steps. |
 | `"resume"` | `resume`: release the clock. |
@@ -217,8 +219,8 @@ enum CoreAction {
   variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
   variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
   variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
-  variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector; refused outside the field's FieldOptions min/max, never clamped."
-  variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...)."
+  variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped."
+  variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (an enum as its variant's name, `\"music\"`; og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...)."
   variant seed "`seed:<n>`: reseed the Rng resource."
   variant pause "`pause`: hold the clock; advance still steps."
   variant resume "`resume`: release the clock."
@@ -228,7 +230,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 9986</sub>
+<sub>`api.ogt` line 10086</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -255,7 +257,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 10018</sub>
+<sub>`api.ogt` line 10118</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -279,7 +281,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 10024</sub>
+<sub>`api.ogt` line 10124</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -304,7 +306,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 10031</sub>
+<sub>`api.ogt` line 10131</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -329,7 +331,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 10040</sub>
+<sub>`api.ogt` line 10140</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -352,4 +354,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 10048</sub>
+<sub>`api.ogt` line 10148</sub>

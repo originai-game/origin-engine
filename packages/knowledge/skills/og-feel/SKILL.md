@@ -14,6 +14,14 @@ engine ships in TypeScript); sprites, flipbooks, tilemaps and floating text
 are og-game's (§8, §10). This skill is how much of each to use, and how to
 prove it.
 
+## What works
+
+In Hollowbell (`examples/hollowbell`, a 2D platformer written from this
+package alone) `og polish` measured every input answered within a tick and every damage moment with hit stop,
+shake, a number and a sound (feel 92; Lantern Vale, a 3D adventure, 90).
+An `og.CameraZone` held its boss arena, and flipbook frame events put the
+footsteps and the strikes on their exact frames.
+
 ## 1. Answer on the same tick
 
 - Read input in a system and act in **the same tick**: start the jump, the
@@ -58,6 +66,11 @@ moving. It never shortens one already running.
 
 - Pair a hit stop with a flash (`og.tween.flash`, 0.08–0.15 s) and a small
   shake; the stop is what sells the contact.
+- Pair it with a knock-back too: on the hit's tick set the
+  character's `og.PlatformerController.impulse` to `{ x: away * 6, y: 7 }`
+  (m/s; taken once on the next step, so it flies when the stop ends) and
+  hold its `moveX` at 0 for 10–15 ticks; a dynamic body takes it as
+  `og.Velocity` (`linear` away and up).
 - Slow motion: `og.time.setScale(world, 0.3)` for a last kill or a near
   miss, then back to 1 after 0.5–1 s of real time (count ticks, not
   scaled time). Never leave the scale below 1 by accident: assert it in a

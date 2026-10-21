@@ -8,6 +8,15 @@ plays while `playing` is true, the tick sends commands to the mixer, and
 the same script renders the same samples on every host. The API is in
 `reference/audio.md`; this skill is how much of each to use.
 
+## What works
+
+Two games written from this package alone (`examples/lantern-vale`,
+`examples/hollowbell`) put this skill to work: Lantern Vale's four-minute
+track, cooked in 4-second chunks, streams from the title screen under the
+effects' duck, Hollowbell's music streams the same way, flipbook frame
+events put Hollowbell's footsteps, strikes and bell on their exact frames,
+and `og polish` heard a sound on every damage moment.
+
 ## 1. Every event sounds
 
 A game with no sound feels broken, whatever it shows. Before anything else,

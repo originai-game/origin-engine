@@ -360,7 +360,7 @@ impl GlassPasses {
 pub(crate) const PYRAMID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// The glass passes' module (`crate::shaders` validates it).
-pub(crate) const GLASS_WGSL: &str = include_str!("../shaders/glass.wgsl");
+pub(crate) const GLASS_WGSL: &str = wgsl!("glass.wgsl");
 
 #[cfg(test)]
 mod tests {

@@ -76,8 +76,17 @@ export function boundHost(): HostBinding | null {
   return host;
 }
 
+/**
+ * Counts engine calls made through `abi()` and dispatches (game code entered
+ * or left): the engine changes a resource only inside one of them, so a
+ * resource handle's read made while the count holds is still the store's
+ * value (liveResource).
+ */
+let engineCalls = 0;
+
 function abi(): HostAbi<Uint32Array, unknown> {
   if (!host) throw new Error("no engine host is loaded: start the game through @origingame/engine's web or node loader");
+  engineCalls++;
   return host.abi;
 }
 
@@ -466,25 +475,45 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
       fork: (label: string) => (checkAccess("read", "og.Rng"), rngStream(abi().og_rng_fork(id, label))),
     });
   }
-  if (token.name === "og.Time") return Object.freeze({ ...value });
+  // Every getter reads through to the store, so two handles of one resource,
+  // or a handle read after a system (or the probe, or a look) wrote the
+  // resource, agree with `get:` (hollowbell FINDINGS #6). A read is one
+  // engine call answering the whole record, kept while no other engine call
+  // or dispatch happened since (`engineCalls`): a field read in a loop over
+  // rows costs that one call.
+  const name = token.name;
+  let last = value;
+  let at = engineCalls;
+  const read = (): Record<string, unknown> => {
+    if (at === engineCalls) return last;
+    // Undeclared in a publish build: the engine refuses and logs it once; the
+    // handle answers what it last read and the game keeps running.
+    if (name !== "og.Time" && !checkAccess("read", name)) return last;
+    const answer = parse<Result<Record<string, unknown>>>(host!.abi.og_world_resource(id, name));
+    if (answer.ok) {
+      last = answer.value;
+      at = engineCalls;
+    }
+    return last;
+  };
   const out: Record<string, unknown> = {};
   const readonly = new Set(
-    ((bindings.resources as Array<{ schema: string; fields: Array<{ name: string; readonly?: boolean }> }>).find((r) => r.schema === token.name)?.fields ?? [])
+    ((bindings.resources as Array<{ schema: string; fields: Array<{ name: string; readonly?: boolean }> }>).find((r) => r.schema === name)?.fields ?? [])
       .filter((f) => f.readonly)
       .map((f) => f.name),
   );
   for (const key of Object.keys(value)) {
+    const get = () => read()[key];
     const setter = (v: unknown) => {
       // Undeclared in a publish build: the engine refuses and logs it once; the game keeps running.
-      if (!checkAccess("write", token.name)) return void abi().og_engine_write_resource(id, token.name, JSON.stringify({ [key]: v }));
-      const answer = parse<Result<void>>(abi().og_engine_write_resource(id, token.name, JSON.stringify({ [key]: v })));
-      if (!answer.ok) throw new Error(`${token.name}.${key}: ${answer.reason}`);
-      value[key] = v;
+      if (!checkAccess("write", name)) return void abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: v }));
+      const answer = parse<Result<void>>(abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: v })));
+      if (!answer.ok) throw new Error(`${name}.${key}: ${answer.reason}`);
     };
     Object.defineProperty(
       out,
       key,
-      readonly.has(key) ? { enumerable: true, get: () => value[key] } : { enumerable: true, get: () => value[key], set: setter },
+      name === "og.Time" || readonly.has(key) ? { enumerable: true, get } : { enumerable: true, get, set: setter },
     );
   }
   if (token.name === "og.Input") {
@@ -601,6 +630,14 @@ export class WorldImpl {
     return parse(abi().og_world_find(this.id, name));
   }
 
+  snapshot(): Result<string> {
+    return parse(abi().og_world_snapshot(this.id));
+  }
+
+  restore(save: string, desc?: unknown): Result<void> {
+    return structural(parse(abi().og_world_restore(this.id, save, json(desc))));
+  }
+
   nameOf(entity: number): string | null {
     return parse(abi().og_world_name_of(this.id, entity));
   }
@@ -650,6 +687,7 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   const fn = callbacks[id];
   const world = worldFor(engine);
   const outer = running;
+  engineCalls++;
   try {
     if (kind === 0) {
       const system = systems.get(id);
@@ -676,6 +714,7 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   } finally {
     running = outer;
     epoch++;
+    engineCalls++;
   }
 };
 

@@ -13,6 +13,16 @@ and every call works (or answers `unavailable`) everywhere, so the game
 never branches on where it runs. The API is in `reference/platform.md`;
 the platform's `og-platform` skill is the Player and readiness side.
 
+## What works
+
+Hollowbell (`examples/hollowbell`, written from this package alone) keeps
+its run in the store (`og.platform.storeSet` at the revision it read, a
+conflict read again and written back) and proves Continue across a
+relaunch with a `store: "keep"` playtest; Lantern Vale
+(`examples/lantern-vale`) keeps its settings through
+`og.platform.saveSettings`. The relaunch worked the first time it was
+asked for as §4 says.
+
 ## 1. Requests, answered later
 
 Every call returns a request number at once; the answer arrives at the
@@ -55,7 +65,7 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 
 | Need | Call | Notes |
 |---|---|---|
-| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })` | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
+| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })`; the whole world as one value: `world.snapshot()` text, back with `world.restore` (og-game §17) | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
 | Volume, controls, language | `loadSettings(world)`, `saveSettings(world, settings)` | the key `og.settings`, last save wins, local fallback when offline |
 | A leaderboard | `leaderboardSubmit(world, { board, score })`, `leaderboardTop`, `leaderboardAround` | the board keeps the player's best; show "around me" as well as the top |
 | Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; a name of 1–64 letters, digits, `.` and `_` (the Player files it as `game.custom.<name>`), at most 16 scalar attributes; never personal data |
@@ -90,7 +100,8 @@ trying.
   (it then moves with the ticks); a playtest runs at 2026-01-01 00:00 UTC
   unless its `clock` says otherwise.
 - A relaunch across processes: a playtest with `store: "keep"` keeps one
-  local store for its run and its `then` steps (`{ commands, clock }`,
+  local store (`<out>/.store/platform.json`, a dot name no step's output
+  may take, so `dump_platform:platform.json` is safe) for its run and its `then` steps (`{ commands, clock }`,
   each a fresh `og run`), and `check` reads each step's run in
   `run.then[n]` (`templates/archetypes/idle/tests/away.og.ts`: saved at
   `clock`, launched two hours later). A command that relaunches in the

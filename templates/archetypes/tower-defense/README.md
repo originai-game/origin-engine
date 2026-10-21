@@ -229,10 +229,11 @@ them; the skin's are in `assets/skins/pathguard/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 
-- og.ui's `settingsScreen` and `resultsScreen` carry English labels of their
-  own ("Master", "Done", "Best", "New best"), so this game builds its
-  settings dialog and its end card from widgets to keep every string in its
-  tables.
+- og.ui's `settingsScreen` and `resultsScreen` carried English labels of
+  their own ("Master", "Done", "Best", "New best") when this game was
+  written, so it builds its settings dialog and its end card from widgets to
+  keep every string in its tables (both now take a field for each of their
+  words: og-i18n §2).
 - A system may only `world.get`/`world.set` the components its query
   declares, and declaring one narrows the query, so a placement is written
   to the map's pads layer and the `Plants` system, which owns the plant

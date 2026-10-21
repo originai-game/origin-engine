@@ -67,7 +67,7 @@ export interface PlaytestDesc {
   readonly clock?: number;
   /**
    * `keep`: every process of this playtest (the script, its `runs` and its `then` steps)
-   * answers og.platform from one local store, `<out>/platform.json`, empty when the playtest
+   * answers og.platform from one local store, `<out>/.store/platform.json` (a dot name, which no step's output may take), empty when the playtest
    * starts, so a later process sees what an earlier one saved (a relaunch). Omitted: each
    * process has its own store in memory.
    */

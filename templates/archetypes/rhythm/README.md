@@ -229,5 +229,7 @@ are in `assets/skins/lanebeat/LICENSES.md`.
 - A gamepad's press has no time within the tick: the shell polls the
   pads once a display frame, so a pad press is judged at its tick's start
   (keys and fingers carry the host's event time).
-- og.ui's `resultsScreen` and `settingsScreen` carry English labels of
-  their own, so this game builds its results and settings from widgets.
+- og.ui's `resultsScreen` and `settingsScreen` carried English labels of
+  their own when this game was written, so it builds its results and
+  settings from widgets (both now take a field for each of their words:
+  og-i18n §2).

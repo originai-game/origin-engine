@@ -125,7 +125,9 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
   Web scaffold's `rng.ts` and `rng.rs` test vectors are inherited).
 - Snapshot and restore of the whole world (components, resources, rng
   states, pending events) to a blob; `sweep`, hot reload and `feel_compare`
-  are built on it.
+  are built on it, and so are a game's saves (`world.snapshot` and
+  `world.restore`, in every build: the blob as text for the platform store,
+  restored with the session kept).
 - Floating point: simulation uses `f32` with the same operations on both
   hosts; the engine ships its own `sin`/`cos`/`atan2`/`exp` so results do not
   depend on the host's `Math`. Physics (rapier) is built with its
@@ -208,6 +210,9 @@ lighting falls back to a forward tile table built on the CPU).
   blendshapes.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
+  A kinematic body with an `og.Velocity` moves by it each tick and its
+  Transform is written back (one without stays where its Transform puts
+  it): one rule for the API docs, the skills and the physics README.
 - **Navigation**: navmesh baked at cook time or at runtime for procedural
   levels; path queries and crowd steering as engine systems.
 - **Audio**: the mixer runs in wasm; on the web the engine Worker feeds an

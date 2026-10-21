@@ -4,7 +4,7 @@ version 1
 # The characters the UI kit's string tables use (tools/make-locale-fonts.py).
 font {
   charset ascii cjk-punct
-  chars "。いかきこさしすせちつづでとなにのはまらるれわをんイエオキギクコジスセットニバブプメャュョラリルレロン・ー一中了停元再冒削古失定小屋戻時枚止水況状終行設車進開除険？"
+  chars "。あいかきこさしすせちつづてでとなにのはべまみらりるれわをんィイエオキギクグコシジスセタッデトニハバフブプマミムメャュョラリルレロン・ー一上下中了低作価停元入再冒削効動反古売失完定小屋度感戻所持振操時枚果格楽止水況済減点物状画示終行表視言設語質購足車転進開除険音高？"
   em_px 32
   px_range 4
 }

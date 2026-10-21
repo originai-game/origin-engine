@@ -71,6 +71,10 @@ export interface HostAbi<A, V> {
   og_world_emit(world: number, event: string, payload: string): string;
   /** `World.instantiate` */
   og_world_instantiate(world: number, asset: number, desc: string | undefined): string;
+  /** `World.snapshot` */
+  og_world_snapshot(world: number): string;
+  /** `World.restore` */
+  og_world_restore(world: number, save: string, desc: string | undefined): string;
   /** `Query.archetypes` */
   og_query_archetypes(query: number): string;
   /** `Query.count` */
@@ -647,6 +651,8 @@ export const SYMBOLS: readonly string[] = [
   "og_world_events",
   "og_world_emit",
   "og_world_instantiate",
+  "og_world_snapshot",
+  "og_world_restore",
   "og_query_archetypes",
   "og_query_count",
   "og_archetype_view_get_count",

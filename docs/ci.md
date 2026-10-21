@@ -544,12 +544,18 @@ default method, which is GTAO on the full tier and SSAO on WebGL2
 (og-render's README, "Ambient occlusion by tier"); `sculpted-clay` uses
 it too but stays within tolerance (0.0062) and is judged against
 `metal`. The other 34 are judged against `metal` on WebGL2 since
-cf5f2b9: before it, TAA's history loop drifted sideways on the GL
-backend with a still camera (every edge about a pixel off, which the
+cf5f2b9 and 1a9037a: before them, TAA's history drifted sideways on the
+GL backend with a still camera (every edge about a pixel off, which the
 looks' posterize, ink and outlines turned into whole moved lines: 30
 frames at RMSE 0.010 to 0.046, present since the station joined the
-tiers), and the resolve now decides a still camera on the CPU and reads
-each pixel's own history texel with no GPU reprojection.
+tiers). The cause (1a9037a): wgpu's GL backend binds no sampler to a
+depth texture read with `textureLoad`, GLSL ES treats the texture, left
+on linear filtering, as incomplete and reads 0, so every pixel
+reprojected from the near plane; the resolve now samples the depth
+through a nearest sampler, decides a still camera on the CPU (cf5f2b9)
+and reads each pixel's own history texel. `taa-sharp`, the sliding
+camera, applies on every tier since 1a9037a and is WebGL2's
+moving-camera TAA frame: RMSE 0.00028 against `metal` (WebGPU 0.00024).
 
 `web-reference` also runs Ember Vale (`templates/archetypes/third-person`)
 on both tiers: reference.ts with `--project
@@ -780,8 +786,13 @@ reference belongs to; a lavapipe frame never replaces a Metal reference.
 1. Read the table `size-gate` printed (or `target/evidence/size-gate.json`
    from the CI artifact): which wasm grew and by how much.
 2. Find the growth: `cargo tree -p og-host-web --target wasm32-unknown-unknown -e normal`
-   for new dependencies, and `twiggy top target/og-wasm/opt/<name>.wasm`
-   (`cargo install twiggy`) for the largest functions.
+   for new dependencies, and `scripts/wasm-size-report.sh
+   target/og-wasm/raw/<name>.wasm` for where the bytes are: the module
+   optimised as it ships, then per crate and for the largest functions,
+   each with its brotli alone beside its raw bytes (the optimised module in
+   `target/og-wasm/opt/` keeps no names to read). Rank by brotli: generic
+   copies compress to little more than one copy, so a raw table points at
+   them first and they pay least (tests/evidence/P4/wasm-size/README.md).
 3. Prefer removing the cause: drop or feature-gate the dependency, disable
    default features, move debug-only code behind the non-`publish`
    configuration, avoid generic monomorphization blow-ups.

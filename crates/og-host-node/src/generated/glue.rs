@@ -201,6 +201,18 @@ pub fn og_world_instantiate(env: Env, world: u32, asset: f64, desc: Option<Strin
     <Host as WorldApi>::og_world_instantiate(&Host, world, asset, desc)
 }
 
+#[napi(js_name = "og_world_snapshot")]
+pub fn og_world_snapshot(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_snapshot(&Host, world)
+}
+
+#[napi(js_name = "og_world_restore")]
+pub fn og_world_restore(env: Env, world: u32, save: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_restore(&Host, world, save, desc)
+}
+
 #[napi(js_name = "og_query_archetypes")]
 pub fn og_query_archetypes(env: Env, query: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

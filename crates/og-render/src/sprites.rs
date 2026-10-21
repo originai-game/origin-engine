@@ -298,10 +298,12 @@ pub(crate) struct ViewRect {
 }
 
 /// Appends the instances of a tile layer's chunks inside `view` (all of
-/// them without one), per repeat, and returns (quads, chunks).
+/// them without one), per repeat, and returns (quads, chunks). `lit`: the
+/// tiles take the 2D light map as a lit sprite does.
 fn tile_instances(
     layer: &TileLayer,
     view: Option<ViewRect>,
+    lit: bool,
     out: &mut Vec<SpriteInstance>,
 ) -> (u32, u32) {
     let origin = layer.origin.truncate();
@@ -352,7 +354,7 @@ fn tile_instances(
                     uv_rect: q.uv,
                     color: layer.color,
                     flash: NO_FLASH,
-                    fx: [0.0, 0.0, 0.0],
+                    fx: [0.0, lit as u32 as f32, 0.0],
                     ground: NO_GROUND,
                     layer: 0,
                 });
@@ -689,7 +691,8 @@ pub(crate) fn build<'a>(
             if kind == 0 {
                 let layer = &scene.tile_layers[i];
                 let first = instances.len() as u32;
-                let (q, c) = tile_instances(layer, view, instances);
+                // Lit as the sprites of its layer are, unless it opts out.
+                let (q, c) = tile_instances(layer, view, layer.lit && lit(layer.layer), instances);
                 tiles += q;
                 tile_chunks += c;
                 push(

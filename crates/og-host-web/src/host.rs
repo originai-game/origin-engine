@@ -126,6 +126,12 @@ impl WorldApi for WebHost {
     fn og_world_instantiate(&self, world: u32, asset: f64, desc: Option<String>) -> String {
         rt::og_world_instantiate(world, asset, desc)
     }
+    fn og_world_snapshot(&self, world: u32) -> String {
+        rt::og_world_snapshot(world)
+    }
+    fn og_world_restore(&self, world: u32, save: String, desc: Option<String>) -> String {
+        rt::og_world_restore(world, save, desc)
+    }
     fn og_query_archetypes(&self, query: u32) -> String {
         rt::og_query_archetypes(query)
     }

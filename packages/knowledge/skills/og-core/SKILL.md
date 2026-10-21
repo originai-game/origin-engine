@@ -9,6 +9,15 @@ in the browser (wasm in a Worker) and headless on the native host under
 `og run`. These rules are what makes that true; breaking one produces a game
 that works on one host, one seed or one machine and not the next.
 
+## What works
+
+Two games written from this package alone (`examples/lantern-vale`, a 3D
+adventure, and `examples/hollowbell`, a 2D platformer) hold these rules
+for a whole game, not a toy: each ends a full session run in two processes
+on one world hash, a player's name and a save live in `str` fields as
+world state, and a resource or column a system did not declare is refused
+with the system and the record named, so the fix is one line.
+
 ## 1. Game code is TypeScript, and only TypeScript
 
 A game is `src/*.ts` against `@origingame/engine`. Never add Rust, a second
@@ -42,6 +51,23 @@ is an engine feature request, not something to work around in the game.
   culling: the lanes), and it gives the same result to the bit as one
   thread. Game systems always run on the engine thread, one after another,
   so nothing in game code needs a lock; it needs only the rules above.
+
+### Saving progress
+
+The world is one snapshot: `world.snapshot()` returns it as text
+(`og-save:1:...`: every entity, component, name, resource, rng state,
+pending event and module state, with each type's schema hash) in every
+build, publish included, and `world.restore(save)` puts it back, so the
+restored world hashes as the saved one did, on either host. The session
+stays across a restore (input, the player's volumes, the platform's calls,
+the language, scheduled command steps); og.Time takes the saved tick.
+Inside a system the snapshot is the world as that system sees it (its own
+queued spawns and despawns are not in it) and a restore applies when the
+tick ends. A save whose types' fields changed is refused naming them, or
+mapped by name with `{ migrate: true }`. Only what is in the world is
+saved: progress in module variables is lost. Put the text in the
+platform's store beside what a title screen shows of the slot (og-game
+§17, og-platform-sdk §2).
 
 ## 3. Every failure is a value
 

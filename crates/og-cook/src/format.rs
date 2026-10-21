@@ -859,6 +859,9 @@ pub mod layer_flag {
     pub const REPEAT_Y: u32 = 8;
     /// A terrain layer: `terrain_*` names its terrain.
     pub const TERRAIN: u32 = 16;
+    /// Kept out of 2D lighting (`og_tilemap::Layer::lit` false). A clear
+    /// bit is lit, so blobs cooked before it light their layers.
+    pub const UNLIT: u32 = 32;
 }
 
 row!(

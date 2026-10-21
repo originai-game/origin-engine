@@ -233,6 +233,61 @@ fn other_layout(name: &str) -> Error {
     )
 }
 
+/// How a saved type's fields differ from this world's: ` (Game.coins
+/// added; Game.gold removed; Game.speed f32 -> f64)`, empty when only the
+/// metadata differs.
+fn layout_difference(saved: &Schema, now: &Schema) -> String {
+    let mut parts = Vec::new();
+    let added: Vec<String> = now
+        .fields
+        .iter()
+        .filter(|f| !saved.fields.iter().any(|s| s.name == f.name))
+        .map(|f| format!("{}.{}", now.name, f.name))
+        .collect();
+    let removed: Vec<String> = saved
+        .fields
+        .iter()
+        .filter(|s| !now.fields.iter().any(|f| f.name == s.name))
+        .map(|s| format!("{}.{}", now.name, s.name))
+        .collect();
+    if !added.is_empty() {
+        parts.push(format!("{} added", added.join(", ")));
+    }
+    if !removed.is_empty() {
+        parts.push(format!("{} removed", removed.join(", ")));
+    }
+    for f in &now.fields {
+        if let Some(s) = saved.fields.iter().find(|s| s.name == f.name) {
+            if s.ty != f.ty {
+                parts.push(format!(
+                    "{}.{} {} -> {}",
+                    now.name,
+                    f.name,
+                    s.ty.name(),
+                    f.ty.name()
+                ));
+            } else if s.variants != f.variants {
+                parts.push(format!("{}.{}'s variants changed", now.name, f.name));
+            }
+        }
+    }
+    if parts.is_empty() {
+        let order = saved
+            .fields
+            .iter()
+            .map(|f| &f.name)
+            .ne(now.fields.iter().map(|f| &f.name));
+        if order {
+            parts.push(format!("{}'s fields are in another order", now.name));
+        }
+    }
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", parts.join("; "))
+    }
+}
+
 fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
     let mut r = Reader { buf: bytes, pos: 0 };
     if r.take(4)? != MAGIC {
@@ -764,6 +819,12 @@ struct State {
 impl World {
     /// The snapshot (`state == false`) or the state stream the hash covers.
     fn write(&self, state: bool) -> Vec<u8> {
+        self.write_columns(state, false)
+    }
+
+    /// The writer; `unguarded` reads a column the running system holds
+    /// mutably as it is ([`crate::SystemContext::snapshot`]).
+    fn write_columns(&self, state: bool, unguarded: bool) -> Vec<u8> {
         let mut w = Writer(Vec::new());
         w.bytes(MAGIC);
         let format = match (state, self.blocks.is_empty()) {
@@ -792,14 +853,36 @@ impl World {
         }
 
         let entities = self.entities.borrow();
+        // Inside a system, an entity its queued spawn reserved is in no
+        // archetype yet: the snapshot has it freed (as a despawn would), so
+        // the world it restores to is whole.
+        let pending = |i: usize| {
+            unguarded
+                && entities
+                    .locations
+                    .get(i)
+                    .is_some_and(|l| l.archetype == PENDING)
+        };
         w.u32(entities.alloc.slot_count());
-        for slot in entities.alloc.slots() {
-            w.u32(slot.generation as usize);
-            w.u8(u8::from(slot.alive));
+        let mut freed = Vec::new();
+        for (i, slot) in entities.alloc.slots().enumerate() {
+            if slot.alive && pending(i) {
+                w.u32(slot.generation as usize + 1);
+                w.u8(0);
+                if slot.generation + 1 < og_core::handle::RETIRED_GENERATION {
+                    freed.push(i);
+                }
+            } else {
+                w.u32(slot.generation as usize);
+                w.u8(u8::from(slot.alive));
+            }
         }
-        w.u32(entities.alloc.free_list().len());
+        w.u32(entities.alloc.free_list().len() + freed.len());
         for &i in entities.alloc.free_list() {
             w.u32(i as usize);
+        }
+        for i in freed.into_iter().rev() {
+            w.u32(i);
         }
 
         w.u32(self.archetypes.len());
@@ -813,7 +896,19 @@ impl World {
                 w.u64(e.to_bits());
             }
             for c in &arch.columns {
-                w.bytes(c.borrow().bytes());
+                match c.try_borrow() {
+                    Ok(col) => w.bytes(col.bytes()),
+                    Err(_) if unguarded => {
+                        // SAFETY: only the running system holds a column
+                        // mutably (its typed views), and it is not running
+                        // while this does: its host is blocked in the call
+                        // that asked for the snapshot, on this thread, so
+                        // nothing writes the column meanwhile and the
+                        // shared reference ends before this returns.
+                        w.bytes(unsafe { &*c.as_ptr() }.bytes());
+                    }
+                    Err(_) => panic!("a column is borrowed outside a system"),
+                }
             }
         }
 
@@ -879,6 +974,52 @@ impl World {
     /// module docs for what is included.
     pub fn snapshot(&self) -> Vec<u8> {
         self.write(false)
+    }
+
+    /// [`Self::snapshot`] from inside a running system, whose columns its
+    /// host holds while it runs ([`crate::SystemContext::snapshot`]).
+    pub(crate) fn snapshot_in_system(&self) -> Vec<u8> {
+        self.write_columns(false, true)
+    }
+
+    /// Whether [`Self::restore`] (or, with `migrate`, [`Self::restore_migrating`])
+    /// would take `bytes`, without changing anything: the same refusals,
+    /// a type of another layout naming the fields that differ.
+    pub fn check_snapshot(&self, bytes: &[u8], migrate: bool) -> Result<()> {
+        let parsed = parse(&self.registry, bytes)?;
+        if migrate {
+            let mut report = MigrationReport::default();
+            for t in &parsed.types {
+                if let Ok(id) = self.registry.id_by_name(&t.name) {
+                    plan(&self.registry, t, id, &mut report)?;
+                }
+            }
+            decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
+            return Ok(());
+        }
+        for t in &parsed.types {
+            let id = self
+                .registry
+                .id_by_name(&t.name)
+                .map_err(|_| not_registered(&t.name))?;
+            let info = self.registry.info(id);
+            if info.layout_hash != t.hash {
+                let detail = t
+                    .schema
+                    .as_ref()
+                    .map(|saved| layout_difference(saved, &info.schema))
+                    .unwrap_or_default();
+                return Err(Error::new(
+                    ErrorKind::Schema,
+                    format!(
+                        "snapshot: type '{}' has a different layout in this world{detail}",
+                        t.name
+                    ),
+                ));
+            }
+        }
+        decode_blocks(&self.blocks, &parsed.blocks, None)?;
+        Ok(())
     }
 
     /// The stable hash of the world: FNV-1a of its state stream (the module

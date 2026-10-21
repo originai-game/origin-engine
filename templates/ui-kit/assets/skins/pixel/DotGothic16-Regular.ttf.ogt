@@ -1,9 +1,9 @@
 type import
 version 1
 ---
-# Latin-1 and the typographic punctuation the kit shows; 48 px per em in the atlas.
+# Latin-1 and the typographic punctuation the kit shows; 48 px per em in the atlas; px_range 8 for its textWeight.
 font {
   charset latin punct
   em_px 48
-  px_range 4
+  px_range 8
 }

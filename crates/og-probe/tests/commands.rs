@@ -677,3 +677,141 @@ fn output_paths_stay_inside_the_output_directory() {
     assert_eq!(outputs.len(), 1);
     assert_eq!(outputs[0].file_name(), "shots/w.json");
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, og_core::Reflect)]
+struct Mix {
+    #[reflect(variants = ["sfx", "music", "ui"])]
+    bus: u32,
+}
+
+#[test]
+fn get_answers_an_enum_by_its_variant_name_and_set_takes_the_name_or_the_index() {
+    let mut h = build(1, false);
+    h.world.register::<Mix>().unwrap();
+    let player = h.world.find("player").unwrap();
+    h.world.insert(player, Mix { bus: 1 }).unwrap();
+    h.probe
+        .schedule(
+            &h.world,
+            "0:get:player.Mix.bus:a.json;0:get:player.Mix:b.json;0:dump_entity:player:c.json;\
+             0:set:player.Mix.bus=ui;0:get:player.Mix.bus:d.json;0:set:player.Mix.bus=0;0:get:player.Mix.bus:e.json;\
+             0:set:player.Mix.bus=radio",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    let warnings: Vec<&str> = log
+        .iter()
+        .filter(|l| l.warning)
+        .map(|l| l.text.as_str())
+        .collect();
+    assert_eq!(warnings.len(), 1, "{log:?}");
+    assert!(
+        warnings[0].contains("\"radio\" is not one of sfx, music, ui"),
+        "{warnings:?}"
+    );
+    let notes: Vec<&str> = log.iter().map(|l| l.text.as_str()).collect();
+    assert!(
+        notes.contains(&"get player.Mix.bus = \"music\""),
+        "{notes:?}"
+    );
+    let values: Vec<Value> = json_outputs(&mut h)
+        .into_iter()
+        .map(|(_, action, _, v)| {
+            if action == "get" {
+                v["value"].clone()
+            } else {
+                v
+            }
+        })
+        .collect();
+    assert_eq!(
+        values[0],
+        json!("music"),
+        "as game code and the types read it"
+    );
+    assert_eq!(values[1], json!({ "bus": "music" }));
+    assert_eq!(values[2]["components"]["Mix"]["bus"], json!("music"));
+    assert_eq!(values[3], json!("ui"), "set by the name");
+    assert_eq!(values[4], json!("sfx"), "set by the index");
+    assert_eq!(
+        h.world.get::<Mix>(player).unwrap().bus,
+        0,
+        "the refused write changed nothing"
+    );
+}
+
+#[test]
+fn a_second_step_naming_a_written_file_goes_beside_it_with_a_warning_naming_both() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(
+            &h.world,
+            "0:get:Stats:x.json;0.5:dump_entity:player:x.json;1:dump_world:x.json;1:dump_world;1:dump_world",
+        )
+        .unwrap();
+    run(&mut h, 61);
+    let log = h.probe.take_log();
+    let warnings: Vec<&str> = log
+        .iter()
+        .filter(|l| l.warning)
+        .map(|l| l.text.as_str())
+        .collect();
+    assert_eq!(
+        warnings.len(),
+        2,
+        "two clashes named, the unnamed dumps are not: {log:?}"
+    );
+    assert!(
+        warnings[0].contains("0.5s dump_entity: 'x.json' was already written by the 0s get step, so this one is 'x-2.json'"),
+        "{warnings:?}"
+    );
+    assert!(
+        warnings[1].contains("1s dump_world") && warnings[1].contains("'x-3.json'"),
+        "{warnings:?}"
+    );
+    let names: Vec<String> = json_outputs(&mut h)
+        .into_iter()
+        .map(|(tick, action, path, _)| path.unwrap_or_else(|| format!("{action}-{tick:06}.json")))
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "x.json",
+            "x-2.json",
+            "x-3.json",
+            "dump_world-000060.json",
+            "dump_world-000060-2.json"
+        ]
+    );
+    // A new script starts its own names.
+    h.probe.schedule(&h.world, "0:dump_world:x.json").unwrap();
+    h.probe.pump(&mut h.world);
+    assert!(h.probe.take_log().iter().all(|l| !l.warning));
+    assert_eq!(json_outputs(&mut h)[0].2.as_deref(), Some("x.json"));
+}
+
+#[test]
+fn a_dot_name_is_kept_for_the_harness() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(
+            &h.world,
+            "0:dump_world:.store/platform.json;0:dump_world:a/.hidden.json;0:dump_world:./ok.json",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    let refused: Vec<_> = log.iter().filter(|l| l.warning).collect();
+    assert_eq!(refused.len(), 2, "{log:?}");
+    assert!(
+        refused
+            .iter()
+            .all(|l| l.text.contains("starting with '.'")
+                && l.text.contains("without the leading dot")),
+        "{log:?}"
+    );
+    let outputs = h.probe.take_outputs();
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].file_name(), "./ok.json");
+}

@@ -2,7 +2,7 @@
 // views, stale views throw with their tick and system, the dispatcher refuses
 // an unknown system id, declared order holds, refusals are Results.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineComponent, defineSystem, f32, Vector3 } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32, Vector3 } from "@origingame/engine";
 import type { World, Entity } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { boundHost, createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -30,6 +30,20 @@ const SetA = defineSystem("RtSetA", { writes: [Pair] }, (q, time) => {
 });
 const CopyB = defineSystem("RtCopyB", { writes: [Pair], after: ["RtSetA"] }, (q) => {
   for (const a of q.archetypes()) a.column(Pair).b.set(a.column(Pair).a);
+});
+
+// A resource a system counts up, read through handles taken before and outside it.
+const Score = defineResource("RtScore", { points: u32(0), spawnX: f32(0) });
+const Count = defineSystem("RtCount", { writes: [Score] }, (_q, _time, world) => {
+  const score = world.resource(Score);
+  if (!score.ok) throw new Error(score.reason);
+  (score.value as { points: number }).points += 1;
+});
+let perTick: number[] = [];
+const ReadEveryTick = defineSystem("RtReadEveryTick", { reads: [Score] }, (_q, _time, world) => {
+  const score = world.resource(Score);
+  if (!score.ok) throw new Error(score.reason);
+  perTick.push((score.value as { points: number }).points);
 });
 
 const Sneaky = defineSystem("RtSneaky", { reads: [Vel] }, (q, _time, world) => {
@@ -219,4 +233,65 @@ test("GameDesc.commandHelp gives a game's actions their usage in help, and get r
   engine.advance(1);
   expect(engine.takeLog().map((l) => l.text)).toContain("get og.Camera.fov = 70.0");
   expect(engine.takeOutputs().some((o) => o.action === "get")).toBeTrue();
+});
+
+test("a resource handle is live: two handles agree, and a handle taken earlier reads what a system wrote since", () => {
+  const engine = start(og.game({ systems: [Count], resources: [Score] }) as unknown as GameToken);
+  const a = engine.world.resource(Score);
+  const b = engine.world.resource(Score);
+  if (!a.ok || !b.ok) throw new Error("no RtScore");
+  const ha = a.value as { points: number; spawnX: number };
+  const hb = b.value as { points: number; spawnX: number };
+  // Hollowbell FINDINGS #6: b's write was invisible to a, which answered its fetch-time copy.
+  hb.spawnX = 5;
+  expect(ha.spawnX).toBe(5);
+  expect({ ...ha }).toEqual({ points: 0, spawnX: 5 });
+  engine.advance(3);
+  expect(ha.points).toBe(3);
+  expect(hb.points).toBe(3);
+  // What the probe's get answers (at the tick's start, before RtCount) is what the handle answered.
+  expect(og.commands.schedule(engine.world as never, "0:get:RtScore.points").ok).toBeTrue();
+  engine.advance(1);
+  expect(engine.takeLog().map((l) => l.text)).toContain("get RtScore.points = 3");
+  expect(ha.points).toBe(4);
+  // A write from outside the game (the probe's set) reaches a handle taken before it.
+  expect(og.commands.schedule(engine.world as never, "0:set:RtScore.spawnX=7").ok).toBeTrue();
+  engine.advance(1);
+  expect(ha.spawnX).toBe(7);
+  // og.Time's handle moves with the ticks too.
+  const time = engine.world.resource(og.Time);
+  if (!time.ok) throw new Error(time.reason);
+  const tick = (time.value as { tick: number }).tick;
+  engine.advance(2);
+  expect((time.value as { tick: number }).tick).toBe(tick + 2);
+  engine.destroy();
+});
+
+test("a handle read in a per-tick system costs one engine call, reads in a loop none more", () => {
+  perTick = [];
+  const engine = start(og.game({ systems: [Count, ReadEveryTick], resources: [Score] }) as unknown as GameToken);
+  engine.advance(5);
+  // Each tick's system read what RtCount wrote earlier in the same tick.
+  expect(perTick).toEqual([1, 2, 3, 4, 5]);
+  const a = engine.world.resource(Score);
+  if (!a.ok) throw new Error(a.reason);
+  const h = a.value as { points: number };
+  const reads = 20000;
+  // Cold: an engine call between reads (a resource write elsewhere would be one), so each read goes to the engine.
+  let t0 = performance.now();
+  let sum = 0;
+  for (let i = 0; i < reads; i++) {
+    engine.world.alive(0 as Entity);
+    sum += h.points;
+  }
+  const cold = ((performance.now() - t0) * 1000) / reads;
+  // Warm: a loop over rows reading a tuning field, nothing else reaching the engine.
+  t0 = performance.now();
+  for (let i = 0; i < reads; i++) sum += h.points;
+  const warm = ((performance.now() - t0) * 1000) / reads;
+  expect(sum).toBe(10 * reads);
+  console.log(`resource handle field read: ${cold.toFixed(2)} µs after an engine call, ${warm.toFixed(3)} µs in a loop`);
+  expect(cold).toBeLessThan(100);
+  expect(warm).toBeLessThan(1);
+  engine.destroy();
 });

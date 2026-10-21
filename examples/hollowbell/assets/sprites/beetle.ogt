@@ -1,0 +1,25 @@
+type flipbook
+version 1
+---
+# Written by tools/make-assets.ts. Faces right; 24x16, feet on the bottom row.
+# The charge: a held wind-up (the telegraph), then the dash frames.
+texture "beetle.png"
+pivot 0.5 0
+grid 24 16 8 2
+clip walk {
+  frames 0 1 2 3
+  fps 8
+}
+clip wind {
+  frames 4
+  fps 1
+}
+clip dash {
+  frames 5 6
+  fps 16
+}
+clip hurt {
+  frames 7 8
+  fps 10
+  mode once
+}

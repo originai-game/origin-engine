@@ -464,7 +464,7 @@ pub(crate) fn layers(fluids: &[Metaballs]) -> Vec<(usize, i32)> {
 
 /// The metaballs' module after the frame group, as the renderer compiles it.
 pub(crate) fn metaballs_source(frame_wgsl: &str) -> String {
-    format!("{frame_wgsl}{}", include_str!("../shaders/metaballs.wgsl"))
+    format!("{frame_wgsl}{}", wgsl!("metaballs.wgsl"))
 }
 
 #[cfg(test)]

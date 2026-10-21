@@ -848,8 +848,8 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
 // ── array maps ───────────────────────────────────────────────────────────
 
 /// The array-map pipelines' WGSL: `pbr_array.wgsl` and `shadow_array.wgsl`.
-const PBR_ARRAY_WGSL: &str = include_str!("../shaders/pbr_array.wgsl");
-const SHADOW_ARRAY_WGSL: &str = include_str!("../shaders/shadow_array.wgsl");
+const PBR_ARRAY_WGSL: &str = wgsl!("pbr_array.wgsl");
+const SHADOW_ARRAY_WGSL: &str = wgsl!("shadow_array.wgsl");
 
 /// `text` with `from` replaced by `to`, which must occur: a variant built
 /// from the standard module's text fails loudly (the shader tests build

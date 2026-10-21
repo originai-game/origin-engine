@@ -10,7 +10,9 @@
 //! empty; animated tiles stay on their first frame; a nearest texture is
 //! still blended between texels; nine-slice corners stretch with the
 //! sprite; an outline is drawn without being asked (old text changes) or
-//! not at all; a layered trail is still hidden under the sprites.
+//! not at all; a layered trail is still hidden under the sprites; a tile
+//! layer in 2D lighting's range is drawn unlit (hollowbell #9), or one
+//! that opts out is lit.
 
 use glam::{Vec2, Vec3};
 use og_render::{
@@ -143,6 +145,7 @@ fn checker_layer(texture: og_render::TextureHandle, layer: i32) -> TileLayer {
         color: [1.0; 4],
         repeat: [None, None],
         time: 0.0,
+        lit: true,
     }
 }
 
@@ -220,6 +223,70 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     let (img, _) = frame(&animated, 1);
     assert_eq!(at(&img, 0.5, 4.5), [0, 0, 255], "the animated quad");
     assert_eq!(at(&img, 1.5, 4.5), [255, 0, 0], "its neighbour");
+}
+
+/// FINDINGS #9 of examples/hollowbell: 2D lighting covers the tile layers
+/// in its range as it does the sprites there. A red-and-blue checker layer
+/// under an ambient of 0.1 and one white light at (-4, 0): the tiles by the
+/// light keep most of their colour, the far ones go dark, a wall between
+/// the light and a tile shades it against its mirror image below the
+/// light, and the same layer with `lit`
+/// false (or outside the range) is drawn as authored.
+#[test]
+fn tile_layers_in_the_lit_range_take_the_2d_light() {
+    use og_render::{Light2d, Lighting2d, Occluder2d};
+    let make = |lit: bool, min_layer: i32| {
+        let mut scene = flat();
+        let tex = two_texels(&mut scene);
+        scene.tile_layers.push(TileLayer {
+            lit,
+            ..checker_layer(tex, 0)
+        });
+        scene.lighting_2d = Some(Lighting2d {
+            ambient: Vec3::splat(0.1),
+            min_layer,
+            max_layer: 10,
+            resolution: 1.0,
+        });
+        scene.lights_2d.push(Light2d {
+            position: Vec2::new(-4.0, 0.0),
+            color: Vec3::ONE,
+            intensity: 1.0,
+            radius: 6.0,
+            falloff: 1.0,
+            source_radius: 0.05,
+            cast_shadows: true,
+        });
+        // A wall right of the light, across y 1.5..3.5.
+        scene.occluders_2d.push(Occluder2d {
+            center: Vec2::new(-2.0, 2.5),
+            half_size: Vec2::new(0.2, 1.0),
+            rotation: 0.0,
+        });
+        scene
+    };
+    let (img, _) = frame(&make(true, 0), 1);
+    let near = at(&img, -4.5, -1.0)[0];
+    let far = at(&img, 8.5, -1.0)[2];
+    let open = at(&img, -0.5, -3.0)[0];
+    let shaded = at(&img, -0.5, 3.0)[0];
+    assert!(
+        near > 180,
+        "by the light the red tile keeps its colour: {near}"
+    );
+    assert!(
+        far < 110,
+        "far from it the blue tile takes the ambient: {far}"
+    );
+    assert!(
+        shaded + 40 < open,
+        "the wall shades the tile behind it ({shaded}) against one in the open ({open})"
+    );
+    for (what, lit, min) in [("lit false", false, 0), ("out of the range", true, 1)] {
+        let (img, _) = frame(&make(lit, min), 1);
+        assert_eq!(at(&img, 8.5, -1.0), [0, 0, 255], "{what}: as authored");
+        assert_eq!(at(&img, -0.5, 3.0), [255, 0, 0], "{what}: as authored");
+    }
 }
 
 #[test]

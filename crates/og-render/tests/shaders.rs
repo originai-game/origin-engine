@@ -175,3 +175,41 @@ fn taa_reads_the_depth_buffer_through_a_sampler_on_gl() {
     }
     assert!(read >= 2, "the resolves sample the depth ({read} reads)");
 }
+
+/// What the renderer compiles is `shaders/` without its comments (build.rs
+/// and the `wgsl!` macro): every file is there, line for line, each line
+/// the source's with only a `//` comment and the spaces before it gone. WGSL
+/// has no string literals, so that keeps every token of every module the
+/// tests above compile, and the line naga names in a message.
+#[test]
+fn the_compiled_wgsl_is_the_source_without_its_comments() {
+    let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    let built = std::path::Path::new(env!("OUT_DIR")).join("shaders");
+    let mut files = 0;
+    let mut removed = 0;
+    for entry in std::fs::read_dir(&source).expect("shaders/") {
+        let path = entry.expect("an entry").path();
+        if path.extension().is_none_or(|e| e != "wgsl") {
+            continue;
+        }
+        let name = path.file_name().expect("a name");
+        let src = std::fs::read_to_string(&path).expect("a WGSL file");
+        let out = std::fs::read_to_string(built.join(name))
+            .unwrap_or_else(|e| panic!("{name:?} was not built: {e}"));
+        let (src_lines, out_lines): (Vec<_>, Vec<_>) =
+            (src.split('\n').collect(), out.split('\n').collect());
+        assert_eq!(src_lines.len(), out_lines.len(), "{name:?}: the lines");
+        for (n, (s, o)) in src_lines.iter().zip(&out_lines).enumerate() {
+            let expected = match s.find("//") {
+                Some(at) => s[..at].trim_end(),
+                None => s,
+            };
+            assert_eq!(o, &expected, "{name:?}:{}", n + 1);
+            assert!(!o.contains("/*"), "{name:?}:{}: a block comment", n + 1);
+        }
+        removed += src.len() - out.len();
+        files += 1;
+    }
+    assert!(files >= 50, "{files} WGSL files");
+    assert!(removed > 50_000, "{removed} bytes of comments");
+}

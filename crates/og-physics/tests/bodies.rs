@@ -231,7 +231,7 @@ fn layers_filter_collisions() {
 }
 
 #[test]
-fn kinematic_bodies_follow_their_transform_and_push_dynamic_ones() {
+fn kinematic_bodies_move_by_their_velocity_and_push_dynamic_ones() {
     let (mut w, _p) = world(Physics::default(), 5);
     floor(&mut w);
     let pusher = w
@@ -251,6 +251,53 @@ fn kinematic_bodies_follow_their_transform_and_push_dynamic_ones() {
         RigidBody::dynamic(),
         Collider::cuboid(Vec3::ONE),
     );
+    // Nothing moves it but its velocity: 2 m/s, written back each tick.
+    for i in 1..=120 {
+        w.step().unwrap();
+        let x = transform(&w, pusher).position.x;
+        assert!(
+            (x - (-3.0 + 2.0 * i as f32 / 60.0)).abs() < 1e-4,
+            "tick {i}: x {x}"
+        );
+        assert_eq!(velocity(&w, pusher).linear, Vec3::new(2.0, 0.0, 0.0));
+    }
+    // The pusher's face reached x = 1.5; the crate is ahead of it.
+    assert!(
+        transform(&w, crate_).position.x > 1.9,
+        "{:?}",
+        transform(&w, crate_)
+    );
+    // A Transform game code writes moves it there (a teleport), and it goes
+    // on from there; with its velocity zero it stays.
+    w.insert(pusher, at(-6.0, 0.5, 0.0)).unwrap();
+    w.step().unwrap();
+    let x = transform(&w, pusher).position.x;
+    assert!(
+        (x - (-6.0 + 2.0 / 60.0)).abs() < 1e-4,
+        "after the teleport: {x}"
+    );
+    w.insert(pusher, Velocity::default()).unwrap();
+    run(&mut w, 10);
+    assert_eq!(transform(&w, pusher).position.x, x);
+}
+
+#[test]
+fn kinematic_bodies_without_a_velocity_follow_their_transform() {
+    let (mut w, _p) = world(Physics::default(), 5);
+    floor(&mut w);
+    let pusher = w
+        .spawn((
+            at(-3.0, 0.5, 0.0),
+            RigidBody::kinematic(),
+            Collider::cuboid(Vec3::new(1.0, 1.0, 4.0)),
+        ))
+        .unwrap();
+    let crate_ = spawn_body(
+        &mut w,
+        at(0.0, 0.5, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::ONE),
+    );
     let dt = 1.0 / 60.0;
     for i in 1..=120 {
         // Game code moves the kinematic body; physics only reads it.
@@ -259,7 +306,6 @@ fn kinematic_bodies_follow_their_transform_and_push_dynamic_ones() {
         w.insert(pusher, t).unwrap();
         w.step().unwrap();
         assert_eq!(transform(&w, pusher).position, t.position);
-        assert_eq!(velocity(&w, pusher).linear, Vec3::new(2.0, 0.0, 0.0));
     }
     // The pusher's face reached x = 0.5; the crate is ahead of it.
     assert!(

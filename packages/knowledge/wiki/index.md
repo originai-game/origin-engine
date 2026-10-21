@@ -113,7 +113,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-887 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+891 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -795,6 +795,7 @@ Field units the docs and Tune use.
 | [`RenderTier`](render.md#type-RenderTier) | enum | render | — |
 | [`REPLAY_SEED_PARAM`](probe.md#const-REPLAY_SEED_PARAM) | constant | probe | — |
 | [`Response`](ui.md#type-Response) | struct | ui | — |
+| [`RestoreDesc`](world.md#type-RestoreDesc) | desc struct | world | — |
 | [`ResultsDesc`](ui.md#type-ResultsDesc) | desc struct | ui | — |
 | [`RetargetDesc`](anim.md#type-RetargetDesc) | desc struct | anim | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
@@ -961,6 +962,7 @@ Field units the docs and Tune use.
 | [`TypeStep`](ui.md#type-TypeStep) | struct | ui | — |
 | [`TypeStepName`](ui.md#type-TypeStepName) | enum | ui | — |
 | [`u32()`](reflect.md#column-u32) | column kind | reflect | — |
+| [`UI_LAYER`](render.md#const-UI_LAYER) | constant | render | — |
 | [`UiAction`](ui.md#type-UiAction) | callback | ui | — |
 | [`UiBuild`](ui.md#type-UiBuild) | callback | ui | — |
 | [`UiDesc`](ui.md#type-UiDesc) | desc struct | ui | — |
@@ -998,7 +1000,9 @@ Field units the docs and Tune use.
 | [`World.query`](world.md#member-World-query) | method | world | `og_world_query` |
 | [`World.remove`](world.md#member-World-remove) | method | world | `og_world_remove` |
 | [`World.resource`](world.md#member-World-resource) | method | world | `og_world_resource` |
+| [`World.restore`](world.md#member-World-restore) | method | world | `og_world_restore` |
 | [`World.set`](world.md#member-World-set) | method | world | `og_world_set` |
+| [`World.snapshot`](world.md#member-World-snapshot) | method | world | `og_world_snapshot` |
 | [`World.spawn`](world.md#member-World-spawn) | method | world | `og_world_spawn` |
 | [`World.tick`](world.md#member-World-tick) | property | world | `og_world_get_tick` |
 | [`WorldDump`](probe.md#type-WorldDump) | struct | probe | — |

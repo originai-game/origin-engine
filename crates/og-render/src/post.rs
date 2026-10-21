@@ -10,14 +10,14 @@ use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
-const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");
-const POST_WGSL: &str = include_str!("../shaders/post.wgsl");
-const TAA_WGSL: &str = include_str!("../shaders/taa.wgsl");
-const LUMINANCE_WGSL: &str = include_str!("../shaders/luminance.wgsl");
-const EXPOSURE_WGSL: &str = include_str!("../shaders/exposure.wgsl");
-const FXPOST_WGSL: &str = include_str!("../shaders/fxpost.wgsl");
-const FXAA_WGSL: &str = include_str!("../shaders/fxaa.wgsl");
-const STYLISE_WGSL: &str = include_str!("../shaders/stylise.wgsl");
+const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
+const POST_WGSL: &str = wgsl!("post.wgsl");
+const TAA_WGSL: &str = wgsl!("taa.wgsl");
+const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
+const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
+const FXPOST_WGSL: &str = wgsl!("fxpost.wgsl");
+const FXAA_WGSL: &str = wgsl!("fxaa.wgsl");
+const STYLISE_WGSL: &str = wgsl!("stylise.wgsl");
 
 /// The tonemapped image FXAA reads (sRGB-encoded 8 bits, as the output).
 pub(crate) const LDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;

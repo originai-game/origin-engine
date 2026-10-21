@@ -14,7 +14,7 @@ module render {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1628</sub>
+<sub>`api.ogt` line 1646</sub>
 
 ## Contents
 
@@ -66,7 +66,7 @@ module render {
 | [`og.Stylise`](#record-Stylise) | resource | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation. |
 | [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
 | [`LookInfo`](#type-LookInfo) | struct | A loaded look: where it came from and what applying it sets. |
-| [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
+| [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
 | [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
 | [`og.Occluder2D`](#record-Occluder2D) | component | A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
@@ -94,6 +94,7 @@ module render {
 | [`og.render.sphereGeometry`](#fn-sphereGeometry) | function | Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh). |
 | [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
 | [`MAX_CLUSTER_LIGHTS`](#const-MAX_CLUSTER_LIGHTS) | constant | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
+| [`UI_LAYER`](#const-UI_LAYER) | constant | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way. |
 | [`RenderCapabilities`](#type-RenderCapabilities) | struct | What the renderer can do on this device. Backend limits are reported here, never by missing members. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
@@ -136,7 +137,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2851</sub>
+<sub>`api.ogt` line 2869</sub>
 
 <a id="fn-sprite"></a>
 
@@ -166,7 +167,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2979</sub>
+<sub>`api.ogt` line 2997</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -196,7 +197,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3156</sub>
+<sub>`api.ogt` line 3174</sub>
 
 <a id="fn-measureText"></a>
 
@@ -226,7 +227,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3163</sub>
+<sub>`api.ogt` line 3181</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -256,7 +257,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3223</sub>
+<sub>`api.ogt` line 3241</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -286,7 +287,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3230</sub>
+<sub>`api.ogt` line 3248</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -316,7 +317,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3237</sub>
+<sub>`api.ogt` line 3255</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -346,7 +347,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3260</sub>
+<sub>`api.ogt` line 3279</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -378,7 +379,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3267</sub>
+<sub>`api.ogt` line 3286</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -410,7 +411,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3277</sub>
+<sub>`api.ogt` line 3296</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -442,7 +443,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3285</sub>
+<sub>`api.ogt` line 3304</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -476,7 +477,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3293</sub>
+<sub>`api.ogt` line 3312</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -506,7 +507,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3302</sub>
+<sub>`api.ogt` line 3321</sub>
 
 <a id="fn-look"></a>
 
@@ -534,7 +535,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3309</sub>
+<sub>`api.ogt` line 3328</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -562,7 +563,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3315</sub>
+<sub>`api.ogt` line 3334</sub>
 
 <a id="fn-text"></a>
 
@@ -592,7 +593,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3321</sub>
+<sub>`api.ogt` line 3340</sub>
 
 ## Components, resources and events
 
@@ -644,7 +645,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1885</sub>
+<sub>`api.ogt` line 1903</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -699,7 +700,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1910</sub>
+<sub>`api.ogt` line 1928</sub>
 
 <a id="record-PointLight"></a>
 
@@ -740,7 +741,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1942</sub>
+<sub>`api.ogt` line 1960</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -792,7 +793,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1962</sub>
+<sub>`api.ogt` line 1980</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -869,7 +870,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 2007</sub>
+<sub>`api.ogt` line 2025</sub>
 
 <a id="record-Environment"></a>
 
@@ -909,7 +910,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2083</sub>
+<sub>`api.ogt` line 2101</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -1146,7 +1147,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2163</sub>
+<sub>`api.ogt` line 2181</sub>
 
 <a id="record-Stylise"></a>
 
@@ -1160,8 +1161,8 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `pixelHeight` | `number` | `0` | 0 … 2160 | — | — | The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights. |
-| `pixelUpscale` | `number` | `0` | 0 … 16 | — | — | The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it. |
+| `pixelHeight` | `number` | `0` | 0 … 2160 | — | — | The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. The height sets the scale (pixelUpscale); the width is the output's aspect times the height, rounded, but at most the output's width over the scale, so the last column gives way rather than the scale: 240 rows at 1280x720 are 426.67 columns, rounded to 427, and 427 x 3 = 1281 does not fit, so the grid is 426 x 240 at 3x (1278 x 720, a 1-pixel border each side). Heights that divide the output's evenly fill it: 180 (4x), 240 (3x) and 360 (2x) at 720p, 270 (4x) and 360 (3x) at 1080p. |
+| `pixelUpscale` | `number` | `0` | 0 … 16 | — | — | The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height (a smaller scale than the largest leaves the border it implies: 240 lines at 2x in 1280x720 draw 854 x 480 in a 213 x 120 border), else the largest that fits; 0 takes the largest that fits (720 / 240 = 3, 1080 / 240 = 4, rounded down). A frame that does not fill the output is centred with Camera.background round it. |
 | `pixelSnap` | `boolean` | `true` | — | — | — | Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets). |
 | `posterize` | `number` | `0` | 0 … 64 | — | — | Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off. |
 | `palette` | `Palette` | `0` | — | — | — | Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none. |
@@ -1210,11 +1211,11 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 resource Stylise {
   doc "Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation."
   doc "Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised."
-  field pixelHeight u32 "The logical resolution: the scene is rendered this many pixels tall (its width from the aspect) and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. 180, 240 and 360 are the usual retro heights." {
+  field pixelHeight u32 "The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number with nearest filtering, as a low-resolution three.js render target drawn with NearestFilter; 0 renders at the output's resolution. The height sets the scale (pixelUpscale); the width is the output's aspect times the height, rounded, but at most the output's width over the scale, so the last column gives way rather than the scale: 240 rows at 1280x720 are 426.67 columns, rounded to 427, and 427 x 3 = 1281 does not fit, so the grid is 426 x 240 at 3x (1278 x 720, a 1-pixel border each side). Heights that divide the output's evenly fill it: 180 (4x), 240 (3x) and 360 (2x) at 720p, 270 (4x) and 360 (3x) at 1080p." {
     min 0
     max 2160
   }
-  field pixelUpscale u32 "The whole-number scale from the logical to the output resolution; 0 takes the largest that fits. A frame that does not divide evenly is centred with Camera.background round it." {
+  field pixelUpscale u32 "The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height (a smaller scale than the largest leaves the border it implies: 240 lines at 2x in 1280x720 draw 854 x 480 in a 213 x 120 border), else the largest that fits; 0 takes the largest that fits (720 / 240 = 3, 1080 / 240 = 4, rounded down). A frame that does not fill the output is centred with Camera.background round it." {
     min 0
     max 16
   }
@@ -1401,7 +1402,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2381</sub>
+<sub>`api.ogt` line 2399</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -1466,13 +1467,13 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2574</sub>
+<sub>`api.ogt` line 2592</sub>
 
 <a id="record-Lighting2D"></a>
 
 ### `og.Lighting2D` (resource)
 
-2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
+2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
 
 Token `og.Lighting2D`, registered under the schema name `og.Lighting2D`; its value type is `Lighting2D`.
 
@@ -1486,7 +1487,7 @@ Token `og.Lighting2D`, registered under the schema name `og.Lighting2D`; its val
 
 ```ogt
 resource Lighting2D {
-  doc "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
+  doc "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
   field enabled bool "Light the layers."
   field ambient Color "Light everywhere (0 is darkness outside the lights)." {
     default 0.15 0.15 0.15
@@ -1505,7 +1506,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2624</sub>
+<sub>`api.ogt` line 2642</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1556,7 +1557,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2643</sub>
+<sub>`api.ogt` line 2661</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1587,7 +1588,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2673</sub>
+<sub>`api.ogt` line 2691</sub>
 
 <a id="record-Decal"></a>
 
@@ -1642,7 +1643,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2687</sub>
+<sub>`api.ogt` line 2705</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1673,7 +1674,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2719</sub>
+<sub>`api.ogt` line 2737</sub>
 
 <a id="record-Trail"></a>
 
@@ -1749,7 +1750,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2730</sub>
+<sub>`api.ogt` line 2748</sub>
 
 <a id="record-Beam"></a>
 
@@ -1815,7 +1816,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2778</sub>
+<sub>`api.ogt` line 2796</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1946,7 +1947,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2986</sub>
+<sub>`api.ogt` line 3004</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1994,7 +1995,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3071</sub>
+<sub>`api.ogt` line 3089</sub>
 
 ## Types
 
@@ -2010,7 +2011,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
 ```
 
-<sub>`api.ogt` line 1632</sub>
+<sub>`api.ogt` line 1650</sub>
 
 <a id="type-Material"></a>
 
@@ -2024,7 +2025,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Material "A material instance."
 ```
 
-<sub>`api.ogt` line 1633</sub>
+<sub>`api.ogt` line 1651</sub>
 
 <a id="type-Texture"></a>
 
@@ -2038,7 +2039,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>`api.ogt` line 1634</sub>
+<sub>`api.ogt` line 1652</sub>
 
 <a id="type-Side"></a>
 
@@ -2063,7 +2064,7 @@ enum Side {
 }
 ```
 
-<sub>`api.ogt` line 1650</sub>
+<sub>`api.ogt` line 1668</sub>
 
 <a id="type-RenderTier"></a>
 
@@ -2094,7 +2095,7 @@ enum RenderTier {
 }
 ```
 
-<sub>`api.ogt` line 1657</sub>
+<sub>`api.ogt` line 1675</sub>
 
 <a id="type-Antialias"></a>
 
@@ -2123,7 +2124,7 @@ enum Antialias {
 }
 ```
 
-<sub>`api.ogt` line 1667</sub>
+<sub>`api.ogt` line 1685</sub>
 
 <a id="type-PointShadows"></a>
 
@@ -2148,7 +2149,7 @@ enum PointShadows {
 }
 ```
 
-<sub>`api.ogt` line 1676</sub>
+<sub>`api.ogt` line 1694</sub>
 
 <a id="type-TaaHistory"></a>
 
@@ -2171,7 +2172,7 @@ enum TaaHistory {
 }
 ```
 
-<sub>`api.ogt` line 1683</sub>
+<sub>`api.ogt` line 1701</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -2209,7 +2210,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 1689</sub>
+<sub>`api.ogt` line 1707</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -2477,7 +2478,7 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 1707</sub>
+<sub>`api.ogt` line 1725</sub>
 
 <a id="type-ToneMapping"></a>
 
@@ -2502,7 +2503,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 1993</sub>
+<sub>`api.ogt` line 2011</sub>
 
 <a id="type-Lut"></a>
 
@@ -2516,7 +2517,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2058</sub>
+<sub>`api.ogt` line 2076</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -2530,7 +2531,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 2059</sub>
+<sub>`api.ogt` line 2077</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -2544,7 +2545,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2060</sub>
+<sub>`api.ogt` line 2078</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -2569,7 +2570,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2110</sub>
+<sub>`api.ogt` line 2128</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -2592,7 +2593,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2124</sub>
+<sub>`api.ogt` line 2142</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2615,7 +2616,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2137</sub>
+<sub>`api.ogt` line 2155</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2638,7 +2639,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2150</sub>
+<sub>`api.ogt` line 2168</sub>
 
 <a id="type-Palette"></a>
 
@@ -2652,7 +2653,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 2340</sub>
+<sub>`api.ogt` line 2358</sub>
 
 <a id="type-Look"></a>
 
@@ -2666,7 +2667,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 2341</sub>
+<sub>`api.ogt` line 2359</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -2697,7 +2698,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2350</sub>
+<sub>`api.ogt` line 2368</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -2722,7 +2723,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2367</sub>
+<sub>`api.ogt` line 2385</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -2753,7 +2754,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2613</sub>
+<sub>`api.ogt` line 2631</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2793,7 +2794,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2818</sub>
+<sub>`api.ogt` line 2836</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2824,7 +2825,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2839</sub>
+<sub>`api.ogt` line 2857</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2847,7 +2848,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `align` | `TextAlign` | `"start"` | — | — | — | How each line sits on `position`: start puts its left end there, center its middle, end its right end. |
 | `outline` | `number` | `0` | 0 … 1 | — | — | World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines). |
 | `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The outline's linear colour. |
-| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. |
+| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole. |
 
 ```ogt
@@ -2881,12 +2882,12 @@ struct TextDesc {
     max 1
   }
   field outlineColor Color "The outline's linear colour."
-  field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise."
+  field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
   field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
 }
 ```
 
-<sub>`api.ogt` line 2858</sub>
+<sub>`api.ogt` line 2876</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2915,7 +2916,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2892</sub>
+<sub>`api.ogt` line 2910</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2938,7 +2939,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2903</sub>
+<sub>`api.ogt` line 2921</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2975,7 +2976,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
 | `slice` | `[number, number, number, number] \| null` | `null` | — | — | — | Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole. |
 | `sliceScale` | `number` | `0.0625` | ≥ 0 | — | — | Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets. |
-| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. |
+| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole. |
 
 ```ogt
@@ -3044,12 +3045,12 @@ struct SpriteDesc {
     default 0.0625
     min 0
   }
-  field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only."
+  field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
   field clip Option.Array.f32.4 "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole."
 }
 ```
 
-<sub>`api.ogt` line 2910</sub>
+<sub>`api.ogt` line 2928</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3137,7 +3138,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3098</sub>
+<sub>`api.ogt` line 3116</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3175,7 +3176,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3170</sub>
+<sub>`api.ogt` line 3188</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3207,7 +3208,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3190</sub>
+<sub>`api.ogt` line 3208</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3243,7 +3244,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3205</sub>
+<sub>`api.ogt` line 3223</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3278,7 +3279,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3247</sub>
+<sub>`api.ogt` line 3266</sub>
 
 <a id="type-Shader"></a>
 
@@ -3292,7 +3293,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3275</sub>
+<sub>`api.ogt` line 3294</sub>
 
 ## Column kinds
 
@@ -3324,7 +3325,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 1636</sub>
+<sub>`api.ogt` line 1654</sub>
 
 ```ogt
 column Material {
@@ -3335,7 +3336,7 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 1643</sub>
+<sub>`api.ogt` line 1661</sub>
 
 ```ogt
 column ToneMapping {
@@ -3346,7 +3347,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2000</sub>
+<sub>`api.ogt` line 2018</sub>
 
 ```ogt
 column Texture {
@@ -3357,7 +3358,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2062</sub>
+<sub>`api.ogt` line 2080</sub>
 
 ```ogt
 column Lut {
@@ -3368,7 +3369,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2069</sub>
+<sub>`api.ogt` line 2087</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -3379,7 +3380,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2076</sub>
+<sub>`api.ogt` line 2094</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -3390,7 +3391,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2103</sub>
+<sub>`api.ogt` line 2121</sub>
 
 ```ogt
 column AoMethod {
@@ -3401,7 +3402,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2117</sub>
+<sub>`api.ogt` line 2135</sub>
 
 ```ogt
 column DofQuality {
@@ -3412,7 +3413,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2130</sub>
+<sub>`api.ogt` line 2148</sub>
 
 ```ogt
 column SpriteBlend {
@@ -3423,7 +3424,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2143</sub>
+<sub>`api.ogt` line 2161</sub>
 
 ```ogt
 column StripBlend {
@@ -3434,7 +3435,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2156</sub>
+<sub>`api.ogt` line 2174</sub>
 
 ```ogt
 column Palette {
@@ -3445,7 +3446,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 2343</sub>
+<sub>`api.ogt` line 2361</sub>
 
 ```ogt
 column DitherPattern {
@@ -3456,7 +3457,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2360</sub>
+<sub>`api.ogt` line 2378</sub>
 
 ```ogt
 column StyliseSpace {
@@ -3467,7 +3468,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2374</sub>
+<sub>`api.ogt` line 2392</sub>
 
 ## Constants
 
@@ -3475,15 +3476,22 @@ column StyliseSpace {
 |---|---|---|---|
 | <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `256` | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
 | <a id="const-MAX_CLUSTER_LIGHTS"></a>`MAX_CLUSTER_LIGHTS` | `number` | `64` | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
+| <a id="const-UI_LAYER"></a>`UI_LAYER` | `number` | `1000` | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way. |
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3244</sub>
+<sub>`api.ogt` line 3262</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3245</sub>
+<sub>`api.ogt` line 3263</sub>
+
+```ogt
+const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
+```
+
+<sub>`api.ogt` line 3264</sub>

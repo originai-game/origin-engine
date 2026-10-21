@@ -243,5 +243,7 @@ CC0 assets. `LICENSES.md` lists every file; the skin's are in
 - `og.DayNight` advances on unscaled ticks, so a pause would not hold it;
   the game holds it (speed 0) and sets the hour itself (`setHour` in
   `src/world.ts`).
-- og.ui's `settingsScreen` and `resultsScreen` carry English labels of
-  their own, so the settings dialog and the summary are built from widgets.
+- og.ui's `settingsScreen` and `resultsScreen` carried English labels of
+  their own when this game was written, so the settings dialog and the
+  summary are built from widgets (both now take a field for each of their
+  words: og-i18n §2).

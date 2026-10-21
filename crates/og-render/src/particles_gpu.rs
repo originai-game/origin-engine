@@ -12,10 +12,10 @@ use crate::{HDR_FORMAT, RenderError};
 use glam::{Mat4, Vec2, Vec3};
 use std::collections::HashMap;
 
-const COMMON_WGSL: &str = include_str!("../shaders/particle_common.wgsl");
-const SIM_WGSL: &str = include_str!("../shaders/particles_sim.wgsl");
-const DRAW_WGSL: &str = include_str!("../shaders/particles.wgsl");
-pub(crate) const NOISE_WGSL: &str = include_str!("../shaders/noise.wgsl");
+const COMMON_WGSL: &str = wgsl!("particle_common.wgsl");
+const SIM_WGSL: &str = wgsl!("particles_sim.wgsl");
+const DRAW_WGSL: &str = wgsl!("particles.wgsl");
+pub(crate) const NOISE_WGSL: &str = wgsl!("noise.wgsl");
 
 /// Bytes between emitter uniform entries (a multiple of the 256-byte
 /// dynamic offset alignment).

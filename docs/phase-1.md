@@ -7,6 +7,81 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, waves 8 and 9 (2026-10-21, 517d8c4e)
+
+Since the wave 7 record (731a555d, with the lavapipe pass at 884ad090 and
+web-reference at 5e50479f) main took, each a fast-forward of its branch
+once the branch had merged main: wave 8's api-surface round two
+(81bb31f0), taa-webgl2 (f3229ef8, then Lantern Vale's skin ink at 402442cc
+and the record at 161bad3b) and wasm-size (bf8dcd16, its record at
+84422979); the second dogfood game, Hollowbell (5cc97a90); and wave 9's
+four streams from Hollowbell's findings, in this order: render-2d
+(6eba0883) with knowledge-2 (5b7539dd, then the coordinator's 48d172f3),
+physics-2d (08a33390, the record at 8b083f00) and ui-runtime (517d8c4e).
+The round sections below have each. The waves' end is being measured at
+517d8c4e in the `origin-engine-measure` worktree.
+
+- **`scripts/check.sh functional`**, each merge: wave 8, api-surface round
+  two 5 of 5 in 142 s, taa-webgl2 5 of 5 in 123 s, wasm-size 5 of 5 in
+  177 s; wave 9, render-2d with knowledge-2 5 of 5 in 97 s (after the
+  grammar line: the first run failed only the knowledge package's new
+  drift check on `lit`), physics-2d 5 of 5 in 165 s, ui-runtime 5 of 5 in
+  147 s.
+
+**Wave-end figures** (the `--all` and web-reference runs at 517d8c4e in
+the measure worktree, logs not in the repository, stated here once; the
+vulkan-cpu bullet follows its pass).
+
+- **`scripts/check.sh --all`** at 517d8c4e: 8 of 9 steps, failed at
+  bun-test (fmt 1 s, clippy 14 s, wasm-build 246 s with the shipping
+  `wasm` profile, test 185 s with nextest 835 passed and 12 skipped,
+  wasm-opt 191 s, size-gate 48 s, drift 13 s, determinism 162 s, bun-test
+  150 s). The one failure: the cross-host physics scene
+  (`tests/support/physics-hash.ts`) has a kinematic paddle driven by a
+  Velocity, which really sweeps since physics-2d's kinematic rule (the
+  scene always said it sweeps; it never had), and a body it flung left the
+  40 m floor (body 63 at y −34.5 after 600 ticks), failing the settle
+  check; both hosts agreed on the hash. The functional lane had not run
+  the test (its web module was stale). The floor is 200 m across since
+  9e7e462b (body 63 at y 0.35 in both profiles) and the five cross-host
+  tests pass against the fresh module. Nothing else failed. The last
+  whole run before it: wave 7's (8 of 9 at 767ecf84, the section below).
+- **`scripts/check.sh web-reference`**: passed in 373 s at 517d8c4e,
+  every frame on both tiers: og-tests gfx per tier (`tilemap-lit`,
+  `stylise-palette` and `stylise-retro` judged against `metal`,
+  `taa-sharp` on WebGL2 too), the fx-showcase stations and the looks
+  station's 37 (WebGL2's paper-craft and voxel-worlds against their own),
+  the og-ui kit frames (`screen-layers` is an og-ui crate test, not a
+  browser frame), third-person, Ember Vale, a11y. Row 74's browser part is
+  closed by it.
+- **Wasm** (brotli -q 11, the shipping `wasm` profile) at 517d8c4e:
+  lanes 3,476,755 B (82.9 % of 4 MiB, the largest download), 3D publish
+  3,058,677 B (72.9 %), 2D publish 2,895,647 B (69.0 %). Against
+  wasm-size's figures after its merge with 161bad3b (lanes 3,464,929 B,
+  82.6 %): +12 kB on lanes, +10 kB on 3D publish, +13 kB on 2D publish,
+  the cost of `world.snapshot`/`restore`, the platformer's own casts, lit
+  tile layers and the templates' label fields. Under 80 % stays row 71's.
+- **Determinism**: passed in the `--all` above (162 s at 517d8c4e):
+  every build agrees (host debug, host release with lanes off and on four
+  threads, wasm32 scalar and simd128) at math_digest
+  6117185439544271997, bouncing_boxes_hash 15551159556835976588,
+  physics_hash 947364242694612608, anim_hash 6030136770684287795.
+  Physics-2d changed the physics hash by design: 18126409214070009362 before, 947364242694612608 after
+  (the platformer's own move, then `impulse` growing the component
+  record; its section below); `math_digest`, `bouncing_boxes_hash` and
+  `anim_hash` unchanged there.
+- **Perf**: not run (the perf lane); Hollowbell's own `og polish` frame
+  time is the only number of the wave, taken on a loaded machine (its
+  README says so).
+- **vulkan-cpu** (the og-lavapipe image): the pass is running at
+  517d8c4e; this bullet takes its result. Owed before it: row 74's
+  frames; og-ui's `kit-skin-pixel` and `kit-skin-pixel-phone`, whose
+  vulkan-cpu copies (abd61fb8) predate the pixel pack's label weight
+  (ui-runtime re-recorded them on `metal`); row 54's og-ui text frames.
+- **Not run here**: the phone paths of `--device`, the three.js
+  comparison (row 51), the lanes wasm's physics step in Chrome (row 52),
+  the native device latency tests (row 40).
+
 ## Main gate, wave 7 (2026-10-21, 767ecf84)
 
 Since this record's last update (the closure-docs stream, merged at
@@ -225,6 +300,459 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   device latency tests remain as the rounds left them (row 47 and the
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
+
+## Wave 9, ui-runtime: live resource handles, game saves, the templates' words, the pixel pack's labels (517d8c4)
+
+From Hollowbell's findings; ten of the twenty. Merged main twice
+(0c347445 after render-2d and knowledge-2, 5579bd2d after physics-2d and
+8b083f00) and fast-forwarded.
+
+- df79a7dd, #6 (blocker): a `world.resource()` handle is live: every
+  getter reads the store through `og_world_resource`, the value kept only
+  while no engine call or dispatch happened since, so a loop reading a
+  tuning field costs one call (4.3 µs cold on the dev addon, 0.008 µs
+  warm); og.Time's handle moves with the ticks. Tests in
+  `packages/engine/tests/runtime.test.ts`. Hollowbell keeps one handle
+  per scope as plain practice, its comments marked fixed.
+- cb57ea4c, #1: `world.snapshot()` and `world.restore()`, a game's save
+  of the whole world in every build, publish included, the same on both
+  hosts. The save is text, `og-save:1:` and the base64 of the deflated
+  world snapshot with every type's schema hash and a checksum, a JSON
+  value for og.platform's store (Hollowbell's world 25 KiB, an empty one
+  11 bytes). A restore brings the world back to its hash and keeps the
+  session (input, og.Audio's volumes, the platform's calls and clock
+  shifted with og.Time's jump, the probe's scheduled steps); from a
+  system or a command it applies when the tick ends (the probe's new
+  after-tick hook). A save whose types changed is refused naming the
+  type and the fields that differ (`World::check_snapshot`), or mapped
+  with `{ migrate: true }`. The engine bug it found: a snapshot taken
+  inside a system met the columns that system holds (its typed views
+  stay borrowed while it runs) and the entities its queued spawns had
+  reserved, alive and in no archetype yet; `SystemContext::snapshot`
+  now reads the held columns as they are and writes those entities
+  freed, so the world it restores to is whole (og-ecs
+  `a_system_snapshots_the_world_while_it_holds_its_columns`). Tests:
+  og-ecs `snapshot.rs` and `migrate.rs`, `packages/engine/tests/save.test.ts`.
+  og-game §17 and og-core say how to save progress; docs/design.md
+  updated. Hollowbell keeps its JSON save record by choice
+  (`src/save.ts` says why: a checkpoint game restarts at its lantern,
+  the record survives any change to its types, and a restore would bring
+  back session state Continue would have to reset).
+- 8a7d8702, #11 and #12: `SettingsDesc` gains `title` and a label per
+  tab, slider, toggle, preset and Done; `ShopDesc` `priceLabel`,
+  `buyLabel`, `shortLabel` (Not enough), `ownedLabel` and `emptyLabel`,
+  each with its English default (the rule of `ResultsDesc.bestLabel`).
+  `templates/ui-kit` passes them from its five string tables
+  (`settings.*`, `shop.*`), with the JP, KR and Arabic subsets remade by
+  `make-locale-fonts.py` (which reproduces the committed ones from the
+  sources its README now names), and its locales playtest asserts the
+  settings screen and the shop in Chinese with no English left; og-i18n
+  §2 lists the fields. Hollowbell's shop passes its tables' words and
+  its locales test asserts no English word of the template is left (its
+  Chinese subset re-made); its own settings dialog stays by choice
+  (`src/ui.ts` says why: one page with exactly its settings).
+- 3a78409c, #10: a dialogue box takes the focus on the frame it appears,
+  unless a dialog is open over it, so a cutscene answers Enter, Space
+  and A from its first line (dialogs already did). og-ui `tests/widgets.rs`
+  opens a dialogue over a focused HUD button and a dialog by state;
+  og-ui §4 says what opens takes the focus. Hollowbell's navigate
+  workaround is gone.
+- ad36ce7c and e528effe, #20: the finding's diagnosis was wrong. The
+  label was always drawn in `accentFg`; DotGothic16's one-pixel strokes
+  fell between device pixels at 16 px (its dots 61.5 units of 1000 with
+  a 28-unit side bearing), so no pixel took more than about half the
+  ink. og-ui skins take a `textWeight <role> <device px>` line (the
+  role's glyphs and their shadow thickened through the distance field);
+  the pixel pack has `textWeight body 0.5` with DotGothic16 cooked at
+  `px_range 8` (at 4 the shader allows no thickening at 16 px), and
+  `make-skins.py` still reproduces every pack byte for byte.
+  `pack_contrast.rs` gained a test that draws every pack's primary and
+  secondary buttons through og-render with the pack's own cooked fonts
+  and reads each label in every state from the frame as og polish does:
+  the old pixel pack's primary label measured 3.44, 3.76 and 2.96:1
+  (rest, hovered, pressed), now 9.11, 12.69 and 5.92:1. og-taste §3 says
+  what the test reads and what a copied pack needs. Hollowbell's copy of
+  the pack takes the same two lines at e528effe; its pale-gold accent
+  and 16 px ramp stay as its look.
+- 536f8397, #17, #18, #19 (probe nits): `get`, `dump_entity` and the
+  dumps answer an enum by its variant's name (`set` and `patch` take the
+  name or the index; `entity` keeps numbers for Tune); a step naming a
+  file an earlier step of the same script wrote is written beside it as
+  `<stem>-2.<ext>` with a warning naming both steps; output names
+  starting with `.` are refused, the output directory keeping them for
+  the harness, and a playtest's `store: "keep"` store moved to
+  `<out>/.store/platform.json`. Tests in og-probe `tests/commands.rs`;
+  the IDL's command text at cb57ea4c. Hollowbell's music test reads the
+  bus by name.
+- 7158ad23, #14: the in-repo examples type-check: Hollowbell's and
+  Lantern Vale's `tsconfig.json` map `@origingame/engine` and its
+  playtest module through `paths` to `packages/engine`, with a
+  `host.d.ts`, and `bun run typecheck` runs `tsc`; og-game §2 says how a
+  project type-checks.
+- Frames re-recorded on `metal`: og-ui `kit-skin-pixel` (RMSE 0.01266,
+  0.409 % outliers) and `kit-skin-pixel-phone` (0.00971, 0.310 %) at
+  ad36ce7c; Hollowbell's nine at 1e706a5a and again over main's at
+  517d8c4e, against main's references: title 0.0166, play 0.0080, combat
+  0.0088, gloam 0.0076, shop 0.0221, pause 0.0164, settings-zh 0.0172,
+  results 0.0222, talk 0.0513 (the old reference showed the workaround's
+  focus ring round the box). The Hollowbell, Lantern Vale, ui-kit,
+  fx-showcase and third-person suites pass unchanged after the merge.
+  Owed: the pixel skin frames' vulkan-cpu copies (abd61fb8) predate the
+  label weight; Hollowbell's frames are `metal` only (row 74).
+- Left out: the other templates' English literal words (row 76);
+  Hollowbell keeps its JSON save record and its own settings dialog by
+  choice; no `og check` command (`og` still bundles without
+  type-checking; the knowledge package says to run `tsc`).
+
+Functional lane on the merge: 5 of 5 in 147 s.
+
+## Wave 9, physics-2d: the platformer's casts, knock-back, the kinematic rule (08a3339)
+
+From Hollowbell's findings (examples/hollowbell/FINDINGS.md), the second
+dogfood game, a 2D pixel platformer written from the knowledge package.
+
+- e86b55a5, #16 (blocker) and #15: `og.PlatformerController` stuttered
+  on flat ground (its velocity dropping to near 0 every few ticks, a
+  second of running covering 4.7 m at a 6.5 m/s top speed) and sank 7 mm
+  into a tilemap floor at some x, unable to run. Cause: rapier's
+  character controller casts with its skin as a target distance, which
+  parry resolves inaccurately (1.98 cm of travel reported for 1 cm, from
+  2 cm above a 74 m floor), so a run grazing the floor hit it at random
+  with a tilted normal and rapier's 2D slope rule threw the whole step
+  away (no horizontal direction to slide along in 2D); and a cast that
+  starts inside the skin falls back on a contact query that returns
+  nothing at some positions, so the character fell 11 mm in and stuck.
+  The controller no longer uses rapier's character controller
+  (`crates/og-physics/src/platformer.rs`): exact casts (accurate to
+  2e-5 m from 1 mm away), the skin gap kept by the controller itself,
+  and when not rising it lifts two skins, moves across (keeping its x
+  speed up walkable slopes) and drops back onto the ground a skin above.
+  Six tests in `crates/og-physics/tests/platformer_ground.rs`, all
+  failing on the old code: full `maxSpeed` every tick on one box, on 12
+  adjacent boxes and on tilemap collision rectangles (og-tilemap as a
+  dev-dependency), a 30° hill at full speed and a 60° slope stopping, a
+  controller written to the floor's height at 190 positions standing and
+  running, the feet one skin above the floor across repeated runs. In
+  the game the #16 repro reads 6.5 m/s every tick and runs 6.14 m in a
+  second; the #15 repro stands at y 16.01 and runs.
+- 1e47f188, #5: `og.PlatformerController.impulse` (Vector2, m/s), added
+  to the velocity on the next step then reset; an upward one leaves the
+  ground and cancels coyote time. IDL, og-feel §3 (beside hit stop),
+  og-game §13; a controllers test.
+- 177af1c5, #13: one rule, the one the skill promised: a kinematic body
+  with a nonzero `og.Velocity` moves by it each tick and its Transform is
+  written back; writing its Transform teleports it; without a Velocity
+  it stays where its Transform puts it. The IDL (BODY_KINEMATIC,
+  RigidBody.kind, Velocity), the og-physics schema docs, og-game §13,
+  docs/design.md and the og-physics README state it; the bodies test
+  that asserted the old behaviour is replaced by one test per rule, and
+  a controllers test rides a platform moving by its velocity. A game that
+  moved a kinematic body's Transform by hand and also set its Velocity
+  would now move twice; Hollowbell's lift was the only case in the
+  repository (af5b3d39: the lift reverses its velocity at the ends, the
+  hero's knock-back is an impulse, `WARP_LIFT` is gone, `move.og.ts`
+  checks the run distance against the tuning, 2.89 m measured against
+  0.5 × 6.5 − 6.5²/140 with 0.15 m tolerance).
+- Determinism (the native tool, lanes off): physics
+  18126409214070009362 before; 6597690808174327434 after the platformer
+  move (by design, the 2D scenario's walker moves differently);
+  947364242694612608 after `impulse` (the component record grew),
+  unchanged by the kinematic rule (the scenario's platform has no
+  Velocity) and after the merge. `math_digest`, `bouncing_boxes_hash`
+  and `anim_hash` unchanged. The og-physics README records them.
+- Frames: none moved (Hollowbell 13, Lantern Vale 11 and the runner
+  archetype's suites pass unchanged after the merge; the courier stands a
+  skin, 1 cm, above the floor within tolerance).
+- Left out: `og.CharacterController` (3D) still uses rapier's controller
+  and likely carries the same cast inaccuracy (row 72); the platformer's
+  query filter ignores the collider mask (row 73).
+
+Functional lane on the merge: 5 of 5 in 165 s.
+
+## Wave 9, render-2d: lit tile layers, the pixel grid's fit, sprites over the UI (6eba088)
+
+- 9c5b5d6f, #9 (blocker): tiles were drawn with the lit flag off, so
+  `og.Lighting2D` never lit a tilemap. A tile layer inside the lit range
+  is lit as a sprite there is (ambient, each Light2D's falloff and
+  colour, occluder shadows), through the same sprite pipeline and light
+  map on every tier. Opt-out: a Tiled layer's bool property `lit` false,
+  or `lit false` in a `.ogt` layer block, carried by the cooked blob's
+  new `UNLIT` bit (maps cooked before stay lit), reported by
+  `TileLayerInfo.lit`; the IDL docs of the tilemap module and Lighting2D
+  say so, and og-game §8's grammar and Tiled table carry it (48d172f3,
+  after the knowledge package's drift check asked for it). Tests:
+  `tile_layers_in_the_lit_range_take_the_2d_light` (fails with the old
+  flag), og-tilemap's and og-cook's tests reading `lit`, and the gfx
+  scene `tilemap-lit` (a dark cave of three tile layers, a torch and a
+  crystal, a pillar's and a ledge's shadows, a window sky layer opted
+  out) with its metal reference.
+- aff16274, #7: the pixel grid's fit rule: the height sets the scale;
+  `pixelUpscale` is honoured whenever height × scale fits the output's
+  height (with the border that leaves), else and for 0 the largest scale
+  that fits; the width may lose its last column to keep the scale. 240
+  lines at 1280×720 draw at 3x as 426 columns with a one-pixel border
+  each side instead of 2x inside a wide one. The IDL strings of
+  `pixelHeight` and `pixelUpscale`, og-taste §12 (with knowledge-2's
+  table of scale and border per `pixelHeight` at 720p, 1080p, 1440p, 4K
+  and three phone sizes) and the README give the arithmetic; a unit test
+  covers 720p, 1080p and a 2532×1170 phone both ways.
+- dd7c0685, #8: a render constant `UI_LAYER` = 1000 (exported from
+  packages/engine): screen sprites and screen text at 1000 or below draw
+  under every UI element as before; above it they draw over every UI
+  element, modals and the transition cover included, in their own
+  order, so a game draws such sprites only while their screen shows.
+  og-game §10's sentence rewritten; og-ui `tests/screen_layers.rs` with
+  reference `screen-layers.png` (fails when the rule is removed).
+- Hollowbell (6eba0883): the `MapShade` tint, the light-pool sprites,
+  their system, component and asset are gone, the map in the lit range;
+  light multiplies the map now instead of a glow added over it, so the
+  near-black back wall is redrawn at its full-light colour, the lights
+  about twice as bright and Wren's lantern fades in daylight;
+  `lighting.og.ts` measures 61 near Wren and 56 under the torch against
+  26 for the rock; the look back at 240 lines with a 15-cell view.
+- Frames re-recorded on metal: `stylise-palette` 0.26666 and
+  `stylise-retro` 0.55622 (240-line scenes, now 3x); new `tilemap-lit`
+  and og-ui `screen-layers`; by the coordinator at 48d172f3, fx-showcase's
+  `looks-pixel-3d-hybrid` (0.50), `looks-low-resolution-3d` (0.38) and
+  `looks-monochrome-dither-3d` (0.70), the 240-line presets, and all nine
+  Hollowbell frames (0.03 to 0.13). Owed on vulkan-cpu and the browser
+  tiers: `tilemap-lit`, `stylise-palette`, `stylise-retro` (row 74).
+
+Functional lane on the merge (with knowledge-2): 5 of 5 in 97 s after
+the grammar line; the first run failed only the knowledge package's new
+drift check on `lit`.
+
+## Wave 9, knowledge-2: the grammars with drift checks, Japanese fonts, what works (49d7a1d)
+
+Every wiki page is generated from the IDL (the validator refuses a page
+without the generated header), so the grammars that are not IDL went into
+the skills.
+
+- d7e3cd02, Hollowbell #2 and #3: og-game §8 gives every line of a
+  `type tileset` and a `type tilemap` file with defaults, the
+  neighbour-mask rules of both auto-tiling modes, the topdown archetype's
+  `dungeon.ogt` as the example, how `../tiles/x.tsx` resolves to
+  `tiles/x.ogt`, a table of the Tiled fields the cook reads, and a map's
+  import settings; og-game §10 gives every emitter line with its default,
+  the one-shot pattern and Hollowbell's `fx/hit.ogt`; `og.load.emitter`'s
+  IDL doc points there (the "particles page" it named never existed).
+  The drift check in `scripts/validate.ts` runs both ways: a word in a
+  doc block the parser never reads fails, and a key the parser reads that
+  no doc block writes fails, the Tiled table against the importer too;
+  `tests/grammar.test.ts` (10 tests) proves each kind of drift is caught.
+- 95a82284, #4: og-i18n §3 says what the repository ships (the ui-kit's
+  Japanese subset holds only its own 177 characters), where a whole Noto
+  face comes from, how to subset with `templates/ui-kit/tools/
+  subset-font.py` (the examples' tool, promoted and made general: it
+  exits 1 naming every character the source font lacks), and the
+  fallback rule: never take Japanese from the Chinese face.
+- 5e1a84b1, 3edec3f0: og-taste §12's pixel table (computed with
+  render-2d's fit rule) and phone guidance.
+- 30dc7d75, 49d7a1d0: every skill but og-ai opens with a "What works"
+  section of facts the two games measured; og-game opens with the
+  seven-step order both games found productive and the three mistakes
+  (the resource handle rule, a look replacing resources whole, where probe
+  outputs go); og-build §1 and §3 say where outputs go.
+- Found, not fixed: Hollowbell's far-hills layer sets a string property
+  `repeat` = x that the cook does not read (only `repeatx`/`repeaty`);
+  its FINDINGS #2 says `repeat` was confirmed by `TileLayerInfo`, which
+  has no such field. A cook warning on unknown Tiled layer properties:
+  row 75.
+
+## Wave 8, dogfood-2: Hollowbell, the second dogfood game (5cc97a9)
+
+Branch `dogfood-2` from main at 5e50479f, merged main (wave 8's three
+streams, to 84422979) as 75183a78, its README and findings rechecked
+there at 5cc97a90 (the playtests and og polish gave the same results) and
+fast-forwarded. An example only: no engine code changed.
+
+- **The game** (c16d6e4c, a9401332, 15430319, 62e7ae58, 86da6e32,
+  3981652f): `examples/hollowbell`, a five-minute 2D pixel-art platformer
+  written from the knowledge package as a game author would, to exercise
+  the engine's 2D half as Lantern Vale did its 3D half: a Tiled map over
+  a blob47 auto-tiled tileset with parallax layers and 100-odd objects,
+  `og.PlatformerController` (one-way planks, an air jump, a kinematic
+  lift), flipbooks with frame events, `og.Lighting2D` with lights and
+  occluders, a look on a pixel grid with the game's own palette and a
+  second look for the results, texture arrays, particles, hit stop and
+  knock-back, `og.Follow2D` and a camera zone, og.ui on a copy of the
+  pixel skin pack in English and Chinese, `str(N)` fields, saves to
+  og.platform's store, streamed music. Every asset is generated by
+  `tools/make-assets.ts` (69 cooked cold in 3.6 s). Thirteen playtests
+  (move, combat, gloam, shop, save, settings, name, win, locales,
+  lighting, music, a two-process replay, frames), nine reference frames
+  on `metal` (title, play, combat, talk, shop, pause, settings-zh, gloam,
+  results); og polish taste 99 (contrast 93: the pixel pack's primary
+  button labels, #20), feel 92 (frame time 72 on a busy machine).
+- **`FINDINGS.md`**: 20 findings, each with its repro and workaround: 3
+  blockers (#6 two `world.resource()` handles disagree, #9
+  `og.Lighting2D` never lights a tilemap, #16 the platformer's run
+  stutters on flat ground), 10 annoyances (#1, #2, #3, #7, #10, #11,
+  #12, #13, #15, #20), 7 nits (#4, #5, #8, #14, #17, #18, #19); top
+  five #9, #16, #6, #1 (no game-side world snapshot), #11 (the settings
+  screen English in every locale) with #12 (the shop's words).
+- **Taken by wave 9**: physics-2d #5, #13, #15, #16; render-2d #7, #8,
+  #9; knowledge-2 #2, #3, #4; ui-runtime #1, #6, #10, #11, #12, #14,
+  #17, #18, #19, #20 (the sections above, and
+  `examples/hollowbell/FINDINGS.md` §After wave 9 for each finding's
+  commit and workaround). Left open: #12's remainder, the other
+  templates' English words (row 76); #2's remainder, a `repeat` layer
+  property the cook does not read (row 75); `og` type-checking a project
+  itself (#14, no `og check`, not a row).
+
+Left out: the frames on the other tiers (row 74).
+
+## Wave 8, wasm-size: where the lanes module's bytes are, two trims, a report tool (bf8dcd1)
+
+The lanes module was 3,498,640 B brotli (83.4 % of `wasm_core_brotli_bytes`)
+at 161bad3b. Measured per crate (each crate's part brotli-compressed on its
+own, `scripts/wasm-size-report.ts`): og-runtime 362 kB, rapier3d 327 kB,
+the data section 324 kB, rapier2d 246 kB, og-physics 232 kB, og-render
+232 kB, parry3d 203 kB, the exports with og-runtime's bodies inlined
+199 kB, naga 192 kB; the two physics profiles together about 935 kB; the
+largest functions `Renderer::render` (138 kB), `PhysicsState::decode`
+(54 kB), og-runtime's `extract` and `assemble`. Raw size points at the
+wrong things: 230 kB raw of rayon generic copies were 9 kB of brotli, and
+the `wasm-gate` profile is about 6.6 % larger than what ships.
+
+- 6d3f45a4, og-lanes: `map`, `for_each_mut` and `for_each_indexed` go
+  through one non-generic parallel loop instead of a rayon copy per item
+  and result type (about 200 copies): 3,498,258 to 3,489,535 B (8.7 kB);
+  results the same item for item, og-physics' split-against-serial lanes
+  tests pass.
+- c51e8d05, og-render: a `build.rs` copies `shaders/` with its `//`
+  comments removed and a `wgsl!` macro includes that copy; every token
+  and line stays where it was, the `.wgsl` files are untouched, a test
+  checks the copies line for line against the sources (one anchor in the
+  terrain code found a comment and now finds `fn band(`): 3,489,535 to
+  3,466,050 B (23.5 kB). The functional lane's GPU reference tests pass
+  on the merge: no frame moved.
+- bf8dcd16: `scripts/wasm-size-report.sh <module>` builds and optimises
+  a module as it ships and prints the size gate's number;
+  `scripts/wasm-size-report.ts` gives each crate's raw and own-brotli
+  bytes and the largest functions; `tests/evidence/P4/wasm-size/` holds
+  the README and notes; docs/ci.md "When the size gate fails" points at
+  the script.
+
+After the merge with 161bad3b (shipping `wasm` profile, brotli -q 11):
+lanes 3,464,929 B (82.6 %, from 83.4 %), 3D publish 3,048,477 B
+(72.7 %), 2D publish 2,882,459 B (68.7 %). Under 80 % needs about
+143 kB more, and the one thing that gives it without removing a feature
+is a lanes module per physics profile (row 71). Tried and not paying:
+og-host-web at opt-level z (5.9 kB larger), `RECORDS` as a static (the
+copies exist only in `wasm-gate`), the probe's command code behind
+`publish` (og.ai sends its commands through the probe's inbox),
+cook-only code (none in the module), `format!`/Debug sites (about 40,
+nothing worth taking). Rejected: og-runtime at z (frame time),
+`panic_immediate_abort` (a lane's panic must wake the engine thread),
+`optimize_for_size` for std (could reorder unstable sorts and move a
+hash), dropping field docs from publish (reflection serves them),
+`-Zlocation-detail=none` for lanes only (81.0 %, and every crash on a
+lanes page loses its file, line and column).
+
+Functional lane on the merge: 5 of 5 in 177 s.
+
+## Wave 8, taa-webgl2: the GL backend read TAA's depth as 0 (f3229ef)
+
+Row 68's cause, found natively on ANGLE's Metal renderer (the GL layer
+Chrome's WebGL2 uses on macOS; wgpu's `angle` feature enabled locally,
+not committed): `taa.wgsl` read the `Depth32Float` buffer with
+`textureLoad`, wgpu's GL backend binds no sampler to such a read, the
+depth texture stays on GL's default linear filtering, which GLSL ES 3.0
+calls incomplete, and an incomplete texture reads 0. So every pixel was
+reprojected from the near plane: wrong motion for a moving camera
+(`taa-sharp` at RMSE 0.074 against `metal` on ANGLE, poles broken into
+dashes), and for a still camera at the looks station's 2,800 m offset
+the near-plane points lost enough precision that the current and
+previous projections rounded differently, up to 0.025 px of false
+motion per frame, above the shader's 1e-3 px own-texel test, which is
+the sideways drift of render-style round two (a standalone TAA harness
+measured it: 0.025 px on ANGLE with depth 0, 5.5e-4 px with the real
+depth, 3.8e-5 px on Metal). naga's GLSL declares `precision highp`, so
+precision qualifiers were not it; given the depth, the shader matches
+Metal on ANGLE within one half-float step for still and moving cameras.
+
+- 1a9037a9: the resolve reads the depth through its own nearest sampler
+  (binding 5) at the pixel's centre, the same texel as before, so the GL
+  backend binds a sampler. cf5f2b9's CPU still-camera check stays. On
+  ANGLE `taa-sharp` goes to RMSE 0.00028 and `taa-motion` 0.00010 against
+  `metal`. `taa-sharp` applies on every tier (`scenes::Applies`), so
+  web-reference judges a moving-camera TAA frame against `metal` on
+  WebGL2: 0.00028 there, 0.00024 on WebGPU (the coordinator's run at
+  f3229ef, every gfx scene and the looks station passing on both tiers;
+  WebGL2 looks worst neon-vector 0.0098 against `metal`). og-render
+  `tests/shaders.rs`: TAA's GLSL must sample the depth with `textureLod`,
+  never `texelFetch` (fails on the old shader). og-tests `tests/gfx.rs`:
+  a still camera converges to a fixed point at the same sub-pixel
+  position across the frame (a fixed point alone would not have caught
+  the old drift, itself a steady state), and a camera that moves and
+  stops reaches the image of one still all along; both pass on ANGLE
+  with the CPU check off too.
+- Metal: every TAA scene byte-identical (`taa`, `taa-sharp`, `showcase`,
+  `overlay`, `sprites-untonemapped` at RMSE 0, max 0); the 39 looks-script
+  frames byte-identical to main's. No reference re-recorded. og-render
+  README (the TAA note, a fourth GL constraint, the table row) and
+  docs/ci.md's `scenes::Applies` sentence updated.
+- Left out: the native GL path (row 70); restructuring the reprojection
+  to avoid world coordinates (it would move `taa-sharp`'s metal bytes,
+  and with the real depth the rounding left is 5.5e-4 px, under the
+  test); the browser's drift reproduced end to end natively (the harness
+  reproduces it at the 2,800 m offset, symmetric about the centre rather
+  than the 0-to-2 px left-to-right measured in Chrome).
+
+Functional lane on the merge: 5 of 5 in 123 s.
+
+## Wave 8, api-surface round two: the reverse surface check, string fields in IDL records (81bb31f)
+
+- 3c036fa4, row 64: `packages/engine/tests/api-surface.test.ts` fails on
+  any member a game can reach that the IDL does not declare (the package
+  exports, `og` and every `og.<module>`, World, Query, ArchetypeView,
+  System, Game, Rng and RngStream, every engine resource object, the
+  EngineProbe), read from the IDL catalog in `schema/api.schema.json`
+  (members that exist only in TypeScript, `host false`, count as
+  declared); the allow-list holds one entry, `World.id` (the engine id
+  the runtime's free functions pass to the host, taken by no call), and
+  fails if an entry no longer exists. It found 17 column factories
+  (`Texture`, `ToneMapping`, `Tween`, `TerrainData`, ...) and the
+  constants `MAX_POINTERS`, `MAX_GAMEPADS` and `SOUND_CULLED` declared
+  and documented but never exported (importing one gave undefined); they
+  are exported, and a test checks every column factory and constant,
+  with a component of one field of every column kind registered and read
+  back. `tests/web-shell-crash.test.ts` runs the real Worker and shell
+  under bun with the native host bound and a fake port, canvas and
+  document: a throw in `GameDesc.start` reaches the shell's `onCrash`
+  once, with the message and stack, primed and with autoplay, and later
+  probe calls are refused (the card's DOM in `shell/page.ts` is not
+  exercised). The runtime `Engine` class is not checked (the host's
+  lifecycle object, never held by game code).
+- a2e48f3f, row 65 (a) and (b): an IDL component or resource field can be
+  `field name str.48` (shown `str<48>`; capacity 1 to 4096 bytes, a
+  default must fit, refused on other field kinds), generated into the
+  `.d.ts` (a `string` with a `@capacity` tag), `bindings.json`, the
+  schema, `FieldDecl.capacity` in the record table and the wiki; the
+  runtime and `og cook` store it as a fixed-size string. No engine record
+  had a natural string field (adding one would change world layouts), so
+  the IDL fixture `valid.ogt` uses it and four broken fixtures cover the
+  refusals. `crates/og-runtime/tests/scene_string.rs` cooks a scene with
+  a 16-byte string component, loads it through `og.load.scene`,
+  instantiates it and reads every name back (CJK, quotes, empty, full).
+- ae9ae608, row 65 (c): `strings.test.ts` gained the web-host half
+  (skipped on a stale wasm as hosts.test.ts's are); run by the stream
+  against the measure lane's module at cf5f2b9: every answer and the
+  world hash equal on both hosts.
+- 93625d6e, 81bb31f0, Lantern Vale #24: the "New best" badge takes its
+  colours from the skin; `pack_contrast.rs` now measures a badge in
+  every tone; the accent badge read pixel 3.90, cartoon 3.78, fantasy
+  and Ember 4.12, scifi 4.37 on a panel, so pixel's and scifi's badge
+  tint is more transparent and cartoon's, fantasy's and Ember's accent
+  ink darker (`#6e470d`): every pack 4.72:1 or better, `make-skins.py`
+  reproducing all six byte for byte; Lantern Vale's own skin copy took
+  the same ink at 402442cc. The other badge tones stay under 4.5:1: row
+  69.
+- Frames: none moved (ui-kit 32, Ember Vale and Lantern Vale suites pass
+  unchanged after the merge).
+
+Functional lane on the merge: 5 of 5 in 142 s.
 
 ## Wave 7, render-style round two: TAA on the GL backend (cf5f2b9)
 
@@ -2887,6 +3415,14 @@ Lantern Vale finding is fixed or in one of them
 (`examples/lantern-vale/FINDINGS.md` §After wave 7). Still in flight on an
 unmerged branch, so not a row: `scripts/wave-end.sh` (`ci-green`).
 
+After waves 8 and 9 and the second dogfood game (2026-10-21, 517d8c4e;
+the sections above): row 68 closed (taa-webgl2, 1a9037a9); rows 64 and 65
+were worked by api-surface round two (its section) and still read open
+here; eight new rows (69–76) for what the streams left out and said
+so. Every Hollowbell finding is fixed or in row 75 or 76
+(`examples/hollowbell/FINDINGS.md` §After wave 9). The wave-end
+measurements are pending (Main gate, waves 8 and 9).
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -2959,11 +3495,19 @@ resource only the owner can give.
 | 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | open |
 | 62 | Platform ask 12: the game wizard's style step (a catalogue entry from the premise, the look written, its three checks for the blind critic; `docs/platform-asks.md`) | P4 knowledge 3 | M | platform | open, waiting on the platform |
 | 63 | `.vox` animation, the rest (og-cook README §What phase 2 owes): MagicaVoxel's `nTRN` key frames are not read (a transform's first frame places it throughout, so a part moving across frames does not move), and every folded frame still costs a joint and a draw (its vertices run through the skinning shader at scale 0; a visibility track in og-anim would make a fold free) | W7 cook-vox | M | engine, phase 4 | open |
-| 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | open |
-| 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | open |
+| 64 | The runtime's API surface the other way round: `packages/engine/tests/api-surface.test.ts` finds every IDL call on the runtime, but nothing checks for runtime members the IDL does not declare; and no browser test shows a throw in `start` on the web shell (5dfc5a7b's tests are `og run`'s and the native runtime's) | W7 api-runtime | S | engine, phase 4 | closed at 3c036fa4 (api-surface round two): the reverse check fails on an undeclared member, with a one-entry allow-list (`World.id`), and found 17 column factories and three constants never exported; the shell crash path tested under bun (tests/web-shell-crash.test.ts); the runtime `Engine` class stays unchecked (the host's lifecycle object) |
+| 65 | String fields, the rest: IDL records (the components, resources and events of `crates/og-api/api.ogt`) cannot declare a `str(N)` field with its capacity; loading a cooked scene with a string field into a live world has no test of its own (og-cook's `scene_string.rs` cooks it); the web host is untested for strings (`strings.test.ts` runs on the native host) | W7 reflect-string | S | engine, phase 4 | closed at a2e48f3f and ae9ae608 (api-surface round two): `field name str.48` in IDL records through every generated output, the cooked-scene string load test in og-runtime, the web-host half of the cross-host string test (run by the stream against the measure lane's module at cf5f2b9, and by the full lane since) |
 | 66 | The skin packs' CJK fallback (`fonts/NotoSansSC-Regular-subset.ttf`, 2.5 MB, shared by every pack and every project from the game template) stays outside the pack by decision (9d00fb21): a copied pack's `fallback` line still names it from `assets/`, and og-taste §1 says what to do with that line | W7 ui-text | S | engine | open by decision (Lantern Vale #6's remainder) |
 | 67 | Reference frames owed after render-style (on top of row 54): `vulkan-cpu` copies not re-recorded for og-tests `stylised`, `skinned-hooks`, `stylise-pixel`, `stylise-halftone`, `stylise-bands` and `stylise-material` (moved on `metal` by 7e3ae322, 51e765e9 and b9c3ed87; their lavapipe copies predate), no lavapipe run of the new `stylise-outline-voxels`, `stylise-toon-physical`, `sprites-untonemapped` and `stylise-bands-tint`, fx-showcase's nine looks frames re-recorded at 767ecf84 and Lantern Vale's seven frames (`metal` only, re-recorded at 767ecf84); the browser tiers have not run on any of them | W7 render-style | S | engine, phase 4 (a wave-end capture) | closed: vulkan-cpu at 9bd0064 (the lavapipe pass), the browser tiers at cf5f2b9 (web-reference 379 s, every frame; WebGL2 keeps paper-craft and voxel-worlds by design, 95ea28a) |
-| 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | open |
+| 68 | TAA on the WebGL2 tier with a moving camera: the reprojecting path still runs there and whether its history drifts as the still case did (render-style round two) is unmeasured, since no browser reference moves its camera through TAA on WebGL2 (`taa-sharp` is full-tier only); and the arithmetic reason the GL backend's reprojected read differed for a bit-identical view-projection is not found | W7 render-style 2 | S | engine, phase 4 | closed at 1a9037a (taa-webgl2, merged f3229ef): wgpu's GL backend read TAA's depth as 0 (a depth texture read with `textureLoad` and no sampler bound stays on linear filtering, which GLSL ES calls incomplete), so every pixel reprojected from the near plane: wrong motion for a moving camera, and near-plane rounding up to 0.025 px at the 2,800 m looks station for a still one, above the own-texel test. The depth is sampled with a nearest sampler now; `taa-sharp` applies on every tier and is WebGL2's moving-camera frame against `metal` (RMSE 0.00028); two og-tests tests pin the still-camera fixed point natively |
+| 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | open |
+| 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
+| 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open |
+| 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | open |
+| 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | open |
+| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu, and og-ui `kit-skin-pixel` and `kit-skin-pixel-phone` on vulkan-cpu (their copies, abd61fb8, predate the pixel pack's label weight) | W9 render-2d | S | engine, phase 4 (a wave-end capture) | open |
+| 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | open |
+| 76 | og.ui templates whose own words still have no desc field, after ui-runtime gave `SettingsDesc` and `ShopDesc` theirs (8a7d8702; Hollowbell #12's remainder): `inventoryScreen`'s hint ("Select an item. Drag it to another slot to move it.") and "Count", `leaderboardScreen`'s "Retry", `tutorialOverlay`'s "Skip", "Next"/"Done" and its "1 of 3" step count, `cutscene`'s "Skip" (`levelSelect` has none: its title is a field). A localised game shows them in English | W9 ui-runtime | S | engine, phase 4 (UI) | open |
 
 ## 0. Rules that shape the plan
 

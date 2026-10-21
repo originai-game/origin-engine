@@ -8,6 +8,15 @@ tick, the engine lays it out, draws it in the platform's design tokens and
 answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `reference/ui.md`; this skill is how to use it well.
 
+## What works
+
+Two games written from this package alone (`examples/lantern-vale`,
+`examples/hollowbell`) used the main menu, pause, cutscene, shop and
+results templates (the results with a localised Best and New best) and a
+text field with input-method composition, and none needed wiring beyond
+its desc; a skin pack copied into the game restyled every screen, and
+`og polish` measured taste 99 for both.
+
 ## 1. The rule of the kit
 
 Every template and widget is **one call per tick, data in, answer out**:
@@ -175,7 +184,10 @@ the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise
 `og.ui.back()` answers true once (open pause on it). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
-dialogs turn navigation back on while open. The UI reads pad 0 from
+dialogs turn navigation back on while open. What opens takes the focus:
+a dialog (every modal template: pause, settings, shop, results, confirm)
+its first control, a dialogue box or cutscene the box, so Enter, Space and
+A answer it at once without a Tab first. The UI reads pad 0 from
 `og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
 queue intents with `og.ui.navigate(world, intent)`. A focus move plays the
 `hover` sound and Enter, Space or A the `press` sound, as the pointer does
