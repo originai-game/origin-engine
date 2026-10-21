@@ -19,9 +19,17 @@ path = "src/main.rs"
 [dependencies]
 og-core = { path = "../../crates/og-core" }
 og-ecs = { path = "../../crates/og-ecs" }
-og-physics = { path = "../../crates/og-physics" }
+# The physics profiles as og-host-web's variants take them: both by default
+# (the host builds and the single-threaded wasm), one each for the lanes
+# builds run.sh makes per profile (scripts/wasm-crates.txt `lanes` lines).
+og-physics = { path = "../../crates/og-physics", default-features = false }
 og-anim = { path = "../../crates/og-anim" }
 og-lanes = { path = "../../crates/og-lanes" }
+
+[features]
+default = ["physics2d", "physics3d"]
+physics2d = ["og-physics/physics2d"]
+physics3d = ["og-physics/physics3d"]
 
 [workspace]
 

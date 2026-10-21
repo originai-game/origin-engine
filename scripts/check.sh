@@ -190,8 +190,10 @@ step_test_quick() { run_tests test-quick 0 og-tests; }
 # on every run and recompiled and relinked og-host-web, og-runtime and
 # og-probe both times (about 29 s on an unrelated change). The variant's
 # dependencies come from sccache (or CI's cached target/) the first time.
-# VARIANT lanes builds through scripts/wasm-lanes.sh (wasm atomics, std
-# rebuilt), which keeps its own target dir (target/wasm-mt) for the same reason.
+# A VARIANT lanes* (lanes, lanes2d) builds through scripts/wasm-lanes.sh
+# (wasm atomics, std rebuilt), which keeps its own target dir
+# (target/wasm-mt) for the same reason; the lanes variants share it as the
+# others share the wasm32 one.
 # A FEATURES starting with `-` builds without the default features
 # (`-og-host-web/publish,og-host-web/physics3d`).
 wasm_build() {
@@ -205,10 +207,11 @@ wasm_build() {
   # coexist there and share every dependency (one wgpu, one naga, one
   # og-render) instead of compiling them once per variant in a directory
   # of their own; only the final .wasm is copied out under the variant's
-  # name right after each build. The lanes variant needs its own flags and
-  # a rebuilt std, so it keeps scripts/wasm-lanes.sh's directory.
+  # name right after each build. The lanes variants need their own flags
+  # and a rebuilt std, so they keep scripts/wasm-lanes.sh's directory, where
+  # the 3D and 2D lanes modules share std and every dependency the same way.
   case "$variant" in
-    lanes) cargo=("$OG_ROOT/scripts/wasm-lanes.sh") ;;
+    lanes*) cargo=("$OG_ROOT/scripts/wasm-lanes.sh") ;;
     *) ;;
   esac
   # The gate's profile (Cargo.toml [profile.wasm-gate]: the shipping wasm
@@ -273,8 +276,19 @@ $v
 EOF_VARIANTS
   done
   for c in $(og_wasm_lanes_crates); do
-    og_say "lanes variant: $c (--features $c/publish, wasm atomics: scripts/wasm-lanes.sh)"
-    wasm_build lanes "$c/publish" "$c" || return 1
+    v="$(og_wasm_lanes_variants "$c")"
+    if [ -z "$v" ]; then
+      og_say "lanes variant: $c (--features $c/publish, wasm atomics: scripts/wasm-lanes.sh)"
+      wasm_build lanes "$c/publish" "$c" || return 1
+      continue
+    fi
+    # One lanes module per game profile (scripts/wasm-crates.txt `lanes`).
+    while read -r vname vfeat; do
+      og_say "lanes variant $vname: $c (--no-default-features --features $vfeat, wasm atomics: scripts/wasm-lanes.sh)"
+      wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
+    done <<EOF_LANES
+$v
+EOF_LANES
   done
   for c in $pending; do
     og_say "pending: $c"
@@ -295,15 +309,15 @@ EOF_VARIANTS
 # wasm-bindgen (when the module uses it, at the Cargo.lock version, out-name
 # origin-engine as packages/engine ships it) then wasm-opt -Oz; writes
 # target/og-wasm/opt/<name>.wasm for every variant (opt-all.txt) and lists
-# the shipping ones in opt.txt: the -publish* (one per game profile) and
-# -lanes variants when any were built, else all. A -lanes module is bindgen'd as origin-engine-lanes
-# and optimised with --threads. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
+# the shipping ones in opt.txt: the -publish* and -lanes* variants (one of
+# each per game profile) when any were built, else all. A -lanes* module is
+# bindgen'd as origin-engine-lanes and optimised with --threads. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
 # wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
 # into $OG_WASM_OUT/opt/NAME.wasm.
 # The flags are scripts/wasm-opt.sh's, the one invocation build.sh ships with.
 wasm_opt_one() {
   local raw="$1" name="$2" input="$1" lock have key cache out=origin-engine threads=()
-  case "$name" in *-lanes) out=origin-engine-lanes; threads=(--threads) ;; esac
+  case "$name" in *-lanes*) out=origin-engine-lanes; threads=(--threads) ;; esac
   # A raw module byte-identical to one already optimised (an edit that does
   # not reach the wasm: a test, a comment, native-only code) takes the
   # earlier result: same input, tools and flags, same output.
@@ -364,7 +378,7 @@ step_wasm_opt() {
   cat "$OG_WASM_OUT"/opt/*.log
   [ "$rc" -eq 0 ] || return 1
   if grep -q -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt"; then
-    grep -E -- '-(publish[a-z0-9]*|lanes)\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
+    grep -E -- '-(publish|lanes)[a-z0-9]*\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
     og_say "size-gate measures the publish variant(s): $(og_words < "$OG_WASM_OUT/opt.txt")"
   else
     cp "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"

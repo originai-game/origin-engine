@@ -7,7 +7,10 @@ fn main() {
         "bouncing_boxes_hash {}",
         wasm_determinism::bouncing_boxes_hash()
     );
-    println!("physics_hash {}", wasm_determinism::physics_hash());
+    #[cfg(feature = "physics3d")]
+    println!("physics3d_hash {}", wasm_determinism::physics3d_hash());
+    #[cfg(feature = "physics2d")]
+    println!("physics2d_hash {}", wasm_determinism::physics2d_hash());
     println!("anim_hash {}", wasm_determinism::anim_hash());
     let lanes = og_lanes::report();
     println!("lanes_threads {}", lanes.threads);

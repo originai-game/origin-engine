@@ -57,6 +57,8 @@ const built = await webBuild(project, join(project, "src", "main.ts"), dist, tru
 if (!built.ok) throw new Error(built.reason);
 if (NAMES) {
   // The same publish modules bound again from cargo's output, without wasm-opt (names kept).
+  // The scene is 3D: target/wasm-mt's last output is the 3D lanes module, which
+  // build.sh and the gate's wasm-build build after the 2D one.
   const target = process.env.CARGO_TARGET_DIR ?? join(repo, "target");
   for (const [raw, name] of [
     [join(target, "wasm-publish", "wasm32-unknown-unknown", "wasm", "og_host_web.wasm"), "origin-engine"],

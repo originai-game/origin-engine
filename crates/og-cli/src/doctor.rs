@@ -268,6 +268,7 @@ fn engine_checks(cwd: &Path) -> usize {
         ("publishWasm", "wasm-publish"),
         ("publishWasm2d", "wasm-publish-2d"),
         ("lanesWasm", "wasm-lanes"),
+        ("lanesWasm2d", "wasm-lanes-2d"),
     ] {
         let w = &report[key];
         line(

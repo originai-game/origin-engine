@@ -3,6 +3,8 @@
 // addon and on the wasm module. Each host runs in its own process.
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 // The functional lane may run with a web module older than the native addon
@@ -55,6 +57,8 @@ function physics(host: string, ...extra: string[]) {
   if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
   return JSON.parse(out.trim().split("\n").pop()!) as {
     tick: number; hash: string; hashAtLoad: string; body63: { y: number } | null; tally: { entered: number; started: number } | null;
+    snapshot?: string; refused?: string; restored?: { tick: number; hash: string };
+    lanes?: { threads: number; pool: string; parallelCalls: number; sites: Record<string, { calls: number }> };
   };
 }
 
@@ -103,3 +107,39 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
   expect(free.checkpoints[1]!.hash).not.toBe(node.checkpoints[1]!.hash);
   expect(free.tally.frozen).toBe(0);
 }, 120_000);
+
+// One lanes module per physics profile (owed row 71, docs/web-export.md
+// §Variants): the 3D one in dist/web-publish, the 2D one in
+// dist/web-publish-2d, each with only its profile's physics, wasm atomics
+// and the publish members. Each steps its profile's scene to the native
+// world, on the engine thread alone and with 1,024 bodies on a pool of four
+// Workers (wasm-bindgen-rayon's, under bun as in a page; every step went to
+// the pool): the same snapshot as the native host's at tick 600, which
+// restored natively has the native world's hash (a publish module has no
+// world dump of its own). And it refuses a world of the other profile.
+for (const profile of ["3d", "2d"] as const) {
+  test.skipIf(STALE_WASM)(`the ${profile} lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers, and refuses the other profile`, () => {
+    const dir = mkdtempSync(join(tmpdir(), "og-lanes-profile-"));
+    for (const [bodies, threads] of [["64", null], ["1024", "4"]] as const) {
+      const node = physics("node", "--profile", profile, "--bodies", bodies, "--snapshot");
+      const lanes = physics("lanes", "--profile", profile, "--bodies", bodies, "--snapshot", ...(threads ? ["--threads", threads] : []));
+      const label = `${bodies} bodies, ${threads ?? 1} lane(s)`;
+      expect([label, lanes.tick]).toEqual([label, 600]);
+      if (threads) {
+        expect([label, lanes.lanes!.pool, lanes.lanes!.threads]).toEqual([label, "web-workers", 4]);
+        expect([label, lanes.lanes!.sites.physics.calls]).toEqual([label, 600]);
+      } else {
+        expect([label, lanes.lanes!.pool, lanes.lanes!.parallelCalls]).toEqual([label, "none", 0]);
+      }
+      expect([label, lanes.body63]).toEqual([label, node.body63]);
+      expect([label, lanes.tally]).toEqual([label, node.tally]);
+      expect(lanes.snapshot!.length).toBeGreaterThan(0);
+      expect([label, lanes.snapshot]).toEqual([label, node.snapshot!]);
+      const file = join(dir, `lanes-${profile}-${bodies}.snapshot`);
+      writeFileSync(file, lanes.snapshot!);
+      expect([label, physics("node", "--profile", profile, "--bodies", bodies, "--restore", file).restored]).toEqual([label, { tick: 600, hash: node.hash }]);
+    }
+    const other = profile === "2d" ? "3d" : "2d";
+    expect(physics("lanes", "--profile", other, "--module", profile).refused).toContain(`without the physics${other} feature`);
+  }, 180_000);
+}

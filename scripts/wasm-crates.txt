@@ -9,20 +9,26 @@
 # A third word `publish` builds the crate a second time with its `publish`
 # feature (the shipping variant: what the size gate measures and what
 # build.sh puts in dist/web-publish).
-# A fourth word `lanes` builds the publish variant a third time with wasm
-# atomics through scripts/wasm-lanes.sh (the lanes variant, out-name
+# A fourth word `lanes` builds the publish variant again with wasm atomics
+# through scripts/wasm-lanes.sh (the lanes variant, bound as
 # origin-engine-lanes: docs/web-export.md §Lanes); the size gate measures it
 # as its own download.
 # A line `variant NAME CRATE FEATURES` replaces the crate's one publish
 # variant with one per line: built with --no-default-features --features
-# FEATURES (comma-separated, the crate's own) into target/wasm-NAME, raw
-# name <crate>-NAME.wasm. og-host-web ships one per game profile, each with
-# only its profile's physics (docs/web-export.md §Variants): `publish` is
-# the 3D variant (dist/web-publish) and `publish2d` the 2D one
-# (dist/web-publish-2d); `og build --publish` copies the one of the game's
-# profile. Both keep og-ui's `shaping` (rustybuzz: Arabic, Indic). The lanes variant keeps the publish features with both
-# profiles. The size gate holds each download to the budget.
+# FEATURES (comma-separated, the crate's own), raw name <crate>-NAME.wasm.
+# A line `lanes NAME CRATE FEATURES` does the same for the lanes variant:
+# one lanes module per line, through scripts/wasm-lanes.sh, raw name
+# <crate>-NAME.wasm (NAME starts with `lanes`). og-host-web ships one of
+# each per game profile, each with only its profile's physics
+# (docs/web-export.md §Variants): `publish` and `lanes` are the 3D modules
+# (dist/web-publish), `publish2d` and `lanes2d` the 2D ones
+# (dist/web-publish-2d); `og build --publish` copies the pair of the game's
+# profile, so a page downloads one of them. All keep og-ui's `shaping`
+# (rustybuzz: Arabic, Indic). The size gate holds each download to the
+# budget.
 og-render   required
 og-host-web required publish lanes
 variant publish   og-host-web publish,physics3d,shaping
 variant publish2d og-host-web publish,physics2d,shaping
+lanes   lanes2d   og-host-web publish,physics2d,shaping
+lanes   lanes     og-host-web publish,physics3d,shaping
