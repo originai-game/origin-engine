@@ -313,7 +313,11 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
         high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
         reduced_transparency: viewport["reducedTransparency"].as_bool().unwrap_or(false),
-        mac_keys: viewport["macKeys"].as_bool().unwrap_or(false),
+        // Absent, the platform's own keys (the web host always says; a
+        // native host's surface without a renderer, og-host-node's
+        // og_node_attach_offscreen, leaves it to the platform, as
+        // `native_keys` does for the rendered one).
+        mac_keys: viewport["macKeys"].as_bool().unwrap_or(cfg!(target_os = "macos")),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())
