@@ -108,6 +108,58 @@ fn trivial_graph(t: [i32; 3]) -> Vec<u8> {
     g
 }
 
+/// A transform's key frame: its `_f` and `_t`.
+type Key = (u32, [i32; 3]);
+
+/// A scene graph of parts: root transform 0 → group 1 → per part a
+/// transform with its key frames over a shape of its model.
+fn keyed_graph(parts: &[(u32, &[Key])]) -> Vec<u8> {
+    let dict = |b: &mut Vec<u8>, pairs: &[(&str, String)]| {
+        b.extend_from_slice(&(pairs.len() as u32).to_le_bytes());
+        for (k, v) in pairs {
+            for s in [*k, v.as_str()] {
+                b.extend_from_slice(&(s.len() as u32).to_le_bytes());
+                b.extend_from_slice(s.as_bytes());
+            }
+        }
+    };
+    let trn = |node: u32, child: u32, keys: &[Key]| {
+        let mut b = node.to_le_bytes().to_vec();
+        dict(&mut b, &[]);
+        for v in [child, u32::MAX, 0, keys.len().max(1) as u32] {
+            b.extend_from_slice(&v.to_le_bytes());
+        }
+        if keys.is_empty() {
+            dict(&mut b, &[]);
+        }
+        for (f, t) in keys {
+            let at = format!("{} {} {}", t[0], t[1], t[2]);
+            dict(&mut b, &[("_f", f.to_string()), ("_t", at)]);
+        }
+        b
+    };
+    let mut g = Vec::new();
+    chunk(&mut g, b"nTRN", &trn(0, 1, &[]));
+    let mut grp = 1u32.to_le_bytes().to_vec();
+    dict(&mut grp, &[]);
+    grp.extend_from_slice(&(parts.len() as u32).to_le_bytes());
+    for i in 0..parts.len() as u32 {
+        grp.extend_from_slice(&(2 + 2 * i).to_le_bytes());
+    }
+    chunk(&mut g, b"nGRP", &grp);
+    for (i, (model, keys)) in parts.iter().enumerate() {
+        let node = 2 + 2 * i as u32;
+        chunk(&mut g, b"nTRN", &trn(node, node + 1, keys));
+        let mut shp = (node + 1).to_le_bytes().to_vec();
+        dict(&mut shp, &[]);
+        shp.extend_from_slice(&1u32.to_le_bytes());
+        shp.extend_from_slice(&model.to_le_bytes());
+        dict(&mut shp, &[]);
+        chunk(&mut g, b"nSHP", &shp);
+    }
+    g
+}
+
 fn solid(size: [u32; 3], c: u8) -> Vec<[u8; 4]> {
     let mut v = Vec::new();
     for z in 0..size[2] as u8 {
@@ -231,6 +283,81 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
     let (lo, hi) = bounds_of(&root, "models/blob.vox");
     assert!(
         close(lo, [-0.5, -0.5, -0.5]) && close(hi, [0.5, 0.5, 0.5]),
+        "{lo:?} {hi:?}"
+    );
+}
+
+/// A `.vox` whose transform is keyed (MagicaVoxel's `nTRN` frames, owed
+/// row 63): a block keyed to move 4 voxels along x and 2 up at frame 2
+/// over a static base cooks to a model with a `#anim` blob whose clip
+/// moves the block's joint (a STEP translation channel, at `voxFps`) and
+/// keeps it shown; the base stays unskinned. Before the keys were read
+/// the first key placed the block throughout: a static model, no `#anim`.
+#[test]
+fn a_keyed_transform_cooks_to_a_moving_joint() {
+    let models = [
+        ([6, 6, 1], solid([6, 6, 1], 3)),
+        ([2, 2, 2], solid([2, 2, 2], 1)),
+    ];
+    let bytes = vox_of(
+        &models,
+        &keyed_graph(&[
+            (0, &[(0, [0, 0, 0])]),
+            (1, &[(0, [-2, 0, 2]), (2, [2, 0, 4])]),
+        ]),
+    );
+    let root = project(
+        "keyed",
+        &[
+            ("models/lift.vox", &bytes),
+            ("models/lift.vox.ogt", &settings("voxScale 0.5\nvoxFps 4")),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let anim = bundle
+        .load_animation("models/lift.vox")
+        .expect("a keyed file is animated");
+    assert_eq!(anim.skeleton.skins.len(), 1);
+    assert_eq!(anim.skeleton.skins[0].joints.len(), 1, "the block alone");
+    let clip = anim.clip("frames").unwrap();
+    assert_eq!((clip.rate, clip.duration), (4.0, 0.75));
+    let paths: Vec<og_anim::ChannelPath> = clip.channels.iter().map(|c| c.path).collect();
+    assert_eq!(
+        paths,
+        vec![
+            og_anim::ChannelPath::Scale,
+            og_anim::ChannelPath::Translation
+        ]
+    );
+    assert!(clip.channels.iter().all(|c| c.step), "STEP channels");
+    let shown: Vec<f32> = clip.channels[0].samples.chunks(3).map(|s| s[0]).collect();
+    assert_eq!(shown, vec![1.0; 4], "shown on every frame");
+    // Frames 0, 1, 2 and the end key: (x, z, -y) of the keys at 0.5 m.
+    let places: Vec<[f32; 3]> = clip.channels[1]
+        .samples
+        .chunks(3)
+        .map(|s| [s[0], s[1], s[2]])
+        .collect();
+    let want = [
+        [-1.0, 1.0, 0.0],
+        [-1.0, 1.0, 0.0],
+        [1.0, 2.0, 0.0],
+        [1.0, 2.0, 0.0],
+    ];
+    assert!(
+        places.iter().zip(want).all(|(a, b)| close(*a, b)),
+        "{places:?}"
+    );
+    // The joint's channel drives the block's joint node.
+    let joint = anim.skeleton.skins[0].joints[0];
+    let binding = og_anim::bind(&anim.skeleton, clip);
+    assert_eq!(binding, vec![joint, joint]);
+    // The bind pose is frame 0: the block at its first key beside the base.
+    let (lo, hi) = bounds_of(&root, "models/lift.vox");
+    assert!(
+        close(lo, [-1.5, 0.0, -1.5]) && close(hi, [1.5, 1.5, 1.5]),
         "{lo:?} {hi:?}"
     );
 }

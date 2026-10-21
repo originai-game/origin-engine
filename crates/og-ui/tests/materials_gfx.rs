@@ -310,7 +310,20 @@ fn touches(p: &mut og_input::Pointers, at: [Vec2; 2]) -> InputFrame {
 #[test]
 fn the_materials_frame_matches_its_reference() {
     let (set, body) = cooked();
-    assert_eq!(set.names.len(), 64, "the kit's set names 64 icons");
+    assert_eq!(
+        set.names.len(),
+        81,
+        "the kit's set names 72 iconoir icons and 9 of them again by the kit's names"
+    );
+    // Every name the kit's screens draw (its old PNG grid's 32) is in the set.
+    for name in [
+        "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield", "potion", "gem",
+        "key", "map", "bolt", "clock", "trophy", "home", "plus", "close", "check", "play", "back",
+        "bag", "bomb", "crown", "flag", "apple", "leaf", "fire", "drop", "skull", "music",
+        "person",
+    ] {
+        assert!(set.names.iter().any(|n| n == name), "{name} is in the set");
+    }
     let mut scene = RenderScene::new();
     let icons = add(&mut scene, &set);
     let font = add(&mut scene, &body);

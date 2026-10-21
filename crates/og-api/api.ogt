@@ -8177,7 +8177,7 @@ module ui {
     field reducedTransparency bool "The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false." {
       optional true
     }
-    field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it on Apple platforms; native hosts leave it off, so a script edits the same on every OS (og.ui.previewViewport tries it). Omitted is false." {
+    field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false." {
       optional true
     }
     field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
@@ -8416,7 +8416,7 @@ module ui {
   }
 
   fn zoomView {
-    doc "A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way. The probe reads its zoom as its value."
+    doc "A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it, and then + (= and the keypad's) and - zoom it about its centre, 0 fits it again and the arrows pan it a tenth of its size. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way, and fling it as they lift. The probe reads its zoom as its value."
     param id String "Its id."
     param desc ZoomViewDesc "The picture, its size and zoom limits."
     returns ZoomResult
@@ -8621,6 +8621,7 @@ module ui {
     field height Option.Size "Its height; null fits the content."
     field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
     field frame Option.SkinPart "The skin frame its background takes; null is the panel's."
+    field instant bool "Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
   }
 
   struct TransitionDesc {
@@ -9311,6 +9312,9 @@ module ui {
     field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
     field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
     field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field valueMin Option.f32 "A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range."
+    field valueMax Option.f32 "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
+    field valueNow Option.f32 "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
     field x f32 "Left edge of the whole element." {
       unit cssPx
     }
@@ -9529,6 +9533,7 @@ module ui {
     field items List.MenuItem "The items, such as Play, Continue, Settings, Quit."
     field footer String "A line at the bottom (a version, credits); empty is none."
     field onSelect Option.UiAction "Called with the chosen item's id."
+    field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin."
   }
 
   struct PauseMenuDesc {

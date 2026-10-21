@@ -29,6 +29,17 @@ pub(crate) struct A11y {
     pub selected: Option<bool>,
     pub expanded: Option<bool>,
     pub busy: bool,
+    /// A range control's bounds and value as numbers (a slider's, a
+    /// bounded stepper's, a meter's): `aria-valuemin`, `-max` and `-now`.
+    pub range: Option<A11yRange>,
+}
+
+/// A range's bounds and value (an unbounded stepper has a value alone).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct A11yRange {
+    pub min: Option<f32>,
+    pub max: Option<f32>,
+    pub now: f32,
 }
 
 /// One node of the accessibility tree (IDL `ui.A11yNode`).
@@ -45,6 +56,14 @@ pub struct A11yNode {
     pub description: String,
     pub value: String,
     pub states: Vec<String>,
+    /// A range's smallest value (a slider's, a bounded stepper's, 0 for a
+    /// progress or a meter); `None` for none (a stepper without bounds).
+    pub value_min: Option<f32>,
+    /// A range's largest value; `None` for none.
+    pub value_max: Option<f32>,
+    /// A range's value as a number (the value text says it as people read
+    /// it); `None` for a control that is no range.
+    pub value_now: Option<f32>,
     /// Its bounds in CSS pixels (the whole element, also where a scroll
     /// container cuts it; `offscreen` then says so).
     pub x: f32,
@@ -81,6 +100,9 @@ impl A11yTree {
                 &n.value,
             ] {
                 h.write_str(s);
+            }
+            for v in [n.value_min, n.value_max, n.value_now] {
+                h.write_u64(v.map_or(u64::MAX, |v| u64::from(v.to_bits())));
             }
             h.write_u64(n.states.len() as u64);
             for s in &n.states {
@@ -164,6 +186,23 @@ pub(crate) fn value_of(n: &Node) -> String {
     match n.widget {
         Widget::Progress { value } => format!("{:.0}%", value.clamp(0.0, 1.0) * 100.0),
         _ => String::new(),
+    }
+}
+
+/// A node's range: its smallest and largest value and its value, as
+/// numbers (a slider's, a stepper's, a meter's; a progress's percent 0 to
+/// 100).
+pub(crate) fn range_of(n: &Node) -> Option<A11yRange> {
+    if let Some(r) = n.a11y.range {
+        return Some(r);
+    }
+    match n.widget {
+        Widget::Progress { value } => Some(A11yRange {
+            min: Some(0.0),
+            max: Some(100.0),
+            now: (value.clamp(0.0, 1.0) * 100.0).round(),
+        }),
+        _ => None,
     }
 }
 

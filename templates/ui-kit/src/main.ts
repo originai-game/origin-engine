@@ -400,8 +400,10 @@ function applyTheme(world: World, d: DemoState): void {
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
     skin,
-    // The materials screen draws from the iconoir set; the others from the kit's grid (or the pack's).
-    icons: d.iconoir && d.iconSet ? { font: d.iconSet as never } : skin ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
+    // Every screen draws from the iconoir set (distance-field glyphs, named
+    // as ICONS names them too); a style pack's own icons on its screens but
+    // the materials one; the PNG grid only if the set did not load.
+    icons: d.iconSet && (d.iconoir || !skin) ? { font: d.iconSet as never } : skin ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
     sounds: d.sounds ? sounds : null,
   });
 }

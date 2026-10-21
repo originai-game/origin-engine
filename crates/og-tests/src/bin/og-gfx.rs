@@ -40,7 +40,12 @@ fn main() {
     let mut only: Option<&str> = None;
     while let Some(a) = args.next() {
         match a.as_str() {
-            "--all" => names.extend(scenes::SCENES.iter().map(|s| s.to_string())),
+            "--all" => names.extend(
+                scenes::SCENES
+                    .iter()
+                    .chain(scenes::NATIVE_SCENES)
+                    .map(|s| s.to_string()),
+            ),
             "--out" => out = Some(args.next().expect("--out PATH")),
             "--capture" => capture = Some(PathBuf::from(args.next().expect("--capture DIR"))),
             "--costs" => costs = true,

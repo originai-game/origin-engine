@@ -25,6 +25,7 @@ export const Sound = { Tap0: 1, Tap1: 2, Tap2: 4, Miss: 8, Clear: 16, Fail: 32, 
 /** The play: the song's clock, the judgements, the score, the groove, the calibration, the best. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the skin's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
   paused: bool(false),
   settingsOpen: bool(false),
   held: bool(false, { doc: "The time scale is held at 0 (paused or in the settings)." }),

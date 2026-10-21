@@ -271,7 +271,8 @@ pub(crate) const HIT_OFFSCREEN: u8 = 16;
 pub(crate) const HIT_POINTER: u8 = 32;
 /// A focus scope (dialog backdrop, open menu).
 pub(crate) const HIT_SCOPE: u8 = 64;
-/// A multi-line text control: ↑ and ↓ edit it while it is focused.
+/// ↑ and ↓ are its own while it is focused (a multi-line text control
+/// edits with them, a zoom view pans).
 pub(crate) const HIT_MULTILINE: u8 = 128;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1818,6 +1819,11 @@ impl Ui {
             2
         };
         self.nodes[i].a11y.value = Some(format!("{:.*}", decimals, *value));
+        self.nodes[i].a11y.range = Some(crate::a11y::A11yRange {
+            min: Some(lo.min(hi)),
+            max: Some(lo.max(hi)),
+            now: *value,
+        });
         r
     }
 
@@ -2498,6 +2504,7 @@ impl Ui {
                 scope: scope_of[i],
                 scroller: scroller_of[i],
             };
+            let range = crate::a11y::range_of(n).filter(|_| !role.is_empty());
             let node = |states: Vec<String>| crate::a11y::A11yNode {
                 path: path.clone(),
                 parent: parent_path.clone(),
@@ -2506,6 +2513,9 @@ impl Ui {
                 description: description.clone(),
                 value: value.clone(),
                 states,
+                value_min: range.and_then(|r| r.min),
+                value_max: range.and_then(|r| r.max),
+                value_now: range.map(|r| r.now),
                 x: r.x,
                 y: r.y,
                 width: r.width,
@@ -2596,6 +2606,7 @@ impl Ui {
                             y: lr.y,
                             width: lr.width,
                             height: lr.height,
+                            ..crate::a11y::A11yNode::default()
                         },
                     ));
                     element_keys.push(child_key(n.key, &l));
@@ -3208,8 +3219,7 @@ impl Ui {
                         // piece per font of a mixed text (crate::text).
                         let pieces =
                             crate::text::pieces(font, &line.text, self.direction, tc.tracking());
-                        let baseline =
-                            ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+                        let baseline = m.baseline(&line.text, ly, lh, size);
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.skin_index();
                         let tracking = tc.tracking();
@@ -3529,7 +3539,7 @@ impl Ui {
                 }
             };
             marks(true, cmds);
-            let baseline = top + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+            let baseline = m.baseline(&line, top, lh, size);
             let pieces = crate::text::pieces(font, &line, self.direction, tracking);
             let one = pieces.len() == 1;
             for pc in pieces {
@@ -3808,8 +3818,7 @@ impl Ui {
                     let lh = step.line_height * n.scale;
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
-                    let baseline =
-                        ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+                    let baseline = m.baseline(text, ly, lh, size);
                     let snap = |v: f32| (v * dpr).round() / dpr;
                     let pieces = crate::text::pieces(f, text, self.direction, tracking);
                     let one = pieces.len() == 1;

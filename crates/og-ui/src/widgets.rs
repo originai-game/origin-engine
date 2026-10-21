@@ -48,6 +48,10 @@ pub struct AnchorDesc {
     pub over: bool,
     /// The skin frame its background takes (`None`: the panel's).
     pub skin: Option<crate::skin::SkinPart>,
+    /// Shown settled the first time it is built: no skin entrance or
+    /// stagger (the screen a game opens on, which the web draws behind its
+    /// play gate).
+    pub instant: bool,
 }
 
 /// How a transition moves.
@@ -455,12 +459,21 @@ impl Ui {
             },
             NONE,
         );
-        // A skin's entrance and stagger for a screen panel.
+        // A skin's entrance and stagger for a screen panel, from the tick it
+        // first appears; an instant panel is settled from there (`h` 1).
         let m = self.theme.skin.motion;
         if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
             let key = crate::id::child_key(self.nodes[i].key, "enter");
-            let since = self.since(key);
-            self.enter(i, since, m.enter);
+            let fresh = !self.has_anim(key);
+            let mut a = self.anim(key);
+            if fresh {
+                a.t = self.state.tick;
+                a.h = u64::from(desc.instant);
+            }
+            self.set_anim(key, a);
+            if a.h == 0 {
+                self.enter(i, a.t, m.enter);
+            }
         }
     }
 
@@ -1762,6 +1775,11 @@ impl Ui {
             }
         }
         self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
+        self.nodes[spin].a11y.range = Some(crate::a11y::A11yRange {
+            min: bounded.then_some(lo),
+            max: bounded.then_some(hi),
+            now: *value,
+        });
         out
     }
 
@@ -2464,6 +2482,11 @@ impl Ui {
         }
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(format!("{} of {}", value.round(), max.round()));
+        n.a11y.range = Some(crate::a11y::A11yRange {
+            min: Some(0.0),
+            max: Some(max),
+            now: value,
+        });
     }
 
     /// A cooldown: a disc whose amber ring fills clockwise from the top as
@@ -2574,7 +2597,9 @@ impl Ui {
 
     /// A zoomable picture (a map, an artwork): two fingers pinch it to zoom
     /// about their centre and pan it as they move (og.Pointers), the wheel
-    /// zooms about the pointer, a drag pans. It stays on its picture and
+    /// zooms about the pointer, a drag pans; focused by keys or a pad, `+`
+    /// (`=`) and `-` zoom it about its centre, `0` fits it again and the
+    /// arrows pan it a tenth of its size. It stays on its picture and
     /// within its zoom limits; the zoom and the centre are UI state.
     /// Answers where it is.
     pub fn zoom_view(&mut self, id: impl Into<Id>, desc: &ZoomViewDesc) -> ZoomResponse {
@@ -2603,6 +2628,14 @@ impl Ui {
         });
         let s = crate::scroll::ZoomState { min, max, ..s };
         self.set_zoom_state(key, s);
+        // Keys and pads reach it; while focused its arrows (↑ ↓ too) are
+        // its own, with + - and 0.
+        let r = self.nav_target(i, true);
+        self.nodes[i].multiline = true;
+        if r.focused {
+            let adjust = self.nav.adjust;
+            self.zoom_keys(key, adjust);
+        }
         let s = self.zoom_state(key).unwrap_or(s);
         let [u0, v0, u1, v1] = desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
         let half = 0.5 / s.zoom;

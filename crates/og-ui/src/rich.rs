@@ -115,7 +115,9 @@ fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
     } else {
         s.step.line_height
     };
-    (lh, m.ascender * s.step.size, m.descender * s.step.size)
+    // A span mixing faces: the extents of every face it takes.
+    let (a, d) = m.extents(&s.text);
+    (lh, a * s.step.size, d * s.step.size)
 }
 
 /// The paragraphs' units (paragraphs split at `\n`).
@@ -696,7 +698,60 @@ impl Ui {
                 glow: None,
                 placements,
             };
-            if let Some(glyphs) = piece.glyphs.as_ref().filter(|_| mixed) {
+            // A span's effect at this tick for its `g`-th glyph: (rise, alpha).
+            let effect = |g: usize| match s.fx {
+                SpanFx::Wave => (-0.14 * size * sine(tick * 0.16 + g as f32 * 0.7), 1.0),
+                SpanFx::Shake => {
+                    // A fixed hash of the glyph and the tick's half: jitter, no clock.
+                    let h = (g as u32).wrapping_mul(2_654_435_761)
+                        ^ ((tick as u32) / 2).wrapping_mul(40_503);
+                    (((h % 100) as f32 / 100.0 - 0.5) * 0.12 * size, 1.0)
+                }
+                _ => (0.0, 0.7 + 0.3 * sine(tick * 0.1)),
+            };
+            let moving = s.fx != SpanFx::None && !still;
+            if let Some(glyphs) = piece.glyphs.as_ref().filter(|_| moving) {
+                // A moving span laid out glyph by glyph (it mixes faces, runs
+                // right to left or is shaped): each glyph in its own face,
+                // moved by the effect; a shaped run's joined glyphs move as
+                // one (their joins would break apart).
+                let shaped = |g: &crate::text::VisualGlyph| g.ch as u32 >= crate::shape::GLYPH_PUA;
+                let mut x = r.x;
+                for (g, run) in glyphs
+                    .chunk_by(|a, b| a.font == b.font && shaped(a) && shaped(b))
+                    .enumerate()
+                {
+                    let w = run.iter().map(|v| v.advance).sum::<f32>() * size;
+                    let Some(f) = font.handle_of(run[0].font) else {
+                        x += w;
+                        continue;
+                    };
+                    let (text, placements) = crate::text::FontMetrics::drawn(run);
+                    let (dy, a) = effect(g);
+                    let copies = if smear > 0.0 {
+                        &[smear, 0.0][..]
+                    } else {
+                        &[0.0][..]
+                    };
+                    for &dx in copies {
+                        cmds.push(DrawCmd::Text {
+                            x: snap(x + dx),
+                            baseline: snap(baseline + dy),
+                            size,
+                            text: text.clone(),
+                            color: color.fade(alpha * a).linear(),
+                            font: f,
+                            bounds: Rect::new(x + dx, r.y + dy, w, r.height),
+                            clip,
+                            tracking,
+                            weight,
+                            glow: None,
+                            placements: placements.clone(),
+                        });
+                    }
+                    x += w;
+                }
+            } else if let Some(glyphs) = piece.glyphs.as_ref().filter(|_| mixed) {
                 // A segment mixing fonts: a command per font, each where its
                 // glyphs start.
                 for pc in crate::text::split(font, glyphs) {
@@ -764,16 +819,7 @@ impl Ui {
                     let cs = c.to_string();
                     let w = m.measure_tracked(&cs, size, tracking)
                         + chars.get(g + 1).map_or(0.0, |&nx| m.kern(c, nx) * size);
-                    let (dy, a) = match s.fx {
-                        SpanFx::Wave => (-0.14 * size * sine(tick * 0.16 + g as f32 * 0.7), 1.0),
-                        SpanFx::Shake => {
-                            // A fixed hash of the glyph and the tick's half: jitter, no clock.
-                            let h = (g as u32).wrapping_mul(2_654_435_761)
-                                ^ ((tick as u32) / 2).wrapping_mul(40_503);
-                            (((h % 100) as f32 / 100.0 - 0.5) * 0.12 * size, 1.0)
-                        }
-                        _ => (0.0, 0.7 + 0.3 * sine(tick * 0.1)),
-                    };
+                    let (dy, a) = effect(g);
                     if smear > 0.0 {
                         cmds.push(glyph(x + smear, dy, a, cs.clone(), Vec::new(), w));
                     }

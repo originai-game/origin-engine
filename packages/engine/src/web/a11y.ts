@@ -24,7 +24,9 @@
 //   while interacting) moves the native value, or sets it from
 //   `aria-valuenow` and the step, and fires `input`, which becomes
 //   `increment` or `decrement` and puts the value back (the UI owns the
-//   value and its step; `aria-valuenow` and `aria-valuetext` say it). A
+//   value and its step; `aria-valuenow` and `aria-valuetext` say it, and
+//   `aria-valuemin` and `aria-valuemax` its bounds from the tree's
+//   `valueMin` and `valueMax`, over the native range's own). A
 //   stepper's − and + follow its range as siblings (an input holds no
 //   children). Keys pressed while a
 //   mirrored element has the DOM focus still go to the engine as keys (the
@@ -49,6 +51,12 @@ export interface A11yNode {
   readonly description: string;
   readonly value: string;
   readonly states: readonly string[];
+  /** A range's smallest value (aria-valuemin); null (or absent) for none. */
+  readonly valueMin?: number | null;
+  /** A range's largest value (aria-valuemax); null (or absent) for none. */
+  readonly valueMax?: number | null;
+  /** A range's value as a number (aria-valuenow); null (or absent) for none. */
+  readonly valueNow?: number | null;
   readonly x: number;
   readonly y: number;
   readonly width: number;
@@ -293,8 +301,15 @@ export class A11yMirror {
     set("aria-busy", states.has("busy") ? "true" : null);
     set("aria-current", states.has("focused") ? "true" : null);
     if (RANGES.has(node.role)) {
-      const n = Number.parseFloat(node.value);
+      // The tree's numbers (valueNow, valueMin, valueMax); a tree without
+      // them reads the value text, a percent taking 0 to 100.
+      const n = node.valueNow ?? Number.parseFloat(node.value);
+      const percent = node.value.endsWith("%");
+      const min = node.valueMin ?? (percent ? 0 : null);
+      const max = node.valueMax ?? (percent ? 100 : null);
       set("aria-valuenow", Number.isFinite(n) ? String(n) : null);
+      set("aria-valuemin", min !== null && Number.isFinite(min) ? String(min) : null);
+      set("aria-valuemax", max !== null && Number.isFinite(max) ? String(max) : null);
       // A native range sits at the UI's value, a step from either end, so
       // a reader's step (from the native value or from aria-valuenow) lands
       // on one side of it.
@@ -307,16 +322,12 @@ export class A11yMirror {
         }
       }
       set("aria-valuetext", node.value || null);
-      if (node.value.endsWith("%")) {
-        set("aria-valuemin", "0");
-        set("aria-valuemax", "100");
-      }
-    } else if (node.role === "textbox" || node.role === "combobox") {
-      set("aria-valuetext", null);
-      set("aria-description", node.value || null);
     } else {
-      set("aria-valuenow", null);
-      set("aria-valuetext", node.value || null);
+      for (const a of ["aria-valuenow", "aria-valuemin", "aria-valuemax"]) set(a, null);
+      if (node.role === "textbox" || node.role === "combobox") {
+        set("aria-valuetext", null);
+        set("aria-description", node.value || null);
+      } else set("aria-valuetext", node.value || null);
     }
   }
 

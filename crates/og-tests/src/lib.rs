@@ -19,3 +19,6 @@ pub mod scenes;
 pub mod shadow_scenes;
 pub mod stylise_scenes;
 pub mod terrain_scenes;
+// Cooked through og-cook (native only).
+#[cfg(not(target_arch = "wasm32"))]
+pub mod vox_scenes;
