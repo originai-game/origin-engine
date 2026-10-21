@@ -614,6 +614,7 @@ if (!args.includes("--no-play")) {
       const wall = performance.now() - w0;
       const tick1 = await page.eval<number>("__runtime_probe__.tick()");
       const t = await page.eval<{ frames: number; intervals: number[]; work: number[] }>("__og_timings__()");
+      play["memoryPlayed"] = await page.eval("__runtime_probe__.memory?.() ?? null").catch((e) => ({ error: String(e) }));
       play["steady"] = {
         ticks: tick1 - tick0,
         wallMs: Math.round(wall),
@@ -677,9 +678,9 @@ if (!args.includes("--no-play")) {
       if (!translated) note(`after the reload and the gate the title is not in the saved language ('${plan.translated}' missing)`);
       const tree2 = await page.eval<Array<{ path: string; role: string; name: string }>>(TREE);
       play["a11yReloaded"] = tree2.map((n) => `${n.role}:${n.name}`).slice(0, 40);
-      // Memory at the end of the run.
-      // measureUserAgentSpecificMemory never resolves headless, and the probe says nothing of the
-      // wasm memory (WEB-FINDINGS #9): the processes' resident memory stands in for it.
+      // Memory at the end of the run: the engine's own (__runtime_probe__.memory(): the wasm linear
+      // memory, the counted heap, WEB-FINDINGS #9), and the browser processes' resident memory.
+      play["memoryEnd"] = await page.eval("__runtime_probe__.memory?.() ?? null").catch((e) => ({ error: String(e) }));
       play["memoryApi"] = await page.eval<string>("typeof performance.measureUserAgentSpecificMemory");
       let heap = 0;
       for (const [session] of workers) {
@@ -688,7 +689,8 @@ if (!args.includes("--no-play")) {
       }
       const pageHeap = await page.send<{ usedSize: number }>("Runtime.getHeapUsage").catch(() => null);
       play["jsHeap"] = { page: pageHeap?.usedSize ?? null, workers: heap };
-      play["memory"] = await page
+      // measureUserAgentSpecificMemory never resolves headless (45 s); asked only without the engine's figure.
+      play["memory"] = play["memoryEnd"] && !(play["memoryEnd"] as { error?: string }).error ? null : await page
         .eval<{ bytes: number; breakdown: Array<{ bytes: number; types: string[]; attribution: Array<{ scope: string; url: string }> }> }>(
           "Promise.race([performance.measureUserAgentSpecificMemory?.() ?? Promise.resolve(null), new Promise((r) => setTimeout(() => r(null), 45000))])",
         )
@@ -770,7 +772,11 @@ if (args.includes("--frames")) {
   const b = p["boot"] as ReturnType<typeof bootOf> | undefined;
   if (b) console.log(`phases: ${JSON.stringify((b as { phases?: unknown }).phases ?? null)}`);
   if (b) console.log(`boot: first frame ${b.firstFrame} ms, ready ${p["timings"]?.["og:ready"]} ms, title ${p["timings"]?.["title"]} ms; fetched before it ${b.files} files (${b.requests} requests), ${b.brotli} B brotli (${Object.entries(b.by).map(([k, v]) => `${k} ${v.files}/${v.brotli}`).join(", ")}); after it ${b.after.files} files ${b.after.brotli} B (${b.after.chunks} chunks, ${b.after.packs} packs); the service worker's precache ${b.sw.files} files ${b.sw.brotli} B (${b.sw.beforeFirstFrame} before the first frame)`);
-  if (p["memoryProbe"]) console.log(`memory: ${JSON.stringify(p["memoryProbe"])}`);
+  const mb = (n: unknown) => (typeof n === "number" ? `${(n / 1048576).toFixed(1)} MiB` : "n/a");
+  for (const [when, m] of [["boot", p["memoryProbe"]], ["after 600 ticks", p["memoryPlayed"]], ["end", p["memoryEnd"]]] as const) {
+    const x = m as { linear?: number; heap?: { live: number; peak: number } | null; world?: { entities: number }; audio?: number | null } | null | undefined;
+    if (x && !("error" in x)) console.log(`memory (${when}): linear ${mb(x.linear)}, heap live ${mb(x.heap?.live)} peak ${mb(x.heap?.peak)}, ${x.world?.entities ?? "?"} entities, audio ${mb(x.audio)}`);
+  }
   if (p["reload"]) console.log(`reload: translated behind the gate ${p["reload"].translatedBehindGate}, after the tap ${p["reload"].translated}`);
 }
 console.log(`wrote ${join(out, "dogfood.json")}`);

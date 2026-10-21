@@ -1244,6 +1244,16 @@ fn budget_json(s: &Streams) -> Value {
     })
 }
 
+/// The streaming budget for the probe's `memory`: the budget, what the
+/// admitted groups take and its peak, in bytes.
+pub(crate) fn memory(eng: &Engine) -> Value {
+    let Ok(a) = eng.assets.try_borrow() else {
+        return Value::Null;
+    };
+    let s = &a.stream;
+    json!({ "budget": s.budget() as f64, "used": s.used() as f64, "peak": s.peak as f64 })
+}
+
 /// `dump_stream`'s JSON: the budget, the memory used and its peak, every
 /// group (its trigger, state, why and since when), the recent events and
 /// the terrain streamer's tiles.

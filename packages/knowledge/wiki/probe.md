@@ -47,6 +47,10 @@ module probe {
 | [`BuildProfile`](#type-BuildProfile) | enum | The build configuration; publish builds keep only the player-facing probe members. |
 | [`Capture`](#type-Capture) | struct | A captured frame. |
 | [`Heard`](#type-Heard) | struct | What the host's mixer rendered last: the audio up to the current tick. |
+| [`ProbeHeap`](#type-ProbeHeap) | struct | The engine's allocator, counted (both hosts install a counting global allocator). |
+| [`ProbeWorldMemory`](#type-ProbeWorldMemory) | struct | The world's size. |
+| [`ProbeStreamMemory`](#type-ProbeStreamMemory) | struct | The streaming memory budget (og.stream.budget): what the admitted groups' assets take. |
+| [`ProbeMemory`](#type-ProbeMemory) | struct | What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md). |
 | [`SweepDesc`](#type-SweepDesc) | desc struct | A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture. |
 | [`SweepFrame`](#type-SweepFrame) | struct | One frame of a sweep. |
 | [`SweepResult`](#type-SweepResult) | struct | A sweep's frames, one per value. |
@@ -80,7 +84,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10600</sub>
+<sub>`api.ogt` line 10646</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -100,7 +104,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 10604</sub>
+<sub>`api.ogt` line 10650</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -124,7 +128,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 10607</sub>
+<sub>`api.ogt` line 10653</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -148,7 +152,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 10612</sub>
+<sub>`api.ogt` line 10658</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -176,7 +180,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 10617</sub>
+<sub>`api.ogt` line 10663</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -199,7 +203,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 10622</sub>
+<sub>`api.ogt` line 10668</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -222,7 +226,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 10626</sub>
+<sub>`api.ogt` line 10672</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -251,7 +255,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 10630</sub>
+<sub>`api.ogt` line 10676</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -274,7 +278,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 10636</sub>
+<sub>`api.ogt` line 10682</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -305,7 +309,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 10640</sub>
+<sub>`api.ogt` line 10686</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -334,7 +338,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 10647</sub>
+<sub>`api.ogt` line 10693</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -362,7 +366,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 10653</sub>
+<sub>`api.ogt` line 10699</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -394,7 +398,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 10658</sub>
+<sub>`api.ogt` line 10704</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -422,7 +426,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 10665</sub>
+<sub>`api.ogt` line 10711</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -440,7 +444,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10672</sub>
+<sub>`api.ogt` line 10718</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -464,7 +468,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 10677</sub>
+<sub>`api.ogt` line 10723</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -505,7 +509,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 10682</sub>
+<sub>`api.ogt` line 10728</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -535,7 +539,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 10695</sub>
+<sub>`api.ogt` line 10741</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -558,7 +562,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 10702</sub>
+<sub>`api.ogt` line 10748</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -581,7 +585,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 10706</sub>
+<sub>`api.ogt` line 10752</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -609,7 +613,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 10710</sub>
+<sub>`api.ogt` line 10756</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -639,7 +643,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 10715</sub>
+<sub>`api.ogt` line 10761</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -667,7 +671,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 10722</sub>
+<sub>`api.ogt` line 10768</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -697,7 +701,30 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 10727</sub>
+<sub>`api.ogt` line 10773</sub>
+
+<a id="member-EngineProbe-memory"></a>
+
+#### `EngineProbe.memory`
+
+What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts.
+
+```ts
+EngineProbe.memory(): ProbeMemory | null
+```
+
+**Returns** `ProbeMemory | null`: Null from a host that gives no figures.
+
+Binding symbol `og_engine_probe_memory` · publish builds: dropped
+
+```ogt
+fn memory {
+  doc "What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts."
+  returns Option.ProbeMemory "Null from a host that gives no figures."
+}
+```
+
+<sub>`api.ogt` line 10780</sub>
 
 ## Types
 
@@ -1093,6 +1120,118 @@ struct Heard {
 
 <sub>`api.ogt` line 10442</sub>
 
+<a id="type-ProbeHeap"></a>
+
+### `ProbeHeap` (struct)
+
+The engine's allocator, counted (both hosts install a counting global allocator).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `live` | `number` | `0` | — | `bytes` | — | Bytes allocated and not freed. |
+| `peak` | `number` | `0` | — | `bytes` | — | The most bytes live at once since load. |
+| `allocations` | `number` | `0` | — | — | — | Allocations made since load. |
+
+```ogt
+struct ProbeHeap {
+  doc "The engine's allocator, counted (both hosts install a counting global allocator)."
+  field live f64 "Bytes allocated and not freed." {
+    unit bytes
+  }
+  field peak f64 "The most bytes live at once since load." {
+    unit bytes
+  }
+  field allocations f64 "Allocations made since load."
+}
+```
+
+<sub>`api.ogt` line 10454</sub>
+
+<a id="type-ProbeWorldMemory"></a>
+
+### `ProbeWorldMemory` (struct)
+
+The world's size.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entities` | `number` | `0` | — | — | — | Entities alive. |
+
+```ogt
+struct ProbeWorldMemory {
+  doc "The world's size."
+  field entities u32 "Entities alive."
+}
+```
+
+<sub>`api.ogt` line 10465</sub>
+
+<a id="type-ProbeStreamMemory"></a>
+
+### `ProbeStreamMemory` (struct)
+
+The streaming memory budget (og.stream.budget): what the admitted groups' assets take.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `budget` | `number` | `0` | — | `bytes` | — | The budget. |
+| `used` | `number` | `0` | — | `bytes` | — | What the admitted groups take now. |
+| `peak` | `number` | `0` | — | `bytes` | — | The most they took at once. |
+
+```ogt
+struct ProbeStreamMemory {
+  doc "The streaming memory budget (og.stream.budget): what the admitted groups' assets take."
+  field budget f64 "The budget." {
+    unit bytes
+  }
+  field used f64 "What the admitted groups take now." {
+    unit bytes
+  }
+  field peak f64 "The most they took at once." {
+    unit bytes
+  }
+}
+```
+
+<sub>`api.ogt` line 10470</sub>
+
+<a id="type-ProbeMemory"></a>
+
+### `ProbeMemory` (struct)
+
+What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `host` | `string` | `""` | — | — | — | `web` or `native`. |
+| `linear` | `number \| null` | `null` | — | `bytes` | — | The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively. |
+| `resident` | `number \| null` | `null` | — | `bytes` | — | The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's. |
+| `heap` | `ProbeHeap \| null` | `null` | — | — | — | The engine's allocator; null where the host counts nothing. |
+| `world` | `ProbeWorldMemory` | `{ entities: 0 }` | — | — | — | The world. |
+| `stream` | `ProbeStreamMemory \| null` | `null` | — | — | — | The streaming budget. |
+| `audio` | `number \| null` | `null` | — | `bytes` | — | The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio. |
+
+```ogt
+struct ProbeMemory {
+  doc "What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md)."
+  field host String "`web` or `native`."
+  field linear Option.f64 "The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively." {
+    unit bytes
+  }
+  field resident Option.f64 "The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's." {
+    unit bytes
+  }
+  field heap Option.ProbeHeap "The engine's allocator; null where the host counts nothing."
+  field world ProbeWorldMemory "The world."
+  field stream Option.ProbeStreamMemory "The streaming budget."
+  field audio Option.f64 "The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio." {
+    unit bytes
+  }
+}
+```
+
+<sub>`api.ogt` line 10483</sub>
+
 <a id="type-SweepDesc"></a>
 
 ### `SweepDesc` (desc struct)
@@ -1123,7 +1262,7 @@ struct SweepDesc {
 }
 ```
 
-<sub>`api.ogt` line 10454</sub>
+<sub>`api.ogt` line 10500</sub>
 
 <a id="type-SweepFrame"></a>
 
@@ -1146,7 +1285,7 @@ struct SweepFrame {
 }
 ```
 
-<sub>`api.ogt` line 10465</sub>
+<sub>`api.ogt` line 10511</sub>
 
 <a id="type-SweepResult"></a>
 
@@ -1165,7 +1304,7 @@ struct SweepResult {
 }
 ```
 
-<sub>`api.ogt` line 10472</sub>
+<sub>`api.ogt` line 10518</sub>
 
 <a id="type-ReloadReport"></a>
 
@@ -1194,7 +1333,7 @@ struct ReloadReport {
 }
 ```
 
-<sub>`api.ogt` line 10477</sub>
+<sub>`api.ogt` line 10523</sub>
 
 <a id="type-SnapshotInfo"></a>
 
@@ -1221,7 +1360,7 @@ struct SnapshotInfo {
 }
 ```
 
-<sub>`api.ogt` line 10488</sub>
+<sub>`api.ogt` line 10534</sub>
 
 <a id="type-DumpKind"></a>
 
@@ -1246,7 +1385,7 @@ enum DumpKind {
 }
 ```
 
-<sub>`api.ogt` line 10498</sub>
+<sub>`api.ogt` line 10544</sub>
 
 <a id="type-DumpDesc"></a>
 
@@ -1270,7 +1409,7 @@ struct DumpDesc {
 }
 ```
 
-<sub>`api.ogt` line 10505</sub>
+<sub>`api.ogt` line 10551</sub>
 
 <a id="type-ArchetypeDump"></a>
 
@@ -1291,7 +1430,7 @@ struct ArchetypeDump {
 }
 ```
 
-<sub>`api.ogt` line 10512</sub>
+<sub>`api.ogt` line 10558</sub>
 
 <a id="type-SystemDump"></a>
 
@@ -1320,7 +1459,7 @@ struct SystemDump {
 }
 ```
 
-<sub>`api.ogt` line 10518</sub>
+<sub>`api.ogt` line 10564</sub>
 
 <a id="type-WorldDump"></a>
 
@@ -1349,7 +1488,7 @@ struct WorldDump {
 }
 ```
 
-<sub>`api.ogt` line 10529</sub>
+<sub>`api.ogt` line 10575</sub>
 
 <a id="type-EntityDump"></a>
 
@@ -1372,7 +1511,7 @@ struct EntityDump {
 }
 ```
 
-<sub>`api.ogt` line 10539</sub>
+<sub>`api.ogt` line 10585</sub>
 
 <a id="type-UiElement"></a>
 
@@ -1425,7 +1564,7 @@ struct UiElement {
 }
 ```
 
-<sub>`api.ogt` line 10546</sub>
+<sub>`api.ogt` line 10592</sub>
 
 <a id="type-UiSurface"></a>
 
@@ -1454,7 +1593,7 @@ struct UiSurface {
 }
 ```
 
-<sub>`api.ogt` line 10572</sub>
+<sub>`api.ogt` line 10618</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1477,7 +1616,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 10585</sub>
+<sub>`api.ogt` line 10631</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1503,7 +1642,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 10592</sub>
+<sub>`api.ogt` line 10638</sub>
 
 ## Constants
 

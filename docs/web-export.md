@@ -709,6 +709,18 @@ which lives in the Worker and answers asynchronously:
   with a base64 16-bit stereo WAV; the command channel's
   `listen[:path][:seconds]` writes the same as a `wav` output; before the
   page's audio is attached it answers `null`.
+- `memory` (dev builds, both hosts; IDL `EngineProbe.memory`): what the
+  engine holds, in one shape on both hosts (`ProbeMemory`, bytes): `host`,
+  `linear` (the wasm linear memory, which the browser reserved for the
+  engine and never takes back; null natively), `resident` (the process's,
+  natively; null on the web), `heap` (`live`, `peak`, `allocations`: the
+  counting global allocator both hosts install, og-core's `alloc`),
+  `world.entities`, `stream` (the streaming budget, `used`, `peak`) and
+  `audio` (the sound bank's samples). Every build's page answers the same
+  from the engine Worker (`__runtime_probe__.memory()`, the Worker's
+  `memory` call, `og_web_memory`), a publish page included, whose probe
+  has no `memory`; the dogfood harness's table reads it
+  (`tests/web/dogfood.ts`, `memoryProbe`, `memoryPlayed`, `memoryEnd`).
 
 Proven in headless Chrome 150 by `bun run test:browser` in
 `packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:

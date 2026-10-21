@@ -43,6 +43,7 @@ mod glyphs;
 mod i18n;
 mod lanes;
 mod look;
+mod memory;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod nav;
@@ -80,6 +81,7 @@ pub use feel::{
     og_tween_to,
 };
 pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
+pub use memory::memory_report;
 pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_skin, og_physics_overlap, og_physics_raycast,
     og_physics_set_mesh, og_physics_shape_cast, og_ui_a11y, og_ui_action_button, og_ui_back,
@@ -102,6 +104,8 @@ pub use nav::{
     og_nav_grid_from_tilemap, og_nav_load, og_nav_nearest, og_nav_path_of, og_nav_set_cost,
     og_nav_set_flow_targets, og_nav_set_obstacle,
 };
+/// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
+pub use og_core::alloc::Counting as CountingAlloc;
 pub use physics_ext::{
     og_physics_cloth_points, og_physics_fluid_particles, og_physics_fluid3d_particles,
     og_physics_ragdoll_pose, og_physics_ragdoll_rig_from_skeleton, og_physics_rope_points,

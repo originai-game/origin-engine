@@ -2464,3 +2464,7 @@ pub fn og_engine_probe_listen(probe: u32, seconds: Option<f64>) -> String {
     )
     .to_string()
 }
+
+pub fn og_engine_probe_memory(probe: u32) -> String {
+    member(probe, "memory", json!({})).to_string()
+}

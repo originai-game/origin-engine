@@ -143,3 +143,32 @@ for (const profile of ["3d", "2d"] as const) {
     expect(physics("lanes", "--profile", other, "--module", profile).refused).toContain(`without the physics${other} feature`);
   }, 180_000);
 }
+
+test.skipIf(STALE_WASM)("the probe's memory answers the same shape on both hosts, each with what its host can read", () => {
+  type Memory = { host: string; linear: number | null; resident: number | null; heap: { live: number; peak: number; allocations: number } | null; world: { entities: number }; stream: { budget: number; used: number; peak: number } | null; audio: number | null };
+  const run = (host: string) => {
+    const r = Bun.spawnSync(["bun", "tests/support/probe-memory.ts", "--host", host], { cwd: pkg });
+    const out = new TextDecoder().decode(r.stdout);
+    if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
+    return JSON.parse(out.trim().split("\n").pop()!) as { memory: Memory; worker: Memory | null };
+  };
+  const [node, web] = [run("node"), run("web")];
+  expect(Object.keys(web.memory).sort()).toEqual(Object.keys(node.memory).sort());
+  expect(Object.keys(node.memory).sort()).toEqual(["audio", "heap", "host", "linear", "resident", "stream", "world"]);
+  expect([node.memory.host, web.memory.host]).toEqual(["native", "web"]);
+  for (const m of [node.memory, web.memory]) {
+    expect(m.world.entities).toBe(10000);
+    expect(m.heap!.live).toBeGreaterThan(0);
+    expect(m.heap!.peak).toBeGreaterThan(m.heap!.live - 1);
+    expect(m.heap!.allocations).toBeGreaterThan(0);
+    expect(m.stream!.budget).toBe(256 * 1024 * 1024);
+  }
+  // The wasm's linear memory holds the heap; a native process reads its resident memory instead.
+  expect(web.memory.linear!).toBeGreaterThan(web.memory.heap!.live);
+  expect(web.memory.resident).toBeNull();
+  expect(node.memory.linear).toBeNull();
+  expect(node.memory.resident!).toBeGreaterThan(node.memory.heap!.live);
+  // The engine Worker's `memory` call is the probe's answer.
+  expect(web.worker!.world.entities).toBe(10000);
+  expect(web.worker!.linear).toBe(web.memory.linear);
+}, 120_000);

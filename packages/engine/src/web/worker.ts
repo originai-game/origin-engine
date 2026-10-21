@@ -155,6 +155,8 @@ export interface WebExtras {
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
   og_web_lanes?(): string;
+  /** What the engine holds (the probe's `memory`, ProbeMemory), as JSON. */
+  og_web_memory?(engine: number): string;
   /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
   og_web_warm?(engine: number): boolean;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
@@ -778,6 +780,8 @@ export function startWorker(game: GameToken): void {
     advance: (e, [n]) => e.advance(Number(n)),
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
+    /** What the engine holds (ProbeMemory: the wasm linear memory, the counted heap, the world, streaming, audio), in every build. */
+    memory: (e) => JSON.parse(glueRef?.og_web_memory?.(e.id) ?? "null"),
     /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */

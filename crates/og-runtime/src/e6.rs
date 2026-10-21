@@ -205,11 +205,12 @@ pub(crate) fn retire(engine: u32) {
     super::i18n::retire(engine);
 }
 
-/// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`)
-/// and the probe's `listen`, over the engine's audio link.
+/// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`),
+/// the probe's `listen`, over the engine's audio link, and its `memory`.
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
     super::polish::register(probe, engine);
     super::lanes::register(probe, engine);
+    probe.set_memory(move |world| super::memory::report(engine, world));
     probe.set_listen(move |seconds| {
         let link = og_audio::link(engine)?;
         let (pcm, rate) = link.listen().last(seconds)?;

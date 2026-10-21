@@ -736,6 +736,8 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_commands(&self, engine_probe: u32, script: String) -> String;
     /// `EngineProbe.listen`
     fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String;
+    /// `EngineProbe.memory`
+    fn og_engine_probe_memory(&self, engine_probe: u32) -> String;
 }
 
 /// `terrain`: packages/knowledge/wiki/terrain.md.
@@ -1064,6 +1066,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_dump",
     "og_engine_probe_commands",
     "og_engine_probe_listen",
+    "og_engine_probe_memory",
     "og_terrain_load",
     "og_terrain_sample",
     "og_terrain_bounds",

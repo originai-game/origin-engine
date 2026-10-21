@@ -921,4 +921,8 @@ impl ProbeApi for NodeHost {
     fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String {
         rt::og_engine_probe_listen(engine_probe, seconds)
     }
+
+    fn og_engine_probe_memory(&self, engine_probe: u32) -> String {
+        rt::og_engine_probe_memory(engine_probe)
+    }
 }

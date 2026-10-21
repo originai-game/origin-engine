@@ -1305,6 +1305,7 @@ function makeProbe(id: number) {
     dump: (desc?: unknown) => parse(a().og_engine_probe_dump(id, json(desc))),
     commands: (script: string) => parse(a().og_engine_probe_commands(id, script)),
     listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),
+    memory: () => parse(a().og_engine_probe_memory(id)),
   });
 }
 

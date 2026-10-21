@@ -39,6 +39,12 @@ mod host_e6;
 mod host_p2;
 
 use og_runtime::{Dispatch, Fetch, Hooks};
+
+/// The engine's heap, counted for the probe's `memory` (og-core's `alloc`).
+#[cfg(target_arch = "wasm32")]
+#[global_allocator]
+static HEAP: og_runtime::CountingAlloc<std::alloc::System> =
+    og_runtime::CountingAlloc(std::alloc::System);
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use wasm_bindgen::prelude::*;
@@ -531,6 +537,15 @@ pub fn og_web_resize(engine: u32, width: u32, height: u32) {
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn take_resize(engine: u32) -> Option<(u32, u32)> {
     RESIZES.with(|r| r.borrow_mut().remove(&engine))
+}
+
+/// What the engine holds (og-runtime's `memory_report`, the probe's
+/// `memory`: the wasm linear memory, the counted heap, the world, the
+/// streaming budget, the audio), as JSON: the engine Worker's `memory` call,
+/// which a publish page answers without the probe's dev members.
+#[wasm_bindgen]
+pub fn og_web_memory(engine: u32) -> String {
+    og_runtime::memory_report(engine).to_string()
 }
 
 /// Make one pipeline the engine's renderer has not used yet (og-render's

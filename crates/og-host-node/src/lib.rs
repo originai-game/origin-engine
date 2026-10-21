@@ -44,6 +44,11 @@ use og_runtime::{ColumnPtr, Dispatch, Fetch, Hooks, RenderBackend};
 use std::cell::{Cell, RefCell};
 use std::ptr;
 
+/// The engine's heap, counted for the probe's `memory` (og-core's `alloc`).
+#[global_allocator]
+static HEAP: og_runtime::CountingAlloc<std::alloc::System> =
+    og_runtime::CountingAlloc(std::alloc::System);
+
 /// The native host: a unit type, since the engines live in the runtime's
 /// thread-local tables.
 pub struct NodeHost;
