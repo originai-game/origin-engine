@@ -110,7 +110,7 @@ export default og.game({
       const e = named(world, `p${k}`);
       must(world.set(e, og.Transform, { position: { x: 9, y: -1, z: 0 } }));
     },
-    pause: (world) => {
+    open_pause: (world) => {
       gameOf(world).paused = true;
     },
     settings: (world) => {
@@ -140,7 +140,7 @@ export default og.game({
     next: { usage: "", doc: "The next round, or the podium after the third, as the scoreboard's button does." },
     podium: { usage: "[p0,p1,p2,p3]", doc: "The podium now, with these points if given." },
     knock: { usage: "<seat 0-3>", doc: "Drop that seat's critter into the sea." },
-    pause: { usage: "", doc: "Pause, as Escape or a pad's Start does." },
+    open_pause: { usage: "", doc: "Pause, as Escape or a pad's Start does." },
     settings: { usage: "", doc: "Open the settings." },
     title: { usage: "", doc: "Back to the title (everyone stands up)." },
     language: { usage: "<en|fr>", doc: "Switch the language as the settings do." },

@@ -77,10 +77,8 @@ export function toLobby(world: World, g: GameV): void {
   for (let k = 0; k < 4; k++) {
     put(g, k, { ready: false, alive: false, place: 0, gained: 0, berries: 0, lasted: 0 });
     // The seated ones stand on the island while they choose: they can see their colour.
-    if (seat(g, k).joined) {
-      const s = startOf(k, 2.2);
-      place(world, k, s.x, 0.05, s.z, s.yaw, true);
-    } else park(world, k);
+    if (seat(g, k).joined) place(world, k, -3 + k * 2, 0.05, -2.6, 0, true);
+    else park(world, k);
   }
 }
 
@@ -210,8 +208,8 @@ export const Rules = defineSystem(
         const s = seat(g, k);
         const parked = s.y < PARK_Y + 1;
         if (s.joined && parked) {
-          const at = startOf(k, 2.2);
-          place(world, k, at.x, 0.05, at.z, at.yaw, true);
+          // In a row across the back of the island, facing the camera, above the lobby's panel.
+          place(world, k, -3 + k * 2, 0.05, -2.6, 0, true);
           put(g, k, { y: 0.05 });
         } else if (!s.joined && !parked) {
           park(world, k);

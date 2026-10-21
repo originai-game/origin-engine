@@ -36,6 +36,7 @@ export function parkOf(k: number): { x: number; y: number; z: number } {
 export const CAMERA = {
   play: { eye: { x: 0, y: 15.2, z: 11.6 }, at: { x: 0, y: 0, z: 0.9 } },
   title: { eye: { x: 0, y: 7.5, z: 15.5 }, at: { x: 0, y: 0.6, z: 0 } },
+  lobby: { eye: { x: 0, y: 6.2, z: 9.5 }, at: { x: 0, y: -0.8, z: -1.6 } },
   podium: { eye: { x: 0, y: 4.2, z: 8.6 }, at: { x: 0, y: 1.5, z: -1 } },
 } as const;
 
@@ -94,7 +95,7 @@ export function buildArena(world: World): void {
   const cheek = must(og.render.standardMaterial(world, { color: linear("#ff8fa3"), roughness: 0.6 }));
   for (let k = 0; k < MAX_PLAYERS; k++) {
     const colour = COLOURS[k]!;
-    const body = must(og.render.standardMaterial(world, { color: linear(colour.rgb), roughness: 0.55, sheen: 0.4, sheenColor: { r: 1, g: 1, b: 1 } }));
+    const body = must(og.render.standardMaterial(world, { color: linear(colour.rgb), roughness: 0.42 }));
     const footMat = must(og.render.standardMaterial(world, { color: linear(colour.rgb), roughness: 0.7 }));
     const p = parkOf(k);
     const c = must(world.spawn({ name: `p${k}`, position: p }));
