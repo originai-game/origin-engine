@@ -10,6 +10,6 @@
     "prepack": "bun scripts/pack.ts",
     "validate": "bun scripts/validate.ts",
     "bundle": "bun scripts/validate.ts --bundle",
-    "test": "bun scripts/validate.ts && bun test tests/"
+    "test": "bun scripts/validate.ts && bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/"
   }
 }

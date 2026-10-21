@@ -144,8 +144,8 @@ pub fn render(scene: &str) -> Result<Rendered, String> {
     render_built(&mut scenes::build(scene)?)
 }
 
-/// Renders `scene` and compares it with its reference (or records the
-/// reference when capture is requested). On a mismatch, writes
+/// Renders `scene` and compares it with its reference, this tier's or else
+/// metal's (or records this tier's when capture is requested). On a mismatch, writes
 /// `<out_dir>/<tier>/<scene>.actual.png` and `.diff.png` and returns `Err`.
 /// A scene that does not apply to the adapter's tier (TAA on GL, MSAA on
 /// WebGPU-class backends) is an error here: callers check
@@ -161,23 +161,38 @@ pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
         ));
     }
     let tier = rendered.info.backend_tier();
-    let reference = reference_path(&tier, scene);
+    let own = reference_path(&tier, scene);
     let mut report = GfxReport {
         scene: scene.to_string(),
         tier: tier.clone(),
         info: rendered.info.clone(),
         stats: rendered.stats,
-        reference: reference.clone(),
+        reference: own.clone(),
         comparison: None,
     };
     if capture_requested(scene) {
-        save_png(&reference, &rendered.image)?;
+        save_png(&own, &rendered.image)?;
         return Ok(report);
     }
+    // Frame by frame, as every reference harness here: a tier without its
+    // own reference for this scene is judged against metal's and says so
+    // (docs/ci.md §Browser reference tiers), so a scene recorded on metal
+    // is held on the other tiers before their own frame is recorded.
+    let metal = reference_path("metal", scene);
+    let reference = if own.exists() || !metal.exists() {
+        own.clone()
+    } else {
+        println!(
+            "gfx {scene}: no {tier} reference at {}; comparing with metal's (record one with OG_GFX_CAPTURE={scene} on that tier)",
+            own.display()
+        );
+        metal
+    };
+    report.reference = reference.clone();
     if !reference.exists() {
         return Err(format!(
-            "{report}: no reference at {} for backend tier '{tier}'; record one with OG_GFX_CAPTURE={scene}",
-            reference.display()
+            "{report}: no reference at {} for backend tier '{tier}', nor on metal; record one with OG_GFX_CAPTURE={scene}",
+            own.display()
         ));
     }
     let expected = load_png(&reference)?;

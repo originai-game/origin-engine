@@ -22,7 +22,8 @@ Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 in a style pack (`assets/skins/<pack>/skin.ogt` through `og.load.skin`),
 `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
 `og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
-the UI's event sounds. `dump_entity:demo` reads the demo's state (the `Demo` component).
+the UI's event sounds, `offline:<on|off>` makes the leaderboard's rows fail
+to load (its error message and Retry, which loads again). `dump_entity:demo` reads the demo's state (the `Demo` component).
 
 Screens: gallery, widgets, mainMenu, pause, settings, platformer, shooter,
 puzzle, idle, racing, cutscene, shop, inventory, levels, results,
@@ -105,9 +106,12 @@ pack's directory into a game's `assets/skins/`, keep
 
 ## Locales
 
-The main menu, pause and confirm screens, the settings screen and the shop
-(their own words through `SettingsDesc`'s and `ShopDesc`'s label fields:
-`settings.*`, `shop.*`) and the settings' language list read their text
+The main menu, pause and confirm screens, the settings screen, the shop,
+the inventory, the leaderboard, the tutorial and the cutscene (the
+templates' own words through their descs' label fields: `settings.*`,
+`shop.*`, `inventory.*`, `leaderboard.*`, `tutorial.*`, `cutscene.*`; the
+tutorial's `"{step} of {count}"` filled by the template) and the
+settings' language list read their text
 from `og.i18n` (`assets/strings/{en,zh-CN,ja,ko,ar}.ogt`,
 `type strings`): `og.i18n.t(world, "menu.play")`, with plurals and
 arguments in ICU form (`{n, plural, other {コイン#枚}}`). Each table names

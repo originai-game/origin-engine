@@ -108,7 +108,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `cargo run` is waiting behind the build lock and may rebuild the world.
 - **Two lanes.** `scripts/check.sh quick` (fmt, clippy, drift, the logic
   tests of every crate but og-tests, the knowledge and create packages) is
-  the loop while working and the PR signal, under half a minute warm.
+  the loop while working, under half a minute warm.
   `scripts/check.sh` (full) adds the gfx, perf-shaped and browser-shaped
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
@@ -119,8 +119,10 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   test with the GPU reference frames, drift, the packages' tests on the
   native host) and that is what a merge must pass. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
-  end: `scripts/check.sh --all` and `scripts/check.sh web-reference` once
-  per wave, with their summary in the report, never per merge. A size or
+  end: `scripts/wave-end.sh` (`scripts/check.sh --all`, `scripts/check.sh
+  web-reference`, then the vulkan-cpu frames on lavapipe and their table
+  against metal, serially) once per wave, with its summary in the report,
+  never per merge. A size or
   frame-time number is a target to pursue there, not a reason to hold a
   functional merge. Never run `--all` after every edit. When a reference frame changes, re-record
   it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx
@@ -138,7 +140,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   since it last passed (`docs/ci.md` §Lanes has the rules): the GPU
   reference tests, the wasm build, wasm-opt and size gate (their last
   outputs are reused), drift, web-reference. Each skip is printed with its
-  reason; `--all` runs everything and CI always does. Do not work around a
+  reason; `--all` runs everything, and a wave's end always does. Do not work around a
   skip by touching files, and do not delete `target/og-gate/`: pass `--all`.
 - **Parallel test binaries.** The test steps use `cargo nextest` when it is
   installed, one process per test. A fixture several tests read is made
@@ -166,7 +168,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   perf test compares against a baseline with a tolerance. A test that ran no
   checks fails.
 - API: the generated `.d.ts` and the wiki are build outputs checked for drift
-  in CI; hand edits to generated files fail the build.
+  by the gate's drift step; hand edits to generated files fail the build.
 - Every change that alters rendering, animation, physics or the tick carries a
   scripted `og run --commands` run whose frame was read and described in the
   change.

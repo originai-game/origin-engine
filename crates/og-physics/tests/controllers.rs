@@ -572,3 +572,89 @@ fn a_platformer_rides_a_platform_moving_by_its_velocity() {
     assert!((carried - 2.0).abs() < 0.05, "carried {carried}");
     assert!(platformer(&w, e).grounded);
 }
+
+// ---- collision layers -----------------------------------------------------
+
+/// Walls across x 3 that a controller on layer 1 with `mask` walks into
+/// from x 0: one on layer 2 colliding with everything, one on layer 4
+/// whose mask leaves out layer 1, one on layer 1 colliding with everything.
+fn layered_walls(w: &mut World, z: f32, size: Vec3) -> [Entity; 3] {
+    [(2u32, u32::MAX), (4, !1), (1, u32::MAX)].map(|(layers, mask)| {
+        spawn_static(
+            w,
+            at(3.0 + layers as f32 * 2.0, size.y * 0.5, z),
+            Collider::cuboid(size).on_layers(layers, mask),
+        )
+    })
+}
+
+#[test]
+fn a_character_walks_through_colliders_its_layers_do_not_meet() {
+    let (mut w, _p) = world(Physics::default(), 1);
+    floor(&mut w);
+    // Walls at x 7, 11 and 5 (by layer): masked out by the character (2),
+    // masking the character out (4), and solid to it (1).
+    layered_walls(&mut w, 0.0, Vec3::new(0.4, 3.0, 4.0));
+    let c = w
+        .spawn((
+            at(0.0, 0.95, 0.0),
+            Collider::capsule(0.4, 1.0).on_layers(1, !2),
+            CharacterController::default(),
+        ))
+        .unwrap();
+    run(&mut w, 10);
+    set_character(&mut w, c, |c| c.movement = Vec3::new(3.0, 0.0, 0.0));
+    run(&mut w, 120);
+    // Through the wall at 7? Not yet: the one at 5 (layer 1) stops it.
+    let p = transform(&w, c).position;
+    assert!(p.x > 4.3 && p.x < 4.6, "stopped by the layer-1 wall: {p}");
+    // Without the layer-1 wall it walks through the other two.
+    let (mut w, _p) = world(Physics::default(), 1);
+    floor(&mut w);
+    let [two, four, one] = layered_walls(&mut w, 0.0, Vec3::new(0.4, 3.0, 4.0));
+    let _ = (two, four);
+    w.despawn(one).unwrap();
+    let c = w
+        .spawn((
+            at(0.0, 0.95, 0.0),
+            Collider::capsule(0.4, 1.0).on_layers(1, !2),
+            CharacterController::default(),
+        ))
+        .unwrap();
+    run(&mut w, 10);
+    set_character(&mut w, c, |c| c.movement = Vec3::new(3.0, 0.0, 0.0));
+    run(&mut w, 300);
+    let p = transform(&w, c).position;
+    assert!(p.x > 14.0, "walked through the walls it does not meet: {p}");
+    assert!(character(&w, c).grounded);
+}
+
+#[test]
+fn a_platformer_runs_through_colliders_its_layers_do_not_meet() {
+    let (mut w, _p) = world2d();
+    ground2d(&mut w);
+    let walls = layered_walls(&mut w, 0.0, Vec3::new(0.4, 3.0, 1.0));
+    let solid = |w: &mut World| {
+        w.spawn((
+            at(0.0, 0.0, 0.0),
+            Collider {
+                offset: Vec3::new(0.0, 0.625, 0.0),
+                ..Collider::cuboid(Vec3::new(0.7, 1.25, 1.0))
+            }
+            .on_layers(1, !2),
+            PlatformerController::default(),
+        ))
+        .unwrap()
+    };
+    let e = solid(&mut w);
+    run(&mut w, 10);
+    set_platformer(&mut w, e, |c| c.move_x = 1.0);
+    run(&mut w, 120);
+    let p = transform(&w, e).position;
+    assert!(p.x > 4.4 && p.x < 4.6, "stopped by the layer-1 wall: {p}");
+    w.despawn(walls[2]).unwrap();
+    run(&mut w, 120);
+    let p = transform(&w, e).position;
+    assert!(p.x > 14.0, "ran through the walls it does not meet: {p}");
+    assert!(platformer(&w, e).grounded);
+}

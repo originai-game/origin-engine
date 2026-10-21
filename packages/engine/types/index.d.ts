@@ -6246,7 +6246,7 @@ export interface Joint {
 }
 
 /**
- * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
+ * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
  *
  * The value of the `CharacterController` component (token `og.CharacterController`).
  */
@@ -6383,7 +6383,7 @@ export interface CharacterController {
 }
 
 /**
- * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
+ * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
  *
  * The value of the `PlatformerController` component (token `og.PlatformerController`).
  */
@@ -15110,6 +15110,12 @@ export interface CutsceneDesc {
    * @default true
    */
   readonly skippable?: boolean;
+  /**
+   * The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
 }
 
 /** A cutscene's answer this tick. */
@@ -15339,11 +15345,23 @@ export interface InventoryDesc {
    */
   readonly items?: readonly InventoryItem[];
   /**
-   * The detail panel's action; empty hides it.
+   * The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t).
    *
    * @default "Use"
    */
   readonly useLabel?: string;
+  /**
+   * The detail panel while no slot is selected.
+   *
+   * @default "Select an item. Drag it to another slot to move it."
+   */
+  readonly hintLabel?: string;
+  /**
+   * The detail panel's count line, beside a stacked item's count.
+   *
+   * @default "Count"
+   */
+  readonly countLabel?: string;
 }
 
 /** An item dragged from one slot to another. */
@@ -15618,6 +15636,12 @@ export interface LeaderboardDesc {
    * @default "No scores yet"
    */
   readonly empty?: string;
+  /**
+   * The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Retry"
+   */
+  readonly retryLabel?: string;
 }
 
 /** A leaderboard's answer this tick. */
@@ -15682,6 +15706,30 @@ export interface TutorialDesc {
    * @default 0
    */
   readonly index?: number;
+  /**
+   * The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t).
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
+  /**
+   * The button that shows the next step.
+   *
+   * @default "Next"
+   */
+  readonly nextLabel?: string;
+  /**
+   * That button on the last step.
+   *
+   * @default "Done"
+   */
+  readonly doneLabel?: string;
+  /**
+   * The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it.
+   *
+   * @default "{step} of {count}"
+   */
+  readonly stepLabel?: string;
 }
 
 /** A tutorial's answer this tick. */
@@ -17775,11 +17823,11 @@ export declare namespace og {
    */
   const Joint: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"u32">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32"> }, Joint>;
   /**
-   * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
+   * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
    */
   const CharacterController: ComponentType<{ readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
   /**
-   * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
+   * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
    */
   const PlatformerController: ComponentType<{ readonly moveX: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly impulse: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayLayers: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
   /**

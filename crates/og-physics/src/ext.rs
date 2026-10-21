@@ -1,9 +1,11 @@
 //! Physics beyond rigid bodies, written once and compiled for each profile
 //! (like `sim.rs`): joints, the character controller, Verlet ropes and
 //! cloth, the 2D fluid and water, run by `sim::step` around the rigid-body
-//! step. `platformer.rs` (2D), `vehicle2.rs` / `vehicle3.rs` and
+//! step. `mover.rs` is the controllers' move against the world (both
+//! profiles); `platformer.rs` (2D), `vehicle2.rs` / `vehicle3.rs` and
 //! `ragdoll.rs` (both profiles, through each one's joint) hold what the profiles do differently.
 
+use super::mover::Mover;
 use super::sim::{BodyPoses, Sim};
 use super::{DIM, flat, heightfield_surface, joint_frame, pose, rp, unpose, unv, v};
 use crate::fluid::FluidState;
@@ -377,84 +379,6 @@ pub(crate) fn joint_written(sim: &mut Sim, e: Entity, joint: &Joint) {
 
 // ---- moving a kinematic shape ----------------------------------------------
 
-/// What a controller's move did.
-pub(crate) struct Moved {
-    pub translation: Vec3,
-    pub grounded: bool,
-    pub sliding: bool,
-    /// What it hit on the way: the collider and its surface normal (world).
-    pub hits: Vec<(rp::ColliderHandle, Vec3)>,
-}
-
-/// The settings rapier's character controller moves a shape with.
-pub(crate) struct MoveDesc {
-    pub skin: f32,
-    pub max_slope: f32,
-    pub step_height: f32,
-    pub snap: f32,
-}
-
-/// Moves `shape` from `at` by `desired` against the world, sliding.
-/// `filter` decides which colliders block it.
-pub(crate) fn move_shape(
-    w: &rp::PhysicsWorld,
-    filter: rp::QueryFilter<'_>,
-    shape: &dyn rp::Shape,
-    at: &rp::Pose,
-    desired: Vec3,
-    d: &MoveDesc,
-    dt: f32,
-) -> Moved {
-    let slope = d.max_slope.clamp(0.0, 89.0).to_radians();
-    // A step is taken only once the shape's bottom clears the edge: the
-    // width it needs on top is its horizontal half extent.
-    let reach = {
-        let b = shape.compute_aabb(&rp::Pose::IDENTITY);
-        let half = (unv(b.maxs) - unv(b.mins)) * 0.5;
-        half.x.max(if DIM == 3 { half.z } else { 0.0 })
-    };
-    let kcc = super::ctl::KinematicCharacterController {
-        up: v(Vec3::Y),
-        offset: super::ctl::CharacterLength::Absolute(d.skin.max(0.001)),
-        slide: true,
-        autostep: (d.step_height > 0.0).then_some(super::ctl::CharacterAutostep {
-            max_height: super::ctl::CharacterLength::Absolute(d.step_height),
-            min_width: super::ctl::CharacterLength::Absolute(reach + 0.05),
-            include_dynamic_bodies: false,
-        }),
-        max_slope_climb_angle: slope,
-        min_slope_slide_angle: slope,
-        snap_to_ground: (d.snap > 0.0).then_some(super::ctl::CharacterLength::Absolute(d.snap)),
-        normal_nudge_factor: 1.0e-4,
-    };
-    let qp = w.query_pipeline_with_filter(filter);
-    let mut hits = Vec::new();
-    let m = kcc.move_shape(dt, &qp, shape, at, v(flat(desired)), |c| {
-        hits.push((c.handle, unv(c.hit.normal1)));
-    });
-    Moved {
-        translation: unv(m.translation),
-        grounded: m.grounded,
-        sliding: m.is_sliding_down_slope,
-        hits,
-    }
-}
-
-/// The collider under a shape at `at` within `reach` (its entity and the
-/// surface normal), ignoring `own`.
-pub(crate) fn ground_under(
-    w: &rp::PhysicsWorld,
-    filter: rp::QueryFilter<'_>,
-    shape: &dyn rp::Shape,
-    at: &rp::Pose,
-    reach: f32,
-) -> Option<(u64, Vec3)> {
-    let qp = w.query_pipeline_with_filter(filter);
-    let options = super::ShapeCastOptions::with_max_time_of_impact(reach);
-    qp.cast_shape(at, v(-Vec3::Y), shape, options)
-        .map(|(h, hit)| (entity_of(&w.colliders[h]), unv(hit.normal1)))
-}
-
 /// Where a point on a body moved during the step (the body's motion from
 /// its pre-step pose), for riding moving platforms.
 pub(crate) fn carried(
@@ -528,9 +452,11 @@ pub(crate) fn characters(
             .unwrap_or(&rp::Pose::IDENTITY);
         let body_at = pose(b.position, b.quaternion);
         let at = body_at * local;
+        // What blocks it: the solids its layers and mask interact with.
         let filter = rp::QueryFilter::new()
             .exclude_rigid_body(handle)
-            .exclude_sensors();
+            .exclude_sensors()
+            .groups(collider.collision_groups());
         // Ride what it stood on.
         let foot = unv(at.translation);
         let ride = match body_of(sim, c.ground) {
@@ -567,38 +493,38 @@ pub(crate) fn characters(
             c.movement
         };
         let desired = flat((across + Vec3::Y * vertical) * dt);
-        let start = rp::Pose::from_parts(v(foot + ride), at.rotation);
-        let moved = move_shape(
-            &sim.world,
-            filter,
-            &*shape,
-            &start,
-            desired,
-            &MoveDesc {
-                skin: c.skin,
-                max_slope: c.max_slope,
-                step_height: c.step_height,
-                snap: if jumped || vertical > 0.0 {
-                    0.0
-                } else {
-                    c.snap_distance
-                },
-            },
-            dt,
-        );
-        let end = foot + ride + moved.translation;
+        let start = foot + ride;
+        let mover = Mover {
+            qp: sim.world.query_pipeline_with_filter(filter),
+            shape: &*shape,
+            rot: at.rotation,
+            skin: c.skin.max(0.001),
+            walkable: og_core::math::cos(c.max_slope.clamp(0.0, 89.0).to_radians()),
+            step_height: c.step_height.max(0.0),
+        };
+        let moved = if c.gravity_scale > 0.0 {
+            let snap = if jumped || vertical > 0.0 {
+                0.0
+            } else {
+                c.snap_distance
+            };
+            mover.travel(start, desired, snap, c.grounded && !jumped)
+        } else {
+            mover.travel_free(start, desired)
+        };
+        let end = start + moved.translation;
         let was_grounded = c.grounded;
-        let grounded =
-            moved.grounded && !(jumped || (vertical > 0.0 && moved.translation.y > 1e-5));
+        let grounded = moved.ground.is_some() && !jumped && vertical <= 0.0;
         if moved.translation.y < desired.y - 1e-4 && vertical > 0.0 {
             vertical = 0.0; // a ceiling
         }
         if grounded && vertical < 0.0 {
             vertical = 0.0;
         }
-        let under = rp::Pose::from_parts(v(end), at.rotation);
         let ground = if grounded {
-            ground_under(&sim.world, filter, &*shape, &under, c.skin * 2.0 + 0.02)
+            moved
+                .ground
+                .map(|(h, n)| (entity_of(&sim.world.colliders[h]), n))
         } else {
             None
         };

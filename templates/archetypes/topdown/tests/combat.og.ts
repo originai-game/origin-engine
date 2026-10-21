@@ -19,7 +19,10 @@ export default playtest({
     // The bite: the slime starts on the hero.
     "0.1:place:12.3:6.5",
     "0.1:slime:12.8:6.5",
-    "0.2:dump_entity:hero:bitten.json",
+    // Read after the hit stop: the bite lands about tick 11, the stop holds the
+    // hero four ticks, and the knock-back (9 m/s, decaying) has moved it past
+    // 0.3 m by 0.3 s (12.3 to 11.80; 11.70 by 0.6 s).
+    "0.3:dump_entity:hero:bitten.json",
     // First hit, then two ticks into the stop and the tick after it.
     setup(0.6),
     press("Space", 0.65),

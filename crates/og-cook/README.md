@@ -407,9 +407,39 @@ font's own (`crates/og-ui/README.md` §Text). The UI kit's Chinese font does.
 ## Determinism
 
 The same sources, options and **cooker build** give byte-identical `cooked/`
-(the test cooks the template twice, on all cores and on one thread, and
-compares every file but `.cook-times.ogt`, the wall-clock record of §Cook
-times). Two caveats the integrator must decide on:
+whatever the thread count and the machine's load (`cooking_twice_gives_identical_bytes`
+cooks the template on all cores and on one thread;
+`every_thread_count_cooks_the_same_bytes` cooks a small copy thirty times on
+1, 2 and 8 threads, three cooks at a time). Both compare every file, with
+`.cook-times.ogt`, the wall-clock record of §Cook times, compared by its
+assets only: the manifest holds no times, so it is compared byte for byte.
+Results land by plan index, the font's glyphs by index, and no hash map's
+order reaches a file.
+
+The one cause found that broke this was in basisu: its UASTC RDO pass
+(`uastc_rdo: Some(_)`, the default) keeps a hash map of selector bit
+sequences keyed on a struct of a u64 and a u32, and hashed all sixteen
+bytes, four of them padding that was never written. The padding held
+whatever the stack held, so a lookup could miss a key the pass had
+inserted, and the blocks it chose followed what the thread had run
+before. It showed on CI's two-vCPU Linux runner (gcc) as a one-thread cook
+differing from an all-cores one in 2 of 5 runs; on the M4 Pro (clang) the
+garbage happened to repeat, and 45 cooks at 2, 8 and 12 threads, 26 under
+x86-64 Linux and 9 runs of the test binary under load all matched.
+valgrind named it (`uastc_rdo_blocks`, "uninitialised value ... created
+by a stack allocation", 8,282 errors from 12 contexts, all that map).
+Upstream fixed it by giving the padding a name and a zero
+(`selector_bitsequence::m_pad`); basis-universal-sys 0.3.1 bundles basisu
+1.16, from before, so the workspace patches in
+`third_party/basis-universal-sys` (the crate with that one change, only
+the files its build compiles) until a release carries it; valgrind then
+reports no error, and none before or after reached a written byte (the
+encodes written to files). Building the C++
+with `-ftrivial-auto-var-init=zero` is no substitute: gcc leaves the
+temporaries the map is called with uninitialised (valgrind still reports
+every context). The fix does not move the M4 Pro's bytes.
+
+Two caveats the integrator must decide on:
 
 - The C++ encoders (basisu, meshoptimizer) are compiled by `cc` with the
   profile's optimisation level and clang's default `-ffp-contract=on`. A debug
@@ -441,7 +471,8 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 
 | Test | Asserts |
 |---|---|
-| `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files (the cook times aside); cooked ≤ 60 % of the sources; writes the report and the two hashes |
+| `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files (the cook times aside: the same assets, their times masked); a difference names every file that differs, each with its size and first differing byte, and the manifest's differing lines; cooked ≤ 60 % of the sources; writes the report and the two hashes |
+| `every_thread_count_cooks_the_same_bytes` | the template made small (trickster.glb out, the two textures at 128², the font's charset ASCII and its characters: 13 outputs of every kind the template has, both texture encoders, the font's own glyph pool) cooked 30 times, ten each on 1, 2 and 8 threads with the three series running at once, so each cook shares the machine with two others: every file of every cook is the first one-thread cook's bytes, the cook times masked as above (9 s in a dev build on the M4 Pro; a cook whose font stamp moved with the thread count failed it on the first two-thread run, naming the manifest's hash line) |
 | `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing, each asset reporting its recorded cook time and the slowest ten in order; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob, the manifest and the cook times, where only its time moved (to this run's) |
 | `a_stale_blob_is_refused_with_both_stamps` | an old blob behind a new manifest is refused with the path and both stamps (`og_core::ErrorKind::Schema` through the API); wrong type and unknown ids are refused |
 | `meshes_keep_their_triangles_and_bounds` | per primitive: LOD 0 triangle count equals the source's, decoded vertex bounds within 1 % of the source accessor's, LODs shrink, normals unit length; per model: decoded default-scene bounds within 1 % of og-render's own glTF loader |

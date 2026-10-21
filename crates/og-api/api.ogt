@@ -3939,7 +3939,7 @@ module physics {
   }
 
   component CharacterController {
-    doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into."
+    doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into."
     field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
       unit mps
     }
@@ -4020,7 +4020,7 @@ module physics {
   }
 
   component PlatformerController {
-    doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body."
+    doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body."
     field moveX f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
       min -1
       max 1
@@ -9658,6 +9658,9 @@ module ui {
     field skippable bool "Show Skip." {
       default true
     }
+    field skipLabel String "The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Skip"
+    }
   }
 
   struct CutsceneResult {
@@ -9739,8 +9742,14 @@ module ui {
     }
     field columns u32 "Slots across; 0 fits the width."
     field items List.InventoryItem "The items, by slot."
-    field useLabel String "The detail panel's action; empty hides it." {
+    field useLabel String "The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t)." {
       default "Use"
+    }
+    field hintLabel String "The detail panel while no slot is selected." {
+      default "Select an item. Drag it to another slot to move it."
+    }
+    field countLabel String "The detail panel's count line, beside a stacked item's count." {
+      default "Count"
     }
   }
 
@@ -9841,6 +9850,9 @@ module ui {
     field empty String "Shown when there are no rows." {
       default "No scores yet"
     }
+    field retryLabel String "The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t)." {
+      default "Retry"
+    }
   }
 
   struct LeaderboardResult {
@@ -9865,6 +9877,18 @@ module ui {
     field open bool "Whether it is shown."
     field steps List.TutorialStep "The steps."
     field index u32 "The step shown, from game state."
+    field skipLabel String "The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Skip"
+    }
+    field nextLabel String "The button that shows the next step." {
+      default "Next"
+    }
+    field doneLabel String "That button on the last step." {
+      default "Done"
+    }
+    field stepLabel String "The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it." {
+      default "{step} of {count}"
+    }
   }
 
   struct TutorialResult {

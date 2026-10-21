@@ -29,7 +29,7 @@ palette {
   accentActive "#16c4e6"
   accentFg "#e2f7ff"
   accentInk "#7fecff"
-  accentSoft "#38e1ff33"
+  accentSoft "#38e1ff2a"
   focus "#ffd23f"
   thumb "#2f7194"
   scrim "#010409cc"

@@ -123,8 +123,15 @@ neon UI reads as two games.
   every label ink, every button label in every state, a text field's
   placeholder, which draws in `fgSubtle` on the field's frame, and an
   accent badge, `accentInk` on `accentSoft` over a panel (the results
-  screen's "New best"), so a copied pack whose `fgSubtle`, `fill`,
-  `accentInk` or `accentSoft` moves must keep those pairs at 4.5:1 too;
+  screen's "New best"), and a status badge in each of `success`, `warn`,
+  `danger` and `info` (the tone's own ink on its 16 % tint), so a copied
+  pack whose `fgSubtle`, `fill`, `accentInk`, `accentSoft` or a status
+  colour moves must keep those pairs at 4.5:1 too. The status colours are
+  also the meters', toasts' and status dots' colours: on a cream panel they
+  are deep (the cartoon pack's warn is `#7b5102`, not a bright amber that
+  read 1.63:1), on a dark one light (a red under a dark pack's panel is a
+  salmon such as `#ff8080`); a pack whose panels are light on a dark stage
+  holds them in its panels, where its badges sit;
   it also reads the primary and secondary labels from a rendered frame,
   where thin strokes may never reach their colour: a pixel font's one-pixel
   strokes fall between pixels and took half their ink, so the pixel pack

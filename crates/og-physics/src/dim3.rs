@@ -230,6 +230,10 @@ pub(crate) use sim::{QueryWorld, Sim, step};
 #[path = "ext.rs"]
 mod ext;
 
+#[allow(clippy::duplicate_mod)]
+#[path = "mover.rs"]
+mod mover;
+
 #[path = "vehicle3.rs"]
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};

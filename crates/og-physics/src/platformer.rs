@@ -5,6 +5,7 @@
 //! platforms, corner correction, then ground and wall probes.
 
 use super::ext::{body_of, carried, entity_of, push};
+use super::mover::Mover;
 use super::sim::{BodyPoses, Sim};
 use super::{pose, rp, unpose, unv, v};
 use crate::gather::{Control, Scene};
@@ -56,6 +57,7 @@ pub(crate) fn platformers(
         };
         let collider = &sim.world.colliders[ch];
         let shape = collider.shared_shape().clone();
+        let groups = collider.collision_groups();
         let local = *collider
             .position_wrt_parent()
             .unwrap_or(&rp::Pose::IDENTITY);
@@ -193,9 +195,12 @@ pub(crate) fn platformers(
                 || c.collision_groups().memberships.bits() & one_way == 0
                 || one_way_blocks(c, feet, rising, dropping)
         };
+        // What blocks it: the solids its layers and mask interact with
+        // (one-way platforms only from above).
         let filter = rp::QueryFilter::new()
             .exclude_rigid_body(handle)
             .exclude_sensors()
+            .groups(groups)
             .predicate(&predicate);
         let desired = Vec3::new(vx * dt, vy * dt, 0.0);
         let snap = if p.grounded && vy <= 0.0 && !p.jumping {
@@ -208,9 +213,10 @@ pub(crate) fn platformers(
             shape: &*shape,
             rot: at.rotation,
             skin: p.skin.max(0.001),
-            walkable: p.max_slope.clamp(0.0, 89.0).to_radians().cos(),
+            walkable: og_core::math::cos(p.max_slope.clamp(0.0, 89.0).to_radians()),
+            step_height: 0.0,
         };
-        let mut moved = mover.travel(centre, desired, snap);
+        let mut moved = mover.travel(centre, desired, snap, false);
         let mut nudge = 0.0;
         // Corner correction: a rising jump clipped by a ceiling corner slides past it.
         if vy > 0.0 && moved.translation.y < desired.y - 1e-4 && p.corner_correction > 0.0 {
@@ -234,7 +240,7 @@ pub(crate) fn platformers(
                 }
             }
             if nudge != 0.0 {
-                moved = mover.travel(centre + Vec3::X * nudge, desired, snap);
+                moved = mover.travel(centre + Vec3::X * nudge, desired, snap, false);
             }
         }
         let end = centre + Vec3::X * nudge + moved.translation;
@@ -311,199 +317,4 @@ fn ground_is_one_way(w: &rp::PhysicsWorld, ground: u64, layers: u32) -> bool {
         && w.colliders.iter().any(|(_, c)| {
             entity_of(c) == ground && c.collision_groups().memberships.bits() & layers != 0
         })
-}
-
-// ---- the move -----------------------------------------------------------
-//
-// The platformer moves its shape itself rather than through rapier's
-// KinematicCharacterController. That controller casts every move with its
-// skin as parry's target distance, and parry's support-map cast with a
-// target distance is off by up to the distance (a 0.7 × 1.25 box 2 cm over
-// a 74 m floor: 1.98 cm of travel, not 1 cm), while a cast that starts
-// within it falls back on a contact query that returns nothing at some
-// places (x 26 of a floor from 8 to 82). So a run grazing the floor met it
-// at random with a tilted normal, and the controller's 2D slope rule (no
-// horizontal tangent in 2D) took the whole step away (FINDINGS #16 of
-// examples/hollowbell), and a shape put exactly on a floor fell 11 mm into
-// it and stuck (#15). Exact casts (no target distance) from at least a
-// millimetre away measure to 2e-5 m, so the move keeps the skin itself:
-// across first, from `LIFT` skins over the ground, then down onto it.
-
-/// How many skins the move lifts a shape that is not rising before it
-/// moves across, so the drop back onto the ground starts clear of it
-/// (and steps over seams lower than a skin).
-const LIFT: f32 = 2.0;
-
-/// What a platformer's move did.
-struct Travel {
-    translation: Vec3,
-    /// Standing on walkable ground after it: the collider and its normal.
-    ground: Option<(rp::ColliderHandle, Vec3)>,
-    /// What it hit on the way: the collider and its surface normal.
-    hits: Vec<(rp::ColliderHandle, Vec3)>,
-}
-
-/// The first collider a shape at `from` meets moving `dist` along the unit
-/// `dir`: its distance and surface normal. Exact (no target distance), and
-/// surfaces the shape touches and moves away from are passed.
-fn cast(
-    qp: &rp::QueryPipeline<'_>,
-    shape: &dyn rp::Shape,
-    rot: rp::Rotation,
-    from: Vec3,
-    dir: Vec3,
-    dist: f32,
-) -> Option<(rp::ColliderHandle, f32, Vec3)> {
-    let options = super::ShapeCastOptions {
-        max_time_of_impact: dist,
-        target_distance: 0.0,
-        stop_at_penetration: false,
-        compute_impact_geometry_on_penetration: true,
-    };
-    qp.cast_shape(&rp::Pose::from_parts(v(from), rot), v(dir), shape, options)
-        .map(|(h, hit)| (h, hit.time_of_impact, unv(hit.normal1)))
-}
-
-/// The shape and the rules it moves by.
-struct Mover<'a> {
-    qp: rp::QueryPipeline<'a>,
-    shape: &'a dyn rp::Shape,
-    rot: rp::Rotation,
-    skin: f32,
-    /// The cosine of the steepest walkable slope.
-    walkable: f32,
-}
-
-impl Mover<'_> {
-    /// Moves from `pos` by `motion`, `skin` off whatever it meets: up a
-    /// walkable slope keeping its x, along a wall or a ceiling never up.
-    fn slide(
-        &self,
-        mut pos: Vec3,
-        motion: Vec3,
-        hits: &mut Vec<(rp::ColliderHandle, Vec3)>,
-    ) -> Vec3 {
-        let mut rem = motion;
-        for _ in 0..4 {
-            let len = rem.length();
-            if len < 1e-6 {
-                break;
-            }
-            let dir = rem / len;
-            let Some((h, toi, n)) = cast(&self.qp, self.shape, self.rot, pos, dir, len + self.skin)
-            else {
-                pos += rem;
-                break;
-            };
-            let approach = -dir.dot(n);
-            if approach <= 1e-4 {
-                // Grazing a surface it moves along.
-                pos += rem;
-                break;
-            }
-            hits.push((h, n));
-            let step = (toi - self.skin / approach).clamp(0.0, len);
-            pos += dir * step;
-            let left = dir * (len - step);
-            rem = if n.y >= self.walkable && left.x != 0.0 {
-                Vec3::new(left.x, -left.x * n.x / n.y, 0.0)
-            } else {
-                let s = left - n * left.dot(n);
-                Vec3::new(s.x, s.y.min(0.0), 0.0)
-            };
-        }
-        pos
-    }
-
-    /// Moves from `pos` up by `rise`, stopping `skin` under a ceiling.
-    fn rise(&self, pos: Vec3, rise: f32, hits: &mut Vec<(rp::ColliderHandle, Vec3)>) -> Vec3 {
-        match cast(
-            &self.qp,
-            self.shape,
-            self.rot,
-            pos,
-            Vec3::Y,
-            rise + self.skin,
-        ) {
-            Some((h, toi, n)) if n.y < -1e-4 => {
-                hits.push((h, n));
-                pos + Vec3::Y * (toi - self.skin / -n.y).clamp(0.0, rise)
-            }
-            _ => pos + Vec3::Y * rise,
-        }
-    }
-
-    /// Moves from `pos` down by `fall`, or onto walkable ground within
-    /// `fall + snap`, `skin` over it; a steeper slope met slides it down.
-    fn settle(
-        &self,
-        pos: Vec3,
-        fall: f32,
-        snap: f32,
-        hits: &mut Vec<(rp::ColliderHandle, Vec3)>,
-    ) -> (Vec3, Option<(rp::ColliderHandle, Vec3)>) {
-        let free = pos - Vec3::Y * fall;
-        let Some((h, toi, n)) = cast(
-            &self.qp,
-            self.shape,
-            self.rot,
-            pos,
-            -Vec3::Y,
-            fall + snap + self.skin,
-        ) else {
-            return (free, None);
-        };
-        if n.y <= 1e-4 {
-            return (free, None);
-        }
-        let travel = toi - self.skin / n.y;
-        if n.y >= self.walkable {
-            hits.push((h, n));
-            // At most a skin back up: what the lift left too close.
-            let travel = travel.max(-self.skin);
-            return (pos - Vec3::Y * travel, Some((h, n)));
-        }
-        if travel > fall {
-            return (free, None);
-        }
-        hits.push((h, n));
-        let travel = travel.max(0.0);
-        let at = pos - Vec3::Y * travel;
-        let left = -Vec3::Y * (fall - travel);
-        let along = left - n * left.dot(n);
-        (self.slide(at, along, hits), None)
-    }
-
-    /// The whole move from `centre` by `desired`: rising, up then across;
-    /// otherwise lifted, across, and down by the lift and the fall (onto
-    /// ground within `snap` more).
-    fn travel(&self, centre: Vec3, desired: Vec3, snap: f32) -> Travel {
-        let mut hits = Vec::new();
-        let across = Vec3::new(desired.x, 0.0, 0.0);
-        let (end, ground) = if desired.y > 0.0 {
-            let up = self.rise(centre, desired.y, &mut hits);
-            (self.slide(up, across, &mut hits), None)
-        } else {
-            let want = self.skin * LIFT;
-            let lift = match cast(
-                &self.qp,
-                self.shape,
-                self.rot,
-                centre,
-                Vec3::Y,
-                want + self.skin,
-            ) {
-                Some((_, toi, n)) if n.y < -1e-4 => (toi - self.skin / -n.y).clamp(0.0, want),
-                _ => want,
-            };
-            let lifted = centre + Vec3::Y * lift;
-            let moved = self.slide(lifted, across, &mut hits);
-            self.settle(moved, lift - desired.y, snap, &mut hits)
-        };
-        Travel {
-            translation: end - centre,
-            ground,
-            hits,
-        }
-    }
 }

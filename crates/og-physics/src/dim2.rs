@@ -6,7 +6,6 @@ use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
-pub(crate) use rapier2d::control as ctl;
 use rapier2d::parry::query::ShapeCastOptions;
 use rapier2d::prelude as rp;
 use std::collections::BTreeMap;
@@ -183,6 +182,10 @@ pub(crate) use sim::{QueryWorld, Sim, step};
 #[allow(clippy::duplicate_mod)]
 #[path = "ext.rs"]
 mod ext;
+
+#[allow(clippy::duplicate_mod)]
+#[path = "mover.rs"]
+mod mover;
 
 #[path = "platformer.rs"]
 mod platformer;

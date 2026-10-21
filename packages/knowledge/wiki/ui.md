@@ -2762,7 +2762,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 9923</sub>
+<sub>`api.ogt` line 9947</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2793,7 +2793,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 9931</sub>
+<sub>`api.ogt` line 9955</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2824,7 +2824,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 9939</sub>
+<sub>`api.ogt` line 9963</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2855,7 +2855,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 9947</sub>
+<sub>`api.ogt` line 9971</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2886,7 +2886,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 9955</sub>
+<sub>`api.ogt` line 9979</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2917,7 +2917,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 9963</sub>
+<sub>`api.ogt` line 9987</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2948,7 +2948,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 9971</sub>
+<sub>`api.ogt` line 9995</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2979,7 +2979,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 9979</sub>
+<sub>`api.ogt` line 10003</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3010,7 +3010,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 9987</sub>
+<sub>`api.ogt` line 10011</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3041,7 +3041,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 9995</sub>
+<sub>`api.ogt` line 10019</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3072,7 +3072,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 10003</sub>
+<sub>`api.ogt` line 10027</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3103,7 +3103,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 10011</sub>
+<sub>`api.ogt` line 10035</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3134,7 +3134,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 10019</sub>
+<sub>`api.ogt` line 10043</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3165,7 +3165,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 10027</sub>
+<sub>`api.ogt` line 10051</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3196,7 +3196,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 10035</sub>
+<sub>`api.ogt` line 10059</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3227,7 +3227,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 10043</sub>
+<sub>`api.ogt` line 10067</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3258,7 +3258,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 10051</sub>
+<sub>`api.ogt` line 10075</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3289,7 +3289,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 10059</sub>
+<sub>`api.ogt` line 10083</sub>
 
 ## Types
 
@@ -7116,6 +7116,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `index` | `number` | `0` | — | — | — | The line shown, from game state. |
 | `letterbox` | `boolean` | `true` | — | — | — | Cinematic bars. |
 | `skippable` | `boolean` | `true` | — | — | — | Show Skip. |
+| `skipLabel` | `string` | `"Skip"` | — | — | — | The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t). |
 
 ```ogt
 struct CutsceneDesc {
@@ -7129,6 +7130,9 @@ struct CutsceneDesc {
   }
   field skippable bool "Show Skip." {
     default true
+  }
+  field skipLabel String "The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+    default "Skip"
   }
 }
 ```
@@ -7156,7 +7160,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 9663</sub>
+<sub>`api.ogt` line 9666</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -7190,7 +7194,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 9670</sub>
+<sub>`api.ogt` line 9673</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -7248,7 +7252,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 9682</sub>
+<sub>`api.ogt` line 9685</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -7271,7 +7275,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 9713</sub>
+<sub>`api.ogt` line 9716</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -7303,7 +7307,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 9720</sub>
+<sub>`api.ogt` line 9723</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -7319,7 +7323,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `slots` | `number` | `24` | — | — | — | How many slots. |
 | `columns` | `number` | `0` | — | — | — | Slots across; 0 fits the width. |
 | `items` | `readonly InventoryItem[]` | `[]` | — | — | — | The items, by slot. |
-| `useLabel` | `string` | `"Use"` | — | — | — | The detail panel's action; empty hides it. |
+| `useLabel` | `string` | `"Use"` | — | — | — | The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t). |
+| `hintLabel` | `string` | `"Select an item. Drag it to another slot to move it."` | — | — | — | The detail panel while no slot is selected. |
+| `countLabel` | `string` | `"Count"` | — | — | — | The detail panel's count line, beside a stacked item's count. |
 
 ```ogt
 struct InventoryDesc {
@@ -7333,13 +7339,19 @@ struct InventoryDesc {
   }
   field columns u32 "Slots across; 0 fits the width."
   field items List.InventoryItem "The items, by slot."
-  field useLabel String "The detail panel's action; empty hides it." {
+  field useLabel String "The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t)." {
     default "Use"
+  }
+  field hintLabel String "The detail panel while no slot is selected." {
+    default "Select an item. Drag it to another slot to move it."
+  }
+  field countLabel String "The detail panel's count line, beside a stacked item's count." {
+    default "Count"
   }
 }
 ```
 
-<sub>`api.ogt` line 9731</sub>
+<sub>`api.ogt` line 9734</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -7360,7 +7372,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 9747</sub>
+<sub>`api.ogt` line 9756</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -7385,7 +7397,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 9753</sub>
+<sub>`api.ogt` line 9762</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -7413,7 +7425,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 9761</sub>
+<sub>`api.ogt` line 9770</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -7441,7 +7453,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 9770</sub>
+<sub>`api.ogt` line 9779</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -7462,7 +7474,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 9780</sub>
+<sub>`api.ogt` line 9789</sub>
 
 <a id="type-StatRow"></a>
 
@@ -7486,7 +7498,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 9786</sub>
+<sub>`api.ogt` line 9795</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -7544,7 +7556,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 9793</sub>
+<sub>`api.ogt` line 9802</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -7572,7 +7584,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 9822</sub>
+<sub>`api.ogt` line 9831</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7590,6 +7602,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `loading` | `boolean` | `false` | — | — | — | The rows are loading: skeletons. |
 | `error` | `string` | `""` | — | — | — | Loading failed: this message and Retry. |
 | `empty` | `string` | `"No scores yet"` | — | — | — | Shown when there are no rows. |
+| `retryLabel` | `string` | `"Retry"` | — | — | — | The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t). |
 
 ```ogt
 struct LeaderboardDesc {
@@ -7605,10 +7618,13 @@ struct LeaderboardDesc {
   field empty String "Shown when there are no rows." {
     default "No scores yet"
   }
+  field retryLabel String "The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t)." {
+    default "Retry"
+  }
 }
 ```
 
-<sub>`api.ogt` line 9831</sub>
+<sub>`api.ogt` line 9840</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7633,7 +7649,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 9846</sub>
+<sub>`api.ogt` line 9858</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7659,7 +7675,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 9854</sub>
+<sub>`api.ogt` line 9866</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7674,6 +7690,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `open` | `boolean` | `false` | — | — | — | Whether it is shown. |
 | `steps` | `readonly TutorialStep[]` | `[]` | — | — | — | The steps. |
 | `index` | `number` | `0` | — | — | — | The step shown, from game state. |
+| `skipLabel` | `string` | `"Skip"` | — | — | — | The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t). |
+| `nextLabel` | `string` | `"Next"` | — | — | — | The button that shows the next step. |
+| `doneLabel` | `string` | `"Done"` | — | — | — | That button on the last step. |
+| `stepLabel` | `string` | `"{step} of {count}"` | — | — | — | The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it. |
 
 ```ogt
 struct TutorialDesc {
@@ -7682,10 +7702,22 @@ struct TutorialDesc {
   field open bool "Whether it is shown."
   field steps List.TutorialStep "The steps."
   field index u32 "The step shown, from game state."
+  field skipLabel String "The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+    default "Skip"
+  }
+  field nextLabel String "The button that shows the next step." {
+    default "Next"
+  }
+  field doneLabel String "That button on the last step." {
+    default "Done"
+  }
+  field stepLabel String "The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it." {
+    default "{step} of {count}"
+  }
 }
 ```
 
-<sub>`api.ogt` line 9862</sub>
+<sub>`api.ogt` line 9874</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7708,7 +7740,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 9870</sub>
+<sub>`api.ogt` line 9894</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7741,7 +7773,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 9877</sub>
+<sub>`api.ogt` line 9901</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7777,7 +7809,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 9891</sub>
+<sub>`api.ogt` line 9915</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -7798,7 +7830,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 9906</sub>
+<sub>`api.ogt` line 9930</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -7828,4 +7860,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 9912</sub>
+<sub>`api.ogt` line 9936</sub>
