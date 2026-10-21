@@ -4573,6 +4573,7 @@
         "Currency",
         "Generator",
         "IdleHudDesc",
+        "RaceSplit",
         "RacingHudDesc",
         "DialogueLine",
         "CutsceneDesc",
@@ -4588,6 +4589,7 @@
         "LevelSelectDesc",
         "LevelSelectResult",
         "StatRow",
+        "ScoreFormat",
         "ResultsDesc",
         "LeaderboardEntry",
         "LeaderboardDesc",
@@ -6481,7 +6483,7 @@
               "name": "desc",
               "type": "RacingHudDesc",
               "optional": true,
-              "doc": "Speed, gear, laps, place, times and boost."
+              "doc": "Speed, gear, laps, place, times, splits, boost and its words."
             }
           ],
           "returns": "HudResult",
@@ -6574,7 +6576,7 @@
         },
         {
           "name": "resultsScreen",
-          "doc": "The results template: stars, the score counting up, the best, stats, actions and Share.",
+          "doc": "The results template: stars, the score (points or a time) counting up under its label, the best, stats, actions and Share.",
           "params": [
             {
               "name": "id",
@@ -22525,6 +22527,10 @@
           "type": "boolean",
           "description": "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it on Apple platforms; native hosts leave it off, so a script edits the same on every OS (og.ui.previewViewport tries it). Omitted is false."
         },
+        "covered": {
+          "$ref": "#/$defs/UiRect",
+          "description": "Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back."
+        },
         "breakpoint": {
           "$ref": "#/$defs/Breakpoint",
           "description": "Its size class: phone portrait or landscape, tablet, desktop."
@@ -25825,10 +25831,48 @@
       },
       "additionalProperties": false
     },
+    "RaceSplit": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One split of a racing HUD: a sector's time and its delta against the reference (the record's split).",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its name (`S1`, a sector's), the game's own word.",
+          "default": ""
+        },
+        "time": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its time in seconds, shown as m:ss.mmm; null is not yet run (a dash).",
+          "default": null
+        },
+        "delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Against the reference in seconds, shown signed (`-0.412`, `+1.050`, with the ASCII minus every pack draws): negative is ahead, in success ink; positive behind, in danger ink; null shows none.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
     "RacingHudDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map.",
+      "description": "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and leaves boost null (no meter), and shows its sectors as splits.",
       "type": "object",
       "properties": {
         "speed": {
@@ -25876,13 +25920,25 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Cars in the race.",
+          "description": "Cars in the race; 0 hides the place (a time trial).",
           "default": 8
         },
         "time": {
           "type": "number",
           "description": "The race time in seconds.",
           "default": 0
+        },
+        "delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it.",
+          "default": null
         },
         "best": {
           "anyOf": [
@@ -25896,10 +25952,25 @@
           "description": "The best lap in seconds; null hides it.",
           "default": null
         },
+        "splits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RaceSplit"
+          },
+          "description": "Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none.",
+          "default": []
+        },
         "boost": {
-          "type": "number",
-          "description": "The boost meter.",
-          "default": 0,
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The boost meter, 0 to 1; null hides the meter and the touch Boost pedal.",
+          "default": null,
           "x-og-unit": "ratio"
         },
         "map": {
@@ -25918,6 +25989,41 @@
           "type": "boolean",
           "description": "Show touch controls (steering arrows, Brake, Boost) on phones and tablets.",
           "default": false
+        },
+        "lapLabel": {
+          "type": "string",
+          "description": "The caption under the lap. Every word of the HUD is a field with its English default (unit too): a localised game passes its string table's (og.i18n.t).",
+          "default": "lap"
+        },
+        "bestLabel": {
+          "type": "string",
+          "description": "The best lap's line; `{best}` is replaced by the best lap as m:ss.mmm. A localised game passes its string table's, with `{best}` in it.",
+          "default": "Best {best}"
+        },
+        "pauseLabel": {
+          "type": "string",
+          "description": "The pause button's name (what a screen reader says; the button shows its icon).",
+          "default": "Pause"
+        },
+        "boostLabel": {
+          "type": "string",
+          "description": "The boost meter's label and the touch Boost pedal.",
+          "default": "Boost"
+        },
+        "brakeLabel": {
+          "type": "string",
+          "description": "The touch Brake pedal.",
+          "default": "Brake"
+        },
+        "leftLabel": {
+          "type": "string",
+          "description": "The touch steering arrow left.",
+          "default": "Left"
+        },
+        "rightLabel": {
+          "type": "string",
+          "description": "The touch steering arrow right.",
+          "default": "Right"
         }
       },
       "additionalProperties": false
@@ -26466,10 +26572,24 @@
       },
       "additionalProperties": false
     },
+    "ScoreFormat": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a results screen shows its score and best.",
+      "type": "string",
+      "enum": [
+        "points",
+        "time"
+      ],
+      "x-og-variants": {
+        "points": "A whole number grouped with commas (12,840), counted up from 0; the best is the higher.",
+        "time": "Seconds as m:ss.mmm (1:36.233), counted up from 0:00.000: a time trial's result. Lower is better: the best is the lower, and a best of 0 is none (no best line)."
+      }
+    },
     "ResultsDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook.",
+      "description": "A results screen: the title, stars that land one by one, the score counting up (points, or a time with `format` time) under its label, the best (a badge for a new best), stats, actions and a share hook.",
       "type": "object",
       "properties": {
         "open": {
@@ -26484,13 +26604,23 @@
         },
         "score": {
           "type": "number",
-          "description": "The score.",
+          "description": "The score: points, or seconds with `format` time.",
           "default": 0
         },
         "best": {
           "type": "number",
-          "description": "The best score.",
+          "description": "The best score: points, or seconds with `format` time (0 is none).",
           "default": 0
+        },
+        "format": {
+          "$ref": "#/$defs/ScoreFormat",
+          "description": "How the score and best are shown: points (the default) or a time.",
+          "default": "points"
+        },
+        "scoreLabel": {
+          "type": "string",
+          "description": "A caption over the score (`Total time`, `Score`); empty is none. A localised game passes its string table's.",
+          "default": ""
         },
         "newBest": {
           "type": "boolean",
@@ -26546,7 +26676,7 @@
         },
         "bestLabel": {
           "type": "string",
-          "description": "The best score's line; `{best}` is replaced by the best score, formatted. A localised game passes its string table's (og.i18n.t), with `{best}` in it.",
+          "description": "The best score's line; `{best}` is replaced by the best score, formatted as the score is (m:ss.mmm with `format` time). A localised game passes its string table's (og.i18n.t), with `{best}` in it.",
           "default": "Best {best}"
         },
         "newBestLabel": {

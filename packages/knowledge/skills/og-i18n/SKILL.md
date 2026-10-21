@@ -69,7 +69,8 @@ string "results.time" "タイム {time}"
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
 - og.ui's templates have words of their own (Retry, Share, "Best 1,200",
-  "New best", Cancel, Settings, Buy, Skip, "1 of 3"): each is a field of
+  "New best", Cancel, Settings, Buy, Skip, "1 of 3", a racing HUD's
+  "lap", "Best 1:36.233", Pause and Boost): each is a field of
   the template's desc with the English default, so a localised game passes
   its table's: `ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`,
   `actions`; `ConfirmDesc.confirmLabel`, `cancelLabel`; `SettingsDesc.title`,
@@ -84,7 +85,12 @@ string "results.time" "タイム {time}"
   `LeaderboardDesc.title`, `empty`, `retryLabel` (under `error`, the
   game's own message); `TutorialDesc.skipLabel`, `nextLabel`, `doneLabel`
   (Next on the last step), `stepLabel`; `CutsceneDesc.skipLabel`;
-  `LevelSelectDesc.title`. `bestLabel: og.i18n.t(world, "results.best")`
+  `LevelSelectDesc.title`; `ResultsDesc.scoreLabel` (over the score:
+  "Total time"); `RacingHudDesc.lapLabel` (under the lap), `bestLabel`
+  ("Best {best}", the best lap as m:ss.mmm), `pauseLabel` (the pause
+  button's name), `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`
+  (the touch pedals and arrows) and `unit`, and its `splits`' labels
+  (`S1`) are the game's. `bestLabel: og.i18n.t(world, "results.best")`
   with `"Best {best}"` / `"最佳 {best}"` in the tables (the template fills
   `{best}`, formatted); `stepLabel` the same with `"{step} of {count}"` /
   `"第 {step} 步，共 {count} 步"`. templates/ui-kit passes every one of

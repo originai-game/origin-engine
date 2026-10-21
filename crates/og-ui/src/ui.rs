@@ -48,6 +48,11 @@ pub struct Viewport {
     /// Apple platforms (`navigator.platform`); native hosts leave it off, so
     /// a script edits the same on every OS.
     pub mac_keys: bool,
+    /// Where the host's own control covers the surface (the web shell's
+    /// round Back, top left of a published page), in CSS pixels; empty is
+    /// none. Anchored groups keep out of it: a group it would overlap
+    /// moves along the edge it sits on, past it.
+    pub covered: Rect,
 }
 
 impl Default for Viewport {
@@ -62,6 +67,7 @@ impl Default for Viewport {
             high_contrast: false,
             reduced_transparency: false,
             mac_keys: false,
+            covered: Rect::default(),
         }
     }
 }
@@ -2262,6 +2268,16 @@ impl Ui {
             vp.width - vp.safe_area.horizontal(),
             vp.height - vp.safe_area.vertical(),
         );
+        // The host's control, where the layout stands before a right-to-left
+        // mirror (which moves a top-left group to the top right).
+        let covered = {
+            let c = vp.covered;
+            if self.direction == og_i18n::Direction::Rtl {
+                Rect::new(vp.width - c.x - c.width, c.y, c.width, c.height)
+            } else {
+                c
+            }
+        };
         for &f in &self.floating.clone() {
             let float = self.nodes[f].float;
             if float == Float::Modal {
@@ -2327,6 +2343,12 @@ impl Ui {
                     }
                     (x, y)
                 }
+            };
+            let (x, y) = match float {
+                Float::Anchored { anchor, margin, .. } => {
+                    keep_out(Rect::new(x, y, w, h), anchor, covered, margin.max(gap))
+                }
+                _ => (x, y),
             };
             let placed = Rect::new(x, y, w, h);
             self.nodes[f].el.width = Size::Fixed(w);
@@ -4375,5 +4397,26 @@ impl Reader<'_> {
             s.histories.insert(k, h);
         }
         Some(s)
+    }
+}
+
+/// An anchored group's place moved out of the host's control `c`: along
+/// the edge it sits on, past `c` by `gap` (a corner or side group sideways,
+/// a top or bottom centred group up or down); a centred group stays.
+fn keep_out(r: Rect, anchor: Anchor, c: Rect, gap: f32) -> (f32, f32) {
+    if c.is_empty() || !r.overlaps(&c) {
+        return (r.x, r.y);
+    }
+    let (ax, ay) = anchor.fractions();
+    if ax < 0.5 {
+        (r.x.max(c.right() + gap), r.y)
+    } else if ax > 0.5 {
+        (r.x.min(c.x - gap - r.width), r.y)
+    } else if ay < 0.5 {
+        (r.x, r.y.max(c.bottom() + gap))
+    } else if ay > 0.5 {
+        (r.x, r.y.min(c.y - gap - r.height))
+    } else {
+        (r.x, r.y)
     }
 }

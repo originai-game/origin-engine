@@ -23,6 +23,8 @@
 //! - the dialogue types at the wrong rate, a press does not finish the line,
 //!   or `advanced` fires before the line is shown;
 //! - anchors ignore the safe area; touch controls come out under 44 px;
+//! - an anchored group sits under the host's own control (the web shell's
+//!   Back, `Viewport::covered`) instead of beside it;
 //! - a game accent leaves the token palette's derived tones stale;
 //! - the gamepad stick repeats at the wrong ticks.
 
@@ -853,6 +855,43 @@ fn the_dialogue_types_by_tick_a_press_finishes_and_the_next_press_advances() {
     );
     rig.click("Talk", b);
     assert_eq!(rig.state.1, 1, "the next press advances");
+}
+
+#[test]
+fn anchored_groups_keep_out_of_the_host_control() {
+    let mut rig = Rig::new(());
+    let b = &mut |ui: &mut Ui, _: &mut ()| {
+        for (id, anchor) in [
+            ("Place", Anchor::TopLeft),
+            ("Clock", Anchor::Top),
+            ("Times", Anchor::TopRight),
+        ] {
+            ui.anchor(
+                id,
+                AnchorDesc {
+                    anchor,
+                    ..AnchorDesc::default()
+                },
+                |ui| {
+                    ui.label("Text", "1/8  lap 2/3", LabelDesc::default());
+                },
+            );
+        }
+    };
+    rig.idle(1, b);
+    let at = |rig: &Rig<()>, id: &str| rig.ui.frame().element(id).expect(id).clone();
+    let (place, clock, times) = (at(&rig, "Place"), at(&rig, "Clock"), at(&rig, "Times"));
+    assert!(place.x < 40.0, "no control: the corner itself ({place:?})");
+    // The web shell's Back: 12, 12 to 52, 52 CSS px.
+    rig.vp.covered = Rect::new(12.0, 12.0, 40.0, 40.0);
+    rig.idle(1, b);
+    let moved = at(&rig, "Place");
+    assert!(
+        moved.x >= 52.0 && (moved.y - place.y).abs() < 0.5,
+        "the top-left group moves right of the control, at the same height: {moved:?}"
+    );
+    assert_eq!(at(&rig, "Clock"), clock, "a group clear of it stays");
+    assert_eq!(at(&rig, "Times"), times, "a group clear of it stays");
 }
 
 #[test]
