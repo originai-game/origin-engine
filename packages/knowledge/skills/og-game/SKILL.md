@@ -621,6 +621,8 @@ deterministic and part of snapshots (`reference/physics.md`):
 - `og.PlatformerController` (2D) — `moveX`, `jump`, `down` in; jump height
   and time to apex, coyote time, jump buffer, wall jumps, one-way layers,
   corner correction as tunables (og-feel §12 has values by genre);
+  `impulse` (m/s, taken once on the next step) knocks it back or launches
+  it;
   `og.CharacterEvent` reports jumps and landings for dust and sounds.
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels

@@ -12,7 +12,7 @@ use crate::schema::*;
 use crate::schema_ext::*;
 use crate::{ControlOut, StepOut};
 use og_core::Result;
-use og_core::glam::Vec3;
+use og_core::glam::{Vec2, Vec3};
 
 /// `x` moved towards `target` by at most `step`.
 fn approach(x: f32, target: f32, step: f32) -> f32 {
@@ -72,7 +72,18 @@ pub(crate) fn platformers(
         };
         let centre = centre + ride;
 
+        // The game's impulse, taken once: an upward one leaves the ground.
         let was_grounded = p.grounded;
+        if p.impulse != Vec2::ZERO {
+            p.velocity += Vec3::new(p.impulse.x, p.impulse.y, 0.0);
+            if p.impulse.y > 0.0 {
+                p.grounded = false;
+                p.jumping = false;
+                p.coyote = 0.0;
+            }
+            p.impulse = Vec2::ZERO;
+        }
+
         // Timers and the jump press.
         let pressed = p.jump && !p.jump_was_held;
         p.coyote = if p.grounded {

@@ -14718,6 +14718,15 @@
           "description": "Held to drop through a one-way platform.",
           "default": false
         },
+        "impulse": {
+          "$ref": "#/$defs/Vector2",
+          "description": "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "mps"
+        },
         "maxSpeed": {
           "type": "number",
           "description": "The top running speed.",

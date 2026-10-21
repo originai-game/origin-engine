@@ -4008,6 +4008,9 @@ module physics {
     }
     field jump bool "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump."
     field down bool "Held to drop through a one-way platform."
+    field impulse Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks." {
+      unit mps
+    }
     field maxSpeed f32 "The top running speed." {
       default 8
       min 0
