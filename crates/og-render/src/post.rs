@@ -5,6 +5,7 @@
 //! depth-normal prepass. Also the size-dependent targets they and the main
 //! pass draw into, as render graph targets.
 
+use crate::deferred::{AsModule, Deferred};
 use crate::graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
@@ -247,6 +248,30 @@ pub(crate) fn fullscreen_pipeline(
     })
 }
 
+/// [`fullscreen_pipeline`] made when a pass first sets it (deferred.rs).
+pub(crate) fn deferred_fullscreen(
+    device: &wgpu::Device,
+    label: &'static str,
+    module: &(impl AsModule + Clone + 'static),
+    entry: &'static str,
+    layout: &wgpu::PipelineLayout,
+    format: wgpu::TextureFormat,
+    blend: Option<wgpu::BlendState>,
+) -> Deferred<wgpu::RenderPipeline> {
+    let (device, module, layout) = (device.clone(), module.clone(), layout.clone());
+    Deferred::new(move || {
+        fullscreen_pipeline(
+            &device,
+            label,
+            module.module(),
+            entry,
+            &layout,
+            format,
+            blend,
+        )
+    })
+}
+
 /// Records one fullscreen pass into `target`.
 pub(crate) fn fullscreen_pass(
     encoder: &mut wgpu::CommandEncoder,
@@ -282,19 +307,19 @@ pub(crate) struct PostPasses {
     source_layout: wgpu::BindGroupLayout,
     post_layout: wgpu::BindGroupLayout,
     taa_layout: wgpu::BindGroupLayout,
-    meter: wgpu::RenderPipeline,
-    reduce: wgpu::RenderPipeline,
+    meter: Deferred<wgpu::RenderPipeline>,
+    reduce: Deferred<wgpu::RenderPipeline>,
     adapt_layout: wgpu::BindGroupLayout,
-    adapt: wgpu::RenderPipeline,
+    adapt: Deferred<wgpu::RenderPipeline>,
     adapt_buffer: wgpu::Buffer,
     pub exposure: ExposureState,
-    prefilter: wgpu::RenderPipeline,
-    down: wgpu::RenderPipeline,
-    up: wgpu::RenderPipeline,
-    tonemap: wgpu::RenderPipeline,
-    taa: Option<wgpu::RenderPipeline>,
+    prefilter: Deferred<wgpu::RenderPipeline>,
+    down: Deferred<wgpu::RenderPipeline>,
+    up: Deferred<wgpu::RenderPipeline>,
+    tonemap: Deferred<wgpu::RenderPipeline>,
+    taa: Option<Deferred<wgpu::RenderPipeline>>,
     /// TAA's sharpening pass, when [`AaOptions::taa_sharpen`] is above 0.
-    taa_sharpen_pipeline: Option<wgpu::RenderPipeline>,
+    taa_sharpen_pipeline: Option<Deferred<wgpu::RenderPipeline>>,
     /// Its strength (`TaaUniform::params.w`).
     pub taa_sharpen: f32,
     /// The tonemap into [`LDR_FORMAT`], for a frame with passes after it
@@ -307,7 +332,7 @@ pub(crate) struct PostPasses {
     stylise_pl: wgpu::PipelineLayout,
     source_pl: wgpu::PipelineLayout,
     post_pl: wgpu::PipelineLayout,
-    post_shader: wgpu::ShaderModule,
+    post_shader: crate::deferred::Module,
     stylise_shader: Option<wgpu::ShaderModule>,
     fxaa_shader: Option<wgpu::ShaderModule>,
     output_format: wgpu::TextureFormat,
@@ -333,7 +358,7 @@ pub(crate) struct PostPasses {
     pub taa_buffer: wgpu::Buffer,
     fx_layout: wgpu::BindGroupLayout,
     pub fx_buffer: wgpu::Buffer,
-    fx: HashMap<&'static str, wgpu::RenderPipeline>,
+    fx: HashMap<&'static str, Deferred<wgpu::RenderPipeline>>,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.
@@ -423,6 +448,33 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
 ];
 
 impl PostPasses {
+    /// Makes one of its pipelines no frame used yet: the tonemap, the
+    /// exposure meter and bloom first, then TAA and the effect passes
+    /// (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        let mut items: Vec<&dyn crate::deferred::Warm> = vec![
+            &self.tonemap,
+            &self.meter,
+            &self.reduce,
+            &self.adapt,
+            &self.prefilter,
+            &self.down,
+            &self.up,
+        ];
+        items.extend(self.taa.iter().map(|p| p as &dyn crate::deferred::Warm));
+        items.extend(
+            self.taa_sharpen_pipeline
+                .iter()
+                .map(|p| p as &dyn crate::deferred::Warm),
+        );
+        for (entry, _) in FX_PASSES {
+            if let Some(p) = self.fx.get(entry) {
+                items.push(p);
+            }
+        }
+        crate::deferred::warm_one(&items)
+    }
+
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -489,11 +541,8 @@ impl PostPasses {
                 ),
             ],
         });
-        let module = |label: &str, body: &str| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(fullscreen_source(body).into()),
-            })
+        let module = |label: &'static str, body: &str| {
+            crate::deferred::module(device, label, fullscreen_source(body))
         };
         let post_shader = module("post", POST_WGSL);
         let luminance_shader = module("luminance", LUMINANCE_WGSL);
@@ -534,7 +583,7 @@ impl PostPasses {
             ],
         });
         let stylise_pl = pipeline_layout("stylise", &stylise_layout);
-        let meter = fullscreen_pipeline(
+        let meter = deferred_fullscreen(
             device,
             "meter",
             &luminance_shader,
@@ -543,7 +592,7 @@ impl PostPasses {
             LUMINANCE_FORMAT,
             None,
         );
-        let reduce = fullscreen_pipeline(
+        let reduce = deferred_fullscreen(
             device,
             "meter reduce",
             &luminance_shader,
@@ -560,7 +609,7 @@ impl PostPasses {
                 layout_entry(2, UNIFORM),
             ],
         });
-        let adapt = fullscreen_pipeline(
+        let adapt = deferred_fullscreen(
             device,
             "exposure adapt",
             &module("exposure", EXPOSURE_WGSL),
@@ -603,7 +652,7 @@ impl PostPasses {
             next_id: 1,
             last: None,
         };
-        let prefilter = fullscreen_pipeline(
+        let prefilter = deferred_fullscreen(
             device,
             "bloom prefilter",
             &post_shader,
@@ -612,7 +661,7 @@ impl PostPasses {
             HDR_FORMAT,
             None,
         );
-        let down = fullscreen_pipeline(
+        let down = deferred_fullscreen(
             device,
             "bloom down",
             &post_shader,
@@ -629,7 +678,7 @@ impl PostPasses {
             },
             alpha: wgpu::BlendComponent::REPLACE,
         };
-        let up = fullscreen_pipeline(
+        let up = deferred_fullscreen(
             device,
             "bloom up",
             &post_shader,
@@ -644,7 +693,7 @@ impl PostPasses {
         } else {
             "fs_srgb_encode"
         };
-        let tonemap = fullscreen_pipeline(
+        let tonemap = deferred_fullscreen(
             device,
             "tonemap",
             &post_shader,
@@ -657,7 +706,7 @@ impl PostPasses {
         let taa_shader = taa_on.then(|| module("taa", TAA_WGSL));
         let taa_pl = pipeline_layout("taa", &taa_layout);
         let taa = taa_shader.as_ref().map(|taa_shader| {
-            fullscreen_pipeline(
+            deferred_fullscreen(
                 device,
                 "taa",
                 taa_shader,
@@ -680,7 +729,7 @@ impl PostPasses {
                 .as_ref()
                 .filter(|_| taa_sharpen > 0.0)
                 .map(|taa_shader| {
-                    fullscreen_pipeline(
+                    deferred_fullscreen(
                         device,
                         "taa sharpen",
                         taa_shader,
@@ -749,7 +798,7 @@ impl PostPasses {
             .map(|&(entry, format)| {
                 (
                     entry,
-                    fullscreen_pipeline(device, entry, &fx_shader, entry, &fx_pl, format, None),
+                    deferred_fullscreen(device, entry, &fx_shader, entry, &fx_pl, format, None),
                 )
             })
             .collect();

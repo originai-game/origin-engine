@@ -78,6 +78,11 @@ pub trait RenderBackend {
     fn restore_state(&mut self, state: u64) {
         let _ = state;
     }
+    /// og-render's `Renderer::warm`: make one pipeline no frame has used
+    /// yet, in the host's idle time; false when there is none left.
+    fn warm(&mut self) -> bool {
+        false
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.

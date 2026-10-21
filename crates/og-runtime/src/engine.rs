@@ -1298,6 +1298,18 @@ pub fn set_render_backend(id: u32, backend: Option<Box<dyn RenderBackend>>) -> R
     Ok(())
 }
 
+/// Make one pipeline of the engine's renderer that no frame has used yet
+/// (og-render's `Renderer::warm`), when the host has idle time: the web
+/// page behind its play gate. False when every one is made, or without a
+/// renderer.
+pub fn warm_renderer(id: u32) -> bool {
+    engine(id).is_ok_and(|e| {
+        e.render
+            .try_borrow_mut()
+            .is_ok_and(|mut rs| rs.backend.as_mut().is_some_and(|b| b.warm()))
+    })
+}
+
 /// The game's RenderOptions (`GameDesc.render`), for a host creating a renderer.
 pub fn render_options(id: u32) -> Value {
     engine(id).map_or(Value::Null, |e| e.render.borrow().options.clone())

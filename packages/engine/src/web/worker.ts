@@ -155,6 +155,8 @@ export interface WebExtras {
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
   og_web_lanes?(): string;
+  /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
+  og_web_warm?(engine: number): boolean;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
   og_web_panic?(): string;
   /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
@@ -726,6 +728,32 @@ export function startWorker(game: GameToken): void {
     }
   };
 
+  /**
+   * Behind the gate, in idle time: the renderer makes the pipelines the first frame did not
+   * draw with, one a task (og-render deferred.rs; WebGL2 compiles each synchronously), until
+   * none is left or play begins (a pipeline still unmade is made by the frame that first draws with it).
+   */
+  const warmBehindGate = () => {
+    const warm = glueRef?.og_web_warm;
+    if (!warm || !rendering) return;
+    const began = performance.now();
+    let made = 0;
+    const step = () => {
+      if (playing || crashed || !engine) return;
+      let more: boolean;
+      try {
+        more = warm(engine.id);
+      } catch (e) {
+        crash(e instanceof Error ? e.message : String(e));
+        return;
+      }
+      if (more) {
+        made++;
+        setTimeout(step, 0);
+      } else if (made > 0) log(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
+    };
+    setTimeout(step, 0);
+  };
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   let settling = false;
   /** One rendered frame without a tick: the first frame behind the play gate. */
@@ -911,6 +939,7 @@ export function startWorker(game: GameToken): void {
           }
           phase("settle");
           present();
+          warmBehindGate();
           if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
             void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present }).catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
           }

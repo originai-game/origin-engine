@@ -5,6 +5,7 @@
 //! draw per run.
 
 use crate::RenderError;
+use crate::deferred::Deferred;
 use crate::effects::SpriteBlend;
 use crate::scene::{Overlay, TextureArrayHandle, TextureHandle};
 use crate::sprites::{FontLayout, RunSource, SpriteRun};
@@ -222,9 +223,9 @@ pub(crate) fn build<'a>(
 
 /// The overlay's sprite and MSDF pipelines for one target format.
 pub(crate) struct OverlayPipelines {
-    pub sprite: wgpu::RenderPipeline,
-    pub msdf: wgpu::RenderPipeline,
-    pub glass: wgpu::RenderPipeline,
+    pub sprite: Deferred<wgpu::RenderPipeline>,
+    pub msdf: Deferred<wgpu::RenderPipeline>,
+    pub glass: Deferred<wgpu::RenderPipeline>,
 }
 
 /// The overlay's pipelines and buffers: in the output's format and, for a
@@ -243,6 +244,16 @@ pub(crate) struct OverlayRenderer {
 }
 
 impl OverlayRenderer {
+    /// Makes one of its pipelines no frame used yet, the output's first (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        let o = &self.output;
+        crate::deferred::warm_one(&[&o.sprite, &o.msdf, &o.glass])
+            || self
+                .linear
+                .as_ref()
+                .is_some_and(|l| crate::deferred::warm_one(&[&l.sprite, &l.msdf, &l.glass]))
+    }
+
     pub fn new(
         device: &wgpu::Device,
         output_format: wgpu::TextureFormat,
@@ -285,32 +296,35 @@ impl OverlayRenderer {
             label: Some("overlay"),
             source: wgpu::ShaderSource::Wgsl(OVERLAY_WGSL.into()),
         });
-        let buffers = [Some(OVERLAY_LAYOUT)];
-        let pipeline = |label: &str, fs: &str, format: wgpu::TextureFormat| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&pl),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs"),
-                    compilation_options: Default::default(),
-                    buffers: &buffers,
-                },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some(fs),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
+        const BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(OVERLAY_LAYOUT)];
+        let pipeline = |label: &'static str, fs: &'static str, format: wgpu::TextureFormat| {
+            let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+            Deferred::new(move || {
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&pl),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: BUFFERS,
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some(fs),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format,
+                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
             })
         };
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {

@@ -533,6 +533,16 @@ fn take_resize(engine: u32) -> Option<(u32, u32)> {
     RESIZES.with(|r| r.borrow_mut().remove(&engine))
 }
 
+/// Make one pipeline the engine's renderer has not used yet (og-render's
+/// `Renderer::warm`): the engine Worker calls it in idle time behind the
+/// play gate, until it answers false, so WebGL2's synchronous compiles of
+/// the passes the first frame did not draw happen before play rather than
+/// in a frame of it.
+#[wasm_bindgen]
+pub fn og_web_warm(engine: u32) -> bool {
+    og_runtime::warm_renderer(engine)
+}
+
 /// The lanes the module got, as JSON (og-runtime's `lanes_report`: on,
 /// threads, pool, why, parallelCalls, parallelItems, sites): the engine Worker's
 /// `lanes` call, so a publish page without the probe's commands can see them.
@@ -706,6 +716,9 @@ mod canvas {
         fn restore_state(&mut self, state: u64) {
             self.renderer
                 .restore_state(og_render::RendererState::from_id(state));
+        }
+        fn warm(&mut self) -> bool {
+            self.renderer.warm()
         }
     }
 
