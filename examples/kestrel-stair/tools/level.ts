@@ -104,8 +104,8 @@ export function level(textures: Record<Exclude<MaterialName, "dark">, Uint8Array
  * path, not the scree). The summit gate is not baked: the game sets it as
  * an obstacle (og.nav.setObstacle) and lifts it when the gate opens. The
  * `type navmesh` lines are the third-person archetype's (`agent`, `cellSize`,
- * `bounds`) and a guessed `model` entry the cook took: the knowledge package
- * names the parts but not the lines (FINDINGS #2).
+ * `bounds`) and a `model` entry: og-ai §1 gives every line since wave 11
+ * (FINDINGS #2, fixed).
  */
 export function navmesh(): string {
   return `type navmesh
