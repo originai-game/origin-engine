@@ -210,6 +210,9 @@ lighting falls back to a forward tile table built on the CPU).
   blendshapes.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
+  A kinematic body with an `og.Velocity` moves by it each tick and its
+  Transform is written back (one without stays where its Transform puts
+  it): one rule for the API docs, the skills and the physics README.
 - **Navigation**: navmesh baked at cook time or at runtime for procedural
   levels; path queries and crowd steering as engine systems.
 - **Audio**: the mixer runs in wasm; on the web the engine Worker feeds an

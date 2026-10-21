@@ -3662,7 +3662,7 @@ module physics {
 
   const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
   const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
-  const BODY_KINEMATIC u32 2 "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
+  const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
   const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
   const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
   const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
@@ -3682,7 +3682,7 @@ module physics {
   component RigidBody {
     doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
     doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
-    field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform)." {
+    field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform)." {
       min 0
       max 2
       label "Kind"
@@ -3780,7 +3780,7 @@ module physics {
   }
 
   component Velocity {
-    doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body."
+    doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body."
     field linear Vector3 "The linear velocity (2D uses x and y)." {
       unit mps
       tunable true
@@ -4027,6 +4027,9 @@ module physics {
     }
     field jump bool "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump."
     field down bool "Held to drop through a one-way platform."
+    field impulse Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks." {
+      unit mps
+    }
     field maxSpeed f32 "The top running speed." {
       default 8
       min 0

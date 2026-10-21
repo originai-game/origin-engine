@@ -497,6 +497,7 @@ layer walls {
   opacity 1                # (default 1)
   visible true             # (default true)
   collision true           # its tiles' collision becomes static colliders (default false)
+  lit false                # the layer takes no 2D light (og.Lighting2D); default true: lit like a sprite in the lit range
   repeat x                 # x, y or both: tile the layer endlessly (a background)
   terrain wall             # a terrain layer: cells are 1 (filled) or 0, the terrain picks the tiles
   legend "#" 1             # a character and its tile id (-1 empty; on a terrain layer 1 filled)
@@ -528,6 +529,7 @@ cook reads of a layer and an object:
 |---|---|---|
 | `autotile` | tile layer custom property (string) | the layer is a terrain layer of that terrain of its tileset; any tile in a cell marks it filled, the terrain picks the drawn tile |
 | `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
+| `lit` | tile layer custom property (bool) | false keeps the layer out of og.Lighting2D (a sky or window layer); default true |
 | `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
 | `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y; a property of another name (`repeat`) is not read |
 | `parallaxx`, `parallaxy` | Tiled's own layer fields (Layer Properties, Parallax Factor) | the layer's parallax |
@@ -915,7 +917,12 @@ dissolve, wind-swayed grass and a ripple on the walking walker.
 profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and sensors
 arrive as events, and `og.physics` answers queries. `og.Velocity` is
 optional: the step adds it to a dynamic body that has none, and a kinematic
-body moves by it when it has one. `world.set(e, og.Velocity, ...)` refuses on
+body (`BODY_KINEMATIC`) moves by it each tick, its Transform written back:
+a lift is a kinematic body with a Velocity whose system only turns the
+velocity round at the ends, and a PlatformerController standing on it
+rides along. A kinematic body without one stays where its Transform puts
+it (move that by hand), and writing a moving one's Transform teleports it
+there. `world.set(e, og.Velocity, ...)` refuses on
 an entity without one (a body in `start`, before its first step):
 `world.insert` it there, which adds and sets it.
 
@@ -943,6 +950,8 @@ deterministic and part of snapshots (`reference/physics.md`):
 - `og.PlatformerController` (2D) — `moveX`, `jump`, `down` in; jump height
   and time to apex, coyote time, jump buffer, wall jumps, one-way layers,
   corner correction as tunables (og-feel §12 has values by genre);
+  `impulse` (m/s, taken once on the next step) knocks it back or launches
+  it;
   `og.CharacterEvent` reports jumps and landings for dust and sounds.
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels

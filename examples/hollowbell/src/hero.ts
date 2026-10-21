@@ -77,6 +77,9 @@ export const Control = defineSystem(
           hero.airJumped[i] = 0;
         }
 
+        // A hurt's first tick (it holds through the hit stop): the knock-back, away and up. The
+        // controller takes og.PlatformerController.impulse once, on its next step (FINDINGS.md #5, fixed).
+        const kicked = playing && g.knock > 0 && g.knock === t.knockTicks;
         // The run's own clocks.
         if (playing) {
           if (g.invulnerable > 0) g.invulnerable -= 1;
@@ -88,7 +91,7 @@ export const Control = defineSystem(
               heal(g);
               g.warp = true;
               g.warpX = g.checkpoint >= 0 ? g.checkX : g.spawnX;
-              g.warpY = (g.checkpoint >= 0 ? g.checkY : g.spawnY) + 0.05; // FINDINGS.md #15
+              g.warpY = g.checkpoint >= 0 ? g.checkY : g.spawnY; // on the floor's height (FINDINGS.md #15, fixed)
               g.invulnerable = t.iframes;
               og.ui.toast(world, say(world, "toast.woke"));
             }
@@ -109,9 +112,11 @@ export const Control = defineSystem(
         pc.jumpHeight[i] = t.jumpHeight;
         pc.timeToApex[i] = t.timeToApex;
         pc.airJumps[i] = g.cloak ? 1 : 0;
-        // The knock-back is a run away from the hit: og.PlatformerController takes no velocity or
-        // impulse of the game's (FINDINGS.md #5).
-        pc.moveX[i] = control ? move : g.knock > 0 && playing ? g.knockDir : 0;
+        pc.moveX[i] = control ? move : 0;
+        if (kicked) {
+          pc.impulse[i * 2] = g.knockDir * 7;
+          pc.impulse[i * 2 + 1] = 6;
+        }
         pc.jump[i] = control && jump ? 1 : 0;
         pc.down[i] = control && down ? 1 : 0;
 

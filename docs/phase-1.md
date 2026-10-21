@@ -226,6 +226,159 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 9, physics-2d: the platformer's casts, knock-back, the kinematic rule (08a3339)
+
+From Hollowbell's findings (examples/hollowbell/FINDINGS.md), the second
+dogfood game, a 2D pixel platformer written from the knowledge package.
+
+- e86b55a5, #16 (blocker) and #15: `og.PlatformerController` stuttered
+  on flat ground (its velocity dropping to near 0 every few ticks, a
+  second of running covering 4.7 m at a 6.5 m/s top speed) and sank 7 mm
+  into a tilemap floor at some x, unable to run. Cause: rapier's
+  character controller casts with its skin as a target distance, which
+  parry resolves inaccurately (1.98 cm of travel reported for 1 cm, from
+  2 cm above a 74 m floor), so a run grazing the floor hit it at random
+  with a tilted normal and rapier's 2D slope rule threw the whole step
+  away (no horizontal direction to slide along in 2D); and a cast that
+  starts inside the skin falls back on a contact query that returns
+  nothing at some positions, so the character fell 11 mm in and stuck.
+  The controller no longer uses rapier's character controller
+  (`crates/og-physics/src/platformer.rs`): exact casts (accurate to
+  2e-5 m from 1 mm away), the skin gap kept by the controller itself,
+  and when not rising it lifts two skins, moves across (keeping its x
+  speed up walkable slopes) and drops back onto the ground a skin above.
+  Six tests in `crates/og-physics/tests/platformer_ground.rs`, all
+  failing on the old code: full `maxSpeed` every tick on one box, on 12
+  adjacent boxes and on tilemap collision rectangles (og-tilemap as a
+  dev-dependency), a 30° hill at full speed and a 60° slope stopping, a
+  controller written to the floor's height at 190 positions standing and
+  running, the feet one skin above the floor across repeated runs. In
+  the game the #16 repro reads 6.5 m/s every tick and runs 6.14 m in a
+  second; the #15 repro stands at y 16.01 and runs.
+- 1e47f188, #5: `og.PlatformerController.impulse` (Vector2, m/s), added
+  to the velocity on the next step then reset; an upward one leaves the
+  ground and cancels coyote time. IDL, og-feel §3 (beside hit stop),
+  og-game §13; a controllers test.
+- 177af1c5, #13: one rule, the one the skill promised: a kinematic body
+  with a nonzero `og.Velocity` moves by it each tick and its Transform is
+  written back; writing its Transform teleports it; without a Velocity
+  it stays where its Transform puts it. The IDL (BODY_KINEMATIC,
+  RigidBody.kind, Velocity), the og-physics schema docs, og-game §13,
+  docs/design.md and the og-physics README state it; the bodies test
+  that asserted the old behaviour is replaced by one test per rule, and
+  a controllers test rides a platform moving by its velocity. A game that
+  moved a kinematic body's Transform by hand and also set its Velocity
+  would now move twice; Hollowbell's lift was the only case in the
+  repository (af5b3d39: the lift reverses its velocity at the ends, the
+  hero's knock-back is an impulse, `WARP_LIFT` is gone, `move.og.ts`
+  checks the run distance against the tuning, 2.89 m measured against
+  0.5 × 6.5 − 6.5²/140 with 0.15 m tolerance).
+- Determinism (the native tool, lanes off): physics
+  18126409214070009362 before; 6597690808174327434 after the platformer
+  move (by design, the 2D scenario's walker moves differently);
+  947364242694612608 after `impulse` (the component record grew),
+  unchanged by the kinematic rule (the scenario's platform has no
+  Velocity) and after the merge. `math_digest`, `bouncing_boxes_hash`
+  and `anim_hash` unchanged. The og-physics README records them.
+- Frames: none moved (Hollowbell 13, Lantern Vale 11 and the runner
+  archetype's suites pass unchanged after the merge; the courier stands a
+  skin, 1 cm, above the floor within tolerance).
+- Left out: `og.CharacterController` (3D) still uses rapier's controller
+  and likely carries the same cast inaccuracy (row 72); the platformer's
+  query filter ignores the collider mask (row 73).
+
+Functional lane on the merge: 5 of 5 in 165 s.
+
+## Wave 9, render-2d: lit tile layers, the pixel grid's fit, sprites over the UI (6eba088)
+
+- 9c5b5d6f, #9 (blocker): tiles were drawn with the lit flag off, so
+  `og.Lighting2D` never lit a tilemap. A tile layer inside the lit range
+  is lit as a sprite there is (ambient, each Light2D's falloff and
+  colour, occluder shadows), through the same sprite pipeline and light
+  map on every tier. Opt-out: a Tiled layer's bool property `lit` false,
+  or `lit false` in a `.ogt` layer block, carried by the cooked blob's
+  new `UNLIT` bit (maps cooked before stay lit), reported by
+  `TileLayerInfo.lit`; the IDL docs of the tilemap module and Lighting2D
+  say so, and og-game §8's grammar and Tiled table carry it (48d172f3,
+  after the knowledge package's drift check asked for it). Tests:
+  `tile_layers_in_the_lit_range_take_the_2d_light` (fails with the old
+  flag), og-tilemap's and og-cook's tests reading `lit`, and the gfx
+  scene `tilemap-lit` (a dark cave of three tile layers, a torch and a
+  crystal, a pillar's and a ledge's shadows, a window sky layer opted
+  out) with its metal reference.
+- aff16274, #7: the pixel grid's fit rule: the height sets the scale;
+  `pixelUpscale` is honoured whenever height × scale fits the output's
+  height (with the border that leaves), else and for 0 the largest scale
+  that fits; the width may lose its last column to keep the scale. 240
+  lines at 1280×720 draw at 3x as 426 columns with a one-pixel border
+  each side instead of 2x inside a wide one. The IDL strings of
+  `pixelHeight` and `pixelUpscale`, og-taste §12 (with knowledge-2's
+  table of scale and border per `pixelHeight` at 720p, 1080p, 1440p, 4K
+  and three phone sizes) and the README give the arithmetic; a unit test
+  covers 720p, 1080p and a 2532×1170 phone both ways.
+- dd7c0685, #8: a render constant `UI_LAYER` = 1000 (exported from
+  packages/engine): screen sprites and screen text at 1000 or below draw
+  under every UI element as before; above it they draw over every UI
+  element, modals and the transition cover included, in their own
+  order, so a game draws such sprites only while their screen shows.
+  og-game §10's sentence rewritten; og-ui `tests/screen_layers.rs` with
+  reference `screen-layers.png` (fails when the rule is removed).
+- Hollowbell (6eba0883): the `MapShade` tint, the light-pool sprites,
+  their system, component and asset are gone, the map in the lit range;
+  light multiplies the map now instead of a glow added over it, so the
+  near-black back wall is redrawn at its full-light colour, the lights
+  about twice as bright and Wren's lantern fades in daylight;
+  `lighting.og.ts` measures 61 near Wren and 56 under the torch against
+  26 for the rock; the look back at 240 lines with a 15-cell view.
+- Frames re-recorded on metal: `stylise-palette` 0.26666 and
+  `stylise-retro` 0.55622 (240-line scenes, now 3x); new `tilemap-lit`
+  and og-ui `screen-layers`; by the coordinator at 48d172f3, fx-showcase's
+  `looks-pixel-3d-hybrid` (0.50), `looks-low-resolution-3d` (0.38) and
+  `looks-monochrome-dither-3d` (0.70), the 240-line presets, and all nine
+  Hollowbell frames (0.03 to 0.13). Owed on vulkan-cpu and the browser
+  tiers: `tilemap-lit`, `stylise-palette`, `stylise-retro` (row 74).
+
+Functional lane on the merge (with knowledge-2): 5 of 5 in 97 s after
+the grammar line; the first run failed only the knowledge package's new
+drift check on `lit`.
+
+## Wave 9, knowledge-2: the grammars with drift checks, Japanese fonts, what works (49d7a1d)
+
+Every wiki page is generated from the IDL (the validator refuses a page
+without the generated header), so the grammars that are not IDL went into
+the skills.
+
+- d7e3cd02, Hollowbell #2 and #3: og-game §8 gives every line of a
+  `type tileset` and a `type tilemap` file with defaults, the
+  neighbour-mask rules of both auto-tiling modes, the topdown archetype's
+  `dungeon.ogt` as the example, how `../tiles/x.tsx` resolves to
+  `tiles/x.ogt`, a table of the Tiled fields the cook reads, and a map's
+  import settings; og-game §10 gives every emitter line with its default,
+  the one-shot pattern and Hollowbell's `fx/hit.ogt`; `og.load.emitter`'s
+  IDL doc points there (the "particles page" it named never existed).
+  The drift check in `scripts/validate.ts` runs both ways: a word in a
+  doc block the parser never reads fails, and a key the parser reads that
+  no doc block writes fails, the Tiled table against the importer too;
+  `tests/grammar.test.ts` (10 tests) proves each kind of drift is caught.
+- 95a82284, #4: og-i18n §3 says what the repository ships (the ui-kit's
+  Japanese subset holds only its own 177 characters), where a whole Noto
+  face comes from, how to subset with `templates/ui-kit/tools/
+  subset-font.py` (the examples' tool, promoted and made general: it
+  exits 1 naming every character the source font lacks), and the
+  fallback rule: never take Japanese from the Chinese face.
+- 5e1a84b1, 3edec3f0: og-taste §12's pixel table (computed with
+  render-2d's fit rule) and phone guidance.
+- 30dc7d75, 49d7a1d0: every skill but og-ai opens with a "What works"
+  section of facts the two games measured; og-game opens with the
+  seven-step order both games found productive and the three mistakes
+  (the resource handle rule, a look replacing resources whole, where probe
+  outputs go); og-build §1 and §3 say where outputs go.
+- Found, not fixed: Hollowbell's far-hills layer sets a string property
+  `repeat` = x that the cook does not read (only `repeatx`/`repeaty`);
+  its FINDINGS #2 says `repeat` was confirmed by `TileLayerInfo`, which
+  has no such field. A cook warning on unknown Tiled layer properties:
+  row 75.
+
 ## Wave 8, wasm-size: where the lanes module's bytes are, two trims, a report tool (bf8dcd1)
 
 The lanes module was 3,498,640 B brotli (83.4 % of `wasm_core_brotli_bytes`)
@@ -3119,6 +3272,10 @@ resource only the owner can give.
 | 69 | og-ui's status badge tones (success, warn, danger, info) under 4.5:1 in most packs (cartoon warn 1.63:1; `pack_contrast.rs` prints them and does not enforce): their colours are shared with meters, toasts and status dots, so they need a palette round of their own; the archetype skins `sparkorb`, `lampdive` and `lanebeat` are outside the pack test | W8 api-surface 2 | S | engine, phase 4 (UI) | open |
 | 70 | A native GL-tier lane: the taa-webgl2 round confirmed the GL defect natively on ANGLE's Metal renderer (wgpu's `angle` feature, ANGLE's libEGL from a Chromium bundle), which would give og-gfx a `gl` backend option and the browser-shaped frames a native run; not committed because it needs ANGLE's dylibs on the machine | W8 taa-webgl2 | M | engine, phase 4 (tooling) | open, an option |
 | 71 | A lanes module per physics profile: measured with wave 8's trims, 3D lanes 3,088,792 B (73.6 %) and 2D lanes 2,919,700 B (69.6 %) against the one lanes module's 3,464,929 B (82.6 %); no game loses anything (a page already downloads its own profile's publish module). It changes what ships: `wasm-crates.txt`, `check.sh`, `size-gate.sh`, `wasm-lanes.sh`, packages/engine's `build.sh`, `pack.sh`, `web-build.ts` and `doctor.ts`, the determinism and browser tests that run 2D worlds on the lanes module, docs/web-export.md, and one more lanes build per full gate; needs the gate and the browser tiers | W8 wasm-size | M | engine, phase 4 (web export) | open |
+| 72 | `og.CharacterController` (3D) still uses rapier's character controller, whose cast with the skin as a target distance parry resolves inaccurately (the cause of the platformer's stutter and sinking, e86b55a5); likely the same in 3D, unmeasured | W9 physics-2d | M | engine, phase 4 (physics) | open |
+| 73 | The platformer's query filter ignores the collider mask (collision layers) | W9 physics-2d | S | engine, phase 4 (physics) | open |
+| 74 | Reference frames owed after render-2d: `vulkan-cpu` and the browser tiers for og-tests `tilemap-lit` (new), `stylise-palette` and `stylise-retro` (240-line scenes, now 3x), og-ui `screen-layers` (new), and Hollowbell's nine frames and the three 240-line looks presets on vulkan-cpu | W9 render-2d | S | engine, phase 4 (a wave-end capture) | open |
+| 75 | The cook does not warn on an unknown Tiled layer or object property (Hollowbell's `repeat` = x is silently ignored; the read ones are `repeatx`/`repeaty`); a warning naming the property and the og-game table would catch it | W9 knowledge-2 | S | engine, phase 4 (cook) | open |
 
 ## 0. Rules that shape the plan
 
