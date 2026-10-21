@@ -99,6 +99,7 @@ pub const SCENES: &[&str] = &[
     "shadows-crypt",
     "shadow-flags",
     "ground-grid",
+    "stylise-outline-ground",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -300,6 +301,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // meridian-loop #15: a 1,600 m ground as og.render.planeGeometry
         // makes it, its grid tile repeated every 10 m by `uvRepeat` 160.
         "ground-grid" => g.scene = ground_grid(160.0),
+        // meridian-loop #7: neon-vector's outline over a 1,600 m ground
+        // from a chase camera: lined where it ends, never washed.
+        "stylise-outline-ground" => {
+            g.scene = crate::stylise_scenes::outline_ground_scene(1.4, 120.0)
+        }
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the full tier's eight; WebGL2
         // draws four, its own frame).

@@ -190,14 +190,27 @@ fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(sum / max(weight, 1e-5), 0.0, 0.0, 1.0);
 }
 
-// Outlines inside silhouettes (a farther neighbour at the line width) and
-// along creases (a neighbour of about the same depth turned past the
-// threshold), in each object's own colour and width (tex_b: the prepass
-// outline target, pbr_prepass.wgsl `outline_bytes`) or the scene's. An
-// object's own outline is a hull outline: a crease is lined only where it
-// meets another object (another id), never between its own faces, so a
-// voxel, flat-shaded or hard-edged mesh (normals split per face) keeps
-// clean faces inside its silhouette.
+// Outlines inside silhouettes (a neighbour at the line width farther than
+// the surface would be there) and along creases (a neighbour of about the
+// same depth turned past the threshold), in each object's own colour and
+// width (tex_b: the prepass outline target, pbr_prepass.wgsl
+// `outline_bytes`) or the scene's. An object's own outline is a hull
+// outline: a crease is lined only where it meets another object (another
+// id), never between its own faces, so a voxel, flat-shaded or hard-edged
+// mesh (normals split per face) keeps clean faces inside its silhouette.
+//
+// "Farther than the surface would be": a surface seen at a grazing angle
+// (a large ground plane) recedes fast across the screen, so its neighbour
+// at the line width is farther than the pixel by more than the threshold
+// without any edge between them; compared with the pixel's own depth, the
+// whole plane read as edge near the horizon (a pale band) or everywhere a
+// wide line reached (outlineDistance near the camera). Where the pixel,
+// the neighbour and the one opposite face the same way (one plane), 1/depth
+// is affine in screen space, so the opposite one gives where the surface
+// goes on: 2/d0 - 1/d(opposite); the test is against that depth (never
+// nearer than d0), so a plane is lined only where it ends. A neighbour
+// facing another way (a step, another face, a curved rim) is tested
+// against d0 as before.
 @fragment
 fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -222,9 +235,12 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   var edges = 0.0;
   for (var i = 0u; i < 8u; i++) {
     let a = f32(i) * FX_PI * 0.25;
-    let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * width));
+    let step = vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * width));
+    let q = px + step;
     let d = depth_at(q);
-    if (d > d0 * (1.0 + fxp.outline.y)) {
+    let planar = dot(world_normal(q), n0) > 0.999 && dot(world_normal(px - step), n0) > 0.999;
+    let ahead = select(d0, surface_ahead(d0, depth_at(px - step)), planar);
+    if (d > ahead * (1.0 + fxp.outline.y)) {
       edges += 1.0;
     } else if (abs(d - d0) < d0 * fxp.outline.y * 4.0
         && (!own || outline_texel(q).w != id.w)
@@ -234,6 +250,18 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   }
   let k = clamp(edges, 0.0, 1.0) * color.a;
   return vec4<f32>(mix(c.rgb, color.rgb, k), c.a);
+}
+
+// Where the surface at a pixel of depth `d0` goes on one step ahead, from
+// the depth `back` one step behind: on a plane 1/depth is affine in screen
+// space. Never nearer than d0; d0 itself when the step behind is sky, not
+// nearer, or less than half as deep (no receding plane to follow); the
+// camera's far plane when the plane would not reach that far (beyond its
+// horizon).
+fn surface_ahead(d0: f32, back: f32) -> f32 {
+  if (is_sky(back) || back >= d0 || back < d0 * 0.5) { return d0; }
+  let inv = 2.0 / d0 - 1.0 / back;
+  return select(fxp.cam.x, max(d0, 1.0 / inv), inv > 1.0 / fxp.cam.x);
 }
 
 // The outline target's bytes at `px` (clamped to the image).

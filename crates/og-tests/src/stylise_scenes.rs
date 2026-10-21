@@ -25,6 +25,10 @@
 //!   on every lit material without a physical lobe (the physical ones keep
 //!   their coats, sheen, film, anisotropy and glass).
 //! - `stylise-outline-voxels`: hull outlines on unwelded voxel meshes.
+//! - `stylise-outline-ground`: the neon-vector look's outline (1.4 px,
+//!   cyan, `outlineDistance` 120) from a chase camera 1.2 m over a 1,600 m
+//!   ground with barriers down one side: the barriers lined, the ground
+//!   lined only where it ends (meridian-loop #7: it was one cyan wash).
 //! - `stylise-toon-physical`: a toon style over a plain, a lacquered, a
 //!   jelly and an unstyled sphere.
 //! - `stylise-ink-depth`: ink with depth edges over flat, unlit shapes of
@@ -932,6 +936,59 @@ pub fn bands_tint_scene() -> RenderScene {
         position: Vec3::new(0.0, 3.0, 8.0),
         target: Vec3::new(0.0, 1.2, -10.0),
         exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    scene
+}
+
+/// `stylise-outline-ground` (meridian-loop #7): the neon-vector look's
+/// outline from a chase camera 1.2 m over a 1,600 m ground (one mesh) seen
+/// at a grazing angle, barriers down the right side only, on a dark night
+/// background. `distance` is the style's `outlineDistance` (0: constant
+/// width). The ground's left half is plane alone: only its far edge may be
+/// lined there.
+pub fn outline_ground_scene(width: f32, distance: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let asphalt = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.05, 0.05, 0.08),
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let plane = scene.add_mesh(shapes::plane(1600.0, 1.0));
+    scene.add_instance(plane, asphalt, Mat4::IDENTITY);
+    let wall = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.12, 0.1, 0.16),
+        roughness: 0.6,
+        ..Default::default()
+    });
+    let barrier = scene.add_mesh(shapes::cuboid(Vec3::new(0.4, 0.9, 6.0)));
+    for k in 0..12 {
+        let z = -6.0 - 9.0 * k as f32;
+        scene.add_instance(
+            barrier,
+            wall,
+            Mat4::from_translation(Vec3::new(5.0, 0.45, z)),
+        );
+    }
+    scene.stylise.material = MaterialStyle {
+        outline_color: [0.25, 0.94, 1.0],
+        outline_width: width,
+        outline_distance: distance,
+        ..Default::default()
+    };
+    scene.environment.background = Background::Color(Vec3::new(0.01, 0.01, 0.03));
+    scene.environment.intensity = 0.4;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.2, 0.0),
+        target: Vec3::new(0.0, 0.7, -20.0),
+        far: 2000.0,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let sun = Vec3::new(-0.4, 0.6, -0.5);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 2.0,
         ..Default::default()
     };
     scene

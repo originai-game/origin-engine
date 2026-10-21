@@ -45,13 +45,14 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   o.gbuffer = vec4<f32>(oct_encode(n), velocity);
   o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
   // The material style's outline distance: nearer than it the line grows,
-  // farther it thins in proportion (never for an orthographic camera, nor
-  // an unstyled material: mode bit 8).
+  // up to four times its width (a ground a metre under the camera is not
+  // lined 30 px wide), farther it thins in proportion (never for an
+  // orthographic camera, nor an unstyled material: mode bit 8).
   var width = material.outline.w;
   let unstyled = (u32(material.flags.w) & 8u) != 0u;
   if (frame.outline_style.x > 0.0 && frame.view_pos.w < 0.5 && width > 0.0 && !unstyled) {
     let depth = max(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.01);
-    width = clamp(width * frame.outline_style.x / depth, 0.5, 31.0);
+    width = clamp(width * frame.outline_style.x / depth, 0.5, min(31.0, width * 4.0));
   }
   o.outline = outline_bytes(material.outline.rgb, width, in.object);
   return o;
