@@ -653,9 +653,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   const icon = icons[icons.length - 1]!.src;
 
-  // What the boot fetches, so its progress is the bytes received.
+  // What the boot fetches, so its progress is the bytes received: the first
+  // group without the chunks of a chunked sound after its first, which the
+  // engine fetches ahead of the playheads (never at boot).
   const wasmBytes = statSync(join(out, "origin-engine_bg.wasm")).size;
-  const firstGroup = walk(join(out, "cooked")).filter((f) => !packs.has(relative(out, f).split("\\").join("/")));
+  const firstGroup = walk(join(out, "cooked")).filter((f) => {
+    const path = relative(out, f).split("\\").join("/");
+    return !packs.has(path) && !SOUND_CHUNK.test(path);
+  });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   const config = {
     engine: ENGINE_VERSION,

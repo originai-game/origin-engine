@@ -229,8 +229,11 @@ stream "night-market" {
 }
 ```
 
-The cook refuses any other kind (a skinned model, a chunked sound, a scene)
-in a group, naming the scene and the asset. Prove a group in a script:
+A sound cooked in chunks may join a group too: its first chunk goes in
+the pack and every other chunk stays a file of its own, read ahead of the
+playheads once the group is resident (og-audio §5). The cook refuses any
+other kind (a skinned model, a scene) in a group, naming the scene and
+the asset. Prove a group in a script:
 move the camera into its trigger (`teleport`, or the game's own command),
 `advance` a few ticks, then `dump_stream` lists each group's state,
 memory and the assets kept past an unload (`retained`), and
@@ -268,7 +271,9 @@ The boot is everything fetched before the first frame: one engine module
 single-threaded one), the shell, the Basis transcoder and the cooked first
 group (everything no streaming group holds). A sound cooked in chunks
 costs the boot its first chunk only (about `chunk` seconds of QOA): the
-rest are fetched ahead of its playheads, and none before it plays. The
+rest are fetched ahead of its playheads, and none before it plays; in a
+streaming group it costs the boot nothing (its first chunk comes in the
+group's pack). The
 table's `total` is every file of the directory (both engine modules, the
 licences, the icons), never a download. Compare the boot line before and
 after a change; `--json` carries the same as `downloads`.

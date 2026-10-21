@@ -6,7 +6,8 @@
 //!
 //! Ways it could fail: chunks cut inside a frame or re-encoded (other
 //! samples), a chunk missing or out of order, the threshold ignored, the
-//! settings outside the stamp, a chunked sound accepted in a stream group.
+//! settings outside the stamp, a chunked sound's chunks packed with its
+//! group (they are read ahead of the playheads, never with the pack).
 
 use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::{Bundle, chunk_id};
@@ -178,12 +179,12 @@ fn the_threshold_and_the_settings_choose_chunks() {
 }
 
 #[test]
-fn a_chunked_sound_is_refused_in_a_stream_group() {
+fn a_chunked_sound_in_a_stream_group_packs_its_head_and_keeps_its_chunks_apart() {
     let root = project("group");
     wav(&root.join("assets/audio/theme.wav"), 22_050, 1, 3.0);
     std::fs::write(
         root.join("assets/audio/theme.wav.ogt"),
-        "type import\nversion 1\n---\nsound {\n  stream true\n}\n",
+        "type import\nversion 1\n---\nsound {\n  stream true\n  chunk 1\n}\n",
     )
     .unwrap();
     std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
@@ -193,11 +194,32 @@ fn a_chunked_sound_is_refused_in_a_stream_group() {
     )
     .unwrap();
     let report = cook(&root);
-    let err = report
-        .errors()
-        .into_iter()
-        .map(|e| format!("{e:?}"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(err.contains("streams by itself"), "{err}");
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    // The head (the QOA header and the first chunk) goes in the group's pack ...
+    let head = b.output("audio/theme.wav").unwrap();
+    assert_eq!(head.group.as_deref(), Some("far"));
+    // ... and every other chunk stays a file of its own, read ahead of the
+    // playheads once the group is resident (none before).
+    let chunks: Vec<_> = b
+        .manifest()
+        .outputs()
+        .filter(|o| o.ty == "og.SoundChunk")
+        .collect();
+    assert_eq!(chunks.len(), 2, "3 s in chunks of about 1 s");
+    for o in &chunks {
+        assert_eq!(o.group, None, "{} is not in the pack", o.id);
+        assert!(root.join("cooked").join(&o.file).exists());
+    }
+    // The group knows the whole sound's shape: its stand-in is silence of that length.
+    let far = b.streams().iter().find(|g| g.name == "far").unwrap();
+    let shape = far
+        .sounds
+        .iter()
+        .find(|s| s.id == "audio/theme.wav")
+        .unwrap();
+    assert_eq!(
+        (shape.sample_rate, shape.channels, shape.frames),
+        (22_050, 1, 66_150)
+    );
 }

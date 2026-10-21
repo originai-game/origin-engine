@@ -323,8 +323,9 @@ using it (`og.Environment.map` or `PostEffects.lut` to 0, another look).
 `state`, `trigger`, `memory`, `kept`, `loads` and `reason`; `StreamBudget`
 has `budget`, `used` (kept bytes included), `kept` and `peak`. At most one
 group is put in place per tick boundary, and a group larger than the whole
-budget fails. A chunked sound (og-audio §5) streams on its own and cannot
-join a group.
+budget fails. A chunked sound (og-audio §5) may join a group: its first
+chunk comes in the pack and its other chunks are read ahead of its
+playheads only while the group is resident.
 
 ## 7. Input
 

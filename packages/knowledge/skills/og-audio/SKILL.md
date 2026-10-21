@@ -140,8 +140,17 @@ at 1.0 is a mix bug, not loudness.
   sample-identical to the whole file, and the world hash is the same.
   `og.load.soundInfo(world, sound)` answers `chunks`, how many (0: whole).
   A chunk that has not arrived plays silence, so start a long track a beat
-  before it must be heard rather than on the first frame of a scene; a
-  chunked sound cannot go in a streaming group (og-game §6).
+  before it must be heard rather than on the first frame of a scene.
+  What a page downloads: a chunked sound in the first group costs the boot
+  its first chunk only (its other chunks are fetched ahead of the
+  playheads, none before it plays). In a streaming group (og-game §6) it
+  costs the boot nothing: its first chunk comes in the group's pack, it
+  plays silence of its own length until the group is resident, and only
+  then are its other chunks read ahead of the playheads, each a file of
+  its own, never in the pack; when the group unloads it is silent again
+  and nothing more is read. Put a level's or a region's music in that
+  level's group; keep the title's music in the first group, since a group
+  wanted at boot loads right after it anyway.
 
 ## 6. Space, occlusion, priority
 

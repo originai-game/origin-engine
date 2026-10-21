@@ -90,7 +90,9 @@ dates, no absolute paths, files in sorted order
 - `stream` is `null` for a bundle without streaming groups. Otherwise it is
   `{ "first": { "files", "bytes" }, "groups": [{ "name", "file", "bytes",
   "sha256", "priority", "memory", "assets" }] }`. `first` is what the boot
-  fetches and the service worker precaches (the cooked manifest included).
+  fetches and the service worker precaches (the cooked manifest included;
+  a sound cooked in chunks is its first chunk there, its other chunks are
+  fetched ahead of its playheads and cached then).
   Each group is its pack under `cooked/stream/`, with the memory its assets
   take once loaded (what `og.stream`'s budget counts) and its asset ids.
   The packs are in `files` too.
@@ -105,8 +107,14 @@ the pack is handed to the engine, the Worker transcodes its Basis textures
 to the encodings the renderer takes, as for the first group
 (`og_web_pack_ktx2`), so the whole group goes in place at once. Until then
 its models draw their proxies, its textures are 1x1 placeholders and its
-sounds play as silence of their own length. The boot's progress (`expect.cooked`) counts
-only the first group. `packages/engine/tests/asset-stream.test.ts` checks
+sounds play as silence of their own length. A sound cooked in chunks is
+fetched by neither: the boot fetches its first chunk only (the sound's own
+output) and the engine asks for each other chunk ahead of its playheads;
+in a streaming group its first chunk comes in the pack, and no chunk of it
+is asked for before the group is resident or after it unloads (the music
+of the three dogfood games, all in the first group, cost their boots one
+chunk each, 63 to 123 kB brotli: examples/WEB-FINDINGS.md #2). The boot's
+progress (`expect.cooked`) counts only the first group. `packages/engine/tests/asset-stream.test.ts` checks
 the split, and `packages/engine/tests/web/stream.ts` plays it in Chrome: no
 pack at boot, each pack fetched once when its group is wanted, the
 textures transcoded, and the visited groups loading offline.

@@ -605,7 +605,8 @@ enum Full {
         textures: Vec<TextureSource>,
     },
     Texture(TextureSource, bool),
-    Sound(Vec<u8>),
+    /// The cooked sound: whole, or the head of one cooked in chunks.
+    Sound(Box<CookedSound>),
 }
 
 /// A texture over its stand-in, in whichever form the host decoded it to.
@@ -686,7 +687,7 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 }
                 Slot::Sound { .. } => {
                     let sound = bundle.sound(id, bytes.bytes()).map_err(|e| e.to_string())?;
-                    Full::Sound(sound.qoa)
+                    Full::Sound(Box::new(sound))
                 }
             };
             out.push((k, full));
@@ -696,6 +697,9 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
     let link = og_audio::link(eng.id);
     let mut a = eng.assets.borrow_mut();
     let mut rs = eng.render.borrow_mut();
+    // Sounds cooked in chunks put in place: their stand-in's entry learns
+    // its chunks (the playheads ask for them from now on), after the loop.
+    let mut chunked: Vec<CookedSound> = Vec::new();
     let Some(slots) = a.stream.slots.get_mut(group) else {
         return Ok(true);
     };
@@ -742,16 +746,43 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                         .set_texture_filter(*handle, og_render::TextureFilter::Nearest);
                 }
             }
-            (Slot::Sound { id, handle }, Full::Sound(qoa)) => {
+            (Slot::Sound { id, handle }, Full::Sound(sound)) => {
                 if let Some(l) = &link {
-                    l.bank()
-                        .replace_qoa(*handle, id, &qoa)
-                        .map_err(|e| e.reason().to_string())?;
+                    if sound.chunked() {
+                        // Its first chunk now; the others are read ahead of
+                        // its playheads (sound_chunks), as in the first group.
+                        l.bank()
+                            .replace_chunked(
+                                *handle,
+                                id,
+                                &sound.qoa,
+                                sound.meta.chunk_frames,
+                                sound.meta.chunk_count,
+                            )
+                            .map_err(|e| e.reason().to_string())?;
+                        chunked.push(*sound);
+                    } else {
+                        l.bank()
+                            .replace_qoa(*handle, id, &sound.qoa)
+                            .map_err(|e| e.reason().to_string())?;
+                    }
                 }
             }
             _ => {}
         }
         *up = true;
+    }
+    for sound in chunked {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(l) = &link
+            && let Some(i) = a.sounds.iter().position(|s| s.id == sound.id)
+        {
+            l.bank()
+                .set_chunk_loader(a.sound_handles[i], super::assets::chunk_loader(&a, &sound));
+        }
+        if let Some(entry) = a.sounds.iter_mut().find(|s| s.id == sound.id) {
+            *entry = sound;
+        }
     }
     Ok(true)
 }
