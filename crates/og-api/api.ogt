@@ -8554,6 +8554,7 @@ module ui {
     field height Option.Size "Its height; null fits the content."
     field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
     field frame Option.SkinPart "The skin frame its background takes; null is the panel's."
+    field instant bool "Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
   }
 
   struct TransitionDesc {
@@ -9462,6 +9463,7 @@ module ui {
     field items List.MenuItem "The items, such as Play, Continue, Settings, Quit."
     field footer String "A line at the bottom (a version, credits); empty is none."
     field onSelect Option.UiAction "Called with the chosen item's id."
+    field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin."
   }
 
   struct PauseMenuDesc {

@@ -48,6 +48,10 @@ pub struct AnchorDesc {
     pub over: bool,
     /// The skin frame its background takes (`None`: the panel's).
     pub skin: Option<crate::skin::SkinPart>,
+    /// Shown settled the first time it is built: no skin entrance or
+    /// stagger (the screen a game opens on, which the web draws behind its
+    /// play gate).
+    pub instant: bool,
 }
 
 /// How a transition moves.
@@ -455,12 +459,21 @@ impl Ui {
             },
             NONE,
         );
-        // A skin's entrance and stagger for a screen panel.
+        // A skin's entrance and stagger for a screen panel, from the tick it
+        // first appears; an instant panel is settled from there (`h` 1).
         let m = self.theme.skin.motion;
         if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
             let key = crate::id::child_key(self.nodes[i].key, "enter");
-            let since = self.since(key);
-            self.enter(i, since, m.enter);
+            let fresh = !self.has_anim(key);
+            let mut a = self.anim(key);
+            if fresh {
+                a.t = self.state.tick;
+                a.h = u64::from(desc.instant);
+            }
+            self.set_anim(key, a);
+            if a.h == 0 {
+                self.enter(i, a.t, m.enter);
+            }
         }
     }
 
