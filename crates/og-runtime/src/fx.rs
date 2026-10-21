@@ -927,6 +927,7 @@ pub(crate) fn posed_model(
                     transform: world_matrix * local,
                     material_layer: None,
                     fx: look,
+                    cast_shadows: true,
                 });
                 keys.push((entity, k as u32));
             }

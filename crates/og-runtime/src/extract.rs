@@ -444,6 +444,8 @@ struct MeshRow {
     /// `materialLayer`: the texture-array layer its material reads (-1:
     /// the material's own).
     layer: i32,
+    /// `castShadow`: drawn into the shadow maps.
+    cast: bool,
 }
 
 /// A handle field's index, as the JSON rows read it (`as_f64`, then the
@@ -468,6 +470,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
             field("flashColor")?,
         );
         let l = field("materialLayer")?;
+        let s = field("castShadow")?;
         let q = QueryDesc {
             read: vec![layout.schema.clone()],
             ..QueryDesc::default()
@@ -482,6 +485,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                 a.read::<Vec3>(c).ok()?,
             );
             let l = a.read::<i32>(l).ok()?;
+            let s = a.read::<og_core::reflect::Bool8>(s).ok()?;
             out.reserve(a.len());
             for (i, e) in a.entities().iter().enumerate() {
                 out.push(MeshRow {
@@ -492,6 +496,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                     flash: f[i],
                     flash_color: c[i],
                     layer: l[i],
+                    cast: s[i].get(),
                 });
             }
         }
@@ -512,6 +517,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                 flash: v["flash"].as_f64().unwrap_or(0.0) as f32,
                 flash_color: color(&v["flashColor"], 1.0),
                 layer: v["materialLayer"].as_f64().unwrap_or(-1.0) as i32,
+                cast: on(&v, "castShadow", false),
             }
         })
         .collect()
@@ -694,6 +700,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 transform: m * local,
                 material_layer: None,
                 fx: look,
+                // A model casts (GltfDesc.castShadow is not applied yet).
+                cast_shadows: true,
             });
             keys.push((e, k as u32));
         }
@@ -725,6 +733,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     flash_color: r.flash_color,
                     ..og_render::InstanceFx::NONE
                 },
+                cast_shadows: r.cast,
             });
             keys.push((e, 0));
         }

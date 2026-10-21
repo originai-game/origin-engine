@@ -414,7 +414,7 @@ pub struct SpriteArray {
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
-/// a (mesh, material) pair into one instanced draw per pass.
+/// a (mesh, material) pair and caster flag into one instanced draw per pass.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Instance {
     pub mesh: MeshHandle,
@@ -433,6 +433,11 @@ pub struct Instance {
     /// the instance record (one material, one draw, whatever each instance
     /// shows): a glTF model's instances share their materials.
     pub fx: InstanceFx,
+    /// Drawn into the shadow maps (the sun's cascades and the shadowed
+    /// local lights'). `false` keeps it out of every shadow pass while it
+    /// still receives shadows: a lamp's own glass around its light, a glow
+    /// card, a decal-like slab. [`RenderScene::add_instance`] casts.
+    pub cast_shadows: bool,
 }
 
 /// An instance's own look, beside its transform in the instance record and
@@ -2225,6 +2230,7 @@ impl RenderScene {
             transform,
             material_layer: None,
             fx: InstanceFx::NONE,
+            cast_shadows: true,
         });
     }
 

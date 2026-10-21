@@ -96,6 +96,7 @@ pub const SCENES: &[&str] = &[
     "stylise-bands-tint",
     "tilemap-lit",
     "model-flash",
+    "shadows-crypt",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -284,6 +285,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = point_spot_lights();
             g.desc.point_shadows = og_render::PointShadows::Paraboloid;
         }
+        // A roofed room on a sunlit field: the sun reaches the floor only
+        // through the door, and a shadowed point light inside a glass box
+        // that casts no shadow lights the altar and the pillar (its shadow
+        // in cube faces, or paraboloids on WebGL2, falls behind a post).
+        "shadows-crypt" => g.scene = crate::shadow_scenes::crypt_scene(),
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the full tier's eight; WebGL2
         // draws four, its own frame).

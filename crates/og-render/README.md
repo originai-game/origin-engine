@@ -278,6 +278,35 @@ point lights costs nearly nothing more with cube faces, whose texels are
 finer, so `Auto` keeps them there; a game with many shadowed point lights
 saves about 0.7 ms a frame with `Paraboloid`.
 
+**Which faces a pass stores, and which instances cast** (web findings
+#4, wave 13). Every shadow pass culls a front-sided caster's front
+faces, so a closed caster stores its far side and its lit side never
+compares against itself. The paraboloid projection looked down its axis
+with x as is, a mirror image of a perspective camera's, so its triangles
+reached the rasteriser with the opposite winding and the hemispheres
+stored the faces turned towards the light: a light inside a closed
+caster (a lamp's glass box around its own light) was lit by paraboloids
+and dark by cube faces, and a box's top edge drew a curved shadow band
+down its own lit side (the cube frame of `shadows-crypt` against the
+paraboloid one: RMSE 0.0148 before, 0.0036 after). The hemispheres
+mirror x now (`shadow_pass.wgsl` `shadow_project` and `local_distance`,
+`lighting.wgsl` `local_shadow`) and store the far side as the cube
+faces do; `point-shadows-paraboloid` moved by RMSE 0.0021 (contact
+shadows at the spheres' and pillars' feet) and was re-recorded.
+[`Instance::cast_shadows`] keeps an instance out of every shadow pass
+(the sun's cascades and the local lights' views) while it still
+receives: its instances are runs of their own (`instances.rs`), and the
+shadow lists skip those batches. og-runtime sets it from
+`og.Mesh.castShadow` (off by default, as three.js); an `og.Model`'s
+meshes always cast. Before, every mesh cast whatever its flag: The
+Kestrel Stair's crypt lamp, a 0.22 m glass box with its point light at
+the centre, shadowed the whole crypt from its own light on the full
+tier (cube faces) and not on WebGL2 (paraboloids), which the web round
+read as the sun's shadow missing under the roof (crypt RMSE 0.046
+against `metal`). `shadows-crypt` is that room: a roof and walls under a
+low sun, a non-casting glass box around a shadowed point light, which
+lights the altar and the pillar and throws a post's shadow.
+
 **The sun's soft shadows and cascade blending** (`DirectionalLight::
 shadow_softness`, `cascade_blend`, the IDL's `shadowSoftness` and
 `cascadeBlend`). PCSS: 16 Vogel-disc reads search the cascade for blockers
@@ -529,6 +558,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes; 3 on WebGL2, whose point shadows are paraboloids). | all |
 | `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes, RMSE 0.0023 against the cube frame. | all |
 | `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. | full |
+| `shadows-crypt` | A roofed room under a low sun with a shadowed point light inside a glass box that casts no shadow (`Instance::cast_shadows`): the light reaches the altar and the pillar, a post's shadow falls beside them; paraboloids store the same faces as cube faces. | all |
 | `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. | all |
 | `taa` | Thin poles and bars after 16 TAA frames. | full |
 | `msaa` | The same geometry with 4× MSAA. | no-compute |

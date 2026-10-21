@@ -188,3 +188,127 @@ pub fn pan_thin_geometry(scene: &mut RenderScene, frame: u32) {
     scene.camera.position.x = x;
     scene.camera.target.x = x;
 }
+
+/// A roofed stone room (a crypt) on a lit field: four walls with a door in
+/// the east one, a roof slab, an altar and a pillar inside, a low sun
+/// outside that reaches the floor only through the door, and a shadowed point
+/// light hanging inside in a glowing glass box that casts no shadow
+/// (`Instance::cast_shadows` false: The Kestrel Stair's crypt lamp, web
+/// findings #4), so the light reaches the altar and the pillar and throws a
+/// post's shadow beside them. The camera stands inside by the door,
+/// looking west at the altar.
+pub fn crypt_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 60.0, 1.0, 0.9);
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.66, 0.58, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let red = scene.add_material(Material {
+        base_color: [0.7, 0.14, 0.1, 1.0],
+        roughness: 0.6,
+        ..Default::default()
+    });
+    // The room: 8 m square inside, walls 0.6 m thick and 4 m high, a roof
+    // 0.4 m thick on them; the door is 2.4 m wide and 3 m high.
+    let (half, t, h) = (4.0f32, 0.6f32, 4.0f32);
+    let slab = |scene: &mut RenderScene, size: Vec3, at: Vec3| {
+        let mesh = scene.add_mesh(shapes::cuboid(size));
+        scene.add_instance(mesh, stone, Mat4::from_translation(at));
+    };
+    let outer = 2.0 * (half + t);
+    slab(
+        &mut scene,
+        Vec3::new(outer, h, t),
+        Vec3::new(0.0, h / 2.0, -half - t / 2.0),
+    );
+    slab(
+        &mut scene,
+        Vec3::new(outer, h, t),
+        Vec3::new(0.0, h / 2.0, half + t / 2.0),
+    );
+    slab(
+        &mut scene,
+        Vec3::new(t, h, 2.0 * half),
+        Vec3::new(-half - t / 2.0, h / 2.0, 0.0),
+    );
+    let (door, door_h) = (1.2f32, 3.0f32);
+    let side = half - door;
+    for z in [-(door + side / 2.0), door + side / 2.0] {
+        slab(
+            &mut scene,
+            Vec3::new(t, h, side),
+            Vec3::new(half + t / 2.0, h / 2.0, z),
+        );
+    }
+    slab(
+        &mut scene,
+        Vec3::new(t, h - door_h, 2.0 * door),
+        Vec3::new(half + t / 2.0, (h + door_h) / 2.0, 0.0),
+    );
+    slab(
+        &mut scene,
+        Vec3::new(outer, 0.4, outer),
+        Vec3::new(0.0, h + 0.2, 0.0),
+    );
+    // Inside: an altar against the west wall, a pillar, and a post between
+    // the light and the pillar.
+    slab(
+        &mut scene,
+        Vec3::new(1.4, 1.1, 2.2),
+        Vec3::new(-3.0, 0.55, 0.0),
+    );
+    slab(
+        &mut scene,
+        Vec3::new(0.8, h, 0.8),
+        Vec3::new(-1.6, h / 2.0, -2.2),
+    );
+    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.3, 1.6, 0.3)));
+    scene.add_instance(
+        post,
+        red,
+        Mat4::from_translation(Vec3::new(-0.2, 0.8, -1.4)),
+    );
+    // A low sun from the east: outside it lights the field, inside only
+    // the patch the door lets in; the roof and the walls shadow the rest.
+    let sun = Vec3::new(0.75, 0.42, 0.3).normalize();
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 4.0,
+        max_shadow_distance: 70.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.12;
+    let lamp = Vec3::new(0.4, 2.2, 0.6);
+    let glass = scene.add_material(Material {
+        base_color: [1.0, 0.8, 0.4, 1.0],
+        emissive: [4.0, 2.4, 1.0],
+        ..Default::default()
+    });
+    let lantern = scene.add_mesh(shapes::cuboid(Vec3::new(0.22, 0.3, 0.22)));
+    scene.instances.push(og_render::Instance {
+        mesh: lantern,
+        material: glass,
+        transform: Mat4::from_translation(lamp),
+        material_layer: None,
+        fx: og_render::InstanceFx::NONE,
+        cast_shadows: false,
+    });
+    scene.lights = vec![Light {
+        position: lamp,
+        color: Vec3::new(1.0, 0.62, 0.3),
+        intensity: 7.0,
+        range: 9.0,
+        cast_shadows: true,
+        ..Default::default()
+    }];
+    scene.camera = Camera {
+        position: Vec3::new(3.4, 2.4, 2.6),
+        target: Vec3::new(-3.0, 0.9, -0.6),
+        exposure: Exposure::linear(1.6),
+        ..Default::default()
+    };
+    scene
+}
