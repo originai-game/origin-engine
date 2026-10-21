@@ -7,6 +7,38 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 13 (2026-10-21)
+
+Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
+findings (examples/WEB-FINDINGS.md), three streams of four lanes, and two
+more when lanes freed. Merged so far, in order: webgl2-render-2
+(c20d2c3b; findings 3, 4, 5, verified in Chrome on both tiers by the
+coordinator before the merge) and publish-testing (6a81c453; findings 6,
+7, 8, 10). In flight: web-boot (findings 1, 2, 9, 11, 12), shadow-flags
+(row 87), dogfood-5 (a fourth game, a racing time trial), and wave 12's
+perf-games. The round sections below have each.
+
+- **`scripts/check.sh functional`**: the webgl2-render-2 lane
+  (gate 55) and the publish-testing lane (gate 56) both failed at
+  bun-functional on one test, `terrain-stream.test.ts`, whose premise
+  441f4e6e removed: the first frame that draws a streamed terrain now
+  settles every wanted tile, so the streamed run no longer has tiles
+  waiting at the station's first frame; the test expects the settle
+  since e565ede7 and a streaming test whose tiles arrive later is owed
+  (row 88). Every other step passed (test 145 s, drift 37 s), and the
+  games' suites after the merge (fx-showcase, Ember Vale, topdown,
+  Hollowbell, Lantern Vale, Kestrel; Kestrel's `replay` failed once
+  under load at 13 s with "the run wrote no end.json" and passed alone
+  at 49 s, 4 checks) and the kit's and Hollowbell's after
+  publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
+  the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
+  it) and main was pushed there.
+
+**Wave-end figures: pending** (with wave 12's, once perf-games lands:
+`--all`, web-reference, lavapipe with Kestrel Stair's first run and the
+moved Lantern Vale and Kestrel frames, rows 51 and 52's Chrome
+measurements).
+
 ## Main gate, wave 12 (2026-10-21)
 
 Wave 12 started as soon as wave 11's last stream merged (the owner's
@@ -19,8 +51,22 @@ Four of the five coding streams were stopped by the session's rate limit
 for an hour and resumed from where they stopped. The round sections
 below have each.
 
-- **`scripts/check.sh functional`**, each merge: render-audio-3,
-  skins-palette, web-dogfood: pending (the coordinator fills).
+- **`scripts/check.sh functional`**: render-audio-3 (5bedf86b) passed
+  in 168 s (5 of 5 steps; fx-showcase, Kestrel, topdown and Hollowbell's
+  suites after it). skins-palette and web-dogfood were merged as one
+  batch (6c422e09, 4b9bcac6) after the lavapipe pruning (36b326c3), and
+  their lane failed twice before the engine changed: the web dogfood
+  harness read `brotliCompressSync` and `constants` from `node:zlib`,
+  which the package's ambient declaration lacked (fc6fefa9), and then
+  the package's three typechecks, two of them `bun x` of the same
+  typescript at once, raced on its bin under the gate ("Package
+  typescript does not provide a binary named tsc"; they run one after
+  another since 2675f9bc). A kit suite failure beside them (the scifi
+  phone pack's idle cell, 0.636 % outliers) was the stale dev addon of
+  a lane that stopped before its build, not a defect: the sheet passes
+  at skins-palette's own head and on main once rebuilt. The first green
+  lane after render-audio-3 is wave 13's (8a23392a, 94 s), which covers
+  both streams with wave 13's first two merges.
 - **The web findings** (web-dogfood, examples/WEB-FINDINGS.md): 0
   blockers, 7 annoyances, 5 nits; wave 13 takes them.
 
