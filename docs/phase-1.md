@@ -718,6 +718,61 @@ Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
 sites; sharing the fields inside `Layout` did the same). Owed: rows 89
 and 90.
 
+## Wave 13, kit-2d: the platformer HUD draws what it is given, the level select has a way out, names a reader can read, HUD groups clear the shell's control (34dd34d3)
+
+Brasswick's UI, shell and platform-skill findings (lane-4): 4, 10, 11,
+12, 15 and 16.
+
+- **#4.** The left capsule and the `Score` capsule were drawn
+  unconditionally with `?? 0` defaults; `PlatformerHudDesc.coins` and
+  `score` are optional (left out, no capsule), `maxLives: 0` with no
+  `health` draws no hearts capsule, an empty left group is dropped; the
+  kit template sets all three, so no kit frame moves (a game that
+  relied on the always-drawn `0` now draws none).
+  `tests/ui-platformer.test.ts`, two of three failing on the old kit.
+- **#10.** The screen was a modal with `ignoreBackdrop: true` and no
+  control of its own; a `Footer/Back` button (`LevelSelectDesc.backLabel`)
+  and a tap on the scrim close it, answering `closed` as Escape and B
+  do (`tests/ui-levels.test.ts`). Shop, inventory and leaderboard share
+  the helper and the gap, left so their frames stay.
+- **#11, #12.** A card's name was its text plus each icon's atlas name
+  in English, and tab rows, radio groups and selects fell back to their
+  id; `IconDesc.label` and `ImageDesc.label` (an empty string marks
+  decoration), a `label` on `TabsDesc`, `RadioDesc` and `SelectDesc`; a
+  card is named by its level plus `starsLabel` ("{stars} of {max}
+  stars"), a locked one by `lockedLabel`; `SettingsDesc.sectionLabel` and
+  `languagesLabel`, and `qualityLabel` now names the presets too (they
+  were "Quality" in English, unreported). og-ui
+  `groups_and_icons_take_the_names_their_descs_give` and ui-levels'
+  `dump_ui` in Spanish; the og-i18n skill lists the fields. Brasswick
+  takes the strings in its tables and its locales playtest now asserts
+  Apartado, Idiomas, "1. La escalera de la caldera 0 de 3 estrellas" and
+  Volver.
+- **#15.** Since racing-ui every kit HUD is anchored groups and already
+  kept out of the shell's control (Hollowbell's `Status` and Brasswick's
+  HUD too; the platformer, idle and racing tests pass on main and
+  would fail on 21b0b0cc, the engine Brasswick ran on). What remained:
+  on a phone, moving a group right to clear the control pushed it onto
+  its neighbour (the shooter's vitals onto its kills and pause, 107 to
+  1,147 px² of overlap; the puzzle's level/moves onto its score, 3,540
+  to 6,970). Anchored groups are placed together before the other
+  layers, and a corner group steps down past the control when moving
+  along the edge would overlap more of the other groups or of the area
+  outside the safe area; only with `covered` set, so no frame moves
+  (`a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another`;
+  `tests/ui-hud-corner.test.ts`, one test per HUD on desktop, phone
+  portrait and landscape). Not fixed: the puzzle HUD on a 390 px phone
+  overlaps its own score group even without the control.
+- **#16.** og-platform-sdk §3 says systems run in `GameDesc.systems`
+  order, so the answers are applied in or before the system that
+  builds the title (list the answers system first, or read the answers
+  at the top of the UI system).
+
+Frames that move with the level select's Back button, re-recorded by
+the coordinator at the merge: og-ui `kit-desktop-levels`,
+`kit-phone-levels` and the twelve skin sheets, Kestrel's `chapters`,
+Brasswick's `levels`.
+
 ## Wave 13, dogfood-6: Brasswick, a 2D puzzle-platformer in a lamplit clockworks (4f14111a)
 
 The sixth dogfood round (lane-1): a fifth game, 2D and tile-based,
