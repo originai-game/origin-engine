@@ -11790,7 +11790,7 @@ export interface PlatformResult {
   /** The tick it was answered at. */
   readonly tick: number;
   /**
-   * The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.
+   * The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. A slot call (saveSlot, loadSlot) answers the time of the store answer that ended it.
    *
    * @unit ms (milliseconds)
    */

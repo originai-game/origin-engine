@@ -21263,7 +21263,7 @@
         },
         "time": {
           "type": "number",
-          "description": "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.",
+          "description": "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. A slot call (saveSlot, loadSlot) answers the time of the store answer that ended it.",
           "x-og-unit": "ms"
         }
       },

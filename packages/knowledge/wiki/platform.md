@@ -810,7 +810,7 @@ The answer to one call.
 | `data` | `unknown` | `null` | — | — | — | The answer (see each function); null on failure. |
 | `error` | `PlatformError` | `{ code: "", message: "", retryable: false, revision: 0 }` | — | — | optional | Why it failed. |
 | `tick` | `number` | `0` | — | — | — | The tick it was answered at. |
-| `time` | `number` | `0` | — | `ms` | — | The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. |
+| `time` | `number` | `0` | — | `ms` | — | The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. A slot call (saveSlot, loadSlot) answers the time of the store answer that ended it. |
 
 ```ogt
 struct PlatformResult {
@@ -823,7 +823,7 @@ struct PlatformResult {
     optional true
   }
   field tick u32 "The tick it was answered at."
-  field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+  field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. A slot call (saveSlot, loadSlot) answers the time of the store answer that ended it." {
     unit ms
   }
 }

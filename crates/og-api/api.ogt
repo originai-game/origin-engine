@@ -7620,7 +7620,7 @@ module platform {
       optional true
     }
     field tick u32 "The tick it was answered at."
-    field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+    field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. A slot call (saveSlot, loadSlot) answers the time of the store answer that ended it." {
       unit ms
     }
   }
