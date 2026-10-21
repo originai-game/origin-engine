@@ -75,6 +75,7 @@ export const Game = defineResource("Game", {
   rested: u32(0, { doc: "Bit i: waystone i was rested at this run." }),
   nearKind: u32(Near.None, { doc: "Near.*: what F would use now." }),
   nearIndex: i32(-1),
+  promptKind: u32(0, { doc: "The prompt last shown (Near.*): its words while it pops out." }),
   refusedAt: u32(0, { unit: "ticks", doc: "The tick F was refused (the gate without three sigils): the prompt shakes." }),
   invulnerable: f32(0, { unit: "s" }),
   knock: f32(0, { unit: "s", doc: "Seconds the courier is thrown back (no control)." }),
@@ -146,7 +147,7 @@ export const Game = defineResource("Game", {
   bag: str(160, "", { doc: "The bag's slots: item ids by slot, as JSON (og.ui.inventoryScreen moves them)." }),
   bagMoves: u32(0),
   welcomed: u32(0, { doc: "The loads already welcomed with a toast." }),
-  focusAsked: u32(0, { unit: "ticks", doc: "When the title's focus was last put on its first item (FINDINGS #12)." }),
+  focusAsked: u32(0, { unit: "ticks", doc: "When the title's focus was last put on its first item (FINDINGS #14)." }),
   a11yUnnamed: u32(0),
   a11yNodes: u32(0),
 });
@@ -214,7 +215,7 @@ export const Foe = defineComponent("Foe", {
   bites: u32(0),
   alerts: u32(0),
   carries: bool(false, { doc: "It carries the warden sigil (drops it when it falls)." }),
-  warm: u32(0, { doc: "Its NavAgent's plans when it was (re)placed: its mind wakes after the next plan (FINDINGS #4)." }),
+  warm: u32(0, { doc: "Its NavAgent's plans when it was (re)placed: its mind wakes after the next plan (FINDINGS #7)." }),
   awake: bool(false, { doc: "Its mind has been woken (og.AiAgent.active) since it was placed." }),
   oneShot: bool(false, { doc: "A hurt clip plays over its graph." }),
   sight: f32(-1, { doc: "The og.Perception.sight last written (-1: none yet)." }),
@@ -258,6 +259,6 @@ export const Sfx = defineComponent("Sfx", {
  * lists it among its reads, so its query matches nothing: a component a
  * system writes is borrowed by every archetype its query matches, and
  * world.get / world.set of it then refuse, even if the system never takes
- * a view (FINDINGS #3).
+ * a view (FINDINGS #6).
  */
 export const OneByOne = defineComponent("OneByOne", { unused: u32(0) });

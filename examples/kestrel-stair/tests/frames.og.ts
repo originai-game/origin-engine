@@ -47,8 +47,8 @@ export default playtest({
     press("Escape", 15.4),
     tap("title", 15.8),
     "16.8:open:chapters",
-    "18.0:screenshot:chapters.png",
-    "18.1:quit",
+    "18.4:screenshot:chapters.png",
+    "18.5:quit",
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");

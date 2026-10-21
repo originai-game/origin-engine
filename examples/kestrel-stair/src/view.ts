@@ -40,9 +40,9 @@ export const View = defineSystem(
         focus = { x: BELL.x, y: BELL.y + 1.6, z: BELL.z };
         eye = { x: BELL.x + 4.2, y: BELL.y + 2.6, z: BELL.z + 5.2 };
       } else if (g.phase === Phase.Over) {
-        // From behind the bell, back down the whole stair.
-        focus = { x: 0, y: 4, z: 0 };
-        eye = { x: BELL.x - 2, y: BELL.y + 6, z: BELL.z - 5 };
+        // High over the summit, back down the whole stair to the court.
+        focus = { x: 0, y: 2, z: 6 };
+        eye = { x: BELL.x + 4, y: BELL.y + 20, z: BELL.z - 14 };
       } else {
         const head = { x: g.heroX, y: g.heroY + 1.55, z: g.heroZ };
         const back = { x: Math.sin(g.yaw), z: Math.cos(g.yaw) };

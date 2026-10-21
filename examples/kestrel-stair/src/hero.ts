@@ -42,7 +42,7 @@ export function spawnHero(world: World, g: GameV): void {
   must(world.insert(body, og.AnimationGraph, { asset: rig.graph }));
   must(world.insert(body, og.AnimationPlayer, { clip: rig.clips.attack!, loop: false, weight: 0, fade: 0.08 }));
   // The cape: pinned along the shoulders behind the back, hanging to the knees. A cloth reads
-  // its entity's own Transform as world space (a parent's is not applied: FINDINGS #5), so the
+  // its entity's own Transform as world space (a parent's is not applied: FINDINGS #10), so the
   // cape's entity is not the body's child: HeroMove puts it at the shoulders every tick, turned
   // half round so the cloth's x runs from the courier's left shoulder to its right.
   const cape = must(og.render.standardMaterial(world, { map: must(og.load.texture(world, "textures/cape.png")), roughness: 0.9, side: "double", sheen: 0.8, sheenColor: { r: 0.8, g: 0.3, b: 0.25 }, sheenRoughness: 0.6 }));
@@ -145,7 +145,7 @@ export const HeroMove = defineSystem(
       g.heroX = p.x;
       g.heroY = p.y - FEET;
       g.heroZ = p.z;
-      // The cape's pins follow the shoulders, held or not (FINDINGS #5: the cloth reads its own Transform as world space).
+      // The cape's pins follow the shoulders, held or not (FINDINGS #10: the cloth reads its own Transform as world space).
       must(world.set(entity(world, "hero-cape"), og.Transform, { position: capeAt(g.heroX, g.heroY, g.heroZ, g.facing), quaternion: og.transform.fromAxisAngle(UP, g.facing + Math.PI) }));
       if (dt === 0) return;
       const body = entity(world, "hero-body");

@@ -61,7 +61,7 @@ const PART = 60000;
 /**
  * Rests at waystone `i`: the whole world saved in the slot, with the place
  * and the hour. This world snapshots to about 78 KB of text, over the
- * store's 64 KiB a key (og-game §17 puts it in one key; FINDINGS #8), so
+ * store's 64 KiB a key (og-game §17 puts it in one key; FINDINGS #13), so
  * the text goes in parts (`slot.0`, `slot.1`, ...) and `slot` holds what
  * the title shows and how many parts there are, written last.
  */

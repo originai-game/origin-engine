@@ -2,7 +2,7 @@
 // store: "keep"). Resting at the crypt terrace's waystone restores the
 // courier's strength, marks chapter II reached and saves the whole world
 // (world.snapshot(), about 78 KB of text, written in parts under the
-// store's 64 KiB a key: FINDINGS #8) beside what the title shows of it. Rest
+// store's 64 KiB a key: FINDINGS #13) beside what the title shows of it. Rest
 // and quit returns to the title. The relaunch reads the slot on its first
 // tick: the title offers Continue with the place and the hour (the primary
 // action, focused); Continue reads the parts and world.restore()s them, so
@@ -46,8 +46,8 @@ export default playtest({
         "3.017:touch_start",
         "3.05:touch_end",
         "3.9:open:chapters",
-        "4.6:dump_ui:chapters.json",
-        "4.7:quit",
+        "5.1:dump_ui:chapters.json",
+        "5.2:quit",
       ].join(";"),
     },
   ],

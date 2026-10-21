@@ -7,7 +7,7 @@
 // Prefs' 11), and the next read after a write fetches the whole record
 // again (world.resource(Game) about 0.23 ms), so a game that keeps its run
 // in one resource and writes it the way og-core shows spends most of a
-// tick there (FINDINGS #14). Commands and setup keep using the live handle.
+// tick there (FINDINGS #19). Commands and setup keep using the live handle.
 
 import type { Value, World } from "@origingame/engine";
 import { Game } from "./components.ts";

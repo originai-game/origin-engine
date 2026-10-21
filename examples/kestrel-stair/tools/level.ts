@@ -102,7 +102,10 @@ export function level(textures: Record<Exclude<MaterialName, "dark">, Uint8Array
  * 2.6 m tall (the warden; the imps share it), stepping 0.3 m (the stairs'
  * 0.25 m rise) and climbing slopes to 36 degrees (the ramp and the steep
  * path, not the scree). The summit gate is not baked: the game sets it as
- * an obstacle (og.nav.setObstacle) and lifts it when the gate opens.
+ * an obstacle (og.nav.setObstacle) and lifts it when the gate opens. The
+ * `type navmesh` lines are the third-person archetype's (`agent`, `cellSize`,
+ * `bounds`) and a guessed `model` entry the cook took: the knowledge package
+ * names the parts but not the lines (FINDINGS #2).
  */
 export function navmesh(): string {
   return `type navmesh
@@ -147,7 +150,7 @@ ${route}
 tree {
   selector {
     sequence flee {
-      check Foe.hp below ${MIND.impFleeBelow}   # a literal: a check takes no Tuning field (FINDINGS #1)
+      check Foe.hp below ${MIND.impFleeBelow}   # a literal: a check takes no Tuning field (FINDINGS #3)
       flee {
         distance 7
         speed Tuning.impChase
@@ -212,7 +215,7 @@ machine {
       reach 1.6
     }
     to slam {
-      check targetDistance below ${MIND.wardenReach}   # a literal: a check takes no Tuning field (FINDINGS #1)
+      check targetDistance below ${MIND.wardenReach}   # a literal: a check takes no Tuning field (FINDINGS #3)
     }
     to search {
       check sees is false

@@ -496,6 +496,11 @@ function skin(): void {
   swap("fgSubtle", "#57524a");
   swap("fallback", "fonts/NotoSansJP-kestrel.otf");
   writeFileSync(join(to, "skin.ogt"), text);
+  // The copy's licences: the pack's, its fallback named as this game's.
+  let lic = readFileSync(join(from, "LICENSES.md"), "utf8");
+  lic = lic.replace("# The paper style pack: licences", "# The Kestrel Stair's skin (the engine's paper style pack, retinted): licences");
+  lic = lic.replace(/Characters these fonts lack[\s\S]*$/, "Characters these fonts lack (the Japanese table's) are drawn with the\nskin's `fallback` font, `fonts/NotoSansJP-kestrel.otf` (Noto Sans JP subset\nto the string tables, OFL 1.1, `assets/fonts/OFL.txt`).\n");
+  writeFileSync(join(to, "LICENSES.md"), lic);
 }
 
 // --------------------------------------------------------------------- main

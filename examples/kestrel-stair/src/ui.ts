@@ -260,22 +260,25 @@ function hud(world: World, g: GameV): { bag: boolean; pause: boolean } {
     if (og.ui.actionButton("Bag", say(world, "hud.bag"), { icon: "bag", size: 48 }).clicked) bag = true;
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) pause = true;
   });
-  const prompt = promptText(world, g);
-  if (prompt !== "") {
-    og.ui.anchor("Prompt", { anchor: "bottom", offsetY: -28, direction: "column", cross: "center" }, () => {
-      capsule("Hint", () => {
+  // The prompt pops in and out (og.ui.transition): what F would use now, or (leaving) what it was.
+  const prompt = promptText(world, g, g.nearKind);
+  if (prompt !== "") g.promptKind = g.nearKind;
+  const shownPrompt = prompt !== "" ? prompt : promptText(world, g, g.promptKind);
+  og.ui.anchor("Prompt", { anchor: "bottom", offsetY: -28, direction: "column", cross: "center" }, () => {
+    og.ui.transition("Hint", prompt !== "", { kind: "pop" }, () => {
+      capsule("Capsule", () => {
         og.ui.icon("Key", g.nearKind === Near.Gate && (g.sigils & 7) !== 7 ? "lock" : "flag", { size: 18, tint: { token: "accent" } });
-        og.ui.label("Text", prompt, { nowrap: true });
+        og.ui.label("Text", shownPrompt, { nowrap: true });
       });
       // A refused F shakes the prompt with the error sound (og-ui §6), never the camera.
       if (g.refusedAt !== 0 && world.tick - g.refusedAt <= 1) og.ui.shake({ sound: false });
     });
-  }
+  });
   return { bag, pause };
 }
 
-function promptText(world: World, g: GameV): string {
-  switch (g.nearKind) {
+function promptText(world: World, g: GameV, kind: number): string {
+  switch (kind) {
     case Near.Sigil:
       return say(world, "prompt.sigil");
     case Near.Herb:
@@ -356,7 +359,7 @@ function tutorialSteps(world: World) {
 
 function chapters(world: World, g: GameV): void {
   // A card draws its name in display type on a 104 px square, and `columns` is not applied
-  // (FINDINGS #10): the chapters are named by numerals there.
+  // (FINDINGS #15): the chapters are named by numerals there.
   const levels: LevelInfo[] = CHAPTERS.map((c, i) => ({
     name: say(world, `chapter.${c.key}`),
     stars: (g.chapterStars >> (i * 2)) & 3,
@@ -496,12 +499,14 @@ export const Ui = defineSystem(
       const inp = must(world.resource(og.Input));
       const gp = must(world.resource(og.Gamepad));
 
-      const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play";
+      // One wipe for every change of screen, the chapters and the records included.
+      const sub = g.chaptersOpen ? "-chapters" : g.recordsOpen ? "-records" : "";
+      const screen = (g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play") + (g.phase === Phase.Play ? "" : sub);
       const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 700 }).shown;
-      if (shown === "title") {
+      if (shown.startsWith("title")) {
         og.ui.setNavigation(true);
-        if (g.chaptersOpen) chapters(world, g);
-        else if (g.recordsOpen) records(world, g);
+        if (shown === "title-chapters") chapters(world, g);
+        else if (shown === "title-records") records(world, g);
         else {
           const items = [
             ...(g.hasSave ? [{ id: "continue", label: say(world, "title.continue", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`), clock: clockText(g.saveClock) }), primary: true }] : []),
@@ -512,7 +517,7 @@ export const Ui = defineSystem(
           ];
           const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer") });
           // The title menu takes no focus by itself, so Enter, Space and the pad's A would do nothing
-          // until an arrow or Tab (FINDINGS #12): the focus is put on its first item.
+          // until an arrow or Tab (FINDINGS #14): the focus is put on its first item.
           // (A navigation is applied the tick after it is queued: asked once, not again while it lands.)
           if (og.ui.focus(0) === "" && !g.settingsOpen && world.tick - g.focusAsked > 3) {
             og.ui.navigate(world, "next");
@@ -587,7 +592,7 @@ export const Ui = defineSystem(
         if (m.selected === "quit") toTitle(world, g);
       } else {
         og.ui.setNavigation(true);
-        if (g.recordsOpen) records(world, g);
+        if (shown === "over-records") records(world, g);
         else {
           const c = results(world, g);
           if (c === "again") startRun(world, g, g.chapter);

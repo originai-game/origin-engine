@@ -11,8 +11,8 @@ skin "skins/kestrel/skin.ogt"
 antialias taa
 Stylise {
   depthBands 5
-  depthBandsNear 4
-  depthBandsFar 90
+  depthBandsNear 20
+  depthBandsFar 110
   depthBandsNearColor "#2d2240"
   depthBandsFarColor "#ffd59a"
   depthBandsFlatten 0.35
@@ -30,4 +30,10 @@ RenderSettings {
 Environment {
   map "env/dusk.ogt"
   intensity 0.7
+}
+Fog {
+  enabled true
+  color "#f2d9b0"
+  density 0.0025
+  start 40
 }

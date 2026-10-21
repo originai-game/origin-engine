@@ -20,7 +20,11 @@ import { og } from "@origingame/engine";
 import type { ClipAsset, ClipInfo, GraphAsset, SkeletonAsset, World } from "@origingame/engine";
 import { must } from "./world.ts";
 
-/** The courier's graph: p0 the speed across the ground, p1 1 in the air. */
+/**
+ * The courier's graph: p0 the speed across the ground, p1 1 in the air. The
+ * `type animgraph` grammar is og-anim's README, outside the knowledge
+ * package: these lines follow the third-person archetype's (FINDINGS #2).
+ */
 const HERO_GRAPH = `type animgraph
 version 1
 ---

@@ -67,7 +67,7 @@ export default playtest({
     const ledge = game(run, "ledge.json");
     t.ok(Math.abs(ledge.heroY - 5) < 0.15 && ledge.grounded, `onto the first ledge (feet at ${ledge.heroY.toFixed(2)} m)`);
     t.ok(ledge.jumps >= 1 && ledge.landings >= 1, `a jump and a landing (${ledge.jumps}, ${ledge.landings})`);
-    // FINDINGS #13: og.CharacterController.sliding reads true standing still on level ground.
+    // FINDINGS #16: og.CharacterController.sliding reads true standing still on level ground.
     const cc = run.json<{ value: { sliding: boolean; groundNormal: number[] } }>("cc.json").value;
     t.ok(cc.groundNormal[1]! > 0.99, `standing on the ledge's level top (normal y ${cc.groundNormal[1]!.toFixed(3)}, sliding ${cc.sliding})`);
     t.ok(run.json<{ value: { plays: number } }>("jump.json").value.plays >= 1 && run.json<{ value: { plays: number } }>("land.json").value.plays >= 1, "both heard");

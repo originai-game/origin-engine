@@ -33,7 +33,7 @@ machine {
       reach 1.6
     }
     to slam {
-      check targetDistance below 2.3   # a literal: a check takes no Tuning field (FINDINGS #1)
+      check targetDistance below 2.3   # a literal: a check takes no Tuning field (FINDINGS #3)
     }
     to search {
       check sees is false

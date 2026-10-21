@@ -38,7 +38,8 @@ export function spawnFoes(world: World, g: GameV): void {
   const dust = must(og.load.emitter(world, "fx/dust.ogt"));
   FOES.forEach((f, i) => {
     const rig = rigs[f.kind];
-    // Loaded twice: og.AiAgent starts a machine afresh when its behaviour changes, so a new run swaps handles.
+    // Loaded twice: og.AiAgent starts a machine afresh only when its behaviour changes (there is no
+    // restart), so a new run swaps handles (FINDINGS #5, the third-person archetype's way).
     const mind = must(og.ai.load(world, `ai/${f.name}.ogt`));
     const spare = must(og.ai.load(world, `ai/${f.name}.ogt`));
     const [x, y, z] = f.route[0]!;
@@ -50,7 +51,7 @@ export function spawnFoes(world: World, g: GameV): void {
     must(world.insert(e, og.RigidBody, { kind: BODY_KINEMATIC }));
     must(world.insert(e, og.Collider, { shape: SHAPE_CAPSULE, radius: imp ? 0.35 : 0.55, height: imp ? 0.4 : 1.3, offset: { x: 0, y: imp ? 0.55 : 1.2, z: 0 }, layers: LAYER.foe }));
     // Seeking its round's next point from the first tick, its mind off until it has planned once:
-    // an agent that has never planned is moved from navmesh polygon 0, whatever its height (FINDINGS #4).
+    // an agent that has never planned is moved from navmesh polygon 0, whatever its height (FINDINGS #7).
     const [nx, ny, nz] = f.route[1]!;
     must(world.insert(e, og.NavAgent, { nav: g.nav as never, target: { x: nx, y: ny, z: nz }, seeking: true, speed: imp ? 1.8 : 1.1, acceleration: imp ? 18 : 8, radius: imp ? 0.4 : 0.6, stopDistance: 0.3, faceMovement: true, turnSpeed: imp ? 10 : 5 }));
     must(world.insert(e, og.Steering, { separation: 1.5, separationRadius: 1.6, avoidance: 1.2, avoidDistance: 1.8, avoidMask: LAYER.level | LAYER.gate }));
@@ -162,9 +163,10 @@ export function strikeFoe(world: World, g: GameV, t: TuneV, e: Entity, from: { x
  * The hit's flinch on the foe's model. og-feel §3 pairs a hit stop with a flash, but
  * og.tween.flash takes an og.Sprite or an og.Mesh and a glTF instance draws through og.Model
  * ("has neither og.Sprite nor og.Mesh"), and its materials are shared by every instance, so a
- * foe's own flash cannot be drawn (FINDINGS #7): a squash and the sparks stand in for it.
+ * foe's own flash cannot be drawn (FINDINGS #11): a squash and the sparks stand in for it.
  */
 function flash(world: World, e: Entity): void {
+  // (A squash's impact is x and y only, even in 3D: FINDINGS #4.)
   must(og.tween.squash(world, { entity: e, impact: { x: 1.12, y: 0.86 }, duration: 0.16 }));
 }
 
@@ -228,7 +230,7 @@ function reset(world: World, g: GameV): void {
     const me = must(world.get(e, Foe));
     const imp = me.kind === Kind.Imp;
     must(world.set(e, og.Transform, { position: { x: me.homeX, y: me.homeY, z: me.homeZ } }));
-    // Back to planning before thinking (FINDINGS #4): a teleported agent that is not seeking moves from its old polygon.
+    // Back to planning before thinking (FINDINGS #7): a teleported agent that is not seeking moves from its old polygon.
     const [nx, ny, nz] = f.route[1]!;
     must(world.set(e, og.NavAgent, { target: { x: nx, y: ny, z: nz }, seeking: true, drive: true }));
     must(world.set(e, og.Skeleton, { rootMotion: "off" }));
@@ -280,7 +282,7 @@ export const Foes = defineSystem(
         }
         // Every per-entity call costs (src/state.ts): each is made only when it changes something.
         const agent = must(world.get(e, og.NavAgent));
-        // Its mind wakes once the agent has planned on the navmesh (FINDINGS #4).
+        // Its mind wakes once the agent has planned on the navmesh (FINDINGS #7).
         if (!f.awake && agent.plans > f.warm) {
           must(world.set(e, og.AiAgent, { active: true }));
           must(world.set(e, Foe, { awake: true }));

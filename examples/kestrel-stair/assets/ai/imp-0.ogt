@@ -15,7 +15,7 @@ route round {
 tree {
   selector {
     sequence flee {
-      check Foe.hp below 2   # a literal: a check takes no Tuning field (FINDINGS #1)
+      check Foe.hp below 2   # a literal: a check takes no Tuning field (FINDINGS #3)
       flee {
         distance 7
         speed Tuning.impChase

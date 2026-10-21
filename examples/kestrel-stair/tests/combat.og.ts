@@ -1,7 +1,7 @@
 // The sword (og-feel §1-§7): a press swings on its tick (the swing sound,
 // the attack clip over the blend tree), and the hit lands on the clip's
 // `hit` marker, an og.AnimationEvent: hit stop by weight (7 ticks on a
-// warden), a shake, the warden flinching (a squash: FINDINGS #7), a number
+// warden), a shake, the warden flinching (a squash: FINDINGS #11), a number
 // and the hit sound. Six strikes fell the terrace warden (eight are swung, the
 // courier pressing on): its die clip, the
 // world held longer, and the third sigil dropped where it fell, which F

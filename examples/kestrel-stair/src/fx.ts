@@ -1,7 +1,8 @@
 // What moves on its own: the crypt's lamp hangs at the chain's last link
 // (og.physics.ropePoints, the og.Rope's simulated points), the braziers
 // flicker, the banners' wind gusts with the time of day, and the crypt is
-// a reverb zone: with the courier inside, the effects bus sends far more to
+// a reverb zone, kept by the game (the engine has one shared reverb fed per
+// bus, no zone: FINDINGS #21): with the courier inside, the effects bus sends far more to
 // the shared reverb and the room grows (og.AudioBusFx.reverb,
 // og.Audio.reverbRoom), and the sky's light falls away (og.Environment's
 // intensity), eased over half a second either way.

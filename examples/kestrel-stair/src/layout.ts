@@ -183,7 +183,7 @@ export const CRYPT_ROOM: Box = { min: [-20.4, 3.5, -13.4], max: [-9.6, 8.5, -2.6
 /**
  * The numbers the foes' behaviours compare against. A behaviour's `check`
  * takes only a literal on its right (`check Foe.hp below Tuning.x` is
- * refused: FINDINGS #1), so these are written into ai/*.ogt by the
+ * refused: FINDINGS #3), so these are written into ai/*.ogt by the
  * generator, and the game reads the same table.
  */
 export const MIND = {
