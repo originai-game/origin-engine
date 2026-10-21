@@ -1735,10 +1735,18 @@ fn a_dialogue_or_a_dialog_that_appears_takes_the_focus_so_enter_answers_it() {
     rig.idle(1, b);
     rig.key(UiKey::Tab, b);
     rig.idle(1, b);
-    assert_eq!(rig.ui.focus_path(0), "Pause", "the HUD's button had the focus");
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Pause",
+        "the HUD's button had the focus"
+    );
     rig.state.talking = true;
     rig.idle(2, b);
-    assert_eq!(rig.ui.focus_path(0), "Talk", "the dialogue took it as it appeared");
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Talk",
+        "the dialogue took it as it appeared"
+    );
     rig.key(UiKey::Enter, b);
     rig.idle(1, b);
     rig.key(UiKey::Enter, b);
@@ -1753,5 +1761,8 @@ fn a_dialogue_or_a_dialog_that_appears_takes_the_focus_so_enter_answers_it() {
     rig.idle(30, b);
     rig.key(UiKey::Enter, b);
     rig.idle(1, b);
-    assert_eq!(rig.state.bought, 1, "the dialog the game opened answered Enter");
+    assert_eq!(
+        rig.state.bought, 1,
+        "the dialog the game opened answered Enter"
+    );
 }
