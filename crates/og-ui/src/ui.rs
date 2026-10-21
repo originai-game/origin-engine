@@ -3208,8 +3208,7 @@ impl Ui {
                         // piece per font of a mixed text (crate::text).
                         let pieces =
                             crate::text::pieces(font, &line.text, self.direction, tc.tracking());
-                        let baseline =
-                            ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+                        let baseline = m.baseline(&line.text, ly, lh, size);
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.skin_index();
                         let tracking = tc.tracking();
@@ -3529,7 +3528,7 @@ impl Ui {
                 }
             };
             marks(true, cmds);
-            let baseline = top + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+            let baseline = m.baseline(&line, top, lh, size);
             let pieces = crate::text::pieces(font, &line, self.direction, tracking);
             let one = pieces.len() == 1;
             for pc in pieces {
@@ -3808,8 +3807,7 @@ impl Ui {
                     let lh = step.line_height * n.scale;
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
-                    let baseline =
-                        ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+                    let baseline = m.baseline(text, ly, lh, size);
                     let snap = |v: f32| (v * dpr).round() / dpr;
                     let pieces = crate::text::pieces(f, text, self.direction, tracking);
                     let one = pieces.len() == 1;
