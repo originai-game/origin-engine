@@ -31,6 +31,7 @@ export const HEARTS = 3;
 /** The run: the hero's progress, the clock and the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the skin's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
   ending: u32(Ending.None, { doc: "Ending.* once a run is over." }),
   paused: bool(false),
   settingsOpen: bool(false),

@@ -24,6 +24,7 @@ export const Sound = { Tap: 1, Buy: 2, Milestone: 4, Nova: 8, Welcome: 16, Move:
 /** The run, the save and the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the skin's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
   paused: bool(false),
   settingsOpen: bool(false),
   held: bool(false, { doc: "The time scale is held at 0 (paused, in the settings or a dialog)." }),
