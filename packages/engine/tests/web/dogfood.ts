@@ -34,12 +34,22 @@
 // controls the accessibility mirror locates instead).
 //
 //   bun tests/web/dogfood.ts --project examples/hollowbell [--webgl] [--frames] [--no-play]
-//       [--no-build] [--no-isolation] [--throttle <Mbit/s>] [--out <dir>] [--chrome <path>]
+//       [--no-build] [--no-isolation] [--throttle <Mbit/s>] [--boot] [--label <name>]
+//       [--out <dir>] [--chrome <path>]
 //
 // --no-build reuses the last publish build; --no-isolation serves it without
 // COOP/COEP (the single-threaded engine); --throttle sends every file
-// through one shared link of that throughput (see below). Results go to
-// <out>/<id>/<tier>[-single][-<n>mbit]/.
+// through one shared link of that throughput (see below); --boot loads the
+// page to its gate only (the boot: first frame, title, what was fetched
+// before the first frame, the language behind the gate, the engine's
+// memory) and stops, for before/after measurements; --label names the run's
+// directory's suffix (a before and an after side by side). Results go to
+// <out>/<id>/<tier>[-single][-<n>mbit][-boot][-<label>]/.
+//
+// Every response the server sends is logged with its time from navigation
+// and its brotli size (`requests`), and `boot` sums what the first load
+// fetched before its first frame (`og:first-frame`): the boot download a
+// player waits for, by kind (engine, shell, basis, cooked, music chunks).
 //
 // Writes <out>/<id>/<tier>/dogfood.json and screenshots (default
 // dist/dogfood). Never fails on a finding: it records them.
@@ -77,7 +87,9 @@ const work = resolve(opt("--out") ?? join(pkg, "dist", "dogfood"));
 // throughput, 40 ms before each response's first byte (DevTools' network emulation does not reach
 // the engine Worker's fetches, which are most of the bytes).
 const throttle = Number(opt("--throttle") ?? 0);
-const out = join(work, id, `${tier}${args.includes("--no-isolation") ? "-single" : ""}${throttle ? `-${throttle}mbit` : ""}`);
+const bootOnly = args.includes("--boot");
+const label = opt("--label");
+const out = join(work, id, `${tier}${args.includes("--no-isolation") ? "-single" : ""}${throttle ? `-${throttle}mbit` : ""}${bootOnly ? "-boot" : ""}${label ? `-${label}` : ""}`);
 mkdirSync(out, { recursive: true });
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const td = new TextDecoder();
@@ -270,6 +282,45 @@ const link = async (n: number) => {
   linkFree = start + (n * 8 * 1000) / (throttle * 1e6);
   await wait(linkFree - now);
 };
+/** Every file the server sent: which page load (1 the first, 2 after the reload), ms from that load's navigation, its sizes. */
+const requests: Array<{ load: number; at: number; path: string; bytes: number; brotli: number; sw?: boolean }> = [];
+let loads = 0;
+let navAt = performance.now();
+/**
+ * What a load fetched before `firstFrame` ms (from its navigation), by kind, brotli bytes: each
+ * file once (a host that lets the browser cache would send the pool Workers' glue once), the
+ * service worker's precache apart (`sw`: it starts once the engine is ready, beside the boot).
+ */
+function bootOf(load: number, firstFrame: number | null) {
+  const kind = (p: string) =>
+    /^origin-engine(-lanes)?(_bg\.wasm|\.js)$|^snippets\//.test(p) ? "engine"
+    : p.startsWith("basis/") ? "basis"
+    : /\.chunk\d+\.ogb$/.test(p) ? "chunks"
+    : p.startsWith("cooked/stream/") ? "packs"
+    : p.startsWith("cooked/") ? "cooked"
+    : "shell";
+  const once = (rs: typeof requests) => [...new Map(rs.map((r) => [r.path, r])).values()];
+  const page = requests.filter((r) => r.load === load && !r.sw);
+  const before = once(page.filter((r) => firstFrame === null || r.at <= firstFrame));
+  const sw = once(requests.filter((r) => r.load === load && r.sw));
+  const by: Record<string, { files: number; brotli: number }> = {};
+  for (const r of before) {
+    const k = kind(r.path);
+    by[k] ??= { files: 0, brotli: 0 };
+    by[k].files++;
+    by[k].brotli += r.brotli;
+  }
+  const after = once(page.filter((r) => firstFrame !== null && r.at > firstFrame && !before.some((b) => b.path === r.path)));
+  return {
+    firstFrame,
+    requests: page.filter((r) => firstFrame === null || r.at <= firstFrame).length,
+    sw: { files: sw.length, brotli: sw.reduce((n, r) => n + r.brotli, 0), beforeFirstFrame: sw.filter((r) => firstFrame !== null && r.at <= firstFrame).length },
+    files: before.length,
+    brotli: before.reduce((n, r) => n + r.brotli, 0),
+    by,
+    after: { files: after.length, brotli: after.reduce((n, r) => n + r.brotli, 0), chunks: after.filter((r) => kind(r.path) === "chunks").length, packs: after.filter((r) => kind(r.path) === "packs").length },
+  };
+}
 const isolation: Record<string, string> = isolated ? { "cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp", "cross-origin-resource-policy": "cross-origin" } : {};
 const server = Bun.serve({
   port: 0,
@@ -306,6 +357,12 @@ const server = Bun.serve({
     if (!path.startsWith(dist) || !existsSync(path)) {
       missing.push(url.pathname);
       return new Response("not found", { status: 404 });
+    }
+    {
+      const f = listed.find((x) => `/${x.path}` === rel);
+      // The service worker's own fetches (its precache) name sw.js as their referrer.
+      const sw = /\/sw\.js$/.test(req.headers.get("referer") ?? "");
+      requests.push({ load: loads, at: Math.round(performance.now() - navAt), path: rel.slice(1), bytes: f?.bytes ?? 0, brotli: f?.brotli ?? 0, ...(sw ? { sw } : {}) });
     }
     const headers: Record<string, string> = { "cache-control": "no-store", ...isolation };
     for (const r of rules) if (r.pattern === rel || (r.pattern.endsWith("*") && rel.startsWith(r.pattern.slice(0, -1))) || (r.pattern.startsWith("/*.") && rel.endsWith(r.pattern.slice(2)))) Object.assign(headers, Object.fromEntries(Object.entries(r.headers).map(([k, v]) => [k.toLowerCase(), v])));
@@ -480,7 +537,8 @@ if (!args.includes("--no-play")) {
     await page.send("Page.addScriptToEvaluateOnNewDocument", { source: OBSERVE });
     await page.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
     const url = `http://127.0.0.1:${server.port}${ROOT}${webgl ? "?webgl=1" : ""}`;
-    const nav = performance.now();
+    loads = 1;
+    navAt = performance.now();
     await page.send("Page.navigate", { url });
     await page.until("typeof __runtime_probe__ === 'object' || !document.getElementById('og-error')?.hidden", 120_000);
     const failed = await page.eval<string | null>("document.getElementById('og-error') && !document.getElementById('og-error').hidden ? document.getElementById('og-error').innerText.slice(0, 3000) : null");
@@ -505,8 +563,16 @@ if (!args.includes("--no-play")) {
     const targets = (await browser.send<{ targetInfos: Array<{ type: string; url: string }> }>("Target.getTargets")).targetInfos;
     const ours = targets.filter((t) => !t.url.startsWith("chrome-extension:"));
     play["workers"] = { dedicated: ours.filter((t) => t.type === "worker").length, service: ours.filter((t) => t.type === "service_worker").length, urls: targets.filter((t) => t.type.endsWith("worker") && !t.url.startsWith("chrome-extension:")).map((t) => t.url.replace(/^.*\/play\/[^/]+\/[^/]+\//, "./").replace(/^blob:.*/, "blob:")) };
+    play["boot"] = { ...bootOf(1, marks["og:first-frame"] ?? null), phases: await page.eval("__runtime_probe__.boot ?? null").catch(() => null) };
+    play["memoryProbe"] = await page.eval("__runtime_probe__.memory?.() ?? null").catch((e) => ({ error: String(e) }));
     await shot(page, "gate");
     play["titleCapture"] = await versus(page, "title-behind-gate", metal(id === "ui-kit" ? "kit-desktop-gallery.png" : "title.png"));
+    if (bootOnly) {
+      // The boot only: is the title behind the gate in the store's language (a run after a full one, whose store is gone: none is saved here)?
+      await wait(1500);
+      play["gateTree"] = (await page.eval<Array<{ path: string; role: string; name: string }>>(TREE)).map((n) => `${n.role}:${n.name}`).slice(0, 30);
+      throw new Error("boot only");
+    }
     const tree = await page.eval<Array<{ path: string; role: string; name: string; focusable: boolean }>>(TREE);
     play["a11yTitle"] = { nodes: tree.length, roles: Object.fromEntries([...new Set(tree.map((n) => n.role))].map((r) => [r, tree.filter((n) => n.role === r).length])), unnamed: tree.filter((n) => !n.name && n.role !== "group" && n.role !== "generic").map((n) => `${n.role} ${n.path}`), names: tree.map((n) => `${n.role}:${n.name}`).slice(0, 60) };
     const ax = await page.send<{ nodes: Array<{ role?: { value: string }; name?: { value: string }; ignored: boolean }> }>("Accessibility.getFullAXTree").catch(() => ({ nodes: [] }));
@@ -584,6 +650,8 @@ if (!args.includes("--no-play")) {
       play["storeAfterSave"] = Object.fromEntries([...store].map(([k2, v]) => [k2, { revision: v.revision, bytes: JSON.stringify(v.value).length }]));
       // Reload: the release's service worker now controls the page; the settings come back from the store.
       const reloadAt = calls.length;
+      loads = 2;
+      navAt = performance.now();
       await page.send("Page.reload", { ignoreCache: false });
       await page.until("typeof __runtime_probe__ === 'object'", 60_000);
       await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000).catch(() => {});
@@ -643,10 +711,11 @@ if (!args.includes("--no-play")) {
       if (!reports.slice(reportsBefore).some((r) => r.kind === "end")) note("Back reached the game's page but no `end` report reached the play origin");
     }
   } catch (e) {
-    play["error"] = play["error"] ?? String(e instanceof Error ? e.stack : e);
-    console.log(`error: ${play["error"]}`);
+    if (!(bootOnly && e instanceof Error && e.message === "boot only")) play["error"] = play["error"] ?? String(e instanceof Error ? e.stack : e);
+    if (play["error"]) console.log(`error: ${play["error"]}`);
   } finally {
     play["calls"] = calls;
+    play["requests"] = requests;
     play["reports"] = [...new Set(reports.map((r) => r.kind))];
     play["notFound"] = [...new Set(missing)];
     play["console"] = {
@@ -694,6 +763,15 @@ if (args.includes("--frames")) {
   const ref = existsSync(join(framesOut, `reference-${tier}.json`)) ? JSON.parse(readFileSync(join(framesOut, `reference-${tier}.json`), "utf8")) : null;
   result["frames"] = { exit: r.exitCode, ms: Math.round(performance.now() - t1), playtest: relative(repo, playtest), shots: ref?.stations ?? null, frameMs: ref?.frameMs ?? null, renderer: ref?.renderer ?? null, textureFormat: ref?.textureFormat ?? null, error: ref?.error?.split("\n").slice(0, 8).join("\n") ?? null, engineLog: (ref?.engine ?? []).filter((l: string) => /warn|error/i.test(l)).slice(-20) };
   save();
+}
+{
+  // One line per measure, for a before/after table.
+  const p = (result["play"] ?? {}) as Record<string, any>;
+  const b = p["boot"] as ReturnType<typeof bootOf> | undefined;
+  if (b) console.log(`phases: ${JSON.stringify((b as { phases?: unknown }).phases ?? null)}`);
+  if (b) console.log(`boot: first frame ${b.firstFrame} ms, ready ${p["timings"]?.["og:ready"]} ms, title ${p["timings"]?.["title"]} ms; fetched before it ${b.files} files (${b.requests} requests), ${b.brotli} B brotli (${Object.entries(b.by).map(([k, v]) => `${k} ${v.files}/${v.brotli}`).join(", ")}); after it ${b.after.files} files ${b.after.brotli} B (${b.after.chunks} chunks, ${b.after.packs} packs); the service worker's precache ${b.sw.files} files ${b.sw.brotli} B (${b.sw.beforeFirstFrame} before the first frame)`);
+  if (p["memoryProbe"]) console.log(`memory: ${JSON.stringify(p["memoryProbe"])}`);
+  if (p["reload"]) console.log(`reload: translated behind the gate ${p["reload"].translatedBehindGate}, after the tap ${p["reload"].translated}`);
 }
 console.log(`wrote ${join(out, "dogfood.json")}`);
 process.exit(0);
