@@ -26,6 +26,47 @@ twos (§9). `og cook` took their 47 and 69 assets cold in 8.2 s and 3.6 s,
 under 100 ms after a change, without a warning, and its refusals named
 the line and the fix.
 
+## Writing a game from this package
+
+The order both games found productive:
+
+1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
+   seed. The scaffold writes it; change it there and nowhere else.
+2. **`GameDesc`** in `src/main.ts` (§3): the scene, the look, the systems,
+   and from the start a command for each state a test must reach (`play`,
+   `warp:<where>`) and facts for what it must check.
+3. **Assets by script**: `tools/make-assets.*` writes every texture,
+   tileset, map, flipbook, emitter, sound and look deterministically (both
+   games and every archetype do), with import settings beside each source
+   (§5, §8, §10). Rerun it after a change; never hand-edit its outputs.
+4. **Cook** (`og cook`, og-build §1): read every refusal, it names the line
+   and the fix.
+5. **Run with commands** (og-build §1, §4): `og run . --headless
+   --commands "...;screenshot:x.png;...;quit"`, then open each frame and
+   say what it shows. Do this after every change that shows on screen.
+6. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
+   asserting on facts, `get:` answers and dumps, one per feature, and a
+   frames playtest comparing screenshots with `references/<tier>/`.
+7. **Polish** (og-build §5): `og polish` until its findings are gone; each
+   names the section that fixes it (og-taste §10, og-feel §13).
+
+Three mistakes both games made before reading the right page:
+
+- **The resource handle.** A system reads or writes a resource only when
+  it lists it among its `reads` or `writes` (og-core §4: undeclared, it
+  throws naming the system and the record). Fetch `world.resource(R)` in
+  the call that uses it and pass that handle to the helpers it calls,
+  rather than fetching it again in each one.
+- **A look replaces resources whole.** `GameDesc.look` and
+  `og.render.applyLook` set every field of each resource the look names
+  (the rest to their defaults), so a per-game value written before the
+  look is lost: write it in the look, or in `start` after it (§15).
+- **Where probe outputs go.** `og run` writes screenshots and dumps under
+  `og-out/` (`--out` chooses), `og test` each playtest's under
+  `og-out/test/<name>/`, and a playtest reads them back by the name its
+  step gave (`run.json("shop.json")`). Give every step's file its own
+  name, so a check reads the step it means (og-build §1, §3).
+
 ## 1. The skills
 
 | Skill | Read it for | Its modules (`reference/<module>.md`) |
