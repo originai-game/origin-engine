@@ -84,7 +84,7 @@ the texture arrays, the particles, the sounds and the music.
 `og polish .` on metal (dev profile, a machine busy with other builds):
 taste 99 (contrast 93: the pixel pack's primary button labels, FINDINGS
 #20), feel 92 (input latency, hit feedback and idle frames 100; sound on
-input 88; frame time 73, step about 7 ms median and 10–12 ms p95, render
+input 88; frame time 72, step about 7 ms median and 10–12 ms p95, render
 about 3.3 ms).
 
 ## Commands (for scripts and agents)
