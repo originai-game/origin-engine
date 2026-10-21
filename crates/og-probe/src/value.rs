@@ -1,6 +1,8 @@
 //! Reflected field values as JSON and as command text, both ways, through
 //! the schema: the one path `entity`, `bounds`, `patch`, `set` and the dumps
-//! share.
+//! share. An enum reads as its variant's name (`"music"`), as game code and
+//! the generated types have it, everywhere but `entity`, whose tunable
+//! values are numbers for Tune; a write takes the name or the index.
 
 use og_core::{FieldSchema, FieldType, Layout, Schema};
 use serde_json::{Map, Number, Value};
@@ -47,6 +49,19 @@ pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
     }
 }
 
+/// One field's packed bytes as JSON, as game code reads it: [`field_json`],
+/// but an enum is its variant's name (`"music"`, not `1`); an index past the
+/// variants stays a number.
+pub(crate) fn named_field_json(field: &FieldSchema, bytes: &[u8]) -> Value {
+    if field.ty == FieldType::Enum {
+        let i = u32::from_le_bytes(word(bytes, 0)) as usize;
+        if let Some(name) = field.variants.get(i) {
+            return Value::String(name.clone());
+        }
+    }
+    field_json(field.ty, bytes)
+}
+
 /// Every field of a component's packed value, by field name.
 pub(crate) fn component_json(schema: &Schema, bytes: &[u8]) -> Map<String, Value> {
     let layout = Layout::of(schema);
@@ -54,7 +69,7 @@ pub(crate) fn component_json(schema: &Schema, bytes: &[u8]) -> Map<String, Value
         .fields
         .iter()
         .enumerate()
-        .map(|(i, f)| (f.name.clone(), field_json(f.ty, &bytes[layout.range(i)])))
+        .map(|(i, f)| (f.name.clone(), named_field_json(f, &bytes[layout.range(i)])))
         .collect()
 }
 
@@ -140,6 +155,26 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
                 .ok_or_else(|| format!("a {} takes a string, got {value}", field.ty.name()))?;
             return og_core::pack_str(text, field.ty.size());
         }
+        // A variant's name, as game code writes it, or its index.
+        FieldType::Enum if !field.variants.is_empty() => {
+            let index = match value {
+                Value::String(name) => field.variants.iter().position(|v| v == name),
+                v => v
+                    .as_f64()
+                    .filter(|i| i.fract() == 0.0 && *i >= 0.0)
+                    .map(|i| i as usize)
+                    .filter(|&i| i < field.variants.len()),
+            };
+            return index
+                .map(|i| (i as u32).to_le_bytes().to_vec())
+                .ok_or_else(|| {
+                    format!(
+                        "{value} is not one of {}: write a variant's name or its index 0 to {}",
+                        field.variants.join(", "),
+                        field.variants.len() - 1
+                    )
+                });
+        }
         _ => {}
     }
     let scalar = match field.ty {
@@ -164,11 +199,16 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
     Ok(out)
 }
 
-/// Command text as the JSON value of `field` for [`json_field`]: a string
-/// field takes the text as it is (`set:Prefs.name=Ada Lovelace`), or a JSON
+/// Command text as the JSON value of `field` for [`json_field`]: an enum
+/// takes a variant's name or its index; a string field takes the text as it is (`set:Prefs.name=Ada Lovelace`), or a JSON
 /// string literal for escapes and the empty string (`set:Prefs.name=""`);
 /// every other field takes [`text_json`].
 pub(crate) fn command_value(field: &FieldSchema, text: &str) -> Result<Value, String> {
+    // An enum takes its variant's name bare (`set:music.og.AudioSource.bus=music`) or its index.
+    if field.ty == FieldType::Enum && !field.variants.is_empty() {
+        let t = text.trim();
+        return Ok(text_json(t).unwrap_or_else(|_| Value::String(t.to_owned())));
+    }
     if !field.ty.is_string() {
         return text_json(text);
     }
@@ -235,5 +275,46 @@ mod tests {
             json_field(&field, &json!(4.0)).unwrap(),
             4.0f32.to_le_bytes()
         );
+    }
+
+    fn bus() -> FieldSchema {
+        let mut field = FieldSchema::new("bus", FieldType::Enum);
+        field.variants = vec!["sfx".into(), "music".into(), "ui".into()];
+        field
+    }
+
+    #[test]
+    fn an_enum_reads_as_its_variant_name_and_writes_from_the_name_or_the_index() {
+        let field = bus();
+        let bytes = 1u32.to_le_bytes();
+        assert_eq!(named_field_json(&field, &bytes), json!("music"));
+        // Past the variants (never a stored value): the number, not a guess.
+        assert_eq!(named_field_json(&field, &7u32.to_le_bytes()), json!(7));
+        // `entity` keeps the index for Tune.
+        assert_eq!(field_json(field.ty, &bytes), json!(1));
+        let mut schema = Schema {
+            name: "og.AudioSource".into(),
+            version: 1,
+            doc: String::new(),
+            fields: vec![field.clone()],
+        };
+        schema.fields[0].name = "bus".into();
+        assert_eq!(component_json(&schema, &bytes)["bus"], json!("music"));
+
+        for text in ["music", " music ", "1"] {
+            let v = command_value(&field, text).unwrap();
+            assert_eq!(json_field(&field, &v).unwrap(), bytes.to_vec(), "{text}");
+        }
+        assert_eq!(
+            json_field(&field, &json!(2)).unwrap(),
+            2u32.to_le_bytes().to_vec()
+        );
+        let wrong = json_field(&field, &command_value(&field, "radio").unwrap()).unwrap_err();
+        assert!(
+            wrong.contains("sfx, music, ui") && wrong.contains("index 0 to 2"),
+            "{wrong}"
+        );
+        assert!(json_field(&field, &json!(3)).is_err());
+        assert!(json_field(&field, &json!(1.5)).is_err());
     }
 }

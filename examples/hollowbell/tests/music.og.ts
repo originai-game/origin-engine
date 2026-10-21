@@ -19,9 +19,9 @@ export default playtest({
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    const music = value<{ playing: boolean; loop: boolean; bus: string | number }>(run, "music.json");
-    // `get:` answers the bus by its number (1), game code by its name (FINDINGS.md #19).
-    t.ok(music.playing && music.loop && (music.bus === "music" || music.bus === 1), "the music loops on the music bus");
+    const music = value<{ playing: boolean; loop: boolean; bus: string }>(run, "music.json");
+    // `get:` answers an enum by its name, as game code reads it (FINDINGS.md #19, fixed).
+    t.ok(music.playing && music.loop && music.bus === "music", "the music loops on the music bus");
     const chunks = game(run, "chunks.json").musicChunks;
     t.ok(chunks >= 20, `it was cooked in chunks and streams (${chunks} chunks)`);
     const title = run.wav("title.wav");

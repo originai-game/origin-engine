@@ -21,7 +21,7 @@ export default playtest({
     hold("ArrowRight", 1.6, 0.3),
     "2.2:get:Game:lit.json",
     "2.2:get:lantern-0.og.Light2D:light.json",
-    "2.3:dump_platform:calls.json", // not platform.json: that is the kept store (FINDINGS.md #18)
+    "2.3:dump_platform:calls.json", // platform.json would do too now: the kept store is under a dot name no output takes (FINDINGS.md #18, fixed)
     press("Escape", 2.5),
     tap("quit", 2.9),
     "3.6:get:Game:quit.json",

@@ -90,7 +90,8 @@ trying.
   (it then moves with the ticks); a playtest runs at 2026-01-01 00:00 UTC
   unless its `clock` says otherwise.
 - A relaunch across processes: a playtest with `store: "keep"` keeps one
-  local store for its run and its `then` steps (`{ commands, clock }`,
+  local store (`<out>/.store/platform.json`, a dot name no step's output
+  may take, so `dump_platform:platform.json` is safe) for its run and its `then` steps (`{ commands, clock }`,
   each a fresh `og run`), and `check` reads each step's run in
   `run.then[n]` (`templates/archetypes/idle/tests/away.og.ts`: saved at
   `clock`, launched two hours later). A command that relaunches in the

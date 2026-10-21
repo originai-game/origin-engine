@@ -191,6 +191,10 @@ pub struct Probe {
     /// The tick of the last unnamed `get` and how many it has had, so a
     /// second one on the same tick writes `get-<tick>-2.json`.
     gets: (u64, u32),
+    /// The files this script's steps wrote, each with the step that wrote
+    /// it (its time and action): a second step naming one is written beside
+    /// it, suffixed, with a warning naming both ([`Probe::emit`]).
+    written: BTreeMap<String, (f64, String)>,
 }
 
 /// The host's `derive` hook: what `get` answers for a record whose value the
@@ -215,7 +219,8 @@ pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
 
 /// A script's output path, relative to wherever the host writes outputs:
 /// an absolute path or a `..` component is refused, so a script (or a
-/// caller of the probe) cannot write outside the output directory.
+/// caller of the probe) cannot write outside the output directory, and so
+/// is a name starting with a dot, which the directory keeps for the harness.
 fn output_path(arg: Option<&String>) -> Result<Option<String>, String> {
     let Some(path) = arg.filter(|p| !p.is_empty()) else {
         return Ok(None);
@@ -226,7 +231,29 @@ fn output_path(arg: Option<&String>) -> Result<Option<String>, String> {
             "output path '{path}' leaves the output directory; write a relative path without '..'"
         ));
     }
+    // Dot names in the output directory are the harness's (a playtest's
+    // kept store, its bundle, its later runs): no step may overwrite them.
+    if path
+        .split(['/', '\\'])
+        .any(|part| part.starts_with('.') && part != ".")
+    {
+        return Err(format!(
+            "output path '{path}' has a name starting with '.', which the output directory keeps for the harness (a playtest's kept og.platform store, its bundle); name the file without the leading dot"
+        ));
+    }
     Ok(Some(path.clone()))
+}
+
+/// `path` with `-<n>` before its extension (`x.json` -> `x-2.json`).
+fn suffixed(path: &str, n: u32) -> String {
+    let base = path.rfind(['/', '\\']).map_or(0, |i| i + 1);
+    match path[base..].rfind('.') {
+        Some(dot) if dot > 0 => {
+            let dot = base + dot;
+            format!("{}-{n}{}", &path[..dot], &path[dot..])
+        }
+        _ => format!("{path}-{n}"),
+    }
 }
 
 fn fault(context: &str, err: Error) -> Error {
@@ -348,6 +375,7 @@ impl Probe {
             sweeping: None,
             derive: None,
             gets: (u64::MAX, 0),
+            written: BTreeMap::new(),
         })
     }
 
@@ -433,6 +461,39 @@ impl Probe {
     /// Files commands produced since the last call, for the host to write.
     pub fn take_outputs(&mut self) -> Vec<Output> {
         std::mem::take(&mut self.outputs)
+    }
+
+    /// Hands an output a step made to the host. A file an earlier step of
+    /// this script already wrote is not overwritten: the second is written
+    /// beside it as `<stem>-2.<ext>` (then `-3`, ...), with a warning naming
+    /// both steps, so a check reading the first finds what it expects and
+    /// the clash is in the run's warnings instead of far from its cause.
+    fn emit(&mut self, at: f64, mut output: Output) {
+        let named = output.path.is_some();
+        let wanted = output.file_name();
+        let mut name = wanted.clone();
+        let mut n = 1;
+        while self.written.contains_key(&name) {
+            n += 1;
+            name = suffixed(&wanted, n);
+        }
+        if name != wanted {
+            output.path = Some(name.clone());
+            // Unnamed outputs are the probe's own names: suffixed quietly.
+            if named {
+                let (first_at, first_action) = &self.written[&wanted];
+                self.note(
+                    output.tick,
+                    true,
+                    format!(
+                        "{at}s {}: '{wanted}' was already written by the {first_at}s {first_action} step, so this one is '{name}'; give each step its own file name",
+                        output.action
+                    ),
+                );
+            }
+        }
+        self.written.insert(name, (at, output.action.clone()));
+        self.outputs.push(output);
     }
 
     /// Log lines since the last call.
@@ -544,6 +605,8 @@ impl Probe {
     pub fn schedule(&mut self, world: &World, script: &str) -> Result<CommandsReport, ParseError> {
         let steps = command::parse(script)?;
         let now = world.time().tick;
+        // A script's outputs are its own: one names each file once.
+        self.written.clear();
         let rate = f64::from(tick_rate(world));
         let mut report = CommandsReport {
             scheduled: 0,
@@ -658,16 +721,19 @@ impl Probe {
         }
         let shot = self.shot.take().expect("waiting");
         match frame {
-            Some(frame) => self.outputs.push(Output {
-                tick: shot.tick,
-                action: "screenshot".into(),
-                path: shot.path,
-                payload: Payload::Png {
-                    width: frame.width,
-                    height: frame.height,
-                    bytes: frame.png,
+            Some(frame) => self.emit(
+                shot.at,
+                Output {
+                    tick: shot.tick,
+                    action: "screenshot".into(),
+                    path: shot.path,
+                    payload: Payload::Png {
+                        width: frame.width,
+                        height: frame.height,
+                        bytes: frame.png,
+                    },
                 },
-            }),
+            ),
             None => self.note(
                 shot.tick,
                 true,
@@ -795,16 +861,19 @@ impl Probe {
                     });
                     return Ok(());
                 };
-                self.outputs.push(Output {
-                    tick,
-                    action: step.action.clone(),
-                    path,
-                    payload: Payload::Png {
-                        width: frame.width,
-                        height: frame.height,
-                        bytes: frame.png,
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path,
+                        payload: Payload::Png {
+                            width: frame.width,
+                            height: frame.height,
+                            bytes: frame.png,
+                        },
                     },
-                });
+                );
                 Ok(())
             }
             "listen" => {
@@ -822,12 +891,15 @@ impl Probe {
                     .as_ref()
                     .ok_or("no audio in this host: nothing to listen to")?;
                 let heard = listen(seconds).ok_or("the mixer has rendered nothing yet")?;
-                self.outputs.push(Output {
-                    tick,
-                    action: step.action.clone(),
-                    path,
-                    payload: Payload::Wav(heard.wav),
-                });
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path,
+                        payload: Payload::Wav(heard.wav),
+                    },
+                );
                 Ok(())
             }
             "touch_move_to" | "move_to_text" => {
@@ -1151,24 +1223,30 @@ impl Probe {
                 } else {
                     self.dump_ui(world)
                 };
-                self.outputs.push(Output {
-                    tick,
-                    action: step.action.clone(),
-                    path: output_path(args.first())?,
-                    payload: Payload::Json(dump),
-                });
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Json(dump),
+                    },
+                );
                 Ok(())
             }
             "dump_entity" => {
                 let id = arg(0, "dump_entity:<entity>[:path]")?;
                 let e = self.entity_of(world, id)?;
                 let dump = self.dump_entity(world, e);
-                self.outputs.push(Output {
-                    tick,
-                    action: step.action.clone(),
-                    path: output_path(args.get(1))?,
-                    payload: Payload::Json(dump),
-                });
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path: output_path(args.get(1))?,
+                        payload: Payload::Json(dump),
+                    },
+                );
                 Ok(())
             }
             "set" => {
@@ -1228,17 +1306,20 @@ impl Probe {
                         path = Some(format!("get-{tick:06}-{}.json", self.gets.1));
                     }
                 }
-                self.outputs.push(Output {
-                    tick,
-                    action: "get".into(),
-                    path,
-                    payload: Payload::Json(json!({
-                        "kind": "get",
-                        "target": target,
-                        "tick": tick,
-                        "value": value,
-                    })),
-                });
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: "get".into(),
+                        path,
+                        payload: Payload::Json(json!({
+                            "kind": "get",
+                            "target": target,
+                            "tick": tick,
+                            "value": value,
+                        })),
+                    },
+                );
                 Ok(())
             }
             "seed" => {
@@ -1283,12 +1364,15 @@ impl Probe {
                     text.push_str(&format!("{}{origin}\n    {}\n", info.usage, info.doc));
                 }
                 self.note(tick, false, format!("help: {} actions", self.help().len()));
-                self.outputs.push(Output {
-                    tick,
-                    action: "help".into(),
-                    path: output_path(args.first())?,
-                    payload: Payload::Text(text),
-                });
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: "help".into(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Text(text),
+                    },
+                );
                 Ok(())
             }
             name => {
@@ -1306,12 +1390,15 @@ impl Probe {
                             (&args[..], None)
                         };
                         let value = handler(world, head)?;
-                        self.outputs.push(Output {
-                            tick,
-                            action: name.to_owned(),
-                            path,
-                            payload: Payload::Json(value),
-                        });
+                        self.emit(
+                            step.at,
+                            Output {
+                                tick,
+                                action: name.to_owned(),
+                                path,
+                                payload: Payload::Json(value),
+                            },
+                        );
                         Ok(())
                     }
                 }

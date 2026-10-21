@@ -67,8 +67,11 @@ result.title = desc!.name;
 
 // Every process of the playtest: the script, its `runs` and its `then` steps.
 // The host's clock is pinned (PlaytestDesc.clock), so og.platform.now is
-// reproducible; `store: "keep"` shares one local store file between them.
-const store = desc!.store === "keep" ? join(out, "platform.json") : undefined;
+// reproducible; `store: "keep"` shares one local store file between them,
+// kept under a dot name, which no step's output may take (an output named
+// `platform.json` once replaced it: hollowbell FINDINGS #18).
+const store = desc!.store === "keep" ? join(out, ".store", "platform.json") : undefined;
+if (store) mkdirSync(dirname(store), { recursive: true });
 const command = (commands: string, dir: string, clock: number) => {
   const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", commands, "--out", dir, "--json", "--clock", String(clock)];
   if (root) c.push("--root", root);
