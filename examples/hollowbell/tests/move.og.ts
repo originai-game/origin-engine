@@ -3,7 +3,7 @@
 // jumps to Tuning.jumpHeight at Tuning.timeToApex (og-feel §12's check),
 // with a stretch on take-off and a squash, dust and a thud on landing; the
 // root climb's one-way planks are passed from below and stood on, and Down
-// drops back through one; the lift carries Wren over the pit.
+// drops back through one; the lift, moving by its velocity, carries Wren over the pit.
 import { playtest } from "@origingame/engine/playtest";
 import { game, hold, position, press, script, value } from "./lib.ts";
 
@@ -51,7 +51,9 @@ export default playtest({
     const first = value<{ moveX: number; velocity: [number, number, number] }>(run, "first.json");
     t.ok(first.moveX === 1 && first.velocity[0] > 0, `the press is answered on its tick: moveX ${first.moveX}, ${first.velocity[0].toFixed(2)} m/s`);
     const ran = game(run, "ran.json");
-    t.ok(ran.heroX - rest.heroX > 0.5, `half a second of Right ran ${(ran.heroX - rest.heroX).toFixed(2)} m`);
+    // At Tuning.maxSpeed tick after tick once accelerated (70 m/s²): 0.5 × 6.5 less 6.5² / 140 for
+    // the start, 2.95 m (FINDINGS.md #16, fixed: the run stuttered and covered about two thirds of it).
+    t.near(ran.heroX - rest.heroX, 0.5 * 6.5 - (6.5 * 6.5) / 140, 0.15, `half a second of Right ran ${(ran.heroX - rest.heroX).toFixed(2)} m`);
     t.ok(ran.steps >= 2, `the run clip's step events were heard (${ran.steps})`);
     const y0 = position(run, "before.json")[1];
     const stretch = value<{ scale: [number, number, number] }>(run, "stretch.json").scale;
@@ -71,7 +73,8 @@ export default playtest({
     t.ok(dropped.heroY < p3.heroY - 1, `Down dropped back through the plank (y ${dropped.heroY.toFixed(2)})`);
     const l0 = position(run, "lift0.json");
     const l1 = position(run, "lift1.json");
-    t.ok(Math.abs(l1[0] - l0[0]) > 1.5 && Math.abs(l1[1] - 5) < 0.1, `the lift carried Wren ${(l1[0] - l0[0]).toFixed(2)} m along at its height`);
+    // The lift moves by its own og.Velocity, 2 m/s (FINDINGS.md #13, fixed), and carries Wren a second's worth.
+    t.ok(Math.abs(Math.abs(l1[0] - l0[0]) - 2) < 0.1 && Math.abs(l1[1] - 5) < 0.1, `the lift carried Wren ${(l1[0] - l0[0]).toFixed(2)} m along at its height`);
     t.equal(game(run, "end.json").hurts, 0, "no harm done");
   },
 });

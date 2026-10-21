@@ -138,13 +138,11 @@ export const Lanterns = defineSystem(
 );
 
 /**
- * The lift rides to and fro over the pit. og-game §13 says a kinematic body
- * moves by its og.Velocity; it does not (BODY_KINEMATIC: "moved by game code
- * through its Transform"), so the lift is moved here by its velocity, which it
- * keeps so the controller standing on it is carried (FINDINGS.md #13).
+ * The lift rides to and fro over the pit: a kinematic body moves by its og.Velocity (og-game §13),
+ * so this only turns the velocity round at the ends, and the controller standing on it is carried
+ * (FINDINGS.md #13, fixed: the lift no longer moves its Transform by hand).
  */
-export const Lifts = defineSystem("Lifts", { reads: [Game], writes: [Lift, og.Transform, og.Velocity] }, (q, time) => {
-  const dt = time.scaledDt;
+export const Lifts = defineSystem("Lifts", { reads: [Game, og.Transform], writes: [Lift, og.Velocity] }, (q) => {
   for (const a of q.archetypes()) {
     const lift = a.column(Lift);
     const tr = a.column(og.Transform);
@@ -155,7 +153,6 @@ export const Lifts = defineSystem("Lifts", { reads: [Game], writes: [Lift, og.Tr
       else if (x <= lift.x0[i]!) v.linear[i * 3] = lift.speed[i]!;
       else if (v.linear[i * 3] === 0) v.linear[i * 3] = lift.speed[i]!;
       v.linear[i * 3 + 1] = 0;
-      tr.position[i * 3] = x + v.linear[i * 3]! * dt;
     }
   }
 });

@@ -19,7 +19,7 @@ import { Enemies, touchHero } from "./enemies.ts";
 import { Control } from "./hero.ts";
 import { Areas, Backdrop, Bells, Effects, Flickers, Hazards, Lanterns, Lifts, MapShade, Moles, Pickups, Pools, Stones } from "./props.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { continueRun, LANGUAGES, newRun, setLanguage, setName, toTitle, Ui, WARP_LIFT } from "./ui.ts";
+import { continueRun, LANGUAGES, newRun, setLanguage, setName, toTitle, Ui } from "./ui.ts";
 import { buildHollow, loadArt, must } from "./world.ts";
 
 function start(world: World): void {
@@ -76,7 +76,7 @@ function warp(world: World, args: readonly string[]): void {
   }
   g.warp = true;
   g.warpX = x;
-  g.warpY = y + WARP_LIFT;
+  g.warpY = y;
 }
 
 /** `give:<chimes|glimmers|wick|cloak>[:<n>]`: progress at once (chimes:<n> takes the first n). */
