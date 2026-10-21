@@ -69,7 +69,7 @@ module physics {
 | [`CHARACTER_AIR_JUMPED`](#const-CHARACTER_AIR_JUMPED) | constant | `CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps). |
 | [`CHARACTER_LEFT_GROUND`](#const-CHARACTER_LEFT_GROUND) | constant | `CharacterEvent.kind`: left the ground without jumping (ran off an edge). |
 | [`CHARACTER_BUMPED`](#const-CHARACTER_BUMPED) | constant | `CharacterEvent.kind`: hit a ceiling while rising. |
-| [`og.CharacterEvent`](#record-CharacterEvent) | event | Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick. |
+| [`og.CharacterEvent`](#record-CharacterEvent) | event | Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1 (og-feel §12 has the same-tick alternative). |
 | [`DRIVE_REAR`](#const-DRIVE_REAR) | constant | `Vehicle.drive`: the rear wheels drive. |
 | [`DRIVE_FRONT`](#const-DRIVE_FRONT) | constant | `Vehicle.drive`: the front wheels drive. |
 | [`DRIVE_ALL`](#const-DRIVE_ALL) | constant | `Vehicle.drive`: every wheel drives. |
@@ -1528,7 +1528,7 @@ component PlatformerController {
 
 ### `og.CharacterEvent` (event)
 
-Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick.
+Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1 (og-feel §12 has the same-tick alternative).
 
 Token `og.CharacterEvent`, registered under the schema name `og.CharacterEvent`; its value type is `CharacterEvent`.
 
@@ -1540,7 +1540,7 @@ Token `og.CharacterEvent`, registered under the schema name `og.CharacterEvent`;
 
 ```ogt
 event CharacterEvent {
-  doc "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick."
+  doc "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1 (og-feel §12 has the same-tick alternative)."
   field entity Entity "The character."
   field kind u32 "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6." {
     min 0

@@ -15391,7 +15391,7 @@
     "CharacterEvent": {
       "x-og-kind": "event",
       "x-og-module": "physics",
-      "description": "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick.",
+      "description": "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1 (og-feel §12 has the same-tick alternative).",
       "type": "object",
       "properties": {
         "entity": {

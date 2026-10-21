@@ -382,7 +382,8 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   sprites only.
 - **Sprite sheets** are `.ogt` files of `type flipbook` next to the PNG
   (grid or named frames, or an Aseprite / TexturePacker JSON `atlas`; clips
-  with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`).
+  with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`;
+  every line is the grammar at the end of this section).
   `og.load.flipbook(world, "sprites/hero.ogt")` answers the sheet and its
   clips; `og.Flipbook { sheet, clip: og.anim.clip(info, "walk") }` on the
   sprite's entity plays it, and `og.FlipbookEvent` reports the frames named
@@ -443,6 +444,55 @@ pickups with floating text, a door to a second room the camera scrolls to),
 this; `templates/archetypes/roguelike` carves a tilemap at run time from
 og.Rng and keeps its fog of war on a layer, and
 `templates/archetypes/tower-defense` writes placements to a map's layer.
+
+### Flipbooks: the grammar
+
+A **flipbook** is an `.ogt` of `type flipbook` beside its PNG (give the
+PNG `texture { kind pixel }` import settings for pixel art). Its frames
+are the grid's (row-major from the top left, named `0`, `1`, ... by
+their index), then the `frame` lines', then an atlas's; its clips are
+numbered in file order from 0, and that index is what
+`og.anim.clip(info, "walk")` answers and what `og.Flipbook.clip` holds,
+so a system that compares `og.Flipbook.clip` with a constant relies on
+that order (look the indices up with `og.anim.clip` in `start` instead).
+Every line, with its default:
+
+```text
+type flipbook
+version 1
+---
+texture "hero.png"        # the sheet (required): beside the .ogt when that file exists, else an asset id
+size 256 80               # the texture in pixels: the cook fills it in from the PNG
+filter nearest            # nearest (default, pixel art) | linear
+array false               # true: the frames become the layers of a texture array, one draw for every sprite (one size each)
+pivot 0.5 0               # the point of each frame at the entity's position, from its bottom left (default 0.5 0.5): 0.5 0 stands on the feet
+margin 0                  # grid only: pixels round the grid (default 0)
+spacing 2                 # grid only: pixels between cells (default 0)
+grid 32 40 8 2            # <cell width px> <cell height px> [<columns> <rows>]: frames 0.., row-major
+frame slash 0 80 48 40 0.25 0   # a named frame: <name> x y w h [pivot x y], x y from the texture's top left
+atlas "hero.json"         # an Aseprite or TexturePacker JSON: its frames (and Aseprite's tags as clips)
+clip idle {               # clip 0
+  frames 14 15            # frame indices or names, in order (required)
+  fps 2                   # frames a second (default 12) ...
+}
+clip run {                # clip 1
+  frames 0 1 2 3 4 5 6 7
+  durations 0.07 0.07 0.1 0.07 0.07 0.07 0.1 0.07   # ... or seconds per frame, one per frame
+  mode loop               # loop (default) | pingPong (or pingpong) | once (holds the last frame, sets og.Flipbook.finished)
+  event 2 "step"          # entering clip frame 2 sends og.FlipbookEvent "step" (at most 63 bytes)
+  event 6 "step"
+}
+```
+
+An **atlas** names a JSON exported beside the PNG: Aseprite's (Export
+Sprite Sheet, JSON hash or array: frames in the natural order of their
+names with their own durations, and each `frameTags` entry a clip, its
+direction `forward`, `reverse` or `pingpong`) or TexturePacker's (JSON
+hash or array, its pivots taken; rotated frames are refused). The tags'
+clips come first, in the atlas's order, then the sheet's own `clip`
+blocks; a clip the sheet declares wins over a tag of the same name (to
+give it `event` lines or another `mode`). `templates/archetypes/runner`'s
+`assets/sprites/courier.ogt` is a grid sheet with five clips.
 
 ### Tilesets, maps and Tiled: the grammar
 
