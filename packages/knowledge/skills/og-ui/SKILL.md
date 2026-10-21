@@ -54,7 +54,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 
 | The game needs | Call | It answers |
 |---|---|---|
-| A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer })` | `selected`: the item id |
+| A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer, instant })` (`instant` while it is the screen the game opens on: §6) | `selected`: the item id |
 | Pause | `og.ui.pauseMenu(id, { open, items })` (Resume, Settings, Quit by default) | `selected`; Back answers `resume` |
 | Settings | `og.ui.settingsScreen(id, { open, settings, languages, onChange, onSave })` | the new `GameSettings`, `changed`, `closed` |
 | A platformer HUD | `og.ui.platformerHud(id, { lives, coins, score, level, timeLeft, touch })` | `paused`, `moveX`, `action: "jump"` |
