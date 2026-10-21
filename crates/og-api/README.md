@@ -303,7 +303,8 @@ view tables. Both hosts depend on it; `og-cli` does not.
   rows (their flipbook frame, flips, nine-slice pieces, y sort keys, blob
   shadows and afterimages), floating texts and tile layers (chunks cached
   per layer and rebuilt when a chunk's version moves), gives flashing
-  og.Mesh entities a flash copy of their material (16 levels), and applies
+  og.Mesh entities their flash in their instance records (as og.Model's:
+  one draw with their unflashed twins, the amount continuous), and applies
   trauma shake, punch, kick and og.CameraZone clamping to the frame only.
   Presets (`og.tween.squash`, `flash`) hold their impact for the tick they
   start in. Tested through TypeScript in `packages/engine/tests/feel.test.ts`.

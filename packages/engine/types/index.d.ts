@@ -3124,14 +3124,14 @@ export interface Mesh {
    */
   visible: boolean;
   /**
-   * A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels).
+   * A hit flash on this mesh only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Carried with its transform to the lit shaders, as og.Model's, so a flashing mesh is one draw with the other meshes of its geometry and material, and the amount is continuous.
    *
    * @range 0..1
    * @tunable
    */
   flash: number;
   /**
-   * The flash's linear colour.
+   * The flash's linear colour, 0 to 1 a channel (8 bits a channel).
    *
    * @default { r: 1, g: 1, b: 1 }
    */

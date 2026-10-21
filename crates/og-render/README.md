@@ -668,8 +668,12 @@ fragment as a flat varying, and are applied by `pbr_fs.wgsl`'s
 without a look shades bit for bit as before. One (mesh, material) is one
 draw whatever its instances show. The runtime fills it from `og.Model`'s
 `tint`, `flash` and `flashColor` (`og.tween.flash` takes an og.Model
-entity: kestrel-stair #11); og.Mesh keeps its 16-level flash copies of its
-material. The og-tests scene `model-flash` (three instances of one glTF
+entity: kestrel-stair #11), and og.Mesh's `flash` and `flashColor` the
+same way since row 85 (it had drawn a flashing mesh through a copy of its
+material at one of 16 flash levels: a draw and a material per level, each
+copy kept as its material was when made, so a material updated during the
+flash, a dissolve, flashed stale; the amount is continuous now, the colour
+8 bits a channel). The og-tests scene `model-flash` (three instances of one glTF
 model, one flashing white and one tinted, and two skinned cylinders of one
 material, one flashing red) holds it on metal.
 
