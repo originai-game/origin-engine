@@ -44,6 +44,11 @@ use og_runtime::{ColumnPtr, Dispatch, Fetch, Hooks, RenderBackend};
 use std::cell::{Cell, RefCell};
 use std::ptr;
 
+/// The engine's heap, counted for the probe's `memory` (og-core's `alloc`).
+#[global_allocator]
+static HEAP: og_runtime::CountingAlloc<std::alloc::System> =
+    og_runtime::CountingAlloc(std::alloc::System);
+
 /// The native host: a unit type, since the engines live in the runtime's
 /// thread-local tables.
 pub struct NodeHost;
@@ -510,9 +515,15 @@ impl RenderBackend for OffscreenBackend {
     }
 }
 
-/// Give an engine a headless renderer of `width`×`height` (Metal or Vulkan,
-/// lavapipe in executors), created with the game's RenderOptions. A Result
-/// of the tier.
+/// Give an engine a headless renderer of `width`×`height` (Metal or Vulkan),
+/// created with the game's RenderOptions. A Result of the tier.
+///
+/// Without a renderer (no usable adapter, as in the platform's `engine` and
+/// `probe` sandboxes, or `OG_RENDERER=none`) the answer is a refusal naming
+/// why, and the engine runs on without one: its play surface is still
+/// `width`×`height` (the viewport a renderer of that size would give, so
+/// the UI lays out and the simulation runs exactly as with one), a
+/// `screenshot` step notes its frame unchecked, and `capture` answers null.
 #[napi(js_name = "og_node_attach_offscreen")]
 pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) -> String {
     let _env = EnvScope::enter(&env);
@@ -558,7 +569,16 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         });
     match answer {
         Ok(tier) => format!(r#"{{"ok":true,"value":"{tier}"}}"#),
-        Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e)),
+        Err(e) => {
+            // The surface a renderer would have sized: rendering never
+            // feeds back into simulation, so neither may its absence.
+            let surface = serde_json::json!({ "width": width.max(1), "height": height.max(1) });
+            let e = match og_runtime::set_viewport(engine, surface) {
+                Ok(()) => e,
+                Err(v) => format!("{e}; and the play surface: {v}"),
+            };
+            format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e))
+        }
     }
 }
 

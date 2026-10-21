@@ -214,7 +214,7 @@ struct Slot {
 /// surface, kept across frames.
 pub(crate) struct WaterRenderer {
     layout: wgpu::BindGroupLayout,
-    pipeline: wgpu::RenderPipeline,
+    pub(crate) pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     flat: wgpu::TextureView,
     slots: Vec<Slot>,
@@ -227,6 +227,11 @@ pub(crate) struct WaterDraw {
 }
 
 impl WaterRenderer {
+    /// Makes its pipeline if no frame used it yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        crate::deferred::warm_one(&[&self.pipeline])
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
@@ -269,21 +274,18 @@ impl WaterRenderer {
                 tex(5, true),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("water"),
-            source: wgpu::ShaderSource::Wgsl(water_source(frame_wgsl, lighting_wgsl).into()),
-        });
+        let module =
+            crate::deferred::module(device, "water", water_source(frame_wgsl, lighting_wgsl));
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water"),
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = crate::hdr_pipeline(
-            device,
+        let pipeline = crate::deferred_hdr(device, &pl, module, move |layout, module| {
             crate::HdrPipeline {
                 label: "water",
-                layout: &pl,
-                module: &module,
+                layout,
+                module,
                 vs: "vs",
                 fs: "fs",
                 buffers: &[],
@@ -292,8 +294,8 @@ impl WaterRenderer {
                 depth_compare: wgpu::CompareFunction::Less,
                 blend: None,
                 samples,
-            },
-        );
+            }
+        });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("water"),
             mag_filter: wgpu::FilterMode::Linear,

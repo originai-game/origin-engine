@@ -2597,7 +2597,7 @@ export type Side = "front" | "back" | "double";
  * - `"vulkan"`: Native Vulkan on a GPU.
  * - `"vulkan-cpu"`: Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.
  * - `"metal"`: Native Metal.
- * - `"none"`: No renderer: frames are not produced and capture refuses.
+ * - `"none"`: No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null.
  */
 export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "vulkan-cpu" | "metal" | "none";
 
@@ -3118,7 +3118,9 @@ export interface Mesh {
    */
   castShadow: boolean;
   /**
-   * Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows.
+   * Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley.
+   *
+   * @default true
    */
   receiveShadow: boolean;
   /**
@@ -5571,15 +5573,15 @@ export interface GltfDesc {
    */
   readonly scene?: number;
   /**
-   * Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows.
+   * Whether the models instantiated from it cast shadows: world.instantiate of the handle and a scene's `model` line give their og.Model this castShadow. On when omitted, so a model loaded without a desc casts as it always has; false turns it off for the model (og.Model.castShadow turns it off for one instance). The flags belong to the asset: another og.load.gltf of the same path answers the same handle and sets them again, for the models instantiated after it.
    *
-   * @default false
+   * @default true
    */
   readonly castShadow?: boolean;
   /**
-   * Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows.
+   * Whether the models instantiated from it receive shadows (og.Model.receiveShadow, as castShadow): on when omitted; false lights them as if unshadowed by every light.
    *
-   * @default false
+   * @default true
    */
   readonly receiveShadow?: boolean;
 }
@@ -5704,6 +5706,18 @@ export interface Model {
    * @default { r: 1, g: 1, b: 1 }
    */
   flashColor: Color;
+  /**
+   * Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false).
+   *
+   * @default true
+   */
+  castShadow: boolean;
+  /**
+   * Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table.
+   *
+   * @default true
+   */
+  receiveShadow: boolean;
 }
 
 
@@ -16044,7 +16058,7 @@ export interface AlertDesc {
 
 /**
  * The actions the engine ships. Arguments follow the action, separated by `:`.
- * - `"screenshot"`: `screenshot[:path][:full|:N]`: capture the next frame.
+ * - `"screenshot"`: `screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked.
  * - `"listen"`: `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV.
  * - `"touch_move_to"`: `touch_move_to:<ui id>`: move the pointer to a UI element.
  * - `"touch_move"`: `touch_move:x,y`: move the pointer to CSS pixel coordinates.
@@ -16362,6 +16376,84 @@ export interface Heard {
   readonly rms: number;
   /** A 16-bit stereo WAV, base64. */
   readonly wav: string;
+}
+
+/** The engine's allocator, counted (both hosts install a counting global allocator). */
+export interface ProbeHeap {
+  /**
+   * Bytes allocated and not freed.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly live: number;
+  /**
+   * The most bytes live at once since load.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+  /** Allocations made since load. */
+  readonly allocations: number;
+}
+
+/** The world's size. */
+export interface ProbeWorldMemory {
+  /** Entities alive. */
+  readonly entities: number;
+}
+
+/** The streaming memory budget (og.stream.budget): what the admitted groups' assets take. */
+export interface ProbeStreamMemory {
+  /**
+   * The budget.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly budget: number;
+  /**
+   * What the admitted groups take now.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly used: number;
+  /**
+   * The most they took at once.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+}
+
+/**
+ * What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md).
+ */
+export interface ProbeMemory {
+  /** `web` or `native`. */
+  readonly host: string;
+  /**
+   * The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly linear: number | null;
+  /**
+   * The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly resident: number | null;
+  /** The engine's allocator; null where the host counts nothing. */
+  readonly heap: ProbeHeap | null;
+  /** The world. */
+  readonly world: ProbeWorldMemory;
+  /** The streaming budget. */
+  readonly stream: ProbeStreamMemory | null;
+  /**
+   * The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly audio: number | null;
 }
 
 /**
@@ -16725,7 +16817,7 @@ export interface EngineProbe extends RuntimeProbe {
   /** Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build. */
   hello(): Hello;
   /**
-   * The frame of the current tick, rendered offscreen and read back as a PNG.
+   * The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
    * Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
    * On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
    *
@@ -16777,6 +16869,12 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null without audio, or before anything was rendered.
    */
   listen(seconds?: number): Heard | null;
+  /**
+   * What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts.
+   *
+   * @returns Null from a host that gives no figures.
+   */
+  memory(): ProbeMemory | null;
 }
 
 // ── terrain ─────────────────────────────────────────────────────
@@ -17727,7 +17825,7 @@ export declare namespace og {
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */

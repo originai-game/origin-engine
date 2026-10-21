@@ -301,6 +301,7 @@ impl Probe {
                 };
                 or_null(self.listen(world, seconds))
             }
+            "memory" => or_null(self.memory(world)),
             _ => unreachable!("served_members lists only implemented members"),
         })
     }

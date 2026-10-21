@@ -90,7 +90,9 @@ dates, no absolute paths, files in sorted order
 - `stream` is `null` for a bundle without streaming groups. Otherwise it is
   `{ "first": { "files", "bytes" }, "groups": [{ "name", "file", "bytes",
   "sha256", "priority", "memory", "assets" }] }`. `first` is what the boot
-  fetches and the service worker precaches (the cooked manifest included).
+  fetches and the service worker precaches (the cooked manifest included;
+  a sound cooked in chunks is its first chunk there, its other chunks are
+  fetched ahead of its playheads and cached then).
   Each group is its pack under `cooked/stream/`, with the memory its assets
   take once loaded (what `og.stream`'s budget counts) and its asset ids.
   The packs are in `files` too.
@@ -105,8 +107,14 @@ the pack is handed to the engine, the Worker transcodes its Basis textures
 to the encodings the renderer takes, as for the first group
 (`og_web_pack_ktx2`), so the whole group goes in place at once. Until then
 its models draw their proxies, its textures are 1x1 placeholders and its
-sounds play as silence of their own length. The boot's progress (`expect.cooked`) counts
-only the first group. `packages/engine/tests/asset-stream.test.ts` checks
+sounds play as silence of their own length. A sound cooked in chunks is
+fetched by neither: the boot fetches its first chunk only (the sound's own
+output) and the engine asks for each other chunk ahead of its playheads;
+in a streaming group its first chunk comes in the pack, and no chunk of it
+is asked for before the group is resident or after it unloads (the music
+of the three dogfood games, all in the first group, cost their boots one
+chunk each, 63 to 123 kB brotli: examples/WEB-FINDINGS.md #2). The boot's
+progress (`expect.cooked`) counts only the first group. `packages/engine/tests/asset-stream.test.ts` checks
 the split, and `packages/engine/tests/web/stream.ts` plays it in Chrome: no
 pack at boot, each pack fetched once when its group is wanted, the
 textures transcoded, and the visited groups loading offline.
@@ -398,7 +406,21 @@ earlier build; a build that fails after replacing it removes what it wrote.
   comes first, a fast load skips straight to the game, and
   `prefers-reduced-motion` skips genesis.
 - **Play gate**: the first screen is drawn behind it (the shell takes the
-  game's first tick, which builds its UI, then holds the clock). The first
+  game's first tick, which builds its UI, then holds the clock). The
+  platform's answers to what that tick asked are applied behind the gate
+  too (`src/web/settle.ts`): og.platform's answers apply at a tick's start,
+  so the Worker waits for the page's answers to the first tick's calls and
+  takes one tick to apply them, then again for the calls that tick made (a
+  slot's parts after its manifest, then the slot's own answer), until a
+  tick leaves nothing to apply, at most 8 ticks (`SETTLE_TICKS`). It waits
+  up to 300 ms (`SETTLE_FIRST_MS`) before the first frame, so a store that
+  answers quickly is in the first frame; answers later than that are
+  applied and drawn as they land, up to 5 s after the first tick
+  (`SETTLE_MS`). A returning player's title is in the saved language with
+  Continue on behind the gate (`tests/settle.test.ts`; the dogfood
+  harness's `reload.translatedBehindGate`). These are the game's own ticks,
+  its answers applied as every answer is, host input a replay repeats; the
+  gate's tap ends the settling. The first
   tap, click, Enter or Space unlocks audio (one AudioContext), asks for
   fullscreen when `fullscreen gesture` and the page is not framed (and locks
   `orientation`), takes a screen wake lock and starts the clock. `gate none`
@@ -464,7 +486,21 @@ earlier build; a build that fails after replacing it removes what it wrote.
   the install hint) are Chinese when `navigator.language` is `zh*`, else
   English.
 - **Marks** for tests and telemetry: `performance` marks `og:ready`,
-  `og:first-frame` and `og:start`.
+  `og:first-frame` and `og:start`; where the Worker's boot went is
+  `__runtime_probe__.boot` (src/web/worker.ts `BootPhases`: `wasm`,
+  `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`,
+  ms each), sent with the first frame.
+- **Pipelines behind the gate**: the renderer makes a pipeline when a pass
+  first draws with it (og-render's README §Pipelines made on first use),
+  so the first frame compiles only what it draws: on the WebGL2 fallback,
+  where every program compiles synchronously, the renderer's creation went
+  from about 500 ms to 130 ms and the dogfood games' first frame from 1.1
+  to 1.4 s to 0.7 s. After the first frame the Worker makes the rest, one
+  a task in idle time, until none is left or the gate's tap starts play
+  (`og_web_warm`; the Worker's console says how many and how long:
+  Lantern Vale's 29 on WebGL2 in about 0.7 s, its 35 on WebGPU in 0.17 s);
+  a pass the warm-up did not reach is made by the frame that first draws
+  with it.
 - **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
   has no adapter), `replay-seed=<u32>`, `autoplay=0` (a harness drives the
   clock through the probe: no gate, no first tick, no service worker).
@@ -524,7 +560,8 @@ Who the shell speaks protocol 2 to, in order:
 Player through the same channel. The engine Worker hands each tick's calls
 to the page (`{ type: "platform", calls }`); the page answers them
 (`platform-answer`) and the answers are applied at the start of the next
-tick. A framed page (or one with the Stage overlay in its own document)
+tick (behind the play gate, the Worker takes those ticks itself: §The
+shell). A framed page (or one with the Stage overlay in its own document)
 holds its first calls (the tick behind the gate) until the Player's
 `hello`, or 1.5 s, so they never reach the wrong store. The
 messages the shell now sends and hears:
@@ -694,6 +731,18 @@ which lives in the Worker and answers asynchronously:
   with a base64 16-bit stereo WAV; the command channel's
   `listen[:path][:seconds]` writes the same as a `wav` output; before the
   page's audio is attached it answers `null`.
+- `memory` (dev builds, both hosts; IDL `EngineProbe.memory`): what the
+  engine holds, in one shape on both hosts (`ProbeMemory`, bytes): `host`,
+  `linear` (the wasm linear memory, which the browser reserved for the
+  engine and never takes back; null natively), `resident` (the process's,
+  natively; null on the web), `heap` (`live`, `peak`, `allocations`: the
+  counting global allocator both hosts install, og-core's `alloc`),
+  `world.entities`, `stream` (the streaming budget, `used`, `peak`) and
+  `audio` (the sound bank's samples). Every build's page answers the same
+  from the engine Worker (`__runtime_probe__.memory()`, the Worker's
+  `memory` call, `og_web_memory`), a publish page included, whose probe
+  has no `memory`; the dogfood harness's table reads it
+  (`tests/web/dogfood.ts`, `memoryProbe`, `memoryPlayed`, `memoryEnd`).
 
 Proven in headless Chrome 150 by `bun run test:browser` in
 `packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:
@@ -708,9 +757,16 @@ icons) is.
 - `og build [project] [--publish] [--out DIR] [--json]` cooks the project,
   checks project.ogt (above) and writes the directory into `--out`, else
   `publish.out`, else `<project>/dist`; it prints each file's bytes and
-  brotli `-q 11` size (gzip `-9` without the brotli CLI), the probe build
-  and members read from the copied wasm, and the manifest's version;
-  `--json` prints one JSON line instead. The web host comes from
+  brotli `-q 11` size (gzip `-9` without the brotli CLI), then what a
+  player downloads (`downloadsOf` in `src/node/web-build.ts`): the boot of
+  the lanes page and of the single-threaded page (one engine module each,
+  the shell, the Basis transcoder and the cooked first group without the
+  chunks of a chunked sound after its first; the WebGPU and WebGL2 pages
+  fetch the same files) and what comes later (the streaming packs, the
+  sound chunks, the audio worklet on the first gesture, the service worker
+  and icons); the table's `total` is every file and no download. Then the
+  probe build and members read from the copied wasm, and the manifest's
+  version; `--json` prints one JSON line instead (with `downloads`). The web host comes from
   `packages/engine/dist/web` or `dist/web-publish`; a checkout without them
   is told to run `bun run build` in `packages/engine`.
 - `og run` (the native host under bun) supervises the game process: when
@@ -754,10 +810,52 @@ icons) is.
   cores, memory, isolation) and the headers served. A missing Chrome, adb
   or safaridriver is told in one line before the build; the phone paths'
   prerequisites are in tests/evidence/P3/device/NOTES.md.
+- The publish build has no command channel, so its scripted check runs
+  through what it keeps: `bun tests/web/published.ts --project <dir>
+  [--webgl] [--no-build] [--no-isolation]` in `packages/engine` publishes
+  the project (`og build --publish`), serves it as the platform opens a
+  release (`tests/web/play-origin.ts`: the top-level page with
+  `window.__OG_GAME`, a stand-in play origin answering Player protocol 2
+  over HTTP with a store, the build's `_headers`), and plays a script of
+  the playtests' own syntax in headless Chrome: input steps (`key_down`,
+  `key_up`, `type`, `touch_move_to` and `move_to_text` found in the
+  accessibility mirror, `touch_move`, `touch_start`, `touch_end`,
+  `scroll`) as real input events on the page, `screenshot` as the probe's
+  `capture` compared with the project's references (its tier's, else
+  metal's) under og-tests' rule, `state` and `mirror` as the probe's
+  `state()` and the mirror's nodes and focus for the plan's checks, and
+  relaunches (a playtest's `then`) as reloads under the service worker; a
+  command-channel step is refused, never skipped. The engine Worker's
+  display clock is the harness's (its `requestAnimationFrame` and
+  `performance.now`, replaced through the DevTools protocol before its
+  first line runs: one frame of one tick when the harness asks, held while
+  a capture's readback lands), so every step lands on its tick and every
+  frame is the tick it names; nothing of the build changes. It checks that
+  the game boots, its title is in the mirror behind the gate, a real click
+  opens the gate, the frames match, the plan's checks over `state` and
+  `mirror` hold, and the page, its Workers and Chrome (with its
+  accessibility tree on, as under a screen reader) log no warning or
+  error. Its plans: `examples/hollowbell` (the title at tick 60 against
+  metal's `title.png`, New game pressed, a name typed into the focused
+  field, Begin, ArrowRight held) and `templates/ui-kit` (the gallery
+  against `kit-desktop-gallery.png`, Settings and Escape, then Mute and
+  简体中文 saved and a reload that comes back in Chinese); `--script
+  "<steps>" --title <node> [--then "<steps>"] [--references <dir>
+  --prefix <p>]` runs another, and `--playtest <file>` a playtest's own
+  commands (its `then` as reloads; dump and game-command steps are
+  refused, and its `check` is not run: only its frames are judged). Run
+  by hand, one Chrome at a time (examples/WEB-FINDINGS.md #6); no gate
+  lane runs it.
 - `og doctor` (no arguments) checks what the author's loop needs: bun
   (node is optional when bun is present), the engine package, its native
-  addon, both web host wasm files, and a 64×64 frame rendered headless
-  (Metal, Vulkan or lavapipe: the executor path that needs no sandbox).
+  addon, both web host wasm files, and reports whether a 64×64 frame
+  renders headless (Metal or Vulkan). No renderer is reported as `none`,
+  not as a problem: the platform's `engine` and `probe` sandboxes carry
+  none, and there `og run`, `og test` and the probe run the same game with
+  each screenshot a frame unchecked (docs/ci.md §Switches in the
+  environment); frames are verified on the author's machine, in the
+  browser-check sandbox (the published page above) or on an executor with
+  a GPU.
   Inside the engine repository it also compares rustc, cargo and
   wasm-bindgen with `rust-toolchain.toml` and `Cargo.lock`; outside, those
   lines say `skipped`. Each problem prints one line naming its fix, and the

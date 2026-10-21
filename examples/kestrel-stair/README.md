@@ -100,6 +100,22 @@ about 4.8 ms median and 6.0–7.0 ms p95, render about 2.2 ms, frame p95
 8.5–9.7 ms, with the systems writing the Game resource through its live
 handle since FINDINGS #19 was fixed).
 
+**Frame time** (wave 12, `tests/evidence/P4/perf-games/kestrel-stair.md`,
+on a machine at a load average of 7 to 16): the cloth's collision with
+the level's mesh was most of og.physics, which fell from 0.98 to 0.49 ms
+a tick on the release addon; the 600-tick play run's step is 1.28 ms
+median and 2.31 ms p95 (2.98 / 4.00 dev), render 1.50 / 4.40 unpaced and
+0.97 / 1.26 paced at 60 Hz; og polish scores frame time 100 on both
+addons. On a heavily loaded machine (20 to 25) the five cloths wait for
+lanes threads the OS does not run (step p95 17.7 ms release): there
+`OG_LANES=off` measures the game's own cost (4.45). What is the game's:
+the `Ui` system (0.25 ms release, 0.50 dev), `Foes` and `Hero`, whose
+per-entity `world.get` and `world.set` of Transform, CharacterController,
+AnimationPlayer and Foe are each a JSON round trip (9 % of a dev frame).
+Reading the foes as one query's columns each tick and setting only what
+changed is the og-game §14 advice; fewer cloth iterations on the far
+banners (10 now) would trim og.physics further.
+
 ## Commands (for scripts and agents)
 
 | Action | Does |

@@ -57,6 +57,8 @@ export default playtest({
     const resumed = game(run, "resumed.json");
     t.equal(resumed.paused, false, "Resume closed the pause menu");
     t.ok(resumed.time > held.time + 0.5, "and the clock runs again");
-    for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    t.frame(["pause.png", "settings-zh.png", "play-zh.png"], () => {
+      for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
+    });
   },
 });

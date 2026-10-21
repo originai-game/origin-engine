@@ -78,6 +78,11 @@ pub trait RenderBackend {
     fn restore_state(&mut self, state: u64) {
         let _ = state;
     }
+    /// og-render's `Renderer::warm`: make one pipeline no frame has used
+    /// yet, in the host's idle time; false when there is none left.
+    fn warm(&mut self) -> bool {
+        false
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.
@@ -446,6 +451,8 @@ struct MeshRow {
     layer: i32,
     /// `castShadow`: drawn into the shadow maps.
     cast: bool,
+    /// `receiveShadow`: darkened by the shadow maps.
+    receive: bool,
 }
 
 /// A handle field's index, as the JSON rows read it (`as_f64`, then the
@@ -471,6 +478,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
         );
         let l = field("materialLayer")?;
         let s = field("castShadow")?;
+        let r = field("receiveShadow")?;
         let q = QueryDesc {
             read: vec![layout.schema.clone()],
             ..QueryDesc::default()
@@ -486,6 +494,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
             );
             let l = a.read::<i32>(l).ok()?;
             let s = a.read::<og_core::reflect::Bool8>(s).ok()?;
+            let r = a.read::<og_core::reflect::Bool8>(r).ok()?;
             out.reserve(a.len());
             for (i, e) in a.entities().iter().enumerate() {
                 out.push(MeshRow {
@@ -497,6 +506,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                     flash_color: c[i],
                     layer: l[i],
                     cast: s[i].get(),
+                    receive: r[i].get(),
                 });
             }
         }
@@ -518,6 +528,7 @@ fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                 flash_color: color(&v["flashColor"], 1.0),
                 layer: v["materialLayer"].as_f64().unwrap_or(-1.0) as i32,
                 cast: on(&v, "castShadow", false),
+                receive: on(&v, "receiveShadow", true),
             }
         })
         .collect()
@@ -669,15 +680,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .map(|m| rows(world, m))
         .unwrap_or_default();
     // Each model's own tint and flash ride in its instances' records
-    // (kestrel-stair #11: a glTF's materials are shared by every instance).
-    let model_parts: Vec<(u64, u64, Parts, og_render::InstanceFx)> = model_rows
+    // (kestrel-stair #11: a glTF's materials are shared by every instance),
+    // with its shadow flags (on unless the model says otherwise).
+    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook)> = model_rows
         .into_iter()
         .filter_map(|(e, v)| {
             let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
-            let look = og_render::InstanceFx {
-                flash: f(&v, "flash", 0.0),
-                flash_color: color(&v["flashColor"], 1.0),
-                tint: color(&v["tint"], 1.0),
+            let look = super::fx::ModelLook {
+                fx: og_render::InstanceFx {
+                    flash: f(&v, "flash", 0.0),
+                    flash_color: color(&v["flashColor"], 1.0),
+                    tint: color(&v["tint"], 1.0),
+                },
+                cast: on(&v, "castShadow", true),
+                receive: on(&v, "receiveShadow", true),
             };
             models.get(&asset).map(|p| (e, asset, p.clone(), look))
         })
@@ -699,9 +715,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 material,
                 transform: m * local,
                 material_layer: None,
-                fx: look,
-                // A model casts (GltfDesc.castShadow is not applied yet).
-                cast_shadows: true,
+                fx: look.fx,
+                cast_shadows: look.cast,
+                receive_shadows: look.receive,
             });
             keys.push((e, k as u32));
         }
@@ -734,6 +750,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     ..og_render::InstanceFx::NONE
                 },
                 cast_shadows: r.cast,
+                receive_shadows: r.receive,
             });
             keys.push((e, 0));
         }

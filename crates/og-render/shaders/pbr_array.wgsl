@@ -8,8 +8,8 @@
 //
 // An instance of an array-map material carries its layer plus one beside
 // its transform in the instance stream (instances.rs `GpuTransform::layer`,
-// pbr.wgsl `InstanceFxIn` x; 0: the material's own layers), so positions
-// are the standard path's.
+// pbr.wgsl `InstanceFxIn` x, read by `look_layer`; 0: the material's own
+// layers), so positions are the standard path's.
 
 var<private> map_layer: i32;
 var<private> normal_layer: i32;
@@ -24,7 +24,7 @@ fn array_layers(instance_layer: u32) {
 
 // The instance's layer plus one (0: the material's).
 fn array_instance_layer(a: InstanceFxIn) -> u32 {
-  return u32(max(a.look.x, 0.0) + 0.5);
+  return u32(max(look_layer(a.look), 0.0) + 0.5);
 }
 
 @vertex

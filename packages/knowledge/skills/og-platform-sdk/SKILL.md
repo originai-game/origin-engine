@@ -92,13 +92,45 @@ trying.
 ## 3. Rules
 
 - Read saves on the first tick and show defaults until they answer;
-  never block the title on the platform.
+  never block the title on the platform. On the web the title behind the
+  play gate is not tick 1's defaults: the shell takes the first tick, then
+  one more tick each time the store answers what that tick asked (the
+  settings, a slot's manifest, then its parts), up to 8 ticks, before the
+  first frame while the answers come within 300 ms and drawn as they land
+  for 5 s after (docs/web-export.md §The shell). So apply an answer the
+  tick it arrives (the language, Continue's label): a title that waits for
+  a later tick, or a screen transition that only starts after the tap,
+  still shows its defaults behind the gate.
+- Settings are a pair: a game that calls `saveSettings` also calls
+  `loadSettings` on its first tick and, when it answers, applies every
+  field it saves, through the same code its settings screen uses. Ask
+  for the saved language with `og.i18n.setLocale` even when it matches
+  the default (the host's own locale may be another). Saving alone
+  passes every test that never relaunches, and every reload comes back
+  in the defaults. A `store: "keep"` playtest whose relaunch reads the
+  setting back proves it (§4; `templates/ui-kit/tests/settings-saved.og.ts`).
 - Save on meaningful moments (a new best, a level done, settings closed),
   not every tick: writes are rate limited.
 - Never store anything the game can recompute, and never a secret: the
   store belongs to the player, not to the game.
 - The engine exposes no identity (no player id, name or account): a game
   that needs a display name asks for it (§5).
+
+The settings read, as the UI kit does it (`followSettings` in
+`templates/ui-kit/src/main.ts`, called by its system every tick):
+
+```ts
+if (time.tick === 0) {
+  d.settingsRequest = og.platform.loadSettings(world);   // og.settings, answered later
+} else if (d.settingsRequest !== 0) {
+  const answer = og.platform.result(world, d.settingsRequest);
+  if (answer !== null) {
+    d.settingsRequest = 0;
+    const saved = answer.ok ? (answer.data as { value?: unknown } | null)?.value : null;
+    if (saved && typeof saved === "object") takeSettings(world, d, saved as Partial<GameSettings>, true);  // volumes, language, contrast, motion
+  }
+}
+```
 
 ## 4. Test it
 

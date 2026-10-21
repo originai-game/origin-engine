@@ -1160,7 +1160,23 @@ pub fn og_ui_frame_theme() -> String {
         let s = t.sizes(&Viewport::default());
         (t, s, String::new())
     });
-    theme_json(theme, sizes, &skin)
+    // The UI kit asks once a tick and the theme rarely changes: the last
+    // answer is kept with what it was made from.
+    type Made = (Theme, og_ui::Density, String, String);
+    thread_local!(static MADE: std::cell::RefCell<Option<Made>> = const { std::cell::RefCell::new(None) });
+    MADE.with(|last| {
+        let mut last = last.borrow_mut();
+        if let Some((t, d, k, text)) = last.as_ref()
+            && *t == theme
+            && *d == sizes
+            && *k == skin
+        {
+            return text.clone();
+        }
+        let text = theme_json(theme, sizes, &skin);
+        *last = Some((theme, sizes, skin, text.clone()));
+        text
+    })
 }
 
 fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {

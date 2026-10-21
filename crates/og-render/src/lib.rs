@@ -42,6 +42,7 @@ mod capture;
 mod clusters;
 mod compact;
 mod cull_gpu;
+mod deferred;
 mod effects;
 mod environment;
 mod fluid3d;
@@ -144,6 +145,7 @@ pub use weather::{
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
 
+use deferred::{AsModule, Deferred};
 use frame::{CASCADES, Cascade, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
@@ -578,6 +580,34 @@ impl RenderInfo {
     pub fn backend_tier(&self) -> String {
         tier_name(self.backend, self.device_type, &self.adapter)
     }
+}
+
+/// The environment switch that takes the renderer away: `OG_RENDERER=none`
+/// makes every [`Renderer::new`] and [`Renderer::with_surface`] answer
+/// [`RenderError::NoAdapter`], as on a machine with no usable adapter (the
+/// platform's `engine` and `probe` sandboxes, docs/design.md §5), so the
+/// no-renderer path is testable where a GPU is present (docs/ci.md
+/// §Switches). Any other value, or none, leaves adapters as they are. Read
+/// natively only; the web always has its canvas's adapter.
+pub const RENDERER_SWITCH: &str = "OG_RENDERER";
+
+/// Whether [`RENDERER_SWITCH`] is `none` in this process's environment.
+pub fn renderer_disabled() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        false
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::env::var(RENDERER_SWITCH).is_ok_and(|v| v.trim().eq_ignore_ascii_case("none"))
+    }
+}
+
+/// The error a disabled renderer answers, naming the switch.
+fn disabled_error() -> RenderError {
+    RenderError::NoAdapter(format!(
+        "{RENDERER_SWITCH}=none: this process runs without a renderer"
+    ))
 }
 
 /// Whether an adapter rasterizes on the CPU: wgpu reports a CPU device type,
@@ -1060,8 +1090,8 @@ struct Batch {
     /// Drawn with the array-map pipelines ([`GpuMaterial::array`]): its
     /// instances carry their layer in the transform.
     array: bool,
-    /// Drawn into the shadow maps ([`Instance::cast_shadows`]; skinned
-    /// batches always are).
+    /// Drawn into the shadow maps ([`Instance::cast_shadows`],
+    /// [`SkinnedInstance::cast_shadows`]).
     cast: bool,
 }
 
@@ -1281,9 +1311,9 @@ pub struct Renderer {
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,
-    sky_pipeline: wgpu::RenderPipeline,
+    sky_pipeline: Deferred<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
-    sky_look_pipeline: wgpu::RenderPipeline,
+    sky_look_pipeline: Deferred<wgpu::RenderPipeline>,
     water: water::WaterRenderer,
     fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
@@ -1291,16 +1321,16 @@ pub struct Renderer {
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
-    sprite_pipeline: wgpu::RenderPipeline,
-    sprite_additive_pipeline: wgpu::RenderPipeline,
+    sprite_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_additive_pipeline: Deferred<wgpu::RenderPipeline>,
     /// Alpha-blended sprites kept out of the tone curve, and the cover
     /// that sets the HDR alpha to 1 before the first of them
     /// ([`UNTONEMAPPED_BLEND`]).
-    sprite_untonemapped_pipeline: wgpu::RenderPipeline,
-    sprite_cover_pipeline: wgpu::RenderPipeline,
-    sprite_glow_pipeline: wgpu::RenderPipeline,
-    msdf_pipeline: wgpu::RenderPipeline,
-    ribbon_pipelines: [wgpu::RenderPipeline; 2],
+    sprite_untonemapped_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_cover_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
+    msdf_pipeline: Deferred<wgpu::RenderPipeline>,
+    ribbon_pipelines: [Deferred<wgpu::RenderPipeline>; 2],
     fx_layout: wgpu::BindGroupLayout,
     fx_buffer: wgpu::Buffer,
     sprite_fx_layout: wgpu::BindGroupLayout,
@@ -1537,6 +1567,25 @@ fn still_camera(prev: &Mat4, cur: &Mat4) -> bool {
 pub(crate) fn hdr_pipeline(device: &wgpu::Device, p: HdrPipeline) -> wgpu::RenderPipeline {
     hdr_pipeline_with(device, &[], p)
 }
+
+/// [`hdr_pipeline`] made when a pass first sets it (deferred.rs): `state`
+/// describes it over the layout and module it is handed.
+pub(crate) fn deferred_hdr(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    module: impl AsModule + 'static,
+    state: impl for<'a> FnOnce(&'a wgpu::PipelineLayout, &'a wgpu::ShaderModule) -> HdrPipeline<'a>
+    + 'static,
+) -> Deferred<wgpu::RenderPipeline> {
+    let (device, layout) = (device.clone(), layout.clone());
+    Deferred::new(move || hdr_pipeline(&device, state(&layout, module.module())))
+}
+
+/// The sprite pass's vertex buffers.
+const SPRITE_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(SPRITE_LAYOUT)];
+/// The ribbon pass's vertex buffers.
+const RIBBON_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
+    &[Some(ribbons::RIBBON_LAYOUT)];
 
 /// [`hdr_pipeline`] with pipeline-overridable constants for both stages.
 fn hdr_pipeline_with(
@@ -1903,6 +1952,9 @@ impl Renderer {
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
     /// On the web, WebGL2 needs a canvas: use [`Renderer::with_surface`].
     pub async fn new(desc: &RenderDesc) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
         let instance = desc.backend.instance();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -1924,6 +1976,9 @@ impl Renderer {
         instance: &wgpu::Instance,
         surface: wgpu::Surface<'static>,
     ) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -2270,13 +2325,15 @@ impl Renderer {
             "pbr",
             lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
-        let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
+        // Parsed when the first pipeline that uses it is made (deferred.rs).
+        let sky_shader = deferred::module(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
         let sprite_shader = shader(
             &device,
             "sprite",
             format!("{FRAME_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}"),
         );
-        let ribbon_shader = shader(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
+        let ribbon_shader =
+            deferred::module(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
         let shadow_shader = shader(
             &device,
             "shadow",
@@ -2328,21 +2385,28 @@ impl Renderer {
             shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false, false),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
-        let sky_state = |fs| HdrPipeline {
-            label: "sky",
-            layout: &sky_pl,
-            module: &sky_shader,
-            vs: "vs_sky",
-            fs,
-            buffers: &[],
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: None,
-            samples,
+        let sky_state = |fs: &'static str| {
+            deferred_hdr(
+                &device,
+                &sky_pl,
+                sky_shader.clone(),
+                move |layout, module| HdrPipeline {
+                    label: "sky",
+                    layout,
+                    module,
+                    vs: "vs_sky",
+                    fs,
+                    buffers: &[],
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: None,
+                    samples,
+                },
+            )
         };
-        let sky_pipeline = hdr_pipeline(&device, sky_state("fs_sky"));
-        let sky_look_pipeline = hdr_pipeline(&device, sky_state("fs_sky_look"));
+        let sky_pipeline = sky_state("fs_sky");
+        let sky_look_pipeline = sky_state("fs_sky_look");
         let ibl = ibl::IblGenerator::new(&device);
         let water =
             water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
@@ -2366,30 +2430,30 @@ impl Renderer {
                 operation: wgpu::BlendOperation::Add,
             },
         };
-        let sprite_buffers = [Some(SPRITE_LAYOUT)];
-        let sprite_state = |label, fs, blend| HdrPipeline {
-            label,
-            layout: &sprite_pl,
-            module: &sprite_shader,
-            vs: "vs",
-            fs,
-            buffers: &sprite_buffers,
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: Some(blend),
-            samples,
+        let sprite_state = |label: &'static str, fs: &'static str, blend| {
+            deferred_hdr(
+                &device,
+                &sprite_pl,
+                sprite_shader.clone(),
+                move |layout, module| HdrPipeline {
+                    label,
+                    layout,
+                    module,
+                    vs: "vs",
+                    fs,
+                    buffers: SPRITE_BUFFERS,
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: Some(blend),
+                    samples,
+                },
+            )
         };
-        let sprite_pipeline = hdr_pipeline(
-            &device,
-            sprite_state("sprite", "fs", wgpu::BlendState::ALPHA_BLENDING),
-        );
-        let sprite_additive_pipeline =
-            hdr_pipeline(&device, sprite_state("sprite additive", "fs", additive));
-        let sprite_untonemapped_pipeline = hdr_pipeline(
-            &device,
-            sprite_state("sprite untonemapped", "fs_untonemapped", UNTONEMAPPED_BLEND),
-        );
+        let sprite_pipeline = sprite_state("sprite", "fs", wgpu::BlendState::ALPHA_BLENDING);
+        let sprite_additive_pipeline = sprite_state("sprite additive", "fs", additive);
+        let sprite_untonemapped_pipeline =
+            sprite_state("sprite untonemapped", "fs_untonemapped", UNTONEMAPPED_BLEND);
         // The colour kept, the alpha replaced by 1, over every pixel. No
         // groups: whichever sprite or array group is bound stays valid.
         let cover_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -2397,12 +2461,14 @@ impl Renderer {
             bind_group_layouts: &[],
             immediate_size: 0,
         });
-        let sprite_cover_pipeline = hdr_pipeline(
+        let sprite_cover_pipeline = deferred_hdr(
             &device,
-            HdrPipeline {
+            &cover_pl,
+            sprite_shader.clone(),
+            move |layout, module| HdrPipeline {
                 label: "sprite cover",
-                layout: &cover_pl,
-                module: &sprite_shader,
+                layout,
+                module,
                 vs: "vs_cover",
                 fs: "fs_cover",
                 buffers: &[],
@@ -2420,60 +2486,69 @@ impl Renderer {
                 samples,
             },
         );
-        let msdf_pipeline = hdr_pipeline(
-            &device,
-            sprite_state("msdf text", "fs_msdf", wgpu::BlendState::ALPHA_BLENDING),
-        );
+        let msdf_pipeline = sprite_state("msdf text", "fs_msdf", wgpu::BlendState::ALPHA_BLENDING);
         // The glow buffer: no depth, one sample, added.
-        let sprite_glow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sprite glow"),
-            layout: Some(&sprite_pl),
-            vertex: wgpu::VertexState {
-                module: &sprite_shader,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &sprite_buffers,
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &sprite_shader,
-                entry_point: Some("fs_glow"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: HDR_FORMAT,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent::REPLACE,
+        let sprite_glow_pipeline = {
+            let (device, sprite_pl, sprite_shader) =
+                (device.clone(), sprite_pl.clone(), sprite_shader.clone());
+            Deferred::new(move || {
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("sprite glow"),
+                    layout: Some(&sprite_pl),
+                    vertex: wgpu::VertexState {
+                        module: &sprite_shader,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: SPRITE_BUFFERS,
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &sprite_shader,
+                        entry_point: Some("fs_glow"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent::REPLACE,
+                            }),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
                     }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(&device).as_ref(),
-        });
-        let ribbon_buffers = [Some(ribbons::RIBBON_LAYOUT)];
-        let ribbon_state = |blend| HdrPipeline {
-            label: "ribbon",
-            layout: &ribbon_pl,
-            module: &ribbon_shader,
-            vs: "vs",
-            fs: "fs",
-            buffers: &ribbon_buffers,
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: Some(blend),
-            samples,
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
+        let ribbon_state = |blend| {
+            deferred_hdr(
+                &device,
+                &ribbon_pl,
+                ribbon_shader.clone(),
+                move |layout, module| HdrPipeline {
+                    label: "ribbon",
+                    layout,
+                    module,
+                    vs: "vs",
+                    fs: "fs",
+                    buffers: RIBBON_BUFFERS,
+                    cull: None,
+                    depth_write: false,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: Some(blend),
+                    samples,
+                },
+            )
         };
         let ribbon_pipelines = [
-            hdr_pipeline(&device, ribbon_state(additive)),
-            hdr_pipeline(&device, ribbon_state(wgpu::BlendState::ALPHA_BLENDING)),
+            ribbon_state(additive),
+            ribbon_state(wgpu::BlendState::ALPHA_BLENDING),
         ];
         let particles = particles_gpu::ParticleRenderer::new(
             &device,
@@ -4339,21 +4414,25 @@ impl Renderer {
         }
         let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
+        // A (mesh, material)'s casters first, its non-casters a batch of
+        // their own (left out of the shadow passes).
         order.sort_by_key(|&i| {
             let s = &scene.skinned_instances[i];
-            (s.mesh, s.material)
+            (s.mesh, s.material, !s.cast_shadows)
         });
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
         let mut spheres = Vec::with_capacity(order.len());
         for &i in &order {
             let s = &scene.skinned_instances[i];
-            let (mesh, material) = (s.mesh.index(), s.material.index());
+            let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
             if self.cache.meshes[mesh].index_count == 0 {
                 continue;
             }
             match batches.last_mut() {
-                Some(b) if b.mesh == mesh && b.material == material => b.count += 1,
+                Some(b) if b.mesh == mesh && b.material == material && b.cast == cast => {
+                    b.count += 1
+                }
                 _ => {
                     let m = &self.cache.materials[material];
                     batches.push(Batch {
@@ -4373,7 +4452,7 @@ impl Renderer {
                         derivatives: m.flat,
                         compact: false,
                         array: m.array.is_some(),
-                        cast: true,
+                        cast,
                     });
                 }
             }
@@ -4407,7 +4486,12 @@ impl Renderer {
                 morph1: [w[4], w[5], w[6], w[7]],
                 look: {
                     let [flash, color, tint] = instances::fx_bits(&s.fx);
-                    [0.0, flash, color, tint]
+                    [
+                        instances::layer_bits(0.0, s.receive_shadows),
+                        flash,
+                        color,
+                        tint,
+                    ]
                 },
             });
         }
@@ -4990,8 +5074,7 @@ impl Renderer {
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
-        let has_casters =
-            batches.iter().any(|b| b.cast) || !skinned_batches.is_empty() || terrain_casters;
+        let has_casters = batches.iter().chain(&skinned_batches).any(|b| b.cast) || terrain_casters;
         let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
@@ -6371,8 +6454,11 @@ impl Renderer {
             };
             let mut draws = 0;
             let mut physical_bound = false;
+            // The shadow layouts put the palette at 2: shadows draw an
+            // array-map material with its standard group, and only casters.
+            let shadow = palette_at == 2;
             for (batch, pipeline) in list.iter().zip(pipelines) {
-                if batch.transparent != transparent {
+                if batch.transparent != transparent || (shadow && !batch.cast) {
                     continue;
                 }
                 let physical = batch.physical && physical_fx.is_some();
@@ -6384,9 +6470,6 @@ impl Renderer {
                     physical_bound = physical;
                 }
                 let m = &self.cache.materials[batch.material];
-                // The shadow layouts put the palette at 2: shadows draw an
-                // array-map material with its standard group.
-                let shadow = palette_at == 2;
                 pass.set_bind_group(
                     material_group,
                     match (&m.physical, &m.array) {
@@ -6476,7 +6559,7 @@ impl Renderer {
             stats.draw_calls += n;
             stats.shadow_casters += skinned_batches
                 .iter()
-                .filter(|b| !b.transparent)
+                .filter(|b| !b.transparent && b.cast)
                 .map(|b| b.count)
                 .sum::<u32>();
             // Terrain levels that reach into the pass's volume.
@@ -7444,6 +7527,39 @@ impl Renderer {
     /// request for the last frame rendered.
     pub fn request_culling_counts(&mut self) {
         self.culling_counts = true;
+    }
+
+    /// Makes one pipeline no frame has drawn with yet, the likeliest to be
+    /// drawn soon first (the sprites and the overlay, the post passes, then
+    /// sky, ribbons, 2D lights, glass, water, terrain, metaballs, fluids);
+    /// false when every pipeline is made. The renderer makes a pipeline when
+    /// a pass first sets it (deferred.rs), so a frame compiles only what it
+    /// draws; a host with idle time (the web page behind its play gate,
+    /// where WebGL2 compiles each program synchronously) calls this until
+    /// it answers false, so a pass met later does not stop a frame. The
+    /// frames are the same either way.
+    pub fn warm(&mut self) -> bool {
+        deferred::warm_one(&[
+            &self.sprite_pipeline,
+            &self.msdf_pipeline,
+            &self.sprite_cover_pipeline,
+            &self.sprite_untonemapped_pipeline,
+            &self.sprite_additive_pipeline,
+            &self.sprite_glow_pipeline,
+        ]) || self.overlay.warm()
+            || self.post.warm()
+            || deferred::warm_one(&[
+                &self.sky_pipeline,
+                &self.sky_look_pipeline,
+                &self.ribbon_pipelines[0],
+                &self.ribbon_pipelines[1],
+            ])
+            || self.lights_2d.warm()
+            || self.glass.warm()
+            || self.water.warm()
+            || self.terrain.warm()
+            || self.metaballs.warm()
+            || self.fluid3d.warm()
     }
 
     /// Natively: waits for the GPU culling counts of the frame `stats` came

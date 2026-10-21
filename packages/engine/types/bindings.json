@@ -708,7 +708,7 @@
         {
           "name": "receiveShadow",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "visible",
@@ -1441,6 +1441,16 @@
             "g": 1,
             "b": 1
           }
+        },
+        {
+          "name": "castShadow",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "receiveShadow",
+          "column": "bool",
+          "default": true
         }
       ]
     },
@@ -13106,6 +13116,18 @@
     },
     {
       "id": 289,
+      "kind": "method",
+      "path": "EngineProbe.memory",
+      "symbol": "og_engine_probe_memory",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "memory",
+      "params": [],
+      "returns": "Option<ProbeMemory>",
+      "publish": false
+    },
+    {
+      "id": 290,
       "kind": "fn",
       "path": "og.terrain.load",
       "symbol": "og_terrain_load",
@@ -13127,7 +13149,7 @@
       "publish": true
     },
     {
-      "id": 290,
+      "id": 291,
       "kind": "fn",
       "path": "og.terrain.sample",
       "symbol": "og_terrain_sample",
@@ -13149,7 +13171,7 @@
       "publish": true
     },
     {
-      "id": 291,
+      "id": 292,
       "kind": "fn",
       "path": "og.terrain.bounds",
       "symbol": "og_terrain_bounds",
@@ -13186,7 +13208,7 @@
       "publish": true
     },
     {
-      "id": 292,
+      "id": 293,
       "kind": "fn",
       "path": "og.terrain.edit",
       "symbol": "og_terrain_edit",
@@ -13213,7 +13235,7 @@
       "publish": true
     },
     {
-      "id": 293,
+      "id": 294,
       "kind": "fn",
       "path": "og.terrain.layer",
       "symbol": "og_terrain_layer",
@@ -13240,7 +13262,7 @@
       "publish": true
     },
     {
-      "id": 294,
+      "id": 295,
       "kind": "fn",
       "path": "og.terrain.setLayer",
       "symbol": "og_terrain_set_layer",
@@ -13272,7 +13294,7 @@
       "publish": true
     },
     {
-      "id": 295,
+      "id": 296,
       "kind": "fn",
       "path": "og.stream.status",
       "symbol": "og_stream_status",
@@ -13294,7 +13316,7 @@
       "publish": true
     },
     {
-      "id": 296,
+      "id": 297,
       "kind": "fn",
       "path": "og.stream.request",
       "symbol": "og_stream_request",
@@ -13316,7 +13338,7 @@
       "publish": true
     },
     {
-      "id": 297,
+      "id": 298,
       "kind": "fn",
       "path": "og.stream.release",
       "symbol": "og_stream_release",
@@ -13338,7 +13360,7 @@
       "publish": true
     },
     {
-      "id": 298,
+      "id": 299,
       "kind": "fn",
       "path": "og.stream.budget",
       "symbol": "og_stream_budget",
@@ -13355,7 +13377,7 @@
       "publish": true
     },
     {
-      "id": 299,
+      "id": 300,
       "kind": "fn",
       "path": "og.stream.setBudget",
       "symbol": "og_stream_set_budget",

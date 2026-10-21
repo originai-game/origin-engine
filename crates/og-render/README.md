@@ -17,13 +17,14 @@ the world → scene extraction belongs to the layer above.
 | `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening. |
 | `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4`, `Taa` and `Fxaa` (any tier). `RenderInfo::antialias` reports what was resolved; `Tier` and `Msaa4` fall back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing by tier](#shadows-and-antialiasing-by-tier)). |
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
+| `renderer_disabled()`, `RENDERER_SWITCH` | Native: `OG_RENDERER=none` in the environment makes `Renderer::new` and `with_surface` answer `NoAdapter` naming the switch, as on a machine without a usable adapter (the platform's engine and probe sandboxes), so hosts' no-renderer path is testable beside a GPU (docs/ci.md §Switches in the environment). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
 | `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette`, `add_lut` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile; `remove_mesh`, `remove_texture`, `remove_material`, `remove_font`, `remove_environment_map`, `remove_texture_array`, `remove_palette`, `remove_lut` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `particle_colliders` (`ParticleCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). The renderer uploads what is new or changed and frees what was removed before the next frame. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `VertexEncoding` | How a mesh's vertices are held on the GPU: `Full` (default, `Vertex` as given, 64 bytes) or `Compact` (16 bytes where a plain material draws it; quantised): `RenderScene::set_vertex_encoding(mesh, encoding)`, `vertex_encoding(mesh)`. [Instance and vertex encodings](#instance-and-vertex-encodings). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. `mapArray`/`mapLayer` and `normalMapArray`/`normalMapLayer` read the base colour and normal from texture-array layers ([Array maps](#array-maps-materials-and-terrain-layers)). |
-| `Instance` | `(mesh, material, transform, material_layer, fx)`, submitted one by one; batched by (mesh, material). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same) is this instance's own hit flash and tint: [Instance looks](#instance-looks-the-hit-flash-of-one-instance). The transform is affine: the GPU holds its columns' xyz, the layer and the look, 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
+| `Instance` | `(mesh, material, transform, material_layer, fx, cast_shadows, receive_shadows)`, submitted one by one; batched by (mesh, material, cast_shadows). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same) is this instance's own hit flash and tint: [Instance looks](#instance-looks-the-hit-flash-of-one-instance). `cast_shadows` (drawn into the shadow passes; a (mesh, material)'s non-casters are a batch of their own) and `receive_shadows` (darkened by the shadow maps; carried in the record, no batch of its own), both on from `add_instance` and `SkinnedInstance::new`: [Which instances receive](#shadows-and-antialiasing-by-tier). The transform is affine: the GPU holds its columns' xyz, the layer and the look, 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
@@ -297,8 +298,9 @@ shadows at the spheres' and pillars' feet) and was re-recorded.
 (the sun's cascades and the local lights' views) while it still
 receives: its instances are runs of their own (`instances.rs`), and the
 shadow lists skip those batches. og-runtime sets it from
-`og.Mesh.castShadow` (off by default, as three.js); an `og.Model`'s
-meshes always cast. Before, every mesh cast whatever its flag: The
+`og.Mesh.castShadow` (off by default, as three.js) and
+`og.Model.castShadow` (on by default: a loaded model casts, as it always
+has). Before, every mesh cast whatever its flag: The
 Kestrel Stair's crypt lamp, a 0.22 m glass box with its point light at
 the centre, shadowed the whole crypt from its own light on the full
 tier (cube faces) and not on WebGL2 (paraboloids), which the web round
@@ -306,6 +308,27 @@ read as the sun's shadow missing under the roof (crypt RMSE 0.046
 against `metal`). `shadows-crypt` is that room: a roof and walls under a
 low sun, a non-casting glass box around a shadowed point light, which
 lights the altar and the pillar and throws a post's shadow.
+
+**Which instances receive** (owed row 87, after wave 13).
+[`Instance::receive_shadows`] (and `SkinnedInstance::receive_shadows`,
+whose `cast_shadows` keeps a skinned (mesh, material)'s non-casters a
+batch of their own as the static runs do) lights an instance as if
+nothing stood between it and any light: the lit shaders (`pbr_fs.wgsl`,
+`physical.wgsl`, and `local_light`/`physical_local` for the point and
+spot lights) read the sun's cascades and the local lights' maps only
+where `look_receives`. The flag rides in the instance record's layer lane
+(`instances::layer_bits`: the array-map layer plus one as before for an
+instance that receives, negated less one for one that does not;
+`look_layer` reads the layer back), so it never splits a batch and a
+receiving instance's record is the bytes it was: every og-gfx scene's
+Metal frame stayed byte-identical. og-runtime sets it from
+`og.Mesh.receiveShadow` and `og.Model.receiveShadow`, both on by default
+(every mesh and model received before), and `og.Model.castShadow` from a
+model's own field, which world.instantiate and a scene's `model` line
+take from the load's `GltfDesc` (on when omitted). `shadow-flags` holds
+it: a model that casts as added beside one that casts none, and in a
+wall's shadow a box and a model that receive beside a box and a model
+that do not.
 
 **The sun's soft shadows and cascade blending** (`DirectionalLight::
 shadow_softness`, `cascade_blend`, the IDL's `shadowSoftness` and
@@ -559,6 +582,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes, RMSE 0.0023 against the cube frame. | all |
 | `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. | full |
 | `shadows-crypt` | A roofed room under a low sun with a shadowed point light inside a glass box that casts no shadow (`Instance::cast_shadows`): the light reaches the altar and the pillar, a post's shadow falls beside them; paraboloids store the same faces as cube faces. | all |
+| `shadow-flags` | A low sun over a field: a trickster added as is (casting) beside one with `cast_shadows` off (no shadow), and in a 5 m wall's shadow a red box and a trickster that receive (dark) beside a box and a trickster with `receive_shadows` off (lit as if the wall were not there). | all |
 | `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. | all |
 | `taa` | Thin poles and bars after 16 TAA frames. | full |
 | `msaa` | The same geometry with 4× MSAA. | no-compute |
@@ -642,6 +666,30 @@ is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
 (`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
 and adapter, compared with 15 % tolerance.
 
+### Pipelines made on first use
+
+A pipeline is a program to compile, and on WebGL2 wgpu compiles and links
+each one synchronously when it is made (ANGLE's compile, then the status
+read that waits for it). `Renderer::new` used to make every fixed pipeline
+up front, 52 programs on the WebGL2 page of the dogfood games, most of them
+for passes the first frame does not draw (water, metaballs, 3D fluids,
+terrain, 2D lights, glass, ribbons, the sprite variants, bloom, TAA and the
+eleven effect passes): 400 to 550 ms before the first frame. Each is now a
+`Deferred` (`src/deferred.rs`), made from the same descriptor when a pass
+first sets it, and the shader modules only those passes use are parsed
+then too (`deferred::module`), so a frame compiles only what it draws and
+every frame is the frame it was (the pipelines are the same objects, made
+later). `Renderer::warm()` makes the rest one per call, the likeliest
+first, and answers false when none is left: the web Worker calls it in
+idle time behind the play gate (`og_web_warm`), so a pass met later does
+not stop a frame to compile. Measured in headless Chrome 150 on the three
+dogfood games' publish builds (`packages/engine/tests/web/dogfood.ts
+--boot`, three runs each, median, 2026-10-21): the WebGL2 renderer's
+creation went from 507 / 546 / 461 ms to 129 / 155 / 127 ms (Lantern Vale,
+Hollowbell, Kestrel Stair) and the first frame from 1,405 / 1,118 / 1,197
+ms to 703 / 701 / 705 ms; WebGPU's creation from 22 / 13 / 21 ms to 10 /
+10 / 9 ms.
+
 ### Lit pipeline variants
 
 The standard lit shader (`pbr.wgsl`, `pbr_fs.wgsl`, `pbr_prepass.wgsl`)
@@ -712,7 +760,8 @@ material, one flashing red) holds it on metal.
 **Instances: 64 bytes.** Every instance buffer (the CPU path's, GPU
 culling's regions, the previous transforms of object motion, the
 scattered copies) holds an instance's transform as the x, y and z of its
-four columns and, after them, an array-map instance's layer and the
+four columns and, after them, an array-map instance's layer with whether
+it receives shadows (`instances::layer_bits`) and the
 instance's look (`instances::GpuTransform`: `Float32x3` attributes 4 to 7
 and a `Float32x4` at 8, pbr.wgsl's `InstanceFxIn`; 16 floats a slot in
 `cull.wgsl`); a skinned instance holds the columns before its palette and

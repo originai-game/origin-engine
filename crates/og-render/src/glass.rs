@@ -27,8 +27,8 @@ pub(crate) const LEVELS: u32 = 6;
 
 pub(crate) struct GlassPasses {
     layout: wgpu::BindGroupLayout,
-    down: wgpu::RenderPipeline,
-    blit: wgpu::RenderPipeline,
+    down: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    blit: crate::deferred::Deferred<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     /// `[decode, 0, 0, 0]` for the first level: 1 when the source holds
     /// sRGB-encoded values (a non-sRGB output, which the tonemap encodes).
@@ -76,6 +76,11 @@ pub(crate) struct GlassTargets {
 }
 
 impl GlassPasses {
+    /// Makes one of its pipelines no frame used yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        crate::deferred::warm_one(&[&self.down, &self.blit])
+    }
+
     pub fn new(device: &wgpu::Device, output_format: wgpu::TextureFormat) -> GlassPasses {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("glass"),
@@ -113,11 +118,8 @@ impl GlassPasses {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("glass"),
-            source: wgpu::ShaderSource::Wgsl(GLASS_WGSL.into()),
-        });
-        let down = crate::post::fullscreen_pipeline(
+        let module = crate::deferred::module(device, "glass", GLASS_WGSL.into());
+        let down = crate::post::deferred_fullscreen(
             device,
             "glass down",
             &module,
@@ -126,7 +128,7 @@ impl GlassPasses {
             PYRAMID_FORMAT,
             None,
         );
-        let blit = crate::post::fullscreen_pipeline(
+        let blit = crate::post::deferred_fullscreen(
             device,
             "glass blit",
             &module,

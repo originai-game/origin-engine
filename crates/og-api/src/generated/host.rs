@@ -736,6 +736,8 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_commands(&self, engine_probe: u32, script: String) -> String;
     /// `EngineProbe.listen`
     fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String;
+    /// `EngineProbe.memory`
+    fn og_engine_probe_memory(&self, engine_probe: u32) -> String;
 }
 
 /// `terrain`: packages/knowledge/wiki/terrain.md.
@@ -1064,6 +1066,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_dump",
     "og_engine_probe_commands",
     "og_engine_probe_listen",
+    "og_engine_probe_memory",
     "og_terrain_load",
     "og_terrain_sample",
     "og_terrain_bounds",
@@ -3934,7 +3937,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "receiveShadow",
                 column: "bool",
-                default: "false",
+                default: "true",
                 readonly: false,
                 tunable: false,
                 min: None,
@@ -3942,7 +3945,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows.",
+                doc: "Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley.",
                 variants: &[],
                 capacity: 0,
             },
@@ -7489,6 +7492,36 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "The flash's linear colour.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "castShadow",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false).",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "receiveShadow",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table.",
                 variants: &[],
                 capacity: 0,
             },

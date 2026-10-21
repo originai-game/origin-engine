@@ -28,10 +28,12 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    for (const f of ["title.png", "play.png", "over.png"]) {
-      const png = run.png(f);
-      t.ok(png.width === 1280 && png.height === 720, `${f} is a 1280x720 frame`);
-    }
+    t.frame(["title.png", "play.png", "over.png"], () => {
+      for (const f of ["title.png", "play.png", "over.png"]) {
+        const png = run.png(f);
+        t.ok(png.width === 1280 && png.height === 720, `${f} is a 1280x720 frame`);
+      }
+    });
     const title = runOf(run, "title.json");
     t.equal(title.phase, TITLE, "the game opens on the title");
     t.equal(title.rounds, 0, "no round has started on the title");

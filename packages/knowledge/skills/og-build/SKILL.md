@@ -73,6 +73,14 @@ a number and a sound (taste 98, feel 79).
    `dump_world` for the entity count, the archetype tables and each system's
    matched count. A system that matched 0 entities is usually a missing
    component on the spawn, not a logic bug.
+
+   Where there is no renderer (a sandbox with no GPU: `og run --json` says
+   `"tier": "none"`, `og doctor` says the renderer is `none`), the run is
+   the same run: the same ticks, dumps and world hash. A `screenshot`
+   writes no PNG and logs "no renderer, frame unchecked" with the file it
+   would have written, not as a warning; `og run --json` lists those files in
+   `unchecked`, and the probe's `capture` answers null. Read the dumps
+   there, and look at the frames where there is a renderer (§4).
 4. **Fix and repeat** with the same script and seed. Keep the script in the
    change so the next run is the same run.
 
@@ -107,7 +115,27 @@ how the code is written. Each playtest writes into its own
 `og-out/test/<name>/`, emptied when it starts, and its `check` reads a
 step's file by the name the step gave (`run.json("shop.json")`,
 `run.png("title.png")`); give each step's file its own name. A test that ran no checks fails. Run it before
-claiming a change works. A playtest runs with the host clock at
+claiming a change works.
+
+Put every check that reads a frame (`run.png`, a decoded screenshot, a
+comparison with `references/`) inside `t.frame(files, () => ...)`:
+
+```ts
+check(run, t) {
+  t.equal(run.json<Game>("shop.json").coins, 10, "the coin was banked");
+  t.frame(["title.png", "shop.png"], () => checkFrames(run, t, ["title.png", "shop.png"], ""));
+},
+```
+
+Without a renderer (`run.rendered` false, `run.tier` `"none"`) the scope
+does not run: `og test` prints `~ <file>: no renderer, frame unchecked` for
+each screenshot, counts them in its summary (`og test: 7 suite(s) passed;
+9 frame(s) unchecked`) and passes on every other check, which runs as it
+would with a renderer. A check that reads a frame outside `t.frame` stops
+there (the report says the checks after it did not run), so keep frames in
+the scope. Unchecked frames never change `og test`'s exit status; they are
+verified where there is a renderer: the author's machine, the
+browser-check sandbox (the published page, §6) or an executor with a GPU. A playtest runs with the host clock at
 2026-01-01 00:00 UTC (`clock` to change it) and a fresh store; `store:
 "keep"` with `then: [{ commands, clock }]` runs further processes over the
 same store, for a relaunch (og-platform-sdk §4).
@@ -117,7 +145,9 @@ same store, for a relaunch (og-platform-sdk §4).
 - Every change that alters rendering, animation, physics or the tick carries
   a scripted `og run --commands` run whose frame was opened, read and
   described in the change: what is on screen, where, and how that differs
-  from before. A frame nobody looked at is not evidence.
+  from before. A frame nobody looked at is not evidence. Where there is no
+  renderer the frame is unchecked, not seen: say so, and look at it where
+  there is one (§3) before calling a visible change done.
 - Name the exact command, seed and script with the frame and the dump, so
   anyone can rerun it and get the same bytes.
 - Determinism is checkable: two runs with the same seed and script give the
@@ -153,7 +183,7 @@ every screen that matters.
 | feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four | og-feel §3, §4, §7, og-audio §1 |
 | feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
-| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out | 8.3 ms (half the frame) | og-game §14 |
+| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | 8.3 ms (half the frame) | og-game §14 |
 
 The report also lists clipped samples in the mix (og-audio §4). Contrast and
 text size read text only: icons and images (their "text" is a picture's
@@ -189,6 +219,16 @@ run it again after the fix: the report is the evidence.
 runtime and wasm next to it. `og build . --publish` produces the published
 form: the probe keeps only its player-facing members (hello, tick, state,
 pick, entity, input, capture) and the command channel is gone.
+What ships is still checked by script, through what it keeps: real input
+on the published page and the probe's `tick`, `state` and `capture`. A
+playtest written in input steps (`key_down`, `type`, `touch_move_to` an
+id, `move_to_text`, `touch_start`) and `screenshot` steps runs there as it
+runs under `og test`, each frame compared with the same references; a
+game command (warp, give) has no channel there and is refused, so keep
+the steps a published check needs free of them. The engine runs this on
+the published build of its own games (its `tests/web/published.ts`: the
+boot, the title, a press, a typed name and a frame against the metal
+reference, with a clean console).
 `og run --device chrome .` plays that publish build in a real browser
 (`android[:serial]` over adb, `iphone[:udid]` over safaridriver), passes
 the play gate and writes `og-out/device/report.md`: the first frame against
@@ -197,7 +237,8 @@ tier the device chose, the device itself, and a fix per finding (og-game
 §6 for a slow first frame, og-game §14 for missed frames). Run it on the
 phone you ship for: og polish's native numbers are not a phone's. `og doctor`
 names each missing tool (bun, the native addon, the wasm artifact) with its
-fix.
+fix, and says whether this machine has a renderer (none is not a problem:
+the playtests' frames are then unchecked, §3).
 
 ## 7. Big games: what the cook packs and the page fetches
 
@@ -229,8 +270,11 @@ stream "night-market" {
 }
 ```
 
-The cook refuses any other kind (a skinned model, a chunked sound, a scene)
-in a group, naming the scene and the asset. Prove a group in a script:
+A sound cooked in chunks may join a group too: its first chunk goes in
+the pack and every other chunk stays a file of its own, read ahead of the
+playheads once the group is resident (og-audio §5). The cook refuses any
+other kind (a skinned model, a scene) in a group, naming the scene and
+the asset. Prove a group in a script:
 move the camera into its trigger (`teleport`, or the game's own command),
 `advance` a few ticks, then `dump_stream` lists each group's state,
 memory and the assets kept past an unload (`retained`), and
@@ -253,8 +297,27 @@ sound {
 }
 ```
 
-Compare `og cook`'s byte count before and after: the bundle is the
-player's download.
+**What a player downloads** is what `og build --publish` prints under its
+size table, brotli `-q 11` per file as the size gate measures the engine:
+
+```text
+download (brotli-11, what a player fetches; a WebGPU and a WebGL2 page fetch the same files):
+  boot, lanes page (isolated)      92 files     4323854 B  (engine 2976.8 kB, cooked 1044.3 kB, shell 85.5 kB, basis 217.3 kB)
+  boot, single-threaded page       91 files     4284988 B  (engine 2937.9 kB, cooked 1044.3 kB, shell 85.5 kB, basis 217.3 kB)
+  later: 20 sound chunks 2427050 B (ahead of their playheads); the audio worklet 875 B (first gesture); the service worker and icons 32634 B
+```
+
+The boot is everything fetched before the first frame: one engine module
+(the lanes module on a cross-origin isolated page, else the
+single-threaded one), the shell, the Basis transcoder and the cooked first
+group (everything no streaming group holds). A sound cooked in chunks
+costs the boot its first chunk only (about `chunk` seconds of QOA): the
+rest are fetched ahead of its playheads, and none before it plays; in a
+streaming group it costs the boot nothing (its first chunk comes in the
+group's pack). The
+table's `total` is every file of the directory (both engine modules, the
+licences, the icons), never a download. Compare the boot line before and
+after a change; `--json` carries the same as `downloads`.
 
 **The lanes** spread physics, skinning, culling and extraction over the
 cores with results identical to one thread (og-game §14). Natively

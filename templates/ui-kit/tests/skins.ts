@@ -113,38 +113,41 @@ export function skinPlaytest(skin: string, on: "desktop" | "phone" = "desktop"):
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
-      const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
-      const cw = cells[0]!.width;
-      const ch = cells[0]!.height;
-      const cols = surface.cols;
-      const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
-      sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
-      cells.forEach((c, i) => {
-        const x0 = (i % cols) * cw;
-        const y0 = Math.floor(i / cols) * ch;
-        for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
-      });
-      writeFileSync(join(outDir(), name), encodePng(sheet));
-      const refs = referencesDir();
-      const own = join(refs, run.tier);
-      if (process.env.OG_UI_CAPTURE !== undefined) {
-        mkdirSync(own, { recursive: true });
-        writeFileSync(join(own, name), encodePng(sheet));
-        t.ok(true, `recorded ${join(own, name)}`);
-        return;
-      }
-      const dir = existsSync(join(own, name)) ? own : join(refs, "metal");
-      if (dir !== own) process.stdout.write(`  note: no ${run.tier} reference for ${skin}; comparing with metal\n`);
-      const refPath = join(dir, name);
-      if (!existsSync(refPath)) {
-        t.ok(false, `${refPath} is missing: record it with OG_UI_CAPTURE=1 og test templates/ui-kit`);
-        return;
-      }
-      const ref = decodePng(readFileSync(refPath));
-      t.equal(`${ref.width}x${ref.height}`, `${sheet.width}x${sheet.height}`, "the sheet has every screen");
-      files.forEach((f, i) => {
-        const d = difference(cells[i]!, cell(ref, i, cols, cw, ch));
-        t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${skin} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
+      // The sheet is built from frames: without a renderer each is reported unchecked.
+      t.frame(files, () => {
+        const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
+        const cw = cells[0]!.width;
+        const ch = cells[0]!.height;
+        const cols = surface.cols;
+        const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
+        sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
+        cells.forEach((c, i) => {
+          const x0 = (i % cols) * cw;
+          const y0 = Math.floor(i / cols) * ch;
+          for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
+        });
+        writeFileSync(join(outDir(), name), encodePng(sheet));
+        const refs = referencesDir();
+        const own = join(refs, run.tier);
+        if (process.env.OG_UI_CAPTURE !== undefined) {
+          mkdirSync(own, { recursive: true });
+          writeFileSync(join(own, name), encodePng(sheet));
+          t.ok(true, `recorded ${join(own, name)}`);
+          return;
+        }
+        const dir = existsSync(join(own, name)) ? own : join(refs, "metal");
+        if (dir !== own) process.stdout.write(`  note: no ${run.tier} reference for ${skin}; comparing with metal\n`);
+        const refPath = join(dir, name);
+        if (!existsSync(refPath)) {
+          t.ok(false, `${refPath} is missing: record it with OG_UI_CAPTURE=1 og test templates/ui-kit`);
+          return;
+        }
+        const ref = decodePng(readFileSync(refPath));
+        t.equal(`${ref.width}x${ref.height}`, `${sheet.width}x${sheet.height}`, "the sheet has every screen");
+        files.forEach((f, i) => {
+          const d = difference(cells[i]!, cell(ref, i, cols, cw, ch));
+          t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${skin} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
+        });
       });
     },
   });

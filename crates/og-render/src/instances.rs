@@ -16,9 +16,9 @@ use glam::{Mat4, Vec3};
 /// An instance as the GPU reads it, 64 bytes: the x, y and z of its
 /// transform's four columns (`instance.wgsl` `instance_matrix`; their w is
 /// taken as (0, 0, 0, 1): an instance's transform is affine), the
-/// texture-array layer of an array-map material's instance plus one
-/// (`material::instance_layer_bits`; 0 elsewhere, read by pbr_array.wgsl)
-/// and its look ([`fx_bits`]; with the layer, `InstanceFxIn` in pbr.wgsl).
+/// texture-array layer of an array-map material's instance plus one and
+/// whether it receives shadows ([`layer_bits`]) and its look ([`fx_bits`];
+/// with the layer, `InstanceFxIn` in pbr.wgsl).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct GpuTransform {
@@ -52,6 +52,17 @@ pub(crate) fn fx_bits(fx: &crate::InstanceFx) -> [f32; 3] {
         color,
         pack(Vec3::ONE - fx.tint.clamp(Vec3::ZERO, Vec3::ONE)),
     ]
+}
+
+/// [`GpuTransform::layer`] (pbr.wgsl `InstanceFxIn` x): an array-map run's
+/// instance layer plus one (`material::instance_layer_bits`; 0, the
+/// material's own, in every other run), as is when the instance receives
+/// shadows, else negated less one (pbr.wgsl `look_layer` and
+/// `look_receives`). An instance that receives carries what it did before
+/// the flag existed, and the value stays an exact integer in an f32 for
+/// every layer below 2^23 (a texture array holds at most 2048).
+pub(crate) fn layer_bits(layer: f32, receive_shadows: bool) -> f32 {
+    if receive_shadows { layer } else { -1.0 - layer }
 }
 
 /// The columns of `m` as the GPU reads them ([`GpuTransform::columns`]).
@@ -100,11 +111,19 @@ fn run_transform(m: &Mat4, inst: &Instance, run: &Run) -> GpuTransform {
         Some(d) => gpu_transform(&(*m * d)),
         None => gpu_transform(m),
     };
-    if run.array {
-        t.layer = crate::material::instance_layer_bits(inst.material_layer);
-    }
+    t.layer = run_layer(inst, run);
     t.fx = fx_bits(&inst.fx);
     t
+}
+
+/// An instance's [`GpuTransform::layer`] in `run`.
+fn run_layer(inst: &Instance, run: &Run) -> f32 {
+    let layer = if run.array {
+        crate::material::instance_layer_bits(inst.material_layer)
+    } else {
+        0.0
+    };
+    layer_bits(layer, inst.receive_shadows)
 }
 
 /// The sorted instances of the last frame and what was derived from them.
@@ -325,12 +344,9 @@ impl SortedInstances {
                 let inst = &instances[self.order[k] as usize];
                 let m = &inst.transform;
                 if same_bits(m, &self.matrices[k]) {
-                    // An array run's layer, and any instance's look, may
-                    // change on their own.
-                    if run.array {
-                        let layer = crate::material::instance_layer_bits(inst.material_layer);
-                        self.transforms[k].layer = layer;
-                    }
+                    // An array run's layer, whether an instance receives
+                    // shadows and its look may change on their own.
+                    self.transforms[k].layer = run_layer(inst, run);
                     self.transforms[k].fx = fx_bits(&inst.fx);
                     continue;
                 }
@@ -511,6 +527,54 @@ mod tests {
             .update(&scene, 3, info, 2, |_, _| None, |_| false)
             .unwrap();
         assert_same(&again, &fresh(&scene));
+    }
+
+    /// Whether an instance receives shadows rides in its record's layer
+    /// lane (`layer_bits`): as before for one that receives, negated less
+    /// one for one that does not, with an array run's layer kept beside it
+    /// (pbr.wgsl `look_layer` reads it back). Flipping the flag sorts
+    /// nothing and is seen the next frame, and the runs never split on it.
+    #[test]
+    fn the_receive_flag_rides_in_the_layer_lane() {
+        let decode = |x: f32| (x >= 0.0, if x >= 0.0 { x } else { -x - 1.0 });
+        for layer in [0.0, 1.0, 7.0, 2049.0, (1u32 << 23) as f32] {
+            assert_eq!(layer_bits(layer, true), layer);
+            assert_eq!(decode(layer_bits(layer, true)), (true, layer));
+            assert_eq!(decode(layer_bits(layer, false)), (false, layer));
+        }
+        let mut scene = scene();
+        for (i, inst) in scene.instances.iter_mut().enumerate() {
+            inst.material_layer = Some(i as u32 % 5);
+        }
+        // Material 1 samples arrays.
+        let array = |m: usize| m == 1;
+        let update = |kept: &mut SortedInstances, scene: &RenderScene| {
+            kept.update(scene, 3, info, 2, |_, _| None, array).unwrap()
+        };
+        let mut kept = SortedInstances::default();
+        let before = update(&mut kept, &scene);
+        let runs = before.runs.clone();
+        kept.restore(before.transforms.clone(), before.spheres.clone());
+        for inst in scene.instances.iter_mut().step_by(3) {
+            inst.receive_shadows = false;
+        }
+        let after = update(&mut kept, &scene);
+        assert_eq!(after.runs, runs, "the receive flag splits no run");
+        assert_same(&after, &update(&mut SortedInstances::default(), &scene));
+        for r in &after.runs {
+            for k in r.first as usize..(r.first + r.count) as usize {
+                let inst = &scene.instances[after.submission[k] as usize];
+                let layer = if r.array {
+                    inst.material_layer.unwrap() as f32 + 1.0
+                } else {
+                    0.0
+                };
+                let (was, now) = (before.transforms[k].layer, after.transforms[k].layer);
+                assert_eq!(was, layer, "receiving: the layer as before");
+                assert_eq!(decode(now), (inst.receive_shadows, layer));
+                assert_eq!(before.transforms[k].columns, after.transforms[k].columns);
+            }
+        }
     }
 
     /// A run drawing compact vertices carries their dequantisation in its

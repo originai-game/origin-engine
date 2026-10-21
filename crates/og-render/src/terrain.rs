@@ -39,12 +39,14 @@
 //! terrain first uses it. A terrain of separate textures draws exactly as
 //! before.
 
+use crate::deferred::{AsModule, Deferred};
 use crate::scene::{TerrainHandle, TextureArrayHandle, TextureHandle};
 use crate::terrain_tiles::{
     ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
     TerrainTile, TerrainView, terrain_tiles_wanted,
 };
 use glam::{Mat4, Vec2, Vec3};
+use std::rc::Rc;
 
 pub use crate::scatter::{MAX_SCATTER_INSTANCES, TerrainScatter};
 use std::sync::Arc;
@@ -688,6 +690,12 @@ pub(crate) struct TerrainPipelines<'a> {
 }
 
 impl TerrainRenderer {
+    /// Makes one of its pipelines no frame used yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        let p = &self.passes;
+        crate::deferred::warm_one(&[&*p.lit, &*p.prepass, &*p.shadow])
+    }
+
     /// Drops every terrain's bind group (a layer texture was replaced):
     /// the next prepare makes them again from the current views.
     pub(crate) fn forget_groups(&mut self) {
@@ -1711,9 +1719,9 @@ pub(crate) fn draw_levels(
 /// standard one, or the layer-array variant's ([`TerrainRenderer`]).
 #[derive(Clone)]
 pub(crate) struct TerrainPasses {
-    pub lit: wgpu::RenderPipeline,
-    pub prepass: wgpu::RenderPipeline,
-    pub shadow: wgpu::RenderPipeline,
+    pub lit: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub prepass: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub shadow: Rc<Deferred<wgpu::RenderPipeline>>,
 }
 
 /// Which pass [`draw_levels`] draws: each terrain sets its own pipeline.
@@ -1734,14 +1742,9 @@ fn terrain_passes(
     lit_source: String,
     shadow_source: String,
 ) -> TerrainPasses {
-    let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("terrain"),
-        source: wgpu::ShaderSource::Wgsl(lit_source.into()),
-    });
-    let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("terrain shadow"),
-        source: wgpu::ShaderSource::Wgsl(shadow_source.into()),
-    });
+    // Made when a terrain is first drawn (deferred.rs).
+    let lit_module = crate::deferred::module(device, "terrain", lit_source);
+    let shadow_module = crate::deferred::module(device, "terrain shadow", shadow_source);
     let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
         let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -1752,12 +1755,14 @@ fn terrain_passes(
     };
     let lit_layout = pl("terrain", &[frame_layout, layout]);
     let shadow_layout = pl("terrain shadow", &[shadow_layout, layout]);
-    let lit = crate::hdr_pipeline(
+    let lit = crate::deferred_hdr(
         device,
-        crate::HdrPipeline {
+        &lit_layout,
+        lit_module.clone(),
+        move |layout, module| crate::HdrPipeline {
             label: "terrain",
-            layout: &lit_layout,
-            module: &lit_module,
+            layout,
+            module,
             vs: "vs",
             fs: "fs",
             buffers: &[],
@@ -1784,65 +1789,77 @@ fn terrain_passes(
             bias: Default::default(),
         })
     };
-    let prepass = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("terrain prepass"),
-        layout: Some(&lit_layout),
-        vertex: wgpu::VertexState {
-            module: &lit_module,
-            entry_point: Some("vs"),
-            compilation_options: Default::default(),
-            buffers: &[],
-        },
-        primitive: wgpu::PrimitiveState {
-            cull_mode: Some(wgpu::Face::Back),
-            ..Default::default()
-        },
-        depth_stencil: depth(true),
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &lit_module,
-            entry_point: Some("fs_prepass"),
-            compilation_options: Default::default(),
-            targets: &[
-                target(crate::post::GBUFFER_FORMAT),
-                target(crate::post::LINDEPTH_FORMAT),
-                target(crate::post::OUTLINE_FORMAT),
-            ],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    });
+    let prepass = {
+        let (device, lit_layout) = (device.clone(), lit_layout.clone());
+        Deferred::new(move || {
+            let lit_module = lit_module.module();
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("terrain prepass"),
+                layout: Some(&lit_layout),
+                vertex: wgpu::VertexState {
+                    module: lit_module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..Default::default()
+                },
+                depth_stencil: depth(true),
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: lit_module,
+                    entry_point: Some("fs_prepass"),
+                    compilation_options: Default::default(),
+                    targets: &[
+                        target(crate::post::GBUFFER_FORMAT),
+                        target(crate::post::LINDEPTH_FORMAT),
+                        target(crate::post::OUTLINE_FORMAT),
+                    ],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(&device).as_ref(),
+            })
+        })
+    };
     // An open surface: both faces cast (the bias in the lit pass keeps
     // its own lit side from shadowing itself).
-    let shadow = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("terrain shadow"),
-        layout: Some(&shadow_layout),
-        vertex: wgpu::VertexState {
-            module: &shadow_module,
-            entry_point: Some("vs_shadow"),
-            compilation_options: Default::default(),
-            buffers: &[],
-        },
-        primitive: Default::default(),
-        depth_stencil: depth(true),
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shadow_module,
-            entry_point: Some("fs_shadow"),
-            compilation_options: Default::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::R32Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::RED,
-            })],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    });
+    let shadow = {
+        let (device, shadow_layout) = (device.clone(), shadow_layout.clone());
+        Deferred::new(move || {
+            let shadow_module = shadow_module.module();
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("terrain shadow"),
+                layout: Some(&shadow_layout),
+                vertex: wgpu::VertexState {
+                    module: shadow_module,
+                    entry_point: Some("vs_shadow"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: depth(true),
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: shadow_module,
+                    entry_point: Some("fs_shadow"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: wgpu::TextureFormat::R32Float,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::RED,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(&device).as_ref(),
+            })
+        })
+    };
     TerrainPasses {
-        lit,
-        prepass,
-        shadow,
+        lit: Rc::new(lit),
+        prepass: Rc::new(prepass),
+        shadow: Rc::new(shadow),
     }
 }
 

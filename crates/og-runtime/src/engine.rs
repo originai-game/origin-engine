@@ -841,6 +841,9 @@ pub(crate) fn assemble(
         seed,
     })
     .map_err(err)?;
+    // Systems timed by name for the probe's dump_world and og run --json
+    // (measurement only: nothing in the tick reads it).
+    world.set_clock(Some(rprobe::now_ms));
     let mut layouts = BTreeMap::new();
     let mut resources = vec![Time::NAME.to_string(), Rng::NAME.to_string()];
     let mut warnings = Vec::new();
@@ -975,7 +978,7 @@ pub(crate) fn assemble(
                     )
                 })?;
                 let id = world.id_by_name(name).map_err(err)?;
-                for f in &layout.fields {
+                for f in layout.fields.iter() {
                     columns.push(QueryColumn {
                         component: name.clone(),
                         field: world.field_by_id(id, &f.name).map_err(err)?,
@@ -1298,6 +1301,18 @@ pub fn set_render_backend(id: u32, backend: Option<Box<dyn RenderBackend>>) -> R
     Ok(())
 }
 
+/// Make one pipeline of the engine's renderer that no frame has used yet
+/// (og-render's `Renderer::warm`), when the host has idle time: the web
+/// page behind its play gate. False when every one is made, or without a
+/// renderer.
+pub fn warm_renderer(id: u32) -> bool {
+    engine(id).is_ok_and(|e| {
+        e.render
+            .try_borrow_mut()
+            .is_ok_and(|mut rs| rs.backend.as_mut().is_some_and(|b| b.warm()))
+    })
+}
+
 /// The game's RenderOptions (`GameDesc.render`), for a host creating a renderer.
 pub fn render_options(id: u32) -> Value {
     engine(id).map_or(Value::Null, |e| e.render.borrow().options.clone())
@@ -1463,7 +1478,10 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    let behind = eng.state.borrow().accumulator_ms;
+    let (behind, step_ms, render_ms) = {
+        let st = eng.state.borrow();
+        (st.accumulator_ms, st.step_ms, st.render_ms)
+    };
     let (text, copy) = text_entry(&eng);
     let a11y = a11y_changed(&eng);
     let probe = eng.probe.borrow();
@@ -1471,10 +1489,12 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // yet, so a host can place an input event within the next tick.
     // `text`: the focused text control (where the page's text target goes,
     // the selection a copy takes), `copy`: text a Ctrl/Cmd+C or X took.
+    // `stepMs`: wall milliseconds a tick took (the mean of this frame's, or
+    // the last frame's that ticked), `renderMs`: the last render's.
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
-        "text": text,
+        "text": text, "stepMs": step_ms, "renderMs": render_ms,
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);
@@ -1972,7 +1992,7 @@ pub fn write_resource_bytes(world: u32, resource: &str, bytes: &[u8]) -> String 
             }
             let mut at = 0;
             let mut out = Vec::new();
-            for f in &layout.fields {
+            for f in layout.fields.iter() {
                 let n = f.ty.size();
                 if f.readonly {
                     out.push((at, n));
@@ -2143,7 +2163,7 @@ pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u3
                 .get(name)
                 .ok_or_else(|| format!("'{name}' is not a registered component"))?;
             let id = world.id_by_name(name).map_err(err)?;
-            for f in &layout.fields {
+            for f in layout.fields.iter() {
                 let field = world.field_by_id(id, &f.name).map_err(err)?;
                 let mut b = a.write_bytes(field).map_err(err)?;
                 cols.push((

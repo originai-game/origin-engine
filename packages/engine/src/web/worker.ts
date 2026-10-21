@@ -22,8 +22,8 @@
 // total } (bytes of the wasm and the cooked bundle actually received, so the
 // value is real and never goes backwards), then { type: "ready", engine,
 // tier, transport, rpc, textureFormat, files, textures } or { type: "error",
-// message } before ready; { type: "frame", first } after the first rendered
-// frame; { type: "crash", message, error } when the engine fails after
+// message } before ready; { type: "frame", first, boot } after the first
+// rendered frame (`boot`: BootPhases, where the Worker's boot went); { type: "crash", message, error } when the engine fails after
 // ready (a trap, a Rust panic on the engine's thread or in a lane, a failing
 // system, an uncaught error; `error` is the structured HostError of shell.ts:
 // kind, message, tick, lane, location); { type: "beat", tick } about once a
@@ -52,6 +52,7 @@ import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudio
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscoder, type TextureFormat } from "./basis.ts";
 import type { HostError } from "./shell.ts";
+import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 
 interface Start {
   type: "start";
@@ -86,7 +87,10 @@ interface Start {
   viewport?: Viewport;
   /** Bytes the boot will fetch (the wasm, the cooked bundle), for real progress; omitted: counted as they arrive. */
   expect?: { wasm?: number; cooked?: number };
-  /** Without autoplay: take the first tick before the first frame, so the frame behind a play gate shows the game's first screen (its UI is built by ticks). */
+  /**
+   * Without autoplay: take the first tick before the first frame, so the frame behind a play gate shows the
+   * game's first screen (its UI is built by ticks), then the ticks that apply the platform's answers to it (settle.ts).
+   */
   prime?: boolean;
 }
 
@@ -112,9 +116,16 @@ type Message =
   | AudioMessage
   | AudioLatencyMessage;
 
-/** og.platform's host in the Worker: the calls go to the page, whose answers come back as `platform-answer`. */
-function toPage(host: string, capabilities: readonly string[]): PlatformHost {
-  return { host, capabilities, handle: (calls) => self.postMessage({ type: "platform", calls }) };
+/** og.platform's host in the Worker: the calls go to the page (counted), whose answers come back as `platform-answer`. */
+function toPage(host: string, capabilities: readonly string[], counter: PlatformCounter): PlatformHost {
+  return {
+    host,
+    capabilities,
+    handle: (calls) => {
+      counter.sent(calls);
+      self.postMessage({ type: "platform", calls });
+    },
+  };
 }
 
 interface WorkerScope {
@@ -144,6 +155,10 @@ export interface WebExtras {
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
   og_web_lanes?(): string;
+  /** What the engine holds (the probe's `memory`, ProbeMemory), as JSON. */
+  og_web_memory?(engine: number): string;
+  /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
+  og_web_warm?(engine: number): boolean;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
   og_web_panic?(): string;
   /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
@@ -460,6 +475,18 @@ export function describeHostError(e: HostError): string {
   return `panic at tick ${e.tick ?? "?"}${e.lane ? ` in a lane (${e.lane})` : ""}: ${e.message}${e.location ? ` (${e.location})` : ""}`;
 }
 
+/**
+ * Where the boot went, ms on the Worker's clock: each phase's duration, in
+ * order (`wasm`: the engine module fetched and instantiated, the lanes
+ * pool started; `bundle`: the first group fetched; `create`: the engine and
+ * the game's declarations; `attach`: the renderer created on the canvas;
+ * `transcode`: the Basis textures; `prime`: the tick behind the gate;
+ * `settle`: the ticks that applied the platform's answers behind the gate;
+ * `present`: the first frame rendered, its pipelines compiled), and `at`,
+ * the Worker's time at the first frame from its own start.
+ */
+export type BootPhases = Partial<Record<"wasm" | "bundle" | "create" | "attach" | "transcode" | "prime" | "settle" | "present", number>> & { at?: number };
+
 /** Run `game` in this Worker, driven by the shell's messages. */
 export function startWorker(game: GameToken): void {
   let engine: Engine | null = null;
@@ -476,6 +503,17 @@ export function startWorker(game: GameToken): void {
   /** The tick the last frame reached (a crash's tick when no panic names one). */
   let lastTick: number | null = null;
   let lastBeat = 0;
+  /** What the page was asked and answered: the ticks behind the gate apply its answers (settle.ts). */
+  const platformCounter = new PlatformCounter();
+  /** Where the boot went (BootPhases), sent with the first frame. */
+  const boot: BootPhases = {};
+  let phaseAt = performance.now();
+  const phase = (name: Exclude<keyof BootPhases, "at">) => {
+    const now = performance.now();
+    boot[name] = Math.round((boot[name] ?? 0) + now - phaseAt);
+    phaseAt = now;
+  };
+  const firstFrameMessage = () => ({ type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
   let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
   let audio: WorkerAudio | null = null;
   /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
@@ -641,7 +679,7 @@ export function startWorker(game: GameToken): void {
         if (typeof answered.tick === "number") lastTick = answered.tick;
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
-          self.postMessage({ type: "frame", first: true });
+          self.postMessage(firstFrameMessage());
         }
         audio?.pump();
       }
@@ -692,16 +730,45 @@ export function startWorker(game: GameToken): void {
     }
   };
 
+  /**
+   * Behind the gate, in idle time: the renderer makes the pipelines the first frame did not
+   * draw with, one a task (og-render deferred.rs; WebGL2 compiles each synchronously), until
+   * none is left or play begins (a pipeline still unmade is made by the frame that first draws with it).
+   */
+  const warmBehindGate = () => {
+    const warm = glueRef?.og_web_warm;
+    if (!warm || !rendering) return;
+    const began = performance.now();
+    let made = 0;
+    const step = () => {
+      if (playing || crashed || !engine) return;
+      let more: boolean;
+      try {
+        more = warm(engine.id);
+      } catch (e) {
+        crash(e instanceof Error ? e.message : String(e));
+        return;
+      }
+      if (more) {
+        made++;
+        setTimeout(step, 0);
+      } else if (made > 0) console.info(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
+    };
+    setTimeout(step, 0);
+  };
+  /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
+  let settling = false;
   /** One rendered frame without a tick: the first frame behind the play gate. */
   const present = () => {
-    if (!engine || playing) return;
+    if (!engine || playing || settling) return;
     try {
       const answered = engine.frame(0);
       if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
       relay(answered);
       if (!firstFrame && answered.rendered !== false) {
         firstFrame = true;
-        self.postMessage({ type: "frame", first: true });
+        phase("present");
+        self.postMessage(firstFrameMessage());
       }
       flushLog();
     } catch (e) {
@@ -713,6 +780,8 @@ export function startWorker(game: GameToken): void {
     advance: (e, [n]) => e.advance(Number(n)),
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
+    /** What the engine holds (ProbeMemory: the wasm linear memory, the counted heap, the world, streaming, audio), in every build. */
+    memory: (e) => JSON.parse(glueRef?.og_web_memory?.(e.id) ?? "null"),
     /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
@@ -744,6 +813,7 @@ export function startWorker(game: GameToken): void {
         const progress = (value: number, stage: string) =>
           self.postMessage({ type: "progress", value: Math.min(1, value), stage, loaded: received.loaded, total: received.total });
         progress(0, "wasm");
+        phaseAt = performance.now();
         // The wasm streams through a counting body, so its bytes move the bar while it compiles.
         const counted = async (url: string, expected: number | undefined): Promise<unknown> => {
           if (!expected || typeof Response !== "function" || typeof ReadableStream !== "function") return url;
@@ -790,6 +860,7 @@ export function startWorker(game: GameToken): void {
           await loadWebHost(glue, await counted(data.wasm, data.expect?.wasm));
         }
         glueRef = glue;
+        phase("wasm");
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
         progress(data.expect ? received.value : 0.1, "bundle");
@@ -798,6 +869,7 @@ export function startWorker(game: GameToken): void {
           fetched = await preloadBundle(glue, data.root, progress, data.expect ? received : undefined);
           installFetcher(glue, fetched.manifest ?? "", data.basis, () => (rendering && engine ? engine.id : null));
         }
+        phase("bundle");
         const created = createEngine(game, {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
           ...(data.root === undefined ? {} : { root: data.root }),
@@ -812,18 +884,21 @@ export function startWorker(game: GameToken): void {
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
         // The time is the browser's until the Player's answers carry its own (docs/platform-asks.md).
         engine.setClock(systemClock("browser"));
-        engine.attachPlatform(toPage("none", []));
+        engine.attachPlatform(toPage("none", [], platformCounter));
         if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;
         rpc = data.rpc;
+        phase("create");
         let tier = "none";
         if (data.canvas) {
           canvas = data.canvas;
           tier = await glue.og_web_attach_canvas(engine.id, data.canvas, !!data.webgl);
           rendering = true;
         }
+        phase("attach");
         // The textures go to the renderer's encodings, so after it is attached (the game starts later).
         const loaded = fetched ? await transcodeBundle(glue, rendering ? engine.id : null, fetched, data.basis, progress, data.expect ? received : undefined) : null;
+        phase("transcode");
         progress(1, "ready");
         ready = true;
         self.postMessage({
@@ -842,11 +917,36 @@ export function startWorker(game: GameToken): void {
           playing = true;
           schedule();
         } else if (rendering) {
+          let primed = false;
           if (data.prime && engine.probe.tick() === 0) {
-            const primed = engine.advance(1);
-            if (!primed.ok) throw new Error(primed.reason);
+            const first = engine.advance(1);
+            if (!first.ok) throw new Error(first.reason);
+            primed = true;
           }
+          phase("prime");
+          // The platform's answers to the first tick's reads (the saved language, a slot's
+          // meta) applied behind the gate: before the first frame while they come quickly,
+          // then each settling tick drawn as it lands (settle.ts).
+          const at = performance.now();
+          const behindGate = {
+            stop: () => playing || crashed,
+            pending: () => engine?.platformPending() ?? 0,
+            advance: () => (engine ? engine.advance(1) : { ok: false, reason: "no engine" }),
+          };
+          if (primed) {
+            settling = true;
+            try {
+              await settle(platformCounter, behindGate.advance, { until: at + SETTLE_FIRST_MS, stop: behindGate.stop, pending: behindGate.pending });
+            } finally {
+              settling = false;
+            }
+          }
+          phase("settle");
           present();
+          warmBehindGate();
+          if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
+            void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present }).catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
+          }
         }
       } catch (e) {
         crash(e instanceof Error ? e.message : String(e));
@@ -878,8 +978,11 @@ export function startWorker(game: GameToken): void {
       else log(`warn: audio: ${attached.reason}`);
     }
     if (data.type === "rpc") serve(data.frame, false);
-    if (data.type === "platform-answer") engine.answerPlatform(data.request, data.answer);
-    if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities));
+    if (data.type === "platform-answer") {
+      engine.answerPlatform(data.request, data.answer);
+      platformCounter.answered();
+    }
+    if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities, platformCounter));
     if (data.type === "play") {
       playing = data.on;
       last = 0;

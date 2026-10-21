@@ -1137,6 +1137,11 @@ export class Engine {
     if (calls.length > 0) this.#platform.handle(calls, (request, answer) => void this.answerPlatform(request, answer));
   }
 
+  /** og.platform's calls the world has no answer to yet: in flight at the host, or answered and applied at the next tick's start. */
+  platformPending(): number {
+    return (parse<{ pending?: number }>(abi().og_platform_info(this.id)).pending ?? 0) as number;
+  }
+
   /** Answer one platform call; applied at the start of the next tick. */
   answerPlatform(request: number, answer: PlatformAnswer): boolean {
     // An answer that carries no time (a Player before the time ask, the local platform) gets the host clock's.
@@ -1171,6 +1176,9 @@ export class Engine {
     paused?: boolean;
     quit?: boolean;
     behind?: number;
+    /** Wall milliseconds a tick took (this frame's mean, or the last frame's that ticked) and the last render took. */
+    stepMs?: number;
+    renderMs?: number;
     reason?: string;
     /** The UI's focused text control (web/text-input.ts's TextTarget), or null. */
     text?: { path: string; rect: [number, number, number, number]; multiline: boolean; selection: string; composing: boolean } | null;
@@ -1300,6 +1308,7 @@ function makeProbe(id: number) {
     dump: (desc?: unknown) => parse(a().og_engine_probe_dump(id, json(desc))),
     commands: (script: string) => parse(a().og_engine_probe_commands(id, script)),
     listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),
+    memory: () => parse(a().og_engine_probe_memory(id)),
   });
 }
 

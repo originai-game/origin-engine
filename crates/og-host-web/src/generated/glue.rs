@@ -1556,6 +1556,12 @@ pub fn og_engine_probe_listen(engine_probe: u32, seconds: Option<f64>) -> String
     <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
 }
 
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_memory(engine_probe: u32) -> String {
+    <Host as ProbeApi>::og_engine_probe_memory(&Host, engine_probe)
+}
+
 #[wasm_bindgen]
 pub fn og_terrain_load(world: u32, path: String) -> String {
     <Host as TerrainApi>::og_terrain_load(&Host, world, path)

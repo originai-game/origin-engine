@@ -37,6 +37,11 @@ pub const MAX_SNAPSHOTS: usize = 16;
 /// The most calls a `screenshot` or `sweep` value waits for a frame that
 /// lands on a later call (the web's readback) before it gives up.
 const MAX_CAPTURE_POLLS: u32 = 120;
+/// What a `screenshot` step logs (not a warning) in a host without a
+/// renderer, followed by ` (<file>)`: the step writes no PNG, and a
+/// playtest reports the frame as unchecked and passes (docs/design.md §5,
+/// the `engine` and `probe` sandboxes carry no renderer).
+pub const FRAME_UNCHECKED: &str = "screenshot: no renderer, frame unchecked";
 /// `hello.engine` unless the host says otherwise.
 pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSION"));
 
@@ -44,7 +49,7 @@ pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSI
 pub const MEMBERS: &[&str] = &[
     "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
     "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump",
-    "commands", "listen",
+    "commands", "listen", "memory",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -182,6 +187,7 @@ pub struct Probe {
     target_missed: bool,
     inbox: Inbox,
     listen: Option<ListenFn>,
+    memory: Option<MemoryFn>,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
     /// A screenshot waiting on its frame: it holds the clock and later steps.
@@ -222,6 +228,11 @@ pub struct Heard {
 
 /// The host's `listen` hook.
 pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
+
+/// The host's `memory` hook: what the engine holds, as the IDL's
+/// `ProbeMemory` (the host, the wasm linear memory or the process's resident
+/// memory, the counted heap, the world, the streaming budget, the audio).
+pub type MemoryFn = Box<dyn Fn(&World) -> Value>;
 
 /// A script's output path, relative to wherever the host writes outputs:
 /// an absolute path or a `..` component is refused, so a script (or a
@@ -362,6 +373,7 @@ impl Probe {
             reloader: None,
             facts: None,
             listen: None,
+            memory: None,
             stamp: 0.0,
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
@@ -461,6 +473,17 @@ impl Probe {
             "rms": h.rms,
             "wav": base64::encode(&h.wav),
         }))
+    }
+
+    /// Gives `memory` the host's figures ([`MemoryFn`]).
+    pub fn set_memory(&mut self, memory: impl Fn(&World) -> Value + 'static) {
+        self.memory = Some(Box::new(memory));
+    }
+
+    /// `memory`: what the engine holds (`ProbeMemory`); `None` from a host
+    /// that gave no figures.
+    pub fn memory(&self, world: &World) -> Option<Value> {
+        self.memory.as_ref().map(|f| f(world))
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.
@@ -866,10 +889,18 @@ impl Probe {
                         ));
                     }
                 }
-                let capture = self
-                    .capture
-                    .as_mut()
-                    .ok_or("no renderer in this host: nothing to capture")?;
+                // No renderer is a host configuration, not a fault: the
+                // step notes the frame it did not take and the run goes on
+                // exactly as it would with one (rendering never feeds back).
+                let Some(capture) = self.capture.as_mut() else {
+                    let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
+                    self.note(
+                        tick,
+                        false,
+                        format!("{}s {FRAME_UNCHECKED} ({file})", step.at),
+                    );
+                    return Ok(());
+                };
                 let (width, height) = match edge {
                     None => (0, 0),
                     Some(n) => {
@@ -2148,12 +2179,14 @@ impl Probe {
                 .collect()
             })
             .unwrap_or_default();
-        // og-ecs reports every system: its declared access and what its
-        // queries matched when it last ran. The probe reads no clock: ms is null.
+        // og-ecs reports every system: its declared access, what its
+        // queries matched when it last ran and, when the host gave the world
+        // a clock (World::set_clock), the milliseconds of that run (null
+        // without one) and of every timed run summed, with their count.
         let systems: Vec<Value> = world
             .system_info()
             .into_iter()
-            .map(|s| json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": Value::Null}))
+            .map(|s| json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": s.ms, "totalMs": s.total_ms, "runs": s.runs}))
             .collect();
         let resources: Vec<String> = world
             .schemas()

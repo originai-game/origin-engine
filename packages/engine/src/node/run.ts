@@ -19,6 +19,11 @@
 //   through the probe's `reload` (snapshot, swap, restore), printing one JSON
 //   line per reload with the latency from the file write to the first frame
 //   of the new bundle.
+// - Without a renderer (no usable adapter, as in the platform's engine and
+//   probe sandboxes, or OG_RENDERER=none) the run is the same run: the play
+//   surface keeps --size, a `screenshot` writes no PNG and is listed in
+//   --json's `unchecked` ("no renderer, frame unchecked"), the tier is
+//   `none`, and the exit status does not change.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -147,6 +152,9 @@ if (!opened.ok) fail(`--audio ${audioOut}: ${opened.reason}`);
 const sink: AudioSink = opened.value;
 const outputs: string[] = [];
 const warnings: string[] = [];
+// The screenshots taken without a renderer: the probe's FRAME_UNCHECKED notes.
+const unchecked: string[] = [];
+const UNCHECKED = /^[\d.]+s screenshot: no renderer, frame unchecked \((.+)\)$/;
 
 function decode(base64: string): Uint8Array {
   const bin = atob(base64);
@@ -175,6 +183,10 @@ function drain(): void {
   for (const l of engine.takeLog()) {
     const line = `${l.warning ? "WARN" : "INFO"} tick ${l.tick}: ${l.text}`;
     if (l.warning) warnings.push(line);
+    else {
+      const frame = UNCHECKED.exec(l.text);
+      if (frame) unchecked.push(frame[1]!);
+    }
     process.stderr.write(line + "\n");
   }
 }
@@ -183,7 +195,7 @@ let tier = "none";
 if (deferStart) {
   const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
   if (attached.ok) tier = attached.value!;
-  else process.stderr.write(`WARN no renderer (${attached.reason}); screenshot and capture refuse\n`);
+  else process.stderr.write(`INFO no renderer (${attached.reason}): the run is the same, a screenshot writes no frame and reports it unchecked, capture answers null\n`);
   // The first tick boundary: GameDesc.start, with the surface in place.
   const started = engine.advance(0);
   if (!started.ok) fail(started.reason);
@@ -215,6 +227,15 @@ if (commands !== undefined) {
 
 const rate = engine.rate;
 const tickMs = 1000 / rate;
+// --json's frame times: each frame's tick and render milliseconds (the
+// first five left out, as og polish does), and each system's time over the
+// run from the world's dump (World::set_clock).
+type SystemTimes = { name: string; totalMs?: number; runs?: number }[];
+const systemTimes = (): SystemTimes => (engine.probe.dump({ what: "world" }) as { systems?: SystemTimes }).systems ?? [];
+const systemsBefore = asJson ? systemTimes() : [];
+const stepTimes: number[] = [];
+const renderTimes: number[] = [];
+let framesSeen = 0;
 const t0 = performance.now();
 let frameFailed: string | null = null;
 let quit = false;
@@ -270,6 +291,10 @@ if (!probing) {
       frameFailed = answer.reason ?? "the frame failed";
       break;
     }
+    if (asJson && ++framesSeen > 5) {
+      if ((answer.ticks ?? 0) > 0) stepTimes.push(answer.stepMs ?? 0);
+      if (answer.rendered) renderTimes.push(answer.renderMs ?? 0);
+    }
     sink.pump();
     if (listening !== undefined) extras.og_node_probe_serve(engine.id);
     drain();
@@ -297,7 +322,34 @@ if (audioMode === "capture") {
 const audioStats = sink.stats();
 sink.close();
 if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
-const dump = engine.probe.dump({ what: "world" }) as { hash: string; entities: number; tick: number };
+const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
+// og polish's order statistics (src/node/polish.ts), so the two agree.
+const percentile = (xs: number[], q: number): number => {
+  if (xs.length === 0) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.floor(q * s.length))]!;
+};
+const r3 = (x: number) => +x.toFixed(3);
+const frames = {
+  stepMedianMs: r3(percentile(stepTimes, 0.5)),
+  stepP95Ms: r3(percentile(stepTimes, 0.95)),
+  stepMaxMs: r3(Math.max(0, ...stepTimes)),
+  renderMedianMs: r3(percentile(renderTimes, 0.5)),
+  renderP95Ms: r3(percentile(renderTimes, 0.95)),
+  renderMaxMs: r3(Math.max(0, ...renderTimes)),
+  stepped: stepTimes.length,
+  rendered: renderTimes.length,
+};
+// Each system's mean milliseconds a run over this run, slowest first.
+const systems = (dump.systems ?? [])
+  .map((s) => {
+    const before = systemsBefore.find((b) => b.name === s.name);
+    const runs = (s.runs ?? 0) - (before?.runs ?? 0);
+    const ms = (s.totalMs ?? 0) - (before?.totalMs ?? 0);
+    return { name: s.name, meanMs: runs > 0 ? r3(ms / runs) : 0, totalMs: r3(ms), runs };
+  })
+  .filter((s) => s.runs > 0)
+  .sort((a, b) => b.totalMs - a.totalMs);
 const summary = {
   entry,
   ticks: ticks ?? dump.tick,
@@ -305,9 +357,12 @@ const summary = {
   hash: dump.hash,
   entities: dump.entities,
   advanceMs: +ms.toFixed(2),
+  frames,
+  systems,
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
   quit,
+  unchecked,
   audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },
   outputs,
   warnings,

@@ -100,7 +100,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 21, "13 protocol-5 members + 8 wire members");
+    assert_eq!(MEMBERS.len(), 22, "13 protocol-5 members + 9 wire members");
 
     // tick, state: the fixed head, then the game's facts.
     assert_eq!(t.tick(), 0);
@@ -431,12 +431,12 @@ fn every_member_answers_as_protocol_5_says() {
     );
     assert_eq!(
         world["systems"][0],
-        json!({"name": "steer", "matched": 1, "reads": ["og.Input"], "writes": ["Velocity"], "ms": null})
+        json!({"name": "steer", "matched": 1, "reads": ["og.Input"], "writes": ["Velocity"], "ms": null, "totalMs": 0.0, "runs": 0})
     );
     assert_eq!(world["systems"][1]["matched"], json!(1));
     assert_eq!(
         world["systems"][2],
-        json!({"name": "draw", "matched": 0, "reads": [], "writes": ["og.Rng", "Stats"], "ms": null})
+        json!({"name": "draw", "matched": 0, "reads": [], "writes": ["og.Rng", "Stats"], "ms": null, "totalMs": 0.0, "runs": 0})
     );
     for r in ["og.Input", "og.Camera", "Stats"] {
         assert!(
@@ -511,6 +511,9 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(t.ok("listen", json!({})), Value::Null);
     assert_eq!(t.ok("listen", json!({"seconds": 0.5})), Value::Null);
     t.err("listen", json!({"seconds": 3}), INVALID_PARAMS);
+
+    // memory from a host that gave no figures: null.
+    assert_eq!(t.ok("memory", json!({})), Value::Null);
 
     // Unknown methods, including names the in-page probe has but the wire does not.
     for method in ["teleport", "version", "entities", "record", "Hello", ""] {

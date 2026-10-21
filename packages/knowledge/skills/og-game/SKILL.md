@@ -62,7 +62,12 @@ The order the games found productive:
    say what it shows. Do this after every change that shows on screen.
 7. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
    asserting on facts, `get:` answers and dumps, one per feature, and a
-   frames playtest comparing screenshots with `references/<tier>/`.
+   frames playtest comparing screenshots with `references/<tier>/`, its
+   frame reads inside `t.frame`: in a sandbox without a renderer each
+   screenshot is reported "no renderer, frame unchecked" and passes while
+   every other check runs, and the frames are verified where there is a
+   renderer (the author's machine, the browser-check sandbox, an executor
+   with a GPU).
 8. **Polish** (og-build §5): `og polish` until its findings are gone; each
    names the section that fixes it (og-taste §10, og-feel §13).
 
@@ -323,8 +328,9 @@ using it (`og.Environment.map` or `PostEffects.lut` to 0, another look).
 `state`, `trigger`, `memory`, `kept`, `loads` and `reason`; `StreamBudget`
 has `budget`, `used` (kept bytes included), `kept` and `peak`. At most one
 group is put in place per tick boundary, and a group larger than the whole
-budget fails. A chunked sound (og-audio §5) streams on its own and cannot
-join a group.
+budget fails. A chunked sound (og-audio §5) may join a group: its first
+chunk comes in the pack and its other chunks are read ahead of its
+playheads only while the group is resident.
 
 ## 7. Input
 
@@ -1186,7 +1192,11 @@ the last step. `templates/fx-showcase` has a station for each.
 ## 14. Performance
 
 A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
-desktop so phones have room. `og run --json` prints `advanceMs`, `og
+desktop so phones have room. `og run --json` prints `advanceMs`, the
+run's `frames` (step and render median, p95 and max) and its `systems`
+(each system's mean milliseconds a tick, slowest first: the game's and the
+engine's own, physics, the UI's end of frame, animation and the rest, which the
+probe's `dump_world` also reports as `ms`), `og
 polish` the p95 step and render time of every playtest (og-build §5), and
 `og run --device` the first frame and frame times in a real browser or
 phone (og-build §6). The usual costs:

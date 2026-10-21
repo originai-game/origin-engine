@@ -91,6 +91,44 @@ pub(crate) struct Assets {
     pub stream: super::stream::Streams,
     /// og.load.textureArray's answers, by asset id.
     pub texture_arrays: BTreeMap<String, Value>,
+    /// Per glTF asset index, the GltfDesc shadow flags of its last
+    /// og.load.gltf ([`Assets::model_shadows`]).
+    pub model_shadows: BTreeMap<usize, ModelShadows>,
+}
+
+/// GltfDesc's `castShadow` and `receiveShadow`: what world.instantiate of
+/// the glTF and a scene's `model` line give the og.Model they spawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ModelShadows {
+    pub cast: bool,
+    pub receive: bool,
+}
+
+impl ModelShadows {
+    /// A model loaded without a desc casts and receives.
+    pub const ON: ModelShadows = ModelShadows {
+        cast: true,
+        receive: true,
+    };
+
+    /// A GltfDesc's flags (each on when omitted); refused when one is not a
+    /// boolean.
+    pub fn from_desc(desc: &Value) -> Result<ModelShadows, String> {
+        let flag = |k: &str| match &desc[k] {
+            Value::Null => Ok(true),
+            Value::Bool(b) => Ok(*b),
+            other => Err(format!("GltfDesc.{k} is a boolean, got {other}")),
+        };
+        Ok(ModelShadows {
+            cast: flag("castShadow")?,
+            receive: flag("receiveShadow")?,
+        })
+    }
+
+    /// The og.Model fields they set.
+    pub fn model_fields(self, asset: u64) -> Value {
+        json!({ "asset": asset as f64, "castShadow": self.cast, "receiveShadow": self.receive })
+    }
 }
 
 /// One `og.load.textureArray` (by load index, the handle's): its renderer
@@ -131,6 +169,15 @@ fn read(path: &str) -> Fetch<Vec<u8>> {
 }
 
 impl Assets {
+    /// The shadow flags the models instantiated from glTF asset `index`
+    /// take: its last og.load.gltf's, on when it never had a desc.
+    pub fn model_shadows(&self, index: usize) -> ModelShadows {
+        self.model_shadows
+            .get(&index)
+            .copied()
+            .unwrap_or(ModelShadows::ON)
+    }
+
     fn push(&mut self, path: &str, status: Status, payload: Payload) -> usize {
         self.entries.push(Entry {
             path: path.to_string(),
@@ -785,7 +832,7 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
 /// the bank (a long advance mixed at once) is read from its file there
 /// and then, on whichever thread mixes, its type and cook stamp checked.
 #[cfg(not(target_arch = "wasm32"))]
-fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
+pub(crate) fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
     let files: Vec<Option<(String, u64)>> = (0..sound.meta.chunk_count)
         .map(|n| {
             let id = og_cook::runtime::chunk_id(&sound.id, n);
@@ -945,9 +992,20 @@ pub(crate) fn spawn_scene(
         let world = eng.world()?;
         let mut components = Vec::new();
         let mut has_transform = false;
+        // A `Model` table beside a `model` line: its fields, with the
+        // line's asset (`model_table`).
+        let mut model_table = None;
         for (t, layout) in &tables {
             if let Some(row) = t.get(i) {
                 let value = migrate(&t.schema, row, layout, &mut dropped);
+                if e.instance.is_some()
+                    && model_layout
+                        .as_ref()
+                        .is_some_and(|ml| ml.schema == layout.schema)
+                {
+                    model_table = Some(value);
+                    continue;
+                }
                 let id = world
                     .id_by_name(&layout.schema)
                     .map_err(|e| e.reason().to_string())?;
@@ -982,10 +1040,20 @@ pub(crate) fn spawn_scene(
                     let id = world
                         .id_by_name(&ml.schema)
                         .map_err(|e| e.reason().to_string())?;
-                    components.push((
-                        id,
-                        ml.encode(None, Some(&json!({ "asset": handle(index) as f64 })))?,
-                    ));
+                    // The scene's own Model fields, else the load's shadow
+                    // flags (GltfDesc).
+                    let value = match model_table.take() {
+                        Some(mut v) => {
+                            v["asset"] = json!(handle(index) as f64);
+                            v
+                        }
+                        None => eng
+                            .assets
+                            .borrow()
+                            .model_shadows(index)
+                            .model_fields(handle(index)),
+                    };
+                    components.push((id, ml.encode(None, Some(&value))?));
                 }
                 None => dropped.push(format!("{}: og.Model is not registered", e.name)),
             }

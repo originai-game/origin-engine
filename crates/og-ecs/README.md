@@ -16,7 +16,7 @@ fixed tick at a time, snapshotted and restored whole.
 | queries | `query(&QueryDesc { read, write, without })` → `QueryIter` of `ArchetypeView`: `entities()`, `read::<T>(field)`, `write::<T>(field)`, `read_bytes`, `write_bytes` |
 | resources | `insert_resource`, `insert_resource_bytes`, `resource::<T>()`, `resource_mut::<T>()`, `resource_bytes`, `remove_resource`, `remove_resource_id`, `has_resource`, `has_resource_id`, `time()` |
 | events | `send`, `send_bytes`, `pending_events::<T>()`, `pending_events_bytes` |
-| schedule | `add_system(SystemDesc { name, reads, writes, queries }, fn(&mut SystemContext) -> Result<()>)`, `step()`, `systems()`, `system_info()` → `SystemInfo { name, reads, writes, queries, matched, query_matched, last_tick }` |
+| schedule | `add_system(SystemDesc { name, reads, writes, queries }, fn(&mut SystemContext) -> Result<()>)`, `step()`, `systems()`, `system_info()` → `SystemInfo { name, reads, writes, queries, matched, query_matched, last_tick, ms, total_ms, runs }`, `set_clock(Some(fn() -> f64))` times each system's run (measurement only; the hosts give `performance.now`-like clocks) |
 | state | `add_state_block(name, Box<dyn StateBlock>)`, `snapshot() -> Vec<u8>`, `restore(&[u8])`, `restore_migrating(&[u8]) -> MigrationReport`, `world_hash() -> u64` |
 
 `SystemContext`: `time()`, `time_scale()`, `scaled_dt()`, `set_time_scale`, `hit_stop`, `query(i)`, `resource`, `resource_mut`, `events`,

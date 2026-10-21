@@ -1101,14 +1101,6 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let chunking = audio::shape(&s.bytes)
                     .ok()
                     .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
-                if chunking.is_some() && group_of.contains_key(&s.rel) {
-                    early_errors.push((
-                        s.rel.clone(),
-                        "sound",
-                        "a sound cooked in chunks streams by itself: leave it out of stream groups, or give it `sound { stream false }`".into(),
-                    ));
-                    continue;
-                }
                 let shape =
                     chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
                 let st = stamp(&[
@@ -1901,9 +1893,16 @@ fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
 
 /// The group of a planned output: its asset's, except a glTF's `#proxy`
 /// and `#anim`, which stay in the first group (the proxy draws while the
-/// group is away; clips are small and bound at load).
+/// group is away; clips are small and bound at load), and the chunks of a
+/// sound cooked in chunks after its first (`#chunk<n>`): its head goes in
+/// its group's pack and each other chunk stays a file of its own, read
+/// ahead of the sound's playheads once the group is resident, as a chunked
+/// sound of the first group's are.
 fn output_group(id: &str, rel: &str, group_of: &BTreeMap<String, String>) -> Option<String> {
-    if id.ends_with("#proxy") || id.ends_with("#anim") {
+    let chunk = id
+        .rsplit_once("#chunk")
+        .is_some_and(|(_, n)| n.parse::<u32>().is_ok());
+    if id.ends_with("#proxy") || id.ends_with("#anim") || chunk {
         return None;
     }
     group_of.get(rel).cloned()

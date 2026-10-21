@@ -2,6 +2,14 @@
 // `og run --commands`, then checks over what the run wrote. `og test` runs
 // every one in its own process and fails a playtest that made no check.
 //
+// Without a renderer (the platform's engine and probe sandboxes carry none;
+// `OG_RENDERER=none` makes any machine so) the run is the same run, but a
+// `screenshot` writes no PNG: the checks that read a frame go inside
+// `t.frame(files, () => ...)`, which runs them with a renderer and otherwise
+// reports each file "no renderer, frame unchecked" and passes. Frames are
+// verified where there is a renderer: the author's machine, the
+// browser-check sandbox, an executor with a GPU.
+//
 //   import { playtest } from "@origingame/engine/playtest";
 //   export default playtest({
 //     name: "the trickster spins after S",
@@ -9,6 +17,7 @@
 //     check(run, t) {
 //       t.ok(run.quit, "the script reached quit");
 //       t.ok(run.json<{ components: Record<string, { speed: number }> }>("t.json").components.Spin!.speed > 0, "Spin started");
+//       t.frame("spin.png", () => t.equal(run.png("spin.png").width, 1280, "the frame is 1280 wide"));
 //     },
 //   });
 
@@ -23,15 +32,19 @@ export interface PlaytestRun {
   readonly entities: number;
   /** Whether a `quit` step ran. */
   readonly quit: boolean;
-  /** The renderer tier (`metal`, `vulkan-cpu`, `none`). */
+  /** The renderer tier (`metal`, `vulkan`, `webgpu`, ..., `none` without a renderer). */
   readonly tier: string;
+  /** Whether the run had a renderer: without one (`tier` `none`) a `screenshot` writes no PNG. */
+  readonly rendered: boolean;
+  /** The screenshots the run took without a renderer, by the file each would have written: frames unchecked. */
+  readonly unchecked: readonly string[];
   /** Every file the commands wrote, by its `Output::file_name()` (`smoke.png`, `dump_world-000132.json`). */
   readonly files: readonly string[];
   /** Warnings the command channel and the probe logged, each naming the fix. */
   readonly warnings: readonly string[];
   /** A written JSON output, parsed. Throws when the run wrote no such file. */
   json<T = unknown>(file: string): T;
-  /** A written PNG's size. Throws when the run wrote no such file. */
+  /** A written PNG's size. Throws when the run wrote no such file (and, for a screenshot taken without a renderer, a FrameUnchecked: read frames inside `t.frame`). */
   png(file: string): { width: number; height: number; bytes: number };
   /** A written text output. */
   text(file: string): string;
@@ -46,6 +59,27 @@ export interface PlaytestChecks {
   ok(condition: unknown, what: string): void;
   equal<T>(actual: T, expected: T, what: string): void;
   near(actual: number, expected: number, tolerance: number, what: string): void;
+  /**
+   * The checks that read frames (`run.png`, a decoded screenshot, a comparison with
+   * references/): `check` runs when the playtest had a renderer. Without one it does not run,
+   * each of `files` is reported "no renderer, frame unchecked", and the playtest passes on its
+   * other checks. Every check outside `t.frame` runs either way.
+   */
+  frame(files: string | readonly string[], check: () => void): void;
+}
+
+/**
+ * What reading a screenshot the run took without a renderer throws. A check function stopped by
+ * one passes with its frame unchecked (the checks after it did not run, and the report says so):
+ * put frame checks inside `t.frame` so every other check runs.
+ */
+export class FrameUnchecked extends Error {
+  readonly file: string;
+  constructor(file: string) {
+    super(`${file}: no renderer, frame unchecked`);
+    this.name = "FrameUnchecked";
+    this.file = file;
+  }
 }
 
 export interface PlaytestDesc {

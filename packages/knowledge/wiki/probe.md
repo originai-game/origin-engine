@@ -20,7 +20,7 @@ module probe {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10303</sub>
+<sub>`api.ogt` line 10315</sub>
 
 ## Contents
 
@@ -47,6 +47,10 @@ module probe {
 | [`BuildProfile`](#type-BuildProfile) | enum | The build configuration; publish builds keep only the player-facing probe members. |
 | [`Capture`](#type-Capture) | struct | A captured frame. |
 | [`Heard`](#type-Heard) | struct | What the host's mixer rendered last: the audio up to the current tick. |
+| [`ProbeHeap`](#type-ProbeHeap) | struct | The engine's allocator, counted (both hosts install a counting global allocator). |
+| [`ProbeWorldMemory`](#type-ProbeWorldMemory) | struct | The world's size. |
+| [`ProbeStreamMemory`](#type-ProbeStreamMemory) | struct | The streaming memory budget (og.stream.budget): what the admitted groups' assets take. |
+| [`ProbeMemory`](#type-ProbeMemory) | struct | What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md). |
 | [`SweepDesc`](#type-SweepDesc) | desc struct | A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture. |
 | [`SweepFrame`](#type-SweepFrame) | struct | One frame of a sweep. |
 | [`SweepResult`](#type-SweepResult) | struct | A sweep's frames, one per value. |
@@ -80,7 +84,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10600</sub>
+<sub>`api.ogt` line 10658</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -100,7 +104,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 10604</sub>
+<sub>`api.ogt` line 10662</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -124,7 +128,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 10607</sub>
+<sub>`api.ogt` line 10665</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -148,7 +152,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 10612</sub>
+<sub>`api.ogt` line 10670</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -176,7 +180,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 10617</sub>
+<sub>`api.ogt` line 10675</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -199,7 +203,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 10622</sub>
+<sub>`api.ogt` line 10680</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -222,7 +226,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 10626</sub>
+<sub>`api.ogt` line 10684</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -251,7 +255,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 10630</sub>
+<sub>`api.ogt` line 10688</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -274,7 +278,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 10636</sub>
+<sub>`api.ogt` line 10694</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -305,7 +309,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 10640</sub>
+<sub>`api.ogt` line 10698</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -334,7 +338,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 10647</sub>
+<sub>`api.ogt` line 10705</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -362,7 +366,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 10653</sub>
+<sub>`api.ogt` line 10711</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -394,7 +398,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 10658</sub>
+<sub>`api.ogt` line 10716</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -422,7 +426,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 10665</sub>
+<sub>`api.ogt` line 10723</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -440,7 +444,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10672</sub>
+<sub>`api.ogt` line 10730</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -464,13 +468,13 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 10677</sub>
+<sub>`api.ogt` line 10735</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
 #### `EngineProbe.capture`
 
-The frame of the current tick, rendered offscreen and read back as a PNG.
+The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
 
 Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
 
@@ -491,7 +495,7 @@ Binding symbol `og_engine_probe_capture` · publish builds: kept
 
 ```ogt
 fn capture {
-  doc "The frame of the current tick, rendered offscreen and read back as a PNG."
+  doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
   doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
   doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
   publish true
@@ -505,7 +509,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 10682</sub>
+<sub>`api.ogt` line 10740</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -535,7 +539,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 10695</sub>
+<sub>`api.ogt` line 10753</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -558,7 +562,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 10702</sub>
+<sub>`api.ogt` line 10760</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -581,7 +585,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 10706</sub>
+<sub>`api.ogt` line 10764</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -609,7 +613,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 10710</sub>
+<sub>`api.ogt` line 10768</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -639,7 +643,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 10715</sub>
+<sub>`api.ogt` line 10773</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -667,7 +671,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 10722</sub>
+<sub>`api.ogt` line 10780</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -697,7 +701,30 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 10727</sub>
+<sub>`api.ogt` line 10785</sub>
+
+<a id="member-EngineProbe-memory"></a>
+
+#### `EngineProbe.memory`
+
+What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts.
+
+```ts
+EngineProbe.memory(): ProbeMemory | null
+```
+
+**Returns** `ProbeMemory | null`: Null from a host that gives no figures.
+
+Binding symbol `og_engine_probe_memory` · publish builds: dropped
+
+```ogt
+fn memory {
+  doc "What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts."
+  returns Option.ProbeMemory "Null from a host that gives no figures."
+}
+```
+
+<sub>`api.ogt` line 10792</sub>
 
 ## Types
 
@@ -722,7 +749,7 @@ struct PickResult {
 }
 ```
 
-<sub>`api.ogt` line 10317</sub>
+<sub>`api.ogt` line 10329</sub>
 
 <a id="type-ProbeTunable"></a>
 
@@ -757,7 +784,7 @@ struct ProbeTunable {
 }
 ```
 
-<sub>`api.ogt` line 10324</sub>
+<sub>`api.ogt` line 10336</sub>
 
 <a id="type-ProbeEntityRef"></a>
 
@@ -780,7 +807,7 @@ struct ProbeEntityRef {
 }
 ```
 
-<sub>`api.ogt` line 10341</sub>
+<sub>`api.ogt` line 10353</sub>
 
 <a id="type-ProbeTimings"></a>
 
@@ -809,7 +836,7 @@ struct ProbeTimings {
 }
 ```
 
-<sub>`api.ogt` line 10349</sub>
+<sub>`api.ogt` line 10361</sub>
 
 <a id="type-ProbeState"></a>
 
@@ -838,7 +865,7 @@ struct ProbeState {
 }
 ```
 
-<sub>`api.ogt` line 10362</sub>
+<sub>`api.ogt` line 10374</sub>
 
 <a id="type-AdvanceOperation"></a>
 
@@ -857,7 +884,7 @@ struct AdvanceOperation {
 }
 ```
 
-<sub>`api.ogt` line 10372</sub>
+<sub>`api.ogt` line 10384</sub>
 
 <a id="type-InputOperation"></a>
 
@@ -876,7 +903,7 @@ struct InputOperation {
 }
 ```
 
-<sub>`api.ogt` line 10377</sub>
+<sub>`api.ogt` line 10389</sub>
 
 <a id="type-PickOperation"></a>
 
@@ -897,7 +924,7 @@ struct PickOperation {
 }
 ```
 
-<sub>`api.ogt` line 10382</sub>
+<sub>`api.ogt` line 10394</sub>
 
 <a id="type-EntityOperation"></a>
 
@@ -916,7 +943,7 @@ struct EntityOperation {
 }
 ```
 
-<sub>`api.ogt` line 10388</sub>
+<sub>`api.ogt` line 10400</sub>
 
 <a id="type-ProbeOperation"></a>
 
@@ -950,7 +977,7 @@ union ProbeOperation {
 }
 ```
 
-<sub>`api.ogt` line 10393</sub>
+<sub>`api.ogt` line 10405</sub>
 
 <a id="type-ProbeProgramResult"></a>
 
@@ -973,7 +1000,7 @@ struct ProbeProgramResult {
 }
 ```
 
-<sub>`api.ogt` line 10405</sub>
+<sub>`api.ogt` line 10417</sub>
 
 <a id="type-Hello"></a>
 
@@ -1010,7 +1037,7 @@ struct Hello {
 }
 ```
 
-<sub>`api.ogt` line 10412</sub>
+<sub>`api.ogt` line 10424</sub>
 
 <a id="type-BuildProfile"></a>
 
@@ -1035,7 +1062,7 @@ enum BuildProfile {
 }
 ```
 
-<sub>`api.ogt` line 10427</sub>
+<sub>`api.ogt` line 10439</sub>
 
 <a id="type-Capture"></a>
 
@@ -1060,7 +1087,7 @@ struct Capture {
 }
 ```
 
-<sub>`api.ogt` line 10434</sub>
+<sub>`api.ogt` line 10446</sub>
 
 <a id="type-Heard"></a>
 
@@ -1091,7 +1118,119 @@ struct Heard {
 }
 ```
 
-<sub>`api.ogt` line 10442</sub>
+<sub>`api.ogt` line 10454</sub>
+
+<a id="type-ProbeHeap"></a>
+
+### `ProbeHeap` (struct)
+
+The engine's allocator, counted (both hosts install a counting global allocator).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `live` | `number` | `0` | — | `bytes` | — | Bytes allocated and not freed. |
+| `peak` | `number` | `0` | — | `bytes` | — | The most bytes live at once since load. |
+| `allocations` | `number` | `0` | — | — | — | Allocations made since load. |
+
+```ogt
+struct ProbeHeap {
+  doc "The engine's allocator, counted (both hosts install a counting global allocator)."
+  field live f64 "Bytes allocated and not freed." {
+    unit bytes
+  }
+  field peak f64 "The most bytes live at once since load." {
+    unit bytes
+  }
+  field allocations f64 "Allocations made since load."
+}
+```
+
+<sub>`api.ogt` line 10466</sub>
+
+<a id="type-ProbeWorldMemory"></a>
+
+### `ProbeWorldMemory` (struct)
+
+The world's size.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entities` | `number` | `0` | — | — | — | Entities alive. |
+
+```ogt
+struct ProbeWorldMemory {
+  doc "The world's size."
+  field entities u32 "Entities alive."
+}
+```
+
+<sub>`api.ogt` line 10477</sub>
+
+<a id="type-ProbeStreamMemory"></a>
+
+### `ProbeStreamMemory` (struct)
+
+The streaming memory budget (og.stream.budget): what the admitted groups' assets take.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `budget` | `number` | `0` | — | `bytes` | — | The budget. |
+| `used` | `number` | `0` | — | `bytes` | — | What the admitted groups take now. |
+| `peak` | `number` | `0` | — | `bytes` | — | The most they took at once. |
+
+```ogt
+struct ProbeStreamMemory {
+  doc "The streaming memory budget (og.stream.budget): what the admitted groups' assets take."
+  field budget f64 "The budget." {
+    unit bytes
+  }
+  field used f64 "What the admitted groups take now." {
+    unit bytes
+  }
+  field peak f64 "The most they took at once." {
+    unit bytes
+  }
+}
+```
+
+<sub>`api.ogt` line 10482</sub>
+
+<a id="type-ProbeMemory"></a>
+
+### `ProbeMemory` (struct)
+
+What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `host` | `string` | `""` | — | — | — | `web` or `native`. |
+| `linear` | `number \| null` | `null` | — | `bytes` | — | The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively. |
+| `resident` | `number \| null` | `null` | — | `bytes` | — | The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's. |
+| `heap` | `ProbeHeap \| null` | `null` | — | — | — | The engine's allocator; null where the host counts nothing. |
+| `world` | `ProbeWorldMemory` | `{ entities: 0 }` | — | — | — | The world. |
+| `stream` | `ProbeStreamMemory \| null` | `null` | — | — | — | The streaming budget. |
+| `audio` | `number \| null` | `null` | — | `bytes` | — | The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio. |
+
+```ogt
+struct ProbeMemory {
+  doc "What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md)."
+  field host String "`web` or `native`."
+  field linear Option.f64 "The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively." {
+    unit bytes
+  }
+  field resident Option.f64 "The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's." {
+    unit bytes
+  }
+  field heap Option.ProbeHeap "The engine's allocator; null where the host counts nothing."
+  field world ProbeWorldMemory "The world."
+  field stream Option.ProbeStreamMemory "The streaming budget."
+  field audio Option.f64 "The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio." {
+    unit bytes
+  }
+}
+```
+
+<sub>`api.ogt` line 10495</sub>
 
 <a id="type-SweepDesc"></a>
 
@@ -1123,7 +1262,7 @@ struct SweepDesc {
 }
 ```
 
-<sub>`api.ogt` line 10454</sub>
+<sub>`api.ogt` line 10512</sub>
 
 <a id="type-SweepFrame"></a>
 
@@ -1146,7 +1285,7 @@ struct SweepFrame {
 }
 ```
 
-<sub>`api.ogt` line 10465</sub>
+<sub>`api.ogt` line 10523</sub>
 
 <a id="type-SweepResult"></a>
 
@@ -1165,7 +1304,7 @@ struct SweepResult {
 }
 ```
 
-<sub>`api.ogt` line 10472</sub>
+<sub>`api.ogt` line 10530</sub>
 
 <a id="type-ReloadReport"></a>
 
@@ -1194,7 +1333,7 @@ struct ReloadReport {
 }
 ```
 
-<sub>`api.ogt` line 10477</sub>
+<sub>`api.ogt` line 10535</sub>
 
 <a id="type-SnapshotInfo"></a>
 
@@ -1221,7 +1360,7 @@ struct SnapshotInfo {
 }
 ```
 
-<sub>`api.ogt` line 10488</sub>
+<sub>`api.ogt` line 10546</sub>
 
 <a id="type-DumpKind"></a>
 
@@ -1246,7 +1385,7 @@ enum DumpKind {
 }
 ```
 
-<sub>`api.ogt` line 10498</sub>
+<sub>`api.ogt` line 10556</sub>
 
 <a id="type-DumpDesc"></a>
 
@@ -1270,7 +1409,7 @@ struct DumpDesc {
 }
 ```
 
-<sub>`api.ogt` line 10505</sub>
+<sub>`api.ogt` line 10563</sub>
 
 <a id="type-ArchetypeDump"></a>
 
@@ -1291,7 +1430,7 @@ struct ArchetypeDump {
 }
 ```
 
-<sub>`api.ogt` line 10512</sub>
+<sub>`api.ogt` line 10570</sub>
 
 <a id="type-SystemDump"></a>
 
@@ -1320,7 +1459,7 @@ struct SystemDump {
 }
 ```
 
-<sub>`api.ogt` line 10518</sub>
+<sub>`api.ogt` line 10576</sub>
 
 <a id="type-WorldDump"></a>
 
@@ -1349,7 +1488,7 @@ struct WorldDump {
 }
 ```
 
-<sub>`api.ogt` line 10529</sub>
+<sub>`api.ogt` line 10587</sub>
 
 <a id="type-EntityDump"></a>
 
@@ -1372,7 +1511,7 @@ struct EntityDump {
 }
 ```
 
-<sub>`api.ogt` line 10539</sub>
+<sub>`api.ogt` line 10597</sub>
 
 <a id="type-UiElement"></a>
 
@@ -1425,7 +1564,7 @@ struct UiElement {
 }
 ```
 
-<sub>`api.ogt` line 10546</sub>
+<sub>`api.ogt` line 10604</sub>
 
 <a id="type-UiSurface"></a>
 
@@ -1454,7 +1593,7 @@ struct UiSurface {
 }
 ```
 
-<sub>`api.ogt` line 10572</sub>
+<sub>`api.ogt` line 10630</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1477,7 +1616,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 10585</sub>
+<sub>`api.ogt` line 10643</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1503,7 +1642,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 10592</sub>
+<sub>`api.ogt` line 10650</sub>
 
 ## Constants
 
@@ -1520,34 +1659,34 @@ union DumpResult {
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
 ```
 
-<sub>`api.ogt` line 10310</sub>
+<sub>`api.ogt` line 10322</sub>
 
 ```ogt
 const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
 ```
 
-<sub>`api.ogt` line 10311</sub>
+<sub>`api.ogt` line 10323</sub>
 
 ```ogt
 const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
 ```
 
-<sub>`api.ogt` line 10312</sub>
+<sub>`api.ogt` line 10324</sub>
 
 ```ogt
 const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
 ```
 
-<sub>`api.ogt` line 10313</sub>
+<sub>`api.ogt` line 10325</sub>
 
 ```ogt
 const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
 ```
 
-<sub>`api.ogt` line 10314</sub>
+<sub>`api.ogt` line 10326</sub>
 
 ```ogt
 const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 ```
 
-<sub>`api.ogt` line 10315</sub>
+<sub>`api.ogt` line 10327</sub>

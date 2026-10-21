@@ -97,6 +97,7 @@ pub const SCENES: &[&str] = &[
     "tilemap-lit",
     "model-flash",
     "shadows-crypt",
+    "shadow-flags",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -290,6 +291,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // that casts no shadow lights the altar and the pillar (its shadow
         // in cube faces, or paraboloids on WebGL2, falls behind a post).
         "shadows-crypt" => g.scene = crate::shadow_scenes::crypt_scene(),
+        // Per-instance shadow flags under a low sun: a model that casts as
+        // added beside one that casts none, and behind a wall's shadow a
+        // box and a model that receive beside a box and a model that do
+        // not (lit as if unshadowed).
+        "shadow-flags" => g.scene = crate::shadow_scenes::shadow_flags_scene()?.scene,
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the full tier's eight; WebGL2
         // draws four, its own frame).

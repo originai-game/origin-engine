@@ -118,6 +118,17 @@ pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<r
 /// The profile's dimensions.
 pub(crate) const DIM: usize = 3;
 
+/// Whether a point's projection on `c` can only say "inside" when it lies
+/// on the surface: a triangle mesh without oriented pseudo-normals (parry's
+/// triangle reports inside only for a point it projects onto itself). A
+/// point farther than `radius` from such a shape is never pushed, so its
+/// projection may stop at `radius` ([`crate::ext`]'s `Near`).
+pub(crate) fn surface_only(c: &rp::Collider) -> bool {
+    c.shape()
+        .as_trimesh()
+        .is_some_and(|m| m.pseudo_normals_if_oriented().is_none())
+}
+
 /// For a height-field collider with `p` over it: the point of its surface
 /// straight above or below `p` (along the field's up) and the surface's
 /// unit normal there, pointing out of the ground. `None` for other shapes

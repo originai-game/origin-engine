@@ -178,8 +178,10 @@ its mirrored twin for right to left, and leave icons of objects alone.
 ## 5. The player's choice
 
 The settings screen's language list calls `og.i18n.setLocale(world, tag)`
-and saves the choice with the other settings (`og.platform.saveSettings`,
-og-platform-sdk): restore it on the first tick. `og.i18n.locale(world)`
+and saves the choice with the other settings (`og.platform.saveSettings`).
+Restore it: `og.platform.loadSettings` on the first tick, and
+`og.i18n.setLocale` with the saved tag when it answers (og-platform-sdk §3);
+a game that only saves comes back in the host's language after a reload. `og.i18n.locale(world)`
 answers the requested and active locale, the direction and the font chain.
 
 ## 6. Prove it

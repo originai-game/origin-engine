@@ -6902,6 +6902,10 @@
         "BuildProfile",
         "Capture",
         "Heard",
+        "ProbeHeap",
+        "ProbeWorldMemory",
+        "ProbeStreamMemory",
+        "ProbeMemory",
         "SweepDesc",
         "SweepFrame",
         "SweepResult",
@@ -7141,7 +7145,7 @@
             },
             {
               "name": "capture",
-              "doc": "The frame of the current tick, rendered offscreen and read back as a PNG.\nSize rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.\nOn the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).",
+              "doc": "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).\nSize rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.\nOn the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).",
               "params": [
                 {
                   "name": "width",
@@ -7253,6 +7257,14 @@
               ],
               "returns": "Option<Heard>",
               "returnsDoc": "Null without audio, or before anything was rendered.",
+              "publish": false
+            },
+            {
+              "name": "memory",
+              "doc": "What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts.",
+              "params": [],
+              "returns": "Option<ProbeMemory>",
+              "returnsDoc": "Null from a host that gives no figures.",
               "publish": false
             }
           ]
@@ -10328,7 +10340,7 @@
         "vulkan": "Native Vulkan on a GPU.",
         "vulkan-cpu": "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.",
         "metal": "Native Metal.",
-        "none": "No renderer: frames are not produced and capture refuses."
+        "none": "No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null."
       }
     },
     "Antialias": {
@@ -11013,8 +11025,8 @@
         },
         "receiveShadow": {
           "type": "boolean",
-          "description": "Receive shadows, as three.js Object3D.receiveShadow. Not applied yet: every mesh receives shadows.",
-          "default": false
+          "description": "Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley.",
+          "default": true
         },
         "visible": {
           "type": "boolean",
@@ -13812,13 +13824,13 @@
         },
         "castShadow": {
           "type": "boolean",
-          "description": "Set Mesh.castShadow on every mesh instantiated from it. Not applied yet: a model's meshes always cast shadows.",
-          "default": false
+          "description": "Whether the models instantiated from it cast shadows: world.instantiate of the handle and a scene's `model` line give their og.Model this castShadow. On when omitted, so a model loaded without a desc casts as it always has; false turns it off for the model (og.Model.castShadow turns it off for one instance). The flags belong to the asset: another og.load.gltf of the same path answers the same handle and sets them again, for the models instantiated after it.",
+          "default": true
         },
         "receiveShadow": {
           "type": "boolean",
-          "description": "Set Mesh.receiveShadow on every mesh instantiated from it. Not applied yet: a model's meshes always receive shadows.",
-          "default": false
+          "description": "Whether the models instantiated from it receive shadows (og.Model.receiveShadow, as castShadow): on when omitted; false lights them as if unshadowed by every light.",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -14090,6 +14102,16 @@
             "g": 1,
             "b": 1
           }
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false).",
+          "default": true
+        },
+        "receiveShadow": {
+          "type": "boolean",
+          "description": "Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table.",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -26920,7 +26942,7 @@
         "help"
       ],
       "x-og-variants": {
-        "screenshot": "`screenshot[:path][:full|:N]`: capture the next frame.",
+        "screenshot": "`screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked.",
         "listen": "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV.",
         "touch_move_to": "`touch_move_to:<ui id>`: move the pointer to a UI element.",
         "touch_move": "`touch_move:x,y`: move the pointer to CSS pixel coordinates.",
@@ -27647,6 +27669,165 @@
         "peak",
         "rms",
         "wav"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeHeap": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The engine's allocator, counted (both hosts install a counting global allocator).",
+      "type": "object",
+      "properties": {
+        "live": {
+          "type": "number",
+          "description": "Bytes allocated and not freed.",
+          "x-og-unit": "bytes"
+        },
+        "peak": {
+          "type": "number",
+          "description": "The most bytes live at once since load.",
+          "x-og-unit": "bytes"
+        },
+        "allocations": {
+          "type": "number",
+          "description": "Allocations made since load."
+        }
+      },
+      "required": [
+        "live",
+        "peak",
+        "allocations"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeWorldMemory": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The world's size.",
+      "type": "object",
+      "properties": {
+        "entities": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities alive."
+        }
+      },
+      "required": [
+        "entities"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeStreamMemory": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The streaming memory budget (og.stream.budget): what the admitted groups' assets take.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "type": "number",
+          "description": "The budget.",
+          "x-og-unit": "bytes"
+        },
+        "used": {
+          "type": "number",
+          "description": "What the admitted groups take now.",
+          "x-og-unit": "bytes"
+        },
+        "peak": {
+          "type": "number",
+          "description": "The most they took at once.",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "budget",
+        "used",
+        "peak"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeMemory": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md).",
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "`web` or `native`."
+        },
+        "linear": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively.",
+          "x-og-unit": "bytes"
+        },
+        "resident": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's.",
+          "x-og-unit": "bytes"
+        },
+        "heap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProbeHeap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The engine's allocator; null where the host counts nothing."
+        },
+        "world": {
+          "$ref": "#/$defs/ProbeWorldMemory",
+          "description": "The world."
+        },
+        "stream": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProbeStreamMemory"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The streaming budget."
+        },
+        "audio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio.",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "host",
+        "linear",
+        "resident",
+        "heap",
+        "world",
+        "stream",
+        "audio"
       ],
       "additionalProperties": false
     },

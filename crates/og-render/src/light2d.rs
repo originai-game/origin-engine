@@ -3,6 +3,7 @@
 //! layers multiply their colour with it in the sprite shader.
 
 use crate::HDR_FORMAT;
+use crate::deferred::{AsModule, Deferred};
 use crate::effects::{Light2d, MAX_LIGHTS_2D, MAX_OCCLUDERS_2D, Occluder2d};
 use glam::{Mat4, Vec3};
 
@@ -31,7 +32,7 @@ const LIGHT_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout
 };
 
 pub(crate) struct Light2dRenderer {
-    pipeline: wgpu::RenderPipeline,
+    pipeline: Deferred<wgpu::RenderPipeline>,
     uniform: wgpu::Buffer,
     instances: wgpu::Buffer,
     group: wgpu::BindGroup,
@@ -39,6 +40,11 @@ pub(crate) struct Light2dRenderer {
 }
 
 impl Light2dRenderer {
+    /// Makes its pipeline if no frame used it yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        crate::deferred::warm_one(&[&self.pipeline])
+    }
+
     pub fn new(device: &wgpu::Device) -> Light2dRenderer {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("lights 2d"),
@@ -73,47 +79,51 @@ impl Light2dRenderer {
                 resource: uniform.as_entire_binding(),
             }],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("lights 2d"),
-            source: wgpu::ShaderSource::Wgsl(LIGHT2D_WGSL.into()),
-        });
+        // Made when a frame first draws 2D lights (deferred.rs).
+        let module = crate::deferred::module(device, "lights 2d", LIGHT2D_WGSL.into());
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("lights 2d"),
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("lights 2d"),
-            layout: Some(&pl),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[Some(LIGHT_LAYOUT)],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: HDR_FORMAT,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::One,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent::REPLACE,
+        let pipeline = {
+            let (device, pl) = (device.clone(), pl.clone());
+            Deferred::new(move || {
+                let module = module.module();
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("lights 2d"),
+                    layout: Some(&pl),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[Some(LIGHT_LAYOUT)],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some("fs"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent::REPLACE,
+                            }),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
                     }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
         Light2dRenderer {
             pipeline,
             uniform,

@@ -104,8 +104,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // The directional light.
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
+  let receives = look_receives(in.look);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), n_dot_l); }
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0 && receives) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), n_dot_l); }
   var color: vec3<f32>;
   if (EFFECTS && material.toon.x > 0.5) {
     color = toon_light(s, n, v, l, shadow) * frame.light_color.rgb;
@@ -126,7 +127,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let first = word & 0xffffffu;
     let count = word >> 24u;
     for (var k = 0u; k < count; k++) {
-      color += local_light(light_list[cluster_ref(first + k)], s, in.world_pos, n, v);
+      color += local_light(light_list[cluster_ref(first + k)], s, in.world_pos, n, v, receives);
     }
   }
 
