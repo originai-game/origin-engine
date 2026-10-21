@@ -115,6 +115,8 @@ pub struct World {
     pub(crate) by_name: BTreeMap<String, Entity>,
     /// State blocks in registration order.
     pub(crate) blocks: Vec<Block>,
+    /// The wall clock systems are timed with ([`World::set_clock`]).
+    pub(crate) clock: Option<fn() -> f64>,
 }
 
 fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
@@ -152,6 +154,7 @@ impl World {
             names: BTreeMap::new(),
             by_name: BTreeMap::new(),
             blocks: Vec::new(),
+            clock: None,
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
@@ -847,9 +850,21 @@ impl World {
                     matched: s.matched.iter().sum(),
                     query_matched: s.matched.clone(),
                     last_tick: s.last_tick,
+                    ms: s.ms,
+                    total_ms: s.total_ms,
+                    runs: s.runs,
                 }
             })
             .collect()
+    }
+
+    /// Times every system's run (with its commands applied) with `clock`,
+    /// wall-clock milliseconds from any origin, reported by
+    /// [`World::system_info`]; `None` stops timing. Measurement only: no
+    /// system reads the clock, so the simulation and its hash never depend
+    /// on it.
+    pub fn set_clock(&mut self, clock: Option<fn() -> f64>) {
+        self.clock = clock;
     }
 
     /// Entities each query of `system` matches now, in query order.
@@ -881,9 +896,15 @@ impl World {
         LAST_TICK.store(tick, std::sync::atomic::Ordering::Relaxed);
         let mut commands = Vec::new();
         for i in 0..self.systems.len() {
-            let matched = self.match_counts(&self.systems[i]);
-            self.systems[i].matched = matched;
+            // Archetype sizes change only with a structural change: the
+            // counts of a tick without one are the last tick's.
+            if self.systems[i].matched_at != Some(self.structural) {
+                let matched = self.match_counts(&self.systems[i]);
+                self.systems[i].matched = matched;
+                self.systems[i].matched_at = Some(self.structural);
+            }
             self.systems[i].last_tick = Some(tick);
+            let t0 = self.clock.map(|now| now());
             let result = {
                 let system = &self.systems[i];
                 let mut ctx = SystemContext::new(self, system, &mut commands);
@@ -893,6 +914,13 @@ impl World {
                 Err(err) => Some(err),
                 Ok(()) => self.apply(&mut commands).err(),
             };
+            if let (Some(now), Some(t0)) = (self.clock, t0) {
+                let ms = (now() - t0).max(0.0);
+                let s = &mut self.systems[i];
+                s.ms = Some(ms);
+                s.total_ms += ms;
+                s.runs += 1;
+            }
             if let Some(err) = failed {
                 let err = err.context(format!("tick {tick}, system '{}'", self.systems[i].name));
                 self.discard(&mut commands);

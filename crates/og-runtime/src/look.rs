@@ -257,7 +257,7 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
             .cloned()
             .ok_or_else(|| format!("{resource} is not registered with this world"))?;
         let mut whole = Map::new();
-        for f in &layout.fields {
+        for f in layout.fields.iter() {
             if ANIMATED_FIELDS.contains(&(resource.as_str(), f.name.as_str())) {
                 continue;
             }

@@ -127,6 +127,12 @@ pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<
 /// The profile's dimensions.
 pub(crate) const DIM: usize = 2;
 
+/// A 2D triangle is solid (a point inside it projects onto an edge as
+/// inside), so every 2D projection is a whole one (see dim3's).
+pub(crate) fn surface_only(_c: &rp::Collider) -> bool {
+    false
+}
+
 /// Height fields are 3D only.
 pub(crate) fn heightfield_surface(_c: &rp::Collider, _p: Vec3) -> Option<(Vec3, Vec3)> {
     None

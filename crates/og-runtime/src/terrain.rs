@@ -308,14 +308,31 @@ impl LoadedTerrain {
         if let Some(d) = &self.field {
             return f(&|p| (d.height(p), d.normal(p)));
         }
+        let sampler = self.tile_sampler();
+        f(&|p| (sampler.height(p), sampler.normal(p)))
+    }
+
+    /// [`Self::with_sampler`]'s heights alone: a normal reads sixteen
+    /// samples to a height's four, and the drop shadows' fit reads only
+    /// heights (many of them a frame, along the sun's rays).
+    fn with_heights<R>(&self, f: impl FnOnce(&dyn Fn(Vec2) -> f32) -> R) -> R {
+        if let Some(d) = &self.field {
+            return f(&|p| d.height(p));
+        }
+        let sampler = self.tile_sampler();
+        f(&|p| sampler.height(p))
+    }
+
+    /// The level-0 tiles as a sampler, decoded as they are read.
+    fn tile_sampler(&self) -> og_render::TerrainSampler<impl Fn(u32, u32) -> f32 + '_> {
         let l = self.cooked.layout;
         let t = l.tile;
         let side = l.heights_side();
-        let sampler = og_render::TerrainSampler {
+        og_render::TerrainSampler {
             size: l.size,
             columns: l.columns,
             rows: l.rows,
-            sample: |c: u32, r: u32| {
+            sample: move |c: u32, r: u32| {
                 let (tx, tz) = l.tiles(0);
                 let (x, z) = ((c / t).min(tx - 1), (r / t).min(tz - 1));
                 let index = l.index(0, x, z);
@@ -336,8 +353,7 @@ impl LoadedTerrain {
                 };
                 tile[((r - z * t + 1) * side + (c - x * t + 1)) as usize]
             },
-        };
-        f(&|p| (sampler.height(p), sampler.normal(p)))
+        }
     }
 }
 
@@ -541,13 +557,13 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
     if rs.scene.sprite_shadows.is_empty() || rs.scene.terrains.is_empty() {
         return;
     }
-    let st = &rs.terrain;
+    let loaded = &rs.terrain.loaded;
     let scene = &mut rs.scene;
     let drawn: Vec<(usize, Mat4)> = scene
         .terrains
         .iter()
         .filter_map(|t| {
-            let i = st.loaded.iter().position(|l| l.render == t.terrain)?;
+            let i = loaded.iter().position(|l| l.render == t.terrain)?;
             Some((i, t.transform))
         })
         .collect();
@@ -559,10 +575,10 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
         drawn
             .iter()
             .filter_map(|&(i, m)| {
-                let t = &st.loaded[i];
+                let t = &loaded[i];
                 let (p, inside) = local(t.size(), m, x, z);
                 inside.then(|| {
-                    let h = t.with_sampler(|s| s(p).0);
+                    let h = t.with_heights(|s| s(p));
                     m.transform_point3(Vec3::new(p.x, h, p.y)).y
                 })
             })

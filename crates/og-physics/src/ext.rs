@@ -7,7 +7,7 @@
 
 use super::mover::Mover;
 use super::sim::{BodyPoses, Sim};
-use super::{DIM, flat, heightfield_surface, joint_frame, pose, rp, unpose, unv, v};
+use super::{DIM, flat, heightfield_surface, joint_frame, pose, rp, surface_only, unpose, unv, v};
 use crate::fluid::FluidState;
 use crate::gather::Scene;
 use crate::schema::*;
@@ -72,7 +72,22 @@ impl Solids for Near<'_> {
             if c.shape().as_heightfield().is_some() {
                 continue;
             }
-            let proj = c.shape().project_point(c.position(), v(at), false);
+            // A mesh level is most of a cloth's or rope's step: the nearest
+            // of its triangles to a point in the air is found only to be
+            // left alone (`len >= radius`). Bounded at `radius`, the search
+            // stops at the BVH's first boxes; the triangle it finds within
+            // it is the same, so the step's arithmetic is unchanged.
+            let proj = if surface_only(c) {
+                match c
+                    .shape()
+                    .project_point_with_max_dist(c.position(), v(at), false, radius)
+                {
+                    Some(proj) => proj,
+                    None => continue,
+                }
+            } else {
+                c.shape().project_point(c.position(), v(at), false)
+            };
             let q = unv(proj.point);
             let d = flat(at) - q;
             let len = d.length();

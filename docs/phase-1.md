@@ -7,6 +7,38 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Main gate, wave 13 (2026-10-21)
+
+Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
+findings (examples/WEB-FINDINGS.md), three streams of four lanes, and two
+more when lanes freed. Merged so far, in order: webgl2-render-2
+(c20d2c3b; findings 3, 4, 5, verified in Chrome on both tiers by the
+coordinator before the merge) and publish-testing (6a81c453; findings 6,
+7, 8, 10). In flight: web-boot (findings 1, 2, 9, 11, 12), shadow-flags
+(row 87), dogfood-5 (a fourth game, a racing time trial), and wave 12's
+perf-games. The round sections below have each.
+
+- **`scripts/check.sh functional`**: the webgl2-render-2 lane
+  (gate 55) and the publish-testing lane (gate 56) both failed at
+  bun-functional on one test, `terrain-stream.test.ts`, whose premise
+  441f4e6e removed: the first frame that draws a streamed terrain now
+  settles every wanted tile, so the streamed run no longer has tiles
+  waiting at the station's first frame; the test expects the settle
+  since e565ede7 and a streaming test whose tiles arrive later is owed
+  (row 88). Every other step passed (test 145 s, drift 37 s), and the
+  games' suites after the merge (fx-showcase, Ember Vale, topdown,
+  Hollowbell, Lantern Vale, Kestrel; Kestrel's `replay` failed once
+  under load at 13 s with "the run wrote no end.json" and passed alone
+  at 49 s, 4 checks) and the kit's and Hollowbell's after
+  publish-testing passed. The lane at 8a23392a passed in 94 s (5 of 5;
+  the kit's 34 playtests with `settings-saved` and Kestrel's 15 after
+  it) and main was pushed there.
+
+**Wave-end figures: pending** (with wave 12's, once perf-games lands:
+`--all`, web-reference, lavapipe with Kestrel Stair's first run and the
+moved Lantern Vale and Kestrel frames, rows 51 and 52's Chrome
+measurements).
+
 ## Main gate, wave 12 (2026-10-21)
 
 Wave 12 started as soon as wave 11's last stream merged (the owner's
@@ -19,8 +51,22 @@ Four of the five coding streams were stopped by the session's rate limit
 for an hour and resumed from where they stopped. The round sections
 below have each.
 
-- **`scripts/check.sh functional`**, each merge: render-audio-3,
-  skins-palette, web-dogfood: pending (the coordinator fills).
+- **`scripts/check.sh functional`**: render-audio-3 (5bedf86b) passed
+  in 168 s (5 of 5 steps; fx-showcase, Kestrel, topdown and Hollowbell's
+  suites after it). skins-palette and web-dogfood were merged as one
+  batch (6c422e09, 4b9bcac6) after the lavapipe pruning (36b326c3), and
+  their lane failed twice before the engine changed: the web dogfood
+  harness read `brotliCompressSync` and `constants` from `node:zlib`,
+  which the package's ambient declaration lacked (fc6fefa9), and then
+  the package's three typechecks, two of them `bun x` of the same
+  typescript at once, raced on its bin under the gate ("Package
+  typescript does not provide a binary named tsc"; they run one after
+  another since 2675f9bc). A kit suite failure beside them (the scifi
+  phone pack's idle cell, 0.636 % outliers) was the stale dev addon of
+  a lane that stopped before its build, not a defect: the sheet passes
+  at skins-palette's own head and on main once rebuilt. The first green
+  lane after render-audio-3 is wave 13's (8a23392a, 94 s), which covers
+  both streams with wave 13's first two merges.
 - **The web findings** (web-dogfood, examples/WEB-FINDINGS.md): 0
   blockers, 7 annoyances, 5 nits; wave 13 takes them.
 
@@ -516,6 +562,134 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 12, perf-games: the three games timed by system, and the engine's share of their frames cut (2b896be5)
+
+Wave 12's fifth stream measured the three dogfood games on the release
+addon (lane-4) and fixed what the profiles showed, one commit each,
+with the three screenshots and the world hash per game identical
+before and after. The machine never went under load 8 for a whole run
+(the lavapipe VM at 15 to 27 until 23:10, then 7 to 16 with the gate and
+an iOS simulator on it), so the figures below are from the second
+window, before and after interleaved in 6 unpaced rounds and 3 paced at
+60 Hz; "before" is main plus only the measuring commit. Method and
+breakdowns in `tests/evidence/P4/perf-games/` (a README and one file
+per game).
+
+- **Timing by system (2b61462a)**: every system is timed by name; `og run
+  --json` gains `frames` (step and render median, p95, max) and `systems`
+  (each system's mean ms), and the probe's dump fills in its per-system
+  `ms` (og-game §14).
+- **Cloth and rope (465ab16d)** stop searching the level mesh beyond the
+  point's radius: Kestrel's og.physics 0.98 → 0.49 ms release, 1.19 →
+  0.49 dev, 3.67 → 0.93 with the lanes off.
+- **`og.i18n.t` (381e3d59)** no longer copies every string table per
+  call (7 to 9 % of the frame; the `Ui` system now costs about half).
+- **Sprites, flipbooks, afterimages and tile layers (2c35ae03)** are
+  read in place instead of decoded to JSON each frame: Hollowbell's
+  share 16.6 → 5.2 % release, 25.8 → 15.9 % dev; a test checks every
+  engine record's fields read the same as the JSON.
+- **Record calls (f3ad73cb)** stop copying their layout and their
+  answer; **the UI theme's JSON (3b2d1c21)** is built once while the
+  theme is unchanged; **system match counts (0b87fc55)** are recounted
+  only after a structural change; **drop shadows over terrain
+  (b2d8ef7d)** sample heights only (Lantern Vale 6.6 → 3.2 % of a dev
+  frame).
+
+| Game | Addon | step median | step p95 | render median | render p95 (unpaced; paced) |
+|---|---|---|---|---|---|
+| Hollowbell | release | 0.66 → 0.53 | 1.36 → 1.09 | 0.70 → 0.60 | 1.15 → 1.42; 1.36 → 0.89 |
+| Hollowbell | dev | 3.06 → 2.06 | 4.58 → 3.70 | 2.92 → 1.90 | 3.61 → 2.60 |
+| Kestrel Stair | release | 1.98 → 1.28 | 2.90 → 2.31 | 1.21 → 1.50 | 2.63 → 4.40; 1.71 → 1.26 |
+| Kestrel Stair | dev | 5.29 → 2.98 | 8.85 → 4.00 | 2.24 → 1.98 | 3.69 → 2.50 |
+| Lantern Vale | release | 0.90 → 0.71 | 1.88 → 1.78 | 2.14 → 3.71 | 7.17 → 7.79; 1.48 → 1.60 |
+| Lantern Vale | dev | 2.77 → 2.13 | 4.55 → 4.98 (paced 3.90 → 2.78) | 2.49 → 2.27 | 3.29 → 3.71 |
+
+All three meet the targets at that load; `og polish` scores frame time
+100 on release for all three, on dev Hollowbell 0 → 91 (the "before"
+run hit a load spike), Kestrel 81 → 100, Lantern Vale 82 → 85. Unpaced
+render includes the wait for the GPU (Metal command buffers), which is
+why some unpaced "after" renders rose while the paced ones fell. Under
+load 20 to 25 with the lanes on, Kestrel's release step p95 was 17.7
+ms, 4.45 with `OG_LANES=off`. Each game's README gained a frame-time
+paragraph with game-side advice (Hollowbell: the `Ui` system; Kestrel:
+per-entity `world.get`/`world.set` and the banners' cloth iterations;
+Lantern Vale: bloom about half its GPU frame, auto exposure next, and
+the per-entity calls in `Slimes` and `Hero`). Tried and dropped:
+remembering a sprite's drop-shadow fit while nothing moves (Lantern
+Vale's shadowed sprites move every frame); an `Arc<Layout>` map (25
+sites; sharing the fields inside `Layout` did the same). Owed: rows 89
+and 90.
+
+## Wave 13, web-boot: the title behind the gate, the WebGL2 first frame, the boot's bytes and an engine memory readout (69c75852)
+
+Wave 13's first stream took the web findings about boot and the build
+(examples/WEB-FINDINGS.md #1, #2, #9, #11, #12), on lane-5. Measured
+with `tests/web/dogfood.ts --boot` (new, with `--label` and a log of
+every request; the Worker's boot timings on `__runtime_probe__.boot`)
+in headless Chrome 150, 1280×720, localhost, the median of 3 runs on a
+machine at load about 15; "before" is the dogfood round's release wasm
+with the current TypeScript, "after" one `OG_RELEASE=1` build made
+before the merge. Three findings did not hold as the brief stated them.
+
+- **#1, the title behind the gate (2b46f6f8).** After the first tick
+  the Worker takes one more tick per round of store answers, up to 8,
+  waiting up to 300 ms before the first frame and applying later
+  answers for 5 s; ordinary ticks with answers applied as usual, so a
+  replay is unaffected, no API change (`tests/settle.test.ts`).
+  Translated behind the gate: false before, true after for Hollowbell
+  (both tiers) and Kestrel (日本語, with its save slot), at 4 to 26 ms on
+  the first frame. Kestrel's own menu fade is still part-way in that
+  frame: game-side.
+- **#2, chunked music (8b088cc6).** The premise was wrong: chunks were
+  already fetched only near the playhead, one music chunk (63 to 123
+  kB) per game at boot, and the real boot is 4.48 / 4.58 / 5.54 MB
+  (Lantern Vale, Hollowbell, Kestrel), not the 6.8 to 10.4 MB the
+  dogfood round summed from the directory. What landed: a chunked sound
+  may live in a streaming group (its first chunk in the pack, the rest
+  read while the group is resident) and the boot progress bar no longer
+  counts chunks it never fetches. Boot download and first frame are
+  unchanged (Kestrel at 20 Mbit/s 3,385 → 3,393 ms); no game's music
+  moved into a group, since title music plays at boot.
+- **#11, the WebGL2 first frame (f976f3e0, ca95b156).** The cause was
+  52 GL programs compiled one by one at renderer creation, most for
+  passes the first frame never draws (water, fluids, terrain, 2D
+  lights, glass, bloom, 11 effect passes). Pipelines are made when first
+  drawn and the rest warmed in idle time behind the gate (Lantern Vale:
+  29 in about 0.7 s on WebGL2, 35 in 0.17 s on WebGPU); the renderer's
+  creation fell from 461 to 546 ms to 127 to 155 ms.
+  `KHR_parallel_shader_compile` cannot help, wgpu reads each shader's
+  status at once. A pipeline not yet warmed compiles on its first draw,
+  so a very fast tap can still hitch once.
+
+| Game | WebGL2 first frame, before → after | WebGPU |
+|---|---|---|
+| Lantern Vale | 1,405 → 703 ms | 488 → 338 ms |
+| Hollowbell | 1,118 → 701 ms | 433 → 358 ms |
+| Kestrel Stair | 1,197 → 705 ms | 649 → 373 ms |
+
+- **#12, `og build`'s totals (854ce5d6)** print each page's boot
+  download (lanes and single-threaded, brotli, split by engine, cooked,
+  shell and Basis) and what comes later; both tiers fetch the same
+  files (og-build §7, web-export). Hollowbell: 4,323,854 B on the lanes
+  page, not the directory's 9.7 MB.
+- **#9, engine memory (b8f5110b).** The native host had no member to
+  match, so both hosts gained probe member `memory`, one shape: wasm
+  memory on the web or process memory natively, the engine's heap (both
+  hosts count allocations now), entities, streaming budget, audio; a
+  publish page answers through `__runtime_probe__.memory()`. At boot
+  28 to 39 MiB of wasm memory on WebGPU, 35 to 50 on WebGL2; after 600
+  ticks of Kestrel 54 MiB, heap peak 49 MiB (`tests/hosts.test.ts` on
+  both hosts).
+
+Frames: Hollowbell's 9 on WebGL2 match `metal` (worst RMSE 0.00014);
+Lantern Vale's same 2 of 7 as the dogfood round before webgl2-render-2
+(its misses were #3 and #5). Each wasm module grew about 16 kB brotli;
+the 3D lanes module is 3,174,528 B, 75.7 % of the budget (the size gate
+measures it at the wave's end). The stream re-applied its harness
+changes onto main's `play-origin.ts` split and kept both texts of
+og-platform-sdk §3's rule (the coordinator reads that page at the
+merge).
+
 ## Wave 13, publish-testing: the published page under a script, the text entry's name, clean pool Workers and the kit's settings (71d0d574)
 
 Wave 13's third stream took the web findings about what ships and the
@@ -574,6 +748,17 @@ shell (examples/WEB-FINDINGS.md #6, #7, #8, #10), on lane-1.
   code as the example, and og-i18n §5 how to restore the language;
   validate.ts passes. examples/WEB-FINDINGS.md gained a "Fixed" section
   for the four.
+
+**The coordinator's run (the measure worktree at 5137ee44, after the
+merge):** `bun tests/web/published.ts` on Hollowbell and the kit, both
+tiers: Hollowbell 13 of 13 on WebGPU and on WebGL2 (the engine Worker on
+the harness's clock, the title's New in the mirror behind the gate, a
+real click opening it, the tick-60 title RMSE 0 against `metal`, the
+name dialog's focus in a named text box no aria-hidden hides, "Wren"
+typed, Begin, ArrowRight moving Wren from x 16.5 to 21.0, nothing on the
+console), the kit 18 of 18 on both (Mute, 简体中文 and Done saved once,
+the reload asking the play origin for og.settings and coming back in
+简体中文, the console clean).
 
 ## Wave 13, webgl2-render-2: Lantern Vale's ink, Kestrel's crypt and the exposure's start on WebGL2 (c178e216)
 
@@ -4589,6 +4774,9 @@ resource only the owner can give.
 | 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | closed at 7ab860a0 (merged 5bedf86b): the flash on the instance record, one draw, the stale-copy defect gone with it |
 | 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | closed at f89f1885 (merged 5bedf86b): `og_core::math::world_pose` shared by physics and audio; sources, the listener and zones composed down `og.Parent` |
 | 87 | `GltfDesc.castShadow`/`receiveShadow` and `Mesh.receiveShadow` are declared and documented "not applied yet" (c178e216): applying `GltfDesc.castShadow` as declared (off by default) would remove the shadows of every model loaded without it (Lantern Vale, Ember Vale, fx-showcase, the game template), so whether a glTF model casts by default, as `og.Model` does today, or follows three.js is a contract decision | W13 webgl2-render-2 | S | engine, phase 4 (render) | open |
+| 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | open |
+| 89 | perf-games' tables and `og polish` rows on an idle machine (load under 8 for the whole run): every run of 2b896be5 shared the machine with the lavapipe VM, the gate or an iOS simulator | W12 perf-games | S | engine, phase 4 (a wave-end measurement) | open |
+| 90 | perf-games' follow-ups: the lanes on a loaded machine (Kestrel's physics 0.93 ms serial, 2.9 to 4.2 ms on the pool at load 20 to 25; the grains were measured idle); release sprite extraction still looks each field up by name (about 5 % of Hollowbell's frame); `og.ui.end` re-measures every text each tick; Lantern Vale's dev playtests' step spikes (p95 7 to 9.5 ms against a 2.2 ms median), unprofiled | W12 perf-games | M | engine, phase 4 (perf) | open |
 
 ## 0. Rules that shape the plan
 

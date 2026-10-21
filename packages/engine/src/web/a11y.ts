@@ -8,7 +8,10 @@
 //
 // - Focus follows og-ui's: the element of the focused path takes DOM focus
 //   (unless the page's focus is in a field of its own, or the UI's text
-//   control has the hidden textarea, text-input.ts).
+//   control has the hidden textarea, text-input.ts). While that textarea
+//   has the focus it is the field for assistive technology (named after
+//   the field's node): the field's own element is aria-hidden and its
+//   parent owns the textarea (`standIn`).
 // - Toasts are announced: a status node that appears is written into a
 //   polite live region, an alert into an assertive one.
 // - The DOM reaches the UI as input: a screen reader's click on an element
@@ -85,6 +88,10 @@ export class A11yMirror {
   #announced = new Set<string>();
   /** The path this mirror last moved DOM focus to (its own focus events are not the reader's). */
   #focusing = "";
+  /** The text field the text entry's textarea stands in for (text-input.ts), and the textarea. */
+  #standIn: { path: string; element: HTMLElement } | null = null;
+  /** What standing in changed: the field's element hidden, its parent owning the textarea. */
+  #stood: { hidden: HTMLElement; owner: HTMLElement } | null = null;
   #off: Array<() => void> = [];
 
   constructor(canvas: HTMLCanvasElement, send: (event: InjectedInput) => void) {
@@ -155,6 +162,36 @@ export class A11yMirror {
     return this.#elements.get(path);
   }
 
+  /** The node at `path` in the tree as last mirrored. */
+  node(path: string): A11yNode | undefined {
+    return this.#tree.nodes.find((n) => n.path === path);
+  }
+
+  /**
+   * The text entry's textarea (text-input.ts) takes the page's text for the
+   * field at `path` and has the focus: the field's element steps aside
+   * (aria-hidden) and its parent owns the textarea (aria-owns), so a reader
+   * meets one text box where the field is. null: none.
+   */
+  standIn(path: string | null, element: HTMLElement | null): void {
+    this.#standIn = path !== null && element ? { path, element } : null;
+    this.#stand();
+  }
+
+  #stand(): void {
+    const field = this.#standIn ? this.#elements.get(this.#standIn.path) : undefined;
+    const owner = field ? ((field.parentElement as HTMLElement | null) ?? this.root) : undefined;
+    if (this.#stood && (this.#stood.hidden !== field || this.#stood.owner !== owner)) {
+      this.#stood.hidden.removeAttribute("aria-hidden");
+      this.#stood.owner.removeAttribute("aria-owns");
+      this.#stood = null;
+    }
+    if (!field || !owner || !this.#standIn) return;
+    field.setAttribute("aria-hidden", "true");
+    owner.setAttribute("aria-owns", this.#standIn.element.id);
+    this.#stood = { hidden: field, owner };
+  }
+
   /** Increment (or decrement) the adjustable control at `path`, as a screen reader's range action does. */
   adjust(path: string, up: boolean): void {
     this.#send({ kind: "a11y", action: up ? "increment" : "decrement", path });
@@ -215,6 +252,7 @@ export class A11yMirror {
     this.root.append(this.#polite, this.#assertive);
     this.#announce(tree);
     this.#tree = tree;
+    this.#stand();
     this.#follow(tree);
   }
 
@@ -334,6 +372,8 @@ export class A11yMirror {
 
   dispose(): void {
     for (const off of this.#off.splice(0)) off();
+    this.#standIn = null;
+    this.#stand();
     this.root.remove();
     this.#elements.clear();
   }

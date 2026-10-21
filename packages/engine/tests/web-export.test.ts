@@ -4,7 +4,7 @@
 // by their content, and project.ogt's publish settings decide isolation, the
 // badge and the icon. (The page itself is driven in Chrome by tests/web/.)
 import { beforeAll, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_PUBLISH, settingsOf, webBuild, type ProjectSettings } from "../src/node/web-build.ts";
@@ -17,6 +17,7 @@ const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
 
 declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
+  export function readdirSync(path: string): string[];
 }
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stderr: Uint8Array };
@@ -30,6 +31,48 @@ const work = join(repo, "target", "evidence", "web-export-test");
 const entry = join(project, "src", "main.ts");
 const settings = (publish: Partial<ProjectSettings["publish"]> = {}): ProjectSettings => ({ ...settingsOf(project), publish: { ...DEFAULT_PUBLISH, ...publish } });
 const read = (dir: string, f: string) => readFileSync(join(dir, f), "utf8");
+
+/**
+ * The wasm-bindgen init calls in a build's `snippets/` (the scripts
+ * wasm-bindgen copies from crates: wasm-bindgen-rayon's pool Worker
+ * helper) that pass positional arguments, which wasm-bindgen 0.2.129's
+ * glue warns about on every call ("using deprecated parameters …; pass a
+ * single object instead"): the helper made one per pool Worker until
+ * scripts/rayon-worker.sh (examples/WEB-FINDINGS.md #8). The engine's own
+ * calls (src/web/host.ts) pass one object.
+ */
+function positionalInits(dir: string): string[] {
+  dir = join(dir, "snippets");
+  const found: string[] = [];
+  const walk = (d: string) => {
+    for (const name of readdirSync(d)) {
+      const p = join(d, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name.endsWith(".js")) {
+        // A call of the glue's default export or initSync whose argument is not one object literal.
+        for (const m of readFileSync(p, "utf8").matchAll(/\b(?:default|initSync)\(\s*(?![{)\s])[^)]*\)/g)) found.push(`${p.slice(dir.length + 1)}: ${m[0]}`);
+      }
+    }
+  };
+  if (existsSync(dir)) walk(dir);
+  return found;
+}
+
+test("the lanes pool's Worker starts the glue with one object, so a lanes page logs no deprecated-parameters warning (WEB-FINDINGS #8)", () => {
+  let helpers = 0;
+  for (const variant of ["web-publish", "web-publish-2d"]) {
+    const dir = join(pkg, "dist", variant);
+    if (!existsSync(join(dir, "origin-engine-lanes.js"))) continue;
+    const snippets = join(dir, "snippets");
+    const helper = existsSync(snippets) ? readdirSync(snippets).map((s) => join(snippets, s, "src", "workerHelpers.no-bundler.js")).filter((f) => existsSync(f)) : [];
+    expect([variant, helper.length]).toEqual([variant, 1]);
+    helpers += helper.length;
+    expect([variant, positionalInits(dir)]).toEqual([variant, []]);
+    expect(readFileSync(helper[0]!, "utf8")).toContain("pkg.default({ module_or_path: data.module, memory: data.memory })");
+  }
+  // A package without the lanes variants has nothing to check, but the gate's build.sh always ships both.
+  if (process.env.OG_GATE === "1" && process.env.OG_WASM_STALE !== "1") expect(helpers).toBe(2);
+});
 
 beforeAll(() => {
   if (SLOW) return;
@@ -88,6 +131,8 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   expect(precache.lanes).toContain("origin-engine-lanes.js");
   expect(precache.lanes).toContain("origin-engine-lanes_bg.wasm");
   expect(precache.lanes.some((f) => f.startsWith("snippets/"))).toBe(true);
+  // The pool Worker's helper as published: its init call takes one object (WEB-FINDINGS #8).
+  expect(positionalInits(dir)).toEqual([]);
   for (const f of [...precache.single, ...precache.lanes]) expect(precache.files).not.toContain(f);
   // The lanes variant ships beside the single-threaded engine, and the page knows its size.
   expect(m.lanes).toEqual({ glue: "origin-engine-lanes.js", wasm: "origin-engine-lanes_bg.wasm" });

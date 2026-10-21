@@ -215,6 +215,15 @@ if (commands !== undefined) {
 
 const rate = engine.rate;
 const tickMs = 1000 / rate;
+// --json's frame times: each frame's tick and render milliseconds (the
+// first five left out, as og polish does), and each system's time over the
+// run from the world's dump (World::set_clock).
+type SystemTimes = { name: string; totalMs?: number; runs?: number }[];
+const systemTimes = (): SystemTimes => (engine.probe.dump({ what: "world" }) as { systems?: SystemTimes }).systems ?? [];
+const systemsBefore = asJson ? systemTimes() : [];
+const stepTimes: number[] = [];
+const renderTimes: number[] = [];
+let framesSeen = 0;
 const t0 = performance.now();
 let frameFailed: string | null = null;
 let quit = false;
@@ -270,6 +279,10 @@ if (!probing) {
       frameFailed = answer.reason ?? "the frame failed";
       break;
     }
+    if (asJson && ++framesSeen > 5) {
+      if ((answer.ticks ?? 0) > 0) stepTimes.push(answer.stepMs ?? 0);
+      if (answer.rendered) renderTimes.push(answer.renderMs ?? 0);
+    }
     sink.pump();
     if (listening !== undefined) extras.og_node_probe_serve(engine.id);
     drain();
@@ -297,7 +310,34 @@ if (audioMode === "capture") {
 const audioStats = sink.stats();
 sink.close();
 if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
-const dump = engine.probe.dump({ what: "world" }) as { hash: string; entities: number; tick: number };
+const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
+// og polish's order statistics (src/node/polish.ts), so the two agree.
+const percentile = (xs: number[], q: number): number => {
+  if (xs.length === 0) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.floor(q * s.length))]!;
+};
+const r3 = (x: number) => +x.toFixed(3);
+const frames = {
+  stepMedianMs: r3(percentile(stepTimes, 0.5)),
+  stepP95Ms: r3(percentile(stepTimes, 0.95)),
+  stepMaxMs: r3(Math.max(0, ...stepTimes)),
+  renderMedianMs: r3(percentile(renderTimes, 0.5)),
+  renderP95Ms: r3(percentile(renderTimes, 0.95)),
+  renderMaxMs: r3(Math.max(0, ...renderTimes)),
+  stepped: stepTimes.length,
+  rendered: renderTimes.length,
+};
+// Each system's mean milliseconds a run over this run, slowest first.
+const systems = (dump.systems ?? [])
+  .map((s) => {
+    const before = systemsBefore.find((b) => b.name === s.name);
+    const runs = (s.runs ?? 0) - (before?.runs ?? 0);
+    const ms = (s.totalMs ?? 0) - (before?.totalMs ?? 0);
+    return { name: s.name, meanMs: runs > 0 ? r3(ms / runs) : 0, totalMs: r3(ms), runs };
+  })
+  .filter((s) => s.runs > 0)
+  .sort((a, b) => b.totalMs - a.totalMs);
 const summary = {
   entry,
   ticks: ticks ?? dump.tick,
@@ -305,6 +345,8 @@ const summary = {
   hash: dump.hash,
   entities: dump.entities,
   advanceMs: +ms.toFixed(2),
+  frames,
+  systems,
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
   quit,

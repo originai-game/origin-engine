@@ -398,7 +398,14 @@ wasm-bindgen writes `snippets/` (the pool's Worker script) beside
 `origin-engine-lanes.js`; build.sh copies each lanes module with its
 `snippets/` into its profile's directory (`dist/web-publish`,
 `dist/web-publish-2d`), and `scripts/pack.sh` refuses a package without
-either profile's lanes files. In the gate's mode (`OG_GATE=1`) build.sh
+either profile's lanes files. wasm-bindgen-rayon's helper there starts
+each pool Worker with `pkg.default(module, memory)`, the positional form
+the pinned wasm-bindgen's glue warns about once a Worker (eight warnings a
+lanes page, examples/WEB-FINDINGS.md #8), so build.sh rewrites that one
+call to the single-object form, `{ module_or_path, memory }`
+(`packages/engine/scripts/rayon-worker.sh`, which stops the build when the
+helper has neither form), and `tests/web-export.test.ts` checks the
+shipped scripts for a positional init. In the gate's mode (`OG_GATE=1`) build.sh
 exits 1 when `scripts/wasm-crates.txt` marks og-host-web `lanes` and the
 gate left no `og_host_web-lanes.wasm` or no `og_host_web-lanes2d.wasm`.
 
