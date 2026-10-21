@@ -412,7 +412,13 @@ fn a_large_ground_keeps_its_outline_only_where_it_ends() {
             cyan * 1000 < all,
             "outlineDistance {distance}: {cyan} of {all} ground pixels are outline"
         );
-        let barriers: usize = img.pixels.chunks_exact(4).filter(|p| is_cyan(p)).count();
+        let barriers = img
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| is_cyan(&p[..]))
+            .count();
         assert!(
             barriers > 2000,
             "the barriers are lined: {barriers} cyan pixels"
