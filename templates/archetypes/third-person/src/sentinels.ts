@@ -35,11 +35,7 @@ export function spawnSentinels(world: World): void {
   const model = must(og.load.gltf(world, "models/stout.glb"));
   const eyeLight = { color: { r: 1, g: 0.18, b: 0.08 }, intensity: 0, distance: 6, castShadow: false };
   SENTINELS.forEach((name, i) => {
-    // Loaded twice: og.AiAgent starts a machine afresh (its first state, its
-    // timers, its blackboard) when its behaviour changes, so a new run swaps
-    // in the other handle (reset).
     const mind = must(og.ai.load(world, `ai/sentinel-${name}.ogt`));
-    const spare = must(og.ai.load(world, `ai/sentinel-${name}.ogt`));
     if (mind.states[PATROL] !== "patrol" || mind.states[1] !== "alert" || mind.states[2] !== "grab") throw new Error(`ai/sentinel-${name}.ogt: states ${mind.states.join(", ")}`);
     const first = ROUND_STARTS[i]!;
     const at = { x: first.x, y: ground(world, g, first.x, first.z).height, z: first.z };
@@ -47,7 +43,7 @@ export function spawnSentinels(world: World): void {
     must(world.insert(s, og.NavAgent, { nav: g.nav as never, target: at, seeking: false, speed: 1.6, acceleration: 12, radius: 0.45, stopDistance: 0.3, faceMovement: true, turnSpeed: 6 }));
     must(world.insert(s, og.AiAgent, { behaviour: mind.behaviour, active: true, thinkEvery: 2 }));
     must(world.insert(s, og.Perception, { sight: 13, fov: 120, eyeHeight: 1.6, occlude: true, team: 2, memory: 3 }));
-    must(world.insert(s, Sentinel, { index: i, mind: mind.behaviour as never, spare: spare.behaviour as never }));
+    must(world.insert(s, Sentinel, { index: i }));
     const body = must(world.instantiate(model, { name: `sentinel-${i}-body`, parent: s, scale: { x: BODY_SCALE, y: BODY_SCALE, z: BODY_SCALE } }));
     must(world.insert(body, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
     must(world.insert(body, og.AnimationGraph, { asset: rig.graph, speed: 1 }));
@@ -58,9 +54,9 @@ export function spawnSentinels(world: World): void {
 
 /**
  * Puts the sentinels back at the start of their rounds, calm (a new run or
- * the title). One that left its patrol (alert, grabbing or searching) gets
- * its other behaviour handle, so og.ai starts its machine afresh in
- * `patrol`; one still patrolling keeps its machine.
+ * the title). One that left its patrol (alert, grabbing or searching) is
+ * restarted (og.ai.restart: its machine afresh in `patrol`, its timers and
+ * blackboard reset); one still patrolling keeps its machine.
  */
 function reset(world: World, g: { terrain: number }): void {
   SENTINELS.forEach((_, i) => {
@@ -69,11 +65,8 @@ function reset(world: World, g: { terrain: number }): void {
     const at = { x: first.x, y: ground(world, g, first.x, first.z).height, z: first.z };
     must(world.set(s, og.Transform, { position: at }));
     must(world.set(s, og.NavAgent, { target: at, seeking: false }));
-    const me = must(world.get(s, Sentinel));
-    if (must(world.get(s, og.AiAgent)).state !== PATROL) {
-      must(world.set(s, og.AiAgent, { behaviour: me.spare as never }));
-      must(world.set(s, Sentinel, { alert: false, mind: me.spare, spare: me.mind }));
-    } else must(world.set(s, Sentinel, { alert: false }));
+    if (must(world.get(s, og.AiAgent)).state !== PATROL) must(og.ai.restart(world, s));
+    must(world.set(s, Sentinel, { alert: false }));
   });
 }
 
