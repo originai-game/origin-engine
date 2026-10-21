@@ -34,8 +34,8 @@ bun tools/fetch-font.ts         # only to change a Japanese string: Noto Sans JP
 python3 tools/subset-font.py tools/fonts/NotoSansJP-Regular.otf assets/fonts/NotoSansJP-kestrel.otf --locale ja --cjk-only
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.1:play:0:quick;1.5:key_down:KeyW;3:key_up:KeyW;3.5:screenshot:court.png;3.6:quit"
-og test .                       # the twelve playtests, the reference frames against references/<tier>/
-og polish .                     # taste 98, feel 81 on metal (og-out/polish/report.md)
+og test .                       # the thirteen playtests, the reference frames against references/<tier>/
+og polish .                     # taste 98, feel 79 on metal (og-out/polish/report.md)
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
 bun run typecheck               # tsc over src, tests and tools
 ```
@@ -90,11 +90,13 @@ SHA-256), from which the committed 79 KB subset is cut.
 | `replay.og.ts` | a session of chases, bites, strikes, a slam, a rest, the gate and the bell, run twice in fresh processes, ends on one world hash |
 | `frames.og.ts` | nine reference frames at 1280 x 720 (`references/metal/`): the title, the intro, the court, a strike, the crypt, the bag, the chapters, the records, the results |
 
-`og polish .` on metal (dev profile, a machine shared with other builds):
-taste 98 (contrast 96: the paper pack's leaderboard row and the bag's
-stack count, FINDINGS #20), feel 81 (input latency, hit feedback and idle
-frames 100; sound on input 96; frame time 9: step about 8 ms median and
-10–26 ms p95, render about 2.5 ms; FINDINGS #19).
+`og polish .` on metal (dev profile, a machine shared with other builds,
+after merging main at f1a31849): taste 98 (contrast 97: the paper pack's
+leaderboard row and the bag's stack count, FINDINGS #20), feel 79 (input
+latency, hit feedback and idle frames 100; sound on input 93; frame time
+0 to 9 between runs: step about 7.5 ms median and 10–30 ms p95, render
+about 2.2 ms, frame p95 11–36 ms with the machine's load; FINDINGS #19
+has what the game's own systems cost and how they were brought down).
 
 ## Commands (for scripts and agents)
 
