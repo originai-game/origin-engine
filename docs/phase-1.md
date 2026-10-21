@@ -23,7 +23,7 @@ dogfood-3, lanes-per-profile (row 71) and cook-determinism (row 80) are
 still running.
 
 - **`scripts/check.sh functional`**, each merge: physics-3d 5 of 5 in
-  158 s, cook-ui-words 5 of 5 in 138 s, ci-green: pending (the
+  158 s, cook-ui-words 5 of 5 in 138 s, ci-green 5 of 5 in 119 s (at 9d220790, with the workflow set to dispatch only and roguelike's dive frame) (the
   coordinator fills).
 
 **Wave-end figures**: pending, measured once the wave's last streams have
@@ -428,7 +428,8 @@ the repository's owner then took GitHub CI off for the build-out
   re-recorded roguelike's `dive` on `metal` (9d220790; lampdive's success
   tone from cook-ui-words, RMSE 0.0146).
 
-Functional lane on the merge: pending (the coordinator fills).
+Functional lane on the merge (at 9d220790, with the workflow set to dispatch
+only and roguelike's dive frame): 5 of 5 in 119 s.
 
 ## Wave 10, cook-ui-words: the cook's unread Tiled properties, the templates' words, the badge palette (a31d6cb)
 
