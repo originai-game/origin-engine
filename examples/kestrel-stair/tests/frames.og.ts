@@ -16,6 +16,7 @@ export default playtest({
   commands: script(
     "1.2:screenshot:title.png",
     "1.3:play",
+    press("Enter", 2.3),
     "2.6:screenshot:intro.png",
     tap("Skip", 2.7),
     tap("Skip", 3.2),
@@ -42,12 +43,12 @@ export default playtest({
     tap("Skip", 10.5),
     "13.2:screenshot:results.png",
     tap("records", 13.4),
-    "14.6:screenshot:records.png",
-    press("Escape", 14.8),
-    tap("title", 15.2),
-    "16.2:open:chapters",
-    "17.2:screenshot:chapters.png",
-    "17.3:quit",
+    "15.2:screenshot:records.png",
+    press("Escape", 15.4),
+    tap("title", 15.8),
+    "16.8:open:chapters",
+    "18.0:screenshot:chapters.png",
+    "18.1:quit",
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");

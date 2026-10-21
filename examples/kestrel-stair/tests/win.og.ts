@@ -45,11 +45,11 @@ export default playtest({
     tap("records", 10.7),
     "11.6:get:Game:records.json",
     "11.6:dump_ui:records-ui.json",
-    "11.65:screenshot:records.png",
-    press("Escape", 11.8),
-    tap("again", 12.3),
-    "13.4:get:Game:again.json",
-    "13.5:quit",
+    "12.4:screenshot:records.png",
+    press("Escape", 12.6),
+    tap("again", 13.1),
+    "14.2:get:Game:again.json",
+    "14.3:quit",
   ),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");

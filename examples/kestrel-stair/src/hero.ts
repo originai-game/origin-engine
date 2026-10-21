@@ -11,6 +11,7 @@ import { og, defineSystem, CHARACTER_JUMPED, CHARACTER_LANDED, SHAPE_CAPSULE, SH
 import type { ClipAsset, Entity, Value, World } from "@origingame/engine";
 import { courierRig } from "./anim.ts";
 import { Ending, Foe, Game, Hero, MAX_HP, OneByOne, Phase, Sound, Tuning } from "./components.ts";
+import { begin, flush } from "./state.ts";
 import { strikeFoe } from "./foes.ts";
 import { START } from "./layout.ts";
 import { entity, LAYER, must } from "./world.ts";
@@ -126,152 +127,156 @@ export const HeroMove = defineSystem(
     after: ["Ui"],
   },
   (_q, time, world) => {
-    const g = must(world.resource(Game));
-    const t = must(world.resource(Tuning));
-    const hero = g.hero as unknown as Entity;
-    const inp = must(world.resource(og.Input));
-    const gp = must(world.resource(og.Gamepad));
-    const playing = g.phase === Phase.Play && g.ending === Ending.None && !g.held;
-    // Pause before the time gate, so a press during a hit stop still pauses.
-    if (playing && (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start"))) g.paused = true;
-    // A strike pressed is kept for a fifth of a second (og-feel §1's buffer), so a press during a
-    // hit stop, a knock-back or the end of a swing still swings when it can.
-    if (playing && (inp.pressed("KeyJ") || inp.buttonPressed("left") || gp.pressed("x"))) g.strikeBuffer = 0.2;
-    else if (g.strikeBuffer > 0) g.strikeBuffer = Math.max(0, g.strikeBuffer - time.dt);
-    const dt = time.scaledDt;
-    const p = must(world.get(hero, og.Transform)).position;
-    g.heroX = p.x;
-    g.heroY = p.y - FEET;
-    g.heroZ = p.z;
-    // The cape's pins follow the shoulders, held or not (FINDINGS #5: the cloth reads its own Transform as world space).
-    must(world.set(entity(world, "hero-cape"), og.Transform, { position: capeAt(g.heroX, g.heroY, g.heroZ, g.facing), quaternion: og.transform.fromAxisAngle(UP, g.facing + Math.PI) }));
-    if (dt === 0) return;
-    const body = entity(world, "hero-body");
-    const cc = must(world.get(hero, og.CharacterController));
-    const me = must(world.get(hero, Hero));
+    const g = begin(world);
+    try {
+      const t = must(world.resource(Tuning));
+      const hero = g.hero as unknown as Entity;
+      const inp = must(world.resource(og.Input));
+      const gp = must(world.resource(og.Gamepad));
+      const playing = g.phase === Phase.Play && g.ending === Ending.None && !g.held;
+      // Pause before the time gate, so a press during a hit stop still pauses.
+      if (playing && (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start"))) g.paused = true;
+      // A strike pressed is kept for a fifth of a second (og-feel §1's buffer), so a press during a
+      // hit stop, a knock-back or the end of a swing still swings when it can.
+      if (playing && (inp.pressed("KeyJ") || inp.buttonPressed("left") || gp.pressed("x"))) g.strikeBuffer = 0.2;
+      else if (g.strikeBuffer > 0) g.strikeBuffer = Math.max(0, g.strikeBuffer - time.dt);
+      const dt = time.scaledDt;
+      const p = must(world.get(hero, og.Transform)).position;
+      g.heroX = p.x;
+      g.heroY = p.y - FEET;
+      g.heroZ = p.z;
+      // The cape's pins follow the shoulders, held or not (FINDINGS #5: the cloth reads its own Transform as world space).
+      must(world.set(entity(world, "hero-cape"), og.Transform, { position: capeAt(g.heroX, g.heroY, g.heroZ, g.facing), quaternion: og.transform.fromAxisAngle(UP, g.facing + Math.PI) }));
+      if (dt === 0) return;
+      const body = entity(world, "hero-body");
+      const cc = must(world.get(hero, og.CharacterController));
+      const me = must(world.get(hero, Hero));
 
-    // The view turns with Q and E (the right stick); the controls follow the view.
-    const turnIn = inp.axis("KeyQ", "KeyE") + gp.axis("rightX");
-    if (playing && Math.abs(turnIn) > 0.15) g.yaw = wrap(g.yaw - turnIn * 2.2 * dt);
-    let ix = inp.axis("KeyA", "KeyD") + inp.axis("ArrowLeft", "ArrowRight");
-    let iy = inp.axis("KeyS", "KeyW") + inp.axis("ArrowDown", "ArrowUp");
-    let analog = false;
-    const sx = gp.axis("leftX");
-    const sy = -gp.axis("leftY");
-    if (Math.hypot(sx, sy) > 0.2) {
-      ix += sx;
-      iy += sy;
-      analog = true;
-    }
-    const mag = Math.min(1, Math.hypot(ix, iy));
-    const run = analog ? mag > 0.85 : inp.down("ShiftLeft") || inp.down("ShiftRight");
-    // The view looks along -z turned by yaw: forward is where the camera faces.
-    const fwd = { x: -Math.sin(g.yaw), z: -Math.cos(g.yaw) };
-    const right = { x: Math.cos(g.yaw), z: -Math.sin(g.yaw) };
-    let dx = 0;
-    let dz = 0;
-    if (mag > 0.01) {
-      const n = Math.hypot(ix, iy);
-      dx = (right.x * ix + fwd.x * iy) / n;
-      dz = (right.z * ix + fwd.z * iy) / n;
-    }
-
-    // The sword: a press starts a swing on this tick (the player's own attack has no wind-up).
-    const strike = playing && g.knock === 0 && g.strikeBuffer > 0;
-    if (strike && (g.attack === 0 || g.attack > t.swing * 0.75)) {
-      g.strikeBuffer = 0;
-      g.attack = 0.0001;
-      g.struck = false;
-      g.swings += 1;
-      g.sfx |= Sound.Swing;
-      if (mag > 0.01) g.facing = Math.atan2(dx, dz);
-      // A little help with aim: the swing turns to the nearest standing foe within 3 m.
-      const aim = aimAt(world, g);
-      if (aim !== null) g.facing = aim;
-      must(world.set(body, og.AnimationPlayer, { clip: heroClip(world, "attack"), time: 0, weight: 1, loop: false, speed: 0.55 / t.swing }));
-    }
-    let speed = 0;
-    let face: number | null = null;
-    if (g.knock > 0) {
-      speed = 6 * (g.knock / 0.35);
-      dx = g.knockX;
-      dz = g.knockZ;
-      g.knock = Math.max(0, g.knock - dt);
-    } else if (playing && mag > 0.01) {
-      speed = (run ? t.runSpeed : t.walkSpeed) * (analog && !run ? mag / 0.85 : 1);
-      // A swing roots the courier for its first half.
-      if (g.attack > 0 && g.attack < t.swing * 0.5) speed *= 0.25;
-      face = Math.atan2(dx, dz);
-    }
-    const jump = playing && g.knock === 0 && (inp.down("Space") || gp.down("a"));
-    must(world.set(hero, og.CharacterController, { move: { x: dx * speed, y: 0, z: dz * speed }, jump, jumpSpeed: t.jumpSpeed }));
-    if (g.invulnerable > 0) g.invulnerable = Math.max(0, g.invulnerable - dt);
-    const post = must(world.resource(og.PostEffects));
-    if (post.flash > 0) post.flash = Math.max(0, post.flash - dt * 2.5);
-
-    // The swing's hit lands on the attack clip's `hit` marker (og.AnimationEvent, read the tick
-    // after og.anim passed it); the swing's end gives the pose back to the graph.
-    if (g.attack > 0) {
-      g.attack += dt;
-      for (const ev of world.events(og.AnimationEvent)) {
-        if (ev.entity !== body || ev.name !== "hit" || g.struck) continue;
-        g.struck = true;
-        landStrike(world, g, t);
+      // The view turns with Q and E (the right stick); the controls follow the view.
+      const turnIn = inp.axis("KeyQ", "KeyE") + gp.axis("rightX");
+      if (playing && Math.abs(turnIn) > 0.15) g.yaw = wrap(g.yaw - turnIn * 2.2 * dt);
+      let ix = inp.axis("KeyA", "KeyD") + inp.axis("ArrowLeft", "ArrowRight");
+      let iy = inp.axis("KeyS", "KeyW") + inp.axis("ArrowDown", "ArrowUp");
+      let analog = false;
+      const sx = gp.axis("leftX");
+      const sy = -gp.axis("leftY");
+      if (Math.hypot(sx, sy) > 0.2) {
+        ix += sx;
+        iy += sy;
+        analog = true;
       }
-      if (g.attack >= t.swing) {
-        g.attack = 0;
-        must(world.set(body, og.AnimationPlayer, { weight: 0 }));
+      const mag = Math.min(1, Math.hypot(ix, iy));
+      const run = analog ? mag > 0.85 : inp.down("ShiftLeft") || inp.down("ShiftRight");
+      // The view looks along -z turned by yaw: forward is where the camera faces.
+      const fwd = { x: -Math.sin(g.yaw), z: -Math.cos(g.yaw) };
+      const right = { x: Math.cos(g.yaw), z: -Math.sin(g.yaw) };
+      let dx = 0;
+      let dz = 0;
+      if (mag > 0.01) {
+        const n = Math.hypot(ix, iy);
+        dx = (right.x * ix + fwd.x * iy) / n;
+        dz = (right.z * ix + fwd.z * iy) / n;
       }
-    } else if (g.hp > 0) {
-      const pl = must(world.get(body, og.AnimationPlayer));
-      if (pl.weight > 0 && pl.finished) must(world.set(body, og.AnimationPlayer, { weight: 0 }));
-    }
 
-    // The body turns towards where it goes (not while thrown back).
-    if (face !== null) g.facing = turn(g.facing, face, 12 * dt);
-    // The view swings slowly behind a walking courier.
-    if (playing && speed > 0.5 && Math.abs(turnIn) < 0.15) g.yaw = turn(g.yaw, wrap(g.facing + Math.PI), 0.9 * dt * Math.min(1, speed / t.walkSpeed));
-    must(world.set(body, og.Transform, { quaternion: og.transform.fromAxisAngle(UP, g.facing) }));
-
-    // The graph: speed across the ground, and whether it is in the air.
-    const v = cc.velocity;
-    const hs = Math.hypot(v.x, v.z);
-    g.speed = hs;
-    const airTime = cc.grounded ? 0 : me.airTime + dt;
-    must(world.set(body, og.AnimationGraph, { p0: hs, p1: airTime > 0.15 ? 1 : 0 }));
-
-    // Steps, jumps and landings.
-    let stepClock = me.stepClock;
-    if (cc.grounded && hs > 0.5) {
-      stepClock += hs * dt;
-      const stride = hs > 4.5 ? 1.7 : 1.15;
-      if (stepClock >= stride) {
-        stepClock -= stride;
-        g.steps += 1;
-        g.sfx |= Sound.Step;
+      // The sword: a press starts a swing on this tick (the player's own attack has no wind-up).
+      const strike = playing && g.knock === 0 && g.strikeBuffer > 0;
+      if (strike && (g.attack === 0 || g.attack > t.swing * 0.75)) {
+        g.strikeBuffer = 0;
+        g.attack = 0.0001;
+        g.struck = false;
+        g.swings += 1;
+        g.sfx |= Sound.Swing;
+        if (mag > 0.01) g.facing = Math.atan2(dx, dz);
+        // A little help with aim: the swing turns to the nearest standing foe within 3 m.
+        const aim = aimAt(world, g);
+        if (aim !== null) g.facing = aim;
+        must(world.set(body, og.AnimationPlayer, { clip: heroClip(world, "attack"), time: 0, weight: 1, loop: false, speed: 0.55 / t.swing }));
       }
-    } else if (speed > 0 && hs < 0.5) {
-      // Setting off is heard at once: the first step lands on the press.
-      stepClock = 1.7;
-    }
-    for (const e of world.events(og.CharacterEvent)) {
-      if (e.entity !== hero) continue;
-      if (e.kind === CHARACTER_JUMPED) {
-        g.jumps += 1;
-        g.sfx |= Sound.Jump;
-        must(og.tween.squash(world, { entity: body, impact: { x: 0.9, y: 1.1 }, duration: 0.12 }));
-      } else if (e.kind === CHARACTER_LANDED) {
-        g.landings += 1;
-        g.sfx |= Sound.Land;
-        const hard = e.speed < -7;
-        must(og.tween.squash(world, { entity: body, impact: hard ? { x: 1.18, y: 0.8 } : { x: 1.08, y: 0.92 }, duration: hard ? 0.18 : 0.12 }));
-        if (hard) must(og.camera.shake(world, 0.15));
+      let speed = 0;
+      let face: number | null = null;
+      if (g.knock > 0) {
+        speed = 6 * (g.knock / 0.35);
+        dx = g.knockX;
+        dz = g.knockZ;
+        g.knock = Math.max(0, g.knock - dt);
+      } else if (playing && mag > 0.01) {
+        speed = (run ? t.runSpeed : t.walkSpeed) * (analog && !run ? mag / 0.85 : 1);
+        // A swing roots the courier for its first half.
+        if (g.attack > 0 && g.attack < t.swing * 0.5) speed *= 0.25;
+        face = Math.atan2(dx, dz);
       }
-    }
-    g.grounded = cc.grounded;
-    must(world.set(hero, Hero, { airTime, stepClock, fall: cc.grounded ? 0 : Math.min(me.fall, v.y) }));
-    if (g.hp > 0 && g.hp < MAX_HP && g.phase === Phase.Play) {
-      // No regeneration: strength comes back from hillwort and the waystones.
+      const jump = playing && g.knock === 0 && (inp.down("Space") || gp.down("a"));
+      must(world.set(hero, og.CharacterController, { move: { x: dx * speed, y: 0, z: dz * speed }, jump, jumpSpeed: t.jumpSpeed }));
+      if (g.invulnerable > 0) g.invulnerable = Math.max(0, g.invulnerable - dt);
+      const post = must(world.resource(og.PostEffects));
+      if (post.flash > 0) post.flash = Math.max(0, post.flash - dt * 2.5);
+
+      // The swing's hit lands on the attack clip's `hit` marker (og.AnimationEvent, read the tick
+      // after og.anim passed it); the swing's end gives the pose back to the graph.
+      if (g.attack > 0) {
+        g.attack += dt;
+        for (const ev of world.events(og.AnimationEvent)) {
+          if (ev.entity !== body || ev.name !== "hit" || g.struck) continue;
+          g.struck = true;
+          landStrike(world, g, t);
+        }
+        if (g.attack >= t.swing) {
+          g.attack = 0;
+          must(world.set(body, og.AnimationPlayer, { weight: 0 }));
+        }
+      } else if (g.hp > 0) {
+        const pl = must(world.get(body, og.AnimationPlayer));
+        if (pl.weight > 0 && pl.finished) must(world.set(body, og.AnimationPlayer, { weight: 0 }));
+      }
+
+      // The body turns towards where it goes (not while thrown back).
+      if (face !== null) g.facing = turn(g.facing, face, 12 * dt);
+      // The view swings slowly behind a walking courier.
+      if (playing && speed > 0.5 && Math.abs(turnIn) < 0.15) g.yaw = turn(g.yaw, wrap(g.facing + Math.PI), 0.9 * dt * Math.min(1, speed / t.walkSpeed));
+      must(world.set(body, og.Transform, { quaternion: og.transform.fromAxisAngle(UP, g.facing) }));
+
+      // The graph: speed across the ground, and whether it is in the air.
+      const v = cc.velocity;
+      const hs = Math.hypot(v.x, v.z);
+      g.speed = hs;
+      const airTime = cc.grounded ? 0 : me.airTime + dt;
+      must(world.set(body, og.AnimationGraph, { p0: hs, p1: airTime > 0.15 ? 1 : 0 }));
+
+      // Steps, jumps and landings.
+      let stepClock = me.stepClock;
+      if (cc.grounded && hs > 0.5) {
+        stepClock += hs * dt;
+        const stride = hs > 4.5 ? 1.7 : 1.15;
+        if (stepClock >= stride) {
+          stepClock -= stride;
+          g.steps += 1;
+          g.sfx |= Sound.Step;
+        }
+      } else if (speed > 0 && hs < 0.5) {
+        // Setting off is heard at once: the first step lands on the press.
+        stepClock = 1.7;
+      }
+      for (const e of world.events(og.CharacterEvent)) {
+        if (e.entity !== hero) continue;
+        if (e.kind === CHARACTER_JUMPED) {
+          g.jumps += 1;
+          g.sfx |= Sound.Jump;
+          must(og.tween.squash(world, { entity: body, impact: { x: 0.9, y: 1.1 }, duration: 0.12 }));
+        } else if (e.kind === CHARACTER_LANDED) {
+          g.landings += 1;
+          g.sfx |= Sound.Land;
+          const hard = e.speed < -7;
+          must(og.tween.squash(world, { entity: body, impact: hard ? { x: 1.18, y: 0.8 } : { x: 1.08, y: 0.92 }, duration: hard ? 0.18 : 0.12 }));
+          if (hard) must(og.camera.shake(world, 0.15));
+        }
+      }
+      g.grounded = cc.grounded;
+      must(world.set(hero, Hero, { airTime, stepClock, fall: cc.grounded ? 0 : Math.min(me.fall, v.y) }));
+      if (g.hp > 0 && g.hp < MAX_HP && g.phase === Phase.Play) {
+        // No regeneration: strength comes back from hillwort and the waystones.
+      }
+    } finally {
+      flush(g);
     }
   },
 );

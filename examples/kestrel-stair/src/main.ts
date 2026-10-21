@@ -20,7 +20,7 @@ import type { World } from "@origingame/engine";
 import { Ending, Foe, Game, Kind, Phase, Prefs, Scene, Tuning } from "./components.ts";
 import { alert, bite, Foes, slam, spawnFoes } from "./foes.ts";
 import { Fx } from "./fx.ts";
-import { HeroMove, placeHero, spawnHero } from "./hero.ts";
+import { HeroMove, hurtHero, placeHero, spawnHero } from "./hero.ts";
 import { BELL, CRYPT, FOES, GATE, HERBS, LEDGES, SIGILS, WAYSTONES } from "./layout.ts";
 import { Pickups, raiseGate, rest, ringBell, takeSigil } from "./pickups.ts";
 import { spawnVoices, Voices } from "./sound.ts";
@@ -113,9 +113,12 @@ function give(world: World, args: readonly string[]): void {
   else throw new Error("give:<sigils|herbs>:<n>");
 }
 
-/** `hp:<n>`: the courier's strength. */
+/** `hp:<n>`: the courier's strength; a loss in a run lands as a hurt does (its hit stop, shake, number and sound). */
 function hp(world: World, args: readonly string[]): void {
-  gameOf(world).hp = num(args[0], "strength");
+  const g = gameOf(world);
+  const n = num(args[0], "strength");
+  if (n < g.hp && g.phase === Phase.Play && g.ending === Ending.None) hurtHero(world, g, must(world.resource(Tuning)), g.hp - n, { x: g.heroX, z: g.heroZ - 1 }, false);
+  g.hp = n;
 }
 
 /** `dusk:<seconds>`: jumps the run's clock to this many seconds played (night at Tuning.duskSeconds). */

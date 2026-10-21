@@ -17,6 +17,7 @@ import { og, defineSystem, BODY_KINEMATIC, SHAPE_CAPSULE } from "@origingame/eng
 import type { Behaviour, ClipAsset, Entity, Value, World } from "@origingame/engine";
 import { foeRig } from "./anim.ts";
 import { Ending, Foe, Game, Hero, Kind, OneByOne, Phase, Sound, Tuning } from "./components.ts";
+import { begin, flush } from "./state.ts";
 import { hurtHero } from "./hero.ts";
 import { FOES, MIND } from "./layout.ts";
 import { say } from "./text.ts";
@@ -150,7 +151,10 @@ export function strikeFoe(world: World, g: GameV, t: TuneV, e: Entity, from: { x
   must(og.render.floatingText(world, { text: hp <= 0 ? "×" : `${hp}`, position: { x: at.x, y: at.y + (warden ? 2.9 : 1.5), z: at.z }, size: warden ? 0.55 : 0.45, color: { r: 1, g: 1, b: 0.92 }, rise: 1, lifetime: 0.8, crit: hp <= 0 }));
   flash(world, e);
   if (hp <= 0) fall(world, g, e, f.value);
-  else if (f.value.slam === 0) must(world.set(e, og.AnimationPlayer, { clip: f.value.clipHurt as unknown as ClipAsset, time: 0, weight: 1, loop: false }));
+  else if (f.value.slam === 0) {
+    must(world.set(e, og.AnimationPlayer, { clip: f.value.clipHurt as unknown as ClipAsset, time: 0, weight: 1, loop: false }));
+    must(world.set(e, Foe, { oneShot: true }));
+  }
   return true;
 }
 
@@ -181,6 +185,10 @@ function fall(world: World, g: GameV, e: Entity, f: Value<typeof Foe>): void {
   if (f.carries) {
     const at = must(world.get(e, og.Transform)).position;
     const s = entity(world, "sigil-2");
+    g.dropped = true;
+    g.dropX = at.x;
+    g.dropY = at.y;
+    g.dropZ = at.z;
     must(world.set(s, og.Transform, { position: { x: at.x, y: at.y + 0.8, z: at.z } }));
     must(world.set(s, og.Mesh, { visible: true }));
     must(world.set(s, og.PointLight, { intensity: 3 }));
@@ -232,7 +240,7 @@ function reset(world: World, g: GameV): void {
     const swap = !imp && ai.state !== 0;
     must(world.set(e, og.AiAgent, { active: false, ...(swap ? { behaviour: me.spare as unknown as Behaviour } : {}) }));
     const plans = must(world.get(e, og.NavAgent)).plans;
-    must(world.set(e, Foe, { hp: imp ? MIND.impHp : MIND.wardenHp, cooldown: 0, stun: 0, slam: 0, slamHit: false, dying: 0, warm: plans, ...(swap ? { mind: me.spare, spare: me.mind } : {}) }));
+    must(world.set(e, Foe, { hp: imp ? MIND.impHp : MIND.wardenHp, cooldown: 0, stun: 0, slam: 0, slamHit: false, dying: 0, warm: plans, awake: false, oneShot: false, sight: -1, pace: -1, ...(swap ? { mind: me.spare, spare: me.mind } : {}) }));
   }
   g.foesDown = 0;
 }
@@ -246,65 +254,84 @@ export const Foes = defineSystem(
   "Foes",
   { reads: [Tuning, og.AnimationEvent, OneByOne], writes: [Game, Foe, Hero, og.Transform, og.NavAgent, og.AiAgent, og.Perception, og.AnimationGraph, og.AnimationPlayer, og.Skeleton, og.Collider, og.AudioSource, og.ParticleSystem, og.PostEffects, og.Camera, og.Mesh, og.PointLight, og.Steering], after: ["Hero"] },
   (_q, time, world) => {
-    const g = must(world.resource(Game));
-    const t = must(world.resource(Tuning));
-    if (g.start) reset(world, g);
-    const dt = time.scaledDt;
-    if (dt === 0) return;
-    const hunting = g.phase === Phase.Play && g.ending === Ending.None;
-    // The bites' and slams' `hit` markers og.anim passed last tick (og.AnimationEvent).
-    const hits = new Set<number>();
-    for (const ev of world.events(og.AnimationEvent)) if (ev.name === "hit") hits.add(ev.entity as unknown as number);
-    for (const def of FOES) {
-      const e = entity(world, def.name);
-      const f = must(world.get(e, Foe));
-      const imp = f.kind === Kind.Imp;
-      const tr = must(world.get(e, og.Transform));
-      const p = tr.position;
-      if (f.dying > 0) {
-        // Fallen: the die clip plays out, then it sinks into the ground.
-        const dying = f.dying + dt;
-        must(world.set(e, Foe, { dying }));
-        if (dying > 1.6) must(world.set(e, og.Transform, { position: { x: p.x, y: p.y - dt * 0.5, z: p.z } }));
-        continue;
-      }
-      const agent = must(world.get(e, og.NavAgent));
-      // Its mind wakes once the agent has planned on the navmesh (FINDINGS #4).
-      if (agent.plans > f.warm && !must(world.get(e, og.AiAgent)).active) must(world.set(e, og.AiAgent, { active: true }));
-      must(world.set(e, og.Perception, { sight: hunting ? t.sight : 0 }));
-      if (agent.speed !== (imp ? t.impPatrol : t.wardenPatrol) && agent.status === 0) must(world.set(e, og.NavAgent, { speed: imp ? t.impPatrol : t.wardenPatrol }));
-      const v = agent.velocity;
-      must(world.set(e, og.AnimationGraph, { p0: Math.hypot(v.x, v.z) }));
-      let { cooldown, stun, slam: attack, slamHit, hp } = f;
-      cooldown = Math.max(0, cooldown - dt);
-      // Reeling from a strike: thrown back along the strike, the agent's motion left to the game.
-      if (stun > 0) {
-        stun = Math.max(0, stun - dt);
-        const k = (imp ? 5 : 2) * dt;
-        must(world.set(e, og.Transform, { position: { x: p.x + f.stunX * k, y: p.y, z: p.z + f.stunZ * k } }));
-        if (stun === 0 && attack === 0) must(world.set(e, og.NavAgent, { drive: true }));
-      }
-      // An attack in progress: its hit lands on the clip's `hit` marker (landAttack, below); it ends with the clip.
-      if (attack > 0) {
-        attack += dt;
-        const length = imp ? BITE_LENGTH : SLAM_LENGTH;
-        if (hits.has(e as unknown as number) && !slamHit) {
-          slamHit = true;
-          landAttack(world, g, t, e, def.name, f, hunting);
+    const g = begin(world);
+    try {
+      const t = must(world.resource(Tuning));
+      if (g.start) reset(world, g);
+      const dt = time.scaledDt;
+      if (dt === 0) return;
+      const hunting = g.phase === Phase.Play && g.ending === Ending.None;
+      // The bites' and slams' `hit` markers og.anim passed last tick (og.AnimationEvent).
+      const hits = new Set<number>();
+      for (const ev of world.events(og.AnimationEvent)) if (ev.name === "hit") hits.add(ev.entity as unknown as number);
+      for (const def of FOES) {
+        const e = entity(world, def.name);
+        const f = must(world.get(e, Foe));
+        const imp = f.kind === Kind.Imp;
+        if (f.dying > 0) {
+          // Fallen: the die clip plays out, then it sinks into the ground.
+          const dying = f.dying + dt;
+          must(world.set(e, Foe, { dying }));
+          if (dying > 1.6 && dying < 5) {
+            const p = must(world.get(e, og.Transform)).position;
+            must(world.set(e, og.Transform, { position: { x: p.x, y: p.y - dt * 0.5, z: p.z } }));
+          }
+          continue;
         }
-        if (attack >= length) {
-          attack = 0;
-          must(world.set(e, og.AnimationPlayer, { weight: 0 }));
-          if (!imp) must(world.set(e, og.Skeleton, { rootMotion: "off" }));
-          if (stun === 0) must(world.set(e, og.NavAgent, { drive: true }));
+        // Every per-entity call costs (src/state.ts): each is made only when it changes something.
+        const agent = must(world.get(e, og.NavAgent));
+        // Its mind wakes once the agent has planned on the navmesh (FINDINGS #4).
+        if (!f.awake && agent.plans > f.warm) {
+          must(world.set(e, og.AiAgent, { active: true }));
+          must(world.set(e, Foe, { awake: true }));
         }
-      } else {
-        const pl = must(world.get(e, og.AnimationPlayer));
-        if (pl.weight > 0 && pl.finished) must(world.set(e, og.AnimationPlayer, { weight: 0 }));
+        const sight = hunting ? t.sight : 0;
+        if (sight !== f.sight) must(world.set(e, og.Perception, { sight }));
+        if (agent.speed !== (imp ? t.impPatrol : t.wardenPatrol) && agent.status === 0) must(world.set(e, og.NavAgent, { speed: imp ? t.impPatrol : t.wardenPatrol }));
+        const v = agent.velocity;
+        const pace = Math.round(Math.hypot(v.x, v.z) * 20) / 20;
+        if (pace !== f.pace) must(world.set(e, og.AnimationGraph, { p0: pace }));
+        let { cooldown, stun, slam: attack, slamHit, hp, oneShot } = f;
+        cooldown = Math.max(0, cooldown - dt);
+        // Reeling from a strike: thrown back along the strike, the agent's motion left to the game.
+        if (stun > 0) {
+          stun = Math.max(0, stun - dt);
+          const k = (imp ? 5 : 2) * dt;
+          const p = must(world.get(e, og.Transform)).position;
+          must(world.set(e, og.Transform, { position: { x: p.x + f.stunX * k, y: p.y, z: p.z + f.stunZ * k } }));
+          if (stun === 0 && attack === 0) must(world.set(e, og.NavAgent, { drive: true }));
+        }
+        // An attack in progress: its hit lands on the clip's `hit` marker (landAttack, below); it ends with the clip.
+        if (attack > 0) {
+          attack += dt;
+          const length = imp ? BITE_LENGTH : SLAM_LENGTH;
+          if (hits.has(e as unknown as number) && !slamHit) {
+            slamHit = true;
+            landAttack(world, g, t, e, def.name, f, hunting);
+          }
+          if (attack >= length) {
+            attack = 0;
+            oneShot = false;
+            must(world.set(e, og.AnimationPlayer, { weight: 0 }));
+            if (!imp) must(world.set(e, og.Skeleton, { rootMotion: "off" }));
+            if (stun === 0) must(world.set(e, og.NavAgent, { drive: true }));
+          }
+        } else if (oneShot) {
+          // A hurt clip over the graph: given back when it ends.
+          const pl = must(world.get(e, og.AnimationPlayer));
+          if (pl.finished) {
+            oneShot = false;
+            must(world.set(e, og.AnimationPlayer, { weight: 0 }));
+          }
+        }
+        // An imp's thorns grow back while it keeps away.
+        if (imp && hp < MIND.impHp && stun === 0 && attack === 0 && Math.floor(time.elapsed / 6) !== Math.floor((time.elapsed - dt) / 6)) hp += 1;
+        if (cooldown !== f.cooldown || stun !== f.stun || attack !== f.slam || slamHit !== f.slamHit || hp !== f.hp || oneShot !== f.oneShot || sight !== f.sight || pace !== f.pace) {
+          must(world.set(e, Foe, { cooldown, stun, slam: attack, slamHit, hp, oneShot, sight, pace }));
+        }
       }
-      // An imp's thorns grow back while it keeps away.
-      if (imp && hp < MIND.impHp && stun === 0 && attack === 0 && Math.floor(time.elapsed / 6) !== Math.floor((time.elapsed - dt) / 6)) hp += 1;
-      must(world.set(e, Foe, { cooldown, stun, slam: attack, slamHit, hp }));
+    } finally {
+      flush(g);
     }
   },
 );

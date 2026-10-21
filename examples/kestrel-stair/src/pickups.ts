@@ -8,7 +8,8 @@
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
 import { Ending, Game, MAX_HP, Near, OneByOne, Phase, Pickup, Scene, Sound, Tuning } from "./components.ts";
-import { BELL, CHAPTERS, GATE, WAYSTONES } from "./layout.ts";
+import { begin, flush } from "./state.ts";
+import { BELL, CHAPTERS, GATE, HERBS, SIGILS, WAYSTONES } from "./layout.ts";
 import { saveSlot } from "./save.ts";
 import { say } from "./text.ts";
 import { entity, gateObstacle, must, setWaystoneGlow } from "./world.ts";
@@ -17,6 +18,16 @@ type GameV = Value<typeof Game>;
 
 const REACH = 1.9;
 const SIGIL_BITS = 0b111;
+
+/** Whether sigil `i` lies on the stair to be taken: not carried, and (the warden's) dropped. */
+function sigilShown(g: GameV, i: number): boolean {
+  return (g.sigils & (1 << i)) === 0 && (i !== 2 || g.dropped);
+}
+
+/** Where sigil `i` lies (its feet: the altar's top, the ledge, where the warden fell). */
+function sigilAt(g: GameV, i: number): { x: number; y: number; z: number } {
+  return i === 2 ? { x: g.dropX, y: g.dropY, z: g.dropZ } : SIGILS[i]!;
+}
 
 /** Takes sigil `i`: its burst, its sound, the HUD's count and a toast. */
 export function takeSigil(world: World, g: GameV, i: number): void {
@@ -109,6 +120,7 @@ function reset(world: World, g: GameV): void {
     if (i === 2) must(world.set(e, og.Transform, { position: { x: p.x, y: -20, z: p.z } }));
   }
   g.sigils = given;
+  g.dropped = false;
   for (let i = 0; ; i++) {
     const e = world.find(`herb-${i}`);
     if (e === null) break;
@@ -135,81 +147,83 @@ export const Pickups = defineSystem(
   "Pickups",
   { reads: [og.Input, og.Gamepad, Tuning, OneByOne], writes: [Game, Pickup, og.Transform, og.Mesh, og.PointLight, og.ParticleSystem, og.Collider, og.AudioSource, og.Camera], after: ["Foes"] },
   (_q, time, world) => {
-    const g = must(world.resource(Game));
-    if (g.start) reset(world, g);
-    const playing = g.phase === Phase.Play && g.ending === Ending.None && !g.held;
-    // The sigils turn and bob; the gate rises over a second and a half once opened.
-    for (let i = 0; i < 3; i++) {
-      const e = entity(world, `sigil-${i}`);
-      const p = must(world.get(e, Pickup));
-      if (p.taken) continue;
-      const at = must(world.get(e, og.Transform)).position;
-      must(world.set(e, og.Transform, { position: { x: at.x, y: at.y, z: at.z }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, time.elapsed * 1.6) }));
-    }
-    if (g.gateOpen && g.gateLift < 4.2) {
-      // It rises into the wall's top over a second and three quarters, then is gone from view.
-      // (The lift is kept in an f32 field: compare the local, not the field read back.)
-      const lift = Math.min(4.2, g.gateLift + time.scaledDt * 2.4);
-      g.gateLift = lift >= 4.2 ? 4.25 : lift;
-      const gate = entity(world, "gate");
-      must(world.set(gate, og.Transform, { position: { x: 0, y: (GATE.min[1] + GATE.max[1]) / 2 + lift, z: (GATE.min[2] + GATE.max[2]) / 2 } }));
-      if (lift >= 4.2) must(world.set(gate, og.Mesh, { visible: false }));
-    }
-    if (!playing) {
-      g.nearKind = Near.None;
-      g.nearIndex = -1;
-      return;
-    }
-    // What is within reach: the nearest.
-    let kind: number = Near.None;
-    let index = -1;
-    let best = Infinity;
-    const consider = (k: number, i: number, x: number, y: number, z: number, reach = REACH) => {
-      const d = Math.hypot(x - g.heroX, z - g.heroZ);
-      if (d < reach && d < best && Math.abs(y - g.heroY) < 2.2) {
-        best = d;
-        kind = k;
-        index = i;
+    const g = begin(world);
+    try {
+      if (g.start) reset(world, g);
+      const playing = g.phase === Phase.Play && g.ending === Ending.None && !g.held;
+      // The sigils turn where they lie (sigils 0 and 1 where the layout puts them, the warden's
+      // where it fell); the gate rises over a second and three quarters once opened. Positions
+      // come from the layout and Game, not from entity reads (src/state.ts: every call costs).
+      const spin = og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, time.elapsed * 1.6);
+      for (let i = 0; i < 3; i++) {
+        if (!sigilShown(g, i)) continue;
+        const at = sigilAt(g, i);
+        must(world.set(entity(world, `sigil-${i}`), og.Transform, { position: { x: at.x, y: at.y + 0.8, z: at.z }, quaternion: spin }));
       }
-    };
-    for (let i = 0; i < 3; i++) {
-      const p = must(world.get(entity(world, `sigil-${i}`), Pickup));
-      const at = must(world.get(entity(world, `sigil-${i}`), og.Transform)).position;
-      if (!p.taken && at.y > -10) consider(Near.Sigil, i, at.x, at.y - 0.8, at.z);
-    }
-    for (let i = 0; ; i++) {
-      const e = world.find(`herb-${i}`);
-      if (e === null) break;
-      const p = must(world.get(e, Pickup));
-      if (!p.taken) consider(Near.Herb, i, p.x, p.y, p.z);
-    }
-    WAYSTONES.forEach((w, i) => consider(Near.Waystone, i, w.x, w.y, w.z));
-    if (!g.gateOpen) consider(Near.Gate, 0, 0, GATE.min[1], (GATE.min[2] + GATE.max[2]) / 2 + 1, 3.4);
-    consider(Near.Bell, 0, BELL.x, BELL.y, BELL.z, 3);
-    g.nearKind = kind;
-    g.nearIndex = index;
-    const inp = must(world.resource(og.Input));
-    const gp = must(world.resource(og.Gamepad));
-    if (!(inp.pressed("KeyF") || gp.pressed("y"))) return;
-    if (kind === Near.Sigil) takeSigil(world, g, index);
-    else if (kind === Near.Herb) {
-      const e = entity(world, `herb-${index}`);
-      must(world.set(e, Pickup, { taken: true }));
-      must(og.tween.to(world, { entity: e, component: og.Transform, field: "scale", to: [0, 0, 0], duration: 0.18, ease: "backIn" }));
-      g.herbs += 1;
-      g.gathered |= 1 << index;
-      g.sfx |= Sound.Herb;
-      og.ui.toast(world, say(world, "toast.herb"));
-    } else if (kind === Near.Waystone) rest(world, g, index);
-    else if (kind === Near.Gate) {
-      if ((g.sigils & SIGIL_BITS) === SIGIL_BITS) raiseGate(world, g);
-      else {
-        // A refusal shakes the prompt (src/ui.ts), never the camera (og-feel §4).
-        g.sfx |= Sound.Error;
-        g.refusedAt = world.tick;
+      if (g.gateOpen && g.gateLift < 4.2) {
+        // It rises into the wall's top over a second and three quarters, then is gone from view.
+        // (The lift is kept in an f32 field: compare the local, not the field read back.)
+        const lift = Math.min(4.2, g.gateLift + time.scaledDt * 2.4);
+        g.gateLift = lift >= 4.2 ? 4.25 : lift;
+        const gate = entity(world, "gate");
+        must(world.set(gate, og.Transform, { position: { x: 0, y: (GATE.min[1] + GATE.max[1]) / 2 + lift, z: (GATE.min[2] + GATE.max[2]) / 2 } }));
+        if (lift >= 4.2) must(world.set(gate, og.Mesh, { visible: false }));
       }
-    } else if (kind === Near.Bell) {
-      if (g.gateOpen) ringBell(world, g);
+      if (!playing) {
+        g.nearKind = Near.None;
+        g.nearIndex = -1;
+        return;
+      }
+      // What is within reach: the nearest.
+      let kind: number = Near.None;
+      let index = -1;
+      let best = Infinity;
+      const consider = (k: number, i: number, x: number, y: number, z: number, reach = REACH) => {
+        const d = Math.hypot(x - g.heroX, z - g.heroZ);
+        if (d < reach && d < best && Math.abs(y - g.heroY) < 2.2) {
+          best = d;
+          kind = k;
+          index = i;
+        }
+      };
+      for (let i = 0; i < 3; i++) {
+        if (!sigilShown(g, i)) continue;
+        const at = sigilAt(g, i);
+        consider(Near.Sigil, i, at.x, at.y, at.z);
+      }
+      HERBS.forEach((h, i) => {
+        if ((g.gathered & (1 << i)) === 0) consider(Near.Herb, i, h.x, h.y, h.z);
+      });
+      WAYSTONES.forEach((w, i) => consider(Near.Waystone, i, w.x, w.y, w.z));
+      if (!g.gateOpen) consider(Near.Gate, 0, 0, GATE.min[1], (GATE.min[2] + GATE.max[2]) / 2 + 1, 3.4);
+      consider(Near.Bell, 0, BELL.x, BELL.y, BELL.z, 3);
+      g.nearKind = kind;
+      g.nearIndex = index;
+      const inp = must(world.resource(og.Input));
+      const gp = must(world.resource(og.Gamepad));
+      if (!(inp.pressed("KeyF") || gp.pressed("y"))) return;
+      if (kind === Near.Sigil) takeSigil(world, g, index);
+      else if (kind === Near.Herb) {
+        const e = entity(world, `herb-${index}`);
+        must(world.set(e, Pickup, { taken: true }));
+        must(og.tween.to(world, { entity: e, component: og.Transform, field: "scale", to: [0, 0, 0], duration: 0.18, ease: "backIn" }));
+        g.herbs += 1;
+        g.gathered |= 1 << index;
+        g.sfx |= Sound.Herb;
+        og.ui.toast(world, say(world, "toast.herb"));
+      } else if (kind === Near.Waystone) rest(world, g, index);
+      else if (kind === Near.Gate) {
+        if ((g.sigils & SIGIL_BITS) === SIGIL_BITS) raiseGate(world, g);
+        else {
+          // A refusal shakes the prompt (src/ui.ts), never the camera (og-feel §4).
+          g.sfx |= Sound.Error;
+          g.refusedAt = world.tick;
+        }
+      } else if (kind === Near.Bell) {
+        if (g.gateOpen) ringBell(world, g);
+      }
+    } finally {
+      flush(g);
     }
   },
 );

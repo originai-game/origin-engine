@@ -19,7 +19,7 @@ export default playtest({
     "0.95:dump_ui:line1.json",
     "0.95:get:Game:held.json",
     "0.95:get:og.TimeScale:scale.json",
-    "0.98:screenshot:intro.png",
+    "1.2:screenshot:intro.png",
     ...ENTERS.map((t) => press("Enter", t)),
     "3.9:get:Game:after-intro.json",
     "3.95:dump_ui:step1.json",

@@ -31,6 +31,7 @@ import { afterRestore, answers, continueRun, readAll, readRecords, submitAscent,
 import { uiSounds } from "./sound.ts";
 import type { UiSounds } from "./sound.ts";
 import { say } from "./text.ts";
+import { begin, flush } from "./state.ts";
 import { must, setHour } from "./world.ts";
 
 export const LANGUAGES = [
@@ -240,7 +241,7 @@ function hud(world: World, g: GameV): { bag: boolean; pause: boolean } {
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Health", () => {
       og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp < 30 ? "danger" : "accent" } });
-      og.ui.meter("Strength", g.hp, MAX_HP, { kind: "health", width: px(150), label: `${Math.ceil(g.hp)}` });
+      og.ui.meter("Strength", g.hp, MAX_HP, { kind: "health", width: px(150) });
     });
     capsule("Sigils", () => {
       for (let i = 0; i < 3; i++) og.ui.icon(`Sigil${i}`, "gem", { size: 20, tint: { token: (g.sigils & (1 << i)) !== 0 ? "accent" : "fillStrong" } });
@@ -392,6 +393,12 @@ function records(world: World, g: GameV): void {
 }
 
 function settings(world: World, g: GameV, p: PrefsV): void {
+  // Built with its words only while it shows, and for a moment after it closes (its exit):
+  // two dozen string lookups a tick are not free (src/state.ts says why that matters here).
+  if (!g.settingsOpen && world.tick - g.settingsClosedAt > 30) {
+    og.ui.settingsScreen("Settings", { open: false });
+    return;
+  }
   const r = og.ui.settingsScreen("Settings", {
     open: g.settingsOpen,
     settings: settingsOf(p),
@@ -421,6 +428,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   if (r.changed) takeSettings(world, p, r.settings as unknown as Record<string, unknown>);
   if (r.closed) {
     g.settingsOpen = false;
+    g.settingsClosedAt = world.tick;
     must(og.platform.saveSettings(world, settingsOf(p)));
     p.saves += 1;
   }
@@ -459,143 +467,147 @@ export const Ui = defineSystem(
   "Ui",
   { reads: [Tuning, og.Input, og.Gamepad, OneByOne], writes: [Game, Prefs, Hero, og.Transform, og.CharacterController, og.Audio, og.DayNight, og.RenderSettings, og.PostEffects, og.Stylise, og.MaterialStyle, og.Fog, og.Sky, og.Environment] },
   (_q, time, world) => {
-    const g = must(world.resource(Game));
-    const p = must(world.resource(Prefs));
-    const t = must(world.resource(Tuning));
-    if (time.tick === 0) {
-      readAll(world, g, p);
-      applyPrefs(world, p);
-    }
-    afterRestore(world, g, p);
-    answers(world, g, p, (s) => takeSettings(world, p, s));
-    if (g.loads > g.welcomed) {
-      g.welcomed = g.loads;
-      og.ui.toast(world, say(world, "toast.welcome", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`) }), { tone: "success" });
-    }
-    const inPlay = g.phase === Phase.Play;
-    const hold = inPlay && (g.paused || g.settingsOpen || g.bagOpen || g.scene !== Scene.None || g.tutorial);
-    if (hold !== g.held) {
-      must(og.time.setScale(world, hold ? 0 : 1));
-      g.held = hold;
-    }
-    clock(world, g, t, time.scaledDt);
-    looks(world, g);
-    if (g.musicChunks === 0 && g.music !== 0 && time.tick % 30 === 0) {
-      const info = og.load.soundInfo(world, g.music as unknown as SoundHandle);
-      if (info.ok && info.value.chunks !== 0) g.musicChunks = info.value.chunks;
-    }
-    const inp = must(world.resource(og.Input));
-    const gp = must(world.resource(og.Gamepad));
+    const g = begin(world);
+    try {
+      const p = must(world.resource(Prefs));
+      const t = must(world.resource(Tuning));
+      if (time.tick === 0) {
+        readAll(world, g, p);
+        applyPrefs(world, p);
+      }
+      afterRestore(world, g, p);
+      answers(world, g, p, (s) => takeSettings(world, p, s));
+      if (g.loads > g.welcomed) {
+        g.welcomed = g.loads;
+        og.ui.toast(world, say(world, "toast.welcome", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`) }), { tone: "success" });
+      }
+      const inPlay = g.phase === Phase.Play;
+      const hold = inPlay && (g.paused || g.settingsOpen || g.bagOpen || g.scene !== Scene.None || g.tutorial);
+      if (hold !== g.held) {
+        must(og.time.setScale(world, hold ? 0 : 1));
+        g.held = hold;
+      }
+      clock(world, g, t, time.scaledDt);
+      looks(world, g);
+      if (g.musicChunks === 0 && g.music !== 0 && time.tick % 30 === 0) {
+        const info = og.load.soundInfo(world, g.music as unknown as SoundHandle);
+        if (info.ok && info.value.chunks !== 0) g.musicChunks = info.value.chunks;
+      }
+      const inp = must(world.resource(og.Input));
+      const gp = must(world.resource(og.Gamepad));
 
-    const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play";
-    const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 700 }).shown;
-    if (shown === "title") {
-      og.ui.setNavigation(true);
-      if (g.chaptersOpen) chapters(world, g);
-      else if (g.recordsOpen) records(world, g);
-      else {
-        const items = [
-          ...(g.hasSave ? [{ id: "continue", label: say(world, "title.continue", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`), clock: clockText(g.saveClock) }), primary: true }] : []),
-          { id: "new", label: say(world, "title.new"), primary: !g.hasSave },
-          { id: "chapters", label: say(world, "title.chapters") },
-          { id: "records", label: say(world, "title.records") },
-          { id: "settings", label: say(world, "title.settings") },
-        ];
-        const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer") });
-        // The title menu takes no focus by itself, so Enter, Space and the pad's A would do nothing
-        // until an arrow or Tab (FINDINGS #12): the focus is put on its first item.
-        // (A navigation is applied the tick after it is queued: asked once, not again while it lands.)
-        if (og.ui.focus(0) === "" && !g.settingsOpen && world.tick - g.focusAsked > 3) {
-          og.ui.navigate(world, "next");
-          g.focusAsked = world.tick;
+      const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play";
+      const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 700 }).shown;
+      if (shown === "title") {
+        og.ui.setNavigation(true);
+        if (g.chaptersOpen) chapters(world, g);
+        else if (g.recordsOpen) records(world, g);
+        else {
+          const items = [
+            ...(g.hasSave ? [{ id: "continue", label: say(world, "title.continue", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`), clock: clockText(g.saveClock) }), primary: true }] : []),
+            { id: "new", label: say(world, "title.new"), primary: !g.hasSave },
+            { id: "chapters", label: say(world, "title.chapters") },
+            { id: "records", label: say(world, "title.records") },
+            { id: "settings", label: say(world, "title.settings") },
+          ];
+          const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer") });
+          // The title menu takes no focus by itself, so Enter, Space and the pad's A would do nothing
+          // until an arrow or Tab (FINDINGS #12): the focus is put on its first item.
+          // (A navigation is applied the tick after it is queued: asked once, not again while it lands.)
+          if (og.ui.focus(0) === "" && !g.settingsOpen && world.tick - g.focusAsked > 3) {
+            og.ui.navigate(world, "next");
+            g.focusAsked = world.tick;
+          }
+          if (!g.settingsOpen && g.phase === Phase.Title) {
+            if (r.selected === "new") startRun(world, g, 0);
+            if (r.selected === "continue") continueRun(world, g);
+            if (r.selected === "chapters") g.chaptersOpen = true;
+            if (r.selected === "records") {
+              g.recordsOpen = true;
+              readRecords(world, g);
+            }
+            if (r.selected === "settings") g.settingsOpen = true;
+          }
         }
-        if (!g.settingsOpen && g.phase === Phase.Title) {
-          if (r.selected === "new") startRun(world, g, 0);
-          if (r.selected === "continue") continueRun(world, g);
-          if (r.selected === "chapters") g.chaptersOpen = true;
-          if (r.selected === "records") {
+      } else if (shown === "play") {
+        const h = g.scene === Scene.None ? hud(world, g) : { bag: false, pause: false };
+        const playing = inPlay && g.ending === Ending.None;
+        // The cutscenes: the abbess's words at the start, the bell-keeper's at the end.
+        if (g.scene !== Scene.None) {
+          const lines = g.scene === Scene.Intro ? intro(world) : ending(world);
+          og.ui.setNavigation(true);
+          const c = og.ui.cutscene("Story", { open: true, lines, index: g.line, letterbox: true, skippable: true });
+          g.line = c.index;
+          if (c.finished || c.skipped) {
+            const was = g.scene;
+            g.scene = Scene.None;
+            g.line = 0;
+            if (was === Scene.Intro && !g.tutorialDone) {
+              g.tutorial = true;
+              g.tutorialStep = 0;
+            }
+            if (was === Scene.End) g.overTicks = OVER_DELAY;
+          }
+        } else if (g.tutorial) {
+          og.ui.setNavigation(true);
+          const r = og.ui.tutorialOverlay("Tutorial", { open: true, steps: tutorialSteps(world), index: g.tutorialStep });
+          g.tutorialStep = r.index;
+          if (r.finished || r.skipped) {
+            g.tutorial = false;
+            g.tutorialDone = true;
+            writeProgress(world, g);
+          }
+        } else if (playing && !g.paused && !g.settingsOpen) {
+          if (h.pause) g.paused = true;
+          if ((h.bag || inp.pressed("Tab") || inp.pressed("KeyI") || gp.pressed("back")) && !g.bagOpen) g.bagOpen = true;
+          else if (g.bagOpen && (inp.pressed("Tab") || inp.pressed("KeyI"))) g.bagOpen = false;
+          if (!g.bagOpen && inp.pressed("KeyH")) eatHerb(world, g);
+        }
+        if (g.bagOpen && g.scene === Scene.None) {
+          og.ui.setNavigation(true);
+          bag(world, g);
+        }
+        if (g.phase === Phase.Ending && g.scene === Scene.None && g.overTicks >= OVER_DELAY) finish(world, g, t);
+        const m = og.ui.pauseMenu("Pause", {
+          open: g.paused && !g.settingsOpen,
+          title: say(world, "pause.title"),
+          items: [
+            { id: "resume", label: say(world, "pause.resume"), primary: true },
+            { id: "bag", label: say(world, "pause.bag") },
+            { id: "settings", label: say(world, "pause.settings") },
+            { id: "quit", label: say(world, "pause.quit") },
+          ],
+        });
+        if (m.selected === "resume") g.paused = false;
+        if (m.selected === "bag") {
+          g.paused = false;
+          g.bagOpen = true;
+        }
+        if (m.selected === "settings") g.settingsOpen = true;
+        if (m.selected === "quit") toTitle(world, g);
+      } else {
+        og.ui.setNavigation(true);
+        if (g.recordsOpen) records(world, g);
+        else {
+          const c = results(world, g);
+          if (c === "again") startRun(world, g, g.chapter);
+          if (c === "title") toTitle(world, g);
+          if (c === "records") {
             g.recordsOpen = true;
             readRecords(world, g);
           }
-          if (r.selected === "settings") g.settingsOpen = true;
         }
       }
-    } else if (shown === "play") {
-      const h = g.scene === Scene.None ? hud(world, g) : { bag: false, pause: false };
-      const playing = inPlay && g.ending === Ending.None;
-      // The cutscenes: the abbess's words at the start, the bell-keeper's at the end.
-      if (g.scene !== Scene.None) {
-        const lines = g.scene === Scene.Intro ? intro(world) : ending(world);
-        og.ui.setNavigation(true);
-        const c = og.ui.cutscene("Story", { open: true, lines, index: g.line, letterbox: true, skippable: true });
-        g.line = c.index;
-        if (c.finished || c.skipped) {
-          const was = g.scene;
-          g.scene = Scene.None;
-          g.line = 0;
-          if (was === Scene.Intro && !g.tutorialDone) {
-            g.tutorial = true;
-            g.tutorialStep = 0;
-          }
-          if (was === Scene.End) g.overTicks = OVER_DELAY;
-        }
-      } else if (g.tutorial) {
-        og.ui.setNavigation(true);
-        const r = og.ui.tutorialOverlay("Tutorial", { open: true, steps: tutorialSteps(world), index: g.tutorialStep });
-        g.tutorialStep = r.index;
-        if (r.finished || r.skipped) {
-          g.tutorial = false;
-          g.tutorialDone = true;
-          writeProgress(world, g);
-        }
-      } else if (playing && !g.paused && !g.settingsOpen) {
-        if (h.pause) g.paused = true;
-        if ((h.bag || inp.pressed("Tab") || inp.pressed("KeyI") || gp.pressed("back")) && !g.bagOpen) g.bagOpen = true;
-        else if (g.bagOpen && (inp.pressed("Tab") || inp.pressed("KeyI"))) g.bagOpen = false;
-        if (!g.bagOpen && inp.pressed("KeyH")) eatHerb(world, g);
-      }
-      if (g.bagOpen && g.scene === Scene.None) {
-        og.ui.setNavigation(true);
-        bag(world, g);
-      }
-      if (g.phase === Phase.Ending && g.scene === Scene.None && g.overTicks >= OVER_DELAY) finish(world, g, t);
-      const m = og.ui.pauseMenu("Pause", {
-        open: g.paused && !g.settingsOpen,
-        title: say(world, "pause.title"),
-        items: [
-          { id: "resume", label: say(world, "pause.resume"), primary: true },
-          { id: "bag", label: say(world, "pause.bag") },
-          { id: "settings", label: say(world, "pause.settings") },
-          { id: "quit", label: say(world, "pause.quit") },
-        ],
-      });
-      if (m.selected === "resume") g.paused = false;
-      if (m.selected === "bag") {
-        g.paused = false;
-        g.bagOpen = true;
-      }
-      if (m.selected === "settings") g.settingsOpen = true;
-      if (m.selected === "quit") toTitle(world, g);
-    } else {
-      og.ui.setNavigation(true);
-      if (g.recordsOpen) records(world, g);
-      else {
-        const c = results(world, g);
-        if (c === "again") startRun(world, g, g.chapter);
-        if (c === "title") toTitle(world, g);
-        if (c === "records") {
-          g.recordsOpen = true;
-          readRecords(world, g);
-        }
-      }
+      settings(world, g, p);
+      // The accessibility tree, for the playtests: every half second, and on every tick a dialog is open.
+      if (!g.settingsOpen && !g.paused && !g.bagOpen && time.tick % 30 !== 0) return;
+      const tree = og.ui.a11y();
+      const unnamed = tree.nodes.filter((n) => n.states.includes("focusable") && n.name === "").length;
+      if (unnamed !== g.a11yUnnamed) g.a11yUnnamed = unnamed;
+      if (tree.nodes.length !== g.a11yNodes) g.a11yNodes = tree.nodes.length;
+    } finally {
+      flush(g);
     }
-    settings(world, g, p);
-    // The accessibility tree, for the playtests: every half second, and on every tick a dialog is open.
-    if (!g.settingsOpen && !g.paused && !g.bagOpen && time.tick % 30 !== 0) return;
-    const tree = og.ui.a11y();
-    const unnamed = tree.nodes.filter((n) => n.states.includes("focusable") && n.name === "").length;
-    if (unnamed !== g.a11yUnnamed) g.a11yUnnamed = unnamed;
-    if (tree.nodes.length !== g.a11yNodes) g.a11yNodes = tree.nodes.length;
   },
 );
 

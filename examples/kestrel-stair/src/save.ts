@@ -21,6 +21,8 @@ import { og } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
 import { Game, Phase, Prefs } from "./components.ts";
 import { WAYSTONES } from "./layout.ts";
+import { flush } from "./state.ts";
+import { must } from "./world.ts";
 
 type GameV = Value<typeof Game>;
 type PrefsV = Value<typeof Prefs>;
@@ -67,10 +69,13 @@ export function saveSlot(world: World, g: GameV, i: number): void {
   g.saves += 1;
   g.savePlace = i;
   g.saveClock = g.hour;
-  // Marked so the restored world knows it was restored (see the top of this file).
-  g.fromSave = true;
+  // Marked so the restored world knows it was restored (see the top of this file): what this
+  // system changed is written first, then the mark on the resource itself, around the snapshot.
+  flush(g);
+  const live = must(world.resource(Game));
+  live.fromSave = true;
   const snap = world.snapshot();
-  g.fromSave = false;
+  live.fromSave = false;
   if (!snap.ok) {
     og.ui.toast(world, snap.reason, { tone: "danger" });
     return;

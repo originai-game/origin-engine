@@ -491,7 +491,9 @@ function skin(): void {
   swap("accent", "#9c2a1d");
   swap("accentHover", "#8f2618");
   swap("accentActive", "#7f2013");
-  swap("accentInk", "#9e2c1e");
+  swap("accentInk", "#86210f");
+  // The pack's fgSubtle measures 3.5:1 as an item's count on a slot (og polish): a shade darker.
+  swap("fgSubtle", "#57524a");
   swap("fallback", "fonts/NotoSansJP-kestrel.otf");
   writeFileSync(join(to, "skin.ogt"), text);
 }
