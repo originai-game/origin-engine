@@ -5,7 +5,7 @@
 use crate::locale::{Direction, canonical, direction_of_locale, language, negotiate};
 use crate::message::{Arg, Message};
 use og_core::ogt::{Document, Value};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// The `.ogt` type of a string table.
 pub const STRINGS_TYPE: &str = "strings";
@@ -112,11 +112,20 @@ pub struct MissingKey {
 }
 
 fn base_of(tables: &[StringTable]) -> Option<&StringTable> {
+    base_in(tables.iter())
+}
+
+/// [`base_of`] over borrowed tables (the catalog's, without copying them).
+fn base_in<'a, I>(tables: I) -> Option<&'a StringTable>
+where
+    I: Iterator<Item = &'a StringTable> + Clone,
+{
+    let mut all = tables.clone();
     tables
-        .iter()
+        .clone()
         .find(|t| t.base)
-        .or_else(|| tables.iter().find(|t| t.locale == "en"))
-        .or_else(|| tables.first())
+        .or_else(|| tables.clone().find(|t| t.locale == "en"))
+        .or_else(|| all.next())
 }
 
 /// Every key the base table has that another lacks (or takes other
@@ -192,10 +201,9 @@ impl Catalog {
     fn renegotiate(&mut self) {
         let available = self.locales();
         let req: Vec<&str> = self.requested.iter().map(String::as_str).collect();
-        self.active = negotiate(&req, &available).map(str::to_string).or_else(|| {
-            let tables: Vec<StringTable> = self.tables.values().cloned().collect();
-            base_of(&tables).map(|b| b.locale.clone())
-        });
+        self.active = negotiate(&req, &available)
+            .map(str::to_string)
+            .or_else(|| base_in(self.tables.values()).map(|b| b.locale.clone()));
     }
 
     /// The active locale (`None` without tables).
@@ -211,22 +219,21 @@ impl Catalog {
     /// The tables a key is looked up in: the active, its fallback, the base.
     fn chain(&self) -> Vec<&StringTable> {
         let mut out: Vec<&StringTable> = Vec::new();
-        let mut seen = BTreeSet::new();
-        let mut next = self.active.clone();
+        let mut next = self.active.as_deref();
         while let Some(l) = next {
-            if !seen.insert(l.clone()) {
+            if out.iter().any(|t| t.locale == l) {
                 break;
             }
-            let Some(t) = self.tables.get(&l) else { break };
+            let Some(t) = self.tables.get(l) else { break };
             out.push(t);
-            next = t.fallback.clone();
+            next = t.fallback.as_deref();
         }
-        let tables: Vec<StringTable> = self.tables.values().cloned().collect();
-        if let Some(b) = base_of(&tables)
-            && !seen.contains(&b.locale)
-            && let Some(t) = self.tables.get(&b.locale)
+        // The base table, borrowed: copying every table on each lookup was
+        // most of a tick's og.i18n.t (perf-games, kestrel-stair).
+        if let Some(b) = base_in(self.tables.values())
+            && !out.iter().any(|t| t.locale == b.locale)
         {
-            out.push(t);
+            out.push(b);
         }
         out
     }
