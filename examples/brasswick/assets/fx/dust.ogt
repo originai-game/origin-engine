@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# Landing dust: a puff each way at the feet (tools/make-assets.ts).
+maxParticles 24
+shape box 0.3 0.02 0
+spread 70
+rate 0
+burst 0 8
+duration 0.1
+looping false
+lifetime 0.25 0.45
+speed 0.8 1.8
+size 0.18 0.32
+sizeOverLife 0 0.6 1 1.2
+colorOverLife {
+  key 0 0.75 0.7 0.75 0.8
+  key 1 0.5 0.45 0.5 0
+}
+drag 5
+gravity 0 1 0
+texture "fx/puff.png"
+blend alpha
+render sprite 6
