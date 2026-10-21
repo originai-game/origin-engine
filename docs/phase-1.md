@@ -377,6 +377,70 @@ main at 50eb7f7 after the last merge, on the M4 Pro at load averages 6 to
   culling round's terrain-grass note still stand; the note is resolved in
   the P4 perf round).
 
+## Wave 11, runtime-ui-2: typed resource handles, borrows by view, save slots, focus, grids, polish's ink (ce93d34)
+
+From The Kestrel Stair's findings. Merged at ce93d34b (a fast-forward).
+
+- 27e245f6, #19: a resource handle is a typed view of the resource's
+  packed bytes, no JSON: one shared copy per world and resource, fetched
+  again only on the first read after an engine call or a system
+  boundary; writes held and sent in one call before the next engine
+  call, at the end of the system, command or facts call, at once outside
+  game code. Three lifecycle ABI members and a bytes wire type in
+  og-idl's generator (napi's own Uint8Array was 30 to 100 µs a call; the
+  native side copies). A test writes 200 fields a tick of every field
+  kind with engine calls between, matching the JSON path's hash and
+  values, replaying from a save, the same hash on native and web; the
+  benchmark's world hash unchanged (20dc498c962b8fe0). Measured on the
+  game's `Game` (111 fields) and `Prefs`, dev addon, median µs, under
+  load: a Game field write 93 to 0.03, a read 0.9 to 0.02, a read after
+  an engine call 143 to 2, write-call-read 240 to 26 (mostly the two
+  strings' checks in the dev build), `world.resource` 205 to 1.5 to 5;
+  Prefs write 4.7 to 0.03. The game's step 7.5 to 4.8 ms median, its feel
+  score 79 to 97. og-core §4 carries the cost model; the game's plain-copy
+  workaround is gone.
+- c0d29c75, #6: a system's columns are borrowed only when it takes a
+  view (`a.column`), held until it returns, so `world.get`/`world.set`
+  work on a matched entity until a view of that column is taken; the
+  refusal then names the view and the way through. The game's `OneByOne`
+  component left its six systems.
+- 67aca309, #13: 64 KiB a key is the platform's limit (64 keys, 1 MiB
+  per player and game), so `og.platform.saveSlot`/`loadSlot`: parts in
+  whichever of two banks of keys (`<slot>.a0..`, `<slot>.b0..`) the last
+  save did not use, the manifest written last at the revision read, so a
+  save cut short leaves the previous whole and two devices saving at
+  once get a conflict, not a mix; one request a call; `loadSlot` checks
+  the parts against the manifest's length and checksum, `metaOnly` reads
+  the title-screen data. Tighter encoding measured and not taken on the
+  game's save (201 KB raw, 78 KB of text: deflate 9 saves 0.7 %, LZMA
+  31 % at the cost of a second decoder in every build). og-game §17,
+  og-core §2, og-platform-sdk; the game's own splitting gone.
+- da50fea3, #14: `ButtonDesc.autofocus` (a button takes the focus when
+  it first appears outside a dialog; `mainMenu`'s first enabled item has
+  it), and a `navigate` queued while nothing has focus lands on the first
+  item however many were queued; the ui-kit a11y playtest expects the
+  menu's first item focused.
+- 83ddce5d, #15: the grid lays out exactly the `columns` asked at any
+  width (cells share the width, keep their height); `levelSelect` gives
+  a named level a wider card with smaller wrapped type and an ellipsis
+  after two lines; `inventoryScreen` widens to its columns; the ui-kit
+  demo asks 6 inventory columns and 4 named cards, `tests/grid.og.ts`
+  checks the rows and that every name fits, desktop and phone. The game's
+  chapters have names again, its bag six slots a row.
+- fbd6e3a2, #20: polish measures the ink over the text's own glyphs
+  (pixels at least halfway to the strongest ink, the farthest twentieth
+  averaged); og-build §5. Contrast: Kestrel 97 to 98 ("You" on the
+  records row 2.14 to 9.94:1), Hollowbell 93, Lantern Vale 98 to 100. Also
+  a reload that changes a resource's layout hands out a fresh handle.
+- Frames re-recorded on metal: ui-kit inventory 0.0676 and levels 0.0792
+  (phone 0.0695, 0.1101), the twelve `kit-skin-*` sheets' inventory and
+  levels cells (0.066 to 0.283), the game's bag 0.1456 and title 0.0218.
+- Left out: no vulkan-cpu copies (the wave's end); the game's chapters
+  frame still shows the results screen (its playtest's timing is off),
+  the named chapters checked by an `og run` screenshot instead (row 84).
+
+Functional lane on the merge: see the wave 11 gate section.
+
 ## Wave 11, physics-anim-2: world-space cloth, a 3D squash, a model's own flash, reverb zones (7b1973a)
 
 From The Kestrel Stair's findings. Merged at 7b1973a7 after nav-ai, the
@@ -4042,6 +4106,9 @@ resource only the owner can give.
 | 81 | A particle test crashed with SIGSEGV once on Lavapipe (ci-green's gate job on GitHub's runner; its re-run passed); not reproduced, not diagnosed | W10 ci-green | S | engine, phase 4 | open; read by cook-determinism (033182e): no defect in the engine's code, two Vulkan devices on two threads at once on Lavapipe the best reading; if it recurs, run the second 600-tick run after the first there |
 | 82 | `scripts/wave-end.sh` (ci-green: ddec5756, a56a2ccb, 3816e4a4) has never run for real, only with `--dry-run`; row 54's og-ui frames on lavapipe (and row 74's `screen-layers`, `kit-skin-pixel` and `kit-skin-pixel-phone`) depend on its `ui` stage (`--record og-ui`), as do the vulkan-cpu copies that predate wave 10's metal re-records (og-ui's kit frames from abd2bf9b, Hollowbell's `title` and `play` from f3bf909e) | W10 ci-green | S | engine, phase 4 (a wave-end capture) | open |
 | 83 | GitHub CI removed during the build-out (the owner's decision, 2026-10-21: the workflow and its provisioning action deleted at the commit after aa9e4f8e, after a day as `workflow_dispatch` only; docs/ci.md §CI keeps the summary and names the history commits 53b876f7 and 9d220790 that hold them); the local gate is the only signal. What brings it back: the repository published, restoring the workflow from history with its push, pull_request and nightly triggers | W10 ci-green | S | process | open by decision |
+| 84 | The Kestrel Stair's `chapters` playtest frame shows the results screen (the script's timing is off), so the named chapter cards are not under a reference frame; fix the script and re-record | W11 runtime-ui-2 | S | examples | open |
+| 85 | `og.Mesh`'s hit flash still draws through a copy of its material at 16 levels; moving it onto the per-instance flash record (5bbf4909) would make it one draw and move existing frames | W11 physics-anim-2 | S | engine, phase 4 (render) | open |
+| 86 | Audio zones and the listener read their own `og.Transform`: parented audio (a sound on a child entity, a listener under a camera rig) is not composed down `og.Parent` as cloth is since 12fa298a (the og-audio README's owed line) | W11 physics-anim-2 | S | engine, phase 4 (audio) | open |
 
 ## 0. Rules that shape the plan
 
